@@ -22,7 +22,7 @@ var emailCopyCases = []struct {
 }{
 	{
 		name:     "tenant_admin_invitation",
-		subjects: map[string]string{"en": "Aoto Press admin invitation", "ja": "Aoto Press 管理者招待"},
+		subjects: map[string]string{"en": "Aoto Press admin invitation", "ja": "Aoto Press管理者招待"},
 		request: emailrenderer.Request{
 			Template: "tenant_admin_invitation",
 			Data: map[string]any{
@@ -34,7 +34,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_email_verification",
-		subjects: map[string]string{"en": "Aoto Press email address verification", "ja": "Aoto Press メールアドレス確認"},
+		subjects: map[string]string{"en": "Aoto Press email address verification", "ja": "Aoto Pressメールアドレス確認"},
 		request: emailrenderer.Request{
 			Template: "reader_email_verification",
 			Data: map[string]any{
@@ -46,7 +46,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_email_change_confirmation to the current address",
-		subjects: map[string]string{"en": "Aoto Press email address change confirmation", "ja": "Aoto Press メールアドレス変更確認"},
+		subjects: map[string]string{"en": "Aoto Press email address change confirmation", "ja": "Aoto Pressメールアドレス変更確認"},
 		request: emailrenderer.Request{
 			Template: "reader_email_change_confirmation",
 			Data: map[string]any{
@@ -61,7 +61,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_email_change_confirmation to the new address",
-		subjects: map[string]string{"en": "Aoto Press email address change confirmation", "ja": "Aoto Press メールアドレス変更確認"},
+		subjects: map[string]string{"en": "Aoto Press email address change confirmation", "ja": "Aoto Pressメールアドレス変更確認"},
 		request: emailrenderer.Request{
 			Template: "reader_email_change_confirmation",
 			Data: map[string]any{
@@ -76,7 +76,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_email_changed_notice",
-		subjects: map[string]string{"en": "Aoto Press email address changed", "ja": "Aoto Press メールアドレス変更完了"},
+		subjects: map[string]string{"en": "Aoto Press email address changed", "ja": "Aoto Pressメールアドレス変更完了"},
 		request: emailrenderer.Request{
 			Template: "reader_email_changed_notice",
 			Data: map[string]any{
@@ -88,7 +88,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_password_reset",
-		subjects: map[string]string{"en": "Aoto Press password reset", "ja": "Aoto Press パスワード再設定"},
+		subjects: map[string]string{"en": "Aoto Press password reset", "ja": "Aoto Pressパスワード再設定"},
 		request: emailrenderer.Request{
 			Template: "reader_password_reset",
 			Data: map[string]any{
@@ -100,7 +100,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_password_changed_notice",
-		subjects: map[string]string{"en": "Aoto Press password changed", "ja": "Aoto Press パスワード変更完了"},
+		subjects: map[string]string{"en": "Aoto Press password changed", "ja": "Aoto Pressパスワード変更完了"},
 		request: emailrenderer.Request{
 			Template: "reader_password_changed_notice",
 			Data: map[string]any{
@@ -112,7 +112,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_signup_attempt_notice for a confirmed account",
-		subjects: map[string]string{"en": "Aoto Press sign-up attempt", "ja": "Aoto Press アカウント登録の試行"},
+		subjects: map[string]string{"en": "Aoto Press sign-up attempt", "ja": "Aoto Pressアカウント登録の試行"},
 		request: emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Data: map[string]any{
@@ -125,7 +125,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_signup_attempt_notice for an unconfirmed account",
-		subjects: map[string]string{"en": "Aoto Press sign-up attempt", "ja": "Aoto Press アカウント登録の試行"},
+		subjects: map[string]string{"en": "Aoto Press sign-up attempt", "ja": "Aoto Pressアカウント登録の試行"},
 		request: emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Data: map[string]any{
@@ -138,7 +138,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "admin_console_email_change_confirmation",
-		subjects: map[string]string{"en": "Aoto Press admin console email address change confirmation", "ja": "Aoto Press 管理画面メールアドレス変更確認"},
+		subjects: map[string]string{"en": "Aoto Press admin console email address change confirmation", "ja": "Aoto Press管理画面メールアドレス変更確認"},
 		request: emailrenderer.Request{
 			Template: "admin_console_email_change_confirmation",
 			Data: map[string]any{
@@ -153,7 +153,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "admin_console_email_changed_notice",
-		subjects: map[string]string{"en": "Aoto Press admin console email address changed", "ja": "Aoto Press 管理画面メールアドレス変更完了"},
+		subjects: map[string]string{"en": "Aoto Press admin console email address changed", "ja": "Aoto Press管理画面メールアドレス変更完了"},
 		request: emailrenderer.Request{
 			Template: "admin_console_email_changed_notice",
 			Data: map[string]any{
@@ -165,7 +165,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "admin_console_password_reset",
-		subjects: map[string]string{"en": "Aoto Press admin console password reset", "ja": "Aoto Press 管理画面パスワード再設定"},
+		subjects: map[string]string{"en": "Aoto Press admin console password reset", "ja": "Aoto Press管理画面パスワード再設定"},
 		request: emailrenderer.Request{
 			Template: "admin_console_password_reset",
 			Data: map[string]any{
@@ -177,7 +177,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_email_change_confirmation",
-		subjects: map[string]string{"en": "Publira Platform Console email address change confirmation", "ja": "Publira プラットフォーム管理画面メールアドレス変更確認"},
+		subjects: map[string]string{"en": "Publira Platform Console email address change confirmation", "ja": "Publiraプラットフォーム管理画面メールアドレス変更確認"},
 		request: emailrenderer.Request{
 			Template: "platform_console_email_change_confirmation",
 			Data: map[string]any{
@@ -191,7 +191,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_email_changed_notice",
-		subjects: map[string]string{"en": "Publira Platform Console email address changed", "ja": "Publira プラットフォーム管理画面メールアドレス変更完了"},
+		subjects: map[string]string{"en": "Publira Platform Console email address changed", "ja": "Publiraプラットフォーム管理画面メールアドレス変更完了"},
 		request: emailrenderer.Request{
 			Template: "platform_console_email_changed_notice",
 			Data: map[string]any{
@@ -202,7 +202,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_password_reset",
-		subjects: map[string]string{"en": "Publira Platform Console password reset", "ja": "Publira プラットフォーム管理画面パスワード再設定"},
+		subjects: map[string]string{"en": "Publira Platform Console password reset", "ja": "Publiraプラットフォーム管理画面パスワード再設定"},
 		request: emailrenderer.Request{
 			Template: "platform_console_password_reset",
 			Data: map[string]any{
@@ -213,7 +213,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "staff_contact_message_notice from a signed-in reader",
-		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Press お問い合わせ"},
+		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Pressお問い合わせ"},
 		request: emailrenderer.Request{
 			Template: "staff_contact_message_notice",
 			Data: map[string]any{
@@ -228,7 +228,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "staff_contact_message_notice from a guest who titled nothing",
-		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Press お問い合わせ"},
+		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Pressお問い合わせ"},
 		request: emailrenderer.Request{
 			Template: "staff_contact_message_notice",
 			Data: map[string]any{
@@ -263,15 +263,15 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 		},
 		{
 			locale:      "ja",
-			wantSubject: "Aoto Press パスワード再設定",
+			wantSubject: "Aoto Pressパスワード再設定",
 			wantText: "Aoto Press\n\nパスワードの再設定\n\n" +
 				"パスワード再設定のリクエストを受け付けました。\n\n" +
 				"以下のボタンから新しいパスワードを設定してください。\n\n" +
 				"パスワードを再設定する https://reader.example.test/confirm-password?token=reset\n\n" +
-				"このリンクの有効期限は 2030/01/15 12:00 です。\n\n" +
+				"このリンクの有効期限は2030/01/15 12:00です。\n\n" +
 				"心当たりがない場合、このメールは破棄してください。\n\n" +
-				"ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。 https://reader.example.test/confirm-password?token=reset\n\n" +
-				"このメールは Aoto Press から送信されています。",
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/confirm-password?token=reset\n\n" +
+				"このメールはAoto Pressから送信されています。",
 		},
 	} {
 		t.Run(testCase.locale, func(t *testing.T) {

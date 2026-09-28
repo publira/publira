@@ -27,12 +27,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.admin_console_email_change_confirmation.heading": {
 			{Text: "管理画面メールアドレス変更の確認"},
@@ -52,7 +52,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理画面メールアドレス変更確認"},
+			{Text: "管理画面メールアドレス変更確認"},
 		},
 		"email.admin_console_email_changed_notice.body": {
 			{Text: "管理画面アカウントのメールアドレスが変更されました。"},
@@ -73,7 +73,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理画面メールアドレス変更完了"},
+			{Text: "管理画面メールアドレス変更完了"},
 		},
 		"email.admin_console_email_changed_notice.warning": {
 			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
@@ -85,12 +85,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "以下のボタンから新しいパスワードを設定してください。"},
 		},
 		"email.admin_console_password_reset.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.admin_console_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.admin_console_password_reset.heading": {
 			{Text: "管理画面パスワードの再設定"},
@@ -106,15 +106,15 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理画面パスワード再設定"},
+			{Text: "管理画面パスワード再設定"},
 		},
 		"email.layout.brand": {
 			{Text: "Publira"},
 		},
 		"email.layout.footer": {
-			{Text: "このメールは "},
+			{Text: "このメールは"},
 			{Variable: "brand"},
-			{Text: " から送信されています。"},
+			{Text: "から送信されています。"},
 		},
 		"email.platform_console_email_change_confirmation.action": {
 			{Text: "メールアドレス変更を確認する"},
@@ -130,12 +130,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
 			{Text: "プラットフォーム管理画面メールアドレス変更の確認"},
@@ -154,7 +154,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "プラットフォーム管理画面のメールアドレス変更の確認を完了してください。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira プラットフォーム管理画面メールアドレス変更確認"},
+			{Text: "Publiraプラットフォーム管理画面メールアドレス変更確認"},
 		},
 		"email.platform_console_email_changed_notice.body": {
 			{Text: "プラットフォーム管理画面アカウントのメールアドレスが変更されました。"},
@@ -174,7 +174,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira プラットフォーム管理画面メールアドレス変更完了"},
+			{Text: "Publiraプラットフォーム管理画面メールアドレス変更完了"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
@@ -186,12 +186,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "以下のボタンから新しいパスワードを設定してください。"},
 		},
 		"email.platform_console_password_reset.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.platform_console_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.platform_console_password_reset.heading": {
 			{Text: "プラットフォーム管理画面パスワードの再設定"},
@@ -206,7 +206,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "プラットフォーム管理画面の新しいパスワードを設定してください。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira プラットフォーム管理画面パスワード再設定"},
+			{Text: "Publiraプラットフォーム管理画面パスワード再設定"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "メールアドレス変更を確認する"},
@@ -222,12 +222,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.reader_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.reader_email_change_confirmation.heading": {
 			{Text: "メールアドレス変更の確認"},
@@ -247,7 +247,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " メールアドレス変更確認"},
+			{Text: "メールアドレス変更確認"},
 		},
 		"email.reader_email_changed_notice.body": {
 			{Text: "アカウントのメールアドレスが変更されました。"},
@@ -268,7 +268,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " メールアドレス変更完了"},
+			{Text: "メールアドレス変更完了"},
 		},
 		"email.reader_email_changed_notice.warning": {
 			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
@@ -280,12 +280,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "以下のボタンからメールアドレスの確認を完了してください。"},
 		},
 		"email.reader_email_verification.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.reader_email_verification.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.reader_email_verification.heading": {
 			{Text: "メールアドレスの確認"},
@@ -295,14 +295,14 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_verification.intro": {
 			{Variable: "tenant_name"},
-			{Text: " のご登録ありがとうございます。"},
+			{Text: "のご登録ありがとうございます。"},
 		},
 		"email.reader_email_verification.preview": {
 			{Text: "メールアドレスの確認を完了してください。"},
 		},
 		"email.reader_email_verification.subject": {
 			{Variable: "tenant_name"},
-			{Text: " メールアドレス確認"},
+			{Text: "メールアドレス確認"},
 		},
 		"email.reader_password_changed_notice.action": {
 			{Text: "パスワードを再設定する"},
@@ -315,7 +315,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "email"},
 		},
 		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.reader_password_changed_notice.heading": {
 			{Text: "パスワード変更の完了"},
@@ -328,7 +328,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " パスワード変更完了"},
+			{Text: "パスワード変更完了"},
 		},
 		"email.reader_password_changed_notice.warning": {
 			{Text: "この変更に心当たりがない場合は、すぐにパスワードを再設定してください。"},
@@ -340,12 +340,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "以下のボタンから新しいパスワードを設定してください。"},
 		},
 		"email.reader_password_reset.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.reader_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.reader_password_reset.heading": {
 			{Text: "パスワードの再設定"},
@@ -361,7 +361,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " パスワード再設定"},
+			{Text: "パスワード再設定"},
 		},
 		"email.reader_signup_attempt_notice.action_confirmed": {
 			{Text: "パスワードを再設定する"},
@@ -380,7 +380,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "email"},
 		},
 		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.reader_signup_attempt_notice.forgot_confirmed": {
 			{Text: "お心当たりがあり、パスワードが分からない場合は、上のボタンから再設定してください。"},
@@ -396,14 +396,14 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_signup_attempt_notice.intro": {
 			{Variable: "tenant_name"},
-			{Text: " で、このメールアドレスを使ったアカウント登録が試みられました。"},
+			{Text: "で、このメールアドレスを使ったアカウント登録が試みられました。"},
 		},
 		"email.reader_signup_attempt_notice.preview": {
 			{Text: "登録済みのメールアドレスで登録が試みられました。"},
 		},
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " アカウント登録の試行"},
+			{Text: "アカウント登録の試行"},
 		},
 		"email.staff_contact_message_notice.body_heading": {
 			{Text: "本文"},
@@ -416,11 +416,11 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.staff_contact_message_notice.intro": {
 			{Variable: "tenant_name"},
-			{Text: " のお問い合わせフォームから、読者がメッセージを送信しました。"},
+			{Text: "のお問い合わせフォームから、読者がメッセージを送信しました。"},
 		},
 		"email.staff_contact_message_notice.preview": {
 			{Variable: "tenant_name"},
-			{Text: " に読者からメッセージが届きました。"},
+			{Text: "に読者からメッセージが届きました。"},
 		},
 		"email.staff_contact_message_notice.received": {
 			{Text: "受信日時: "},
@@ -436,7 +436,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.staff_contact_message_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " お問い合わせ"},
+			{Text: "お問い合わせ"},
 		},
 		"email.staff_contact_message_notice.subject_line": {
 			{Text: "件名: "},
@@ -447,15 +447,15 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.tenant_admin_invitation.body": {
 			{Variable: "tenant_name"},
-			{Text: " のテナント管理者として招待されています。以下のボタンから招待を承諾してください。"},
+			{Text: "のテナント管理者として招待されています。以下のボタンから招待を承諾してください。"},
 		},
 		"email.tenant_admin_invitation.expires": {
-			{Text: "このリンクの有効期限は "},
+			{Text: "このリンクの有効期限は"},
 			{Variable: "expires_at"},
-			{Text: " です。"},
+			{Text: "です。"},
 		},
 		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
+			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
 		},
 		"email.tenant_admin_invitation.heading": {
 			{Text: "管理者への招待"},
@@ -465,15 +465,15 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.tenant_admin_invitation.intro": {
 			{Variable: "tenant_name"},
-			{Text: " の管理画面へ招待されました。"},
+			{Text: "の管理画面へ招待されました。"},
 		},
 		"email.tenant_admin_invitation.preview": {
 			{Variable: "tenant_name"},
-			{Text: " の管理画面へ招待されました。"},
+			{Text: "の管理画面へ招待されました。"},
 		},
 		"email.tenant_admin_invitation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理者招待"},
+			{Text: "管理者招待"},
 		},
 	},
 	"en": {
@@ -1428,12 +1428,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.admin_console_email_change_confirmation.heading": {
 			{Text: "确认管理控制台邮箱地址变更"},
@@ -1453,7 +1453,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理控制台邮箱地址变更确认"},
+			{Text: "管理控制台邮箱地址变更确认"},
 		},
 		"email.admin_console_email_changed_notice.body": {
 			{Text: "您管理控制台账户的邮箱地址已变更。"},
@@ -1474,7 +1474,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理控制台邮箱地址已变更"},
+			{Text: "管理控制台邮箱地址已变更"},
 		},
 		"email.admin_console_email_changed_notice.warning": {
 			{Text: "如果这不是您本人的操作，请立即重设密码。"},
@@ -1486,12 +1486,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "请打开下方按钮设置新密码。"},
 		},
 		"email.admin_console_password_reset.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.admin_console_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.admin_console_password_reset.heading": {
 			{Text: "重设管理控制台密码"},
@@ -1507,15 +1507,15 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理控制台密码重设"},
+			{Text: "管理控制台密码重设"},
 		},
 		"email.layout.brand": {
 			{Text: "Publira"},
 		},
 		"email.layout.footer": {
-			{Text: "这封邮件由 "},
+			{Text: "这封邮件由"},
 			{Variable: "brand"},
-			{Text: " 发送。"},
+			{Text: "发送。"},
 		},
 		"email.platform_console_email_change_confirmation.action": {
 			{Text: "确认邮箱地址变更"},
@@ -1531,12 +1531,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
 			{Text: "确认平台控制台邮箱地址变更"},
@@ -1555,7 +1555,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "确认平台控制台邮箱地址变更。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira 平台控制台邮箱地址变更确认"},
+			{Text: "Publira平台控制台邮箱地址变更确认"},
 		},
 		"email.platform_console_email_changed_notice.body": {
 			{Text: "您平台控制台账户的邮箱地址已变更。"},
@@ -1575,7 +1575,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira 平台控制台邮箱地址已变更"},
+			{Text: "Publira平台控制台邮箱地址已变更"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "如果这不是您本人的操作，请立即重设密码。"},
@@ -1587,12 +1587,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "请打开下方按钮设置新密码。"},
 		},
 		"email.platform_console_password_reset.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.platform_console_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.platform_console_password_reset.heading": {
 			{Text: "重设平台控制台密码"},
@@ -1607,7 +1607,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "设置新的平台控制台密码。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira 平台控制台密码重设"},
+			{Text: "Publira平台控制台密码重设"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "确认邮箱地址变更"},
@@ -1623,12 +1623,12 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.reader_email_change_confirmation.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.reader_email_change_confirmation.heading": {
 			{Text: "确认邮箱地址变更"},
@@ -1648,7 +1648,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 邮箱地址变更确认"},
+			{Text: "邮箱地址变更确认"},
 		},
 		"email.reader_email_changed_notice.body": {
 			{Text: "您账户的邮箱地址已变更。"},
@@ -1669,7 +1669,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 邮箱地址已变更"},
+			{Text: "邮箱地址已变更"},
 		},
 		"email.reader_email_changed_notice.warning": {
 			{Text: "如果这不是您本人的操作，请立即重设密码。"},
@@ -1681,12 +1681,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "请打开下方按钮完成邮箱地址验证。"},
 		},
 		"email.reader_email_verification.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_email_verification.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.reader_email_verification.heading": {
 			{Text: "验证您的邮箱地址"},
@@ -1695,7 +1695,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
 		},
 		"email.reader_email_verification.intro": {
-			{Text: "感谢您注册 "},
+			{Text: "感谢您注册"},
 			{Variable: "tenant_name"},
 			{Text: "。"},
 		},
@@ -1704,7 +1704,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_verification.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 邮箱地址验证"},
+			{Text: "邮箱地址验证"},
 		},
 		"email.reader_password_changed_notice.action": {
 			{Text: "重设密码"},
@@ -1717,7 +1717,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "email"},
 		},
 		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.reader_password_changed_notice.heading": {
 			{Text: "密码已变更"},
@@ -1730,7 +1730,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 密码已变更"},
+			{Text: "密码已变更"},
 		},
 		"email.reader_password_changed_notice.warning": {
 			{Text: "如果这不是您本人的操作，请立即设置新密码。"},
@@ -1742,12 +1742,12 @@ var Messages = map[string]map[string][]Part{
 			{Text: "请打开下方按钮设置新密码。"},
 		},
 		"email.reader_password_reset.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.reader_password_reset.heading": {
 			{Text: "重设密码"},
@@ -1763,7 +1763,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 密码重设"},
+			{Text: "密码重设"},
 		},
 		"email.reader_signup_attempt_notice.action_confirmed": {
 			{Text: "重设密码"},
@@ -1782,7 +1782,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "email"},
 		},
 		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.reader_signup_attempt_notice.forgot_confirmed": {
 			{Text: "如果这是您本人的操作，而您忘记了密码，请通过上方按钮设置新密码。"},
@@ -1797,16 +1797,16 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果这不是您本人的操作，则无需处理。没有您的密码，任何人都无法登录。"},
 		},
 		"email.reader_signup_attempt_notice.intro": {
-			{Text: "有人尝试使用这个邮箱地址在 "},
+			{Text: "有人尝试使用这个邮箱地址在"},
 			{Variable: "tenant_name"},
-			{Text: " 创建账户。"},
+			{Text: "创建账户。"},
 		},
 		"email.reader_signup_attempt_notice.preview": {
 			{Text: "有人使用您的邮箱地址注册。"},
 		},
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 账户注册尝试"},
+			{Text: "账户注册尝试"},
 		},
 		"email.staff_contact_message_notice.body_heading": {
 			{Text: "正文"},
@@ -1818,13 +1818,13 @@ var Messages = map[string]map[string][]Part{
 			{Text: "收到新的咨询"},
 		},
 		"email.staff_contact_message_notice.intro": {
-			{Text: "有读者通过 "},
+			{Text: "有读者通过"},
 			{Variable: "tenant_name"},
-			{Text: " 的咨询表单发送了消息。"},
+			{Text: "的咨询表单发送了消息。"},
 		},
 		"email.staff_contact_message_notice.preview": {
 			{Variable: "tenant_name"},
-			{Text: " 收到了读者的消息。"},
+			{Text: "收到了读者的消息。"},
 		},
 		"email.staff_contact_message_notice.received": {
 			{Text: "接收时间："},
@@ -1840,7 +1840,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.staff_contact_message_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 咨询"},
+			{Text: "咨询"},
 		},
 		"email.staff_contact_message_notice.subject_line": {
 			{Text: "主题："},
@@ -1850,17 +1850,17 @@ var Messages = map[string]map[string][]Part{
 			{Text: "接受邀请"},
 		},
 		"email.tenant_admin_invitation.body": {
-			{Text: "您被邀请成为 "},
+			{Text: "您被邀请成为"},
 			{Variable: "tenant_name"},
-			{Text: " 的租户管理员。请打开下方按钮接受邀请。"},
+			{Text: "的租户管理员。请打开下方按钮接受邀请。"},
 		},
 		"email.tenant_admin_invitation.expires": {
-			{Text: "此链接将于 "},
+			{Text: "此链接将于"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
+			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
 		},
 		"email.tenant_admin_invitation.heading": {
 			{Text: "管理员邀请"},
@@ -1869,18 +1869,18 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
 		},
 		"email.tenant_admin_invitation.intro": {
-			{Text: "您被邀请加入 "},
+			{Text: "您被邀请加入"},
 			{Variable: "tenant_name"},
-			{Text: " 的管理控制台。"},
+			{Text: "的管理控制台。"},
 		},
 		"email.tenant_admin_invitation.preview": {
-			{Text: "您被邀请加入 "},
+			{Text: "您被邀请加入"},
 			{Variable: "tenant_name"},
-			{Text: " 的管理控制台。"},
+			{Text: "的管理控制台。"},
 		},
 		"email.tenant_admin_invitation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理员邀请"},
+			{Text: "管理员邀请"},
 		},
 	},
 	"zh-Hant": {
@@ -1898,9 +1898,9 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.admin_console_email_change_confirmation.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -1923,7 +1923,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理主控台電子郵件地址變更確認"},
+			{Text: "管理主控台電子郵件地址變更確認"},
 		},
 		"email.admin_console_email_changed_notice.body": {
 			{Text: "您管理主控台帳戶的電子郵件地址已變更。"},
@@ -1944,7 +1944,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理主控台電子郵件地址已變更"},
+			{Text: "管理主控台電子郵件地址已變更"},
 		},
 		"email.admin_console_email_changed_notice.warning": {
 			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
@@ -1956,9 +1956,9 @@ var Messages = map[string]map[string][]Part{
 			{Text: "請開啟下方按鈕設定新密碼。"},
 		},
 		"email.admin_console_password_reset.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.admin_console_password_reset.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -1977,15 +1977,15 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.admin_console_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理主控台密碼重設"},
+			{Text: "管理主控台密碼重設"},
 		},
 		"email.layout.brand": {
 			{Text: "Publira"},
 		},
 		"email.layout.footer": {
-			{Text: "這封郵件由 "},
+			{Text: "這封郵件由"},
 			{Variable: "brand"},
-			{Text: " 寄出。"},
+			{Text: "寄出。"},
 		},
 		"email.platform_console_email_change_confirmation.action": {
 			{Text: "確認電子郵件地址變更"},
@@ -2001,9 +2001,9 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.platform_console_email_change_confirmation.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2025,7 +2025,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "確認平台主控台的電子郵件地址變更。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira 平台主控台電子郵件地址變更確認"},
+			{Text: "Publira平台主控台電子郵件地址變更確認"},
 		},
 		"email.platform_console_email_changed_notice.body": {
 			{Text: "您平台主控台帳戶的電子郵件地址已變更。"},
@@ -2045,7 +2045,7 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira 平台主控台電子郵件地址已變更"},
+			{Text: "Publira平台主控台電子郵件地址已變更"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
@@ -2057,9 +2057,9 @@ var Messages = map[string]map[string][]Part{
 			{Text: "請開啟下方按鈕設定新密碼。"},
 		},
 		"email.platform_console_password_reset.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.platform_console_password_reset.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2077,7 +2077,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "設定新的平台主控台密碼。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira 平台主控台密碼重設"},
+			{Text: "Publira平台主控台密碼重設"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "確認電子郵件地址變更"},
@@ -2093,9 +2093,9 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "current_email"},
 		},
 		"email.reader_email_change_confirmation.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_email_change_confirmation.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2118,7 +2118,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_change_confirmation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 電子郵件地址變更確認"},
+			{Text: "電子郵件地址變更確認"},
 		},
 		"email.reader_email_changed_notice.body": {
 			{Text: "您帳戶的電子郵件地址已變更。"},
@@ -2139,7 +2139,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 電子郵件地址已變更"},
+			{Text: "電子郵件地址已變更"},
 		},
 		"email.reader_email_changed_notice.warning": {
 			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
@@ -2151,9 +2151,9 @@ var Messages = map[string]map[string][]Part{
 			{Text: "請開啟下方按鈕完成電子郵件地址驗證。"},
 		},
 		"email.reader_email_verification.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_email_verification.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2165,7 +2165,7 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
 		},
 		"email.reader_email_verification.intro": {
-			{Text: "感謝您註冊 "},
+			{Text: "感謝您註冊"},
 			{Variable: "tenant_name"},
 			{Text: "。"},
 		},
@@ -2174,7 +2174,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_email_verification.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 電子郵件地址驗證"},
+			{Text: "電子郵件地址驗證"},
 		},
 		"email.reader_password_changed_notice.action": {
 			{Text: "重設密碼"},
@@ -2200,7 +2200,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_changed_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 密碼已變更"},
+			{Text: "密碼已變更"},
 		},
 		"email.reader_password_changed_notice.warning": {
 			{Text: "如果這不是您本人的操作，請立即設定新密碼。"},
@@ -2212,9 +2212,9 @@ var Messages = map[string]map[string][]Part{
 			{Text: "請開啟下方按鈕設定新密碼。"},
 		},
 		"email.reader_password_reset.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.reader_password_reset.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2233,7 +2233,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.reader_password_reset.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 密碼重設"},
+			{Text: "密碼重設"},
 		},
 		"email.reader_signup_attempt_notice.action_confirmed": {
 			{Text: "重設密碼"},
@@ -2267,16 +2267,16 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果這不是您本人的操作，則無需處理。沒有您的密碼，任何人都無法登入。"},
 		},
 		"email.reader_signup_attempt_notice.intro": {
-			{Text: "有人嘗試使用這個電子郵件地址在 "},
+			{Text: "有人嘗試使用這個電子郵件地址在"},
 			{Variable: "tenant_name"},
-			{Text: " 建立帳戶。"},
+			{Text: "建立帳戶。"},
 		},
 		"email.reader_signup_attempt_notice.preview": {
 			{Text: "有人使用您的電子郵件地址註冊。"},
 		},
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 帳戶註冊嘗試"},
+			{Text: "帳戶註冊嘗試"},
 		},
 		"email.staff_contact_message_notice.body_heading": {
 			{Text: "內文"},
@@ -2288,13 +2288,13 @@ var Messages = map[string]map[string][]Part{
 			{Text: "收到新的諮詢"},
 		},
 		"email.staff_contact_message_notice.intro": {
-			{Text: "有讀者透過 "},
+			{Text: "有讀者透過"},
 			{Variable: "tenant_name"},
-			{Text: " 的諮詢表單傳送了訊息。"},
+			{Text: "的諮詢表單傳送了訊息。"},
 		},
 		"email.staff_contact_message_notice.preview": {
 			{Variable: "tenant_name"},
-			{Text: " 收到了讀者的訊息。"},
+			{Text: "收到了讀者的訊息。"},
 		},
 		"email.staff_contact_message_notice.received": {
 			{Text: "接收時間："},
@@ -2310,7 +2310,7 @@ var Messages = map[string]map[string][]Part{
 		},
 		"email.staff_contact_message_notice.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 諮詢"},
+			{Text: "諮詢"},
 		},
 		"email.staff_contact_message_notice.subject_line": {
 			{Text: "主旨："},
@@ -2320,14 +2320,14 @@ var Messages = map[string]map[string][]Part{
 			{Text: "接受邀請"},
 		},
 		"email.tenant_admin_invitation.body": {
-			{Text: "您受邀成為 "},
+			{Text: "您受邀成為"},
 			{Variable: "tenant_name"},
-			{Text: " 的租戶管理員。請開啟下方按鈕接受邀請。"},
+			{Text: "的租戶管理員。請開啟下方按鈕接受邀請。"},
 		},
 		"email.tenant_admin_invitation.expires": {
-			{Text: "此連結將於 "},
+			{Text: "此連結將於"},
 			{Variable: "expires_at"},
-			{Text: " 失效。"},
+			{Text: "失效。"},
 		},
 		"email.tenant_admin_invitation.fallback_link": {
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
@@ -2339,18 +2339,18 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
 		},
 		"email.tenant_admin_invitation.intro": {
-			{Text: "您受邀加入 "},
+			{Text: "您受邀加入"},
 			{Variable: "tenant_name"},
-			{Text: " 的管理主控台。"},
+			{Text: "的管理主控台。"},
 		},
 		"email.tenant_admin_invitation.preview": {
-			{Text: "您受邀加入 "},
+			{Text: "您受邀加入"},
 			{Variable: "tenant_name"},
-			{Text: " 的管理主控台。"},
+			{Text: "的管理主控台。"},
 		},
 		"email.tenant_admin_invitation.subject": {
 			{Variable: "tenant_name"},
-			{Text: " 管理員邀請"},
+			{Text: "管理員邀請"},
 		},
 	},
 }

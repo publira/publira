@@ -153,7 +153,7 @@ describe("updatePlatformWebPushSubject", () => {
       updatePlatformWebPushSubject("mailto:push@example", 3n, "ja")
     ).resolves.toEqual({
       message:
-        "mailto:push@example.com のようにメールアドレスを 1 つ含む mailto: URI か、https://example.com/contact のような https:// URL を入力してください。",
+        "mailto:push@example.comのようにメールアドレスを1つ含むmailto: URIか、https://example.com/contactのようなhttps:// URLを入力してください。",
       ok: false,
     });
   });

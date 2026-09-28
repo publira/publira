@@ -1534,12 +1534,12 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get errorsSmtpTestAuthentication {
-    return 'SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。';
+    return 'SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestConnection {
-    return 'SMTP サーバーに接続できませんでした。SMTP の設定を確認して再試行してください。';
+    return 'SMTPサーバーに接続できませんでした。SMTPの設定を確認して再試行してください。';
   }
 
   @override
@@ -1549,22 +1549,22 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get errorsSmtpTestStarttls {
-    return 'STARTTLS の確立に失敗しました。SMTP の設定を確認して再試行してください。';
+    return 'STARTTLSの確立に失敗しました。SMTPの設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestTimeout {
-    return 'SMTP サーバーへの接続がタイムアウトしました。SMTP の設定を確認して再試行してください。';
+    return 'SMTPサーバーへの接続がタイムアウトしました。SMTPの設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestTls {
-    return 'TLS 接続に失敗しました。SMTP の設定を確認して再試行してください。';
+    return 'TLS接続に失敗しました。SMTPの設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestUnknown {
-    return 'SMTP 接続テストに失敗しました。SMTP の設定を確認して再試行してください。';
+    return 'SMTP接続テストに失敗しました。SMTPの設定を確認して再試行してください。';
   }
 
   @override
@@ -1584,7 +1584,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String accountBirthDateConfirmTitle({required String date}) {
-    return '生年月日を $date で登録しますか？';
+    return '生年月日を$dateで登録しますか？';
   }
 
   @override
@@ -1754,7 +1754,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String announcementsUnreadShown({required String count}) {
-    return '表示中のうち未読 $count 件';
+    return '表示中のうち未読$count件';
   }
 
   @override
@@ -2239,7 +2239,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String commonSeriesCount({required String count}) {
-    return '公開中シリーズ $count 件';
+    return '公開中シリーズ$count件';
   }
 
   @override
@@ -2349,7 +2349,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String contactBodyTooLong({required String max}) {
-    return 'お問い合わせ内容は $max 文字以内で入力してください。';
+    return 'お問い合わせ内容は$max文字以内で入力してください。';
   }
 
   @override
@@ -2404,7 +2404,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String contactSubjectTooLong({required String max}) {
-    return '件名は $max 文字以内で入力してください。';
+    return '件名は$max文字以内で入力してください。';
   }
 
   @override
@@ -2544,22 +2544,22 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String downloadsExpired({required String date}) {
-    return '$date にオフラインで読める期間が終わりました。オンラインで開くと再び読めます。';
+    return '$dateにオフラインで読める期間が終わりました。オンラインで開くと再び読めます。';
   }
 
   @override
   String downloadsPartial({required String saved, required String total}) {
-    return '一部のみ保存済み（$total ページ中 $saved ページ）。オフラインで最後まで読むには、シリーズのページから保存してください。';
+    return '一部のみ保存済み（$totalページ中$savedページ）。オフラインで最後まで読むには、シリーズのページから保存してください。';
   }
 
   @override
   String downloadsReadableUntil({required String date}) {
-    return '$date までオフラインで読めます';
+    return '$dateまでオフラインで読めます';
   }
 
   @override
   String downloadsSavedAt({required String date, required String size}) {
-    return '$date に保存 · $size';
+    return '$dateに保存 · $size';
   }
 
   @override
@@ -2569,7 +2569,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String downloadsUsage({required String limit, required String used}) {
-    return '$limit 中 $used を使用';
+    return '$limit中$usedを使用';
   }
 
   @override
@@ -2659,7 +2659,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String followUpdatesPublishedAt({required String date}) {
-    return '$date に公開';
+    return '$dateに公開';
   }
 
   @override
@@ -2684,7 +2684,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String followsFollowedAt({required String date}) {
-    return '$date にフォロー';
+    return '$dateにフォロー';
   }
 
   @override
@@ -2964,7 +2964,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String notificationsUnreadCount({required String count}) {
-    return '未読 $count 件';
+    return '未読$count件';
   }
 
   @override
@@ -3034,7 +3034,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String purchasesEndedAt({required String date}) {
-    return '$date に閲覧期限終了';
+    return '$dateに閲覧期限終了';
   }
 
   @override
@@ -3054,12 +3054,12 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String purchasesPrice({required String price}) {
-    return '購入価格 $price';
+    return '購入価格$price';
   }
 
   @override
   String purchasesPurchasedAt({required String date}) {
-    return '$date に購入';
+    return '$dateに購入';
   }
 
   @override
@@ -3069,7 +3069,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String purchasesReadableUntil({required String date}) {
-    return '$date まで閲覧可能';
+    return '$dateまで閲覧可能';
   }
 
   @override
@@ -3104,7 +3104,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String readingHistoryFinishedAt({required String date}) {
-    return '$date に読了';
+    return '$dateに読了';
   }
 
   @override
@@ -3274,7 +3274,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String seriesAgeGateR15Title({required String title}) {
-    return '「$title」は R15 指定です';
+    return '「$title」はR15指定です';
   }
 
   @override
@@ -3284,7 +3284,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String seriesAgeGateR18Title({required String title}) {
-    return '「$title」は R18 指定です';
+    return '「$title」はR18指定です';
   }
 
   @override
@@ -3314,7 +3314,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String seriesEpisodeCount({required String count}) {
-    return '$count 話';
+    return '$count話';
   }
 
   @override
@@ -8518,37 +8518,37 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get errorsSmtpTestAuthentication {
-    return 'SMTP 认证失败。';
+    return 'SMTP认证失败。';
   }
 
   @override
   String get errorsSmtpTestConnection {
-    return '无法连接到 SMTP 服务器。';
+    return '无法连接到SMTP服务器。';
   }
 
   @override
   String get errorsSmtpTestRecipient {
-    return 'SMTP 服务器拒绝了收件人邮箱地址。';
+    return 'SMTP服务器拒绝了收件人邮箱地址。';
   }
 
   @override
   String get errorsSmtpTestStarttls {
-    return '无法建立 STARTTLS。';
+    return '无法建立STARTTLS。';
   }
 
   @override
   String get errorsSmtpTestTimeout {
-    return '连接 SMTP 服务器超时。';
+    return '连接SMTP服务器超时。';
   }
 
   @override
   String get errorsSmtpTestTls {
-    return '无法建立 TLS 连接。';
+    return '无法建立TLS连接。';
   }
 
   @override
   String get errorsSmtpTestUnknown {
-    return 'SMTP 连接测试失败。';
+    return 'SMTP连接测试失败。';
   }
 
   @override
@@ -8568,7 +8568,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String accountBirthDateConfirmTitle({required String date}) {
-    return '要将 $date 登记为您的出生日期吗？';
+    return '要将$date登记为您的出生日期吗？';
   }
 
   @override
@@ -8738,7 +8738,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String announcementsUnreadShown({required String count}) {
-    return '已显示的公告中有 $count 条未读';
+    return '已显示的公告中有$count条未读';
   }
 
   @override
@@ -8768,7 +8768,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get authNameTooLong {
-    return '显示名称请控制在 100 个字符以内。';
+    return '显示名称请控制在100个字符以内。';
   }
 
   @override
@@ -8793,7 +8793,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get authPasswordTooLong {
-    return '密码请控制在 1024 个字符以内。';
+    return '密码请控制在1024个字符以内。';
   }
 
   @override
@@ -8993,7 +8993,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String commentsBodyTooLong({required String max}) {
-    return '评论最多 $max 个字符。';
+    return '评论最多$max个字符。';
   }
 
   @override
@@ -9003,7 +9003,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String commentsDeleteAria({required String date}) {
-    return '删除您在 $date 发表的评论';
+    return '删除您在$date发表的评论';
   }
 
   @override
@@ -9083,7 +9083,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String commentsReportAria({required String author, required String date}) {
-    return '举报 $author 在 $date 发表的评论';
+    return '举报$author在$date发表的评论';
   }
 
   @override
@@ -9113,7 +9113,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String commentsReportNoteTooLong({required String max}) {
-    return '补充说明最多 $max 个字符。';
+    return '补充说明最多$max个字符。';
   }
 
   @override
@@ -9223,7 +9223,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String commonSeriesCount({required String count}) {
-    return '已发布 $count 部系列';
+    return '已发布$count部系列';
   }
 
   @override
@@ -9333,7 +9333,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String contactBodyTooLong({required String max}) {
-    return '留言内容不能超过 $max 个字符。';
+    return '留言内容不能超过$max个字符。';
   }
 
   @override
@@ -9388,7 +9388,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String contactSubjectTooLong({required String max}) {
-    return '主题不能超过 $max 个字符。';
+    return '主题不能超过$max个字符。';
   }
 
   @override
@@ -9528,22 +9528,22 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String downloadsExpired({required String date}) {
-    return '离线阅读已于 $date 结束。联网打开即可再次阅读。';
+    return '离线阅读已于$date结束。联网打开即可再次阅读。';
   }
 
   @override
   String downloadsPartial({required String saved, required String total}) {
-    return '仅保存了部分（$total 页中的 $saved 页）。要离线读完，请在系列页面保存。';
+    return '仅保存了部分（$total页中的$saved页）。要离线读完，请在系列页面保存。';
   }
 
   @override
   String downloadsReadableUntil({required String date}) {
-    return '可离线阅读至 $date';
+    return '可离线阅读至$date';
   }
 
   @override
   String downloadsSavedAt({required String date, required String size}) {
-    return '$date 保存 · $size';
+    return '$date保存 · $size';
   }
 
   @override
@@ -9553,7 +9553,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String downloadsUsage({required String limit, required String used}) {
-    return '已使用 $used，共 $limit';
+    return '已使用$used，共$limit';
   }
 
   @override
@@ -9593,7 +9593,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String followFollowAria({required String name}) {
-    return '关注 $name';
+    return '关注$name';
   }
 
   @override
@@ -9603,7 +9603,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String followSignInAria({required String name}) {
-    return '登录后关注 $name';
+    return '登录后关注$name';
   }
 
   @override
@@ -9613,7 +9613,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String followUnfollowAria({required String name}) {
-    return '取消关注 $name';
+    return '取消关注$name';
   }
 
   @override
@@ -9643,7 +9643,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String followUpdatesPublishedAt({required String date}) {
-    return '$date 发布';
+    return '$date发布';
   }
 
   @override
@@ -9668,7 +9668,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String followsFollowedAt({required String date}) {
-    return '$date 关注';
+    return '$date关注';
   }
 
   @override
@@ -9788,7 +9788,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String navigationNotificationsUnread({required String count}) {
-    return '通知，$count 条未读';
+    return '通知，$count条未读';
   }
 
   @override
@@ -9948,7 +9948,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String notificationsUnreadCount({required String count}) {
-    return '$count 条未读';
+    return '$count条未读';
   }
 
   @override
@@ -10018,7 +10018,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String purchasesEndedAt({required String date}) {
-    return '$date 阅读期限已结束';
+    return '$date阅读期限已结束';
   }
 
   @override
@@ -10038,12 +10038,12 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String purchasesPrice({required String price}) {
-    return '支付金额 $price';
+    return '支付金额$price';
   }
 
   @override
   String purchasesPurchasedAt({required String date}) {
-    return '$date 购买';
+    return '$date购买';
   }
 
   @override
@@ -10053,7 +10053,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String purchasesReadableUntil({required String date}) {
-    return '可阅读至 $date';
+    return '可阅读至$date';
   }
 
   @override
@@ -10088,7 +10088,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String readingHistoryFinishedAt({required String date}) {
-    return '$date 读完';
+    return '$date读完';
   }
 
   @override
@@ -10238,12 +10238,12 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get seriesAgeGateConfirmR15 {
-    return '我已满 15 岁';
+    return '我已满15岁';
   }
 
   @override
   String get seriesAgeGateConfirmR18 {
-    return '我已满 18 岁';
+    return '我已满18岁';
   }
 
   @override
@@ -10253,22 +10253,22 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get seriesAgeGateR15Description {
-    return '确认已满 15 岁后即可阅读该系列。';
+    return '确认已满15岁后即可阅读该系列。';
   }
 
   @override
   String seriesAgeGateR15Title({required String title}) {
-    return '“$title”为 R15';
+    return '“$title”为R15';
   }
 
   @override
   String get seriesAgeGateR18Description {
-    return '确认已满 18 岁后即可阅读该系列。';
+    return '确认已满18岁后即可阅读该系列。';
   }
 
   @override
   String seriesAgeGateR18Title({required String title}) {
-    return '“$title”为 R18';
+    return '“$title”为R18';
   }
 
   @override
@@ -10298,7 +10298,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String seriesEpisodeCount({required String count}) {
-    return '$count 章';
+    return '$count章';
   }
 
   @override
@@ -10328,12 +10328,12 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String seriesRating({required String average, required String count}) {
-    return '评分：$average · $count 位读者';
+    return '评分：$average · $count位读者';
   }
 
   @override
   String seriesRatingSingle({required String average, required String count}) {
-    return '评分：$average · $count 位读者';
+    return '评分：$average · $count位读者';
   }
 
   @override
@@ -10747,12 +10747,12 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
-    return '$count 位读者已反馈';
+    return '$count位读者已反馈';
   }
 
   @override
   String viewerReactionCountSingle({required String count}) {
-    return '$count 位读者已反馈';
+    return '$count位读者已反馈';
   }
 
   @override
@@ -10846,37 +10846,37 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get errorsSmtpTestAuthentication {
-    return 'SMTP 驗證失敗。';
+    return 'SMTP驗證失敗。';
   }
 
   @override
   String get errorsSmtpTestConnection {
-    return '無法連線到 SMTP 伺服器。';
+    return '無法連線到SMTP伺服器。';
   }
 
   @override
   String get errorsSmtpTestRecipient {
-    return 'SMTP 伺服器拒絕了收件人的電子郵件地址。';
+    return 'SMTP伺服器拒絕了收件人的電子郵件地址。';
   }
 
   @override
   String get errorsSmtpTestStarttls {
-    return '無法建立 STARTTLS。';
+    return '無法建立STARTTLS。';
   }
 
   @override
   String get errorsSmtpTestTimeout {
-    return '連線到 SMTP 伺服器逾時。';
+    return '連線到SMTP伺服器逾時。';
   }
 
   @override
   String get errorsSmtpTestTls {
-    return '無法建立 TLS 連線。';
+    return '無法建立TLS連線。';
   }
 
   @override
   String get errorsSmtpTestUnknown {
-    return 'SMTP 連線測試失敗。';
+    return 'SMTP連線測試失敗。';
   }
 
   @override
@@ -10896,7 +10896,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String accountBirthDateConfirmTitle({required String date}) {
-    return '要將 $date 登錄為您的出生日期嗎？';
+    return '要將$date登錄為您的出生日期嗎？';
   }
 
   @override
@@ -11066,7 +11066,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String announcementsUnreadShown({required String count}) {
-    return '已顯示的公告中有 $count 則未讀';
+    return '已顯示的公告中有$count則未讀';
   }
 
   @override
@@ -11096,7 +11096,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get authNameTooLong {
-    return '顯示名稱請控制在 100 個字元以內。';
+    return '顯示名稱請控制在100個字元以內。';
   }
 
   @override
@@ -11121,7 +11121,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get authPasswordTooLong {
-    return '密碼請控制在 1024 個字元以內。';
+    return '密碼請控制在1024個字元以內。';
   }
 
   @override
@@ -11321,7 +11321,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String commentsBodyTooLong({required String max}) {
-    return '留言最多 $max 個字元。';
+    return '留言最多$max個字元。';
   }
 
   @override
@@ -11331,7 +11331,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String commentsDeleteAria({required String date}) {
-    return '刪除您在 $date 發表的留言';
+    return '刪除您在$date發表的留言';
   }
 
   @override
@@ -11411,7 +11411,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String commentsReportAria({required String author, required String date}) {
-    return '檢舉 $author 在 $date 發表的留言';
+    return '檢舉$author在$date發表的留言';
   }
 
   @override
@@ -11441,7 +11441,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String commentsReportNoteTooLong({required String max}) {
-    return '補充說明最多 $max 個字元。';
+    return '補充說明最多$max個字元。';
   }
 
   @override
@@ -11551,7 +11551,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String commonSeriesCount({required String count}) {
-    return '已發布 $count 部系列';
+    return '已發布$count部系列';
   }
 
   @override
@@ -11661,7 +11661,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String contactBodyTooLong({required String max}) {
-    return '留言內容不能超過 $max 個字元。';
+    return '留言內容不能超過$max個字元。';
   }
 
   @override
@@ -11716,7 +11716,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String contactSubjectTooLong({required String max}) {
-    return '主旨不能超過 $max 個字元。';
+    return '主旨不能超過$max個字元。';
   }
 
   @override
@@ -11856,22 +11856,22 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String downloadsExpired({required String date}) {
-    return '離線閱讀已於 $date 結束。連線開啟即可再次閱讀。';
+    return '離線閱讀已於$date結束。連線開啟即可再次閱讀。';
   }
 
   @override
   String downloadsPartial({required String saved, required String total}) {
-    return '僅儲存了部分（$total 頁中的 $saved 頁）。要離線讀完，請在系列頁面儲存。';
+    return '僅儲存了部分（$total頁中的$saved頁）。要離線讀完，請在系列頁面儲存。';
   }
 
   @override
   String downloadsReadableUntil({required String date}) {
-    return '可離線閱讀至 $date';
+    return '可離線閱讀至$date';
   }
 
   @override
   String downloadsSavedAt({required String date, required String size}) {
-    return '$date 儲存 · $size';
+    return '$date儲存 · $size';
   }
 
   @override
@@ -11881,7 +11881,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String downloadsUsage({required String limit, required String used}) {
-    return '已使用 $used，共 $limit';
+    return '已使用$used，共$limit';
   }
 
   @override
@@ -11921,7 +11921,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String followFollowAria({required String name}) {
-    return '追蹤 $name';
+    return '追蹤$name';
   }
 
   @override
@@ -11931,7 +11931,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String followSignInAria({required String name}) {
-    return '登入後追蹤 $name';
+    return '登入後追蹤$name';
   }
 
   @override
@@ -11941,7 +11941,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String followUnfollowAria({required String name}) {
-    return '取消追蹤 $name';
+    return '取消追蹤$name';
   }
 
   @override
@@ -11971,7 +11971,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String followUpdatesPublishedAt({required String date}) {
-    return '$date 發布';
+    return '$date發布';
   }
 
   @override
@@ -11996,7 +11996,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String followsFollowedAt({required String date}) {
-    return '$date 追蹤';
+    return '$date追蹤';
   }
 
   @override
@@ -12116,7 +12116,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String navigationNotificationsUnread({required String count}) {
-    return '通知，$count 則未讀';
+    return '通知，$count則未讀';
   }
 
   @override
@@ -12276,7 +12276,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String notificationsUnreadCount({required String count}) {
-    return '$count 則未讀';
+    return '$count則未讀';
   }
 
   @override
@@ -12346,7 +12346,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String purchasesEndedAt({required String date}) {
-    return '$date 閱讀期限已結束';
+    return '$date閱讀期限已結束';
   }
 
   @override
@@ -12366,12 +12366,12 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String purchasesPrice({required String price}) {
-    return '支付金額 $price';
+    return '支付金額$price';
   }
 
   @override
   String purchasesPurchasedAt({required String date}) {
-    return '$date 購買';
+    return '$date購買';
   }
 
   @override
@@ -12381,7 +12381,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String purchasesReadableUntil({required String date}) {
-    return '可閱讀至 $date';
+    return '可閱讀至$date';
   }
 
   @override
@@ -12416,7 +12416,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String readingHistoryFinishedAt({required String date}) {
-    return '$date 讀完';
+    return '$date讀完';
   }
 
   @override
@@ -12566,12 +12566,12 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get seriesAgeGateConfirmR15 {
-    return '我已滿 15 歲';
+    return '我已滿15歲';
   }
 
   @override
   String get seriesAgeGateConfirmR18 {
-    return '我已滿 18 歲';
+    return '我已滿18歲';
   }
 
   @override
@@ -12581,22 +12581,22 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get seriesAgeGateR15Description {
-    return '確認已滿 15 歲後即可閱讀此系列。';
+    return '確認已滿15歲後即可閱讀此系列。';
   }
 
   @override
   String seriesAgeGateR15Title({required String title}) {
-    return '「$title」為 R15';
+    return '「$title」為R15';
   }
 
   @override
   String get seriesAgeGateR18Description {
-    return '確認已滿 18 歲後即可閱讀此系列。';
+    return '確認已滿18歲後即可閱讀此系列。';
   }
 
   @override
   String seriesAgeGateR18Title({required String title}) {
-    return '「$title」為 R18';
+    return '「$title」為R18';
   }
 
   @override
@@ -12626,7 +12626,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String seriesEpisodeCount({required String count}) {
-    return '$count 章';
+    return '$count章';
   }
 
   @override
@@ -12656,12 +12656,12 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String seriesRating({required String average, required String count}) {
-    return '評分：$average · $count 位讀者';
+    return '評分：$average · $count位讀者';
   }
 
   @override
   String seriesRatingSingle({required String average, required String count}) {
-    return '評分：$average · $count 位讀者';
+    return '評分：$average · $count位讀者';
   }
 
   @override
@@ -13075,12 +13075,12 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
-    return '$count 位讀者已回應';
+    return '$count位讀者已回應';
   }
 
   @override
   String viewerReactionCountSingle({required String count}) {
-    return '$count 位讀者已回應';
+    return '$count位讀者已回應';
   }
 
   @override

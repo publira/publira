@@ -89,7 +89,7 @@ test.describe("web-platform display language", () => {
     await expectDocumentLocale(page, "日本語");
     await expectConsoleName(page, "プラットフォーム管理画面");
     await expect(page).toHaveTitle(
-      "一般設定 | Publira プラットフォーム管理画面"
+      "一般設定 | Publiraプラットフォーム管理画面"
     );
     expect(await storedLocaleCookie(page)).toBe("ja");
 
