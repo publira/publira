@@ -123,4 +123,43 @@ describe("renderEmail", () => {
       reason: "unknown_template",
     });
   });
+
+  it.each(["ja", "ko", "zh-Hans", "zh-Hant"] as const)(
+    "asks the client to autospace the %s body",
+    async (locale) => {
+      const result = await renderEmail({
+        data: passwordResetData,
+        locale,
+        messages: await loadEmailMessages(locale),
+        template: "reader_password_reset",
+        timeZone: "UTC",
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      // `Body` moves the style onto the cell that wraps the whole mail.
+      expect(result.html).toMatch(
+        new RegExp(`lang="${locale}" style="[^"]*text-autospace:normal`, "u")
+      );
+    }
+  );
+
+  it("leaves the English body without text-autospace", async () => {
+    const result = await renderEmail({
+      data: passwordResetData,
+      locale: "en",
+      messages: await loadEmailMessages("en"),
+      template: "reader_password_reset",
+      timeZone: "UTC",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.html).toMatch(/lang="en" style="[^"]*font-family:/u);
+    expect(result.html).not.toContain("text-autospace");
+  });
 });
