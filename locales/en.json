@@ -3010,6 +3010,7 @@
         "submit": "Post comment",
         "title": "Comments"
       },
+      "creator_access": "Open to you as its author",
       "detail_failed": "Could not load the episode. Please try again later.",
       "end": {
         "back_to_series": "Back to the series",
@@ -3048,6 +3049,7 @@
         "max_aria": "You have reacted to this episode",
         "press_aria": "React to this episode",
         "press_progress_aria": "React to this episode, {$score} of {$max}",
+        "reader_credited": "You cannot react to an episode you are credited on as its author.",
         "status_error": "Could not show your reaction",
         "status_failed": "Could not load your reaction. Please try again later."
       },

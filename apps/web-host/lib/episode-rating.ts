@@ -1,8 +1,10 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isUnauthenticatedRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { EpisodeRatingMode } from "@publira/api-client/public/catalog";
 import { ClientSurface } from "@publira/api-client/public/types";
@@ -66,6 +68,11 @@ export type EpisodeRatingStatusResult =
       mode: EpisodeReactionMode;
       ok: true;
       ratingCount: number;
+      /**
+       * The reader is credited on the episode, which the API refuses a rating
+       * from, so the control is not offered.
+       */
+      readerCredited: boolean;
       score: number;
       signedIn: boolean;
     }
@@ -89,6 +96,7 @@ const readMyEpisodeRating = async (
       mode: "single",
       ok: true,
       ratingCount: 0,
+      readerCredited: false,
       score: 0,
       signedIn: false,
       unexpected: false,
@@ -111,6 +119,7 @@ const readMyEpisodeRating = async (
       mode: toEpisodeReactionMode(response.mode),
       ok: true,
       ratingCount: toRatingCount(response.ratingCount),
+      readerCredited: response.readerCredited ?? false,
       score: toScore(response.score),
       signedIn: true,
       unexpected: false,
@@ -122,6 +131,7 @@ const readMyEpisodeRating = async (
         mode: "single",
         ok: true,
         ratingCount: 0,
+        readerCredited: false,
         score: 0,
         signedIn: false,
         unexpected: false,
@@ -216,6 +226,14 @@ export const rateEpisode = async (input: {
     return {
       message: rpcErrorMessage(error, t("host.episode.reaction.failed"), {
         locale: input.locale,
+        overrides: {
+          forbidden: rpcErrorHasReason(
+            error,
+            RPC_ERROR_REASON.readerCreditedOnEpisode
+          )
+            ? t("host.episode.reaction.reader_credited")
+            : undefined,
+        },
       }),
       ok: false,
     };

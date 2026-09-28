@@ -39,6 +39,7 @@ import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
+import { EpisodeCreatorAccess } from "./_components/episode-creator-access";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import { EpisodeRatingGate } from "./_components/episode-rating-gate";
 import {
@@ -372,6 +373,15 @@ const EpisodeContent = async (
                     purchaseSurface={episode.purchaseSurface}
                   />
                 </span>
+                <Suspense fallback={null}>
+                  <EpisodeCreatorAccess
+                    access={access}
+                    checkoutSessionId={checkoutSessionId}
+                    episodePublicId={episode.publicId}
+                    seriesPublicId={series.publicId}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
                 {publishedAt ? (
                   <span className="tabular-nums">
                     <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>

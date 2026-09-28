@@ -3010,6 +3010,7 @@
         "submit": "發表留言",
         "title": "留言"
       },
+      "creator_access": "您作為作者可以閱讀本章",
       "detail_failed": "無法載入該章節。請稍後再試。",
       "end": {
         "back_to_series": "返回系列",
@@ -3048,6 +3049,7 @@
         "max_aria": "你已回應此章節",
         "press_aria": "回應此章節",
         "press_progress_aria": "回應此章節，{$score} / {$max}",
+        "reader_credited": "您無法回應自己作為作者的章節。",
         "status_error": "無法顯示你的回應",
         "status_failed": "無法載入你的回應。請稍後再試。"
       },

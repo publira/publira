@@ -3010,6 +3010,7 @@
         "submit": "댓글 등록",
         "title": "댓글"
       },
+      "creator_access": "작가로서 열람할 수 있습니다",
       "detail_failed": "에피소드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "end": {
         "back_to_series": "시리즈로 돌아가기",
@@ -3048,6 +3049,7 @@
         "max_aria": "이 에피소드에 이미 반응했습니다",
         "press_aria": "이 에피소드에 반응하기",
         "press_progress_aria": "이 에피소드에 반응하기, {$score} / {$max}",
+        "reader_credited": "작가로 등록된 에피소드에는 반응할 수 없습니다.",
         "status_error": "반응 상태를 표시하지 못했습니다",
         "status_failed": "반응 상태를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
       },

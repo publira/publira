@@ -1,6 +1,7 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import {
   EpisodeAccess,
+  EpisodeEntitlementSource,
   RankingPeriod,
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
@@ -26,6 +27,7 @@ import {
   listReaderRankedSeries,
   listRelatedSeries,
   toEpisodeAccessState,
+  toEpisodeEntitlementSource,
   toEpisodePurchaseSurface,
 } from "./catalog";
 
@@ -624,6 +626,27 @@ describe("catalog.getEpisodeDetail", () => {
   });
 });
 
+describe("toEpisodeEntitlementSource", () => {
+  it("names the grant that opens an entitled body", () => {
+    expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.PURCHASE)).toBe(
+      "purchase"
+    );
+    expect(
+      toEpisodeEntitlementSource(EpisodeEntitlementSource.ACCESS_TICKET)
+    ).toBe("access_ticket");
+    expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.CREATOR)).toBe(
+      "creator"
+    );
+  });
+
+  it("reports no grant when the API names none", () => {
+    expect(
+      toEpisodeEntitlementSource(EpisodeEntitlementSource.UNSPECIFIED)
+    ).toBeUndefined();
+    expect(toEpisodeEntitlementSource(99)).toBeUndefined();
+  });
+});
+
 describe("catalog.getEpisodeViewer", () => {
   beforeEach(() => {
     mockGetEpisodeDetail.mockReset();
@@ -642,6 +665,7 @@ describe("catalog.getEpisodeViewer", () => {
   it("Valid ticket returns entitled image with session", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.ENTITLED,
+      entitlementSource: EpisodeEntitlementSource.ACCESS_TICKET,
       episode: {
         orderIndex: 10,
         price: 500,
@@ -686,6 +710,7 @@ describe("catalog.getEpisodeViewer", () => {
       ok: true,
       value: {
         access: "entitled",
+        entitlementSource: "access_ticket",
         images: [
           {
             contentType: "image/png",
@@ -698,6 +723,29 @@ describe("catalog.getEpisodeViewer", () => {
           },
         ],
       },
+    });
+  });
+
+  it("names the author's own episode apart from a bought one", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      entitlementSource: EpisodeEntitlementSource.CREATOR,
+      episode: { price: 500, publicId: "EP_010", title: "Episode 10" },
+      images: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "entitled", entitlementSource: "creator", images: [] },
     });
   });
 

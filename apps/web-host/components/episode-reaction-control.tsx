@@ -77,6 +77,12 @@ export const EpisodeReactionControl = async ({
     );
   }
 
+  // The API refuses a rating from a reader credited on the episode, so the
+  // author is not offered a press that would end in that refusal.
+  if (result.readerCredited) {
+    return null;
+  }
+
   if (!result.signedIn) {
     return (
       <EpisodeReaction size={size}>

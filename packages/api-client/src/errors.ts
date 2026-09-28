@@ -20,6 +20,7 @@ export const RPC_ERROR_REASON = {
   lastTenantAdmin: "LAST_TENANT_ADMIN",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
+  readerCreditedOnEpisode: "READER_CREDITED_ON_EPISODE",
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
   smtpTestConnection: "SMTP_TEST_CONNECTION",
   smtpTestRecipient: "SMTP_TEST_RECIPIENT",
