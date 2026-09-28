@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/navigation/autospaced_navigation_destination.dart';
+import 'package:publira/typography/autospaced_snack_bar_action.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 const _fontSize = 16.0;
 const _gap = _fontSize / 8;
@@ -266,17 +270,192 @@ void main() {
     expect(copied, '1ページあたり5件');
   });
 
+  /// The letter spacing each character of the paragraph reading [text] is
+  /// drawn with beyond the narrowest.
+  List<(String, double)> extraSpacing(WidgetTester tester, String text) {
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText() == text,
+      ),
+    );
+    final characters = <(String, double)>[];
+    void visit(InlineSpan span, double inherited) {
+      if (span is! TextSpan) {
+        return;
+      }
+      final letterSpacing = span.style?.letterSpacing ?? inherited;
+      for (final character in (span.text ?? '').characters) {
+        characters.add((character, letterSpacing));
+      }
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        visit(child, letterSpacing);
+      }
+    }
+
+    visit(paragraph.text, paragraph.text.style?.letterSpacing ?? 0);
+    final base = characters.map((entry) => entry.$2).reduce(min);
+    return [
+      for (final (character, letterSpacing) in characters)
+        if (letterSpacing != base) (character, letterSpacing - base),
+    ];
+  }
+
+  testWidgets('spaces a tooltip at the size the tooltip is set in', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        const Locale('ja'),
+        const AutospacedTooltip(
+          message: 'Web版の案内',
+          child: SizedBox(key: Key('target'), width: 48, height: 48),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byKey(const Key('target')));
+    await tester.pump(const Duration(seconds: 1));
+
+    // Tooltip sets its message in 14 on a phone, whatever the text around it.
+    expect(extraSpacing(tester, 'Web版の案内'), [('b', 14 / 8)]);
+    expect(find.byTooltip('Web版の案内'), findsOneWidget);
+  });
+
+  testWidgets('spaces a navigation label and its tooltip', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        const Locale('ja'),
+        NavigationBar(
+          selectedIndex: 0,
+          destinations: [
+            AutospacedNavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              label: 'Web版',
+              tooltipMessage: '未読2件',
+              selected: true,
+              index: 0,
+              count: 2,
+              onTap: () {},
+            ),
+            AutospacedNavigationDestination(
+              key: const Key('second'),
+              icon: const Icon(Icons.search),
+              label: '検索',
+              selected: false,
+              index: 1,
+              count: 2,
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+    final labelSize = Theme.of(
+      tester.element(find.byType(NavigationBar)),
+    ).textTheme.labelMedium!.fontSize!;
+
+    expect(extraSpacing(tester, 'Web版'), [('b', labelSize / 8)]);
+
+    await tester.longPress(find.text('Web版', findRichText: true));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(extraSpacing(tester, '未読2件'), [('読', 14 / 8), ('2', 14 / 8)]);
+  });
+
+  testWidgets('taps a navigation destination, labelled as a tab', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    var taps = 0;
+    await tester.pumpWidget(
+      _app(
+        const Locale('en'),
+        NavigationBar(
+          selectedIndex: 0,
+          destinations: [
+            AutospacedNavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              label: 'Home',
+              selected: true,
+              index: 0,
+              count: 2,
+              onTap: () {},
+            ),
+            AutospacedNavigationDestination(
+              key: const Key('second'),
+              icon: const Icon(Icons.search),
+              label: 'Search',
+              selected: false,
+              index: 1,
+              count: 2,
+              onTap: () => taps++,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('second')));
+    expect(taps, 1);
+    expect(
+      tester.getSemantics(find.byKey(const Key('second'))),
+      isSemantics(label: 'Search\nTab 2 of 2', isButton: true),
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('spaces a snack bar action and closes the bar on a press', (
+    tester,
+  ) async {
+    var presses = 0;
+    await tester.pumpWidget(
+      _app(
+        const Locale('ja'),
+        Builder(
+          builder: (context) => TextButton(
+            key: const Key('show'),
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const AutospacedText('期限切れ'),
+                action: AutospacedSnackBarAction(
+                  label: 'Webで開く',
+                  onPressed: () => presses++,
+                ),
+              ),
+            ),
+            child: const AutospacedText('show'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('show')));
+    await tester.pumpAndSettle();
+
+    final buttonSize = DefaultTextStyle.of(
+      tester.element(find.text('Webで開く', findRichText: true)),
+    ).style.fontSize!;
+    expect(extraSpacing(tester, 'Webで開く'), [('b', buttonSize / 8)]);
+
+    await tester.tap(find.text('Webで開く', findRichText: true));
+    await tester.pumpAndSettle();
+
+    expect(presses, 1);
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
   test('the app draws no copy past AutospacedText', () {
-    // A framework widget handed a String draws it with a plain Text.
+    // A framework or package widget handed a String draws it with a plain
+    // Text; lib/typography/ holds the widgets that stand in for them.
     final bypass = RegExp(
-      r'(?<![\w.])(Text(\.rich)?|SelectableText)\(|'
-      r'\b(labelText|hintText|helperText|errorText):',
+      r'(?<![\w.])(Text(\.rich)?|SelectableText|Tooltip|'
+      r'NavigationDestination|SnackBarAction|MarkdownBody|Markdown)\(|'
+      r'\b(labelText|hintText|helperText|errorText|tooltip):',
     );
     final offenders = [
       for (final file in Directory('lib').listSync(recursive: true))
         if (file is File &&
             file.path.endsWith('.dart') &&
-            !file.path.endsWith('autospaced_text.dart'))
+            !file.path.startsWith('lib/typography/'))
           for (final (index, line) in file.readAsLinesSync().indexed)
             if (bypass.hasMatch(line)) '${file.path}:${index + 1}: $line',
     ];

@@ -10,6 +10,7 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// What the device keeps for reading offline, as the library shows it: the
 /// bytes it spends against the cap, the saved episodes by series, and the way
@@ -328,11 +329,13 @@ class _DownloadTile extends StatelessWidget {
             ),
         ],
       ),
-      trailing: IconButton(
-        key: ValueKey('downloads-delete-${detail.episode.id}'),
-        icon: const Icon(Icons.delete_outline),
-        tooltip: messages.downloadsDeleteAria(title: detail.episode.title),
-        onPressed: () => onDelete(episode),
+      trailing: AutospacedTooltip(
+        message: messages.downloadsDeleteAria(title: detail.episode.title),
+        child: IconButton(
+          key: ValueKey('downloads-delete-${detail.episode.id}'),
+          icon: const Icon(Icons.delete_outline),
+          onPressed: () => onDelete(episode),
+        ),
       ),
       onTap: () => context.pushInTab(
         AppRoutes.episodeViewerPath(detail.seriesId, detail.episode.id),

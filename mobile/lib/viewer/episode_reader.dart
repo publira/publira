@@ -7,6 +7,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
 import 'package:publira/viewer/page_spreads.dart';
@@ -536,39 +537,47 @@ class _ReaderControls extends StatelessWidget {
         ? Icons.keyboard_double_arrow_right
         : Icons.keyboard_double_arrow_left;
     final nextButtons = [
-      IconButton(
-        key: const ValueKey('episode-next-episode'),
-        tooltip: messages.viewerNextEpisode,
-        color: Colors.white,
-        disabledColor: Colors.white30,
-        onPressed: onNextEpisode,
-        icon: Icon(nextEpisodeIcon),
+      AutospacedTooltip(
+        message: messages.viewerNextEpisode,
+        child: IconButton(
+          key: const ValueKey('episode-next-episode'),
+          color: Colors.white,
+          disabledColor: Colors.white30,
+          onPressed: onNextEpisode,
+          icon: Icon(nextEpisodeIcon),
+        ),
       ),
-      IconButton(
-        key: const ValueKey('episode-next-page'),
-        tooltip: messages.viewerNextPage,
-        color: Colors.white,
-        disabledColor: Colors.white30,
-        onPressed: onNext,
-        icon: Icon(nextPageIcon),
+      AutospacedTooltip(
+        message: messages.viewerNextPage,
+        child: IconButton(
+          key: const ValueKey('episode-next-page'),
+          color: Colors.white,
+          disabledColor: Colors.white30,
+          onPressed: onNext,
+          icon: Icon(nextPageIcon),
+        ),
       ),
     ];
     final previousButtons = [
-      IconButton(
-        key: const ValueKey('episode-previous-page'),
-        tooltip: messages.viewerPreviousPage,
-        color: Colors.white,
-        disabledColor: Colors.white30,
-        onPressed: onPrevious,
-        icon: Icon(previousPageIcon),
+      AutospacedTooltip(
+        message: messages.viewerPreviousPage,
+        child: IconButton(
+          key: const ValueKey('episode-previous-page'),
+          color: Colors.white,
+          disabledColor: Colors.white30,
+          onPressed: onPrevious,
+          icon: Icon(previousPageIcon),
+        ),
       ),
-      IconButton(
-        key: const ValueKey('episode-previous-episode'),
-        tooltip: messages.viewerPreviousEpisode,
-        color: Colors.white,
-        disabledColor: Colors.white30,
-        onPressed: onPreviousEpisode,
-        icon: Icon(previousEpisodeIcon),
+      AutospacedTooltip(
+        message: messages.viewerPreviousEpisode,
+        child: IconButton(
+          key: const ValueKey('episode-previous-episode'),
+          color: Colors.white,
+          disabledColor: Colors.white30,
+          onPressed: onPreviousEpisode,
+          icon: Icon(previousEpisodeIcon),
+        ),
       ),
     ];
     return Container(

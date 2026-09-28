@@ -20,6 +20,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// Home / catalog screen: shelves of the tenant's catalog above the whole of
 /// it.
@@ -77,11 +78,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
           // The announcements are the tenant's word to everyone, so the way
           // to them stands on the screen every reader opens on.
           if (AnnouncementScope.maybeOf(context) != null)
-            IconButton(
-              key: const ValueKey('catalog-announcements'),
-              icon: const Icon(Icons.campaign_outlined),
-              tooltip: messages.announcementsTitle,
-              onPressed: () => context.pushInTab(AppRoutes.announcements),
+            AutospacedTooltip(
+              message: messages.announcementsTitle,
+              child: IconButton(
+                key: const ValueKey('catalog-announcements'),
+                icon: const Icon(Icons.campaign_outlined),
+                onPressed: () => context.pushInTab(AppRoutes.announcements),
+              ),
             ),
         ],
       ),

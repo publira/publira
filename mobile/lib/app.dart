@@ -59,6 +59,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
+import 'package:publira/typography/autospaced_snack_bar_action.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/screen_captures.dart';
 
@@ -634,7 +635,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       _messengerKey.currentState?.showSnackBar(
         SnackBar(
           content: AutospacedText(messages.errorsRpcUnauthenticated),
-          action: SnackBarAction(
+          action: AutospacedSnackBarAction(
             label: messages.commonSignIn,
             // The account tab's, which is where a reader goes to sign in, so
             // every other tab keeps the screen it was on.
@@ -681,7 +682,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           ),
           action: target.isEmpty
               ? null
-              : SnackBarAction(
+              : AutospacedSnackBarAction(
                   label: messages.pushOpen,
                   onPressed: () => widget.router.go(target),
                 ),

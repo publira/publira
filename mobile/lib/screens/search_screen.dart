@@ -15,6 +15,7 @@ import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// How long the field stays still before the keyword in it is searched for.
 ///
@@ -201,14 +202,16 @@ class _SearchScreenState extends State<SearchScreen> {
             listenable: _field,
             builder: (context, child) => _field.text.isEmpty
                 ? const SizedBox.shrink()
-                : IconButton(
-                    key: const ValueKey('search-clear'),
-                    icon: const Icon(Icons.clear),
-                    tooltip: messages.searchClear,
-                    onPressed: () {
-                      _field.clear();
-                      _submit('');
-                    },
+                : AutospacedTooltip(
+                    message: messages.searchClear,
+                    child: IconButton(
+                      key: const ValueKey('search-clear'),
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _field.clear();
+                        _submit('');
+                      },
+                    ),
                   ),
           ),
         ],

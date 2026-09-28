@@ -14,6 +14,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// Creating a reader account through `AuthService/CreateUser`, and what
 /// follows it until the address is confirmed.
@@ -373,17 +374,21 @@ class _BirthDateField extends StatelessWidget {
             helperMaxLines: 4,
             border: const OutlineInputBorder(),
             suffixIcon: picked == null
-                ? IconButton(
-                    key: const ValueKey('sign-up-birth-date-pick'),
-                    icon: const Icon(Icons.calendar_today_outlined),
-                    tooltip: messages.signUpBirthDateLabel,
-                    onPressed: onPick,
+                ? AutospacedTooltip(
+                    message: messages.signUpBirthDateLabel,
+                    child: IconButton(
+                      key: const ValueKey('sign-up-birth-date-pick'),
+                      icon: const Icon(Icons.calendar_today_outlined),
+                      onPressed: onPick,
+                    ),
                   )
-                : IconButton(
-                    key: const ValueKey('sign-up-birth-date-clear'),
-                    icon: const Icon(Icons.close),
-                    tooltip: messages.signUpBirthDateClear,
-                    onPressed: onClear,
+                : AutospacedTooltip(
+                    message: messages.signUpBirthDateClear,
+                    child: IconButton(
+                      key: const ValueKey('sign-up-birth-date-clear'),
+                      icon: const Icon(Icons.close),
+                      onPressed: onClear,
+                    ),
                   ),
           ),
           child: InkWell(

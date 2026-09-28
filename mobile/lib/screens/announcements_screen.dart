@@ -12,6 +12,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/announcement_screen.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the other paged lists use.
@@ -285,16 +286,18 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
         title: AutospacedText(messages.announcementsTitle),
         actions: [
           if (signedIn)
-            IconButton(
-              key: const ValueKey('announcements-mark-all-read'),
-              icon: const Icon(Icons.done_all),
-              tooltip: messages.announcementsMarkAllRead,
-              // Offered while any row is loaded rather than only while one on
-              // screen is unread: an unread announcement can still be further
-              // down than the rows read so far.
-              onPressed: (announcements?.isNotEmpty ?? false) && !_markingAll
-                  ? () => unawaited(_markAllRead())
-                  : null,
+            AutospacedTooltip(
+              message: messages.announcementsMarkAllRead,
+              child: IconButton(
+                key: const ValueKey('announcements-mark-all-read'),
+                icon: const Icon(Icons.done_all),
+                // Offered while any row is loaded rather than only while one on
+                // screen is unread: an unread announcement can still be further
+                // down than the rows read so far.
+                onPressed: (announcements?.isNotEmpty ?? false) && !_markingAll
+                    ? () => unawaited(_markAllRead())
+                    : null,
+              ),
             ),
         ],
       ),
@@ -471,11 +474,13 @@ class _AnnouncementRow extends StatelessWidget {
       ),
       isThreeLine: createdAt != null,
       trailing: unread
-          ? IconButton(
-              key: ValueKey('announcement-mark-read-${announcement.id}'),
-              icon: const Icon(Icons.mark_email_read_outlined),
-              tooltip: messages.announcementsMarkRead,
-              onPressed: onMarkRead,
+          ? AutospacedTooltip(
+              message: messages.announcementsMarkRead,
+              child: IconButton(
+                key: ValueKey('announcement-mark-read-${announcement.id}'),
+                icon: const Icon(Icons.mark_email_read_outlined),
+                onPressed: onMarkRead,
+              ),
             )
           : null,
       onTap: onOpen,

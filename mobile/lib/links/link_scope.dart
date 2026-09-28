@@ -6,6 +6,7 @@ import 'package:publira/links/app_link.dart';
 import 'package:publira/links/external_browser.dart';
 import 'package:publira/links/share_sheet.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// The tenant site, the share sheet, and the browser this run can use.
 class LinkScope extends InheritedWidget {
@@ -72,19 +73,21 @@ class ShareAction extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final messages = AppMessages.of(context);
-    return IconButton(
-      icon: const Icon(Icons.share_outlined),
-      tooltip: messages.shareAria(title: title),
-      onPressed: () {
-        final locale = Localizations.localeOf(context).toLanguageTag();
-        final url = links.site.uriFor(path, locale: locale);
-        final text = shareMessage(
-          messages,
-          title: workTitle ?? title,
-          creatorNames: [for (final credit in credits) credit.name],
-        );
-        unawaited(share.share(url: url, title: title, text: text));
-      },
+    return AutospacedTooltip(
+      message: messages.shareAria(title: title),
+      child: IconButton(
+        icon: const Icon(Icons.share_outlined),
+        onPressed: () {
+          final locale = Localizations.localeOf(context).toLanguageTag();
+          final url = links.site.uriFor(path, locale: locale);
+          final text = shareMessage(
+            messages,
+            title: workTitle ?? title,
+            creatorNames: [for (final credit in credits) credit.name],
+          );
+          unawaited(share.share(url: url, title: title, text: text));
+        },
+      ),
     );
   }
 }

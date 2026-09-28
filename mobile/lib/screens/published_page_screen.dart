@@ -9,6 +9,7 @@ import 'package:publira/links/link_scope.dart';
 import 'package:publira/pages/page_failure.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/pages/published_page.dart';
+import 'package:publira/typography/autospaced_markdown.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A page the tenant published — its terms of service, its privacy policy,
@@ -127,10 +128,9 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
             ),
           )
         else
-          MarkdownBody(
+          AutospacedMarkdownBody(
             key: const ValueKey('page-body'),
             data: page.contentMarkdown,
-            selectable: true,
             styleSheet: _styleSheet(theme),
             onTapLink: (text, href, title) {
               if (href == null) {

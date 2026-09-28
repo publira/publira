@@ -11,6 +11,7 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// How many episodes one page of the history asks for, the API's own default.
 const _pageSize = 20;
@@ -207,12 +208,14 @@ class _ReadingHistoryRow extends StatelessWidget {
             ),
         ].join('\n'),
       ),
-      trailing: IconButton(
-        key: ValueKey('reading-history-series-${episode.id}'),
-        tooltip: messages.readingHistoryOpenSeries,
-        icon: const Icon(Icons.library_books_outlined),
-        onPressed: () =>
-            context.pushInTab(AppRoutes.seriesDetailPath(series.id)),
+      trailing: AutospacedTooltip(
+        message: messages.readingHistoryOpenSeries,
+        child: IconButton(
+          key: ValueKey('reading-history-series-${episode.id}'),
+          icon: const Icon(Icons.library_books_outlined),
+          onPressed: () =>
+              context.pushInTab(AppRoutes.seriesDetailPath(series.id)),
+        ),
       ),
       onTap: () =>
           context.pushInTab(AppRoutes.episodeViewerPath(series.id, episode.id)),

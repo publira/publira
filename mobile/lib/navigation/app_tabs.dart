@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/autospaced_navigation_destination.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -172,40 +173,59 @@ class _AppTabBar extends StatelessWidget {
     return NavigationBar(
       key: const ValueKey('tab-bar'),
       selectedIndex: selectedIndex,
-      onDestinationSelected: onSelected,
       destinations: [
-        NavigationDestination(
+        AutospacedNavigationDestination(
           key: const ValueKey('tab-home'),
           icon: const Icon(Icons.home_outlined),
           selectedIcon: const Icon(Icons.home),
           label: messages.navigationHome,
+          selected: selectedIndex == AppTab.home.index,
+          index: AppTab.home.index,
+          count: AppTab.values.length,
+          onTap: () => onSelected(AppTab.home.index),
         ),
-        NavigationDestination(
+        AutospacedNavigationDestination(
           key: const ValueKey('tab-search'),
           icon: const Icon(Icons.search),
           label: messages.navigationSearch,
+          selected: selectedIndex == AppTab.search.index,
+          index: AppTab.search.index,
+          count: AppTab.values.length,
+          onTap: () => onSelected(AppTab.search.index),
         ),
-        NavigationDestination(
+        AutospacedNavigationDestination(
           key: const ValueKey('tab-library'),
           icon: const Icon(Icons.collections_bookmark_outlined),
           selectedIcon: const Icon(Icons.collections_bookmark),
           label: messages.navigationLibrary,
+          selected: selectedIndex == AppTab.library.index,
+          index: AppTab.library.index,
+          count: AppTab.values.length,
+          onTap: () => onSelected(AppTab.library.index),
         ),
-        NavigationDestination(
+        AutospacedNavigationDestination(
           key: const ValueKey('tab-notifications'),
           icon: notificationsIcon(Icons.notifications_outlined),
           selectedIcon: notificationsIcon(Icons.notifications),
           label: messages.navigationNotifications,
-          tooltip: unread > 0
+          tooltipMessage: unread > 0
               ? messages.navigationNotificationsUnread(
                   count: messages.formatInteger(unread),
                 )
               : null,
+          selected: selectedIndex == AppTab.notifications.index,
+          index: AppTab.notifications.index,
+          count: AppTab.values.length,
+          onTap: () => onSelected(AppTab.notifications.index),
         ),
-        NavigationDestination(
+        AutospacedNavigationDestination(
           key: const ValueKey('tab-account'),
           icon: Icon(signedIn ? Icons.person : Icons.person_outline),
           label: messages.navigationAccount,
+          selected: selectedIndex == AppTab.account.index,
+          index: AppTab.account.index,
+          count: AppTab.values.length,
+          onTap: () => onSelected(AppTab.account.index),
         ),
       ],
     );

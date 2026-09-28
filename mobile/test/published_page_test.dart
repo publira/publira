@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -74,7 +76,12 @@ void main() {
   /// Follows [href] the way a tap on a link in the body does.
   void tapLink(WidgetTester tester, String href) {
     tester
-        .widget<MarkdownBody>(find.byKey(const ValueKey('page-body')))
+        .widget<MarkdownBody>(
+          find.descendant(
+            of: find.byKey(const ValueKey('page-body')),
+            matching: find.byType(MarkdownBody),
+          ),
+        )
         .onTapLink!('link', href, '');
   }
 
@@ -186,4 +193,112 @@ void main() {
     expect(find.text('local'), findsOneWidget);
     expect(find.text('asset'), findsOneWidget);
   });
+
+  group('a Japanese page', () {
+    const markdown = '利用規約はWeb版と[Summer Days](/series/SERIES)外伝に適用されます。';
+    const text = '利用規約はWeb版とSummer Days外伝に適用されます。';
+    final body = find.byWidgetPredicate(
+      (widget) => widget is RichText && widget.text.toPlainText() == text,
+    );
+
+    Future<RenderParagraph> openJapanesePage(WidgetTester tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('ja')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      pages.pages = [
+        PublishedPage(
+          slug: '/legal/terms',
+          title: '利用規約',
+          contentMarkdown: markdown.replaceFirst('SERIES', seriesId),
+        ),
+      ];
+      await openPage(tester, '/legal/terms');
+      await pumpUntilFound(tester, body);
+      return tester.renderObject<RenderParagraph>(body);
+    }
+
+    testWidgets('spaces CJK text from a Latin word and a link', (tester) async {
+      final paragraph = await openJapanesePage(tester);
+
+      final spacing = _spacing(paragraph.text);
+      final base = spacing.first.$2;
+      final gap = paragraph.text.style!.fontSize! / 8;
+      expect(
+        [
+          for (final (character, letterSpacing) in spacing)
+            if (letterSpacing != base) (character, letterSpacing - base),
+        ],
+        [('は', gap), ('b', gap), ('と', gap), ('s', gap)],
+      );
+    });
+
+    testWidgets('follows the link', (tester) async {
+      final paragraph = await openJapanesePage(tester);
+
+      final start = text.indexOf('Summer');
+      final box = paragraph
+          .getBoxesForSelection(
+            TextSelection(baseOffset: start, extentOffset: start + 6),
+          )
+          .first;
+      await tester.tapAt(paragraph.localToGlobal(box.toRect().center));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('series-detail-body')),
+      );
+
+      expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+    });
+
+    testWidgets('copies the text the Markdown holds', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied =
+                (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await openJapanesePage(tester);
+
+      // The selection area's own focus, which takes the shortcuts.
+      Focus.of(tester.element(body)).requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+      await tester.pump();
+
+      expect(copied, text);
+    });
+  });
+}
+
+/// Every character of [span], with the letter spacing it is drawn with.
+List<(String, double)> _spacing(InlineSpan span) {
+  final characters = <(String, double)>[];
+  void visit(InlineSpan span, double inherited) {
+    if (span is! TextSpan) {
+      return;
+    }
+    final letterSpacing = span.style?.letterSpacing ?? inherited;
+    for (final character in (span.text ?? '').characters) {
+      characters.add((character, letterSpacing));
+    }
+    for (final child in span.children ?? const <InlineSpan>[]) {
+      visit(child, letterSpacing);
+    }
+  }
+
+  visit(span, 0);
+  return characters;
 }
