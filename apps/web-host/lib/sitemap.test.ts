@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getSitemapChunk,
+  getSitemapFileTokens,
   renderSitemapIndex,
   renderSitemapUrlset,
   respondWithSitemap,
@@ -328,9 +329,40 @@ describe("getSitemapChunk", () => {
   });
 });
 
+describe("getSitemapFileTokens", () => {
+  it("names where each file starts under the tags its files carry", async () => {
+    answerPages(40);
+
+    await expect(
+      getSitemapFileTokens(` ${TENANT_ID} `, ADDRESS)
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p19", "p39"] });
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      `tenant:${TENANT_ID}:series:detail`
+    );
+  });
+
+  it("reports an unavailable API as a failure and keeps it out of the cache", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {
+      /* expected outage log from getSitemapChunk */
+    });
+    mockListSitemapEntries.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(
+      getSitemapFileTokens(TENANT_ID, ADDRESS)
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+});
+
 describe("respondWithSitemap", () => {
   it("answers the whole sitemap as one file while it fits", async () => {
-    mockListSitemapEntries.mockResolvedValueOnce({
+    mockListSitemapEntries.mockResolvedValue({
       entries: [seriesEntry("SERIES000001")],
       nextToken: "",
     });
@@ -405,6 +437,20 @@ describe("respondWithSitemapFile", () => {
     expect(last).not.toContain(`<loc>${ORIGIN}/</loc>`);
     expect(last).toContain(`<loc>${ORIGIN}/series/S39-0</loc>`);
     expect(countOf(last, "<url>")).toBe(500 * LOCALE_COUNT);
+  });
+
+  it("reads a file from where it starts rather than through the files before it", async () => {
+    answerPages(40);
+    await getSitemapFileTokens(TENANT_ID, ADDRESS);
+    mockListSitemapEntries.mockClear();
+
+    await respondWithSitemapFile({ sitemap_id: "2.xml", tenant_id: TENANT_ID });
+
+    // Uncached in a unit test, the token walk reads every page again; the file
+    // itself then reads only its own page.
+    expect(mockListSitemapEntries.mock.calls.at(-1)).toStrictEqual([
+      { limit: 500, tenant: { tenantId: TENANT_ID }, token: "p39" },
+    ]);
   });
 
   it.each(["3.xml", "one.xml", "1"])(

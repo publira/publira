@@ -270,30 +270,51 @@ export const getSitemapChunk = async (
 };
 
 /**
- * The tenant's sitemap files in order, read through file `last` or to the end
- * of the list when `last` is omitted. Each file starts where the one before it
- * ended, so they are read one after another.
+ * The start tokens of the files after `tokens`, each file read only for the
+ * token that ends it. Each file starts where the one before it ended, so they
+ * are read one after another.
  */
-const readSitemapChunks = async (
+const walkSitemapFileTokens = async (
   tenantId: string,
   address: SitemapAddress,
-  last = MAX_SITEMAP_FILES - 1,
-  read: readonly SitemapChunk[] = [],
-  token = ""
-): Promise<CachedReadResult<SitemapChunk[]>> => {
-  if (read.length >= MAX_SITEMAP_FILES) {
+  tokens: readonly string[]
+): Promise<CachedReadResult<string[]>> => {
+  if (tokens.length >= MAX_SITEMAP_FILES) {
     return { message: "The sitemap has too many files.", ok: false };
   }
-  const chunk = await getSitemapChunk(tenantId, address, token);
+  const chunk = await getSitemapChunk(tenantId, address, tokens.at(-1) ?? "");
   if (!chunk.ok) {
     return chunk;
   }
 
-  const chunks = [...read, chunk.value];
   const { nextToken } = chunk.value;
-  return nextToken && chunks.length <= last
-    ? readSitemapChunks(tenantId, address, last, chunks, nextToken)
-    : { ok: true, value: chunks };
+  return nextToken
+    ? walkSitemapFileTokens(tenantId, address, [...tokens, nextToken])
+    : { ok: true, value: [...tokens] };
+};
+
+/**
+ * Where each of the tenant's sitemap files starts: `""` for the first, then
+ * the token each file hands on. It is what the index counts and what a file
+ * starts its own read from, so neither holds the files before it. It carries
+ * the tags {@link getSitemapChunk} does, since those files decide it.
+ */
+export const getSitemapFileTokens = async (
+  tenantId: string,
+  address: SitemapAddress
+): Promise<CachedReadResult<string[]>> => {
+  // Shared public content: remote so multi-instance hosts share entries.
+  "use cache: remote";
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
+  applyCacheTag(tenantLabelsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
+  applyCacheTag(tenantPagesTag(normalizedTenantId));
+
+  const tokens = await walkSitemapFileTokens(normalizedTenantId, address, [""]);
+  return tokens.ok ? tokens : cachedReadFailure(tokens.message);
 };
 
 /** The path of sitemap file `index` behind a `<sitemapindex>`. */
@@ -365,16 +386,18 @@ export const respondWithSitemap = async (
   if (!address) {
     return unavailable();
   }
-  const chunks = await readSitemapChunks(parsed.tenant_id, address);
-  if (!chunks.ok) {
+  const tokens = await getSitemapFileTokens(parsed.tenant_id, address);
+  if (!tokens.ok) {
     return unavailable();
   }
-
-  const [first] = chunks.value;
-  if (chunks.value.length === 1 && first) {
-    return xmlResponse(renderSitemapUrlset(address, first.entries));
+  if (tokens.value.length > 1) {
+    return xmlResponse(renderSitemapIndex(address.origin, tokens.value.length));
   }
-  return xmlResponse(renderSitemapIndex(address.origin, chunks.value.length));
+
+  const chunk = await getSitemapChunk(parsed.tenant_id, address, "");
+  return chunk.ok
+    ? xmlResponse(renderSitemapUrlset(address, chunk.value.entries))
+    : unavailable();
 };
 
 /** `0.xml`, `1.xml`, …: a file number no larger than {@link MAX_SITEMAP_FILES}. */
@@ -400,14 +423,17 @@ export const respondWithSitemapFile = async (
   if (!address) {
     return unavailable();
   }
-  const chunks = await readSitemapChunks(parsed.tenant_id, address, index);
-  if (!chunks.ok) {
+  const tokens = await getSitemapFileTokens(parsed.tenant_id, address);
+  if (!tokens.ok) {
     return unavailable();
   }
-
-  const chunk = chunks.value[index];
-  if (!chunk) {
+  const token = tokens.value[index];
+  if (token === undefined) {
     return notFound();
   }
-  return xmlResponse(renderSitemapUrlset(address, chunk.entries));
+
+  const chunk = await getSitemapChunk(parsed.tenant_id, address, token);
+  return chunk.ok
+    ? xmlResponse(renderSitemapUrlset(address, chunk.value.entries))
+    : unavailable();
 };
