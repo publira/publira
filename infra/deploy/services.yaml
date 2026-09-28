@@ -1,0 +1,28 @@
+# Backend addresses for infra/proxy/traefik/dynamic/routes.yaml, naming the
+# services of compose.yaml beside this file. The router and service names are
+# the ones routes.yaml references.
+#
+# web-platform answers only when its profile runs; without it the platform
+# host is a 502 and every other route is unaffected.
+http:
+  services:
+    web-host:
+      loadBalancer:
+        servers:
+          - url: "http://web-host:3000"
+
+    web-admin:
+      loadBalancer:
+        servers:
+          - url: "http://web-admin:4000"
+
+    web-platform:
+      loadBalancer:
+        servers:
+          - url: "http://web-platform:4100"
+
+    # The server's edge listener, which /api and /images reach as they are.
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://server:8000"

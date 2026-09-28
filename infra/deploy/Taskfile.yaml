@@ -1,0 +1,15 @@
+version: "3"
+
+# Checks for compose.yaml. Always run from the repository root (included from
+# the root Taskfile without a dir override).
+
+tasks:
+  check:
+    desc: Render compose.yaml with every profile and check that .env.example lists exactly the variables it reads
+    cmds:
+      - bash scripts/check-deploy-compose.sh
+
+  smoke:
+    desc: Bring compose.yaml up from the images task docker:verify:full built, set it up, and probe the edge; always tears down
+    cmds:
+      - bash scripts/smoke-deploy-compose.sh

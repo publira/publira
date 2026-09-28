@@ -138,6 +138,7 @@ Implementation:
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
+| `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
 | `Docker / <target>` | `task docker:build:*`, then web/node/publiractl smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
@@ -157,10 +158,10 @@ That is why the branch no longer has to be up to date for GitHub to let it merge
 | Trigger | Host CI | Docker |
 | --- | --- | --- |
 | `pull_request` to main / `merge_group` / `push` to main | Only matching jobs through path filters. | Representatives of changed roles only; all targets when `docker_core` changes. |
-| `schedule` (daily at 03:00 UTC) | Only `Test / Bootstrap`. | Every target (nightly full). |
+| `schedule` (daily at 03:00 UTC) | Only `Test / Bootstrap` and `Test / Deploy`. | Every target (nightly full). |
 | `workflow_dispatch` | Every job. | Select `verify` (representatives) or `full` (all targets) through `docker_mode`. |
 
-Nightly full builds find cross-service drift that filters cannot catch. Host CI does not run nightly except **Test / Bootstrap**, which monitors rarely changed paths such as `compose.yaml`.
+Nightly full builds find cross-service drift that filters cannot catch. Host CI does not run nightly except **Test / Bootstrap** and **Test / Deploy**, which monitor rarely changed paths such as `compose.yaml` and `infra/deploy/compose.yaml`.
 
 ## Path filters
 
@@ -183,6 +184,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, build inputs, storage init and seed |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
+| `Test / Deploy` | `infra/deploy/**`, `infra/proxy/traefik/**`, `infra/docker/**`, `.dockerignore`, its two scripts, `Taskfile.yaml` |
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 
@@ -213,7 +215,7 @@ Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, wh
 
 The `Path filter` step runs on all three events, so a merge-group run selects its jobs from the group's changed paths instead of falling through to an empty filter result.
 
-Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, bootstrap, and routing jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
+Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, bootstrap, routing, and deploy jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
 `Validate / buf Generated Diff` runs `buf generate`, then compares `server/internal/proto/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
 
@@ -262,6 +264,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / E2E` | `task e2e` |
    | `Test / Bootstrap` | `task e2e:bootstrap` (`PUBLIRA_BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
    | `Test / Routing` | `task e2e:routing` |
+   | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke` |
    | `Build` | `pnpm build` / `task server:build` |
    | `Docker / <target>` | The exact CI `task docker:build:…` line, or `task docker:verify` |
 

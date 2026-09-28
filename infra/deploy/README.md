@@ -1,6 +1,6 @@
 # Deployment
 
-What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice, and nothing here prescribes one.
+What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice. [Running it with Docker Compose](#running-it-with-docker-compose) describes the Compose file beside this README, which runs the whole install on one host.
 
 The images are built from [`infra/docker/`](../docker/README.md), and the reverse proxy is configured from [`infra/proxy/`](../proxy/README.md).
 
@@ -110,3 +110,45 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start.
+
+## Running it with Docker Compose
+
+[`compose.yaml`](compose.yaml) runs an install on one host from the images: PostgreSQL, Valkey, RustFS as the object store, Traefik as the reverse proxy, the four long-lived processes, and `publiractl` as a service that is only ever run by hand. Each process gets the variables in [Environment variables](#environment-variables), under the names given there.
+
+| File | What it holds |
+| --- | --- |
+| [`compose.yaml`](compose.yaml) | The services, and the values each process is given |
+| [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
+| [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
+
+The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-host`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to. `PUBLIRA_TENANT_URL_SCHEME` and `PUBLIRA_TENANT_URL_PORT` name what browsers reach it on.
+
+The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
+
+From `infra/deploy/`, an empty install is brought into service with:
+
+```bash
+docker compose run --rm publiractl db migrate
+docker compose run --rm publiractl db roles \
+  --public-password-file /run/secrets/public-db-password \
+  --admin-password-file /run/secrets/admin-db-password \
+  --platform-password-file /run/secrets/platform-db-password \
+  --outbox-password-file /run/secrets/outbox-db-password \
+  --ticker-password-file /run/secrets/ticker-db-password \
+  --content-stats-password-file /run/secrets/content-stats-db-password
+docker compose up -d
+
+# The bucket, created in RustFS with its own credential.
+docker compose exec rustfs sh -c \
+  'curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user "$RUSTFS_ACCESS_KEY:$RUSTFS_SECRET_KEY" http://localhost:9000/publira'
+
+docker compose run --rm publiractl setup \
+  --bucket publira --region us-east-1 --endpoint http://rustfs:9000 --force-path-style \
+  --access-key-id <PUBLIRA_RUSTFS_ACCESS_KEY> --secret-access-key-file /run/secrets/rustfs-secret-key
+```
+
+The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
+
+On every later release, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull`, `db migrate`, `db roles` with no flags, and `docker compose up -d`.
+
+`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge.

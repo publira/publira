@@ -69,6 +69,7 @@ jobs:
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       test_routing: ${{ steps.plan.outputs.test_routing }}
+      test_deploy: ${{ steps.plan.outputs.test_deploy }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -275,6 +276,19 @@ jobs:
               - 'e2e/routing/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+            test_deploy:
+              - *docs_excluded
+              - 'infra/deploy/**'
+              # The deployment's edge mounts these routers unchanged.
+              - 'infra/proxy/traefik/**'
+              # The smoke runs the images these build.
+              - 'infra/docker/**'
+              - '.dockerignore'
+              - 'scripts/check-deploy-compose.sh'
+              - 'scripts/smoke-deploy-compose.sh'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             build:
               - *docs_excluded
               - 'apps/**'
@@ -361,6 +375,7 @@ jobs:
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
+          FILTER_TEST_DEPLOY: ${{ steps.filter.outputs.test_deploy }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_SERVER: ${{ steps.filter.outputs.docker_server }}
@@ -1077,6 +1092,35 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
 
+  test-deploy:
+    name: Test / Deploy
+    needs: changes
+    if: needs.changes.outputs.test_deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Validate / Compose config
+        run: task deploy:check
+
+      # Every image the Compose file references, built into the local image
+      # store under the names .env.example gives them.
+      - name: Build / Images
+        run: task docker:verify:full
+
+      # Always tears the compose project and its volumes down (trap).
+      - name: Smoke / Compose stack
+        run: task deploy:smoke
+
   build:
     name: Build
     needs: changes
@@ -1197,6 +1241,7 @@ jobs:
       - test-e2e
       - test-bootstrap
       - test-routing
+      - test-deploy
       - build
       - docker
     runs-on: ubuntu-latest
@@ -1217,6 +1262,7 @@ jobs:
           TEST_E2E: ${{ needs.test-e2e.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           TEST_ROUTING: ${{ needs.test-routing.result }}
+          TEST_DEPLOY: ${{ needs.test-deploy.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -1237,6 +1283,7 @@ jobs:
             "Test / E2E=${TEST_E2E}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Test / Routing=${TEST_ROUTING}" \
+            "Test / Deploy=${TEST_DEPLOY}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do
