@@ -5,6 +5,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 import 'package:publira/viewer/screen_captures.dart';
 
 /// Answers a screenshot of [episodeId]'s pages with a notice over [child]
@@ -117,12 +118,14 @@ class _Notice extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                key: const ValueKey('episode-capture-notice-dismiss'),
-                icon: const Icon(Icons.close),
-                color: colors.onInverseSurface,
-                tooltip: messages.viewerCaptureNoticeDismiss,
-                onPressed: onDismiss,
+              AutospacedTooltip(
+                message: messages.viewerCaptureNoticeDismiss,
+                child: IconButton(
+                  key: const ValueKey('episode-capture-notice-dismiss'),
+                  icon: const Icon(Icons.close),
+                  color: colors.onInverseSurface,
+                  onPressed: onDismiss,
+                ),
               ),
             ],
           ),

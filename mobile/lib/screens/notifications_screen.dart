@@ -13,6 +13,7 @@ import 'package:publira/notifications/notification_failure.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the other paged lists use.
@@ -276,13 +277,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: AutospacedText(messages.notificationsTitle),
         actions: [
           if (inbox != null && AuthScope.of(context).isSignedIn)
-            IconButton(
-              key: const ValueKey('notifications-mark-all-read'),
-              icon: const Icon(Icons.done_all),
-              tooltip: messages.notificationsMarkAllRead,
-              onPressed: hasUnread && !_markingAll
-                  ? () => unawaited(_markAllRead())
-                  : null,
+            AutospacedTooltip(
+              message: messages.notificationsMarkAllRead,
+              child: IconButton(
+                key: const ValueKey('notifications-mark-all-read'),
+                icon: const Icon(Icons.done_all),
+                onPressed: hasUnread && !_markingAll
+                    ? () => unawaited(_markAllRead())
+                    : null,
+              ),
             ),
         ],
       ),
@@ -444,11 +447,13 @@ class _NotificationRow extends StatelessWidget {
       ),
       isThreeLine: createdAt != null,
       trailing: unread
-          ? IconButton(
-              key: ValueKey('notification-mark-read-${notification.id}'),
-              icon: const Icon(Icons.mark_email_read_outlined),
-              tooltip: messages.notificationsMarkRead,
-              onPressed: onMarkRead,
+          ? AutospacedTooltip(
+              message: messages.notificationsMarkRead,
+              child: IconButton(
+                key: ValueKey('notification-mark-read-${notification.id}'),
+                icon: const Icon(Icons.mark_email_read_outlined),
+                onPressed: onMarkRead,
+              ),
             )
           : null,
       onTap: onOpen,

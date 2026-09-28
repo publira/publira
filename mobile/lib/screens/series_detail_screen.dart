@@ -30,6 +30,7 @@ import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// Series detail. Loads the published series and its episodes from the API.
 class SeriesDetailScreen extends StatefulWidget {
@@ -773,11 +774,13 @@ class _SaveOfflineButton extends StatelessWidget {
         if (saved) {
           return const _SavedOfflineMark();
         }
-        return IconButton(
-          key: ValueKey('episode-save-offline-${episode.id}'),
-          icon: const Icon(Icons.download_outlined),
-          tooltip: messages.seriesSaveOfflineAria(title: episode.title),
-          onPressed: onSave,
+        return AutospacedTooltip(
+          message: messages.seriesSaveOfflineAria(title: episode.title),
+          child: IconButton(
+            key: ValueKey('episode-save-offline-${episode.id}'),
+            icon: const Icon(Icons.download_outlined),
+            onPressed: onSave,
+          ),
         );
       },
     );

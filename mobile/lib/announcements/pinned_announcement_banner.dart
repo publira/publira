@@ -6,6 +6,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// The one announcement the operator asked every reader to see, at the top of
 /// the catalog.
@@ -67,12 +68,14 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  key: const ValueKey('pinned-announcement-dismiss'),
-                  icon: const Icon(Icons.close),
-                  color: colors.onSecondaryContainer,
-                  tooltip: messages.announcementsBannerDismiss,
-                  onPressed: () => unawaited(board.dismiss(announcement.id)),
+                AutospacedTooltip(
+                  message: messages.announcementsBannerDismiss,
+                  child: IconButton(
+                    key: const ValueKey('pinned-announcement-dismiss'),
+                    icon: const Icon(Icons.close),
+                    color: colors.onSecondaryContainer,
+                    onPressed: () => unawaited(board.dismiss(announcement.id)),
+                  ),
                 ),
               ],
             ),

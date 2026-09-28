@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_snack_bar_action.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -238,7 +239,7 @@ void main() {
 
     expect(auth.isSignedIn, isFalse);
 
-    await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+    await tester.tap(find.widgetWithText(AutospacedSnackBarAction, 'Sign in'));
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
     await tester.pumpAndSettle();
   });
