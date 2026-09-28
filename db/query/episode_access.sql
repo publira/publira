@@ -34,3 +34,20 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
 ORDER BY e.order_index ASC,
     e.id ASC;
+
+-- name: GetEpisodeEntitlementSource :one
+-- Which grant opens the episode to the reader, when one does. A reader can
+-- hold several, and the creator grant is reported first because it is the
+-- standing one: it is what the credit line says, where a purchase or a ticket
+-- only says how a reader came to hold the episode. No row means no grant.
+SELECT g.kind
+FROM episode_content_grants g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND g.user_id = sqlc.arg('user_id')::uuid
+    AND g.episode_id = sqlc.arg('episode_id')
+ORDER BY CASE g.kind
+        WHEN 'creator' THEN 0
+        WHEN 'purchase' THEN 1
+        ELSE 2
+    END
+LIMIT 1;

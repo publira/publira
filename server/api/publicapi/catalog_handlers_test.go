@@ -1109,7 +1109,7 @@ func assertEpisodeImageURL(
 	}
 	// A free body's reader may have no session at all, so its token names the
 	// synthetic subject instead of a reader; an entitled one names the reader
-	// whose purchase or ticket image-server re-checks.
+	// whose grant image-server re-checks.
 	wantSubject := auth.FreeEpisodeMediaSubject
 	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
 		wantSubject = testPublicUserPublicID
@@ -1131,10 +1131,13 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 		price  int32
 		authed bool
 		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
-		invalidBearer    bool
-		hasContentAccess bool
-		wantAccess       publirav1.EpisodeAccess
-		wantImageCount   int
+		invalidBearer bool
+		// grantKind is the episode_content_grants kind the reader holds, empty
+		// for none.
+		grantKind      string
+		wantAccess     publirav1.EpisodeAccess
+		wantSource     publirav1.EpisodeEntitlementSource
+		wantImageCount int
 	}{
 		{
 			name:           "free-unauthenticated",
@@ -1149,20 +1152,38 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			wantImageCount: 0,
 		},
 		{
-			name:             "paid-authed-with-ticket-entitled",
-			price:            500,
-			authed:           true,
-			hasContentAccess: true,
-			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
-			wantImageCount:   1,
+			name:           "paid-authed-with-purchase-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "purchase",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE,
+			wantImageCount: 1,
 		},
 		{
-			name:             "paid-authed-without-grant-locked",
-			price:            500,
-			authed:           true,
-			hasContentAccess: false,
-			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
-			wantImageCount:   0,
+			name:           "paid-authed-with-ticket-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "access_ticket",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-as-credited-creator-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "creator",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-without-grant-locked",
+			price:          500,
+			authed:         true,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
 		},
 		{
 			name:           "paid-invalid-bearer-locked",
@@ -1193,9 +1214,13 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				// authenticateAccessToken looks up tenant again via tenantByContext
 				expectTenantLookup(mock, tenantID, "TENANT", now)
 				expectAuthSession(mock, tenantID, userID, now)
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasEpisodeContentAccess)).
+				grantRows := sqlmock.NewRows([]string{"kind"})
+				if tc.grantKind != "" {
+					grantRows.AddRow(tc.grantKind)
+				}
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeEntitlementSource)).
 					WithArgs(tenantID, userID, episodeID).
-					WillReturnRows(sqlmock.NewRows([]string{"has_access"}).AddRow(tc.hasContentAccess))
+					WillReturnRows(grantRows)
 			} else if tc.invalidBearer {
 				// Token verify fails after tenant re-lookup; no content-access or images queries.
 				expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -1238,6 +1263,9 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			}
 			if resp.Msg.Access != tc.wantAccess {
 				t.Fatalf("access = %v, want %v", resp.Msg.Access, tc.wantAccess)
+			}
+			if resp.Msg.EntitlementSource != tc.wantSource {
+				t.Fatalf("entitlement source = %v, want %v", resp.Msg.EntitlementSource, tc.wantSource)
 			}
 			if len(resp.Msg.Images) != tc.wantImageCount {
 				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)

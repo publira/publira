@@ -581,6 +581,9 @@ func TestDBGetEpisodeDetailWithholdsPaidPagesUntilEntitled(t *testing.T) {
 	if entitled.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
 		t.Fatalf("buyer access = %v, want entitled", entitled.Msg.Access)
 	}
+	if entitled.Msg.EntitlementSource != publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE {
+		t.Fatalf("buyer entitlement source = %v, want purchase", entitled.Msg.EntitlementSource)
+	}
 	if len(entitled.Msg.Images) != 1 {
 		t.Fatalf("buyer images = %d, want the page they paid for", len(entitled.Msg.Images))
 	}

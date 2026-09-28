@@ -11,6 +11,37 @@ import (
 	"github.com/google/uuid"
 )
 
+const GetEpisodeEntitlementSource = `-- name: GetEpisodeEntitlementSource :one
+SELECT g.kind
+FROM episode_content_grants g
+WHERE g.tenant_id = $1
+    AND g.user_id = $2::uuid
+    AND g.episode_id = $3
+ORDER BY CASE g.kind
+        WHEN 'creator' THEN 0
+        WHEN 'purchase' THEN 1
+        ELSE 2
+    END
+LIMIT 1
+`
+
+type GetEpisodeEntitlementSourceParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Which grant opens the episode to the reader, when one does. A reader can
+// hold several, and the creator grant is reported first because it is the
+// standing one: it is what the credit line says, where a purchase or a ticket
+// only says how a reader came to hold the episode. No row means no grant.
+func (q *Queries) GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeEntitlementSource, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var kind string
+	err := row.Scan(&kind)
+	return kind, err
+}
+
 const ListPublishedEpisodeAccessInSeries = `-- name: ListPublishedEpisodeAccessInSeries :many
 SELECT e.id,
     e.public_id,

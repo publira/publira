@@ -383,6 +383,11 @@ type Querier interface {
 	// and again after writing, so the answer describes the stored rows rather than
 	// what the transition was assumed to produce.
 	GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error)
+	// Which grant opens the episode to the reader, when one does. A reader can
+	// hold several, and the creator grant is reported first because it is the
+	// standing one: it is what the credit line says, where a purchase or a ticket
+	// only says how a reader came to hold the episode. No row means no grant.
+	GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error)
 	GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.

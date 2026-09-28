@@ -168,9 +168,10 @@ enum EpisodeAccess {
   EPISODE_ACCESS_UNSPECIFIED = 0;
   // The body is public: price is 0, or a scheduled free window is open on it.
   EPISODE_ACCESS_FREE = 1;
-  // paid and no valid purchase/ticket grant.
+  // paid and no grant.
   EPISODE_ACCESS_LOCKED = 2;
-  // valid purchase or active access ticket.
+  // The reader holds a grant on the episode; which one is
+  // GetEpisodeDetailResponse.entitlement_source.
   EPISODE_ACCESS_ENTITLED = 3;
   // The tenant makes a reader prove an age for this series' rating and this
   // reader has not: they are reading as a guest, have given no birth date, or
@@ -178,6 +179,20 @@ enum EpisodeAccess {
   // free body and a purchased one are both withheld, and it is answered the
   // same way as EPISODE_ACCESS_LOCKED — no images and no media token.
   EPISODE_ACCESS_AGE_RESTRICTED = 4;
+}
+
+// Why an entitled reader may open an episode's body. It is reported beside
+// EPISODE_ACCESS_ENTITLED rather than as further EpisodeAccess values, so a
+// client that does not read it still renders the body as entitled.
+enum EpisodeEntitlementSource {
+  EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED = 0;
+  // A purchase neither refunded nor past its reading period.
+  EPISODE_ENTITLEMENT_SOURCE_PURCHASE = 1;
+  // An access ticket neither revoked nor expired.
+  EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET = 2;
+  // The reader's account is linked to a creator the episode credits. It is
+  // reported over a purchase or a ticket the same reader also holds.
+  EPISODE_ENTITLEMENT_SOURCE_CREATOR = 3;
 }
 
 // A published episode next to the one being read, in its own series. It holds
@@ -212,7 +227,7 @@ message EpisodeNeighbor {
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
-  // Body images. Empty when access is locked (paid, no purchase/ticket).
+  // Body images. Empty when access is locked (paid, no grant).
   repeated publira.types.v1.EpisodeImage images = 3;
   // Viewer access state for this episode.
   EpisodeAccess access = 4;
@@ -229,6 +244,9 @@ message GetEpisodeDetailResponse {
   // the pair moves as episodes are published, reordered, or taken down.
   EpisodeNeighbor previous_episode = 6;
   EpisodeNeighbor next_episode = 7;
+  // Set only when access is EPISODE_ACCESS_ENTITLED, and unspecified
+  // otherwise.
+  EpisodeEntitlementSource entitlement_source = 8;
 }
 
 // A creator that currently has at least one published series.
