@@ -20,7 +20,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_secure_storage: 10.3.4
-  go_router: 18.0.1
+  go_router: 18.0.2
   http: 1.6.0
   # Store in-app purchase: StoreKit 2 on iOS, Play Billing on Android.
   in_app_purchase_android: 0.5.3
