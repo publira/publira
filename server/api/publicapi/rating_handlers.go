@@ -145,7 +145,8 @@ func ratingPoints(mode publirav1.EpisodeRatingMode, presses int32) int16 {
 }
 
 // GetMyEpisodeRating answers how far this reader has taken their rating, how
-// many readers have given one, and which control the episode should render.
+// many readers have given one, which control the episode should render, and
+// whether the reader is credited on it and so may not rate it at all.
 func (s *apiServer) GetMyEpisodeRating(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetMyEpisodeRatingRequest],
@@ -182,10 +183,16 @@ func (s *apiServer) GetMyEpisodeRating(
 			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
+	kind, err := s.episodeGrantKind(ctx, tenant.ID, user.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	return noStorePrivateResponse(&publirav1.GetMyEpisodeRatingResponse{
-		Score:       int32(score),
-		RatingCount: row.RatingCount,
-		Mode:        mode,
+		Score:          int32(score),
+		RatingCount:    row.RatingCount,
+		Mode:           mode,
+		ReaderCredited: kind == episodeGrantKindCreator,
 	}), nil
 }
 

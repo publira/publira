@@ -84,6 +84,51 @@ func TestDBRateEpisodeRefusesTheCreditedCreator(t *testing.T) {
 	rate(t, reader, paid)
 }
 
+// The reaction control is built from GetMyEpisodeRating, so the credit that
+// refuses a rating is reported there, on a free episode as on a paid one. A
+// creator credited on the series alone, and a reader holding a purchase, read
+// it as not credited.
+func TestDBGetMyEpisodeRatingReportsTheCreditedCreator(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Rated Series", Published: true})
+	free := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFRE01", Title: "Free", Status: testutil.EpisodeStatusPublished})
+	paid := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEPAY01", Title: "Paid", Status: testutil.EpisodeStatusPublished, Price: 500})
+
+	credited := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Credited"})
+	env.PG.SeedEpisodeCreator(t, tenant.ID, free.ID, credited.ID, "")
+	env.PG.SeedEpisodeCreator(t, tenant.ID, paid.ID, credited.ID, "")
+	seriesOnly := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Series Only"})
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, seriesOnly.ID, "")
+
+	creatorAccount := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERCRE01", "creator@tenant-a.example.com", "Creator Account")
+	env.PG.SeedCreatorAccount(t, tenant.ID, credited.ID, creatorAccount.ID)
+	seriesCreatorAccount := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERSER01", "series@tenant-a.example.com", "Series Creator Account")
+	env.PG.SeedCreatorAccount(t, tenant.ID, seriesOnly.ID, seriesCreatorAccount.ID)
+	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERRDR01", "reader@tenant-a.example.com", "Reader")
+	env.PG.SeedPurchase(t, tenant.ID, reader.ID, paid.ID, 500)
+
+	client := env.ratingClient()
+	for _, tc := range []struct {
+		user testutil.TenantUser
+		want bool
+	}{
+		{user: creatorAccount, want: true},
+		{user: seriesCreatorAccount, want: false},
+		{user: reader, want: false},
+	} {
+		for _, episode := range []testutil.Episode{free, paid} {
+			res, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.ID.String(), tokenFor(t, tenant, tc.user)))
+			if err != nil {
+				t.Fatalf("GetMyEpisodeRating %s by %s: %v", episode.PublicID, tc.user.PublicID, err)
+			}
+			if res.Msg.ReaderCredited != tc.want {
+				t.Fatalf("GetMyEpisodeRating %s by %s reader_credited = %v, want %v", episode.PublicID, tc.user.PublicID, res.Msg.ReaderCredited, tc.want)
+			}
+		}
+	}
+}
+
 // Answering readers under one's own episode is what the creator's account is
 // for, so the credit that refuses a rating leaves commenting open.
 func TestDBPostEpisodeCommentStaysOpenToTheCreditedCreator(t *testing.T) {
