@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/name_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Renames the signed-in account through `AuthService/UpdateMe`.
 class EditNameScreen extends StatefulWidget {
@@ -62,7 +63,9 @@ class _EditNameScreenState extends State<EditNameScreen> {
       return;
     }
     if (failure == null) {
-      messenger.showSnackBar(SnackBar(content: Text(messages.editNameUpdated)));
+      messenger.showSnackBar(
+        SnackBar(content: AutospacedText(messages.editNameUpdated)),
+      );
       leaveAccountSettings(context);
       return;
     }
@@ -78,7 +81,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
     final signedIn = AuthScope.of(context).isSignedIn;
     final failure = _failure;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.editNameTitle)),
+      appBar: AppBar(title: AutospacedText(messages.editNameTitle)),
       body: SafeArea(
         child: !signedIn
             ? const SignedOutNotice()
@@ -90,7 +93,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (failure != null) ...[
-                        Text(
+                        AutospacedText(
                           _failureCopy(messages, failure),
                           key: const ValueKey('edit-name-error'),
                           style: TextStyle(
@@ -103,11 +106,12 @@ class _EditNameScreenState extends State<EditNameScreen> {
                         key: const ValueKey('edit-name-name'),
                         controller: _nameController,
                         decoration: InputDecoration(
-                          labelText: messages.editNameLabel,
+                          label: AutospacedText(messages.editNameLabel),
                           border: const OutlineInputBorder(),
                         ),
                         autofillHints: const [AutofillHints.name],
                         textInputAction: TextInputAction.done,
+                        errorBuilder: (context, error) => AutospacedText(error),
                         validator: (value) =>
                             validateDisplayName(messages, value ?? ''),
                         onFieldSubmitted: (_) => unawaited(_submit()),
@@ -125,7 +129,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(messages.editNameSave),
+                            : AutospacedText(messages.editNameSave),
                       ),
                     ],
                   ),

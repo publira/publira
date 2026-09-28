@@ -8,6 +8,7 @@ import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A fresh confirmation link for an address whose account was never
 /// confirmed, through `AuthService/RequestEmailVerification`.
@@ -76,7 +77,7 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.resendVerificationTitle)),
+      appBar: AppBar(title: AutospacedText(messages.resendVerificationTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -91,17 +92,17 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
       key: const ValueKey('resend-verification-sent'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        AutospacedText(
           messages.resendVerificationSentHeading,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text(messages.authVerificationSent),
+        AutospacedText(messages.authVerificationSent),
         const SizedBox(height: 24),
         FilledButton(
           key: const ValueKey('resend-verification-sign-in'),
           onPressed: () => _openSignIn(),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ],
     );
@@ -114,10 +115,10 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(messages.resendVerificationDescription),
+          AutospacedText(messages.resendVerificationDescription),
           const SizedBox(height: 24),
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('resend-verification-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -128,13 +129,14 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
             key: const ValueKey('resend-verification-email'),
             controller: _emailController,
             decoration: InputDecoration(
-              labelText: messages.authEmailLabel,
+              label: AutospacedText(messages.authEmailLabel),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             autofillHints: const [AutofillHints.email],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateAuthEmail(messages, value ?? ''),
             onFieldSubmitted: (_) => unawaited(_submit()),
           ),
@@ -147,7 +149,7 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.resendVerificationSubmit),
+                : AutospacedText(messages.resendVerificationSubmit),
           ),
         ],
       ),

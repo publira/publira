@@ -9,6 +9,7 @@ import 'package:publira/links/link_scope.dart';
 import 'package:publira/pages/page_failure.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/pages/published_page.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A page the tenant published — its terms of service, its privacy policy,
 /// or anything else it writes — set from the Markdown the API holds.
@@ -75,7 +76,7 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(_page?.title ?? '')),
+      appBar: AppBar(title: AutospacedText(_page?.title ?? '')),
       body: SafeArea(child: _body(messages)),
     );
   }
@@ -118,7 +119,7 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         if (page.contentMarkdown.trim().isEmpty)
-          Text(
+          AutospacedText(
             messages.pagesBodyEmpty,
             key: const ValueKey('page-body-empty'),
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -176,7 +177,7 @@ class _PageImage extends StatelessWidget {
     final url = _resolve(context);
     final fallback = alt == null || alt!.isEmpty
         ? const SizedBox.shrink()
-        : Text(alt!);
+        : AutospacedText(alt!);
     if (url == null) {
       return fallback;
     }

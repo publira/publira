@@ -10,6 +10,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many episodes one page of the list asks for, the API's own default.
 const _pageSize = 20;
@@ -25,7 +26,9 @@ class FollowUpdatesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(AppMessages.of(context).followUpdatesTitle)),
+      appBar: AppBar(
+        title: AutospacedText(AppMessages.of(context).followUpdatesTitle),
+      ),
       body: const SafeArea(child: _FollowUpdatesList()),
     );
   }
@@ -194,8 +197,8 @@ class _FollowUpdateRow extends StatelessWidget {
     return ListTile(
       key: ValueKey('follow-updates-row-${episode.id}'),
       isThreeLine: true,
-      title: Text(title),
-      subtitle: Text(
+      title: AutospacedText(title),
+      subtitle: AutospacedText(
         [
           if (series.title.isNotEmpty) series.title,
           if (update.publishedAt case final publishedAt?)

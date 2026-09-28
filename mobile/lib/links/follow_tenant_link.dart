@@ -8,6 +8,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/pages/published_page.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Where [linkUrl] takes the reader from [context], or `null` when it is not
 /// a link the app may follow, which is also what a run with no tenant site
@@ -73,7 +74,7 @@ void _openInBrowser(BuildContext context, Uri url) {
       opened = false;
     }
     if (!opened) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.showSnackBar(SnackBar(content: AutospacedText(failed)));
     }
   }());
 }

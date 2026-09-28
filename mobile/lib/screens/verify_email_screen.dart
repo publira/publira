@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Where a confirmation link lands: it spends its token against
 /// `AuthService/VerifyUserEmail` and says what that did.
@@ -79,7 +80,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.verifyEmailTitle)),
+      appBar: AppBar(title: AutospacedText(messages.verifyEmailTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -100,12 +101,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           child: CircularProgressIndicator(),
         ),
         const SizedBox(height: 24),
-        Text(messages.verifyEmailVerifying, textAlign: TextAlign.center),
+        AutospacedText(
+          messages.verifyEmailVerifying,
+          textAlign: TextAlign.center,
+        ),
       ];
     }
     if (_verified) {
       return [
-        Text(
+        AutospacedText(
           messages.verifyEmailVerified,
           key: const ValueKey('verify-email-verified'),
         ),
@@ -113,13 +117,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         FilledButton(
           key: const ValueKey('verify-email-sign-in'),
           onPressed: () => _leaveFor(AppRoutes.signIn),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ];
     }
     final failure = _failure ?? AuthFailureKind.unexpected;
     return [
-      Text(
+      AutospacedText(
         _failureCopy(messages, failure),
         key: const ValueKey('verify-email-error'),
         style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -133,13 +137,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         FilledButton(
           key: const ValueKey('verify-email-retry'),
           onPressed: () => unawaited(_verify()),
-          child: Text(messages.commonRetry),
+          child: AutospacedText(messages.commonRetry),
         )
       else
         FilledButton(
           key: const ValueKey('verify-email-resend'),
           onPressed: () => _leaveFor(AppRoutes.resendVerification),
-          child: Text(messages.authResendVerification),
+          child: AutospacedText(messages.authResendVerification),
         ),
     ];
   }

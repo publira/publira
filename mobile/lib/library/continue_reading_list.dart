@@ -10,6 +10,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many series one page of the list asks for, the API's own default.
 const _pageSize = 20;
@@ -162,10 +163,14 @@ class _ContinueReadingRow extends StatelessWidget {
           aspectRatio: 3 / 4,
         ),
       ),
-      title: Text(series.title),
+      title: AutospacedText(series.title),
       subtitle: episode.title.isEmpty
           ? null
-          : Text(episode.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          : AutospacedText(
+              episode.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () =>
           context.pushInTab(AppRoutes.episodeViewerPath(series.id, episode.id)),

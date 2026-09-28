@@ -6,6 +6,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Where a checkout the browser hands back lands: it finds the series of the
 /// episode the return URL names and opens that episode's viewer, which is what
@@ -95,7 +96,7 @@ class _CheckoutReturnScreenState extends State<CheckoutReturnScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.viewerTitle)),
+      appBar: AppBar(title: AutospacedText(messages.viewerTitle)),
       body: FutureBuilder<String?>(
         future: _series,
         builder: (context, snapshot) {
@@ -149,9 +150,12 @@ class _ReturnMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center),
+            AutospacedText(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: onAction, child: Text(actionLabel)),
+            FilledButton(
+              onPressed: onAction,
+              child: AutospacedText(actionLabel),
+            ),
           ],
         ),
       ),

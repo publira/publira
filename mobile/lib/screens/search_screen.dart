@@ -14,6 +14,7 @@ import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How long the field stays still before the keyword in it is searched for.
 ///
@@ -188,7 +189,7 @@ class _SearchScreenState extends State<SearchScreen> {
           inputFormatters: const [_RuneLimitingFormatter(searchQueryMaxRunes)],
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: messages.searchLabel,
+            hint: AutospacedText(messages.searchLabel),
           ),
           onChanged: _onChanged,
           onSubmitted: _submit,
@@ -315,28 +316,28 @@ class _GroupChoice extends StatelessWidget implements PreferredSizeWidget {
         children: [
           ChoiceChip(
             key: const ValueKey('search-show-overview'),
-            label: Text(messages.searchAll),
+            label: AutospacedText(messages.searchAll),
             selected: group == null,
             onSelected: (_) => onSelected(null),
           ),
           const SizedBox(width: 8),
           ChoiceChip(
             key: const ValueKey('search-show-series'),
-            label: Text(messages.searchSeriesHeading),
+            label: AutospacedText(messages.searchSeriesHeading),
             selected: group == _SearchGroup.series,
             onSelected: (_) => onSelected(_SearchGroup.series),
           ),
           const SizedBox(width: 8),
           ChoiceChip(
             key: const ValueKey('search-show-creators'),
-            label: Text(messages.searchCreatorsHeading),
+            label: AutospacedText(messages.searchCreatorsHeading),
             selected: group == _SearchGroup.creators,
             onSelected: (_) => onSelected(_SearchGroup.creators),
           ),
           const SizedBox(width: 8),
           ChoiceChip(
             key: const ValueKey('search-show-labels'),
-            label: Text(messages.searchLabelsHeading),
+            label: AutospacedText(messages.searchLabelsHeading),
             selected: group == _SearchGroup.labels,
             onSelected: (_) => onSelected(_SearchGroup.labels),
           ),
@@ -393,7 +394,10 @@ class _OverviewSection<T> extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(heading, style: theme.textTheme.titleMedium),
+              child: AutospacedText(
+                heading,
+                style: theme.textTheme.titleMedium,
+              ),
             ),
             if (failure != null)
               RetryRow(
@@ -411,7 +415,7 @@ class _OverviewSection<T> extends StatelessWidget {
               Padding(
                 key: ValueKey('search-$name-empty'),
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Text(emptyMessage),
+                child: AutospacedText(emptyMessage),
               )
             else ...[
               for (final item in items.take(_overviewRows)) itemBuilder(item),
@@ -421,7 +425,7 @@ class _OverviewSection<T> extends StatelessWidget {
                   child: TextButton(
                     key: ValueKey('search-$name-show-all'),
                     onPressed: onShowAll,
-                    child: Text(showAllLabel),
+                    child: AutospacedText(showAllLabel),
                   ),
                 ),
             ],

@@ -4,6 +4,7 @@ import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One row of a list of labels, which opens the label's screen.
 class LabelTile extends StatelessWidget {
@@ -28,7 +29,7 @@ class LabelTile extends StatelessWidget {
           aspectRatio: 1,
         ),
       ),
-      title: Text(label.name),
+      title: AutospacedText(label.name),
       onTap: () => context.pushInTab(AppRoutes.labelDetailPath(label.id)),
     );
   }

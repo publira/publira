@@ -5,6 +5,7 @@ import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// The one announcement the operator asked every reader to see, at the top of
 /// the catalog.
@@ -48,14 +49,14 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      AutospacedText(
                         announcement.title,
                         style: theme.textTheme.titleSmall?.copyWith(
                           color: colors.onSecondaryContainer,
                         ),
                       ),
                       if (announcement.body.isNotEmpty)
-                        Text(
+                        AutospacedText(
                           announcement.body,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -86,7 +87,7 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                     AppRoutes.announcementPath(announcement.id),
                   ),
                 ),
-                child: Text(messages.announcementsBannerLink),
+                child: AutospacedText(messages.announcementsBannerLink),
               ),
             ),
           ],

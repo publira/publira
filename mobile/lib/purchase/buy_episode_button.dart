@@ -9,6 +9,7 @@ import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// "Buy for ¥N": buys one episode the way the tenant's app sells it — the web
 /// checkout handed to the system browser, or the store's payment sheet.
@@ -88,7 +89,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
       final opened = await purchase.launcher!.open(url);
       if (!opened) {
         messenger.showSnackBar(
-          SnackBar(content: Text(messages.purchaseStartFailed)),
+          SnackBar(content: AutospacedText(messages.purchaseStartFailed)),
         );
       }
     } on PurchaseFailure catch (failure) {
@@ -102,21 +103,23 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
           _signIn();
         case PurchaseFailureKind.network:
           messenger.showSnackBar(
-            SnackBar(content: Text(messages.errorsRpcUnavailable)),
+            SnackBar(content: AutospacedText(messages.errorsRpcUnavailable)),
           );
         case PurchaseFailureKind.storeUnavailable:
           messenger.showSnackBar(
-            SnackBar(content: Text(messages.purchaseStoreUnavailable)),
+            SnackBar(
+              content: AutospacedText(messages.purchaseStoreUnavailable),
+            ),
           );
         case PurchaseFailureKind.notSold:
           messenger.showSnackBar(
-            SnackBar(content: Text(messages.purchaseNotSoldInApp)),
+            SnackBar(content: AutospacedText(messages.purchaseNotSoldInApp)),
           );
         case PurchaseFailureKind.gone ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.unexpected:
           messenger.showSnackBar(
-            SnackBar(content: Text(messages.purchaseStartFailed)),
+            SnackBar(content: AutospacedText(messages.purchaseStartFailed)),
           );
       }
     } finally {
@@ -137,7 +140,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    final label = Text(
+    final label = AutospacedText(
       messages.purchaseBuy(price: '¥${messages.formatInteger(widget.price)}'),
     );
     final onPressed = _starting ? null : () => unawaited(_buy());

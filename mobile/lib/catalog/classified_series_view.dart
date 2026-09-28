@@ -13,6 +13,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What a genre or a tag is called, how many published series carry it, and
 /// the eye-catch its header opens on.
@@ -185,7 +186,9 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
       builder: (context, child) {
         final classification = _classification ??= pager.header;
         return Scaffold(
-          appBar: AppBar(title: Text(classification?.name ?? widget.title)),
+          appBar: AppBar(
+            title: AutospacedText(classification?.name ?? widget.title),
+          ),
           body: _body(pager, classification),
         );
       },
@@ -287,13 +290,13 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(messages.seriesFilterEmpty),
+                AutospacedText(messages.seriesFilterEmpty),
                 const SizedBox(height: 8),
                 TextButton(
                   key: ValueKey('$key-series-filter-clear'),
                   onPressed: () =>
                       _changeFilter(SeriesListFilter(order: _filter.order)),
-                  child: Text(messages.seriesFilterClear),
+                  child: AutospacedText(messages.seriesFilterClear),
                 ),
               ],
             ),
@@ -346,9 +349,12 @@ class _ClassificationHeader extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          Text(classification.name, style: theme.textTheme.headlineSmall),
+          AutospacedText(
+            classification.name,
+            style: theme.textTheme.headlineSmall,
+          ),
           const SizedBox(height: 4),
-          Text(
+          AutospacedText(
             messages.commonSeriesCount(
               count: messages.formatInteger(classification.seriesCount),
             ),

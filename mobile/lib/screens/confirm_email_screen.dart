@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Where either link of an email change lands: it spends its token against
 /// `AuthService/ConfirmEmailChange` and says where the change stands.
@@ -77,7 +78,7 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.confirmEmailTitle)),
+      appBar: AppBar(title: AutospacedText(messages.confirmEmailTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -98,18 +99,21 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
           child: CircularProgressIndicator(),
         ),
         const SizedBox(height: 24),
-        Text(messages.confirmEmailConfirming, textAlign: TextAlign.center),
+        AutospacedText(
+          messages.confirmEmailConfirming,
+          textAlign: TextAlign.center,
+        ),
       ];
     }
     final toAccount = FilledButton(
       key: const ValueKey('confirm-email-to-account'),
       onPressed: _leaveForAccount,
-      child: Text(messages.confirmEmailToAccount),
+      child: AutospacedText(messages.confirmEmailToAccount),
     );
     final progress = _progress;
     if (progress != null) {
       return [
-        Text(switch (progress) {
+        AutospacedText(switch (progress) {
           EmailChangeProgress.changed => messages.confirmEmailChanged,
           EmailChangeProgress.awaitingCurrentEmail =>
             messages.confirmEmailPendingCurrentEmail,
@@ -122,7 +126,7 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
     }
     final failure = _failure ?? AuthFailureKind.unexpected;
     return [
-      Text(
+      AutospacedText(
         _failureCopy(messages, failure),
         key: const ValueKey('confirm-email-error'),
         style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -137,7 +141,7 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
         FilledButton(
           key: const ValueKey('confirm-email-retry'),
           onPressed: () => unawaited(_confirm()),
-          child: Text(messages.commonRetry),
+          child: AutospacedText(messages.commonRetry),
         )
       else
         toAccount,

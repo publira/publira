@@ -13,6 +13,7 @@ import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// The signed-in reader, the settings of their account, and the way out of
 /// that session.
@@ -25,7 +26,7 @@ class AccountScreen extends StatelessWidget {
     final auth = AuthScope.of(context);
     final session = auth.session;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.accountTitle)),
+      appBar: AppBar(title: AutospacedText(messages.accountTitle)),
       body: SafeArea(
         child: session == null
             ? ListView(
@@ -34,12 +35,12 @@ class AccountScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
-                        Text(messages.accountSignedOut),
+                        AutospacedText(messages.accountSignedOut),
                         const SizedBox(height: 16),
                         FilledButton(
                           key: const ValueKey('account-sign-in'),
                           onPressed: () => context.pushInTab(AppRoutes.signIn),
-                          child: Text(messages.commonSignIn),
+                          child: AutospacedText(messages.commonSignIn),
                         ),
                       ],
                     ),
@@ -53,8 +54,8 @@ class AccountScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     key: const ValueKey('account-name'),
-                    title: Text(messages.accountName),
-                    subtitle: Text(
+                    title: AutospacedText(messages.accountName),
+                    subtitle: AutospacedText(
                       session.userName.isEmpty
                           ? messages.accountNameUnset
                           : session.userName,
@@ -66,16 +67,20 @@ class AccountScreen extends StatelessWidget {
                   const _PurchasesEntry(),
                   ListTile(
                     key: const ValueKey('account-reading-history'),
-                    title: Text(messages.readingHistoryTitle),
-                    subtitle: Text(messages.readingHistoryAccountDescription),
+                    title: AutospacedText(messages.readingHistoryTitle),
+                    subtitle: AutospacedText(
+                      messages.readingHistoryAccountDescription,
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.accountReadingHistory),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     key: const ValueKey('account-follow-updates'),
-                    title: Text(messages.followUpdatesTitle),
-                    subtitle: Text(messages.followUpdatesAccountDescription),
+                    title: AutospacedText(messages.followUpdatesTitle),
+                    subtitle: AutospacedText(
+                      messages.followUpdatesAccountDescription,
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.accountFollowUpdates),
                   ),
@@ -85,14 +90,14 @@ class AccountScreen extends StatelessWidget {
                   _BirthDateRow(key: ValueKey(session.userPublicId)),
                   ListTile(
                     key: const ValueKey('account-change-email'),
-                    title: Text(messages.accountChangeEmail),
+                    title: AutospacedText(messages.accountChangeEmail),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.accountEmail),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     key: const ValueKey('account-change-password'),
-                    title: Text(messages.accountChangePassword),
+                    title: AutospacedText(messages.accountChangePassword),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.accountPassword),
                   ),
@@ -106,13 +111,13 @@ class AccountScreen extends StatelessWidget {
                       // The unregister needs the session, so the device comes
                       // off the delivery list before the session goes away.
                       onPressed: () => unawaited(_signOut(context)),
-                      child: Text(messages.accountSignOut),
+                      child: AutospacedText(messages.accountSignOut),
                     ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     key: const ValueKey('account-delete'),
-                    title: Text(
+                    title: AutospacedText(
                       messages.accountDelete,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
@@ -155,8 +160,8 @@ class _PurchasesEntry extends StatelessWidget {
       children: [
         ListTile(
           key: const ValueKey('account-purchases'),
-          title: Text(messages.purchasesTitle),
-          subtitle: Text(messages.purchasesAccountDescription),
+          title: AutospacedText(messages.purchasesTitle),
+          subtitle: AutospacedText(messages.purchasesAccountDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountPurchases),
         ),
@@ -185,8 +190,8 @@ class _ContactEntry extends StatelessWidget {
       children: [
         ListTile(
           key: const ValueKey('account-contact'),
-          title: Text(messages.accountContact),
-          subtitle: Text(messages.accountContactDescription),
+          title: AutospacedText(messages.accountContact),
+          subtitle: AutospacedText(messages.accountContactDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountContact),
         ),
@@ -221,8 +226,8 @@ class _NotificationSwitch extends StatelessWidget {
       children: [
         SwitchListTile(
           key: const ValueKey('account-notifications'),
-          title: Text(messages.accountNotifications),
-          subtitle: Text(messages.accountNotificationsDescription),
+          title: AutospacedText(messages.accountNotifications),
+          subtitle: AutospacedText(messages.accountNotificationsDescription),
           value: push.enabled,
           onChanged: push.updating
               ? null
@@ -231,7 +236,7 @@ class _NotificationSwitch extends StatelessWidget {
         if (failure != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
+            child: AutospacedText(
               failure,
               key: const ValueKey('account-notifications-failure'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -285,7 +290,7 @@ class _BirthDateRowState extends State<_BirthDateRow> {
           return _section(
             ListTile(
               key: const ValueKey('account-birth-date-loading'),
-              title: Text(messages.accountBirthDate),
+              title: AutospacedText(messages.accountBirthDate),
               trailing: const SizedBox.square(
                 dimension: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
@@ -297,11 +302,11 @@ class _BirthDateRowState extends State<_BirthDateRow> {
           return _section(
             ListTile(
               key: const ValueKey('account-birth-date-error'),
-              title: Text(messages.accountBirthDate),
-              subtitle: Text(messages.accountBirthDateLoadFailed),
+              title: AutospacedText(messages.accountBirthDate),
+              subtitle: AutospacedText(messages.accountBirthDateLoadFailed),
               trailing: TextButton(
                 onPressed: _reload,
-                child: Text(messages.commonRetry),
+                child: AutospacedText(messages.commonRetry),
               ),
             ),
           );
@@ -318,8 +323,8 @@ class _BirthDateRowState extends State<_BirthDateRow> {
           return _section(
             ListTile(
               key: const ValueKey('account-birth-date'),
-              title: Text(messages.accountBirthDate),
-              subtitle: Text(
+              title: AutospacedText(messages.accountBirthDate),
+              subtitle: AutospacedText(
                 '${messages.formatCalendarDate(stored)}\n'
                 '${messages.accountBirthDateSetHelp}',
               ),
@@ -337,8 +342,8 @@ class _BirthDateRowState extends State<_BirthDateRow> {
         return _section(
           ListTile(
             key: const ValueKey('account-birth-date-add'),
-            title: Text(messages.accountBirthDate),
-            subtitle: Text(messages.accountBirthDateHelp),
+            title: AutospacedText(messages.accountBirthDate),
+            subtitle: AutospacedText(messages.accountBirthDateHelp),
             trailing: _saving
                 ? const SizedBox.square(
                     dimension: 24,
@@ -361,7 +366,7 @@ class _BirthDateRowState extends State<_BirthDateRow> {
         if (failure != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
+            child: AutospacedText(
               failure,
               key: const ValueKey('account-birth-date-failure'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -393,21 +398,21 @@ class _BirthDateRowState extends State<_BirthDateRow> {
       context: context,
       builder: (context) => AlertDialog(
         key: const ValueKey('account-birth-date-confirm'),
-        title: Text(
+        title: AutospacedText(
           messages.accountBirthDateConfirmTitle(
             date: messages.formatCalendarDate(birthDate),
           ),
         ),
-        content: Text(messages.accountBirthDateConfirmDescription),
+        content: AutospacedText(messages.accountBirthDateConfirmDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(messages.commonCancel),
+            child: AutospacedText(messages.commonCancel),
           ),
           FilledButton(
             key: const ValueKey('account-birth-date-save'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(messages.accountBirthDateSave),
+            child: AutospacedText(messages.accountBirthDateSave),
           ),
         ],
       ),

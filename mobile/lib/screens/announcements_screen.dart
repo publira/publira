@@ -11,6 +11,7 @@ import 'package:publira/models/announcement.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/announcement_screen.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the other paged lists use.
@@ -183,7 +184,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       }
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             announcementFailureCopy(
               messages,
               failure,
@@ -249,7 +250,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     if (failure != null) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             announcementFailureCopy(
               messages,
               failure,
@@ -281,7 +282,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final unread = announcements?.where((row) => !row.isRead).length ?? 0;
     return Scaffold(
       appBar: AppBar(
-        title: Text(messages.announcementsTitle),
+        title: AutospacedText(messages.announcementsTitle),
         actions: [
           if (signedIn)
             IconButton(
@@ -363,7 +364,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           if (index < header) {
             return Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Text(
+              child: AutospacedText(
                 messages.announcementsUnreadShown(
                   count: messages.formatInteger(unread),
                 ),
@@ -452,15 +453,20 @@ class _AnnouncementRow extends StatelessWidget {
                   : null,
             ),
       minLeadingWidth: 12,
-      title: Text(
+      title: AutospacedText(
         announcement.title,
         style: unread ? const TextStyle(fontWeight: FontWeight.bold) : null,
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(announcement.body, maxLines: 1, overflow: TextOverflow.ellipsis),
-          if (createdAt != null) Text(messages.formatDateTime(createdAt)),
+          AutospacedText(
+            announcement.body,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (createdAt != null)
+            AutospacedText(messages.formatDateTime(createdAt)),
         ],
       ),
       isThreeLine: createdAt != null,

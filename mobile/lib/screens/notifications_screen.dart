@@ -12,6 +12,7 @@ import 'package:publira/notifications/notification_copy.dart';
 import 'package:publira/notifications/notification_failure.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the other paged lists use.
@@ -178,7 +179,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             _failureCopy(
               messages,
               failure,
@@ -234,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (failure != null) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             _failureCopy(
               messages,
               failure,
@@ -272,7 +273,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         (_notifications?.any((row) => !row.isRead) ?? false);
     return Scaffold(
       appBar: AppBar(
-        title: Text(messages.notificationsTitle),
+        title: AutospacedText(messages.notificationsTitle),
         actions: [
           if (inbox != null && AuthScope.of(context).isSignedIn)
             IconButton(
@@ -432,11 +433,11 @@ class _NotificationRow extends StatelessWidget {
             : null,
       ),
       minLeadingWidth: 12,
-      title: Text(
+      title: AutospacedText(
         messages.notificationTitle(notification),
         style: unread ? const TextStyle(fontWeight: FontWeight.bold) : null,
       ),
-      subtitle: Text(
+      subtitle: AutospacedText(
         createdAt == null
             ? description
             : '$description\n${messages.formatDateTime(createdAt)}',

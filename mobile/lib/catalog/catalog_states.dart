@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What a section says about a failure, in the words closest to it.
 ///
@@ -54,13 +55,13 @@ class CatalogMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center),
+            AutospacedText(message, textAlign: TextAlign.center),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
               FilledButton(
                 key: actionKey,
                 onPressed: onAction,
-                child: Text(actionLabel),
+                child: AutospacedText(actionLabel),
               ),
             ],
           ],
@@ -95,12 +96,12 @@ class RetryRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message),
+          AutospacedText(message),
           const SizedBox(height: 8),
           TextButton(
             key: ValueKey('$sectionKey-retry'),
             onPressed: onRetry,
-            child: Text(AppMessages.of(context).commonRetry),
+            child: AutospacedText(AppMessages.of(context).commonRetry),
           ),
         ],
       ),

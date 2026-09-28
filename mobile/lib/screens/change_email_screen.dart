@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Asks to move the signed-in account to another address through
 /// `AuthService/RequestEmailChange`.
@@ -92,7 +93,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.changeEmailTitle)),
+      appBar: AppBar(title: AutospacedText(messages.changeEmailTitle)),
       body: SafeArea(
         child: !signedIn && !_requested
             ? const SignedOutNotice()
@@ -112,7 +113,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                       return _loadFailed(messages);
                     }
                     if (_requested) {
-                      return Text(
+                      return AutospacedText(
                         messages.changeEmailRequested,
                         key: const ValueKey('change-email-requested'),
                       );
@@ -129,7 +130,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        AutospacedText(
           messages.changeEmailLoadFailed,
           key: const ValueKey('change-email-load-error'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -138,7 +139,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         FilledButton(
           key: const ValueKey('change-email-reload'),
           onPressed: _reload,
-          child: Text(messages.commonRetry),
+          child: AutospacedText(messages.commonRetry),
         ),
       ],
     );
@@ -152,7 +153,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('change-email-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -161,10 +162,10 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
           ],
           InputDecorator(
             decoration: InputDecoration(
-              labelText: messages.changeEmailCurrentLabel,
+              label: AutospacedText(messages.changeEmailCurrentLabel),
               border: const OutlineInputBorder(),
             ),
-            child: Text(
+            child: AutospacedText(
               currentEmail,
               key: const ValueKey('change-email-current'),
             ),
@@ -174,13 +175,14 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
             key: const ValueKey('change-email-new'),
             controller: _newEmailController,
             decoration: InputDecoration(
-              labelText: messages.changeEmailNewLabel,
+              label: AutospacedText(messages.changeEmailNewLabel),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             autofillHints: const [AutofillHints.email],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) {
               final email = value ?? '';
               final invalid = validateAuthEmail(messages, email);
@@ -200,12 +202,13 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
             key: const ValueKey('change-email-password'),
             controller: _passwordController,
             decoration: InputDecoration(
-              labelText: messages.changeEmailPasswordLabel,
+              label: AutospacedText(messages.changeEmailPasswordLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => (value ?? '').trim().isEmpty
                 ? messages.authPasswordRequired
                 : null,
@@ -222,7 +225,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.changeEmailSubmit),
+                : AutospacedText(messages.changeEmailSubmit),
           ),
         ],
       ),

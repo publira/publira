@@ -25,6 +25,7 @@ import 'package:publira/purchase/buy_episode_button.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
 import 'package:publira/viewer/episode_read_recorder.dart';
 import 'package:publira/viewer/episode_reader.dart';
@@ -383,7 +384,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
               message: _errorCopy(messages, snapshot.error),
               action: FilledButton(
                 onPressed: _reload,
-                child: Text(messages.commonRetry),
+                child: AutospacedText(messages.commonRetry),
               ),
             ),
           );
@@ -399,7 +400,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
                 onPressed: () => context.goInTab(
                   AppRoutes.seriesDetailPath(widget.seriesId),
                 ),
-                child: Text(messages.viewerBackToSeries),
+                child: AutospacedText(messages.viewerBackToSeries),
               ),
             ),
           );
@@ -490,7 +491,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           key: const ValueKey('episode-purchase-check-again'),
           style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
           onPressed: () => unawaited(_checkAgain()),
-          child: Text(messages.purchaseCheckAgain),
+          child: AutospacedText(messages.purchaseCheckAgain),
         ),
       );
     }
@@ -535,7 +536,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         message: message,
         action: FilledButton(
           onPressed: () => context.pushInTab(AppRoutes.signIn),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       );
     }
@@ -558,7 +559,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         message: messages.viewerAgeRestrictedGuest,
         action: FilledButton(
           onPressed: () => context.pushInTab(AppRoutes.signIn),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       );
     }
@@ -573,7 +574,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       message: messages.viewerAgeRestrictedNoBirthDate,
       action: FilledButton(
         onPressed: _addBirthDate,
-        child: Text(messages.viewerAgeRestrictedAddBirthDate),
+        child: AutospacedText(messages.viewerAgeRestrictedAddBirthDate),
       ),
     );
   }
@@ -620,12 +621,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         // The episode's own credits under its title, never the series': an
         // artist who took over part way through is on the episodes they drew.
         title: credits.isEmpty
-            ? Text(title)
+            ? AutospacedText(title)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  AutospacedText(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   CreatorCredits(
                     key: const ValueKey('episode-credits'),
                     credits: credits,
@@ -675,7 +680,7 @@ class _ViewerMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            AutospacedText(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),

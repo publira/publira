@@ -6,6 +6,7 @@ import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
 ///
@@ -120,7 +121,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final messages = AppMessages.of(context);
     final failure = _failure;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.commonSignIn)),
+      appBar: AppBar(title: AutospacedText(messages.commonSignIn)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -130,7 +131,7 @@ class _SignInScreenState extends State<SignInScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (failure != null) ...[
-                  Text(
+                  AutospacedText(
                     _failureCopy(messages, failure),
                     key: const ValueKey('sign-in-error'),
                     style: TextStyle(
@@ -143,13 +144,14 @@ class _SignInScreenState extends State<SignInScreen> {
                   key: const ValueKey('sign-in-email'),
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: messages.authEmailLabel,
+                    label: AutospacedText(messages.authEmailLabel),
                     border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   autofillHints: const [AutofillHints.username],
                   textInputAction: TextInputAction.next,
+                  errorBuilder: (context, error) => AutospacedText(error),
                   validator: (value) =>
                       validateAuthEmail(messages, value ?? ''),
                 ),
@@ -158,12 +160,13 @@ class _SignInScreenState extends State<SignInScreen> {
                   key: const ValueKey('sign-in-password'),
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: messages.authPasswordLabel,
+                    label: AutospacedText(messages.authPasswordLabel),
                     border: const OutlineInputBorder(),
                   ),
                   obscureText: true,
                   autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.done,
+                  errorBuilder: (context, error) => AutospacedText(error),
                   validator: (value) => (value ?? '').isEmpty
                       ? messages.authPasswordRequired
                       : null,
@@ -178,13 +181,13 @@ class _SignInScreenState extends State<SignInScreen> {
                           dimension: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(messages.commonSignIn),
+                      : AutospacedText(messages.commonSignIn),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   key: const ValueKey('sign-in-forgot-password'),
                   onPressed: _openResetPassword,
-                  child: Text(messages.signInForgotPassword),
+                  child: AutospacedText(messages.signInForgotPassword),
                 ),
                 // The address is already typed, so the reader is not asked
                 // for it again on the way to a replacement link.
@@ -193,11 +196,11 @@ class _SignInScreenState extends State<SignInScreen> {
                   OutlinedButton(
                     key: const ValueKey('sign-in-resend-verification'),
                     onPressed: _openResendVerification,
-                    child: Text(messages.authResendVerification),
+                    child: AutospacedText(messages.authResendVerification),
                   ),
                 ],
                 const SizedBox(height: 24),
-                Text(
+                AutospacedText(
                   messages.signInNoAccount,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
@@ -205,7 +208,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 OutlinedButton(
                   key: const ValueKey('sign-in-to-sign-up'),
                   onPressed: () => context.pushInTab(AppRoutes.signUp),
-                  child: Text(messages.signInSignUp),
+                  child: AutospacedText(messages.signInSignUp),
                 ),
               ],
             ),

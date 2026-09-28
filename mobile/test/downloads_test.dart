@@ -21,6 +21,7 @@ import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -323,8 +324,9 @@ void main() {
     );
   }
 
-  String usage(WidgetTester tester) =>
-      tester.widget<Text>(find.byKey(const ValueKey('downloads-usage'))).data!;
+  String usage(WidgetTester tester) => tester
+      .widget<AutospacedText>(find.byKey(const ValueKey('downloads-usage')))
+      .data!;
 
   testWidgets('the library leads to the downloads', (tester) async {
     await pumpApp(tester, initialLocation: AppRoutes.catalog);
@@ -362,7 +364,7 @@ void main() {
       );
       expect(
         tester
-            .widget<Text>(
+            .widget<AutospacedText>(
               find.byKey(ValueKey('downloads-expiry-${_secondEpisode.id}')),
             )
             .data,
@@ -644,7 +646,7 @@ void main() {
       );
       expect(
         tester
-            .widget<Text>(
+            .widget<AutospacedText>(
               find.byKey(ValueKey('downloads-partial-${_freeEpisode.id}')),
             )
             .data,

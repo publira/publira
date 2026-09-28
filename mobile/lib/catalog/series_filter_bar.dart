@@ -3,6 +3,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// The sort, the serialization state, and the free-to-start filter over a
 /// genre's or a tag's series, which are the ones the storefront offers there.
@@ -29,48 +30,56 @@ class SeriesFilterBar extends StatelessWidget {
           DropdownButton<SeriesListOrder>(
             key: const ValueKey('series-filter-order'),
             value: filter.order,
-            hint: Text(messages.seriesFilterOrder),
+            hint: AutospacedText(messages.seriesFilterOrder),
             onChanged: (order) => onChanged(filter.copyWith(order: order)),
             items: [
               DropdownMenuItem(
                 value: SeriesListOrder.newest,
-                child: Text(messages.seriesFilterOrderNewest),
+                child: AutospacedText(messages.seriesFilterOrderNewest),
               ),
               DropdownMenuItem(
                 value: SeriesListOrder.updated,
-                child: Text(messages.seriesFilterOrderUpdated),
+                child: AutospacedText(messages.seriesFilterOrderUpdated),
               ),
               DropdownMenuItem(
                 value: SeriesListOrder.title,
-                child: Text(messages.seriesFilterOrderTitle),
+                child: AutospacedText(messages.seriesFilterOrderTitle),
               ),
             ],
           ),
           DropdownButton<SeriesStatus?>(
             key: const ValueKey('series-filter-status'),
             value: filter.status,
-            hint: Text(messages.seriesFilterStatus),
+            hint: AutospacedText(messages.seriesFilterStatus),
             onChanged: (status) =>
                 onChanged(filter.copyWith(status: () => status)),
             items: [
-              DropdownMenuItem(child: Text(messages.seriesFilterStatusAll)),
+              DropdownMenuItem(
+                child: AutospacedText(messages.seriesFilterStatusAll),
+              ),
               DropdownMenuItem(
                 value: SeriesStatus.ongoing,
-                child: Text(messages.seriesStatusLabel(SeriesStatus.ongoing)),
+                child: AutospacedText(
+                  messages.seriesStatusLabel(SeriesStatus.ongoing),
+                ),
               ),
               DropdownMenuItem(
                 value: SeriesStatus.completed,
-                child: Text(messages.seriesStatusLabel(SeriesStatus.completed)),
+                child: AutospacedText(
+                  messages.seriesStatusLabel(SeriesStatus.completed),
+                ),
               ),
               DropdownMenuItem(
                 value: SeriesStatus.hiatus,
-                child: Text(messages.seriesStatusLabel(SeriesStatus.hiatus)),
+                child: AutospacedText(
+                  messages.seriesStatusLabel(SeriesStatus.hiatus),
+                ),
               ),
             ],
           ),
           FilterChip(
             key: const ValueKey('series-filter-free'),
-            label: Text(messages.seriesFilterFree),
+            label: AutospacedText(messages.seriesFilterFree),
             selected: filter.freeOnly,
             onSelected: (freeOnly) =>
                 onChanged(filter.copyWith(freeOnly: freeOnly)),

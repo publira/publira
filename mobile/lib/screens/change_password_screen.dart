@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Replaces the signed-in account's password through
 /// `AuthService/ChangePassword`.
@@ -63,7 +64,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
     if (failure == null) {
       messenger.showSnackBar(
-        SnackBar(content: Text(messages.changePasswordChanged)),
+        SnackBar(content: AutospacedText(messages.changePasswordChanged)),
       );
       leaveAccountSettings(context);
       return;
@@ -79,7 +80,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.changePasswordTitle)),
+      appBar: AppBar(title: AutospacedText(messages.changePasswordTitle)),
       body: SafeArea(
         child: !signedIn
             ? const SignedOutNotice()
@@ -99,7 +100,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('change-password-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -110,12 +111,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             key: const ValueKey('change-password-current'),
             controller: _currentController,
             decoration: InputDecoration(
-              labelText: messages.changePasswordCurrentLabel,
+              label: AutospacedText(messages.changePasswordCurrentLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => (value ?? '').trim().isEmpty
                 ? messages.authPasswordRequired
                 : null,
@@ -125,12 +127,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             key: const ValueKey('change-password-new'),
             controller: _newController,
             decoration: InputDecoration(
-              labelText: messages.changePasswordNewLabel,
+              label: AutospacedText(messages.changePasswordNewLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) {
               final password = value ?? '';
               final invalid = validateNewPassword(messages, password);
@@ -150,12 +153,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             key: const ValueKey('change-password-confirm'),
             controller: _confirmController,
             decoration: InputDecoration(
-              labelText: messages.changePasswordNewConfirmLabel,
+              label: AutospacedText(messages.changePasswordNewConfirmLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validatePasswordConfirmation(
               messages,
               value ?? '',
@@ -172,7 +176,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.changePasswordSubmit),
+                : AutospacedText(messages.changePasswordSubmit),
           ),
         ],
       ),

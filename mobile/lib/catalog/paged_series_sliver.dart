@@ -4,6 +4,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many rows before the end of a list the page under them is asked for,
 /// the same read-ahead the catalog list uses.
@@ -41,7 +42,7 @@ class PagedSeriesSliver extends StatelessWidget {
         child: Padding(
           key: ValueKey('$sectionKey-empty'),
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Text(emptyMessage),
+          child: AutospacedText(emptyMessage),
         ),
       );
     }

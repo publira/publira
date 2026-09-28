@@ -6,6 +6,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Follows one series or one author, and stops following it.
 ///
@@ -136,7 +137,7 @@ class _FollowControlState extends State<FollowControl> {
       // The reader asked for this one, so it says why it did not happen.
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             key: const ValueKey('follow-failure'),
             _failureCopy(messages, failure),
           ),
@@ -184,13 +185,13 @@ class _FollowControlState extends State<FollowControl> {
         child: OutlinedButton(
           key: ValueKey('follow-sign-in-${widget.targetId}'),
           onPressed: openSignIn,
-          child: Text(messages.followSignIn),
+          child: AutospacedText(messages.followSignIn),
         ),
       );
     }
     final following = _following ?? false;
     final onPressed = _loading || _submitting ? null : _toggle;
-    final label = Text(
+    final label = AutospacedText(
       _submitting
           ? messages.followUpdating
           : following

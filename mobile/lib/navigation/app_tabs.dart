@@ -5,6 +5,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// The destinations of the bottom navigation bar, in the order it shows them.
 ///
@@ -165,7 +166,7 @@ class _AppTabBar extends StatelessWidget {
     Widget notificationsIcon(IconData icon) => Badge(
       key: const ValueKey('tab-notifications-unread'),
       isLabelVisible: unread > 0,
-      label: Text(unreadBadgeLabel(messages, unread)),
+      label: AutospacedText(unreadBadgeLabel(messages, unread)),
       child: Icon(icon),
     );
     return NavigationBar(
