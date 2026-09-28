@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { SitemapEntryKind } from "@publira/api-client/public/catalog";
+import { getLocales } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,7 +9,8 @@ import {
   renderSitemapUrlset,
   respondWithSitemap,
   respondWithSitemapFile,
-  SITEMAP_ENTRIES_PER_FILE,
+  SITEMAP_BYTE_LIMIT,
+  SITEMAP_URL_LIMIT,
   toSitemapEntryItem,
 } from "./sitemap";
 
@@ -44,6 +46,8 @@ vi.mock("./tenant", () => ({
 
 const TENANT_ID = "019d008d-184d-7d31-a78a-89728a746e38";
 const ORIGIN = "https://shop.example.com";
+const ADDRESS = { defaultLocale: "en", origin: ORIGIN } as const;
+const LOCALE_COUNT = getLocales().length;
 
 const entry = (overrides: {
   kind: SitemapEntryKind;
@@ -63,22 +67,34 @@ const seriesEntry = (publicId: string) =>
   entry({ kind: SitemapEntryKind.SERIES, publicId });
 
 /**
- * A catalogue of `pageCount` API pages of `limit` series each, addressed by a
+ * A catalogue of `pageCount` API pages of `limit` entries each, addressed by a
  * token naming the page it points at.
  */
-const answerPages = (pageCount: number) => {
+const answerPages = (
+  pageCount: number,
+  entryAt: (page: number, index: number) => ReturnType<typeof entry> = (
+    page,
+    index
+  ) => seriesEntry(`S${page}-${index}`)
+) => {
   mockListSitemapEntries.mockImplementation(
     ({ limit, token }: { limit: number; token: string }) => {
       const page = token ? Number(token.slice(1)) : 0;
       return {
         entries: Array.from({ length: limit }, (_, index) =>
-          seriesEntry(`S${page}-${index}`)
+          entryAt(page, index)
         ),
         nextToken: page + 1 < pageCount ? `p${page + 1}` : "",
       };
     }
   );
 };
+
+const countOf = (xml: string, needle: string): number =>
+  xml.split(needle).length - 1;
+
+const utf8Bytes = (value: string): number =>
+  new TextEncoder().encode(value).byteLength;
 
 beforeEach(() => {
   mockCacheLife.mockReset();
@@ -145,34 +161,40 @@ describe("toSitemapEntryItem", () => {
 });
 
 describe("renderSitemapUrlset", () => {
-  it("lists each page at its default-locale URL with the other locales beside it", () => {
-    const xml = renderSitemapUrlset(ORIGIN, "en", [
+  it("lists a page once in each locale, each naming every locale as an alternate", () => {
+    const xml = renderSitemapUrlset(ADDRESS, [
       { href: "/series/SERIES000001", lastModifiedAt: "2026-09-28T01:02:03Z" },
-      { href: "/" },
     ]);
 
     expect(xml).toContain(
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
     );
-    expect(xml).toContain(
-      `<url><loc>${ORIGIN}/series/SERIES000001</loc><xhtml:link`
-    );
-    expect(xml).toContain(
-      `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/series/SERIES000001"/>`
-    );
-    expect(xml).toContain(
-      `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`
-    );
-    expect(xml).toContain(
-      `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/><lastmod>2026-09-28T01:02:03Z</lastmod></url>`
-    );
-    expect(xml).toContain(
-      `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja"/>`
-    );
+    expect(countOf(xml, "<url>")).toBe(LOCALE_COUNT);
+    expect(xml).toContain(`<url><loc>${ORIGIN}/series/SERIES000001</loc>`);
+    expect(xml).toContain(`<url><loc>${ORIGIN}/ja/series/SERIES000001</loc>`);
+    expect(
+      countOf(
+        xml,
+        `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`
+      )
+    ).toBe(LOCALE_COUNT);
+    expect(
+      countOf(
+        xml,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/><lastmod>2026-09-28T01:02:03Z</lastmod></url>`
+      )
+    ).toBe(LOCALE_COUNT);
+  });
+
+  it("names the root in each locale", () => {
+    const xml = renderSitemapUrlset(ADDRESS, [{ href: "/" }]);
+
+    expect(xml).toContain(`<url><loc>${ORIGIN}/</loc>`);
+    expect(xml).toContain(`<url><loc>${ORIGIN}/ja</loc>`);
   });
 
   it("escapes what a page slug may hold", () => {
-    const xml = renderSitemapUrlset(ORIGIN, "en", [{ href: "/q&a" }]);
+    const xml = renderSitemapUrlset(ADDRESS, [{ href: "/q&a" }]);
 
     expect(xml).toContain(`<loc>${ORIGIN}/q&amp;a</loc>`);
   });
@@ -206,7 +228,7 @@ describe("getSitemapChunk", () => {
       });
 
     await expect(
-      getSitemapChunk(` ${TENANT_ID} `, "start")
+      getSitemapChunk(` ${TENANT_ID} `, ADDRESS, "start")
     ).resolves.toStrictEqual({
       ok: true,
       value: {
@@ -218,8 +240,8 @@ describe("getSitemapChunk", () => {
       },
     });
     expect(mockListSitemapEntries.mock.calls).toStrictEqual([
-      [{ limit: 1000, tenant: { tenantId: TENANT_ID }, token: "start" }],
-      [{ limit: 1000, tenant: { tenantId: TENANT_ID }, token: "next" }],
+      [{ limit: 500, tenant: { tenantId: TENANT_ID }, token: "start" }],
+      [{ limit: 500, tenant: { tenantId: TENANT_ID }, token: "next" }],
     ]);
     expect(mockCacheTag.mock.calls.map(([tag]) => tag)).toStrictEqual([
       `tenant:${TENANT_ID}:series:list`,
@@ -230,15 +252,61 @@ describe("getSitemapChunk", () => {
     ]);
   });
 
-  it("stops at a full file and hands back where the next one starts", async () => {
-    answerPages(50);
+  it("opens the first file with the catalogue's index pages", async () => {
+    mockListSitemapEntries.mockResolvedValueOnce({
+      entries: [seriesEntry("SERIES000001")],
+      nextToken: "",
+    });
 
-    const chunk = await getSitemapChunk(TENANT_ID, "");
+    const chunk = await getSitemapChunk(TENANT_ID, ADDRESS, "");
 
-    expect(chunk.ok && chunk.value.entries).toHaveLength(
-      SITEMAP_ENTRIES_PER_FILE
+    expect(
+      chunk.ok && chunk.value.entries.map(({ href }) => href)
+    ).toStrictEqual([
+      "/",
+      "/series",
+      "/ranking",
+      "/labels",
+      "/creators",
+      "/genres",
+      "/series/SERIES000001",
+    ]);
+  });
+
+  it("ends a file before it would pass the URL limit", async () => {
+    answerPages(40);
+
+    const chunk = await getSitemapChunk(TENANT_ID, ADDRESS, "p1");
+
+    expect(chunk.ok).toBe(true);
+    const entries = chunk.ok ? chunk.value.entries : [];
+    expect(entries.length * LOCALE_COUNT).toBeLessThanOrEqual(
+      SITEMAP_URL_LIMIT
     );
-    expect(chunk.ok && chunk.value.nextToken).toBe("p49");
+    expect(entries.length * LOCALE_COUNT).toBeGreaterThan(
+      SITEMAP_URL_LIMIT - 500 * LOCALE_COUNT
+    );
+    expect(chunk.ok && chunk.value.nextToken).not.toBe("");
+  });
+
+  it("ends a file before it would pass the byte limit", async () => {
+    // Pages at slugs as long as the column holds, the most bytes an entry takes.
+    answerPages(40, (page, index) =>
+      entry({
+        kind: SitemapEntryKind.PAGE,
+        slug: "/".concat(`${page}-${index}-`.padEnd(254, "p")),
+      })
+    );
+
+    const chunk = await getSitemapChunk(TENANT_ID, ADDRESS, "p1");
+    const entries = chunk.ok ? chunk.value.entries : [];
+    const bytes = utf8Bytes(renderSitemapUrlset(ADDRESS, entries));
+
+    expect(bytes).toBeLessThanOrEqual(SITEMAP_BYTE_LIMIT);
+    expect(entries.length * LOCALE_COUNT).toBeLessThan(
+      SITEMAP_URL_LIMIT - 500 * LOCALE_COUNT
+    );
+    expect(chunk.ok && chunk.value.nextToken).not.toBe("");
   });
 
   it("reports an unavailable API as a failure and keeps it out of the cache", async () => {
@@ -249,9 +317,9 @@ describe("getSitemapChunk", () => {
       new ConnectError("unavailable", Code.Unavailable)
     );
 
-    await expect(getSitemapChunk(TENANT_ID, "")).resolves.toMatchObject({
-      ok: false,
-    });
+    await expect(
+      getSitemapChunk(TENANT_ID, ADDRESS, "")
+    ).resolves.toMatchObject({ ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -278,18 +346,19 @@ describe("respondWithSitemap", () => {
     expect(xml).toContain(`<loc>${ORIGIN}/</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/series</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/series/SERIES000001</loc>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/ja/series/SERIES000001</loc>`);
   });
 
   it("answers an index of files once the sitemap outgrows one", async () => {
-    answerPages(50);
+    answerPages(40);
 
     const response = await respondWithSitemap({ tenant_id: TENANT_ID });
     const xml = await response.text();
 
     expect(xml).toContain("<sitemapindex");
     expect(xml).toContain(`<loc>${ORIGIN}/sitemap/0.xml</loc>`);
-    expect(xml).toContain(`<loc>${ORIGIN}/sitemap/1.xml</loc>`);
-    expect(xml).not.toContain(`${ORIGIN}/sitemap/2.xml`);
+    expect(xml).toContain(`<loc>${ORIGIN}/sitemap/2.xml</loc>`);
+    expect(xml).not.toContain(`${ORIGIN}/sitemap/3.xml`);
   });
 
   it("answers 503 while the API cannot be asked", async () => {
@@ -318,30 +387,30 @@ describe("respondWithSitemap", () => {
 
 describe("respondWithSitemapFile", () => {
   it("answers one file of an indexed sitemap, with the index pages in the first alone", async () => {
-    answerPages(50);
+    answerPages(40);
 
     const firstResponse = await respondWithSitemapFile({
       sitemap_id: "0.xml",
       tenant_id: TENANT_ID,
     });
-    const secondResponse = await respondWithSitemapFile({
-      sitemap_id: "1.xml",
+    const lastResponse = await respondWithSitemapFile({
+      sitemap_id: "2.xml",
       tenant_id: TENANT_ID,
     });
     const first = await firstResponse.text();
-    const second = await secondResponse.text();
+    const last = await lastResponse.text();
 
     expect(first).toContain(`<loc>${ORIGIN}/</loc>`);
     expect(first).toContain(`<loc>${ORIGIN}/series/S0-0</loc>`);
-    expect(second).not.toContain(`<loc>${ORIGIN}/</loc>`);
-    expect(second).toContain(`<loc>${ORIGIN}/series/S49-0</loc>`);
-    expect(second.match(/<url>/gu)).toHaveLength(1000);
+    expect(last).not.toContain(`<loc>${ORIGIN}/</loc>`);
+    expect(last).toContain(`<loc>${ORIGIN}/series/S39-0</loc>`);
+    expect(countOf(last, "<url>")).toBe(500 * LOCALE_COUNT);
   });
 
-  it.each(["2.xml", "one.xml", "1"])(
+  it.each(["3.xml", "one.xml", "1"])(
     "answers 404 for the file %s the sitemap does not have",
     async (sitemapId) => {
-      answerPages(50);
+      answerPages(40);
 
       const response = await respondWithSitemapFile({
         sitemap_id: sitemapId,

@@ -82,7 +82,12 @@ test.describe("web-host robots.txt and sitemap", () => {
     await expect(async () => {
       const after = await request.get(`${WEB_HOST_BASE_URL}/sitemap.xml`);
       expect(after.status()).toBe(200);
-      expect(await after.text()).toContain(episodeLoc);
+      const xml = await after.text();
+      expect(xml).toContain(episodeLoc);
+      // The same episode in another locale is an entry of its own.
+      expect(xml).toContain(
+        `<loc>${SEED_ORIGIN}/ja/series/${seriesId}/episodes/${episodeId}</loc>`
+      );
     }).toPass({ timeout: 30_000 });
   });
 });

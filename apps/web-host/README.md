@@ -76,7 +76,7 @@ The documents that let the tenant's Android and iOS apps open its links, built i
 
 ### `/robots.txt`, `/sitemap.xml`, and `/sitemap/{n}.xml`
 
-The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns, at its default-locale URL with the other locales as alternates. It is one file while it fits and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
+The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns once in each locale, each `<url>` naming every locale as an alternate. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
 
 ### Image delivery (`next/image`)
 
