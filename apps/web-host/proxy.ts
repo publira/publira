@@ -22,21 +22,14 @@ import {
   getPublishedPageSlugFromPathname,
 } from "./lib/published-page-path";
 import { createPublishedPageSlugResolver } from "./lib/published-page-slugs";
+import { GUEST_ONLY_PATHS, MEMBER_PATH_PREFIXES } from "./lib/reader-paths";
 import { createTenantResolver } from "./lib/tenant-resolution";
 import type { ResolvedTenant } from "./lib/tenant-resolution";
 
 const resolveTenantByDomain = createTenantResolver(apiClient);
 const resolvePublishedPageSlugs = createPublishedPageSlugResolver(apiClient);
 
-// `/notifications` is the personal inbox. `/settings/notifications` is the
-// email-preference screen and stays under `/settings`.
-//
-// `/announcements` is deliberately absent: an announcement is the tenant's word
-// to everyone who opens the site, and the banner above every page links there,
-// so a visitor with no session reads it. What a session adds on that page is
-// read state, which the page itself asks for.
-const MEMBER_PATH_PREFIXES = ["/my", "/notifications", "/settings"] as const;
-const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);
+const GUEST_ONLY_PATH_SET: ReadonlySet<string> = new Set(GUEST_ONLY_PATHS);
 
 const isMemberPath = (pathname: string): boolean =>
   MEMBER_PATH_PREFIXES.some(
@@ -216,7 +209,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
   const hasSessionCookie = await hasActivePublicSessionCookie(sessionCookie);
-  const isGuestOnlyPath = GUEST_ONLY_PATHS.has(publicPath);
+  const isGuestOnlyPath = GUEST_ONLY_PATH_SET.has(publicPath);
 
   // The API rejected this session while a page was rendering, where the cookie
   // cannot be touched. Clearing it here is what stops the guest-only rule below

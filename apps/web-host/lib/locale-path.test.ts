@@ -107,6 +107,9 @@ describe("isLocaleExemptPathname", () => {
     expect(isLocaleExemptPathname("/theme.css")).toBe(true);
     expect(isLocaleExemptPathname("/api/v1/revalidate")).toBe(true);
     expect(isLocaleExemptPathname("/.well-known/assetlinks.json")).toBe(true);
+    expect(isLocaleExemptPathname("/robots.txt")).toBe(true);
+    expect(isLocaleExemptPathname("/sitemap.xml")).toBe(true);
+    expect(isLocaleExemptPathname("/sitemap/1.xml")).toBe(true);
     expect(isLocaleExemptPathname("/ja/series")).toBe(false);
     expect(isLocaleExemptPathname("/")).toBe(false);
   });
