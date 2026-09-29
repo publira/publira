@@ -69,7 +69,7 @@ const IntegrationsSignInPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.integrations.sign_in_title" />
           </Suspense>
         </AdminPageTitle>

@@ -2107,7 +2107,6 @@
         "delete_failed": "로고를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."
       },
       "email": {
-        "title": "메일 설정",
         "description": "설정하지 않거나 사용하지 않으면 플랫폼에 설정된 발신자로 메일을 보냅니다.",
         "override": "이 테넌트 전용 SMTP 서버 사용",
         "override_checkbox": "덮어쓰기 사용",
@@ -2336,7 +2335,6 @@
         "empty": "앱에서 판매하는 유료 에피소드가 아직 없습니다."
       },
       "mobile_push": {
-        "title": "Firebase Cloud Messaging",
         "description": "푸시 알림은 이 테넌트의 모바일 앱이 빌드된 Firebase 프로젝트를 통해 전달되므로, 인증 정보는 같은 프로젝트의 서비스 계정 키여야 합니다. 키 파일은 쓰기 전용이며 저장한 뒤에는 다시 표시되지 않습니다.",
         "configured": "모바일 푸시가 켜져 있습니다. 앱 알림은 아래 인증 정보로 전송됩니다.",
         "unconfigured": "모바일 푸시가 꺼져 있습니다. 인증 정보를 저장하기 전까지 모바일 앱은 푸시 알림을 받지 않습니다. 이메일과 앱 내 알림은 계속 전달됩니다.",
@@ -2370,7 +2368,6 @@
         }
       },
       "app_links": {
-        "title": "앱 링크",
         "description": "여기에 앱을 지정하면 이 사이트로 향하는 링크가 테넌트의 앱에서 열립니다. 각 스토어에 실제로 게시된 앱의 식별자를 입력하세요. 게시된 앱과 한 글자라도 다르면 링크는 브라우저에서 열립니다.",
         "android_legend": "Android",
         "android_enabled": "테넌트의 Android 앱에서 링크 열기",
@@ -2399,7 +2396,6 @@
         }
       },
       "sign_in": {
-        "title": "로그인 방법",
         "description": "독자가 이메일 주소뿐 아니라 Apple이나 Google 계정으로도 사이트와 앱에 로그인할 수 있게 합니다. 켜져 있고 필요한 정보가 모두 있는 방법은 저장 직후 사이트에 표시됩니다. Apple 키는 쓰기 전용입니다. 다시 열면 상태와 마스크만 보이며 값 자체는 표시되지 않습니다.",
         "not_set": "미설정",
         "status": {
@@ -2557,19 +2553,19 @@
       "section_error": "브랜딩 설정을 표시할 수 없습니다"
     },
     "integrations": {
-      "email_title": "연동 — 메일",
+      "email_title": "메일",
       "email_description": "이 테넌트의 메일 발송 설정을 관리합니다.",
       "email_error": "메일 설정을 표시할 수 없습니다",
-      "payment_title": "연동 — 결제",
+      "payment_title": "결제",
       "payment_description": "이 테넌트가 독자에게 청구하는 방법을 관리합니다. 웹 결제는 선택한 결제 제공자, 인앱 결제는 App Store와 Google Play입니다.",
       "payment_error": "결제 설정을 표시할 수 없습니다",
-      "mobile_push_title": "연동 — 모바일 푸시",
+      "mobile_push_title": "모바일 푸시",
       "mobile_push_description": "이 테넌트의 모바일 앱에 푸시 알림을 보낼 때 사용하는 Firebase 인증 정보를 관리합니다.",
       "mobile_push_error": "모바일 푸시 설정을 표시할 수 없습니다",
-      "app_links_title": "연동 — 앱 링크",
+      "app_links_title": "앱 링크",
       "app_links_description": "이 테넌트의 링크가 열리는 Android 및 iOS 앱을 관리합니다.",
       "app_links_error": "앱 링크 설정을 표시할 수 없습니다",
-      "sign_in_title": "연동 — 로그인",
+      "sign_in_title": "로그인",
       "sign_in_description": "이 테넌트의 독자가 로그인에 사용할 수 있는 Apple 및 Google 계정을 관리합니다.",
       "sign_in_error": "로그인 방법 설정을 표시할 수 없습니다"
     },

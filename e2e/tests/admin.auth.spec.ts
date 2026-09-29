@@ -182,7 +182,7 @@ test.describe("web-admin auth", () => {
 
     await expect(page).toHaveURL(/\/integrations\/email/u);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Integrations — Email" })
+      page.getByRole("heading", { exact: true, name: "Email" })
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -206,7 +206,7 @@ test.describe("web-admin auth", () => {
     await expect(
       page.getByRole("heading", {
         exact: true,
-        name: "Integrations — Payments",
+        name: "Payments",
       })
     ).toBeVisible();
     // The payment settings, where episodes are sold, and in-app purchase are

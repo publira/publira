@@ -24,7 +24,6 @@ import {
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
-  AdminSectionTitle,
 } from "#components/admin-page";
 import {
   CredentialsEnabled,
@@ -129,11 +128,6 @@ export const TenantSignInSettingsForm = ({
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
-          <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <Message message="admin.settings.sign_in.title" />
-            </Suspense>
-          </AdminSectionTitle>
           <AdminSectionDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.sign_in.description" />

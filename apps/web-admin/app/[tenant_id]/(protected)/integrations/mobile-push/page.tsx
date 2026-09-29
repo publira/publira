@@ -72,7 +72,7 @@ const IntegrationsMobilePushPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.integrations.mobile_push_title" />
           </Suspense>
         </AdminPageTitle>

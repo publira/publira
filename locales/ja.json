@@ -2107,7 +2107,6 @@
         "delete_failed": "ロゴの削除に失敗しました。時間をおいて再試行してください。"
       },
       "email": {
-        "title": "メール設定",
         "description": "未設定または無効時はプラットフォームで設定された送信元で送信されます。",
         "override": "テナントSMTP上書きを有効にする",
         "override_checkbox": "上書きを有効化",
@@ -2336,7 +2335,6 @@
         "empty": "アプリで販売する有料エピソードはまだありません。"
       },
       "mobile_push": {
-        "title": "Firebase Cloud Messaging",
         "description": "プッシュ通知は、このテナントのモバイルアプリがビルドされたFirebaseプロジェクトを通じて届きます。認証情報には同じプロジェクトのサービスアカウントキーを使ってください。キーファイルは書き込み専用で、保存後は表示しません。",
         "configured": "モバイルプッシュは有効です。アプリへの通知は下記の認証情報で送信されます。",
         "unconfigured": "モバイルプッシュは無効です。認証情報を保存するまで、モバイルアプリにはプッシュ通知が届きません。メールとアプリ内の通知は引き続き届きます。",
@@ -2370,7 +2368,6 @@
         }
       },
       "app_links": {
-        "title": "アプリリンク",
         "description": "ここでアプリを指定すると、このサイトへのリンクはテナント自身のアプリで開きます。各ストアで実際に公開しているアプリの識別子を入力してください。公開中のアプリと1文字でも異なると、リンクはブラウザで開きます。",
         "android_legend": "Android",
         "android_enabled": "リンクをテナントのAndroidアプリで開く",
@@ -2399,7 +2396,6 @@
         }
       },
       "sign_in": {
-        "title": "ログイン方法",
         "description": "読者がメールアドレスに加えて、AppleやGoogleのアカウントでサイトとアプリにログインできるようにします。有効で必要な情報がそろった方法は、保存後まもなくサイトに表示されます。Appleのキーは書き込み専用です。再表示時は状態とマスクだけが表示され、値そのものは表示されません。",
         "not_set": "未設定",
         "status": {
@@ -2557,19 +2553,19 @@
       "section_error": "ブランディングの設定を表示できませんでした"
     },
     "integrations": {
-      "email_title": "外部連携 - メール情報",
+      "email_title": "メール情報",
       "email_description": "テナントごとのメール送信設定を管理します。",
       "email_error": "メール設定を表示できませんでした",
-      "payment_title": "外部連携 - 決済",
+      "payment_title": "決済",
       "payment_description": "このテナントが読者に請求する方法を管理します。Webの決済は選んだ決済プロバイダ、アプリ内課金はApp StoreとGoogle Playです。",
       "payment_error": "決済設定を表示できませんでした",
-      "mobile_push_title": "外部連携 - モバイルプッシュ",
+      "mobile_push_title": "モバイルプッシュ",
       "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るためのFirebase認証情報を管理します。",
       "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
-      "app_links_title": "外部連携 - アプリリンク",
+      "app_links_title": "アプリリンク",
       "app_links_description": "このテナントのリンクを開くAndroid / iOSアプリを管理します。",
       "app_links_error": "アプリリンクの設定を表示できませんでした",
-      "sign_in_title": "外部連携 - ログイン",
+      "sign_in_title": "ログイン",
       "sign_in_description": "このテナントの読者がログインに使えるAppleとGoogleのアカウントを管理します。",
       "sign_in_error": "ログイン方法の設定を表示できませんでした"
     },

@@ -71,7 +71,7 @@ const IntegrationsAppLinksPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.integrations.app_links_title" />
           </Suspense>
         </AdminPageTitle>

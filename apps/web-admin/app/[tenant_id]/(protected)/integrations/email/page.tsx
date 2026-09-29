@@ -102,7 +102,7 @@ const IntegrationsEmailPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.integrations.email_title" />
           </Suspense>
         </AdminPageTitle>

@@ -67,7 +67,7 @@ const storedCredentials = (): string =>
 const openMobilePushSettings = async (page: Page): Promise<void> => {
   await page.goto(`${WEB_ADMIN_MOBILE_PUSH_BASE_URL}${MOBILE_PUSH_PATH}`);
   await expect(
-    page.getByRole("heading", { name: "Firebase Cloud Messaging" })
+    page.getByRole("heading", { exact: true, level: 1, name: "Mobile push" })
   ).toBeVisible();
 };
 

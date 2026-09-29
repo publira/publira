@@ -319,9 +319,8 @@ test.describe("web-admin operator settings", () => {
     );
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Integrations — Email" })
+      page.getByRole("heading", { exact: true, level: 1, name: "Email" })
     ).toBeVisible();
-    await expect(page.getByText("Email settings")).toBeVisible();
 
     const fromName = page.getByLabel("Sender name (optional)");
     await expect(fromName).toHaveValue(SEED_FROM_NAME);

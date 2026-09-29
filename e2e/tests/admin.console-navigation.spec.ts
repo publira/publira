@@ -18,11 +18,7 @@ const expectIntegrationOpens = async (
   await sidebarLink(page, label).click();
   await expect(page).toHaveURL(new RegExp(`/integrations/${path}$`, "u"));
   await expect(
-    page.getByRole("heading", {
-      exact: true,
-      level: 1,
-      name: `Integrations — ${label}`,
-    })
+    page.getByRole("heading", { exact: true, level: 1, name: label })
   ).toBeVisible();
   await expect(sidebarLink(page, label)).toHaveAttribute(
     "aria-current",
@@ -81,6 +77,25 @@ test.describe("web-admin console navigation", () => {
       "Audit logs",
       "Settings",
     ]);
+  });
+
+  test("a sidebar taller than the screen scrolls on its own", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 600, width: 1280 });
+    await signInAsSeedAdmin(page, "/integrations/payment");
+
+    const settings = sidebarLink(page, "Settings");
+    await settings.scrollIntoViewIfNeeded();
+    await expect(settings).toBeInViewport();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+    // A long page scrolls under the sidebar without taking it along.
+    await page.mouse.wheel(0, 2000);
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeGreaterThan(0);
+    await expect(settings).toBeInViewport();
   });
 
   test("Author roles and Branding open from the sidebar", async ({ page }) => {

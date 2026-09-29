@@ -21,7 +21,6 @@ import {
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
-  AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { MAX_ANDROID_CERT_FINGERPRINTS } from "#lib/tenant-mobile-app-association";
@@ -63,11 +62,6 @@ export const AppLinksForm = ({
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
-          <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-              <Message message="admin.settings.app_links.title" />
-            </Suspense>
-          </AdminSectionTitle>
           <AdminSectionDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.app_links.description" />

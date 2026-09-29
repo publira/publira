@@ -35,7 +35,6 @@ import {
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
-  AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
@@ -83,11 +82,6 @@ export const TenantEmailSettingsForm = ({
   <AdminSection>
     <AdminSectionHeader>
       <AdminSectionHeading>
-        <AdminSectionTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-            <Message message="admin.settings.email.title" />
-          </Suspense>
-        </AdminSectionTitle>
         <AdminSectionDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.email.description" />
