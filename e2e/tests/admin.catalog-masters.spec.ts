@@ -541,9 +541,9 @@ test.describe("admin catalog masters", () => {
     await expect(row.getByRole("status")).toContainText(
       "A genre with this name already exists."
     );
-    // The field goes back to the name the genre still has: nothing was saved,
-    // and a field left holding a rejected name would read as if it had been.
-    await expect(genreNameField(page, original)).toHaveValue(original);
+    // The field keeps the refused name to be corrected, beside the message
+    // saying why it was not taken.
+    await expect(genreNameField(page, original)).toHaveValue(taken);
 
     const renamed = `${original} (renamed)`;
     createdGenreNames.push(renamed);

@@ -31,9 +31,9 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// The three controls a row can carry are Client Components with a Server
-// Action behind them, so what is checked here is which of them one report
-// offers, not what they do.
+// The three controls a row can carry are forms with a Server Action behind
+// them, so what is checked here is which of them one report offers, not what
+// they do.
 vi.mock("./comment-action-button", () => ({
   CommentActionButton: ({
     action,
@@ -122,6 +122,7 @@ const renderQueue = async (
       reports,
       status: "open",
       statusOptions,
+      tenantId: "TENANT001",
       timeZone: "UTC",
     })
   );

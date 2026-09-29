@@ -180,7 +180,13 @@ const EditGenreFormData = async ({
     );
   }
 
-  return <GenreRenameForm genre={result.genre} key={result.genre.publicId} />;
+  return (
+    <GenreRenameForm
+      genre={result.genre}
+      key={result.genre.publicId}
+      tenantId={tenantId}
+    />
+  );
 };
 
 const EditGenrePage = ({ params, searchParams }: EditGenrePageProps) => (

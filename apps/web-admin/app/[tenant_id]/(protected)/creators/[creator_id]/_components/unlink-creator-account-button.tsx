@@ -19,9 +19,9 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { SettledToast } from "#components/settled-toast";
 
 import { unlinkCreatorAccountAction } from "../../_lib/actions";
-import { CreatorAccountSettledToast } from "./creator-account-settled-toast";
 
 interface UnlinkCreatorAccountButtonProps {
   creatorId: string;
@@ -55,7 +55,7 @@ export const UnlinkCreatorAccountButton = ({
       <input name="creator_id" type="hidden" value={creatorId} />
       <input name="creator_public_id" type="hidden" value={creatorPublicId} />
       <input name="reader_id" type="hidden" value={readerId} />
-      <CreatorAccountSettledToast />
+      <SettledToast />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={<Button size="sm" type="button" variant="outline" />}

@@ -40,10 +40,12 @@ const GenreListBody = async ({
   genres,
   listErrorMessage,
   locale,
+  tenantId,
 }: {
   genres: GenreListItem[];
   listErrorMessage?: string;
   locale: Locale;
+  tenantId: string;
 }) => {
   const t = await getMessagesFor(locale);
   // A failed read still hands an empty array; the empty state next to the
@@ -72,7 +74,7 @@ const GenreListBody = async ({
     );
   }
 
-  return <GenreList genres={genres} />;
+  return <GenreList genres={genres} tenantId={tenantId} />;
 };
 
 export const GenreManager = async ({
@@ -125,6 +127,7 @@ export const GenreManager = async ({
           genres={genres}
           listErrorMessage={listErrorMessage}
           locale={locale}
+          tenantId={tenantId}
         />
       </AdminSection>
     </AdminSections>

@@ -11,10 +11,8 @@ import {
   COMMENT_STATUSES,
 } from "../app/[tenant_id]/(protected)/comments/comment-types";
 import type {
-  CommentActionState,
   CommentHiddenReason,
   CommentItem,
-  CommentReportActionState,
   CommentReportItem,
   CommentReportReason,
   CommentReportResolution,
@@ -400,12 +398,6 @@ export const resolveCommentReport = async (
   }
 };
 
-/** A report decision failure, addressed to the row it came from. */
-export const commentReportActionFailure = (
-  reportId: string,
-  message: string
-): CommentReportActionState => ({ message, ok: false, reportId });
-
 /**
  * Size of the approval queue, for the badge on the navigation entry.
  *
@@ -538,9 +530,3 @@ export const moderateComment = async (
     };
   }
 };
-
-/** A moderation failure, addressed to the row it came from. */
-export const commentActionFailure = (
-  commentId: string,
-  message: string
-): CommentActionState => ({ commentId, message, ok: false });

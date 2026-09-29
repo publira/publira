@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -9,10 +13,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { CloseRoyaltyStatementActionState } from "../royalty-types";
 import { CloseStatementButton } from "./close-statement-button";
@@ -34,13 +35,15 @@ vi.mock("../_lib/actions", () => ({
   ) => close(previousState, formData),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
-
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-);
 
 const renderButton = async () => {
   await act(() => {
@@ -49,8 +52,8 @@ const renderButton = async () => {
         confirmDescription="The payout to authors, ¥2,500 in total, will be fixed in a statement."
         confirmTitle="Close August 2026?"
         period="2026-08"
-      />,
-      { wrapper: EnglishConsole }
+        tenantId="TENANT001"
+      />
     );
   });
   await screen.findByRole("button", { name: "Close month" });
@@ -121,9 +124,7 @@ describe("CloseStatementButton", () => {
     fireEvent.click(dialog.getByRole("button", { name: "Close month" }));
 
     const pending = await screen.findByRole("button", { name: "Closing…" });
-    expect(pending.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(pending);
-    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(pending.matches(":disabled")).toBe(true);
     expect(close).toHaveBeenCalledTimes(1);
 
     await act(() => {

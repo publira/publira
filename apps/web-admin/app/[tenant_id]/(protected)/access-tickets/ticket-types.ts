@@ -40,5 +40,4 @@ export type IssueAccessTicketActionState = {
 export type RevokeAccessTicketActionState = {
   message: string;
   ok: boolean;
-  ticketId?: string;
 } | null;

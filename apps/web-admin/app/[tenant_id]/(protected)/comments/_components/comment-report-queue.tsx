@@ -77,6 +77,7 @@ type CommentReportQueueProps = CursorPageHrefs & {
   /** The state being shown, so the filter marks the link that is current. */
   status: string;
   statusOptions: readonly CommentReportStatusOption[];
+  tenantId: string;
   timeZone: string;
 };
 
@@ -132,16 +133,34 @@ const CommentReportStatusFilter = ({
  * have to find the same comment on a second screen to act on it. Which ones
  * appear follows from the comment's state, exactly as it does there.
  */
-const ReportedCommentActions = ({ report }: { report: CommentReportItem }) => (
+const ReportedCommentActions = ({
+  report,
+  tenantId,
+}: {
+  report: CommentReportItem;
+  tenantId: string;
+}) => (
   <div className="grid gap-2">
     {report.comment.status === "hidden" ? (
-      <CommentActionButton action="restore" commentId={report.comment.id} />
+      <CommentActionButton
+        action="restore"
+        commentId={report.comment.id}
+        tenantId={tenantId}
+      />
     ) : null}
     {report.comment.status === "pending" ||
     report.comment.status === "published" ? (
-      <CommentReasonDialog action="hide" commentId={report.comment.id} />
+      <CommentReasonDialog
+        action="hide"
+        commentId={report.comment.id}
+        tenantId={tenantId}
+      />
     ) : null}
-    <CommentReasonDialog action="purge" commentId={report.comment.id} />
+    <CommentReasonDialog
+      action="purge"
+      commentId={report.comment.id}
+      tenantId={tenantId}
+    />
   </div>
 );
 
@@ -272,6 +291,7 @@ const CommentReportListBody = ({
   listErrorMessage,
   locale,
   reports,
+  tenantId,
   timeZone,
 }: {
   hasPageLinks: boolean;
@@ -279,6 +299,7 @@ const CommentReportListBody = ({
   listErrorMessage?: string;
   locale: Locale;
   reports: CommentReportItem[];
+  tenantId: string;
   timeZone: string;
 }) => {
   if (listErrorMessage) {
@@ -379,10 +400,12 @@ const CommentReportListBody = ({
                   <CommentReportDecisionButton
                     reportId={report.reportId}
                     resolution="resolved"
+                    tenantId={tenantId}
                   />
                   <CommentReportDecisionButton
                     reportId={report.reportId}
                     resolution="rejected"
+                    tenantId={tenantId}
                   />
                 </div>
               ) : (
@@ -394,7 +417,7 @@ const CommentReportListBody = ({
               )}
             </TableCell>
             <TableCell>
-              <ReportedCommentActions report={report} />
+              <ReportedCommentActions report={report} tenantId={tenantId} />
             </TableCell>
           </TableRow>
         ))}
@@ -412,6 +435,7 @@ export const CommentReportQueue = async ({
   reports,
   status,
   statusOptions,
+  tenantId,
   timeZone,
 }: CommentReportQueueProps) => {
   const t = await getMessagesFor(locale);
@@ -451,6 +475,7 @@ export const CommentReportQueue = async ({
         listErrorMessage={listErrorMessage}
         locale={locale}
         reports={reports}
+        tenantId={tenantId}
         timeZone={timeZone}
       />
 

@@ -90,6 +90,7 @@ describe("OpenMonth", () => {
         lines={lines}
         locale="en"
         period="2026-08"
+        tenantId="TENANT001"
         timeZone="Asia/Tokyo"
         totals={totals}
       />
@@ -113,6 +114,7 @@ describe("OpenMonth", () => {
         lines={lines}
         locale="en"
         period="2026-08"
+        tenantId="TENANT001"
         timeZone="Asia/Tokyo"
         totals={totals}
       />
@@ -135,6 +137,7 @@ describe("OpenMonth", () => {
         lines={lines}
         locale="en"
         period="2026-08"
+        tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
       />
@@ -161,6 +164,7 @@ describe("OpenMonth", () => {
         lines={lines}
         locale="en"
         period="2026-08"
+        tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
       />
@@ -183,6 +187,7 @@ describe("OpenMonth", () => {
         lines={lines}
         locale="en"
         period="2026-08"
+        tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
       />
@@ -201,6 +206,7 @@ describe("OpenMonth", () => {
         lines={[]}
         locale="en"
         period="2026-09"
+        tenantId="TENANT001"
         timeZone="UTC"
         totals={{ gross: 0, payout: 0, refunded: 0 }}
       />

@@ -158,6 +158,7 @@ const CommentsContent = async ({
         reports={reportResult.reports}
         status={filters.reportStatus}
         statusOptions={reportStatusOptions(filters)}
+        tenantId={tenantId}
         timeZone={timeZone}
       />
       <CommentFilterForm
@@ -180,6 +181,7 @@ const CommentsContent = async ({
             ? commentScreenQuery(filters, { token: listResult.previousToken })
             : undefined
         }
+        tenantId={tenantId}
         timeZone={timeZone}
       />
     </AdminSections>

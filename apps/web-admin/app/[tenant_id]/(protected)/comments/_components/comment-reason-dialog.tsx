@@ -1,6 +1,6 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
 } from "@publira/ui-components/action-form";
@@ -19,16 +19,14 @@ import {
   DialogViewport,
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { Textarea } from "@publira/ui-components/textarea";
-import { useToastManager } from "@publira/ui-components/toast";
-import { useActionState, useRef } from "react";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useId } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { SettledToast } from "#components/settled-toast";
 
 import { hideCommentAction, purgeCommentAction } from "../_lib/actions";
-import type { CommentActionState } from "../comment-types";
+import { CommentReasonInput } from "./comment-reason-input";
 
 /**
  * The two moderation actions that take a written reason.
@@ -43,155 +41,137 @@ export type ReasonCommentAction = "hide" | "purge";
 interface CommentReasonDialogProps {
   action: ReasonCommentAction;
   commentId: string;
+  tenantId: string;
 }
-
-/** What the toast says once the removal has landed. */
-const ReasonActionDone = ({ action }: { action: ReasonCommentAction }) =>
-  action === "hide" ? (
-    <ClientMessage message="admin.comments.hidden" />
-  ) : (
-    <ClientMessage message="admin.comments.purged" />
-  );
 
 export const CommentReasonDialog = ({
   action,
   commentId,
+  tenantId,
 }: CommentReasonDialogProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const { add } = useToastManager();
-  // A public id is unique across the tenant, so it is enough to keep the two
-  // dialogs of one row — and every other row on the screen — apart. `useId` is
-  // avoided on purpose: its value carries characters an `id` reference does not
-  // need to be tested against.
-  const formId = `comment-${action}-${commentId}`;
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: CommentActionState,
-      formData: FormData
-    ): Promise<CommentActionState> => {
-      const nextState = await (action === "hide"
-        ? hideCommentAction(previousState, formData)
-        : purgeCommentAction(previousState, formData));
-      if (nextState?.ok) {
-        add({ title: <ReasonActionDone action={action} />, type: "success" });
-      }
-      return nextState;
-    },
-    null
-  );
+  // The comments screen shows a reported comment in the report queue and in
+  // the list, so the comment's id alone would name two forms.
+  const formId = useId();
 
   return (
-    // The form wraps the dialog rather than sitting in its popup, and the reason
-    // field joins it through `form=`, so confirming submits a form that is
-    // still mounted while the popup is being torn down. Keeping the fields
-    // inside the popup instead would race the unmount for the submit.
-    <form action={formAction} className="grid gap-1" id={formId} ref={formRef}>
+    // The form wraps the dialog rather than sitting in its popup, and the
+    // reason field joins it through `form=`, so confirming submits a form that
+    // is still mounted while the popup is being torn down.
+    <ActionForm
+      action={action === "hide" ? hideCommentAction : purgeCommentAction}
+      className="grid gap-1"
+      id={formId}
+      showSuccess={false}
+    >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="comment_id" type="hidden" value={commentId} />
-      <Dialog>
-        <DialogTrigger
-          render={
-            <Button
-              disabled={isPending}
-              size="sm"
-              type="button"
-              variant={action === "purge" ? "destructive" : "outline"}
-            >
+      <SettledToast />
+      <ActionFormFieldset className="grid">
+        <Dialog>
+          <DialogTrigger
+            render={
+              <Button
+                size="sm"
+                type="button"
+                variant={action === "purge" ? "destructive" : "outline"}
+              />
+            }
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               {action === "hide" ? (
                 <>
                   <ActionFormIdle>
-                    <ClientMessage message="admin.comments.hide" />
+                    <Message message="admin.comments.hide" />
                   </ActionFormIdle>
                   <ActionFormPending>
-                    <ClientMessage message="admin.comments.hiding" />
+                    <Message message="admin.comments.hiding" />
                   </ActionFormPending>
                 </>
               ) : (
                 <>
                   <ActionFormIdle>
-                    <ClientMessage message="admin.comments.purge" />
+                    <Message message="admin.comments.purge" />
                   </ActionFormIdle>
                   <ActionFormPending>
-                    <ClientMessage message="admin.comments.purging" />
+                    <Message message="admin.comments.purging" />
                   </ActionFormPending>
                 </>
               )}
-            </Button>
-          }
-        />
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogViewport>
-            <DialogPopup>
-              <DialogHeader>
-                <DialogTitle className="text-lg font-semibold">
-                  {action === "hide" ? (
-                    <ClientMessage message="admin.comments.hide_confirm_title" />
-                  ) : (
-                    <ClientMessage message="admin.comments.purge_confirm_title" />
-                  )}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground">
-                  {action === "hide" ? (
-                    <ClientMessage message="admin.comments.hide_confirm_description" />
-                  ) : (
-                    <ClientMessage message="admin.comments.purge_confirm_description" />
-                  )}
-                </DialogDescription>
-              </DialogHeader>
-
-              <Field className="mt-4">
-                <FieldLabel required={action === "purge"}>
-                  {action === "hide" ? (
-                    <ClientMessage message="admin.comments.reason_optional" />
-                  ) : (
-                    <ClientMessage message="admin.comments.reason_required" />
-                  )}
-                </FieldLabel>
-                <FieldContent>
-                  <Textarea
-                    form={formId}
-                    name="reason"
-                    placeholder={t("admin.comments.reason_placeholder")}
-                  />
-                </FieldContent>
-              </Field>
-
-              <DialogFooter>
-                <DialogClose
-                  render={
-                    <Button type="button" variant="outline">
-                      {t("admin.common.cancel")}
-                    </Button>
-                  }
-                />
-                <DialogClose
-                  onClick={() => {
-                    formRef.current?.requestSubmit();
-                  }}
-                  render={
-                    <Button
-                      type="button"
-                      variant={action === "purge" ? "destructive" : "default"}
-                    >
+            </Suspense>
+          </DialogTrigger>
+          <DialogPortal>
+            <DialogBackdrop />
+            <DialogViewport>
+              <DialogPopup>
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-semibold">
+                    <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                       {action === "hide" ? (
-                        <ClientMessage message="admin.comments.hide_confirm_action" />
+                        <Message message="admin.comments.hide_confirm_title" />
                       ) : (
-                        <ClientMessage message="admin.comments.purge_confirm_action" />
+                        <Message message="admin.comments.purge_confirm_title" />
                       )}
-                    </Button>
-                  }
-                />
-              </DialogFooter>
-            </DialogPopup>
-          </DialogViewport>
-        </DialogPortal>
-      </Dialog>
-      {state && !state.ok && state.commentId === commentId ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
+                    </Suspense>
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                      {action === "hide" ? (
+                        <Message message="admin.comments.hide_confirm_description" />
+                      ) : (
+                        <Message message="admin.comments.purge_confirm_description" />
+                      )}
+                    </Suspense>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <Field className="mt-4">
+                  <FieldLabel required={action === "purge"}>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      {action === "hide" ? (
+                        <Message message="admin.comments.reason_optional" />
+                      ) : (
+                        <Message message="admin.comments.reason_required" />
+                      )}
+                    </Suspense>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                      <CommentReasonInput formId={formId} />
+                    </Suspense>
+                  </FieldContent>
+                </Field>
+
+                <DialogFooter>
+                  <DialogClose
+                    render={<Button type="button" variant="outline" />}
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="admin.common.cancel" />
+                    </Suspense>
+                  </DialogClose>
+                  <DialogClose
+                    form={formId}
+                    render={
+                      <Button
+                        variant={action === "purge" ? "destructive" : "default"}
+                      />
+                    }
+                    type="submit"
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      {action === "hide" ? (
+                        <Message message="admin.comments.hide_confirm_action" />
+                      ) : (
+                        <Message message="admin.comments.purge_confirm_action" />
+                      )}
+                    </Suspense>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogPopup>
+            </DialogViewport>
+          </DialogPortal>
+        </Dialog>
+      </ActionFormFieldset>
+    </ActionForm>
   );
 };

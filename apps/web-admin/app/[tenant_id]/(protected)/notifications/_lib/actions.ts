@@ -1,5 +1,6 @@
 "use server";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -14,8 +15,6 @@ import {
   notificationsCacheTag,
 } from "#lib/notification";
 
-import type { MarkNotificationActionState } from "../notification-types";
-
 const tenantIdSchema = z.string().trim().min(1);
 
 const markOneSchema = z.object({
@@ -28,9 +27,9 @@ const markAllSchema = z.object({
 });
 
 export const markNotificationAsReadAction = async (
-  _prevState: MarkNotificationActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<MarkNotificationActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
@@ -58,13 +57,15 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  return { ok: true };
+  // The control unmounts once the item is read, so a success message would
+  // never reach the screen.
+  return { message: "", ok: true };
 };
 
 export const markAllNotificationsAsReadAction = async (
-  _prevState: MarkNotificationActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<MarkNotificationActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
@@ -91,5 +92,5 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  return { ok: true };
+  return { message: "", ok: true };
 };

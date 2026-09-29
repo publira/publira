@@ -1,6 +1,6 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
 } from "@publira/ui-components/action-form";
@@ -16,21 +16,21 @@ import {
   ConfirmDialogTitle,
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useRef } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { ClientMessage } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
 
 import { closeRoyaltyStatementAction } from "../_lib/actions";
 
 interface CloseStatementButtonProps {
-  period: string;
-  /** Names the month, already worded for the reader. */
-  confirmTitle: ReactNode;
   /** States the total payout the close fixes, already worded for the reader. */
   confirmDescription: ReactNode;
+  /** Names the month, already worded for the reader. */
+  confirmTitle: ReactNode;
+  period: string;
+  tenantId: string;
 }
 
 /**
@@ -43,57 +43,52 @@ export const CloseStatementButton = ({
   confirmDescription,
   confirmTitle,
   period,
+  tenantId,
 }: CloseStatementButtonProps) => {
-  const tenantId = useTenantId();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(
-    closeRoyaltyStatementAction,
-    null
-  );
+  const formId = `close-royalty-statement-${period}`;
 
   return (
-    <form
-      action={formAction}
+    <ActionForm
+      action={closeRoyaltyStatementAction}
       className="grid justify-items-start gap-2"
-      ref={formRef}
+      id={formId}
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="period" type="hidden" value={period} />
-      <ConfirmDialog>
-        <ConfirmDialogTrigger
-          render={<Button disabled={isPending} type="button" />}
-        >
-          <ActionFormIdle>
-            <ClientMessage message="admin.royalties.close.button" />
-          </ActionFormIdle>
-          <ActionFormPending>
-            <ClientMessage message="admin.royalties.close.closing" />
-          </ActionFormPending>
-        </ConfirmDialogTrigger>
-        <ConfirmDialogContent>
-          <ConfirmDialogHeader>
-            <ConfirmDialogTitle>{confirmTitle}</ConfirmDialogTitle>
-            <ConfirmDialogDescription>
-              {confirmDescription}
-            </ConfirmDialogDescription>
-          </ConfirmDialogHeader>
-          <ConfirmDialogFooter>
-            <ConfirmDialogCancel>
-              <ClientMessage message="admin.common.cancel" />
-            </ConfirmDialogCancel>
-            <ConfirmDialogAction
-              onClick={() => {
-                formRef.current?.requestSubmit();
-              }}
-            >
-              <ClientMessage message="admin.royalties.close.confirm_action" />
-            </ConfirmDialogAction>
-          </ConfirmDialogFooter>
-        </ConfirmDialogContent>
-      </ConfirmDialog>
-      {state ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
+      <ActionFormFieldset>
+        <ConfirmDialog>
+          <ConfirmDialogTrigger render={<Button type="button" />}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <ActionFormIdle>
+                <Message message="admin.royalties.close.button" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Message message="admin.royalties.close.closing" />
+              </ActionFormPending>
+            </Suspense>
+          </ConfirmDialogTrigger>
+          <ConfirmDialogContent>
+            <ConfirmDialogHeader>
+              <ConfirmDialogTitle>{confirmTitle}</ConfirmDialogTitle>
+              <ConfirmDialogDescription>
+                {confirmDescription}
+              </ConfirmDialogDescription>
+            </ConfirmDialogHeader>
+            <ConfirmDialogFooter>
+              <ConfirmDialogCancel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.common.cancel" />
+                </Suspense>
+              </ConfirmDialogCancel>
+              <ConfirmDialogAction form={formId}>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.royalties.close.confirm_action" />
+                </Suspense>
+              </ConfirmDialogAction>
+            </ConfirmDialogFooter>
+          </ConfirmDialogContent>
+        </ConfirmDialog>
+      </ActionFormFieldset>
+    </ActionForm>
   );
 };

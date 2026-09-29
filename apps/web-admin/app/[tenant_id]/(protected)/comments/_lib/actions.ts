@@ -1,6 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { refresh } from "next/cache";
@@ -8,12 +9,7 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
-import {
-  commentActionFailure,
-  commentReportActionFailure,
-  moderateComment,
-  resolveCommentReport,
-} from "#lib/comment";
+import { moderateComment, resolveCommentReport } from "#lib/comment";
 import type { CommentModerationAction } from "#lib/comment";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -22,12 +18,10 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 
 import { COMMENT_REPORT_RESOLUTIONS } from "../comment-types";
-import type {
-  CommentActionState,
-  CommentReportActionState,
-} from "../comment-types";
+import type { CommentReportResolution } from "../comment-types";
 
 /**
  * The reason is stored on the audit log row, which is where a tenant reads
@@ -52,6 +46,27 @@ const moderationFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
+/** What the toast of a moderation that went through says. */
+const moderatedMessage = (
+  t: AdminMessageAccessor,
+  action: CommentModerationAction
+): string => {
+  switch (action) {
+    case "approve": {
+      return t("admin.comments.approved");
+    }
+    case "hide": {
+      return t("admin.comments.hidden");
+    }
+    case "purge": {
+      return t("admin.comments.purged");
+    }
+    default: {
+      return t("admin.comments.restored");
+    }
+  }
+};
+
 /**
  * The body every moderation Action shares: authenticate the submission, read
  * the same three fields out of it, call the RPC the action names, and refresh
@@ -65,26 +80,24 @@ const moderate = async (
   action: CommentModerationAction,
   formData: FormData,
   options: { requireReason?: boolean } = {}
-): Promise<CommentActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const input = toFormDataInput(formData, moderationFormFields);
-  const commentId =
-    typeof input.commentId === "string" ? input.commentId.trim() : "";
-  const schema = await moderationSchema(locale);
-  const parsed = schema.safeParse(input);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    moderationSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, moderationFormFields)
+  );
   if (!parsed.success) {
-    return commentActionFailure(
-      commentId,
-      toFormErrorMessage(parsed.error, { locale })
-    );
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
   if (options.requireReason === true && parsed.data.reason === "") {
-    return commentActionFailure(
-      parsed.data.commentId,
-      t("admin.comments.validation.reason_required")
-    );
+    return {
+      message: t("admin.comments.validation.reason_required"),
+      ok: false,
+    };
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -99,38 +112,38 @@ const moderate = async (
     )
   );
   if (!result.ok) {
-    return commentActionFailure(parsed.data.commentId, result.message);
+    return { message: result.message, ok: false };
   }
 
   // Both reads are uncached (see `lib/comment.ts`), so there is no tag to
   // drop: the route is re-rendered instead, which is also what brings the
   // layout's queue badge back with the new count.
   refresh();
-  return { commentId: parsed.data.commentId, message: "", ok: true };
+  return { message: moderatedMessage(t, action), ok: true };
 };
 
 // Every exported Action is written `async` rather than as an arrow returning
 // the promise `moderate` already produces: Next.js rejects an exported Server
 // Action that is not an async function, at build time.
 export const approveCommentAction = async (
-  _prevState: CommentActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CommentActionState> => await moderate("approve", formData);
+): Promise<FormActionState> => await moderate("approve", formData);
 
 export const hideCommentAction = async (
-  _prevState: CommentActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CommentActionState> => await moderate("hide", formData);
+): Promise<FormActionState> => await moderate("hide", formData);
 
 export const restoreCommentAction = async (
-  _prevState: CommentActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CommentActionState> => await moderate("restore", formData);
+): Promise<FormActionState> => await moderate("restore", formData);
 
 export const purgeCommentAction = async (
-  _prevState: CommentActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CommentActionState> =>
+): Promise<FormActionState> =>
   await moderate("purge", formData, { requireReason: true });
 
 /**
@@ -159,22 +172,27 @@ const reportDecisionFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
+/** What the toast of a decision that went through says. */
+const decidedMessage = (
+  t: AdminMessageAccessor,
+  resolution: CommentReportResolution
+): string =>
+  resolution === "resolved"
+    ? t("admin.comments.reports.resolved")
+    : t("admin.comments.reports.rejected");
+
 export const resolveCommentReportAction = async (
-  _prevState: CommentReportActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CommentReportActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const input = toFormDataInput(formData, reportDecisionFormFields);
-  const reportId =
-    typeof input.reportId === "string" ? input.reportId.trim() : "";
   const schema = await reportDecisionSchema(locale);
-  const parsed = schema.safeParse(input);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, reportDecisionFormFields)
+  );
   if (!parsed.success) {
-    return commentReportActionFailure(
-      reportId,
-      toFormErrorMessage(parsed.error, { locale })
-    );
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -189,12 +207,13 @@ export const resolveCommentReportAction = async (
     )
   );
   if (!result.ok) {
-    return commentReportActionFailure(parsed.data.reportId, result.message);
+    return { message: result.message, ok: false };
   }
 
   // The queue read is uncached like the comment list, so there is no tag to
   // drop: re-rendering the route is what brings the decided report back in the
   // state it is now in.
   refresh();
-  return { message: "", ok: true, reportId: parsed.data.reportId };
+  const t = await getMessagesFor(locale);
+  return { message: decidedMessage(t, parsed.data.resolution), ok: true };
 };

@@ -120,6 +120,7 @@ const InvitationActions = ({
       <InvitationCancelButton
         email={invitation.email}
         invitationId={invitation.id}
+        tenantId={tenantId}
       />
     </div>
   ) : null;

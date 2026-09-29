@@ -43,8 +43,8 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Both controls are Client Components carrying a Server Action, so what is
-// checked here is which of them a row offers, not what they do.
+// Both controls are forms carrying a Server Action, so what is checked here is
+// which of them a row offers, not what they do.
 vi.mock("./comment-action-button", () => ({
   CommentActionButton: ({
     action,
@@ -100,6 +100,7 @@ describe("CommentManager", () => {
         comments: [],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -114,6 +115,7 @@ describe("CommentManager", () => {
         listErrorMessage: "The API is unavailable.",
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -129,6 +131,7 @@ describe("CommentManager", () => {
         comments: [comment("pending")],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -158,6 +161,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -187,6 +191,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -224,6 +229,7 @@ describe("CommentManager", () => {
           ],
           locale: "en",
           pageSize: 20,
+          tenantId: "TENANT001",
           timeZone: "UTC",
         })
       );
@@ -240,6 +246,7 @@ describe("CommentManager", () => {
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -255,6 +262,7 @@ describe("CommentManager", () => {
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );
@@ -276,6 +284,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "UTC",
       })
     );

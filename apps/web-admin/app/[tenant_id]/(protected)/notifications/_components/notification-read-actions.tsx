@@ -1,19 +1,44 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 import {
   markAllNotificationsAsReadAction,
   markNotificationAsReadAction,
 } from "../_lib/actions";
+
+/**
+ * The submit control of one row, named after the notification it marks. An
+ * `aria-label` cannot be a node, so this one control resolves the catalog.
+ */
+const MarkNotificationAsReadSubmit = async ({ label }: { label: string }) => {
+  const t = await getMessages();
+
+  return (
+    <ActionFormSubmit
+      aria-label={t("admin.notifications.mark_read_aria", { label })}
+      size="sm"
+      variant="outline"
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <ActionFormIdle>
+          <Message message="admin.notifications.mark_read" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Message message="admin.notifications.updating" />
+        </ActionFormPending>
+      </Suspense>
+    </ActionFormSubmit>
+  );
+};
 
 export const MarkNotificationAsReadButton = ({
   label,
@@ -23,64 +48,40 @@ export const MarkNotificationAsReadButton = ({
   label: string;
   notificationId: string;
   tenantId: string;
-}) => {
-  const t = useClientMessages();
-  const [state, formAction, isPending] = useActionState(
-    markNotificationAsReadAction,
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-1">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="notification_id" type="hidden" value={notificationId} />
-      <Button
-        aria-label={t("admin.notifications.mark_read_aria", {
-          label,
-        })}
-        disabled={isPending}
-        size="sm"
-        type="submit"
-        variant="outline"
-      >
-        <ActionFormIdle>
-          <ClientMessage message="admin.notifications.mark_read" />
-        </ActionFormIdle>
-        <ActionFormPending>
-          <ClientMessage message="admin.notifications.updating" />
-        </ActionFormPending>
-      </Button>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+}) => (
+  <ActionForm
+    action={markNotificationAsReadAction}
+    className="grid justify-items-end gap-1"
+    showSuccess={false}
+  >
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <input name="notification_id" type="hidden" value={notificationId} />
+    <Suspense fallback={<Skeleton className="h-8 w-24" />}>
+      <MarkNotificationAsReadSubmit label={label} />
+    </Suspense>
+  </ActionForm>
+);
 
 export const MarkAllNotificationsAsReadButton = ({
   tenantId,
 }: {
   tenantId: string;
-}) => {
-  const [state, formAction, isPending] = useActionState(
-    markAllNotificationsAsReadAction,
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-1">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <Button disabled={isPending} size="sm" type="submit" variant="outline">
+}) => (
+  <ActionForm
+    action={markAllNotificationsAsReadAction}
+    className="grid justify-items-end gap-1"
+    showSuccess={false}
+  >
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <ActionFormSubmit size="sm" variant="outline">
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <ActionFormIdle>
-          <ClientMessage message="admin.notifications.mark_all_read" />
+          <Message message="admin.notifications.mark_all_read" />
         </ActionFormIdle>
         <ActionFormPending>
-          <ClientMessage message="admin.notifications.updating" />
+          <Message message="admin.notifications.updating" />
         </ActionFormPending>
-      </Button>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+      </Suspense>
+    </ActionFormSubmit>
+  </ActionForm>
+);

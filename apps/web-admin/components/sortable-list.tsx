@@ -172,6 +172,67 @@ export const SortableList = ({
   );
 };
 
+/** Where {@link SortableRows} put a row, and whether the list is closed. */
+interface SortableRowContextValue {
+  disabled: boolean;
+  index: number;
+}
+
+const SortableRowContext = createContext<SortableRowContextValue | null>(null);
+
+const SortableRowSlot = ({
+  children,
+  disabled,
+  index,
+}: SortableRowContextValue & { children: ReactNode }) => {
+  const row = useMemo(() => ({ disabled, index }), [disabled, index]);
+
+  return <SortableRowContext value={row}>{children}</SortableRowContext>;
+};
+
+/** One row a Server Component composed: a {@link SortableItem} left without an `index`. */
+export interface SortableRow {
+  content: ReactNode;
+  id: string;
+}
+
+interface SortableRowsProps {
+  /** Closes every row, such as while a reorder is being written. */
+  disabled?: boolean;
+  /** The ids of the rows in the order the list shows them. */
+  order: readonly string[];
+  rows: readonly SortableRow[];
+}
+
+/**
+ * Rows a Server Component composed, put in the order `order` names. A list
+ * whose rows hold forms of their own renders them on the server and keeps only
+ * the order it moves them into here, as the optimistic state of its reorder.
+ */
+export const SortableRows = ({
+  disabled = false,
+  order,
+  rows,
+}: SortableRowsProps) => {
+  const contentById = new Map(rows.map((row) => [row.id, row.content]));
+
+  return order.map((id, index) => (
+    <SortableRowSlot disabled={disabled} index={index} key={id}>
+      {contentById.get(id)}
+    </SortableRowSlot>
+  ));
+};
+
+/** The 0-based position of the row {@link SortableRows} put this inside. */
+export const useSortableRowIndex = (): number => {
+  const row = useContext(SortableRowContext);
+  if (row === null) {
+    throw new Error("SortableRows is required.");
+  }
+
+  return row.index;
+};
+
 interface SortableItemProps {
   /**
    * The groups this row takes a drop from, and the group it belongs to. Left
@@ -180,9 +241,11 @@ interface SortableItemProps {
   accept?: string;
   children: ReactNode;
   className?: string;
+  /** Left out inside {@link SortableRows}, which closes its rows itself. */
   disabled?: boolean;
   id: string;
-  index: number;
+  /** Left out inside {@link SortableRows}, which places its rows itself. */
+  index?: number;
   /**
    * The row's name as the screen shows it, which a screen reader hears when
    * the row is picked up, moved, and dropped.
@@ -199,12 +262,18 @@ export const SortableItem = ({
   accept,
   children,
   className,
-  disabled = false,
+  disabled: ownDisabled,
   id,
-  index,
+  index: ownIndex,
   label,
   type,
 }: SortableItemProps) => {
+  const row = useContext(SortableRowContext);
+  const index = ownIndex ?? row?.index;
+  if (index === undefined) {
+    throw new Error("SortableItem needs an index outside SortableRows.");
+  }
+  const disabled = ownDisabled ?? row?.disabled ?? false;
   const { handleRef, isDragging, ref } = useSortable({
     accept,
     data: { label },
