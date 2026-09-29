@@ -158,6 +158,14 @@ void main() {
         field('ios', 'bundleIdentifier')['pattern'],
         iosBundleIdentifierPattern,
       );
+      final ios =
+          (schema['properties']! as Map<String, Object?>)['ios']!
+              as Map<String, Object?>;
+      expect(
+        ((ios['properties']! as Map<String, Object?>)['googleSignInClientId']!
+            as Map<String, Object?>)['pattern'],
+        googleClientIdPattern,
+      );
     });
   });
 
@@ -179,6 +187,20 @@ void main() {
 
       expect(manifest.androidApplicationId, 'com.example.reader');
       expect(manifest.iosBundleIdentifier, 'com.example.Reader-iOS');
+    });
+
+    test('leaves the Google iOS client out unless it is named', () {
+      expect(
+        AppManifest.parse(_valid, source: 'app.yaml').iosGoogleSignInClientId,
+        isNull,
+      );
+      expect(
+        AppManifest.parse(
+          '$_valid  googleSignInClientId: 1234-abc.apps.googleusercontent.com\n',
+          source: 'app.yaml',
+        ).iosGoogleSignInClientId,
+        '1234-abc.apps.googleusercontent.com',
+      );
     });
 
     test('takes a name in any script', () {
@@ -281,6 +303,20 @@ android:
       expect(_issuesOf(_valid.replaceFirst('  name:', '  label: X\n  name:')), [
         'app.label is not a known field; expected `name`',
       ]);
+    });
+
+    test('rejects a Google iOS client that is not a client ID', () {
+      expect(
+        _issuesOf(
+          '$_valid  googleSignInClientId: com.googleusercontent.apps.1234-abc\n',
+        ),
+        [
+          'ios.googleSignInClientId "com.googleusercontent.apps.1234-abc" is '
+              'not a Google OAuth client ID: copy the client ID of the iOS '
+              'client from the Google Cloud console '
+              '(e.g. 123456789012-abc123.apps.googleusercontent.com)',
+        ],
+      );
     });
 
     test('rejects a section that is not a mapping', () {
@@ -661,9 +697,25 @@ android:
         'PUBLIRA_BUNDLE_IDENTIFIER': 'com.example.reader-ios',
         'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.com',
         'PUBLIRA_APP_NAME': 'Example Reader',
+        'PUBLIRA_GOOGLE_URL_SCHEME': 'com.example.reader-ios',
         'PUBLIRA_DEVELOPMENT_TEAM': '',
         'DEVELOPMENT_TEAM[config=Release-production]': '',
       });
+    });
+
+    test('registers the Google iOS client as a URL scheme', () {
+      final manifest = AppManifest.parse(
+        '$_valid  googleSignInClientId: 1234-abc.apps.googleusercontent.com\n',
+        source: 'app.yaml',
+      );
+
+      expect(
+        settingsOf(manifest),
+        containsPair(
+          'PUBLIRA_GOOGLE_URL_SCHEME',
+          'com.googleusercontent.apps.1234-abc',
+        ),
+      );
     });
 
     test('signs the store build alone under the team it is given', () {

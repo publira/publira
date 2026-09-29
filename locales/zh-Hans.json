@@ -3602,6 +3602,7 @@
       "contact": "联系我们",
       "contact_description": "向本站点的运营者发送消息。",
       "delete": "注销账户",
+      "linked_accounts": "关联账户",
       "name": "昵称",
       "name_unset": "未设置",
       "notifications": "新章节通知",
@@ -3971,11 +3972,17 @@
       "title": "系列"
     },
     "sign_in": {
+      "continue_with_apple": "通过Apple继续",
+      "continue_with_google": "通过Google继续",
+      "divider": "或",
       "email_not_verified": "您的邮箱地址尚未确认。请打开确认邮件中的链接。",
       "failed": "无法登录。",
       "forgot_password": "忘记密码？",
       "invalid_credentials": "邮箱地址或密码不正确。",
       "no_account": "还没有账户？",
+      "provider_failed": "无法登录。请重试。",
+      "provider_refused": "此账户无法在此登录。请使用邮箱地址登录。",
+      "provider_unavailable": "此登录方式目前不可用。",
       "sign_up": "注册"
     },
     "viewer": {
@@ -4125,12 +4132,17 @@
       "confirm": "注销",
       "confirm_description": "您将退出登录，且账户无法恢复。",
       "confirm_title": "要注销您的账户吗？",
+      "confirm_with_provider": "您的账户没有密码。请使用关联的账户重新登录以确认。",
       "deleted": "您的账户已注销。感谢您的使用。",
       "description": "注销账户会永久取消您对它的访问权限，且无法撤销。",
       "failed": "无法注销您的账户。请检查您输入的内容。",
+      "load_failed": "无法加载注销账户的确认方式。",
+      "no_provider": "与您关联的账户目前都无法在此应用中登录。如需注销账户，请联系本站。",
       "password_label": "当前密码",
       "submit": "注销我的账户",
-      "title": "注销账户"
+      "title": "注销账户",
+      "with_apple": "通过Apple确认",
+      "with_google": "通过Google确认"
     },
     "confirm_email": {
       "changed": "您的邮箱地址已变更。",
@@ -4142,6 +4154,23 @@
       "pending_new_email": "此确认已完成。待新的邮箱地址也完成确认后，变更即会生效。",
       "title": "邮箱地址变更确认",
       "to_account": "返回账户"
+    },
+    "continue_sign_up": {
+      "description": "同意以下页面后即可创建账户。",
+      "expired": "登录已超时。请重新开始。",
+      "submit": "创建账户",
+      "title": "完成注册"
+    },
+    "linked_accounts": {
+      "description": "可用于登录的Apple和Google账户。",
+      "empty": "没有关联的Apple或Google账户。",
+      "last": "您的账户没有密码，因此无法解除最后一个关联的账户。",
+      "linked_at": "关联于{$date}",
+      "load_failed": "无法加载关联账户。",
+      "title": "关联账户",
+      "unlink": "解除关联",
+      "unlink_failed": "无法解除关联。请稍后重试。",
+      "unlinked": "已解除关联。"
     }
   },
   "platform": {

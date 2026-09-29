@@ -5,6 +5,8 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
+import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
@@ -92,11 +94,59 @@ class AuthController extends ChangeNotifier {
   /// Throws [AuthFailure] and leaves the current session alone when the API
   /// turns the credentials down.
   Future<void> signIn({required String email, required String password}) async {
-    final session = await _repository.signIn(email: email, password: password);
+    await _adopt(await _repository.signIn(email: email, password: password));
+  }
+
+  /// The providers the tenant lets a reader sign in with.
+  ///
+  /// Throws [AuthFailure].
+  Future<SignInProviders> readSignInProviders() =>
+      _repository.readSignInProviders();
+
+  /// Signs in with the token a provider issued, the way [signIn] does with a
+  /// password. [birthDate] and [agreedPageVersionIds] count only where this
+  /// creates the account.
+  ///
+  /// Throws [AuthFailure] and leaves the current session alone;
+  /// [AuthFailureKind.consentRequired] asks for the consent and the same
+  /// [credential] again.
+  Future<void> signInWithProvider(
+    ProviderCredential credential, {
+    String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
+  }) async {
+    await _adopt(
+      await _repository.signInWithProvider(
+        credential,
+        birthDate: birthDate,
+        agreedPageVersionIds: agreedPageVersionIds,
+      ),
+    );
+  }
+
+  Future<void> _adopt(AuthSession session) async {
     await _store.write(session);
     _setSession(session);
     _expired = false;
     notifyListeners();
+  }
+
+  /// The provider accounts linked to the signed-in reader.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in, and signs out on a token the API has stopped accepting.
+  Future<LinkedIdentities> readLinkedIdentities() async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.readLinkedIdentities(session));
+  }
+
+  /// Unlinks [provider] from the signed-in account.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> unlinkIdentity(IdentityProvider provider) async {
+    final session = _requireSession();
+    await _whileHeld(() => _repository.unlinkIdentity(session, provider));
   }
 
   /// Asks for an account, which the API answers by mailing a confirmation
@@ -284,12 +334,23 @@ class AuthController extends ChangeNotifier {
   /// is dropped even if the credential store refuses to forget it: the token
   /// it keeps is refused at the next launch, while one kept in hand would go
   /// on presenting an account that is gone.
-  Future<void> deleteAccount({required String password}) async {
+  Future<void> deleteAccount({required String password}) => _deleteAccount(
+    (session) => _repository.deleteAccount(session, password: password),
+  );
+
+  /// [deleteAccount] for an account without a password, confirmed by a fresh
+  /// sign-in with a provider linked to it.
+  Future<void> deleteAccountWithProvider(ProviderCredential credential) =>
+      _deleteAccount(
+        (session) => _repository.deleteAccountWithProvider(session, credential),
+      );
+
+  Future<void> _deleteAccount(
+    Future<void> Function(AuthSession session) delete,
+  ) async {
     final session = _requireSession();
     final reader = _reader;
-    await _whileHeld(
-      () => _repository.deleteAccount(session, password: password),
-    );
+    await _whileHeld(() => delete(session));
     if (_reader != reader) {
       return;
     }

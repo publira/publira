@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -13,6 +14,7 @@ import 'package:publira/screens/checkout_return_screen.dart';
 import 'package:publira/screens/confirm_email_screen.dart';
 import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
+import 'package:publira/screens/continue_sign_up_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
 import 'package:publira/screens/creators_screen.dart';
 import 'package:publira/screens/delete_account_screen.dart';
@@ -25,6 +27,7 @@ import 'package:publira/screens/genres_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/labels_screen.dart';
 import 'package:publira/screens/library_screen.dart';
+import 'package:publira/screens/linked_accounts_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/published_page_screen.dart';
@@ -48,6 +51,10 @@ abstract final class AppRoutes {
   static const signIn = '/sign-in';
   static const signUp = '/sign-up';
 
+  /// Where a first Apple or Google sign-in asks the consent the tenant
+  /// requires before the account is created, handed the token as `extra`.
+  static const continueSignUp = '/sign-up/continue';
+
   /// The path the site's confirmation mail links to, which this app claims
   /// as an App Link, so the token is spent here rather than in a browser.
   static const verifyEmail = '/verify';
@@ -68,6 +75,8 @@ abstract final class AppRoutes {
   static const accountEmail = '$account/$email';
   static const password = 'password';
   static const accountPassword = '$account/$password';
+  static const linkedAccounts = 'linked-accounts';
+  static const accountLinkedAccounts = '$account/$linkedAccounts';
   static const delete = 'delete';
   static const accountDelete = '$account/$delete';
   static const contact = 'contact';
@@ -132,6 +141,14 @@ abstract final class AppRoutes {
       ? signIn
       : Uri(path: signIn, queryParameters: {'return_to': returnTo}).toString();
 
+  /// [continueSignUp], landing on [returnTo] once the account is created.
+  static String continueSignUpPath({String? returnTo}) => returnTo == null
+      ? continueSignUp
+      : Uri(
+          path: continueSignUp,
+          queryParameters: {'return_to': returnTo},
+        ).toString();
+
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
 
   static const creatorsPath = '/$creators';
@@ -193,6 +210,16 @@ List<RouteBase> _tabRoutes() => [
   GoRoute(
     path: _child(AppRoutes.signUp),
     builder: (context, state) => const SignUpScreen(),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.continueSignUp),
+    builder: (context, state) => ContinueSignUpScreen(
+      credential: switch (state.extra) {
+        final ProviderCredential credential => credential,
+        _ => null,
+      },
+      returnTo: inAppLocation(state.uri.queryParameters['return_to']),
+    ),
   ),
   GoRoute(
     path: _child(AppRoutes.resendVerification),
@@ -407,6 +434,11 @@ GoRouter createAppRouter({String? initialLocation}) {
                     path: AppRoutes.password,
                     builder: (context, state) =>
                         const ReaderKeyed(child: ChangePasswordScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.linkedAccounts,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: LinkedAccountsScreen()),
                   ),
                   GoRoute(
                     path: AppRoutes.delete,

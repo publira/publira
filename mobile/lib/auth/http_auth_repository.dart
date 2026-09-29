@@ -7,6 +7,8 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
+import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
@@ -30,6 +32,12 @@ class HttpAuthRepository implements AuthRepository {
   HttpAuthRepository._({required this._client, required this._tenants});
 
   static const _loginProcedure = '/publira.v1.AuthService/Login';
+  static const _loginWithIdTokenProcedure =
+      '/publira.v1.AuthService/LoginWithIdToken';
+  static const _listMyIdentitiesProcedure =
+      '/publira.v1.AuthService/ListMyIdentities';
+  static const _unlinkIdentityProcedure =
+      '/publira.v1.AuthService/UnlinkIdentity';
   static const _createUserProcedure = '/publira.v1.AuthService/CreateUser';
   static const _verifyUserEmailProcedure =
       '/publira.v1.AuthService/VerifyUserEmail';
@@ -50,6 +58,8 @@ class HttpAuthRepository implements AuthRepository {
   static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
   static const _logoutProcedure = '/publira.v1.AuthService/Logout';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
+  static const _tenantMobileAppAssociationProcedure =
+      '/publira.v1.TenantService/GetTenantMobileAppAssociation';
   static const _tenantLegalPagesProcedure =
       '/publira.v1.TenantService/GetTenantLegalPages';
 
@@ -71,6 +81,121 @@ class HttpAuthRepository implements AuthRepository {
       return _sessionFromLogin(body);
     } on ConnectException catch (error) {
       throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<SignInProviders> readSignInProviders() async {
+    final association = _readTenant(_tenantMobileAppAssociationProcedure);
+    // Listened to from the start, so its failure is not reported as uncaught
+    // while GetTenant is still in flight.
+    unawaited(association.then<void>((_) {}, onError: (_) {}));
+    final tenant = await _getTenant();
+    String appleBundleIdentifier;
+    try {
+      final ios = (await association)['ios'];
+      appleBundleIdentifier = ios is Map<String, Object?>
+          ? _readString(ios, 'bundleIdentifier')
+          : '';
+    } on AuthFailure {
+      // Without it no app is known to take Apple's token; Google still is.
+      appleBundleIdentifier = '';
+    }
+    return SignInProviders.fromTenant(
+      tenant,
+      appleBundleIdentifier: appleBundleIdentifier,
+    );
+  }
+
+  @override
+  Future<AuthSession> signInWithProvider(
+    ProviderCredential credential, {
+    String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_loginWithIdTokenProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'provider': credential.provider.wireName,
+        'idToken': credential.idToken,
+        'nonce': credential.nonce,
+        if (credential.authorizationCode.isNotEmpty)
+          'authorizationCode': credential.authorizationCode,
+        if (credential.name.isNotEmpty) 'name': credential.name,
+        if (birthDate.isNotEmpty) 'birthDate': birthDate,
+        if (agreedPageVersionIds.isNotEmpty)
+          'agreedPageVersionIds': agreedPageVersionIds,
+      }, tenantId: tenantId);
+      return _sessionFromLogin(body);
+    } on ConnectException catch (error) {
+      throw _toProviderSignInFailure(error);
+    }
+  }
+
+  @override
+  Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _listMyIdentitiesProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      final raw = body['identities'];
+      return LinkedIdentities(
+        identities: [
+          if (raw is List)
+            for (final item in raw)
+              if (item is Map<String, Object?>)
+                if (IdentityProvider.fromWire(item['provider'])
+                    case final provider?)
+                  LinkedIdentity(
+                    provider: provider,
+                    email: _readString(item, 'email'),
+                    linkedAt: DateTime.tryParse(
+                      _readString(item, 'linkedAt'),
+                    )?.toUtc(),
+                  ),
+        ],
+        hasPassword: body['hasPassword'] == true,
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> unlinkIdentity(
+    AuthSession session,
+    IdentityProvider provider,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _unlinkIdentityProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'provider': provider.wireName,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+    } on ConnectException catch (error) {
+      switch (error.code) {
+        // Unlinked already, from another device or the site.
+        case 'not_found':
+          return;
+        case 'failed_precondition':
+          throw AuthFailure(
+            AuthFailureKind.lastSignInMethod,
+            message: error.message,
+          );
+      }
+      throw _toAccountFailure(error);
     }
   }
 
@@ -411,6 +536,29 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccountWithProvider(
+    AuthSession session,
+    ProviderCredential credential,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _deleteMeProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'provider': credential.provider.wireName,
+          'idToken': credential.idToken,
+          'nonce': credential.nonce,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
   Future<void> signOut(AuthSession session) async {
     try {
       final tenantId = await _tenants.resolve();
@@ -490,6 +638,32 @@ class HttpAuthRepository implements AuthRepository {
         _readString(accessToken, 'expiresAt'),
       )?.toUtc(),
     );
+  }
+
+  /// What `LoginWithIdToken` refuses with. A missing consent is told apart by
+  /// the field it names, because the API leaves the token unspent for it.
+  AuthFailure _toProviderSignInFailure(ConnectException error) {
+    if (error.isUnavailable) {
+      return AuthFailure(AuthFailureKind.network, message: error.message);
+    }
+    final fields = error.fieldViolations;
+    return switch (error.code) {
+      'invalid_argument' when fields.contains('agreed_page_version_ids') =>
+        AuthFailure(AuthFailureKind.consentRequired, message: error.message),
+      'invalid_argument' when fields.contains('birth_date') => AuthFailure(
+        AuthFailureKind.birthDateInvalid,
+        message: error.message,
+      ),
+      'failed_precondition' => AuthFailure(
+        AuthFailureKind.providerRefused,
+        message: error.message,
+      ),
+      'resource_exhausted' => AuthFailure(
+        AuthFailureKind.rateLimited,
+        message: error.message,
+      ),
+      _ => AuthFailure(AuthFailureKind.unexpected, message: error.message),
+    };
   }
 
   /// What the RPCs that answer by sending mail refuse with. Login's own

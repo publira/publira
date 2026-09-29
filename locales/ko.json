@@ -3602,6 +3602,7 @@
       "contact": "문의하기",
       "contact_description": "이 사이트 운영자에게 메시지를 보냅니다.",
       "delete": "계정 삭제",
+      "linked_accounts": "연결된 계정",
       "name": "이름",
       "name_unset": "미설정",
       "notifications": "새 에피소드 알림",
@@ -3971,11 +3972,17 @@
       "title": "시리즈"
     },
     "sign_in": {
+      "continue_with_apple": "Apple로 계속하기",
+      "continue_with_google": "Google로 계속하기",
+      "divider": "또는",
       "email_not_verified": "이메일 주소 확인이 완료되지 않았습니다. 확인 메일의 링크를 열어 주세요.",
       "failed": "로그인할 수 없습니다",
       "forgot_password": "비밀번호를 잊으셨나요?",
       "invalid_credentials": "이메일 주소 또는 비밀번호가 올바르지 않습니다",
       "no_account": "계정이 없으신가요?",
+      "provider_failed": "로그인하지 못했습니다. 다시 시도해 주세요.",
+      "provider_refused": "이 계정으로는 로그인할 수 없습니다. 이메일 주소로 로그인해 주세요.",
+      "provider_unavailable": "지금은 이 로그인 방법을 사용할 수 없습니다.",
       "sign_up": "회원가입"
     },
     "viewer": {
@@ -4125,12 +4132,17 @@
       "confirm": "삭제",
       "confirm_description": "로그아웃되며, 계정은 복구할 수 없습니다.",
       "confirm_title": "계정을 삭제할까요?",
+      "confirm_with_provider": "이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인해 주세요.",
       "deleted": "계정을 삭제했습니다. 그동안 이용해 주셔서 감사합니다.",
       "description": "계정을 삭제하면 계정에 다시 접근할 수 없습니다. 이 작업은 되돌릴 수 없습니다.",
       "failed": "계정을 삭제하지 못했습니다. 입력한 내용을 확인해 주세요.",
+      "load_failed": "계정 삭제 확인 방법을 불러오지 못했습니다.",
+      "no_provider": "연결된 계정 중 지금 이 앱에서 로그인할 수 있는 계정이 없습니다. 계정을 삭제하려면 사이트에 문의해 주세요.",
       "password_label": "현재 비밀번호",
       "submit": "내 계정 삭제하기",
-      "title": "계정 삭제"
+      "title": "계정 삭제",
+      "with_apple": "Apple로 확인",
+      "with_google": "Google로 확인"
     },
     "confirm_email": {
       "changed": "이메일 주소 변경이 완료되었습니다.",
@@ -4142,6 +4154,23 @@
       "pending_new_email": "이 확인은 완료되었습니다. 새 주소에서도 확인이 완료되면 변경이 반영됩니다.",
       "title": "이메일 변경 확인",
       "to_account": "계정으로 돌아가기"
+    },
+    "continue_sign_up": {
+      "description": "아래 페이지에 동의하면 계정이 만들어집니다.",
+      "expired": "로그인 시간이 초과되었습니다. 처음부터 다시 시도해 주세요.",
+      "submit": "계정 만들기",
+      "title": "회원가입 완료"
+    },
+    "linked_accounts": {
+      "description": "로그인에 사용할 수 있는 Apple 및 Google 계정입니다.",
+      "empty": "연결된 Apple 또는 Google 계정이 없습니다.",
+      "last": "이 계정에는 비밀번호가 없어 마지막으로 연결된 계정은 해제할 수 없습니다.",
+      "linked_at": "{$date}에 연결됨",
+      "load_failed": "연결된 계정을 불러오지 못했습니다.",
+      "title": "연결된 계정",
+      "unlink": "연결 해제",
+      "unlink_failed": "연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "unlinked": "연결을 해제했습니다."
     }
   },
   "platform": {

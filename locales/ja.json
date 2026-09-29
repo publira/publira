@@ -3602,6 +3602,7 @@
       "contact": "お問い合わせ",
       "contact_description": "このサイトの運営者にメッセージを送ります。",
       "delete": "アカウントを削除",
+      "linked_accounts": "連携アカウント",
       "name": "お名前",
       "name_unset": "（未設定）",
       "notifications": "新着エピソードの通知",
@@ -3971,11 +3972,17 @@
       "title": "シリーズ"
     },
     "sign_in": {
+      "continue_with_apple": "Appleで続ける",
+      "continue_with_google": "Googleで続ける",
+      "divider": "または",
       "email_not_verified": "メールアドレスの確認が完了していません。確認メールのリンクを開いてください。",
       "failed": "サインインできませんでした",
       "forgot_password": "パスワードをお忘れですか？",
       "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
       "no_account": "アカウントをお持ちでない方は",
+      "provider_failed": "サインインできませんでした。もう一度お試しください。",
+      "provider_refused": "このアカウントではサインインできません。メールアドレスでサインインしてください。",
+      "provider_unavailable": "このサインイン方法は現在利用できません。",
       "sign_up": "新規登録"
     },
     "viewer": {
@@ -4125,12 +4132,17 @@
       "confirm": "削除する",
       "confirm_description": "ログアウトされ、アカウントは元に戻せません。",
       "confirm_title": "アカウントを削除しますか？",
+      "confirm_with_provider": "このアカウントにはパスワードがありません。連携しているアカウントでもう一度サインインして確認してください。",
       "deleted": "アカウントを削除しました。ご利用ありがとうございました。",
       "description": "退会するとアカウント情報にアクセスできなくなります。この操作は取り消せません。",
       "failed": "退会処理に失敗しました。入力内容をご確認ください。",
+      "load_failed": "退会の確認方法を読み込めませんでした。",
+      "no_provider": "連携しているアカウントは、いまこのアプリでサインインに使えません。退会するにはサイトにお問い合わせください。",
       "password_label": "現在のパスワード",
       "submit": "退会する",
-      "title": "アカウントを削除"
+      "title": "アカウントを削除",
+      "with_apple": "Appleで確認",
+      "with_google": "Googleで確認"
     },
     "confirm_email": {
       "changed": "メールアドレスの変更が完了しました。",
@@ -4142,6 +4154,23 @@
       "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
       "title": "メール変更確認",
       "to_account": "アカウントへ戻る"
+    },
+    "continue_sign_up": {
+      "description": "下記のページに同意すると、アカウントが作成されます。",
+      "expired": "サインインの有効期限が切れました。もう一度やり直してください。",
+      "submit": "アカウントを作成",
+      "title": "新規登録を完了"
+    },
+    "linked_accounts": {
+      "description": "サインインに使えるAppleとGoogleのアカウントです。",
+      "empty": "連携しているAppleやGoogleのアカウントはありません。",
+      "last": "このアカウントにはパスワードがないため、最後の連携アカウントは解除できません。",
+      "linked_at": "{$date}に連携",
+      "load_failed": "連携アカウントを読み込めませんでした。",
+      "title": "連携アカウント",
+      "unlink": "連携を解除",
+      "unlink_failed": "連携を解除できませんでした。しばらくしてからもう一度お試しください。",
+      "unlinked": "連携を解除しました。"
     }
   },
   "platform": {

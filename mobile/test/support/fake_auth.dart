@@ -5,6 +5,8 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
+import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
@@ -189,6 +191,26 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [signOut], standing in for an API that cannot be reached.
   AuthFailure? signOutFailure;
 
+  /// What [readSignInProviders] answers, none by default.
+  SignInProviders signInProviders = SignInProviders.none;
+
+  /// What [signInWithProvider] was called with, in order.
+  final providerSignIns = <ProviderSignInCall>[];
+
+  /// Thrown by [signInWithProvider] in turn, one per call, until none is left;
+  /// standing in for the consent the API asks for, or a refusal.
+  final providerSignInFailures = <AuthFailure>[];
+
+  /// What [readLinkedIdentities] answers, and [unlinkIdentity] removes from.
+  List<LinkedIdentity> identities = const [];
+  bool hasPassword = true;
+
+  /// Thrown by [readLinkedIdentities].
+  AuthFailure? identitiesFailure;
+
+  /// The credentials [deleteAccountWithProvider] was confirmed with.
+  final deletionCredentials = <ProviderCredential>[];
+
   /// Held open by a test that needs to act while [signOut] is in flight.
   Completer<void>? signOutGate;
 
@@ -204,6 +226,51 @@ class FakeAuthRepository implements AuthRepository {
       throw failure;
     }
     return session;
+  }
+
+  @override
+  Future<SignInProviders> readSignInProviders() async => signInProviders;
+
+  @override
+  Future<AuthSession> signInWithProvider(
+    ProviderCredential credential, {
+    String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
+  }) async {
+    providerSignIns.add(
+      ProviderSignInCall(
+        credential: credential,
+        birthDate: birthDate,
+        agreedPageVersionIds: agreedPageVersionIds,
+      ),
+    );
+    if (providerSignInFailures.isNotEmpty) {
+      throw providerSignInFailures.removeAt(0);
+    }
+    return session;
+  }
+
+  @override
+  Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
+    final failure = identitiesFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return LinkedIdentities(identities: identities, hasPassword: hasPassword);
+  }
+
+  @override
+  Future<void> unlinkIdentity(
+    AuthSession session,
+    IdentityProvider provider,
+  ) async {
+    if (!hasPassword && identities.length == 1) {
+      throw const AuthFailure(AuthFailureKind.lastSignInMethod);
+    }
+    identities = [
+      for (final identity in identities)
+        if (identity.provider != provider) identity,
+    ];
   }
 
   @override
@@ -426,6 +493,20 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccountWithProvider(
+    AuthSession session,
+    ProviderCredential credential,
+  ) async {
+    deletionCredentials.add(credential);
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    deleted = true;
+    refreshFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+  }
+
+  @override
   Future<void> signOut(AuthSession session) async {
     signedOut.add(session.accessToken);
     await signOutGate?.future;
@@ -434,6 +515,63 @@ class FakeAuthRepository implements AuthRepository {
       throw failure;
     }
   }
+}
+
+/// One call to [FakeAuthRepository.signInWithProvider].
+class ProviderSignInCall {
+  const ProviderSignInCall({
+    required this.credential,
+    required this.birthDate,
+    required this.agreedPageVersionIds,
+  });
+
+  final ProviderCredential credential;
+  final String birthDate;
+  final List<String> agreedPageVersionIds;
+}
+
+/// [ProviderSignIn] that offers what a test sets and signs in at once,
+/// standing in for the provider's own sheet.
+class FakeProviderSignIn implements ProviderSignIn {
+  FakeProviderSignIn({this.providers = IdentityProvider.values});
+
+  /// What [offered] answers whatever the tenant enables, so a test does not
+  /// depend on the platform it runs on.
+  List<IdentityProvider> providers;
+
+  /// Thrown by [signIn] in place of a credential: the reader closing the
+  /// sheet, or the provider failing.
+  Exception? failure;
+
+  /// The providers [signIn] has been asked for, in order.
+  final requested = <IdentityProvider>[];
+
+  @override
+  Future<List<IdentityProvider>> offered(SignInProviders providers) async =>
+      this.providers;
+
+  @override
+  Future<ProviderCredential> signIn(
+    IdentityProvider provider,
+    SignInProviders providers,
+  ) async {
+    requested.add(provider);
+    final failure = this.failure;
+    if (failure != null) {
+      throw failure;
+    }
+    return credentialFor(provider, requested.length);
+  }
+
+  /// The credential the [count]th sign-in with [provider] answers with.
+  static ProviderCredential credentialFor(
+    IdentityProvider provider,
+    int count,
+  ) => ProviderCredential(
+    provider: provider,
+    idToken: '${provider.name}-id-token-$count',
+    nonce: '${provider.name}-nonce-$count',
+  );
 }
 
 /// One call to [FakeAuthRepository.requestEmailChange].

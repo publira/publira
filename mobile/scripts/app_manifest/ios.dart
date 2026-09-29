@@ -26,6 +26,9 @@ Map<String, String> iosGeneratedFiles(
     'PUBLIRA_BUNDLE_IDENTIFIER = ${manifest.iosBundleIdentifier}',
     'PUBLIRA_ASSOCIATED_DOMAIN = ${manifest.tenantHost}',
     'PUBLIRA_APP_NAME = ${xcconfigValue(manifest.appName)}',
+    // Info.plist registers it as a URL scheme, which cannot be left empty, so
+    // an app without Google sign-in registers its own bundle identifier.
+    'PUBLIRA_GOOGLE_URL_SCHEME = ${googleUrlScheme(manifest) ?? manifest.iosBundleIdentifier}',
     // Kept apart from DEVELOPMENT_TEAM, which Flutter fills in from the
     // keychain when the project names none, and applied to the store build
     // only, so that every other build keeps signing as it did.
@@ -34,6 +37,11 @@ Map<String, String> iosGeneratedFiles(
     '',
   ].join('\n'),
 };
+
+/// The URL scheme Google Sign-In returns to the app through: the iOS client
+/// ID with its parts reversed, or `null` for a manifest that names none.
+String? googleUrlScheme(AppManifest manifest) =>
+    manifest.iosGoogleSignInClientId?.split('.').reversed.join('.');
 
 /// [value] as Xcode evaluates it back from an xcconfig line as a string.
 ///

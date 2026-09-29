@@ -36,6 +36,20 @@ enum AuthFailureKind {
   /// asks for a fresh one.
   linkExpired,
 
+  /// A first sign-in with Apple or Google would create an account on a tenant
+  /// that asks consent to its pages, which the reader has not given yet. The
+  /// same token is sent again once they have.
+  consentRequired,
+
+  /// The API will not sign this Apple or Google account in: the tenant has
+  /// turned the provider off, the provider does not vouch for the address, or
+  /// the account holding it is linked to another account of the provider.
+  providerRefused,
+
+  /// The provider is the last way an account without a password signs in,
+  /// so it stays linked.
+  lastSignInMethod,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

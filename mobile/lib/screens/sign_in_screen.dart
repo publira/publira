@@ -6,6 +6,7 @@ import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/screens/provider_sign_in_buttons.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
@@ -83,23 +84,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _submitting = false;
     });
-    final returnTo = widget.returnTo;
-    if (returnTo != null) {
-      // In place of the form, so going back from there does not land on it.
-      if (context.canPop()) {
-        context.pushReplacementInTab(returnTo);
-      } else {
-        context.goInTab(returnTo);
-      }
-      return;
-    }
-    // Back to whatever asked for a signed-in reader — a locked episode reloads
-    // its body from here, and the catalog picks up the account entry point.
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.catalog);
-    }
+    leaveSignIn(context, widget.returnTo);
   }
 
   /// The reset request form, carrying whatever address is typed so far.
@@ -199,6 +184,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: AutospacedText(messages.authResendVerification),
                   ),
                 ],
+                ProviderSignInButtons(returnTo: widget.returnTo),
                 const SizedBox(height: 24),
                 AutospacedText(
                   messages.signInNoAccount,
@@ -225,6 +211,9 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.network => messages.errorsRpcUnavailable,
       AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
       AuthFailureKind.sessionExpired ||
+      AuthFailureKind.consentRequired ||
+      AuthFailureKind.providerRefused ||
+      AuthFailureKind.lastSignInMethod ||
       AuthFailureKind.invalidInput ||
       AuthFailureKind.birthDateInvalid ||
       AuthFailureKind.birthDateAlreadySet ||
@@ -232,5 +221,25 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.linkExpired ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
+  }
+}
+
+/// Leaves a sign-in screen for [returnTo], in its place so going back does not
+/// land on it, or else for whatever asked for a signed-in reader: a locked
+/// episode reloads its body from there, and the catalog picks up the account
+/// entry point.
+void leaveSignIn(BuildContext context, String? returnTo) {
+  if (returnTo != null) {
+    if (context.canPop()) {
+      context.pushReplacementInTab(returnTo);
+    } else {
+      context.goInTab(returnTo);
+    }
+    return;
+  }
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go(AppRoutes.catalog);
   }
 }

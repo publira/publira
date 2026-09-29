@@ -49,6 +49,8 @@ dart run scripts/app_manifest.dart --generate
 flutter build ios --simulator --debug --flavor dev
 expect_info "${simulator_app}" CFBundleIdentifier dev.publira.app.dev
 expect_info "${simulator_app}" CFBundleDisplayName 'Publira Dev'
+# A manifest naming no Google client registers its bundle identifier instead.
+expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 dev.publira.app
 expect_associated_domain "${simulator_app}" 'applinks:localhost?mode=developer'
 
 # `//` starts an xcconfig comment, `$(...)` a reference, and a trailing `;` is
@@ -65,6 +67,7 @@ android:
   applicationId: com.example.reader
 ios:
   bundleIdentifier: com.example.reader
+  googleSignInClientId: 123456789012-abc123.apps.googleusercontent.com
 YAML
 export PUBLIRA_BASE_URL=https://reader.example.com
 
@@ -72,6 +75,8 @@ echo '--- production flavor, simulator, a tenant manifest'
 dart run scripts/build.dart "${manifest}" ios --simulator --debug
 expect_info "${simulator_app}" CFBundleIdentifier com.example.reader
 expect_info "${simulator_app}" CFBundleDisplayName "${app_name}"
+expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
+  com.googleusercontent.apps.123456789012-abc123
 expect_associated_domain "${simulator_app}" 'applinks:reader.example.com?mode=developer'
 
 echo '--- production flavor refusing another tenant host'
@@ -89,6 +94,8 @@ echo '--- production flavor, device, unsigned, a tenant manifest'
 dart run scripts/build.dart "${manifest}" ios --no-codesign
 expect_info "${device_app}" CFBundleIdentifier com.example.reader
 expect_info "${device_app}" CFBundleDisplayName "${app_name}"
+expect_info "${device_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
+  com.googleusercontent.apps.123456789012-abc123
 
 # An unsigned build carries no entitlements, and iOS refuses ad hoc signing,
 # so the store configuration's are checked where Xcode resolves them from.

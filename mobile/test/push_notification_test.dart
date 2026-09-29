@@ -89,10 +89,22 @@ void main() {
     expect(repository.registered, ['device-token']);
   });
 
+  /// Scrolls the account screen until its notification switch, which sits
+  /// below the rows above it, is on screen.
+  Future<void> showSwitch(WidgetTester tester) => tester.scrollUntilVisible(
+    find.byKey(const ValueKey('account-notifications')),
+    100,
+    scrollable: find.descendant(
+      of: find.byKey(const ValueKey('account-list')),
+      matching: find.byType(Scrollable),
+    ),
+  );
+
   testWidgets('the account screen offers the notification switch', (
     tester,
   ) async {
     await pumpApp(tester, initialLocation: AppRoutes.account);
+    await showSwitch(tester);
 
     final switchTile = find.byKey(const ValueKey('account-notifications'));
     expect(switchTile, findsOneWidget);
@@ -102,6 +114,7 @@ void main() {
 
   testWidgets('turning the switch on registers the device', (tester) async {
     await pumpApp(tester, initialLocation: AppRoutes.account);
+    await showSwitch(tester);
 
     await tester.tap(find.byKey(const ValueKey('account-notifications')));
     await tester.pumpAndSettle();
@@ -120,6 +133,7 @@ void main() {
   testWidgets('a denied prompt settles the switch back to off', (tester) async {
     messaging.authorization = PushAuthorization.denied;
     await pumpApp(tester, initialLocation: AppRoutes.account);
+    await showSwitch(tester);
 
     await tester.tap(find.byKey(const ValueKey('account-notifications')));
     await tester.pumpAndSettle();

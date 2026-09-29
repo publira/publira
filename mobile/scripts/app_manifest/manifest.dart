@@ -35,12 +35,21 @@ const appNamePattern =
     r'^(?!.*\\$)[^\s\x00-\x1F\x7F\u2028\u2029]'
     r'([^\x00-\x1F\x7F\u2028\u2029]*[^\s\x00-\x1F\x7F\u2028\u2029])?$';
 
+/// A Google OAuth client ID, as the Google Cloud console issues one.
+const googleClientIdPattern =
+    r'^[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com$';
+
 /// The fields of each section, in the order a problem is reported in.
 const _sections = <String, List<String>>{
   'app': ['name'],
   'tenant': ['host'],
   'android': ['applicationId'],
   'ios': ['bundleIdentifier'],
+};
+
+/// The fields a section may leave out.
+const _optionalFields = <String, List<String>>{
+  'ios': ['googleSignInClientId'],
 };
 
 /// A validated app manifest.
@@ -50,6 +59,7 @@ class AppManifest {
     required this.tenantHost,
     required this.androidApplicationId,
     required this.iosBundleIdentifier,
+    this.iosGoogleSignInClientId,
   });
 
   /// Reads and validates the manifest at [file].
@@ -130,16 +140,20 @@ class AppManifest {
         issues.add(AppManifestIssue(section, 'must be a mapping of fields'));
         continue;
       }
+      final optional = _optionalFields[section] ?? const <String>[];
+      final known = [...fields, ...optional];
       for (final key in node.keys) {
-        if (!fields.contains(key)) {
-          issues.add(AppManifestIssue('$section.$key', _unknownField(fields)));
+        if (!known.contains(key)) {
+          issues.add(AppManifestIssue('$section.$key', _unknownField(known)));
         }
       }
-      for (final field in fields) {
+      for (final field in known) {
         final path = '$section.$field';
         final value = node[field];
         if (value == null) {
-          issues.add(AppManifestIssue(path, 'is required'));
+          if (!optional.contains(field)) {
+            issues.add(AppManifestIssue(path, 'is required'));
+          }
         } else if (value is! String) {
           issues.add(
             AppManifestIssue(
@@ -166,6 +180,7 @@ class AppManifest {
       tenantHost: values['tenant.host']!,
       androidApplicationId: values['android.applicationId']!,
       iosBundleIdentifier: values['ios.bundleIdentifier']!,
+      iosGoogleSignInClientId: values['ios.googleSignInClientId'],
     );
   }
 
@@ -183,6 +198,11 @@ class AppManifest {
 
   /// The production iOS bundle identifier.
   final String iosBundleIdentifier;
+
+  /// The Google OAuth client the iOS app signs in with, whose URL scheme the
+  /// build registers. `null` builds an app that offers no Google sign-in on
+  /// iOS.
+  final String? iosGoogleSignInClientId;
 }
 
 /// One problem found in a manifest, at the dotted [path] of the field it is
@@ -218,6 +238,7 @@ final _validators = <String, String? Function(String)>{
   'tenant.host': _validateTenantHost,
   'android.applicationId': _validateAndroidApplicationId,
   'ios.bundleIdentifier': _validateIosBundleIdentifier,
+  'ios.googleSignInClientId': _validateGoogleClientId,
 };
 
 String? _validateAppName(String value) {
@@ -278,6 +299,15 @@ String? _validateIosBundleIdentifier(String value) {
     return '"$value" is not a valid iOS bundle identifier: it needs at least '
         'two dot-separated segments, each containing only letters, digits, and '
         'hyphens (e.g. com.example.reader)';
+  }
+  return null;
+}
+
+String? _validateGoogleClientId(String value) {
+  if (!RegExp(googleClientIdPattern).hasMatch(value)) {
+    return '"$value" is not a Google OAuth client ID: copy the client ID of '
+        'the iOS client from the Google Cloud console '
+        '(e.g. 123456789012-abc123.apps.googleusercontent.com)';
   }
   return null;
 }
