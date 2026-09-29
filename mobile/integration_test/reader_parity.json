@@ -63,7 +63,15 @@
         "routes": ["[locale]/(site)/creators", "[locale]/(site)/labels"],
         "rpcs": ["ListPublishedCreators", "ListPublishedLabels"]
       },
-      "exception": "Not in the app yet: #2826."
+      "mobile": {
+        "routes": ["/", "/creators", "/labels"],
+        "rpcs": ["ListPublishedCreators", "ListPublishedLabels"]
+      },
+      "tests": [
+        "pages through every author from the catalog and opens one",
+        "lists every label from the catalog and opens one",
+        "the seed authors and labels are listed on the live API"
+      ]
     },
     {
       "name": "Search across series, authors, and labels",

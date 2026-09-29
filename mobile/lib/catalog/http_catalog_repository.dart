@@ -42,6 +42,10 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.CatalogService/SearchPublishedCreators';
   static const _searchLabelsProcedure =
       '/publira.v1.CatalogService/SearchPublishedLabels';
+  static const _listCreatorsProcedure =
+      '/publira.v1.CatalogService/ListPublishedCreators';
+  static const _listLabelsProcedure =
+      '/publira.v1.CatalogService/ListPublishedLabels';
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _creatorProcedure =
@@ -110,17 +114,8 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final body = await _search(_searchCreatorsProcedure, query, token);
-      final raw = body['creators'];
-      return CreatorPage(
-        // protojson omits an empty repeated field, which is how a keyword
-        // nothing matches arrives.
-        creators: raw == null
-            ? const []
-            : _expectList(raw, 'creators')
-                  .map((item) => _publishedCreatorFromJson(item, 'creators[]'))
-                  .toList(growable: false),
-        nextToken: _readString(body, 'nextToken', 'response'),
+      return _creatorPage(
+        await _search(_searchCreatorsProcedure, query, token),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -133,21 +128,83 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final body = await _search(_searchLabelsProcedure, query, token);
-      final raw = body['labels'];
-      return LabelPage(
-        labels: raw == null
-            ? const []
-            : _expectList(raw, 'labels')
-                  .map(
-                    (item) => _labelFromJson(item, 'labels[]', counted: false),
-                  )
-                  .toList(growable: false),
-        nextToken: _readString(body, 'nextToken', 'response'),
+      return _labelPage(await _search(_searchLabelsProcedure, query, token));
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<CreatorPage> listCreators({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) async {
+    try {
+      return _creatorPage(
+        await _listDirectory(_listCreatorsProcedure, limit, token),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<LabelPage> listLabels({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) async {
+    try {
+      return _labelPage(
+        await _listDirectory(_listLabelsProcedure, limit, token),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  /// One page of the list RPC [procedure] names, which the author and the
+  /// label list ask in the same shape.
+  Future<Map<String, Object?>> _listDirectory(
+    String procedure,
+    int limit,
+    String token,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    return _client.unary(procedure, {
+      'limit': limit,
+      'surface': appClientSurface,
+      if (token.isNotEmpty) 'token': token,
+      'tenant': {'tenantId': tenantId},
+    }, tenantId: tenantId);
+  }
+
+  /// A page of `PublishedCreator`, as a creator search and the author list
+  /// both answer.
+  CreatorPage _creatorPage(Map<String, Object?> body) {
+    final raw = body['creators'];
+    return CreatorPage(
+      // protojson omits an empty repeated field, which is how a keyword
+      // nothing matches arrives.
+      creators: raw == null
+          ? const []
+          : _expectList(raw, 'creators')
+                .map((item) => _publishedCreatorFromJson(item, 'creators[]'))
+                .toList(growable: false),
+      nextToken: _readString(body, 'nextToken', 'response'),
+    );
+  }
+
+  /// A page of `Label`, as a label search and the label list both answer.
+  LabelPage _labelPage(Map<String, Object?> body) {
+    final raw = body['labels'];
+    return LabelPage(
+      labels: raw == null
+          ? const []
+          : _expectList(raw, 'labels')
+                .map((item) => _labelFromJson(item, 'labels[]', counted: false))
+                .toList(growable: false),
+      nextToken: _readString(body, 'nextToken', 'response'),
+    );
   }
 
   /// One page of the search RPC [procedure] names, which every group of the

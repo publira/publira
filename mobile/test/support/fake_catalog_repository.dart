@@ -28,6 +28,12 @@ class FakeCatalogRepository implements CatalogRepository {
     this.searchPageSize = 20,
     this.publishedCreators = const {},
     this.publishedLabels = const {},
+    this.creatorList = const [],
+    this.labelList = const [],
+    this.directoryPageSize = 20,
+    this.creatorListError,
+    this.labelListError,
+    this.directoryMoreError,
     this.detailSeries = const {},
     this.detailSeriesPageSize = 20,
     this.listError,
@@ -102,6 +108,29 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// The labels [getLabelDetail] answers for, keyed by public id.
   Map<String, PublishedLabel> publishedLabels;
+
+  /// What [listCreators] pages over.
+  List<PublishedCreator> creatorList;
+
+  /// What [listLabels] pages over.
+  List<PublishedLabel> labelList;
+
+  /// How many rows one page of [listCreators] and [listLabels] holds, unless
+  /// the read asks for fewer.
+  int directoryPageSize;
+
+  CatalogFailure? creatorListError;
+  CatalogFailure? labelListError;
+
+  /// What a read of a page of the author or the label list under the first
+  /// one fails with.
+  CatalogFailure? directoryMoreError;
+
+  /// Every read of the author list, in order, with its limit and token.
+  final List<({int limit, String token})> creatorListRequests = [];
+
+  /// Every read of the label list, in order, with its limit and token.
+  final List<({int limit, String token})> labelListRequests = [];
 
   /// The series an author's or a label's page lists, keyed by the public id
   /// of the author or label. One absent is a page with no series.
@@ -295,6 +324,46 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     final (page, nextToken) = _page(labelSearchResults, token, searchPageSize);
+    return LabelPage(labels: page, nextToken: nextToken);
+  }
+
+  @override
+  Future<CreatorPage> listCreators({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) async {
+    creatorListRequests.add((limit: limit, token: token));
+    final error = token.isEmpty
+        ? creatorListError
+        : directoryMoreError ?? creatorListError;
+    if (error != null) {
+      throw error;
+    }
+    final (page, nextToken) = _page(
+      creatorList,
+      token,
+      min(limit, directoryPageSize),
+    );
+    return CreatorPage(creators: page, nextToken: nextToken);
+  }
+
+  @override
+  Future<LabelPage> listLabels({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) async {
+    labelListRequests.add((limit: limit, token: token));
+    final error = token.isEmpty
+        ? labelListError
+        : directoryMoreError ?? labelListError;
+    if (error != null) {
+      throw error;
+    }
+    final (page, nextToken) = _page(
+      labelList,
+      token,
+      min(limit, directoryPageSize),
+    );
     return LabelPage(labels: page, nextToken: nextToken);
   }
 

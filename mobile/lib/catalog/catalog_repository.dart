@@ -10,6 +10,11 @@ import 'package:publira/models/series_item.dart';
 /// it: Unicode code points rather than UTF-16 units.
 const searchQueryMaxRunes = 100;
 
+/// How many rows one page of the author or the label list holds unless a
+/// read asks for fewer, which is also the API's own fallback for a request
+/// naming no limit.
+const directoryPageLimit = 20;
+
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
 abstract class CatalogRepository {
   /// One page of the configured tenant's published series, by title.
@@ -49,6 +54,19 @@ abstract class CatalogRepository {
   /// [query] and [token] follow [searchSeries].
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<LabelPage> searchLabels({required String query, String token});
+
+  /// One page of every creator credited on a published series, by name.
+  ///
+  /// [limit] is how many rows one page holds. [token] is empty for the first
+  /// page, and otherwise the [CreatorPage.nextToken] of the page above the one
+  /// wanted.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<CreatorPage> listCreators({int limit, String token});
+
+  /// One page of every label the tenant shows in the app, the most recently
+  /// registered first. [limit] and [token] follow [listCreators].
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<LabelPage> listLabels({int limit, String token});
 
   /// The newest published series, at most [limit] of them.
   ///

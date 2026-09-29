@@ -8,12 +8,15 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_credits.dart';
+import 'package:publira/catalog/creator_tile.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/catalog/genre_chip.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -102,6 +105,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
             SliverToBoxAdapter(child: _GenresShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _RankingShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _NewArrivalsShelf(refreshes: _refreshes)),
+            SliverToBoxAdapter(child: _LabelsShelf(refreshes: _refreshes)),
+            SliverToBoxAdapter(child: _CreatorsShelf(refreshes: _refreshes)),
             _AllSeriesSection(refreshes: _refreshes, onLoaded: _refreshed),
           ],
         ),
@@ -154,6 +159,10 @@ const _rankingLimit = 10;
 /// As many new arrivals as the chart beside it holds, so the two shelves
 /// scroll the same distance.
 const _newArrivalsLimit = 10;
+
+/// As many labels and authors as the chart holds series, so every shelf
+/// scrolls the same distance.
+const _directoryShelfLimit = 10;
 
 /// Width of one card on a shelf, and the shape its cover is cut to.
 const _shelfCardWidth = 132.0;
@@ -271,6 +280,227 @@ class _NewArrivalsShelf extends StatelessWidget {
   }
 }
 
+/// The labels registered most recently, and the way to every one of them.
+///
+/// A tenant with no label is shown no row, heading included, for the reason
+/// the genre row is not.
+class _LabelsShelf extends StatelessWidget {
+  const _LabelsShelf({required this.refreshes});
+
+  final int refreshes;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return _CatalogShelf<PublishedLabel>(
+      sectionKey: 'catalog-labels',
+      heading: messages.catalogLabelsHeading,
+      failureMessage: messages.catalogLabelsFailed,
+      reloadToken: '$refreshes',
+      rowHeight: _labelShelfHeight,
+      skeleton: const _NameShelfSkeleton(
+        sectionKey: 'catalog-labels',
+        height: _labelShelfHeight,
+        shape: BoxShape.rectangle,
+      ),
+      action: TextButton(
+        key: const ValueKey('catalog-labels-all'),
+        onPressed: () => context.pushInTab(AppRoutes.labelsPath),
+        child: AutospacedText(messages.catalogViewAll),
+      ),
+      load: (catalog) async =>
+          (await catalog.listLabels(limit: _directoryShelfLimit)).labels,
+      cardBuilder: (context, label) => _NameCard(
+        key: ValueKey('catalog-labels-${label.id}'),
+        artwork: EyeCatchCover(
+          kind: 'label',
+          id: label.id,
+          variants: label.eyeCatchVariants,
+          requestHeaders: label.imageRequestHeaders,
+          preferredTypes: const [eyeCatchSquare],
+          aspectRatio: 1,
+        ),
+        name: label.name,
+        onTap: () => context.pushInTab(AppRoutes.labelDetailPath(label.id)),
+      ),
+    );
+  }
+}
+
+/// The first authors by name, and the way to every one of them.
+///
+/// A tenant that credits no author on a published series is shown no row,
+/// heading included, for the reason the genre row is not.
+class _CreatorsShelf extends StatelessWidget {
+  const _CreatorsShelf({required this.refreshes});
+
+  final int refreshes;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return _CatalogShelf<PublishedCreator>(
+      sectionKey: 'catalog-creators',
+      heading: messages.catalogCreatorsHeading,
+      failureMessage: messages.catalogCreatorsFailed,
+      reloadToken: '$refreshes',
+      rowHeight: _creatorShelfHeight,
+      skeleton: const _NameShelfSkeleton(
+        sectionKey: 'catalog-creators',
+        height: _creatorShelfHeight,
+        shape: BoxShape.circle,
+      ),
+      action: TextButton(
+        key: const ValueKey('catalog-creators-all'),
+        onPressed: () => context.pushInTab(AppRoutes.creatorsPath),
+        child: AutospacedText(messages.catalogViewAll),
+      ),
+      load: (catalog) async =>
+          (await catalog.listCreators(limit: _directoryShelfLimit)).creators,
+      cardBuilder: (context, creator) => _NameCard(
+        key: ValueKey('catalog-creators-${creator.id}'),
+        artwork: CreatorPortrait(
+          creator: creator,
+          radius: _nameArtworkSize / 2,
+        ),
+        name: creator.name,
+        subtitle: messages.commonSeriesCount(
+          count: messages.formatInteger(creator.seriesCount),
+        ),
+        onTap: () => context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
+      ),
+    );
+  }
+}
+
+/// Width of one card on the label and the author shelves: wide enough for an
+/// author's count to stand on one line, and narrow enough that a phone shows
+/// the edge of a fourth card, which tells the reader the row scrolls.
+const _nameCardWidth = 112.0;
+
+/// The width and the height of the artwork at the top of such a card.
+const _nameArtworkSize = 96.0;
+
+/// The artwork plus the lines under it — a name of up to two lines, and the
+/// author's count under that — reserved for the reason [_shelfHeight] is.
+const _labelShelfHeight = _nameArtworkSize + 56;
+const _creatorShelfHeight = _nameArtworkSize + 80;
+
+/// One card of the label or the author shelf: the artwork, the name under it,
+/// and one line under that.
+class _NameCard extends StatelessWidget {
+  const _NameCard({
+    super.key,
+    required this.artwork,
+    required this.name,
+    this.subtitle,
+    required this.onTap,
+  });
+
+  final Widget artwork;
+  final String name;
+
+  /// The line under the name. `null` leaves it off.
+  final String? subtitle;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitle = this.subtitle;
+    return SizedBox(
+      width: _nameCardWidth,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            SizedBox.square(dimension: _nameArtworkSize, child: artwork),
+            const SizedBox(height: 8),
+            Flexible(
+              child: AutospacedText(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            if (subtitle != null)
+              Flexible(
+                child: AutospacedText(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What the label or the author shelf shows while it is read: cards the size
+/// the real ones come in, their artwork in [shape].
+class _NameShelfSkeleton extends StatelessWidget {
+  const _NameShelfSkeleton({
+    required this.sectionKey,
+    required this.height,
+    required this.shape,
+  });
+
+  final String sectionKey;
+
+  /// The height of the row the skeleton stands in for.
+  final double height;
+  final BoxShape shape;
+
+  /// Enough to reach the edge of a phone, for the reason the cover-sized
+  /// skeleton has.
+  static const _cardCount = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
+    return SizedBox(
+      key: ValueKey('$sectionKey-loading'),
+      height: height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _cardCount,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) => SizedBox(
+          width: _nameCardWidth,
+          child: Column(
+            children: [
+              Container(
+                width: _nameArtworkSize,
+                height: _nameArtworkSize,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: shape,
+                  borderRadius: shape == BoxShape.circle
+                      ? null
+                      : BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SkeletonLine(color: color, width: 72),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Height of the row of genre chips: one chip and its tap target.
 const _genreRowHeight = 48.0;
 
@@ -296,7 +526,7 @@ class _GenresShelf extends StatelessWidget {
       action: TextButton(
         key: const ValueKey('catalog-genres-all'),
         onPressed: () => context.pushInTab(AppRoutes.genresPath),
-        child: AutospacedText(messages.catalogGenresViewAll),
+        child: AutospacedText(messages.catalogViewAll),
       ),
       load: (catalog) => catalog.listGenres(),
       cardBuilder: (context, genre) => Center(child: GenreChip(genre: genre)),

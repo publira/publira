@@ -110,6 +110,63 @@ Future<void> scrollSeriesTo(WidgetTester tester, Finder finder) async {
   );
 }
 
+/// The catalog's own list, which runs down the screen under the shelves that
+/// scroll across it.
+Finder catalogList() => find
+    .byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    )
+    .first;
+
+/// Pumps until [finder] matches on the catalog and its route has come to rest,
+/// scrolling the catalog down half a screen at a time while it does not.
+///
+/// The shelves above the whole catalog fill a phone's screen, and a lazy list
+/// builds nothing the viewport has not neared, so a reader scrolls to the
+/// first row of it and so does a test. Only what lies below is reached.
+Future<void> pumpUntilCatalogShows(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  await pumpUntilTrue(
+    tester,
+    () {
+      if (finder.evaluate().isNotEmpty) {
+        return true;
+      }
+      if (catalogList().evaluate().isNotEmpty) {
+        final position = tester.state<ScrollableState>(catalogList()).position;
+        position.jumpTo(
+          (position.pixels + position.viewportDimension / 2).clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      }
+      return false;
+    },
+    description: '$finder on the catalog',
+    timeout: timeout,
+  );
+  await pumpUntilRouteSettled(tester, finder, timeout: timeout);
+}
+
+/// Taps the "View all" of the catalog shelf under [heading], which stands
+/// below the fold on a phone. The heading is scrolled to first because it is
+/// there while the shelf is still read, and its action is not.
+Future<void> openShelfList(
+  WidgetTester tester,
+  String heading,
+  Key viewAll, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  await pumpUntilCatalogShows(tester, find.text(heading), timeout: timeout);
+  await pumpUntilRouteSettled(tester, find.byKey(viewAll), timeout: timeout);
+  await tapVisible(tester, find.byKey(viewAll), scrollable: catalogList());
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   // A tap whose offset does not land on the widget it was given is delivered
@@ -196,7 +253,7 @@ void main() {
         await pumpApp(tester);
         // The tile rather than the title: the shelves above the list name the
         // same series, and they are answered by reads of their own.
-        await pumpUntilFound(
+        await pumpUntilCatalogShows(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -246,7 +303,7 @@ void main() {
     testApp('opens series detail from the catalog list', (tester) async {
       await withFailureScreenshot(tester, 'fixture-detail', () async {
         await pumpApp(tester);
-        await pumpUntilRouteSettled(
+        await pumpUntilCatalogShows(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -282,7 +339,7 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'fixture-back', () async {
         await pumpApp(tester);
-        await pumpUntilRouteSettled(
+        await pumpUntilCatalogShows(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -354,7 +411,7 @@ void main() {
         );
         final tabBar = find.byKey(const ValueKey('tab-bar'));
         await pumpApp(tester);
-        await pumpUntilRouteSettled(tester, seriesTile);
+        await pumpUntilCatalogShows(tester, seriesTile);
         await tapVisible(tester, seriesTile);
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
 
@@ -548,6 +605,60 @@ void main() {
       });
     });
 
+    testApp('pages through every author from the catalog and opens one', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-creators', () async {
+        // Two to a page, so the third author arrives on a page of its own.
+        server.seriesPageSize = 2;
+        await pumpApp(tester);
+        await openShelfList(
+          tester,
+          'Featured authors',
+          const ValueKey('catalog-creators-all'),
+        );
+        final third = find.byKey(const ValueKey('creator-tile-SeedAUTHAAA3'));
+        await pumpUntilRouteSettled(tester, third);
+
+        expect(
+          server
+              .requestsTo('ListPublishedCreators')
+              .map((request) => request.body['token']),
+          contains('2'),
+        );
+        await tapVisible(tester, third);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('creator-body')),
+        );
+        expect(find.text('Seed Author 003'), findsWidgets);
+      });
+    });
+
+    testApp('lists every label from the catalog and opens one', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-labels', () async {
+        await pumpApp(tester);
+        await openShelfList(
+          tester,
+          'Featured labels',
+          const ValueKey('catalog-labels-all'),
+        );
+        final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
+        await pumpUntilRouteSettled(tester, label);
+        await tapVisible(tester, label);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+        );
+
+        expect(find.byKey(const ValueKey('label-body')), findsOneWidget);
+        final request = server.requestsTo('ListPublishedLabels').last;
+        expect(request.body['surface'], appClientSurface);
+      });
+    });
+
     testApp('opens the reader on a free episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer', () async {
         await pumpApp(
@@ -738,6 +849,12 @@ void main() {
           await pumpUntilNoPendingFrameCallbacks(tester);
         }
 
+        /// The catalog, scrolled down to the series the steps open.
+        Future<void> settleOnCatalog() async {
+          await pumpUntilCatalogShows(tester, seriesTile);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+
         /// The series screen, scrolled down to the paid episode it opens.
         Future<void> settleOnPaidEpisode() async {
           await settleOn(find.text('2 episodes'));
@@ -748,7 +865,7 @@ void main() {
         await pumpApp(tester, initialLocation: AppRoutes.signIn);
         await settleOn(find.byKey(const ValueKey('sign-in-submit')));
         await signIn(tester);
-        await settleOn(seriesTile);
+        await settleOnCatalog();
 
         await tapVisible(tester, seriesTile);
         await settleOnPaidEpisode();
@@ -758,7 +875,7 @@ void main() {
         await tapBack(tester);
         await settleOn(paidEpisode);
         await tapBack(tester);
-        await settleOn(seriesTile);
+        await settleOnCatalog();
 
         await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await settleOn(find.byKey(const ValueKey('account-sign-out')));
@@ -768,7 +885,7 @@ void main() {
         );
         await settleOn(find.text('You are not signed in.'));
         await tapReachable(tester, find.byKey(const ValueKey('tab-home')));
-        await settleOn(seriesTile);
+        await settleOnCatalog();
 
         await tapVisible(tester, seriesTile);
         await settleOnPaidEpisode();
@@ -1367,7 +1484,13 @@ void main() {
         );
         expect(server.memberDeleted, isTrue);
         // The catalog's account entry leads to sign-in once nobody is.
-        expect(find.byIcon(Icons.person_outline), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('tab-account')),
+            matching: find.byIcon(Icons.person_outline),
+          ),
+          findsOneWidget,
+        );
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
@@ -1426,7 +1549,7 @@ void main() {
           find.textContaining('Series not found'),
         );
         await tapReachable(tester, find.text('Back to the catalog'));
-        await pumpUntilFound(
+        await pumpUntilCatalogShows(
           tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -1502,7 +1625,7 @@ void main() {
         final tile = find.byKey(
           const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
         );
-        await pumpUntilRouteSettled(tester, tile);
+        await pumpUntilCatalogShows(tester, tile);
 
         await tapReachable(tester, tile);
         await pumpUntilRouteSettled(
@@ -2153,6 +2276,79 @@ void main() {
         );
 
         expect(find.byKey(const ValueKey('label-error')), findsNothing);
+      });
+    });
+
+    testApp('the seed authors and labels are listed on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-creators-labels', () async {
+        await pumpLive(tester);
+        // The label shelf stands above the author shelf, so the labels come
+        // first and the catalog is only ever scrolled down.
+        await openShelfList(
+          tester,
+          'Featured labels',
+          const ValueKey('catalog-labels-all'),
+          timeout: const Duration(seconds: 20),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('labels-results')),
+          timeout: const Duration(seconds: 20),
+        );
+        final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
+        await tester.scrollUntilVisible(
+          label,
+          300,
+          scrollable: find.descendant(
+            of: find.byKey(const ValueKey('labels-results')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await tapVisible(tester, label);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('label-body')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('label-error')), findsNothing);
+
+        await tapBack(tester);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('labels-results')),
+        );
+        await tapBack(tester);
+        await openShelfList(
+          tester,
+          'Featured authors',
+          const ValueKey('catalog-creators-all'),
+          timeout: const Duration(seconds: 20),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('creators-results')),
+          timeout: const Duration(seconds: 20),
+        );
+        // The seed credits more authors than a page of twenty holds, and the
+        // last of them by name is reached only by paging.
+        final author = find.byKey(const ValueKey('creator-tile-SeedAUTHA1AA'));
+        await tester.scrollUntilVisible(
+          author,
+          300,
+          scrollable: find.descendant(
+            of: find.byKey(const ValueKey('creators-results')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await tapVisible(tester, author);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('creator-body')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('creator-error')), findsNothing);
       });
     });
 
@@ -3077,13 +3273,13 @@ void main() {
           const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
         );
         await pumpLaunch(tester, baseUrl: server.baseUrl);
-        await pumpUntilFound(tester, tile);
+        await pumpUntilCatalogShows(tester, tile);
 
         final closedBaseUrl = server.baseUrl;
         await server.close();
 
         await pumpLaunch(tester, baseUrl: closedBaseUrl);
-        await pumpUntilFound(tester, tile);
+        await pumpUntilCatalogShows(tester, tile);
 
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
       });

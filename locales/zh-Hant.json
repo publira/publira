@@ -3595,16 +3595,20 @@
       "all_series_heading": "全部系列",
       "continue_failed": "無法顯示您正在閱讀的作品。",
       "continue_heading": "繼續閱讀",
+      "creators_failed": "無法顯示推薦作者。請重試。",
+      "creators_heading": "推薦作者",
       "empty": "尚未發布任何系列。",
       "genres_failed": "無法顯示類型。請重試。",
       "genres_heading": "依類型瀏覽",
-      "genres_view_all": "查看全部",
+      "labels_failed": "無法顯示推薦品牌。請重試。",
+      "labels_heading": "推薦品牌",
       "load_failed": "無法顯示作品目錄。",
       "new_arrivals_failed": "無法顯示最新上架的系列。",
       "new_arrivals_heading": "最新上架",
       "offline_not_saved": "您目前處於離線狀態，且此裝置上沒有儲存的作品目錄。",
       "ranking_failed": "無法顯示本週排行榜。",
-      "ranking_heading": "本週前十名"
+      "ranking_heading": "本週前十名",
+      "view_all": "查看全部"
     },
     "common": {
       "back_to_catalog": "返回作品目錄",
@@ -3707,6 +3711,11 @@
       "series_heading": "相關系列",
       "title": "作者"
     },
+    "creators": {
+      "empty": "還沒有作者署名於已發布的系列。",
+      "load_failed": "無法顯示作者列表。請重試。",
+      "title": "作者"
+    },
     "follow": {
       "failed": "無法變更追蹤狀態。請重試。",
       "follow": "追蹤",
@@ -3740,6 +3749,11 @@
       "not_found": "找不到品牌（{$id}）",
       "series_empty": "目前沒有已發布的系列。",
       "series_heading": "該品牌的系列",
+      "title": "品牌"
+    },
+    "labels": {
+      "empty": "尚未新增任何品牌。",
+      "load_failed": "無法顯示品牌列表。請重試。",
       "title": "品牌"
     },
     "genres": {
