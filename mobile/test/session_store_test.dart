@@ -16,6 +16,20 @@ void main() {
     expect(sessionStoreFor(config), isA<SecureSessionStore>());
   });
 
+  test('a build given an empty session token starts signed out without '
+      'reading the credential store', () async {
+    final store = sessionStoreFor(
+      const AppConfig(
+        baseUrl: AppConfig.defaultBaseUrl,
+        tenantHost: AppConfig.defaultTenantHost,
+        sessionToken: '',
+      ),
+    );
+
+    expect(store, isA<MemorySessionStore>());
+    expect(await store.read(), isNull);
+  });
+
   test('a build given a session token starts signed in as the reader GetMe '
       'names', () async {
     final repository = FakeAuthRepository();

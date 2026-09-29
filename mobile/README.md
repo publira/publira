@@ -645,7 +645,7 @@ Every route named on the command line becomes one PNG under `.run/screenshots/`;
 
 The screens are taken on an attached device or emulator, which the app is built and installed on; in the Dev Container that is the one [`task mobile:emulator-start`](#android-emulator-in-the-dev-container) boots. With none attached, the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
 
-Every screen is taken signed in as a development-seed reader, the seeded member unless another one is named, so the account settings, the library's lists, and the notification inbox show themselves rather than the signed-out notice. The command signs the reader in against the profile's public API and builds the token into the app as `--dart-define=PUBLIRA_SESSION_TOKEN`, which the app holds in memory rather than in the credential store; `task mobile:build` refuses the define.
+Every screen is taken signed in as a development-seed reader, the seeded member unless another one is named, so the account settings, the library's lists, and the notification inbox show themselves rather than the signed-out notice. The command signs the reader in against the profile's public API and builds the token into the app as `--dart-define=PUBLIRA_SESSION_TOKEN`, which the app holds in memory rather than in the credential store. A run taken signed out passes the define empty, so a session the device already keeps is not shown either. `task mobile:build` refuses the define.
 
 ```bash
 task mobile:screenshot -- /account/delete

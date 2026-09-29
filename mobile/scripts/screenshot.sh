@@ -63,10 +63,10 @@ call_public_api() {
   printf '%s\n' "${response}"
 }
 
-# The define that starts the app signed in as the reader, or nothing for a
-# run photographed signed out. The token is held in memory by the build, so
-# the session a device already keeps is left as it is.
-session_define=''
+# The define that starts the app signed in as the reader, empty for a run
+# photographed signed out. Either way the build holds its session in memory,
+# so the session a device already keeps is neither shown nor replaced.
+session_define='--dart-define=PUBLIRA_SESSION_TOKEN='
 
 sign_in_reader() {
   local response tenant token
@@ -101,7 +101,7 @@ screenshot_on_device() {
   mapfile -t defines < <(
     mobile_dart_defines "${PUBLIRA_BASE_URL}"
   )
-  [[ -z "${session_define}" ]] || defines+=("${session_define}")
+  defines+=("${session_define}")
   mobile_generate_build_config
   app_id="$(mobile_dev_application_id)"
   flutter build apk --debug "${defines[@]}"
@@ -157,7 +157,7 @@ screenshot_in_browser() {
   origin="http://127.0.0.1:${port}"
   sign_in_reader
   mapfile -t defines < <(mobile_dart_defines "${origin}")
-  [[ -z "${session_define}" ]] || defines+=("${session_define}")
+  defines+=("${session_define}")
   flutter build web "${defines[@]}"
 
   dart run scripts/web_app_server.dart \

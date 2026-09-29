@@ -18,16 +18,15 @@ abstract class SessionStore {
 /// Where a build given [config] keeps its session: the credential store, or
 /// memory holding [AppConfig.sessionToken] when the build was given one.
 SessionStore sessionStoreFor(AppConfig config) {
-  if (config.sessionToken.isEmpty) {
+  final token = config.sessionToken;
+  if (token == null) {
     return const SecureSessionStore();
   }
   return MemorySessionStore(
     // GetMe names the reader when the session is restored.
-    session: AuthSession(
-      accessToken: config.sessionToken,
-      userPublicId: '',
-      userName: '',
-    ),
+    session: token.isEmpty
+        ? null
+        : AuthSession(accessToken: token, userPublicId: '', userName: ''),
   );
 }
 
