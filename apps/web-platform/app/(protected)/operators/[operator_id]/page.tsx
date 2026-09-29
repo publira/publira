@@ -21,6 +21,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import {
+  DangerConfirmButton,
+  DangerConfirmButtonAction,
+  DangerConfirmButtonTrigger,
+} from "#components/danger-confirm-button";
 import { Message } from "#components/message";
 import {
   PlatformPage,
@@ -49,11 +54,6 @@ import { getPlatformOperator } from "#lib/operators";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-import {
-  DangerConfirmButton,
-  DangerConfirmButtonAction,
-  DangerConfirmButtonTrigger,
-} from "./_components/danger-confirm-button";
 import { OperatorRoleForm } from "./_components/operator-role-form";
 import {
   deactivateOperatorAction,

@@ -33,6 +33,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import {
+  DangerConfirmButton,
+  DangerConfirmButtonAction,
+  DangerConfirmButtonTrigger,
+} from "#components/danger-confirm-button";
 import { Message } from "#components/message";
 import {
   PlatformPage,
@@ -57,11 +62,6 @@ import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import { getPlatformEndUser } from "#lib/users";
 
-import {
-  DangerConfirmButton,
-  DangerConfirmButtonAction,
-  DangerConfirmButtonTrigger,
-} from "./_components/danger-confirm-button";
 import {
   deleteEndUserAction,
   suspendEndUserAction,
