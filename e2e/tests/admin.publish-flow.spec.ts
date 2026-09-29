@@ -1,0 +1,382 @@
+import { expect, test } from "@playwright/test";
+
+import {
+  createEpisodeViaUi,
+  createSeriesViaUi,
+  formMessage,
+  selectOption,
+  seriesFormFields,
+  signInAsSeedAdmin,
+  weekdayCheckbox,
+} from "../src/admin";
+import { applyScenarioSql, deleteSeriesByPublicIds } from "../src/db";
+import {
+  nudgeScheduledEpisodeReady,
+  waitUntilEpisodePublishedInDb,
+} from "../src/publish";
+import {
+  publishedAtOneHourAgo,
+  scheduleAtFiveMinutesFromNow,
+  uniqueSuffix,
+} from "../src/scenarios/admin-publish";
+import {
+  MULTI_TENANT_SCENARIO,
+  OTHER_TENANT,
+} from "../src/scenarios/multi-tenant";
+import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+
+const adminUrl = (pathname: string): string =>
+  `${WEB_ADMIN_BASE_URL}${pathname}`;
+
+/**
+ * Admin → admin API → public API → web-host publish flow.
+ *
+ * Login is a prerequisite helper (auth coverage is `admin.auth.spec.ts`). Each test uses a
+ * unique title so runs do not depend on leftover rows from a previous suite.
+ * Series created during the suite are deleted in `afterEach` so `task e2e:test`
+ * against a long-lived stack does not accumulate rows.
+ */
+test.describe("admin publish flow", () => {
+  /** Series public_ids created in the current test; drained by afterEach. */
+  let createdSeriesIds: string[] = [];
+
+  test.beforeEach(async ({ page }) => {
+    createdSeriesIds = [];
+    await signInAsSeedAdmin(page);
+  });
+
+  test.afterEach(() => {
+    deleteSeriesByPublicIds(createdSeriesIds);
+    createdSeriesIds = [];
+  });
+
+  const trackSeries = (publicId: string): string => {
+    createdSeriesIds.push(publicId);
+    return publicId;
+  };
+
+  test("creates a draft series and shows the edit back in the console", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Draft Series ${suffix}`;
+    const synopsis = `Draft synopsis ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, { synopsis, title })
+    );
+
+    await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
+    const fields = seriesFormFields(page);
+    await expect(fields.title).toHaveValue(title);
+    await expect(fields.synopsis).toHaveValue(synopsis);
+    // Draft: published_at left empty.
+    await expect(fields.publishedAt).toHaveValue("");
+
+    const editedTitle = `${title} (edited)`;
+    const editedSynopsis = `${synopsis} (edited)`;
+    await fields.title.fill(editedTitle);
+    await fields.synopsis.fill(editedSynopsis);
+    await page.getByRole("button", { name: "Update series" }).click();
+    // The toast is what says the Action finished. The field values cannot say
+    // it — `fill` already put them there, so asserting on them passes while the
+    // request is still in flight, and the navigation below would then cancel
+    // the save it is meant to read back. FlashToast strips `?updated=1` via a
+    // client replace, so the URL cannot say it either.
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(fields.title).toHaveValue(editedTitle);
+    await expect(fields.synopsis).toHaveValue(editedSynopsis);
+
+    // List row reflects the save. The console's own link, not `page.goto`: the
+    // list is a `"use cache: private"` read, held in the browser and dropped by
+    // a reload, so `page.goto` would read it fresh whatever the Action did.
+    // An editor walks back through the sidebar instead, onto whatever entry the
+    // router already holds — which is what the Action has to clear.
+    await page.getByRole("link", { exact: true, name: "Series" }).click();
+    await page.waitForURL((url) => url.pathname === "/series");
+    await expect(page.getByText(editedTitle)).toBeVisible();
+    // Exact match: the synopsis cell can also contain the word "Draft".
+    await expect(
+      page
+        .locator("tr", { hasText: editedTitle })
+        .getByText("Draft", { exact: true })
+    ).toBeVisible();
+  });
+
+  test("classifies a series and reads the classification back on the form and the list", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Classified Series ${suffix}`;
+    const tagName = `e2e-tag-${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        synopsis: `Classified synopsis ${suffix}`,
+        tagName,
+        title,
+      })
+    );
+
+    const fields = seriesFormFields(page);
+    await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
+    // The tag written on the create form survives the save that redirected
+    // here, which is what says `CreateSeries` carried it.
+    await expect(
+      page.getByRole("listitem").filter({ hasText: tagName })
+    ).toBeVisible();
+
+    await selectOption(page, fields.statusSelect, "Completed");
+    await selectOption(page, fields.ageRatingSelect, "R15");
+    await weekdayCheckbox(page, "Fri").click();
+
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the controls the click left
+    // behind: a reload is what proves the save reached the listing row.
+    await page.reload();
+    const savedFields = seriesFormFields(page);
+    await expect(savedFields.statusSelect).toContainText("Completed");
+    await expect(savedFields.ageRatingSelect).toContainText("R15");
+    await expect(weekdayCheckbox(page, "Fri")).toBeChecked();
+    await expect(
+      page.getByRole("listitem").filter({ hasText: tagName })
+    ).toBeVisible();
+
+    await page.getByRole("link", { exact: true, name: "Series" }).click();
+    await page.waitForURL((url) => url.pathname === "/series");
+    const row = page.locator("tr", { hasText: title });
+    await expect(row.getByText("Completed", { exact: true })).toBeVisible();
+    await expect(row.getByText("R15", { exact: true })).toBeVisible();
+
+    // List filters travel in the URL, so a cursor page remains on the same
+    // narrowed list and a reload can reproduce the editor's view.
+    await selectOption(
+      page,
+      page.getByRole("combobox", { name: "Serialization status" }),
+      "Completed"
+    );
+    await selectOption(
+      page,
+      page.getByRole("combobox", { name: "Age rating" }),
+      "R15"
+    );
+    await page.getByRole("button", { name: "Apply" }).click();
+    await page.waitForURL(/\/series\?status=completed&age_rating=r15$/u);
+    await expect(page.locator("tr", { hasText: title })).toBeVisible();
+
+    await page.getByRole("link", { name: "Reset" }).click();
+    await page.waitForURL((url) => url.pathname === "/series" && !url.search);
+  });
+
+  // `comment_mode` is a tenant-wide setting, and a series may state one of its
+  // own instead. The form offers the tenant's setting as an option of its own,
+  // naming what that setting currently is, so the choice is made from the form
+  // rather than from the settings screen.
+  test("states a comment mode of its own and reads it back on the form", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Comment Mode Series ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        synopsis: `Comment mode synopsis ${suffix}`,
+        title,
+      })
+    );
+
+    await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
+    const fields = seriesFormFields(page);
+    // A new series states no mode of its own. The seed tenant has never opened
+    // its comment settings, so what it follows is "do not accept comments".
+    await expect(fields.commentModeSelect).toHaveText(
+      "Follow the tenant setting (Do not accept comments)"
+    );
+
+    await selectOption(
+      page,
+      fields.commentModeSelect,
+      "Publish after approval"
+    );
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the control the click left
+    // behind: a reload is what proves the save reached the listing row.
+    await page.reload();
+    await expect(seriesFormFields(page).commentModeSelect).toHaveText(
+      "Publish after approval"
+    );
+  });
+
+  test("publishing a series makes it visible on the same tenant's web-host", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Published Series ${suffix}`;
+    const synopsis = `Published synopsis ${suffix}`;
+    // Past wall clock → immediate publish on create.
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis,
+        title,
+      })
+    );
+
+    const fields = seriesFormFields(page);
+    await expect(fields.title).toHaveValue(title);
+    await expect(fields.publishedAt).not.toHaveValue("");
+
+    // Brand-new public_id: first host request misses cache and hits public API.
+    const response = await page.goto(hostUrl(`/series/${seriesId}`));
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: title })
+    ).toBeVisible();
+    await expect(page.getByText(synopsis)).toBeVisible();
+  });
+
+  test("submits and schedules an episode, and it reaches web-host once published", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const seriesTitle = `E2E Episode Parent ${suffix}`;
+    const episodeTitle = `E2E Episode ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis: `Parent series ${suffix}`,
+        title: seriesTitle,
+      })
+    );
+
+    // Schedule far enough ahead for minute-precision datetime-local and slow
+    // CI. Nudge scheduled_at into the past after create so the worker fires
+    // without waiting out the wall clock.
+    const episodeId = await createEpisodeViaUi(page, {
+      publishAt: scheduleAtFiveMinutesFromNow(),
+      seriesPublicId: seriesId,
+      title: episodeTitle,
+    });
+
+    // Admin list shows the scheduled listing before the worker runs. The row
+    // is addressed by its drag handle: the title is also on the row itself, so
+    // the text alone matches twice.
+    await page.goto(adminUrl(`/series/${seriesId}/episodes`));
+    await expect(
+      page.getByRole("button", { exact: true, name: `Reorder ${episodeTitle}` })
+    ).toBeVisible();
+    await expect(page.getByText(/Status: Scheduled/u)).toBeVisible();
+
+    // Do not fetch the host URL while the episode is still scheduled: web-host
+    // would cache the 404 under `"use cache"` and keep missing after publish.
+    nudgeScheduledEpisodeReady(episodeId);
+    await waitUntilEpisodePublishedInDb(episodeId);
+
+    // First host request after DB publish — never seen this public_id before.
+    const episodeResponse = await page.goto(
+      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+    );
+    expect(episodeResponse?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: episodeTitle })
+    ).toBeVisible();
+
+    // Parent series detail also lists the published episode. Another spec's
+    // top page can fill this entry before the publication, and the worker's
+    // drop reaches web-host through the Outbox and only marks it stale.
+    await expect(async () => {
+      await page.goto(hostUrl(`/series/${seriesId}`));
+      await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
+  });
+
+  test("publishes an episode whose publication time has passed as it is created, and web-host lists it", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const seriesTitle = `E2E Publish Now Parent ${suffix}`;
+    const episodeTitle = `E2E Publish Now ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis: `Parent series ${suffix}`,
+        title: seriesTitle,
+      })
+    );
+
+    // Nothing nudges the schedule here: the create itself publishes, so the
+    // worker's publication pass has no part in what the host shows.
+    const episodeId = await createEpisodeViaUi(page, {
+      publishAt: publishedAtOneHourAgo(),
+      seriesPublicId: seriesId,
+      title: episodeTitle,
+    });
+
+    await page.goto(adminUrl(`/series/${seriesId}/episodes`));
+    await expect(page.getByText(/Status: Published/u)).toBeVisible();
+
+    const episodeResponse = await page.goto(
+      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+    );
+    expect(episodeResponse?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: episodeTitle })
+    ).toBeVisible();
+
+    // The drop the create recorded reaches web-host through the Outbox when
+    // its immediate attempt does not, and only marks the entry stale.
+    await expect(async () => {
+      await page.goto(hostUrl(`/series/${seriesId}`));
+      await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
+  });
+
+  test("a missing required field shows an error", async ({ page }) => {
+    await page.goto(adminUrl("/series/new"));
+    const fields = seriesFormFields(page);
+    await fields.title.fill(`E2E Invalid ${uniqueSuffix()}`);
+    await fields.synopsis.fill("Synopsis only, nothing else filled in");
+    // Intentionally skip label selection.
+    await page.getByRole("button", { name: "Create series" }).click();
+
+    await expect(formMessage(page)).toContainText(/A label is required/u);
+    // Still on the create form — no redirect.
+    await expect(page).toHaveURL(/\/series\/new/u);
+  });
+
+  test("another tenant's series is not found in the edit screen", async ({
+    page,
+  }) => {
+    applyScenarioSql(MULTI_TENANT_SCENARIO);
+
+    const response = await page.goto(
+      adminUrl(`/series/${OTHER_TENANT.publishedSeries.publicId}`)
+    );
+    // Cache Components commits the shell with 200. The resource itself is
+    // either the console not-found page or an inline load error — never the
+    // foreign series body (see (protected)/not-found.tsx and getSeries).
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByText(/Page not found|The series could not be found/u)
+    ).toBeVisible();
+    await expect(
+      page.getByText(OTHER_TENANT.publishedSeries.title)
+    ).toHaveCount(0);
+    await expect(seriesFormFields(page).title).toHaveCount(0);
+  });
+});

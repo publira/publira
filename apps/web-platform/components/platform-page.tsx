@@ -1,0 +1,16 @@
+export {
+  ConsolePage as PlatformPage,
+  ConsolePageActions as PlatformPageActions,
+  ConsolePageContent as PlatformPageContent,
+  ConsolePageDescription as PlatformPageDescription,
+  ConsolePageHeader as PlatformPageHeader,
+  ConsolePageHeading as PlatformPageHeading,
+  ConsolePageTitle as PlatformPageTitle,
+  ConsoleSection as PlatformSection,
+  ConsoleSectionActions as PlatformSectionActions,
+  ConsoleSectionDescription as PlatformSectionDescription,
+  ConsoleSectionHeader as PlatformSectionHeader,
+  ConsoleSectionHeading as PlatformSectionHeading,
+  ConsoleSections as PlatformSections,
+  ConsoleSectionTitle as PlatformSectionTitle,
+} from "@publira/layouts/admin";

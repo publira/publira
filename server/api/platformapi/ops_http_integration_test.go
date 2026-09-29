@@ -1,0 +1,414 @@
+package platformapi
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"regexp"
+	"slices"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/pagination"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+)
+
+func TestListOperators(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
+		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(sqlmock.NewRows(integrationOperatorColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "operator1@example.com", "Operator One", "platform_operator", "active", now).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "suspended", now))
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListOperators(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListOperatorsRequest{}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	if len(resp.Msg.Operators) != 2 {
+		t.Fatalf("len(operators) = %d, want 2", len(resp.Msg.Operators))
+	}
+	if resp.Msg.Operators[1].Status != "suspended" {
+		t.Fatalf("status = %q, want suspended", resp.Msg.Operators[1].Status)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogs(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	actorID1 := uuid.Must(uuid.NewV7())
+	actorID2 := uuid.Must(uuid.NewV7())
+	targetOperatorID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), actorID1, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, "203.0.113.10", now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One").
+			AddRow(uuid.Must(uuid.NewV7()), actorID2, "platform_super_admin", "operator_updated", "operator", targetOperatorID.String(), "success", nil, nil, now.Add(-time.Minute), "Operator Two", "PLATUSER002", "", "", "PLATUSER003", "Operator Three"))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 2 {
+		t.Fatalf("len(audit_logs) = %d, want 2", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.AuditLogs[0].TenantPublicId != "TENANT001" {
+		t.Fatalf("audit_logs[0].tenant_public_id = %q, want TENANT001", resp.Msg.AuditLogs[0].TenantPublicId)
+	}
+	if resp.Msg.AuditLogs[1].TargetId != targetOperatorID.String() {
+		t.Fatalf("audit_logs[1].target_id = %q, want %s", resp.Msg.AuditLogs[1].TargetId, targetOperatorID.String())
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsWithFilters(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{String: "PLATUSER001", Valid: true}, uuid.NullUUID{UUID: tenantID, Valid: true}, sql.NullString{String: "tenant_created", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(11)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, nil, now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One"))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{Limit: 10, TenantId: tenantID.String(), ActorUserPublicId: "PLATUSER001", Action: "tenant_created"}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 1 {
+		t.Fatalf("len(audit_logs) = %d, want 1", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.AuditLogs[0].Action != "tenant_created" {
+		t.Fatalf("audit_logs[0].action = %q, want tenant_created", resp.Msg.AuditLogs[0].Action)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+// An out-of-range limit falls back to the default page size rather than the
+// maximum, the same as every other cursor list (proto/README.md).
+func TestListAuditLogsOutOfRangeLimitFallsBackToDefault(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{Limit: 999}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func platformAuditLogColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id",
+		"outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id",
+		"tenant_name", "tenant_public_id", "target_public_id", "target_name",
+	})
+}
+
+func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	rows := platformAuditLogColumns()
+	for i, id := range ids {
+		rows = rows.AddRow(
+			id, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
+			"success", nil, nil, now.Add(-time.Duration(i)*time.Minute), "Operator One", "PLATUSER001",
+			"Tenant One", "TENANT001", "TENANT001", "Tenant One",
+		)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(rows)
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{Limit: 2}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 2 {
+		t.Fatalf("len(audit_logs) = %d, want the over-fetched row dropped", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsFollowsNextToken(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	resultID := uuid.Must(uuid.NewV7())
+	resultAt := now.Add(-2 * time.Minute)
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
+		WillReturnRows(platformAuditLogColumns().AddRow(
+			resultID, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
+			"success", nil, nil, resultAt, "Operator One", "PLATUSER001",
+			"Tenant One", "TENANT001", "TENANT001", "Tenant One",
+		))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{
+		Limit: 2,
+		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 1 {
+		t.Fatalf("len(audit_logs) = %d, want 1", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the previous page")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsRejectsBrokenToken(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{
+		Token: "not-a-token",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListAuditLogs code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	tenantA := uuid.Must(uuid.NewV7()).String()
+	tenantB := uuid.Must(uuid.NewV7()).String()
+	tenantLogs := pagination.NewListKey("created_at_desc").Value("tenant_id", tenantA)
+	boundary := tenantLogs.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+
+	tests := map[string]struct {
+		token                 string
+		tenant, actor, action string
+	}{
+		"another tenant":   {token: boundary, tenant: tenantB},
+		"an actor added":   {token: boundary, tenant: tenantA, actor: "USER000001"},
+		"an action added":  {token: boundary, tenant: tenantA, action: "tenant_created"},
+		"no filter":        {token: boundary},
+		"a recovery token": {token: tenantLogs.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID), tenant: tenantB},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ts, mock := newIntegrationTestServer(t)
+			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, boundaryAt)
+
+			client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+			_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{
+				TenantId:          tt.tenant,
+				ActorUserPublicId: tt.actor,
+				Action:            tt.action,
+				Token:             tt.token,
+			}))
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListAuditLogs error = %v, want invalid_argument for another filter", err)
+			}
+			assertIntegrationExpectations(t, mock)
+		})
+	}
+}
+
+func TestListAuditLogsUnauthenticated(t *testing.T) {
+	ts, _ := newIntegrationTestServer(t)
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListAuditLogs code = %v, want unauthenticated", connect.CodeOf(err))
+	}
+}
+
+func TestGetDashboardSummary(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(50)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountActiveTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(42)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountSuspendedTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(8)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPendingEndUsers)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRecentPlatformEvents)).
+		WithArgs(int32(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}).
+			AddRow("tenant_created", "Tenant Created", "TENANT001", "", now).
+			AddRow("operator_role_granted", "Operator Role Granted", "PLATUSER001", "operator.yamada", now.Add(-time.Minute)))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	resp, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if err != nil {
+		t.Fatalf("GetDashboardSummary: %v", err)
+	}
+	if resp.Msg.TotalTenants != 50 {
+		t.Fatalf("total_tenants = %d, want 50", resp.Msg.TotalTenants)
+	}
+	if resp.Msg.ActiveTenants != 42 {
+		t.Fatalf("active_tenants = %d, want 42", resp.Msg.ActiveTenants)
+	}
+	if resp.Msg.PendingEndUsers != 3 {
+		t.Fatalf("pending_end_users = %d, want 3", resp.Msg.PendingEndUsers)
+	}
+	if len(resp.Msg.RecentEvents) != 2 {
+		t.Fatalf("recent_events count = %d, want 2", len(resp.Msg.RecentEvents))
+	}
+	if resp.Msg.RecentEvents[0].Actor != "system" {
+		t.Fatalf("recent_events[0].actor = %q, want system", resp.Msg.RecentEvents[0].Actor)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryClampLimit(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountActiveTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountSuspendedTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPendingEndUsers)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRecentPlatformEvents)).WithArgs(int32(50)).WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{RecentEventsLimit: 999}))
+	if err != nil {
+		t.Fatalf("GetDashboardSummary: %v", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryDatabaseErrorIsHidden(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).
+		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetDashboardSummary code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryPreservesContextCanceled(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).
+		WillReturnError(context.Canceled)
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetDashboardSummary code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
+		WithArgs(sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "platform_audit_logs" does not exist`))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListAuditLogs code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryUnauthenticated(t *testing.T) {
+	ts, _ := newIntegrationTestServer(t)
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("GetDashboardSummary code = %v, want unauthenticated", connect.CodeOf(err))
+	}
+}

@@ -1,0 +1,161 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyScenarioSql } from "../src/db";
+import { signInAsSeedMember } from "../src/host";
+import {
+  MEMBER_ANNOUNCEMENTS,
+  MEMBER_ANNOUNCEMENTS_SCENARIO,
+} from "../src/scenarios/member-announcements";
+import { hostPath } from "../src/urls";
+
+/** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-host announcements page. */
+const ANNOUNCEMENTS_PAGE_SIZE = 20;
+
+const signIn = async (page: Page): Promise<void> => {
+  await signInAsSeedMember(page, "/announcements");
+  await expect(page).toHaveURL(/\/announcements/u);
+};
+
+const pagination = (page: Page) =>
+  page.getByRole("navigation", { name: "Announcements pagination" });
+
+const noticeTitles = (page: Page) =>
+  page.locator("article h3").allTextContents();
+
+/**
+ * Follow a page link and wait for the move to land. Two separate signals have to
+ * settle: the `token` in the URL, and the rows themselves. Neighbouring pages
+ * hold the same number of rows, so a count assertion alone is satisfied by the
+ * page still on screen — and the list renders behind Suspense, so the URL can
+ * change while the previous page's rows are still mounted. Every move in this
+ * suite crosses a page boundary, so the leading title is what proves it landed.
+ */
+const movePage = async (page: Page, label: string): Promise<void> => {
+  const fromUrl = page.url();
+  const fromLeadingTitle = await page
+    .locator("article h3")
+    .first()
+    .textContent();
+
+  await pagination(page).getByRole("link", { name: label }).click();
+
+  await page.waitForURL((url) => url.toString() !== fromUrl);
+  await expect(page.locator("article h3").first()).not.toHaveText(
+    fromLeadingTitle ?? ""
+  );
+};
+
+/**
+ * The signed-in member's announcement list under cursor pagination. The
+ * list streams in behind Suspense, so every assertion targets resolved content
+ * rather than the skeleton, and page moves go through `movePage` so the rows
+ * are known to have caught up with the URL.
+ */
+test.describe("web-host member announcements", () => {
+  // Shared seed member: one test marks a notice as read, which would race
+  // the pagination assertions if the file were fullyParallel.
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeAll(() => {
+    applyScenarioSql(MEMBER_ANNOUNCEMENTS_SCENARIO);
+  });
+
+  test("the announcement list pages through with a cursor", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await expect(page).toHaveURL(/\/announcements/u);
+
+    const notices = page.locator("article h3");
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
+
+    // Newest first, and nothing before the first page.
+    await expect(notices.first()).toHaveText(MEMBER_ANNOUNCEMENTS.newestTitle);
+    await expect(
+      pagination(page).getByRole("link", { name: "Previous page" })
+    ).toHaveCount(0);
+    const firstPage = await noticeTitles(page);
+
+    await movePage(page, "Next page");
+    await expect(page).toHaveURL(/\?token=/u);
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
+    const secondPage = await noticeTitles(page);
+
+    // No row is repeated across the page boundary.
+    expect(secondPage.filter((title) => firstPage.includes(title))).toEqual([]);
+
+    await movePage(page, "Next page");
+    await expect(notices).toHaveCount(
+      MEMBER_ANNOUNCEMENTS.count - 2 * ANNOUNCEMENTS_PAGE_SIZE
+    );
+    const lastPage = await noticeTitles(page);
+
+    expect(lastPage.filter((title) => secondPage.includes(title))).toEqual([]);
+    await expect(notices.last()).toHaveText(MEMBER_ANNOUNCEMENTS.oldestTitle);
+    // Nothing after the last page.
+    await expect(
+      pagination(page).getByRole("link", { name: "Next page" })
+    ).toHaveCount(0);
+
+    // Every seeded row was reachable across the three pages.
+    expect(new Set([...firstPage, ...secondPage, ...lastPage]).size).toBe(
+      MEMBER_ANNOUNCEMENTS.count
+    );
+
+    // `Previous page` walks back to the same rows, not to a shifted window.
+    await movePage(page, "Previous page");
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
+    await expect(noticeTitles(page)).resolves.toEqual(secondPage);
+
+    await movePage(page, "Previous page");
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
+    await expect(noticeTitles(page)).resolves.toEqual(firstPage);
+  });
+
+  test("opening a notice from a later page marks it read", async ({ page }) => {
+    await signIn(page);
+    await expect(page).toHaveURL(/\/announcements/u);
+
+    await movePage(page, "Next page");
+    await expect(page).toHaveURL(/\?token=/u);
+    const secondPageUrl = page.url();
+
+    const opened =
+      (await page.locator("article h3").first().textContent()) ?? "";
+    expect(opened).not.toBe("");
+    await page
+      .locator("article")
+      .first()
+      .getByRole("button", { name: "Open and mark as read" })
+      .click();
+    await expect(page).toHaveURL(/\/series$/u);
+
+    // Back on the same page of the list, that row is now read.
+    await page.goto(secondPageUrl);
+    const readNotice = page
+      .locator("article")
+      .filter({ has: page.getByRole("heading", { level: 3, name: opened }) });
+    await expect(readNotice.getByText("Read", { exact: true })).toBeVisible();
+  });
+
+  test("a broken token falls back to the first page", async ({ page }) => {
+    await signIn(page);
+    await expect(page).toHaveURL(/\/announcements/u);
+    await expect(page.locator("article h3")).toHaveCount(
+      ANNOUNCEMENTS_PAGE_SIZE
+    );
+
+    await page.goto(hostPath("/announcements?token=not%20a%20token"));
+
+    await expect(page.locator("article h3")).toHaveCount(
+      ANNOUNCEMENTS_PAGE_SIZE
+    );
+    await expect(page.locator("article h3").first()).toHaveText(
+      MEMBER_ANNOUNCEMENTS.newestTitle
+    );
+    await expect(
+      pagination(page).getByRole("link", { name: "Previous page" })
+    ).toHaveCount(0);
+  });
+});

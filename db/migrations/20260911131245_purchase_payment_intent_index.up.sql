@@ -1,0 +1,12 @@
+-- INDEX: idx_purchases_stripe_payment_intent_id
+-- The lookup a refund arrives by: charge.refunded names the payment intent,
+-- and the purchase it reverses is found by that alone. Unique because one
+-- Checkout Session has one payment intent behind it, so a second purchase
+-- claiming the same one would be a duplicate entitlement for one payment.
+--
+-- CONCURRENTLY, so building it does not block the purchases a storefront keeps
+-- writing. That is also why this statement is the whole file: the driver hands
+-- a migration to PostgreSQL as one query string, and a string holding more
+-- than one statement becomes an implicit transaction, which is the one place
+-- CONCURRENTLY cannot run.
+CREATE UNIQUE INDEX CONCURRENTLY idx_purchases_stripe_payment_intent_id ON purchases USING btree (stripe_payment_intent_id);

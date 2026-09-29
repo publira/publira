@@ -1,0 +1,433 @@
+package protomapper
+
+import (
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+)
+
+// SeriesFromGetSeriesByPublicIDForTenantRow builds the admin view of a series.
+// It fails on a stored status or age rating this build does not know rather
+// than showing the console a series described by a value it guessed.
+//
+// The listing columns arrive through a LEFT JOIN, so they are absent for a
+// series with no listing row at all; the enums stay unspecified there, which
+// says the tenant has stated nothing.
+func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
+	series := &publirattypesv1.Series{
+		Id:               row.ID.String(),
+		PublicId:         row.PublicID,
+		Title:            row.Title,
+		IsPublished:      row.IsPublished,
+		ScheduleWeekdays: ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
+	}
+	if row.LabelPublicID.Valid {
+		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
+		series.Label.Id = row.LabelID.UUID.String()
+	}
+	if row.Synopsis.Valid {
+		series.Synopsis = row.Synopsis.String
+	}
+	if row.ReadingPeriodHours.Valid {
+		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.Status.Valid {
+		status, err := SeriesStatusFromStored(row.Status.String)
+		if err != nil {
+			return nil, err
+		}
+		series.Status = status
+	}
+	if row.AgeRating.Valid {
+		ageRating, err := SeriesAgeRatingFromStored(row.AgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		series.AgeRating = ageRating
+	}
+	if row.EyeCatchImageUpdatedAt.Valid {
+		series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		series.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	availability, err := SurfaceAvailabilityFromStored(row.Availability)
+	if err != nil {
+		return nil, err
+	}
+	series.Availability = availability
+	return series, nil
+}
+
+// SeriesFromGetSeriesByIDForTenantRow maps the same columns
+// SeriesFromGetSeriesByPublicIDForTenantRow does, read by id.
+func SeriesFromGetSeriesByIDForTenantRow(row dbmodels.GetSeriesByIDForTenantRow) (*publirattypesv1.Series, error) {
+	return SeriesFromGetSeriesByPublicIDForTenantRow(dbmodels.GetSeriesByPublicIDForTenantRow(row))
+}
+
+func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
+		PublicId:   row.PublicID,
+		Title:      row.Title,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+// EpisodeFromGetEpisodeByIDForTenantRow maps the same columns
+// EpisodeFromGetEpisodeByPublicIDForTenantRow does, read by id.
+func EpisodeFromGetEpisodeByIDForTenantRow(row dbmodels.GetEpisodeByIDForTenantRow) *publirattypesv1.Episode {
+	return EpisodeFromGetEpisodeByPublicIDForTenantRow(dbmodels.GetEpisodeByPublicIDForTenantRow(row))
+}
+
+func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
+		PublicId:   row.PublicID,
+		Title:      row.Title,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+// EpisodeFromGetPublishedEpisodeForTenantRow maps the episode a
+// reader opened. It is the one mapper that carries `rating_count`, because it
+// is the one read that stands for an episode a reader is at the end of rather
+// than for a link to one.
+func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:          row.ID.String(),
+		PublicId:    row.PublicID,
+		Title:       row.Title,
+		OrderIndex:  row.OrderIndex,
+		Price:       row.Price,
+		Status:      row.Status,
+		RatingCount: row.RatingCount,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeriesForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
+		PublicId:   row.PublicID,
+		Title:      row.Title,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingProgressRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:         row.EpisodeID.String(),
+		PublicId:   row.EpisodePublicID,
+		Title:      row.EpisodeTitle,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+// EpisodeFromListMyRecentSeriesRow maps the episode a recently read series is
+// continued from. Backward pages arrive as ListMyRecentSeriesAscRow and are
+// converted to this identical row type by the caller.
+func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		Id:         row.EpisodeID.String(),
+		PublicId:   row.EpisodePublicID,
+		Title:      row.EpisodeTitle,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
+	return &publirattypesv1.EpisodeImage{
+		Id:            row.ID.String(),
+		ImageUrl:      fmt.Sprintf("/images/episodes/%s", row.ID.String()),
+		ContentType:   row.ContentType,
+		FileSizeBytes: row.FileSizeBytes,
+		DisplayOrder:  row.DisplayOrder,
+		Width:         row.Width,
+		Height:        row.Height,
+	}
+}
+
+func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmodels.EpisodeImageVariant) *publirattypesv1.EpisodeImage {
+	return &publirattypesv1.EpisodeImage{
+		Id:            image.ID.String(),
+		ImageUrl:      fmt.Sprintf("/images/episodes/%s", image.ID.String()),
+		ContentType:   variant.ContentType,
+		FileSizeBytes: variant.FileSizeBytes,
+		DisplayOrder:  image.DisplayOrder,
+		Width:         variant.Width,
+		Height:        variant.Height,
+	}
+}
+
+// SeriesFromGetPublishedEpisodeForTenantRow builds the series an
+// episode detail is read under. It carries the age rating so a client can
+// interpose its confirmation before the body is shown, and fails on a stored
+// rating this build does not know rather than reporting the episode as
+// unrestricted. The eye-catch variants are the handler's to look up.
+func SeriesFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeForTenantRow) (*publirattypesv1.Series, error) {
+	series := &publirattypesv1.Series{
+		Id:       row.SeriesID.String(),
+		PublicId: row.SeriesPublicID,
+		Title:    row.SeriesTitle,
+	}
+	if row.SeriesAgeRating.Valid {
+		ageRating, err := SeriesAgeRatingFromStored(row.SeriesAgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		series.AgeRating = ageRating
+	}
+	if row.SeriesEyeCatchImageUpdatedAt.Valid {
+		series.EyeCatchImageUpdatedAt = row.SeriesEyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return series, nil
+}
+
+func CreatorFromRow(
+	publicID string,
+	name string,
+	profileText string,
+	iconImageID uuid.NullUUID,
+	iconImageFileSizeBytes int64,
+	iconImageUpdatedAt sql.NullTime,
+) *publirattypesv1.Creator {
+	creator := &publirattypesv1.Creator{
+		PublicId:    publicID,
+		Name:        name,
+		ProfileText: profileText,
+	}
+	if iconImageID.Valid {
+		creator.IconImageFileSizeBytes = iconImageFileSizeBytes
+	}
+	if iconImageUpdatedAt.Valid {
+		creator.IconImageUpdatedAt = iconImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if iconImageID.Valid {
+		creator.IconImageUrl = fmt.Sprintf("/images/creators/%s", iconImageID.UUID.String())
+	}
+	return creator
+}
+
+// EpisodeCreditsByEpisodeID groups the credits of several episodes by the
+// episode they are on. The query returns them in role priority order, so
+// nothing here reorders them.
+func EpisodeCreditsByEpisodeID(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) map[uuid.UUID][]*publirattypesv1.Creator {
+	credits := make(map[uuid.UUID][]*publirattypesv1.Creator)
+	for _, row := range rows {
+		// The icon's byte size is not on the credit read, the way it is not on
+		// the series aggregate's: what a page needs to render the icon is its
+		// URL and the instant it last changed.
+		creator := CreatorFromRow(row.PublicID, row.Name, row.ProfileText.String, row.IconImageID, 0, row.IconImageUpdatedAt)
+		// A credit baked from one written before roles existed carries none,
+		// and says so by leaving the field unset rather than by naming an
+		// empty role.
+		if row.RolePublicID.Valid {
+			creator.Role = &publirattypesv1.CreatorRole{
+				PublicId: row.RolePublicID.String,
+				Name:     row.RoleName.String,
+			}
+		}
+		switch row.Source {
+		case "episode":
+			creator.Source = publirattypesv1.CreatorCreditSource_CREATOR_CREDIT_SOURCE_EPISODE
+		case "series":
+			creator.Source = publirattypesv1.CreatorCreditSource_CREATOR_CREDIT_SOURCE_SERIES
+		}
+		credits[row.EpisodeID] = append(credits[row.EpisodeID], creator)
+	}
+	return credits
+}
+
+func Label(publicID, name string) *publirattypesv1.Label {
+	return &publirattypesv1.Label{
+		PublicId: publicID,
+		Name:     name,
+	}
+}
+
+func LabelWithImage(
+	publicID string,
+	name string,
+	eyeCatchImageUpdatedAt sql.NullTime,
+	eyeCatchImageVariants []*publirattypesv1.SeriesEyeCatchVariant,
+) *publirattypesv1.Label {
+	label := Label(publicID, name)
+	if eyeCatchImageUpdatedAt.Valid {
+		label.EyeCatchImageUpdatedAt = eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(eyeCatchImageVariants) > 0 {
+		label.EyeCatchImageVariants = eyeCatchImageVariants
+	}
+	return label
+}
+
+// TenantTheme carries its branding images the way Series carries its eye-catch:
+// the image's updated_at plus its variants, with the served URL built here. A
+// tenant that has not uploaded one has no variants, which is how a caller tells
+// "unset" from "set".
+func TenantThemeFromGetRow(
+	row dbmodels.GetTenantThemeByTenantIDRow,
+	iconVariants []*publirattypesv1.TenantImageVariant,
+	logoVariants []*publirattypesv1.TenantImageVariant,
+) *publirattypesv1.TenantTheme {
+	theme := &publirattypesv1.TenantTheme{
+		PrimaryColor:               row.PrimaryColor,
+		SecondaryColor:             row.SecondaryColor,
+		AccentColor:                row.AccentColor,
+		BackgroundColor:            row.BackgroundColor,
+		ForegroundColor:            row.ForegroundColor,
+		SurfaceColor:               row.SurfaceColor,
+		SurfaceForegroundColor:     row.SurfaceForegroundColor,
+		CardColor:                  row.CardColor,
+		CardForegroundColor:        row.CardForegroundColor,
+		PopoverColor:               row.PopoverColor,
+		PopoverForegroundColor:     row.PopoverForegroundColor,
+		PrimaryForegroundColor:     row.PrimaryForegroundColor,
+		SecondaryForegroundColor:   row.SecondaryForegroundColor,
+		AccentForegroundColor:      row.AccentForegroundColor,
+		MutedColor:                 row.MutedColor,
+		MutedForegroundColor:       row.MutedForegroundColor,
+		BorderColor:                row.BorderColor,
+		InputColor:                 row.InputColor,
+		RingColor:                  row.RingColor,
+		SuccessColor:               row.SuccessColor,
+		SuccessForegroundColor:     row.SuccessForegroundColor,
+		WarningColor:               row.WarningColor,
+		WarningForegroundColor:     row.WarningForegroundColor,
+		DestructiveColor:           row.DestructiveColor,
+		DestructiveForegroundColor: row.DestructiveForegroundColor,
+		InfoColor:                  row.InfoColor,
+		InfoForegroundColor:        row.InfoForegroundColor,
+		SerifFontFamily:            row.SerifFontFamily,
+		SansFontFamily:             row.SansFontFamily,
+	}
+	if row.IconImageUpdatedAt.Valid {
+		theme.IconImageUpdatedAt = row.IconImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(iconVariants) > 0 {
+		theme.IconImageVariants = iconVariants
+	}
+	if row.LogoImageUpdatedAt.Valid {
+		theme.LogoImageUpdatedAt = row.LogoImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(logoVariants) > 0 {
+		theme.LogoImageVariants = logoVariants
+	}
+	return theme
+}
+
+// TenantImageVariantsByImageID groups the variants of both branding images by
+// the image they belong to, so one read of tenant_image_variants serves the
+// icon and the logo.
+func TenantImageVariantsByImageID(
+	rows []dbmodels.ListTenantImageVariantsByImageIDsRow,
+) map[uuid.UUID][]*publirattypesv1.TenantImageVariant {
+	byImageID := make(map[uuid.UUID][]*publirattypesv1.TenantImageVariant, len(rows))
+	for _, row := range rows {
+		byImageID[row.TenantImageID] = append(byImageID[row.TenantImageID], &publirattypesv1.TenantImageVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           TenantImageURL(row.TenantImageID, row.VariantType),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return byImageID
+}
+
+// EyeCatchVariantURL is the image server route for one delivered size of an
+// eye-catch ratio. version is that size's own row. Replacing a ratio stores
+// new rows, so the URLs of the ratio that was replaced change, and a ratio
+// that was left alone keeps the row — and the URL — it had. The image server
+// does not read version. It is there so a cache holding the previous response
+// cannot serve that response for the new image. A request for the previous
+// URL still resolves to whatever that ratio holds now.
+func EyeCatchVariantURL(collection string, imageID uuid.UUID, variantType string, width int32, version uuid.UUID) string {
+	return fmt.Sprintf("/images/%s/%s/%s/%d?v=%s", collection, imageID.String(), variantType, width, version.String())
+}
+
+// TenantImageURL is the image server route a stored tenant image is served
+// from, keyed by what the image is for the same way the series route is keyed
+// by aspect ratio. A replace stores a new image, so this URL changes on its own
+// and needs no cache-busting query. Callers that want a smaller rendition add
+// the image server's own `w` parameter; nothing is pre-generated per size.
+func TenantImageURL(tenantImageID uuid.UUID, variantType string) string {
+	return fmt.Sprintf("/images/tenants/%s/%s", tenantImageID.String(), variantType)
+}

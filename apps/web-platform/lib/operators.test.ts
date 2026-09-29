@@ -1,0 +1,267 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
+import type { PlatformApiClient } from "@publira/api-client/platform/client";
+import type { PlatformOperator } from "@publira/api-client/platform/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  getPlatformOperator,
+  listPlatformOperators,
+  platformOperatorsCacheTag,
+} from "./operators";
+
+type GetOperatorMethod = PlatformApiClient["operators"]["getOperator"];
+type GetOperatorResponse = Awaited<ReturnType<GetOperatorMethod>>;
+type ListOperatorsMethod = PlatformApiClient["operators"]["listOperators"];
+type ListOperatorsResponse = Awaited<ReturnType<ListOperatorsMethod>>;
+
+const createOperator = (
+  overrides: Partial<Omit<PlatformOperator, "$typeName">> = {}
+): PlatformOperator => ({
+  $typeName: "publira.platform.v1.PlatformOperator",
+  createdAt: "2026-08-01T00:00:00Z",
+  email: "operator@example.com",
+  id: "0199a3c0-0000-7000-8000-000000000001",
+  name: "Taylor Reed",
+  publicId: "OPERATOR001",
+  role: "platform_operator",
+  status: "active",
+  ...overrides,
+});
+
+const createListOperatorsResponse = ({
+  nextToken = "",
+  operators = [],
+  previousToken = "",
+}: {
+  nextToken?: string;
+  operators?: PlatformOperator[];
+  previousToken?: string;
+}): ListOperatorsResponse => ({
+  $typeName: "publira.platform.v1.ListOperatorsResponse",
+  nextToken,
+  operators,
+  previousToken,
+});
+
+const createGetOperatorResponse = (
+  operator?: PlatformOperator
+): GetOperatorResponse => ({
+  $typeName: "publira.platform.v1.GetOperatorResponse",
+  operator,
+});
+
+const {
+  mockBuildSessionHeaders,
+  mockCacheTag,
+  mockGetOperator,
+  mockListOperators,
+  mockResolveAccessToken,
+} = vi.hoisted(() => ({
+  mockBuildSessionHeaders: vi.fn(),
+  mockCacheTag: vi.fn(),
+  mockGetOperator: vi.fn<GetOperatorMethod>(),
+  mockListOperators: vi.fn<ListOperatorsMethod>(),
+  mockResolveAccessToken: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
+}));
+
+vi.mock("./api-client", () => ({
+  apiClient: {
+    operators: {
+      getOperator: mockGetOperator,
+      listOperators: mockListOperators,
+    },
+  },
+  buildSessionHeaders: mockBuildSessionHeaders,
+  resolveAccessToken: mockResolveAccessToken,
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockResolveAccessToken.mockResolvedValue("sess_abc");
+  mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
+    headers: { Authorization: `Bearer ${sessionId}` },
+  }));
+});
+
+describe("listPlatformOperators", () => {
+  it("passes pagination arguments to the API and returns tokens and operators", async () => {
+    mockListOperators.mockResolvedValueOnce(
+      createListOperatorsResponse({
+        nextToken: "next-page",
+        operators: [createOperator()],
+        previousToken: "previous-page",
+      })
+    );
+
+    await expect(
+      listPlatformOperators({ limit: 50, locale: "en", token: "current-page" })
+    ).resolves.toEqual({
+      nextToken: "next-page",
+      ok: true,
+      operators: [
+        {
+          createdAt: "2026-08-01T00:00:00Z",
+          email: "operator@example.com",
+          id: "0199a3c0-0000-7000-8000-000000000001",
+          name: "Taylor Reed",
+          publicId: "OPERATOR001",
+          role: "platform_operator",
+          status: "active",
+        },
+      ],
+      previousToken: "previous-page",
+    });
+    expect(mockListOperators).toHaveBeenCalledWith(
+      { limit: 50, token: "current-page" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("returns an error without calling the API when the session cannot be resolved", async () => {
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: true,
+    });
+    expect(mockListOperators).not.toHaveBeenCalled();
+  });
+
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: true,
+    });
+  });
+
+  it("returns a shared message for classified RPC errors", async () => {
+    mockListOperators.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: false,
+    });
+  });
+
+  it("propagates unclassified RPC errors", async () => {
+    mockListOperators.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(listPlatformOperators({ locale: "en" })).rejects.toThrow(
+      "boom"
+    );
+  });
+});
+
+describe("getPlatformOperator", () => {
+  it("returns null without calling RPC for invalid input", async () => {
+    await expect(getPlatformOperator("   ", "en")).resolves.toBeNull();
+    expect(mockGetOperator).not.toHaveBeenCalled();
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("trims whitespace before passing input to GetOperator", async () => {
+    mockGetOperator.mockResolvedValueOnce(
+      createGetOperatorResponse(createOperator())
+    );
+
+    await expect(
+      getPlatformOperator("  OPERATOR001  ", "en")
+    ).resolves.toMatchObject({
+      publicId: "OPERATOR001",
+    });
+    expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
+      { publicId: "OPERATOR001" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("calls GetOperator only once without scanning the list", async () => {
+    mockGetOperator.mockResolvedValueOnce(
+      createGetOperatorResponse(
+        createOperator({
+          email: "second@example.com",
+          name: "Jordan Blake",
+          publicId: "OPERATOR101",
+        })
+      )
+    );
+
+    await expect(getPlatformOperator("OPERATOR101", "en")).resolves.toEqual({
+      createdAt: "2026-08-01T00:00:00Z",
+      email: "second@example.com",
+      id: "0199a3c0-0000-7000-8000-000000000001",
+      name: "Jordan Blake",
+      publicId: "OPERATOR101",
+      role: "platform_operator",
+      status: "active",
+    });
+    expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
+      { publicId: "OPERATOR101" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+    expect(mockListOperators).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the operator does not exist", async () => {
+    mockGetOperator.mockRejectedValueOnce(
+      new ConnectError("operator not found", Code.NotFound)
+    );
+
+    await expect(getPlatformOperator("UNKNOWN", "en")).resolves.toBeNull();
+  });
+
+  it("returns null for classified RPC errors", async () => {
+    mockGetOperator.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(getPlatformOperator("OPERATOR001", "en")).resolves.toBeNull();
+  });
+
+  it("propagates unclassified RPC errors", async () => {
+    mockGetOperator.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPlatformOperator("OPERATOR001", "en")).rejects.toThrow(
+      "boom"
+    );
+  });
+});
+
+describe("operator cache tags", () => {
+  it("files the operator list and an operator's detail under the operators tag", async () => {
+    mockListOperators.mockResolvedValueOnce(createListOperatorsResponse({}));
+    mockGetOperator.mockResolvedValueOnce(createGetOperatorResponse());
+
+    await listPlatformOperators({ locale: "en" });
+    await getPlatformOperator("OPERATOR001", "en");
+
+    expect(platformOperatorsCacheTag).toBe("platform:operators");
+    expect(mockCacheTag).toHaveBeenCalledTimes(2);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(1, platformOperatorsCacheTag);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(2, platformOperatorsCacheTag);
+  });
+});

@@ -1,0 +1,46 @@
+export interface NotificationItem {
+  createdAt: string;
+  description: string;
+  href?: string;
+  id: string;
+  isRead: boolean;
+  notificationType: string;
+  title: string;
+}
+
+export type ListNotificationsResult =
+  | {
+      nextToken: string;
+      notifications: NotificationItem[];
+      ok: true;
+      previousToken: string;
+    }
+  | {
+      message: string;
+      nextToken: string;
+      notifications: NotificationItem[];
+      ok: false;
+      previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
+export type CountUnreadNotificationsResult =
+  | { ok: true; unreadCount: number }
+  | {
+      message: string;
+      ok: false;
+      /** The API rejected the session — the header bell stays quiet about it. */
+      requiresSignIn: boolean;
+      unreadCount: number;
+    };
+
+/**
+ * Success carries no copy: the mark-as-read control unmounts once the item (or
+ * the unread set) is read, so a message returned here would never reach the
+ * screen.
+ */
+export type MarkNotificationActionState =
+  | { message: string; ok: false }
+  | { message: ""; ok: true }
+  | null;

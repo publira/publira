@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <title>Eye-catch source, Open Graph 1.91:1</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#003049" />
+      <stop offset="1" stop-color="#f77f00" />
+    </linearGradient>
+    <pattern id="weave" width="60" height="60" patternUnits="userSpaceOnUse">
+      <rect width="30" height="30" fill="#ffffff" opacity="0.1" />
+      <rect x="30" y="30" width="30" height="30" fill="#ffffff" opacity="0.1" />
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#field)" />
+  <rect width="1200" height="630" fill="url(#weave)" />
+  <g fill="none" stroke="#ffffff" opacity="0.45">
+    <rect x="60" y="31.5" width="1080" height="567" stroke-width="7" />
+    <rect x="120" y="63" width="960" height="504" stroke-width="16" />
+    <rect x="180" y="94.5" width="840" height="441" stroke-width="7" />
+    <rect x="240" y="126" width="720" height="378" stroke-width="16" />
+    <rect x="300" y="157.5" width="600" height="315" stroke-width="7" />
+    <rect x="360" y="189" width="480" height="252" stroke-width="16" />
+    <rect x="420" y="220.5" width="360" height="189" stroke-width="7" />
+    <rect x="480" y="252" width="240" height="126" stroke-width="16" />
+    <rect x="540" y="283.5" width="120" height="63" stroke-width="7" />
+  </g>
+  <!-- registration marks, so a crop can be told from the whole -->
+  <g fill="none" stroke="#ffffff" stroke-width="5" opacity="0.85">
+    <path d="M 32 70 L 32 32 L 70 32" />
+    <path d="M 1168 70 L 1168 32 L 1130 32" />
+    <path d="M 32 560 L 32 598 L 70 598" />
+    <path d="M 1168 560 L 1168 598 L 1130 598" />
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="3" opacity="0.7">
+    <line x1="568" y1="315" x2="632" y2="315" />
+    <line x1="600" y1="283" x2="600" y2="347" />
+    <circle cx="600" cy="315" r="32" />
+  </g>
+</svg>

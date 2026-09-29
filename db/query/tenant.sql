@@ -1,0 +1,310 @@
+-- ListTenants is (created_at, id) DESC. Forward uses the DESC query;
+-- backward uses ASC so the index can be scanned in reverse. The handler
+-- flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListTenantsDesc :many
+SELECT *
+FROM tenants
+WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
+  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
+  AND (
+    sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+      sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+      NOT sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantsAsc :many
+SELECT *
+FROM tenants
+WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
+  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
+  AND (
+    sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+      sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+      NOT sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: CreateTenant :one
+-- Tenant creation for platform administrators.
+-- default_locale has no column DEFAULT, so the caller always passes it
+-- explicitly. timezone is not left to its column DEFAULT either: the
+-- platform default is applied explicitly.
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
+VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'))
+RETURNING *;
+
+-- name: UpdateTenantStatus :one
+-- Update the tenant status (active / suspended).
+UPDATE tenants
+SET status = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateTenantInfo :one
+-- Update the tenant name and its domains.
+UPDATE tenants
+SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: UpdateTenantTimezone :one
+-- Update the tenant display time zone (an IANA name).
+UPDATE tenants
+SET timezone = sqlc.arg('timezone')
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: UpdateTenantDefaultLocale :one
+UPDATE tenants
+SET default_locale = sqlc.arg('default_locale')
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: GetTenantByDomains :one
+-- Return the first tenant that matches, keeping the order of the candidate
+-- host names.
+SELECT t.*
+FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t ON t.domain = candidate.domain
+ORDER BY candidate.ord
+LIMIT 1;
+
+-- name: GetAdminTenantByDomains :one
+-- Return the first tenant that matches admin_domain, or the admin.{domain}
+-- fallback, keeping the order of the candidate host names.
+SELECT t.*
+FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t
+    ON t.admin_domain = candidate.domain
+    OR (
+        t.admin_domain IS NULL
+        AND candidate.domain = CONCAT('admin.', t.domain)
+    )
+ORDER BY candidate.ord
+LIMIT 1;
+
+-- name: LockTenantForUpdate :one
+-- Lock the tenant row so concurrent tenant branding image uploads and deletes
+-- (icon, logo) serialize. The following read of the current image must be a
+-- separate statement: READ COMMITTED freezes its snapshot at statement start,
+-- so waiting for the lock in the same statement would still see the pre-wait
+-- row.
+SELECT id
+FROM tenants
+WHERE id = $1
+FOR UPDATE;
+
+-- name: CountAllTenants :one
+SELECT COUNT(*)::int
+FROM tenants;
+
+-- name: CountActiveTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'active';
+
+-- name: CountSuspendedTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'suspended';
+
+-- name: GetTenantByPublicID :one
+SELECT *
+FROM tenants
+WHERE public_id = $1
+LIMIT 1;
+
+-- name: GetTenantByID :one
+SELECT *
+FROM tenants
+WHERE id = $1
+LIMIT 1;
+
+-- name: GetTenantByUserID :one
+SELECT t.id,
+    t.public_id,
+    t.name,
+    t.created_at
+FROM tenants t
+    JOIN users u ON u.tenant_id = t.id
+WHERE u.id = $1
+LIMIT 1;
+
+-- name: GetTenantConfigByTenantID :one
+SELECT *
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1;
+
+-- name: CreateTenantConfig :one
+INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: UpdateTenantConfig :one
+UPDATE tenant_config
+SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
+WHERE tenant_id = $1
+RETURNING *;
+
+-- name: UpsertTenantAgeVerification :one
+-- An upsert for the reason UpsertTenantCommentSettings gives: deciding to
+-- verify ages is not a decision a tenant should have to fill in its site copy
+-- to reach.
+INSERT INTO tenant_config (tenant_id, age_verification)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET age_verification = EXCLUDED.age_verification,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: UpsertTenantPurchaseSettings :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. The default and
+-- the store listings are written together because the console offers them as
+-- one card, and the listings are where an app-only purchase sends a reader.
+INSERT INTO tenant_config (tenant_id, purchase_availability, app_store_url, google_play_url)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('purchase_availability'),
+        sqlc.narg('app_store_url'),
+        sqlc.narg('google_play_url')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET purchase_availability = EXCLUDED.purchase_availability,
+    app_store_url = EXCLUDED.app_store_url,
+    google_play_url = EXCLUDED.google_play_url,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: LockTenantConfigByTenantID :one
+-- Serializes the writes that together decide whether the store route has a
+-- store that can sell: the store settings and the app association. A tenant
+-- with no row has nothing to lock and cannot be on the store route either.
+SELECT *
+FROM tenant_config
+WHERE tenant_id = $1
+FOR UPDATE;
+
+-- name: GetTenantAppPurchaseRoute :one
+-- A tenant with no config row has no row here either, and sells through the
+-- external checkout, which is what the column's default says.
+SELECT app_purchase_route
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1;
+
+-- name: UpsertTenantAppPurchaseRoute :one
+-- An upsert for the reason UpsertTenantCommentSettings gives.
+INSERT INTO tenant_config (tenant_id, app_purchase_route)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET app_purchase_route = EXCLUDED.app_purchase_route,
+    updated_at = NOW()
+RETURNING app_purchase_route;
+
+-- name: UpsertTenantCommentSettings :one
+-- The settings screen can save what the tenant has decided about commenting
+-- for a tenant whose config row does not exist yet, so both columns are
+-- written without disturbing the site copy columns UpdateTenantConfig owns.
+--
+-- The mode and the automatic removal threshold are written together because
+-- the console offers them as one card: saving them separately would leave a
+-- tenant who changed both with one of the two stored when the second write
+-- failed.
+INSERT INTO tenant_config (tenant_id, comment_mode, comment_auto_hide_report_threshold)
+VALUES ($1, $2, $3)
+ON CONFLICT (tenant_id) DO UPDATE
+SET comment_mode = EXCLUDED.comment_mode,
+    comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: GetTenantLegalPages :one
+-- The pages a tenant names as its terms of service and its privacy policy. A
+-- page is published when any translation of it is, as the storefront serves it
+-- then, and is read in the translation published_page_translation_for picks for
+-- the locale; an unpublished page is read in the one page_translation_for
+-- picks. No row where the tenant has no config.
+SELECT tc.terms_page_id,
+    terms.slug AS terms_slug,
+    terms_translation.locale AS terms_locale,
+    terms_translation.title AS terms_title,
+    (published_page_translation_for(terms.id, sqlc.arg('locale')) IS NOT NULL)::boolean AS terms_published,
+    terms_translation.published_version_id AS terms_published_version_id,
+    tc.privacy_page_id,
+    privacy.slug AS privacy_slug,
+    privacy_translation.locale AS privacy_locale,
+    privacy_translation.title AS privacy_title,
+    (published_page_translation_for(privacy.id, sqlc.arg('locale')) IS NOT NULL)::boolean AS privacy_published,
+    privacy_translation.published_version_id AS privacy_published_version_id
+FROM tenant_config tc
+    LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
+    AND terms.id = tc.terms_page_id
+    LEFT JOIN page_translations terms_translation ON terms_translation.id = COALESCE(
+        published_page_translation_for(terms.id, sqlc.arg('locale')),
+        page_translation_for(terms.id, sqlc.arg('locale'))
+    )
+    LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
+    AND privacy.id = tc.privacy_page_id
+    LEFT JOIN page_translations privacy_translation ON privacy_translation.id = COALESCE(
+        published_page_translation_for(privacy.id, sqlc.arg('locale')),
+        page_translation_for(privacy.id, sqlc.arg('locale'))
+    )
+WHERE tc.tenant_id = sqlc.arg('tenant_id');
+
+-- name: UpsertTenantLegalPages :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
+-- written together because the console offers them as one card.
+INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.narg('terms_page_id'),
+        sqlc.narg('privacy_page_id')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET terms_page_id = EXCLUDED.terms_page_id,
+    privacy_page_id = EXCLUDED.privacy_page_id,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: UpsertTenantMobileAppAssociation :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Both platforms
+-- are written together because the console offers them as one card, and an
+-- unconfigured platform is written as NULL and an empty list.
+INSERT INTO tenant_config (
+        tenant_id,
+        android_application_id,
+        android_sha256_cert_fingerprints,
+        ios_team_id,
+        ios_bundle_identifier
+    )
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.narg('android_application_id'),
+        sqlc.arg('android_sha256_cert_fingerprints')::text [],
+        sqlc.narg('ios_team_id'),
+        sqlc.narg('ios_bundle_identifier')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET android_application_id = EXCLUDED.android_application_id,
+    android_sha256_cert_fingerprints = EXCLUDED.android_sha256_cert_fingerprints,
+    ios_team_id = EXCLUDED.ios_team_id,
+    ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
+    updated_at = NOW()
+RETURNING *;

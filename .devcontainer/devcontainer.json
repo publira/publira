@@ -1,0 +1,46 @@
+{
+  "name": "Publira Dev",
+  "dockerComposeFile": ["../compose.yaml", "compose.yaml"],
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4.1.2": {
+      "moby": false,
+      "version": "29.3.1"
+    },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.useLanguageServer": true,
+        "go.toolsManagement.checkForUpdates": "local"
+      },
+      "extensions": [
+        "bradlc.vscode-tailwindcss",
+        "bufbuild.vscode-buf",
+        "Dart-Code.flutter",
+        "Dart-Code.dart-code",
+        "golang.go",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "openai.chatgpt",
+        "oxc.oxc-vscode"
+      ]
+    }
+  },
+  "hostRequirements": {
+    "cpus": 4
+  },
+  "forwardPorts": [
+    "traefik:3080",
+    "mailpit:8025",
+    "traefik:8080",
+    "rustfs:9001",
+    "jaeger:16686"
+  ],
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "postCreateCommand": ".devcontainer/post-create.sh"
+}

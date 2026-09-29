@@ -1,0 +1,58 @@
+import "temporal-polyfill/global";
+
+/**
+ * Constants for the admin publish-flow E2E.
+ *
+ * Credentials match `db/seeds/README.md` / `db/seeds/dev/001_tenant_users.sql`.
+ * Label / creator public_ids match `db/seeds/dev/010_catalog.sql`.
+ */
+
+/** Dev seed tenant admin (Host `admin.localhost`). */
+export const SEED_ADMIN = {
+  email: "admin@example.com",
+  name: "Tenant Admin",
+  password: "adminpass",
+} as const;
+
+/** Existing catalog rows the series form can attach without creating them. */
+export const SEED_CATALOG = {
+  creatorName: "Seed Author 001",
+  creatorPublicId: "SeedAUTHAAA1",
+  labelName: "Seed Label 01",
+  labelPublicId: "SeedLABLAAA1",
+} as const;
+
+/**
+ * The dev seed tenant's time zone, which `001_tenant_users.sql` writes — the
+ * zone every calendar day the console shows that tenant is counted in.
+ */
+export const SEED_TENANT_TIME_ZONE = "UTC";
+
+const padTwo = (value: number): string => String(value).padStart(2, "0");
+
+/**
+ * `datetime-local` wall clock in the seed tenant's zone, which is the zone the
+ * console reads its date inputs in.
+ */
+export const toSeedTenantDateTimeLocal = (
+  instant: Temporal.Instant
+): string => {
+  const zoned = instant.toZonedDateTimeISO(SEED_TENANT_TIME_ZONE);
+  return `${zoned.year}-${padTwo(zoned.month)}-${padTwo(zoned.day)}T${padTwo(zoned.hour)}:${padTwo(zoned.minute)}`;
+};
+
+/** Wall clock one hour in the past — publishes a series immediately. */
+export const publishedAtOneHourAgo = (): Temporal.Instant =>
+  Temporal.Now.instant().subtract({ hours: 1 });
+
+/**
+ * Wall clock five minutes ahead — safe for minute-precision `datetime-local`
+ * and slow CI submit latency. The suite still nudges `scheduled_at` into the
+ * past so the publish worker does not wait out the full five minutes.
+ */
+export const scheduleAtFiveMinutesFromNow = (): Temporal.Instant =>
+  Temporal.Now.instant().add({ minutes: 5 });
+
+/** Unique run suffix so re-runs do not collide with leftover titles. */
+export const uniqueSuffix = (): string =>
+  crypto.randomUUID().replaceAll("-", "").slice(0, 12);

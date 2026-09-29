@@ -1,0 +1,670 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// One credit line on a series: who, and in what role. The same creator may
+// appear twice under two roles — an original author who also draws it — and
+// not twice under the same one.
+message SeriesCreatorCredit {
+  reserved 1, 2;
+  reserved "creator_public_id", "role_public_id";
+  // The creator's share of an episode's sales, in basis points. 10000 is
+  // 100%; a zero share records a credit without compensation.
+  int32 share_bps = 3;
+  string creator_id = 4;
+  // A role of this tenant. Credits carry no order of their own across roles:
+  // the role's priority is what puts the leading one first.
+  string role_id = 5;
+}
+
+message CreateSeriesRequest {
+  // 7 held `creator_public_ids`, a creator list with no way to state a role.
+  reserved 7;
+  reserved "creator_public_ids";
+  reserved 4, 16;
+  reserved "label_public_id", "genre_public_ids";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 2;
+  string synopsis = 3;
+  bool is_published = 5;
+  int32 reading_period_hours = 6;
+  bytes eye_catch_image_data = 8;
+  string eye_catch_image_content_type = 9;
+  string published_at = 12;
+  // Unspecified stores the default the column carries: ongoing, all ages.
+  publira.types.v1.SeriesStatus status = 13;
+  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
+  // before it is stored; empty keeps no weekly schedule.
+  repeated int32 schedule_weekdays = 14;
+  publira.types.v1.SeriesAgeRating age_rating = 15;
+  // Tag names as the editor typed them. A name used for the first time creates
+  // the tag; one that matches an existing tag's slug resolves to it, keeping
+  // the name that tag was created under. At most 20 per series.
+  repeated string tag_names = 17;
+  // Who the series is credited to. The order given is the order within a role,
+  // so an editor decides which of two artists is named first.
+  repeated SeriesCreatorCredit creator_credits = 18;
+  // The mode this series publishes comments under, overriding the tenant's.
+  // COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
+  // is what leaves it following the tenant setting — including afterwards,
+  // when that setting changes.
+  publira.types.v1.CommentMode comment_mode = 19;
+  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED
+  // stores the default the column carries, right to left.
+  publira.types.v1.ReadingDirection reading_direction = 20;
+  // The zero-based page index from which this series' episodes pair their
+  // pages. Absent stores the default the column carries, 1: the cover stands
+  // alone. Negative is invalid_argument.
+  optional int32 spread_start_index = 21;
+  // Which surfaces this series may be shown on. SURFACE_AVAILABILITY_UNSPECIFIED
+  // stores the default the column carries, both surfaces. The stored value
+  // comes back as Series.availability.
+  publira.types.v1.SurfaceAvailability availability = 22;
+  // Which surfaces this series' episodes may be bought on, replacing the
+  // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED follows the tenant,
+  // including afterwards, when its default changes.
+  publira.types.v1.SurfaceAvailability purchase_availability = 23;
+  string label_id = 24;
+  // Genres of this tenant. An id naming no genre of the tenant is
+  // invalid_argument; the assignment carries no order of its own, because the
+  // series presents them in the tenant's genre order.
+  repeated string genre_ids = 25;
+}
+
+message CreateSeriesResponse {
+  publira.types.v1.Series series = 1;
+  // The series' own mode, as it was stored. It rides beside Series rather than
+  // in it because Series is what the storefront reads too, and there the
+  // answer a page needs is the tenant and the series resolved together.
+  publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow, as it was stored. Unlike the
+  // comment mode it is always a value: a series has nothing above it to follow.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability as it was stored, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
+}
+
+// The weekdays a series expects a new episode on. It wraps the list so an
+// update can tell an empty schedule from a schedule it does not state.
+message SeriesScheduleWeekdays {
+  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
+  // before it is stored; empty keeps no weekly schedule.
+  repeated int32 weekdays = 1;
+}
+
+// Each field this request can leave absent — the optional ones and
+// weekly_schedule — keeps the value stored when it does, so a caller that
+// predates a field, or states only what it edits, does not reset the rest.
+// Stating one writes it, its default and a cleared override included.
+message UpdateSeriesRequest {
+  // 7 held `creator_public_ids`, a creator list with no way to state a role.
+  reserved 7;
+  reserved "creator_public_ids";
+  // 14 held the weekdays as a bare repeated field, which has no absent state.
+  // The name stays reserved so a caller still sending the list is ignored
+  // rather than refused for sending a list where an object is expected.
+  reserved 14;
+  reserved "schedule_weekdays";
+
+  reserved 2, 8, 16;
+  reserved "public_id", "label_public_id", "genre_public_ids";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 3;
+  // Empty, sent explicitly, clears the synopsis.
+  optional string synopsis = 4;
+  bool is_published = 5;
+  // Zero, sent explicitly, returns the series to the tenant's default.
+  optional int32 reading_period_hours = 6;
+  bytes eye_catch_image_data = 9;
+  string eye_catch_image_content_type = 10;
+  bool clear_eye_catch_image = 11;
+  string published_at = 12;
+  // Unspecified, sent explicitly, stores the default the column carries:
+  // ongoing, all ages.
+  optional publira.types.v1.SeriesStatus status = 13;
+  SeriesScheduleWeekdays weekly_schedule = 24;
+  optional publira.types.v1.SeriesAgeRating age_rating = 15;
+  // The whole tag list: what this field holds is what the series carries
+  // afterwards, and an empty field clears it. A tag the last series here lets
+  // go of is deleted, because nothing else keeps a tag alive.
+  repeated string tag_names = 17;
+  // Likewise the whole credit list, replacing every credit the series had.
+  repeated SeriesCreatorCredit creator_credits = 18;
+  // The mode this series publishes comments under, overriding the tenant's.
+  // COMMENT_MODE_UNSPECIFIED, sent explicitly, clears the override and leaves
+  // the series following the tenant setting — including afterwards, when that
+  // setting changes.
+  optional publira.types.v1.CommentMode comment_mode = 19;
+  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED,
+  // sent explicitly, stores the default the column carries, right to left.
+  optional publira.types.v1.ReadingDirection reading_direction = 20;
+  // The zero-based page index from which this series' episodes pair their
+  // pages. The default the column carries is 1: the cover stands alone.
+  // Negative is invalid_argument.
+  optional int32 spread_start_index = 21;
+  // Which surfaces this series may be shown on.
+  // SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
+  // The stored value comes back as Series.availability.
+  optional publira.types.v1.SurfaceAvailability availability = 22;
+  // Which surfaces this series' episodes may be bought on, replacing the
+  // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
+  // returns the series to following the tenant.
+  optional publira.types.v1.SurfaceAvailability purchase_availability = 23;
+  string series_id = 25;
+  string label_id = 26;
+  // Likewise the whole genre assignment.
+  repeated string genre_ids = 27;
+}
+
+message UpdateSeriesResponse {
+  publira.types.v1.Series series = 1;
+  // The series' own mode, as it was stored.
+  publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow, as it was stored.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability as it was stored, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListSeriesRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+  // Keep only series with this serialization state. Unspecified keeps every
+  // state.
+  publira.types.v1.SeriesStatus status = 5;
+  // Keep only series for this age group. Unspecified keeps every rating.
+  publira.types.v1.SeriesAgeRating age_rating = 6;
+}
+
+message ListSeriesResponse {
+  repeated publira.types.v1.Series series = 1;
+  int32 default_reading_period_hours = 2;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 3;
+  // Token for the next page. Empty on the last page.
+  string next_token = 4;
+}
+
+message GetSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetSeriesResponse {
+  publira.types.v1.Series series = 1;
+  // The series' own mode, and COMMENT_MODE_UNSPECIFIED while it follows the
+  // tenant's. The form offers the tenant setting as one of its options, so it
+  // needs the two apart.
+  publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability, and SURFACE_AVAILABILITY_UNSPECIFIED
+  // while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListEpisodesRequest {
+  reserved 2;
+  reserved "series_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+  string series_id = 5;
+}
+
+message ListEpisodesResponse {
+  repeated publira.types.v1.Episode episodes = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  string public_id = 3;
+}
+
+message GetEpisodeResponse {
+  // Carries the resolved layout, which is what the episode is read in.
+  publira.types.v1.Episode episode = 1;
+  // The episode's own overrides: READING_DIRECTION_UNSPECIFIED and an absent
+  // index where it follows its series. The form offers following the series
+  // as a choice of its own, so it needs these apart from the resolved pair.
+  publira.types.v1.ReadingDirection reading_direction = 2;
+  optional int32 spread_start_index = 3;
+  // The episode's own purchase availability, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED where it follows its series. The resolved
+  // value is Episode.purchase_availability.
+  publira.types.v1.SurfaceAvailability purchase_availability = 4;
+}
+
+// Sets how one episode is laid out, overriding its series. Both overrides are
+// written on every call, so a field left empty returns that value to following
+// the series.
+message UpdateEpisodeLayoutRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // READING_DIRECTION_UNSPECIFIED follows the series.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  // Absent follows the series. It must name one of the episode's pages: a
+  // negative index, or one at or past the page count, is invalid_argument, so
+  // an episode with no pages yet can only follow its series.
+  optional int32 spread_start_index = 4;
+  string episode_id = 5;
+}
+
+message UpdateEpisodeLayoutResponse {
+  // Carries the resolved layout, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+  // The overrides as they were stored, in GetEpisodeResponse's shape.
+  publira.types.v1.ReadingDirection reading_direction = 2;
+  optional int32 spread_start_index = 3;
+}
+
+// Sets which surfaces one episode may be shown on. The episode is still shown
+// only where its series is: its own value can take it off a surface, never put
+// it on one the series is kept off.
+message UpdateEpisodeAvailabilityRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
+  // series.
+  publira.types.v1.SurfaceAvailability availability = 3;
+  string episode_id = 4;
+}
+
+message UpdateEpisodeAvailabilityResponse {
+  // Carries the override as it was stored, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
+// Sets which surfaces one episode may be bought on, replacing its series'.
+// Unlike where it is shown, the episode's value is not bounded by the series:
+// it may be sold on a surface its series' other episodes are not.
+message UpdateEpisodePurchaseAvailabilityRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
+  // series.
+  publira.types.v1.SurfaceAvailability purchase_availability = 3;
+  string episode_id = 4;
+}
+
+message UpdateEpisodePurchaseAvailabilityResponse {
+  // Carries the resolved value, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+  // The override as it was stored, in GetEpisodeResponse's shape.
+  publira.types.v1.SurfaceAvailability purchase_availability = 2;
+}
+
+message ReorderEpisodesRequest {
+  reserved 2, 3, 4;
+  reserved "series_public_id", "episode_public_ids", "expected_episode_public_ids";
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 5;
+  // Desired order after the write. Must be a permutation of
+  // expected_episode_ids.
+  repeated string episode_ids = 6;
+  // The series order the client read before composing episode_ids. The RPC
+  // locks the series, re-reads the current order, and rejects the write with
+  // failed_precondition when this no longer matches.
+  repeated string expected_episode_ids = 7;
+}
+
+message ReorderEpisodesResponse {
+  repeated publira.types.v1.Episode episodes = 1;
+}
+
+message CreateEpisodeRequest {
+  reserved 2;
+  reserved "series_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 3;
+  // Position in the series. 0 appends after the current last episode, so a
+  // client paging through ListEpisodes does not have to find the end itself.
+  int32 order_index = 4;
+  int32 price = 5;
+  int32 reading_period_hours = 6;
+  // RFC 3339. Empty creates a draft, a future time schedules the episode, and
+  // a time at or before the request publishes it as it is created.
+  string scheduled_at = 7;
+  // Which surfaces this episode may be shown on, narrowing its series'.
+  // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
+  publira.types.v1.SurfaceAvailability availability = 8;
+  // Which surfaces this episode may be bought on, replacing its series'.
+  // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
+  publira.types.v1.SurfaceAvailability purchase_availability = 9;
+  string series_id = 10;
+}
+
+message CreateEpisodeResponse {
+  publira.types.v1.Episode episode = 1;
+  // The episode's own purchase availability, as it was stored.
+  publira.types.v1.SurfaceAvailability purchase_availability = 2;
+}
+
+message EpisodeImageUpload {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+  int32 display_order = 4;
+}
+
+message UploadEpisodeImagesRequest {
+  reserved 2, 4;
+  reserved "episode_public_id", "series_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  repeated EpisodeImageUpload images = 3;
+  bytes archive_data = 5;
+  string archive_filename = 6;
+  string archive_content_type = 7;
+  string episode_id = 8;
+  string series_id = 9;
+}
+
+message UploadEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+message ListEpisodeImagesRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 3;
+}
+
+message ListEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+message ReorderEpisodeImagesRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  repeated string image_ids = 3;
+  string episode_id = 4;
+}
+
+message ReorderEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+message UpdateEpisodePublishScheduleRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string scheduled_at = 3;
+  string episode_id = 4;
+}
+
+message UpdateEpisodePublishScheduleResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+// One credit line on an episode: who, and in what role. It is the same shape a
+// series credit has, and a separate message because the two lists are edited
+// separately: what the series carries is what the next episode is created
+// with, and what an episode carries is what that episode shipped with.
+message EpisodeCreatorCredit {
+  reserved 1, 2;
+  reserved "creator_public_id", "role_public_id";
+  int32 share_bps = 3;
+  string creator_id = 4;
+  // A role of this tenant. Credits carry no order of their own across roles:
+  // the role's priority is what puts the leading one first.
+  string role_id = 5;
+}
+
+message ListEpisodeCreditsRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 3;
+}
+
+message ListEpisodeCreditsResponse {
+  // In role priority order, the order the storefront shows them in.
+  repeated publira.types.v1.Creator creators = 1;
+  // The editable credit records, including the sales share on each one.
+  repeated EpisodeCreatorCredit creator_credits = 2;
+}
+
+// The whole credit list of one episode: what this request holds is what the
+// episode carries afterwards, and an empty list clears it. A credit the
+// request adds is recorded as the episode's own; one that was baked from the
+// series and is still listed keeps saying so, so a later range edit can tell
+// the standing team from a guest on this episode.
+message ReplaceEpisodeCreditsRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  repeated EpisodeCreatorCredit creator_credits = 3;
+  string episode_id = 4;
+}
+
+message ReplaceEpisodeCreditsResponse {
+  repeated publira.types.v1.Creator creators = 1;
+}
+
+// Adds one credit to every episode of the range that does not carry it
+// already. The row is written as the series', because a range edit is how the
+// standing team is corrected; a guest is credited on the episode itself.
+message AddEpisodeCreditOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
+// Rewrites one credit into another across the range, on the rows that came
+// from the series alone. An episode that credits the same person as a guest
+// keeps that row, and says so in the response.
+message ReplaceEpisodeCreditOperation {
+  EpisodeCreatorCredit from = 1;
+  EpisodeCreatorCredit to = 2;
+}
+
+// Drops one credit across the range, again from the series' rows alone.
+message RemoveEpisodeCreditOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
+// Changes the standing credit's share on every episode of the range.
+message SetEpisodeCreditShareOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
+// One credit correction over a range of episodes, which is what a team change
+// that has to reach episodes already out amounts to. The operations are
+// row-level rather than "replace the set on every episode whose set equals
+// this one": a guest or a spot supervisor makes an episode's set differ, and a
+// set comparison would leave that episode behind without saying so.
+message BulkEditEpisodeCreditsRequest {
+  reserved 2, 3;
+  reserved "series_public_id", "episode_public_ids";
+  publira.types.v1.TenantContext tenant = 1;
+  // Exactly one operation per call. It is a oneof so that the share work can
+  // add a rate operation beside these three without changing what they mean.
+  oneof operation {
+    AddEpisodeCreditOperation add = 4;
+    ReplaceEpisodeCreditOperation replace = 5;
+    RemoveEpisodeCreditOperation remove = 6;
+    SetEpisodeCreditShareOperation set_share = 7;
+  }
+  string series_id = 8;
+  // The episodes to act on, rather than a span of order indexes. Episodes are
+  // reordered through this API, so a span would name a different set of
+  // episodes after a reorder than it did when it was composed. The console
+  // resolves its range picker to this list. At most 1000 per call: every
+  // episode named is locked until the operation commits.
+  repeated string episode_ids = 9;
+}
+
+// Why an episode in the range came out of the operation as it went in.
+enum EpisodeCreditUnchangedReason {
+  EPISODE_CREDIT_UNCHANGED_REASON_UNSPECIFIED = 0;
+  // `add`: the episode already carries that credit, whatever it came from.
+  EPISODE_CREDIT_UNCHANGED_REASON_ALREADY_CREDITED = 1;
+  // `replace` and `remove`: nothing on the episode matched the credit named.
+  EPISODE_CREDIT_UNCHANGED_REASON_NOT_CREDITED = 2;
+  // `replace` and `remove`: the only match is a credit written on the episode
+  // itself — a guest — and a range edit moves the standing team alone.
+  EPISODE_CREDIT_UNCHANGED_REASON_CREDITED_ON_THE_EPISODE = 3;
+}
+
+message UnchangedEpisodeCredit {
+  string episode_public_id = 1;
+  EpisodeCreditUnchangedReason reason = 2;
+  string episode_id = 3;
+}
+
+message BulkEditEpisodeCreditsResponse {
+  // The episodes the operation wrote on, in the order the request listed them.
+  repeated string changed_episode_public_ids = 1;
+  // The episodes it left as they were, in the same order, each with the reason
+  // it did. A deliberate deviation is a visible skip here rather than a silent
+  // one, which is the point of reporting them at all.
+  repeated UnchangedEpisodeCredit unchanged_episodes = 2;
+  // changed_episode_public_ids by id, in the same order.
+  repeated string changed_episode_ids = 3;
+}
+
+// Replaces the image of one aspect ratio of a series eye-catch. The other
+// ratios keep the images they already hold.
+message UploadSeriesEyeCatchAspectImageRequest {
+  reserved 2;
+  reserved "public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre as it always has been.
+  publira.types.v1.ImageCropRect crop = 6;
+  string series_id = 7;
+}
+
+message UploadSeriesEyeCatchAspectImageResponse {
+  publira.types.v1.Series series = 1;
+}
+
+// A scheduled period during which an episode reads as free to everyone. The
+// episode keeps its price, which is what it costs again once the window closes.
+message AdminEpisodeFreeWindow {
+  string public_id = 1;
+  string episode_public_id = 2;
+  string episode_title = 3;
+  string series_public_id = 4;
+  // RFC3339. The window covers starts_at up to but not including ends_at, so
+  // one window may begin at the instant another ends.
+  string starts_at = 5;
+  string ends_at = 6;
+  string created_at = 7;
+  string id = 8;
+  string episode_id = 9;
+  string series_id = 10;
+}
+
+message CreateEpisodeFreeWindowRequest {
+  reserved 2;
+  reserved "episode_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  // RFC3339 both. ends_at must be after starts_at, and the period must not
+  // overlap a window the episode already has: an overlap is failed_precondition
+  // rather than a silently merged period.
+  string starts_at = 3;
+  string ends_at = 4;
+  string episode_id = 5;
+}
+
+message CreateEpisodeFreeWindowResponse {
+  AdminEpisodeFreeWindow free_window = 1;
+}
+
+// Schedules the same period on every episode of one series, which is how a
+// "first week free" campaign is set up in one call. It is all or nothing: when
+// the period overlaps a window any one episode already has, no window is
+// created.
+message CreateSeriesFreeWindowsRequest {
+  reserved 2;
+  reserved "series_public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string starts_at = 3;
+  string ends_at = 4;
+  string series_id = 5;
+}
+
+message CreateSeriesFreeWindowsResponse {
+  // One per episode of the series, in the series' own episode order.
+  repeated AdminEpisodeFreeWindow free_windows = 1;
+}
+
+// Removes a scheduled window. Removing one that is currently open ends the
+// campaign immediately: the episode is priced again as soon as the caches drop.
+message DeleteEpisodeFreeWindowRequest {
+  reserved 2;
+  reserved "public_id";
+  publira.types.v1.TenantContext tenant = 1;
+  string free_window_id = 3;
+}
+
+message DeleteEpisodeFreeWindowResponse {}
+
+service AdminSeriesService {
+  rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
+  rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
+  rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
+  rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
+  rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {}
+  rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {}
+  rpc ReorderEpisodes(ReorderEpisodesRequest) returns (ReorderEpisodesResponse) {}
+  rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
+  rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
+  rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
+  rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
+  rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
+  rpc UpdateEpisodeAvailability(UpdateEpisodeAvailabilityRequest) returns (UpdateEpisodeAvailabilityResponse) {}
+  rpc UpdateEpisodePurchaseAvailability(UpdateEpisodePurchaseAvailabilityRequest) returns (UpdateEpisodePurchaseAvailabilityResponse) {}
+  rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
+  rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
+  rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}
+  rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
+  rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
+  rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}
+  rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
+}

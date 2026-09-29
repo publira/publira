@@ -1,0 +1,171 @@
+import type { Locale } from "@publira/i18n";
+import { LinkButton } from "@publira/ui-components/button";
+import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@publira/ui-components/table";
+import Link from "next/link";
+import { Suspense } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { Message } from "#components/message";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
+
+import type { LabelListItem } from "../label-types";
+
+type LabelManagerProps = CursorPageHrefs & {
+  labels: LabelListItem[];
+  listErrorMessage?: string;
+  locale: Locale;
+  pageSize: number;
+};
+
+const LabelListBody = async ({
+  hasPageLinks,
+  labels,
+  listErrorMessage,
+  locale,
+}: {
+  hasPageLinks: boolean;
+  labels: LabelListItem[];
+  listErrorMessage?: string;
+  locale: Locale;
+}) => {
+  // A failed fetch still hands an empty `labels` array; do not show the empty
+  // list state alongside the error or operators will read it as "no labels".
+  if (listErrorMessage) {
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.labels.list_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
+  const t = await getMessagesFor(locale);
+
+  if (labels.length === 0) {
+    return (
+      <CursorPageEmptyState
+        hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.labels.title")}
+      >
+        <EmptyStateHeading>
+          <EmptyStateTitle>{t("admin.labels.empty_title")}</EmptyStateTitle>
+          <EmptyStateDescription>
+            {t("admin.labels.empty_description")}
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </CursorPageEmptyState>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.labels.columns.name" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-56">
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.labels.columns.actions" />
+            </Suspense>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {labels.map((label) => (
+          <TableRow key={label.publicId}>
+            <TableCell className="font-medium">{label.name}</TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton
+                  render={<Link href={`/labels/${label.publicId}`} />}
+                  variant="outline"
+                >
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.labels.edit_action" />
+                  </Suspense>
+                </LinkButton>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
+export const LabelManager = async ({
+  labels,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
+  locale,
+}: LabelManagerProps) => {
+  const t = await getMessagesFor(locale);
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (labels.length > 0 || hasPageLinks);
+
+  return (
+    <div className="grid gap-6">
+      <LabelListBody
+        hasPageLinks={hasPageLinks}
+        labels={labels}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+      />
+
+      {showPagination ? (
+        <PaginationFooter>
+          <PaginationFooterDescription>
+            {t("admin.labels.pagination_description", {
+              count: pageSize,
+            })}
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.labels.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
+      ) : null}
+    </div>
+  );
+};

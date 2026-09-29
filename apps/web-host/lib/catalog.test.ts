@@ -1,0 +1,1828 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  EpisodeAccess,
+  EpisodeEntitlementSource,
+  RankingPeriod,
+  SeriesOrder,
+} from "@publira/api-client/public/catalog";
+import {
+  ClientSurface,
+  CommentMode,
+  ReadingDirection,
+  SeriesAgeRating,
+  SeriesStatus,
+  SurfaceAvailability,
+} from "@publira/api-client/public/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  findPublishedTagBySlug,
+  getEpisodeDetail,
+  getEpisodeViewer,
+  getSeriesDetail,
+  isPublicEpisodeBody,
+  listPublishedGenres,
+  listPublishedSeries,
+  listRankedSeries,
+  listReaderRankedSeries,
+  listRelatedSeries,
+  toEpisodeAccessState,
+  toEpisodeEntitlementSource,
+  toEpisodePurchaseSurface,
+} from "./catalog";
+
+const {
+  mockGetEpisodeDetail,
+  mockGetSeriesDetail,
+  mockListPublishedGenres,
+  mockListPublishedSeries,
+  mockListPublishedTags,
+  mockListRankedSeries,
+  mockListRelatedSeries,
+} = vi.hoisted(() => ({
+  mockGetEpisodeDetail: vi.fn(),
+  mockGetSeriesDetail: vi.fn(),
+  mockListPublishedGenres: vi.fn(),
+  mockListPublishedSeries: vi.fn(),
+  mockListPublishedTags: vi.fn(),
+  mockListRankedSeries: vi.fn(),
+  mockListRelatedSeries: vi.fn(),
+}));
+
+vi.mock("./api-client", () => ({
+  apiClient: {
+    catalog: {
+      getEpisodeDetail: mockGetEpisodeDetail,
+      getSeriesDetail: mockGetSeriesDetail,
+      listPublishedGenres: mockListPublishedGenres,
+      listPublishedSeries: mockListPublishedSeries,
+      listPublishedTags: mockListPublishedTags,
+      listRankedSeries: mockListRankedSeries,
+      listRelatedSeries: mockListRelatedSeries,
+    },
+  },
+  buildSessionHeaders: (sessionId: string) => ({
+    headers: { Authorization: `Bearer ${sessionId}` },
+  }),
+}));
+
+describe("toEpisodeAccessState", () => {
+  it("Copy RPC enum as is", () => {
+    expect(toEpisodeAccessState(EpisodeAccess.FREE, 0)).toBe("free");
+    expect(toEpisodeAccessState(EpisodeAccess.LOCKED, 500)).toBe("locked");
+    expect(toEpisodeAccessState(EpisodeAccess.ENTITLED, 500)).toBe("entitled");
+  });
+
+  it("Reads the age rule's refusal whatever the episode costs", () => {
+    expect(toEpisodeAccessState(EpisodeAccess.AGE_RESTRICTED, 0)).toBe(
+      "age_restricted"
+    );
+    expect(toEpisodeAccessState(EpisodeAccess.AGE_RESTRICTED, 500)).toBe(
+      "age_restricted"
+    );
+  });
+
+  it("If not specified, fall back to price", () => {
+    expect(toEpisodeAccessState(EpisodeAccess.UNSPECIFIED, 0)).toBe("free");
+    expect(toEpisodeAccessState(undefined, 500)).toBe("locked");
+  });
+
+  it("Publicly display only the free text", () => {
+    expect(isPublicEpisodeBody("free")).toBe(true);
+    expect(isPublicEpisodeBody("locked")).toBe(false);
+    expect(isPublicEpisodeBody("entitled")).toBe(false);
+  });
+});
+
+describe("toEpisodePurchaseSurface", () => {
+  it("Names the surfaces the server resolved", () => {
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.ALL)).toBe("all");
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.WEB)).toBe("web");
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.APP)).toBe("app");
+  });
+
+  it("Reads an unspecified value as sold on both surfaces", () => {
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.UNSPECIFIED)).toBe(
+      "all"
+    );
+  });
+});
+
+describe("catalog.getSeriesDetail", () => {
+  beforeEach(() => {
+    mockGetSeriesDetail.mockReset();
+  });
+
+  it("maps the resolved comment mode returned for a series", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      commentMode: CommentMode.APPROVAL_REQUIRED,
+      episodes: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    await expect(
+      getSeriesDetail("TENANT_001", "SERIES_001", "en")
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        episodes: [],
+        series: {
+          commentMode: "approval_required",
+          publicId: "SERIES_001",
+        },
+      },
+    });
+  });
+
+  it("Carries where each listed episode may be bought", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        {
+          orderIndex: 1,
+          price: 300,
+          publicId: "EP_001",
+          purchaseAvailability: SurfaceAvailability.APP,
+        },
+        {
+          orderIndex: 2,
+          price: 300,
+          publicId: "EP_002",
+          purchaseAvailability: SurfaceAvailability.ALL,
+        },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(
+      result.ok && result.value?.episodes.map((e) => e.purchaseSurface)
+    ).toEqual(["app", "all"]);
+  });
+});
+
+describe("catalog.getEpisodeDetail", () => {
+  beforeEach(() => {
+    mockGetEpisodeDetail.mockReset();
+  });
+
+  it("Format and return episode details and images", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        orderIndex: 2,
+        price: 300,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        ratingCount: 12,
+        readingPeriodHours: 72,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 2",
+      },
+      images: [
+        {
+          contentType: "image/png",
+          displayOrder: 2,
+          fileSizeBytes: 2048,
+          height: 1800,
+          id: "img_2",
+          imageUrl: "https://cdn.example/img2.png",
+          width: 1200,
+        },
+        {
+          contentType: "image/png",
+          displayOrder: 1,
+          fileSizeBytes: 1024,
+          height: 1800,
+          id: "img_1",
+          imageUrl: "https://cdn.example/img1.png",
+          width: 1200,
+        },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
+      publicId: "EP_001",
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+    });
+    const detail = result.ok ? result.value : null;
+    expect(detail?.series).toEqual({
+      publicId: "SERIES_001",
+      title: "Series Title",
+    });
+    expect(detail?.series?.ageRating).toBeUndefined();
+    expect(detail?.episode.title).toBe("Episode 2");
+    expect(detail?.episode.ratingCount).toBe(12);
+    expect(detail?.episode.readingDirection).toBe("rtl");
+    expect(detail?.episode.spreadStartIndex).toBe(1);
+    expect(detail?.episode.purchaseSurface).toBe("all");
+    expect(detail?.access).toBe("locked");
+    expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
+    expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+  });
+
+  it("Carries an episode sold in the app alone", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        orderIndex: 1,
+        price: 300,
+        publicId: "EP_001",
+        purchaseAvailability: SurfaceAvailability.APP,
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.purchaseSurface).toBe("app");
+  });
+
+  it("Carries the series rating so the episode page can interpose a confirmation", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        ageRating: SeriesAgeRating.R15,
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.series.ageRating).toBe("r15");
+  });
+
+  it("hands the viewer the episode's resolved reading direction and spread start", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        spreadStartIndex: 0,
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.readingDirection).toBe("ltr");
+    expect(result.ok && result.value?.episode.spreadStartIndex).toBe(0);
+  });
+
+  it("Carries the episode's own credits in the order the API sent them", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        creators: [
+          {
+            name: "Jane Doe",
+            publicId: "CREATOR_1",
+            role: { name: "Story", publicId: "ROLE_1" },
+          },
+          {
+            name: "John Roe",
+            publicId: "CREATOR_2",
+            role: { name: "Art", publicId: "ROLE_2" },
+          },
+          { name: "Mary Poe", publicId: "CREATOR_3" },
+        ],
+        orderIndex: 12,
+        price: 0,
+        publicId: "EP_012",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 12",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_012",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.credits).toEqual([
+      { name: "Jane Doe", publicId: "CREATOR_1", roleName: "Story" },
+      { name: "John Roe", publicId: "CREATOR_2", roleName: "Art" },
+      // A credit written before the tenant curated roles states none, and it
+      // is still a credit.
+      { name: "Mary Poe", publicId: "CREATOR_3", roleName: "" },
+    ]);
+  });
+
+  it("Leaves an episode nobody is credited on with no credits", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.credits).toEqual([]);
+  });
+
+  it("Carry the episodes either side of this one", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 2,
+        price: 0,
+        publicId: "EP_002",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 2",
+      },
+      images: [],
+      // Priced, and free until the window on it closes: the link says free
+      // and still knows what it costs afterwards.
+      nextEpisode: {
+        isFree: true,
+        orderIndex: 3,
+        price: 500,
+        publicId: "EP_003",
+        purchaseAvailability: SurfaceAvailability.APP,
+        title: "Episode 3",
+      },
+      // Unspecified, which reads as both surfaces.
+      previousEpisode: {
+        isFree: true,
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        title: "Episode 1",
+      },
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_002",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.previousEpisode).toEqual({
+      isFree: true,
+      orderIndex: 1,
+      price: 0,
+      publicId: "EP_001",
+      purchaseSurface: "all",
+      title: "Episode 1",
+    });
+    expect(detail?.nextEpisode).toEqual({
+      isFree: true,
+      orderIndex: 3,
+      price: 500,
+      publicId: "EP_003",
+      purchaseSurface: "app",
+      title: "Episode 3",
+    });
+  });
+
+  it("Leave the ends of a series with no neighbour", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.previousEpisode).toBeUndefined();
+    expect(detail?.nextEpisode).toBeUndefined();
+  });
+
+  it("null if episode is missing", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      episode: undefined,
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("null if the series_id of the URL and the response do not match", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_OTHER",
+        title: "Another Series",
+      },
+    });
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("null if the API returns not_found", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode not found", Code.NotFound)
+    );
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  // `"use cache"` re-creates a thrown error from name + message, dropping
+  // `code`; classification has to survive on the message prefix alone.
+  it("ConnectError regenerated at cache boundaries will also be null", async () => {
+    const rehydrated = new Error("[not_found] episode not found");
+    rehydrated.name = "ConnectError";
+    mockGetEpisodeDetail.mockRejectedValueOnce(rehydrated);
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  // Another tenant's episode comes back as permission_denied, not not_found.
+  it("null if the API returns permission_denied", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode is not published", Code.PermissionDenied)
+    );
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("Remove leading and trailing spaces from the identifier and pass it to the API to determine affiliation", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeDetail(
+      " TENANT_001 ",
+      " SERIES_001 ",
+      " EP_001 ",
+      "en"
+    );
+
+    expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
+      publicId: "EP_001",
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+    });
+    expect(result.ok && result.value?.episode.title).toBe("Episode 1");
+  });
+
+  // A `"use cache"` function must not throw: the fill would fail the whole
+  // request instead of reaching the awaiting page.
+  it("Errors other than not_found are not thrown and return a failure value.", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001", "en")
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("toEpisodeEntitlementSource", () => {
+  it("names the grant that opens an entitled body", () => {
+    expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.PURCHASE)).toBe(
+      "purchase"
+    );
+    expect(
+      toEpisodeEntitlementSource(EpisodeEntitlementSource.ACCESS_TICKET)
+    ).toBe("access_ticket");
+    expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.CREATOR)).toBe(
+      "creator"
+    );
+  });
+
+  it("reports no grant when the API names none", () => {
+    expect(
+      toEpisodeEntitlementSource(EpisodeEntitlementSource.UNSPECIFIED)
+    ).toBeUndefined();
+    expect(toEpisodeEntitlementSource(99)).toBeUndefined();
+  });
+});
+
+describe("catalog.getEpisodeViewer", () => {
+  beforeEach(() => {
+    mockGetEpisodeDetail.mockReset();
+  });
+
+  it("If there is no session, return locked without RPC", async () => {
+    await expect(
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "en")
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "locked", images: [] },
+    });
+    expect(mockGetEpisodeDetail).not.toHaveBeenCalled();
+  });
+
+  it("Valid ticket returns entitled image with session", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      entitlementSource: EpisodeEntitlementSource.ACCESS_TICKET,
+      episode: {
+        orderIndex: 10,
+        price: 500,
+        publicId: "EP_010",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 72,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 10",
+      },
+      images: [
+        {
+          contentType: "image/png",
+          displayOrder: 1,
+          fileSizeBytes: 1024,
+          height: 1800,
+          id: "img_1",
+          imageUrl: "https://cdn.example/img1.png",
+          width: 1200,
+        },
+      ],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeViewer(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_010",
+      "session-token",
+      "en"
+    );
+
+    expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
+      {
+        publicId: "EP_010",
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "TENANT_001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        access: "entitled",
+        entitlementSource: "access_ticket",
+        images: [
+          {
+            contentType: "image/png",
+            displayOrder: 1,
+            fileSizeBytes: 1024,
+            height: 1800,
+            id: "img_1",
+            imageUrl: "https://cdn.example/img1.png",
+            width: 1200,
+          },
+        ],
+      },
+    });
+  });
+
+  it("names the author's own episode apart from a bought one", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      entitlementSource: EpisodeEntitlementSource.CREATOR,
+      episode: { price: 500, publicId: "EP_010", title: "Episode 10" },
+      images: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "entitled", entitlementSource: "creator", images: [] },
+    });
+  });
+
+  it("Locked if you are logged in but do not have permissions", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        orderIndex: 10,
+        price: 500,
+        publicId: "EP_010",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 72,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 10",
+      },
+      images: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "locked", images: [] },
+    });
+  });
+
+  it("permission_denied should be locked", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode is not published", Code.PermissionDenied)
+    );
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "locked", images: [] },
+    });
+  });
+
+  it("not_found is null", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode not found", Code.NotFound)
+    );
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("null if the series_id of the URL and the response do not match", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      episode: {
+        orderIndex: 10,
+        price: 500,
+        publicId: "EP_010",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 72,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 10",
+      },
+      images: [],
+      series: { publicId: "SERIES_OTHER", title: "Another Series" },
+    });
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("Errors other than not_found are not thrown and return a failure value.", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listPublishedSeries", () => {
+  beforeEach(() => {
+    mockListPublishedSeries.mockReset();
+  });
+
+  it("Carries how many episodes of a series can be read without paying", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [
+        {
+          creators: [],
+          freeEpisodeCount: 3,
+          publicId: "SERIES_1",
+          synopsis: "S1",
+          title: "Series 1",
+        },
+        {
+          creators: [],
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+      ],
+    });
+
+    const result = await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
+      hasFreeEpisodes: false,
+      limit: 24,
+      order: SeriesOrder.PUBLISHED_AT_DESC,
+      status: SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
+      tagSlug: "",
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(
+      result.ok && result.value.series.map((item) => item.freeEpisodeCount)
+    ).toEqual([3, 0]);
+  });
+
+  it("Carries the age rating a card needs to badge and hide", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [
+        {
+          ageRating: SeriesAgeRating.R15,
+          creators: [],
+          publicId: "SERIES_1",
+          synopsis: "S1",
+          title: "Series 1",
+        },
+        {
+          ageRating: SeriesAgeRating.ALL,
+          creators: [],
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+      ],
+    });
+
+    const result = await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+    });
+
+    expect(
+      result.ok && result.value.series.map((item) => item.ageRating)
+    ).toEqual(["r15", undefined]);
+  });
+
+  /**
+   * The count is settled per read, so a page filtered here would keep a series
+   * whose free window closed between the two.
+   */
+  it("Leaves the free-to-read filter to the server", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      hasFreeEpisodes: true,
+      limit: 6,
+      locale: "en",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
+      hasFreeEpisodes: true,
+      limit: 6,
+      order: SeriesOrder.PUBLISHED_AT_DESC,
+      status: SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
+      tagSlug: "",
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+  });
+
+  it("Translates the sort and the classification filters into the RPC enums", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      genrePublicId: "SeedGENRAAA1",
+      limit: 24,
+      locale: "en",
+      order: "updated",
+      status: "completed",
+      tagSlug: "time-travel",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "SeedGENRAAA1",
+      hasFreeEpisodes: false,
+      limit: 24,
+      order: SeriesOrder.LATEST_EPISODE_AT_DESC,
+      status: SeriesStatus.COMPLETED,
+      surface: ClientSurface.WEB,
+      tagSlug: "time-travel",
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+  });
+
+  it("Sorts by title ascending, which is the one direction the control offers", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+      order: "title",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ order: SeriesOrder.TITLE_ASC })
+    );
+  });
+
+  /**
+   * Sunday is 0, so the weekday cannot be left out of the request to mean "no
+   * weekday" the way an empty genre id does.
+   */
+  it("Sends Sunday as a weekday rather than as no filter at all", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      limit: 6,
+      locale: "en",
+      weekday: 0,
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ weekday: 0 })
+    );
+  });
+
+  it("Applies no weekday filter when none was asked for", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", { limit: 6, locale: "en" });
+
+    expect(mockListPublishedSeries.mock.calls[0]?.[0]?.weekday).toBeUndefined();
+  });
+});
+
+describe("catalog.getSeriesDetail", () => {
+  it.each([
+    [0, 0],
+    [3.7, 12],
+  ])(
+    "Carries the public rating %s and reader count from the series read",
+    async (ratingAverage, ratingCount) => {
+      mockGetSeriesDetail.mockResolvedValueOnce({
+        episodes: [],
+        series: {
+          publicId: "SERIES_1",
+          ratingAverage,
+          ratingCount: BigInt(ratingCount),
+          title: "Series 1",
+        },
+      });
+      const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+      expect(result.ok && result.value?.series).toMatchObject({
+        ratingAverage,
+        ratingCount: Number(ratingCount),
+      });
+    }
+  );
+
+  beforeEach(() => {
+    mockGetSeriesDetail.mockReset();
+  });
+
+  it("Carries the classification the series page shows beside the title", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        genres: [
+          { name: "Fantasy", publicId: "SeedGENRAAA1", slug: "fantasy" },
+          { name: "Mystery", publicId: "SeedGENRAAA2", slug: "mystery" },
+        ],
+        publicId: "SERIES_1",
+        scheduleWeekdays: [1, 4],
+        status: SeriesStatus.HIATUS,
+        synopsis: "S1",
+        tags: [{ name: "Time travel", slug: "time-travel" }],
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [
+        { name: "Fantasy", publicId: "SeedGENRAAA1" },
+        { name: "Mystery", publicId: "SeedGENRAAA2" },
+      ],
+      scheduleWeekdays: [1, 4],
+      status: "hiatus",
+      tags: [{ name: "Time travel", slug: "time-travel" }],
+    });
+  });
+
+  it("Carries the series credits with the role each is held in", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [
+          {
+            name: "Jane Doe",
+            publicId: "CREATOR_1",
+            role: { name: "Story", publicId: "ROLE_1" },
+          },
+          {
+            name: "John Roe",
+            publicId: "CREATOR_2",
+            role: { name: "Art", publicId: "ROLE_2" },
+          },
+        ],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.credits).toEqual([
+      { name: "Jane Doe", publicId: "CREATOR_1", roleName: "Story" },
+      { name: "John Roe", publicId: "CREATOR_2", roleName: "Art" },
+    ]);
+  });
+
+  it("Carries an r18 rating so the page can interpose a confirmation", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        ageRating: SeriesAgeRating.R18,
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.ageRating).toBe("r18");
+  });
+
+  it("Omits the rating on an all-ages series", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        ageRating: SeriesAgeRating.ALL,
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.ageRating).toBeUndefined();
+  });
+
+  /**
+   * A chip is a link, so a genre with no id and a tag with no slug have
+   * nowhere to point; a weekday outside 0 to 6 would be written into the
+   * schedule sentence as the digit it is.
+   */
+  it("Drops a classification entry that could not be rendered as a link or a day", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        genres: [
+          { name: "Fantasy", publicId: "", slug: "fantasy" },
+          { name: "", publicId: "SeedGENRAAA2", slug: "mystery" },
+        ],
+        publicId: "SERIES_1",
+        scheduleWeekdays: [1, 9],
+        synopsis: "S1",
+        tags: [
+          { name: "Time travel", slug: "" },
+          { name: "Slow burn", slug: "slow-burn" },
+        ],
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [],
+      scheduleWeekdays: [1],
+      tags: [{ name: "Slow burn", slug: "slow-burn" }],
+    });
+  });
+
+  it("Reports a series that carries no classification as carrying none", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [],
+      scheduleWeekdays: [],
+      status: undefined,
+      tags: [],
+    });
+  });
+});
+
+describe("catalog.listPublishedGenres", () => {
+  beforeEach(() => {
+    mockListPublishedGenres.mockReset();
+  });
+
+  it("Walks every page, because the classification is read whole", async () => {
+    mockListPublishedGenres
+      .mockResolvedValueOnce({
+        genres: [
+          {
+            name: " Fantasy ",
+            publicId: "SeedGENRAAA1",
+            publishedSeriesCount: 4,
+            slug: "fantasy",
+          },
+        ],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        genres: [
+          {
+            name: "Romance",
+            publicId: "SeedGENRAAA2",
+            publishedSeriesCount: 0,
+            slug: "romance",
+          },
+        ],
+        nextToken: "",
+      });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(mockListPublishedGenres).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.value).toEqual([
+      {
+        featuredSeries: [],
+        name: "Fantasy",
+        publicId: "SeedGENRAAA1",
+        publishedSeriesCount: 4,
+        slug: "fantasy",
+      },
+      {
+        featuredSeries: [],
+        name: "Romance",
+        publicId: "SeedGENRAAA2",
+        publishedSeriesCount: 0,
+        slug: "romance",
+      },
+    ]);
+  });
+
+  it("Carries each genre's covers in the order the server sent them", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          featuredSeries: [
+            {
+              eyeCatchImageVariants: [
+                {
+                  contentType: "image/webp",
+                  fileSizeBytes: 1024n,
+                  height: 800,
+                  label: "600",
+                  url: "/images/series/SERIES01/portrait/600",
+                  variantType: "portrait",
+                  width: 600,
+                },
+              ],
+              publicId: "SERIES01",
+              title: "Leading Series",
+            },
+            { publicId: "SERIES02", title: "Series Without Art" },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(result.ok && result.value[0]?.featuredSeries).toEqual([
+      {
+        eyeCatchImageVariants: [
+          {
+            contentType: "image/webp",
+            fileSizeBytes: 1024,
+            height: 800,
+            label: "600",
+            url: "/images/series/SERIES01/portrait/600",
+            variantType: "portrait",
+            width: 600,
+          },
+        ],
+        publicId: "SERIES01",
+      },
+      { eyeCatchImageVariants: undefined, publicId: "SERIES02" },
+    ]);
+  });
+
+  it("Carries the eye-catch the console uploaded, and none for a genre without one", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          eyeCatchImageVariants: [
+            {
+              contentType: "image/webp",
+              fileSizeBytes: 2048n,
+              height: 1600,
+              label: "1200",
+              url: "/images/genres/GENRE01/portrait/1200",
+              variantType: "portrait",
+              width: 1200,
+            },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+        {
+          eyeCatchImageVariants: [],
+          name: "Romance",
+          publicId: "SeedGENRAAA2",
+          publishedSeriesCount: 0,
+          slug: "romance",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(
+      result.ok && result.value.map((genre) => genre.eyeCatchImageVariants)
+    ).toStrictEqual([
+      [
+        {
+          contentType: "image/webp",
+          fileSizeBytes: 2048,
+          height: 1600,
+          label: "1200",
+          url: "/images/genres/GENRE01/portrait/1200",
+          variantType: "portrait",
+          width: 1200,
+        },
+      ],
+      undefined,
+    ]);
+  });
+
+  it("Drops a cover that names no series", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          featuredSeries: [
+            { publicId: " ", title: "Nameless" },
+            { publicId: "SERIES02", title: "Kept Series" },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(result.ok && result.value[0]?.featuredSeries).toEqual([
+      { eyeCatchImageVariants: undefined, publicId: "SERIES02" },
+    ]);
+  });
+
+  it("Reports a failed read as a value rather than throwing", async () => {
+    mockListPublishedGenres.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(listPublishedGenres("TENANT_001", "en")).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+
+  /**
+   * The genre page decides a 404 on a genre being absent from this list, so a
+   * walk that stopped on its own budget must not be passed off as the whole
+   * classification.
+   */
+  it("A walk that gave up part way is a failure rather than a short list", async () => {
+    mockListPublishedGenres.mockResolvedValue({
+      genres: [
+        {
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 4,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "always-more",
+    });
+
+    await expect(listPublishedGenres("TENANT_001", "en")).resolves.toEqual({
+      message: "Could not load the genre list. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.findPublishedTagBySlug", () => {
+  beforeEach(() => {
+    mockListPublishedTags.mockReset();
+  });
+
+  it("Stops at the page the slug is on", async () => {
+    mockListPublishedTags
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        tags: [
+          { name: "School life", publishedSeriesCount: 2, slug: "school-life" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        nextToken: "page-3",
+        tags: [
+          { name: "Time travel", publishedSeriesCount: 5, slug: "time-travel" },
+        ],
+      });
+
+    const result = await findPublishedTagBySlug(
+      "TENANT_001",
+      "time-travel",
+      "en"
+    );
+
+    expect(mockListPublishedTags).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.value).toEqual({
+      name: "Time travel",
+      publishedSeriesCount: 5,
+      slug: "time-travel",
+    });
+  });
+
+  it("A slug no published series carries is null, not a failure", async () => {
+    mockListPublishedTags.mockResolvedValueOnce({ nextToken: "", tags: [] });
+
+    await expect(
+      findPublishedTagBySlug("TENANT_001", "time-travel", "en")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  /**
+   * A walk that never ends is stopped by the page budget rather than by the
+   * list running out, and the slug may well have been on the page it did not
+   * reach. Reporting `null` there would send the tag page to `notFound()` for
+   * a tag that exists.
+   */
+  it("A walk that gave up part way is a failure rather than a missing tag", async () => {
+    mockListPublishedTags.mockResolvedValue({
+      nextToken: "always-more",
+      tags: [{ name: "School life", publishedSeriesCount: 2, slug: "school" }],
+    });
+
+    await expect(
+      findPublishedTagBySlug("TENANT_001", "time-travel", "en")
+    ).resolves.toEqual({
+      message: "Could not load the tag. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listRankedSeries", () => {
+  beforeEach(() => {
+    mockListRankedSeries.mockReset();
+  });
+
+  it("Ask for the period and rating the caller named and keep the positions the snapshot recorded", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({
+      computedAt: "2026-03-26T21:00:00Z",
+      nextToken: "next-token",
+      periodEnd: "2026-03-25",
+      periodStart: "2026-03-19",
+      previousToken: "",
+      rankedSeries: [
+        {
+          previousRank: 4,
+          rank: 1,
+          series: {
+            creators: [{ name: "Creator A", publicId: "CREATOR_1" }],
+            publicId: "SERIES_1",
+            synopsis: "S1",
+            title: "Series 1",
+          },
+        },
+        {
+          rank: 3,
+          series: {
+            creators: [],
+            publicId: "SERIES_2",
+            synopsis: "S2",
+            title: "Series 2",
+          },
+        },
+      ],
+    });
+
+    const result = await listRankedSeries("TENANT_001", {
+      ageRating: "all",
+      limit: 10,
+      locale: "en",
+      period: "weekly",
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith({
+      ageRating: SeriesAgeRating.ALL,
+      limit: 10,
+      period: RankingPeriod.WEEKLY,
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        computedAt: "2026-03-26T21:00:00Z",
+        nextToken: "next-token",
+        periodEnd: "2026-03-25",
+        periodStart: "2026-03-19",
+        previousToken: "",
+        rankedSeries: [
+          {
+            previousRank: 4,
+            rank: 1,
+            series: {
+              credits: [
+                { name: "Creator A", publicId: "CREATOR_1", roleName: "" },
+              ],
+              eyeCatchImageUpdatedAt: undefined,
+              eyeCatchImageVariants: undefined,
+              freeEpisodeCount: 0,
+              labelName: "",
+              labelPublicId: "",
+              publicId: "SERIES_1",
+              synopsis: "S1",
+              title: "Series 1",
+            },
+          },
+          {
+            previousRank: undefined,
+            rank: 3,
+            series: {
+              credits: [],
+              eyeCatchImageUpdatedAt: undefined,
+              eyeCatchImageVariants: undefined,
+              freeEpisodeCount: 0,
+              labelName: "",
+              labelPublicId: "",
+              publicId: "SERIES_2",
+              synopsis: "S2",
+              title: "Series 2",
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it("A tenant nothing has ranked yet is an empty chart rather than a failure", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({});
+
+    await expect(
+      listRankedSeries("TENANT_001", {
+        ageRating: "all",
+        locale: "en",
+        period: "daily",
+      })
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        computedAt: "",
+        nextToken: "",
+        periodEnd: "",
+        periodStart: "",
+        previousToken: "",
+        rankedSeries: [],
+      },
+    });
+  });
+
+  it("Errors are not thrown and return a failure value", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listRankedSeries("TENANT_001", {
+        ageRating: "all",
+        locale: "en",
+        period: "daily",
+      })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listReaderRankedSeries", () => {
+  beforeEach(() => {
+    mockListRankedSeries.mockReset();
+  });
+
+  it("Asks for a rated ranking with the reader's session", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({
+      computedAt: "2026-03-26T21:00:00Z",
+      rankedSeries: [
+        {
+          rank: 1,
+          series: {
+            ageRating: SeriesAgeRating.R18,
+            creators: [],
+            publicId: "SERIES_1",
+            synopsis: "S1",
+            title: "Series 1",
+          },
+        },
+      ],
+    });
+
+    const result = await listReaderRankedSeries("TENANT_001", "SESSION_1", {
+      ageRating: "r18",
+      locale: "en",
+      period: "daily",
+      token: "djF8Zg",
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith(
+      {
+        ageRating: SeriesAgeRating.R18,
+        limit: 20,
+        period: RankingPeriod.DAILY,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "TENANT_001" },
+        token: "djF8Zg",
+      },
+      { headers: { Authorization: "Bearer SESSION_1" } }
+    );
+    expect(
+      result.ok &&
+        result.value.access === "open" &&
+        result.value.page.rankedSeries.map(({ rank, series }) => [
+          rank,
+          series.publicId,
+          series.ageRating,
+        ])
+    ).toEqual([[1, "SERIES_1", "r18"]]);
+  });
+
+  it("Answers a guest as restricted without asking the server", async () => {
+    await expect(
+      listReaderRankedSeries("TENANT_001", " ", {
+        ageRating: "r15",
+        locale: "en",
+        period: "daily",
+      })
+    ).resolves.toEqual({ ok: true, value: { access: "age_restricted" } });
+    expect(mockListRankedSeries).not.toHaveBeenCalled();
+  });
+
+  it("Reads the server's refusal as the age rule stopping the reader", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("age verification required", Code.PermissionDenied)
+    );
+
+    await expect(
+      listReaderRankedSeries("TENANT_001", "SESSION_1", {
+        ageRating: "r18",
+        locale: "en",
+        period: "weekly",
+      })
+    ).resolves.toEqual({ ok: true, value: { access: "age_restricted" } });
+  });
+
+  it("Returns any other error as a failure value", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listReaderRankedSeries("TENANT_001", "SESSION_1", {
+        ageRating: "r18",
+        locale: "en",
+        period: "weekly",
+      })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listRelatedSeries", () => {
+  beforeEach(() => {
+    mockListRelatedSeries.mockReset();
+  });
+
+  it("Names the series to relate to and keeps the order the server scored", async () => {
+    mockListRelatedSeries.mockResolvedValueOnce({
+      nextToken: "next-token",
+      previousToken: "",
+      series: [
+        {
+          creators: [{ name: "Jane Doe", publicId: "CREATOR_1" }],
+          freeEpisodeCount: 2,
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+        {
+          creators: [],
+          publicId: "SERIES_3",
+          synopsis: "S3",
+          title: "Series 3",
+        },
+      ],
+    });
+
+    const result = await listRelatedSeries("  TENANT_001  ", {
+      limit: 4,
+      locale: "en",
+      seriesId: "  dddddddd-dddd-4ddd-8ddd-dddddddddddd  ",
+      seriesPublicId: "  SERIES_1  ",
+    });
+
+    expect(mockListRelatedSeries).toHaveBeenCalledWith({
+      limit: 4,
+      seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(
+      result.ok && result.value.series.map((item) => item.publicId)
+    ).toEqual(["SERIES_2", "SERIES_3"]);
+    expect(result.ok && result.value.nextToken).toBe("next-token");
+  });
+
+  /**
+   * The section hangs under a series that was published when the page read it,
+   * so a `not_found` here means it stopped being published in between. An empty
+   * strip is that answer; a failure would replace the section with a message
+   * about a series the reader is still looking at.
+   */
+  it("A series that is gone is an empty page rather than a failure", async () => {
+    mockListRelatedSeries.mockRejectedValueOnce(
+      new ConnectError("series not found", Code.NotFound)
+    );
+
+    await expect(
+      listRelatedSeries("TENANT_001", {
+        locale: "en",
+        seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        seriesPublicId: "SERIES_1",
+      })
+    ).resolves.toEqual({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: [] },
+    });
+  });
+
+  it("Errors are not thrown and return a failure value", async () => {
+    mockListRelatedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listRelatedSeries("TENANT_001", {
+        locale: "en",
+        seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        seriesPublicId: "SERIES_1",
+      })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});

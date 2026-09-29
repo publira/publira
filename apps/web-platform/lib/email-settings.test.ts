@@ -1,0 +1,286 @@
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  SECRET_UPDATE_MODE_REPLACE,
+  TEST_EMAIL_RECIPIENT_TYPE_SELF,
+  getPlatformEmailSettings,
+  platformEmailSettingsCacheTag,
+  sendPlatformSmtpTestEmail,
+  updatePlatformEmailSettings,
+} from "./email-settings";
+
+const {
+  mockCacheTag,
+  mockGetPlatformEmailSettings,
+  mockResolveSessionId,
+  mockSendPlatformSmtpTestEmail,
+  mockUpdatePlatformEmailSettings,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockGetPlatformEmailSettings: vi.fn(),
+  mockResolveSessionId: vi.fn(),
+  mockSendPlatformSmtpTestEmail: vi.fn(),
+  mockUpdatePlatformEmailSettings: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
+}));
+
+vi.mock("./api-client", () => ({
+  apiClient: {
+    emailSettings: {
+      getPlatformEmailSettings: mockGetPlatformEmailSettings,
+      sendPlatformSmtpTestEmail: mockSendPlatformSmtpTestEmail,
+      updatePlatformEmailSettings: mockUpdatePlatformEmailSettings,
+    },
+  },
+  buildSessionHeaders: (sessionId: string) => ({
+    headers: { Authorization: `Bearer ${sessionId}` },
+  }),
+  resolveAccessToken: mockResolveSessionId,
+}));
+
+const smtpAuthenticationError = () =>
+  new ConnectError(
+    "smtp connection test failed",
+    Code.FailedPrecondition,
+    undefined,
+    [
+      {
+        desc: ErrorInfoSchema,
+        value: {
+          domain: "publira",
+          reason: "SMTP_TEST_AUTHENTICATION",
+        },
+      },
+    ]
+  );
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockResolveSessionId.mockResolvedValue("sess_abc");
+});
+
+describe("getPlatformEmailSettings", () => {
+  it("formats and returns SMTP settings", async () => {
+    mockGetPlatformEmailSettings.mockResolvedValueOnce({
+      settings: {
+        encryption: "starttls",
+        fromAddress: "noreply@example.com",
+        hasPassword: true,
+        host: "smtp.example.com",
+        port: 587,
+        replyTo: "support@example.com",
+        revision: 4n,
+        username: "mailer",
+      },
+    });
+
+    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
+      ok: true,
+      settings: {
+        encryption: "starttls",
+        fromAddress: "noreply@example.com",
+        hasPassword: true,
+        host: "smtp.example.com",
+        port: 587,
+        replyTo: "support@example.com",
+        revision: "4",
+        username: "mailer",
+      },
+    });
+  });
+
+  it("answers revision 0 when nothing has been saved yet", async () => {
+    mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: {} });
+
+    const result = await getPlatformEmailSettings("en");
+
+    expect(result.ok && result.settings.revision).toBe("0");
+  });
+
+  it("returns a failure without calling the API when sessionId is empty", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+
+    expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();
+  });
+
+  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      requiresSignIn: true,
+    });
+  });
+});
+
+describe("updatePlatformEmailSettings", () => {
+  const input = {
+    encryption: "tls",
+    expectedRevision: 3n,
+    fromAddress: "noreply@example.com",
+    host: "smtp.example.com",
+    locale: "en",
+    password: "secret",
+    passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+    port: 465,
+    replyTo: "",
+    username: "mailer",
+  } as const;
+
+  it("calls the save API with the revision it was rendered at and returns updated settings", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      settings: {
+        encryption: "tls",
+        fromAddress: "noreply@example.com",
+        hasPassword: true,
+        host: "smtp.example.com",
+        port: 465,
+        replyTo: "",
+        revision: 4n,
+        username: "mailer",
+      },
+    });
+
+    const result = await updatePlatformEmailSettings(input);
+
+    expect(result).toEqual({
+      ok: true,
+      settings: {
+        encryption: "tls",
+        fromAddress: "noreply@example.com",
+        hasPassword: true,
+        host: "smtp.example.com",
+        port: 465,
+        replyTo: "",
+        revision: "4",
+        username: "mailer",
+      },
+    });
+
+    expect(mockUpdatePlatformEmailSettings).toHaveBeenCalledWith(
+      {
+        encryption: "tls",
+        expectedRevision: 3n,
+        fromAddress: "noreply@example.com",
+        host: "smtp.example.com",
+        password: "secret",
+        passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+        port: 465,
+        replyTo: "",
+        username: "mailer",
+      },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("tells the operator to reload when another session saved first", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError(
+        "platform email settings have changed since they were read",
+        Code.FailedPrecondition
+      )
+    );
+
+    await expect(updatePlatformEmailSettings(input)).resolves.toEqual({
+      message:
+        "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
+      ok: false,
+    });
+  });
+
+  it("passes the server's validation detail through", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError("from_address is required", Code.InvalidArgument)
+    );
+
+    await expect(updatePlatformEmailSettings(input)).resolves.toEqual({
+      message: "from_address is required",
+      ok: false,
+    });
+  });
+});
+
+describe("sendPlatformSmtpTestEmail", () => {
+  it("returns the recipient from the connection test API", async () => {
+    mockSendPlatformSmtpTestEmail.mockResolvedValueOnce({
+      recipientEmail: "operator@example.com",
+    });
+
+    await expect(
+      sendPlatformSmtpTestEmail({
+        encryption: "starttls",
+        fromAddress: "noreply@example.com",
+        host: "smtp.example.com",
+        locale: "en",
+        password: "",
+        passwordUpdateMode: 1,
+        port: 587,
+        recipientEmail: "",
+        recipientType: TEST_EMAIL_RECIPIENT_TYPE_SELF,
+        replyTo: "",
+        username: "mailer",
+      })
+    ).resolves.toEqual({ ok: true, recipientEmail: "operator@example.com" });
+  });
+
+  it("renders SMTP test reasons in English and Japanese", async () => {
+    const input = {
+      encryption: "starttls",
+      fromAddress: "noreply@example.com",
+      host: "smtp.example.com",
+      locale: "en" as const,
+      password: "",
+      passwordUpdateMode: 1,
+      port: 587,
+      recipientEmail: "",
+      recipientType: TEST_EMAIL_RECIPIENT_TYPE_SELF,
+      replyTo: "",
+      username: "mailer",
+    };
+    mockSendPlatformSmtpTestEmail.mockRejectedValueOnce(
+      smtpAuthenticationError()
+    );
+    await expect(sendPlatformSmtpTestEmail(input)).resolves.toEqual({
+      message:
+        "SMTP authentication failed. Check the SMTP settings and try again.",
+      ok: false,
+    });
+
+    mockSendPlatformSmtpTestEmail.mockRejectedValueOnce(
+      smtpAuthenticationError()
+    );
+    await expect(
+      sendPlatformSmtpTestEmail({ ...input, locale: "ja" })
+    ).resolves.toEqual({
+      message:
+        "SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。",
+      ok: false,
+    });
+  });
+});
+
+describe("email settings cache tag", () => {
+  it("files the SMTP settings under the email-settings tag", async () => {
+    mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: undefined });
+
+    await getPlatformEmailSettings("en");
+
+    expect(platformEmailSettingsCacheTag).toBe("platform:email-settings");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformEmailSettingsCacheTag);
+  });
+});

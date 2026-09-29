@@ -1,0 +1,203 @@
+name: Review
+
+# Bucket for review-support automation. Add a job per concern; keep this
+# workflow's name stable so later review-support steps land here.
+
+on:
+  # `pull_request` cannot be used: a fork's GITHUB_TOKEN is read-only and could
+  # not add a label. `pull_request_target` runs against the base branch, and
+  # nothing here checks out or executes the head branch. The types are the
+  # union of what the jobs need; each one narrows from there.
+  pull_request_target:
+    types: [opened, ready_for_review, synchronize]
+
+permissions: {}
+
+jobs:
+  size-label:
+    name: Label review size
+    # An `opened` event for a draft is skipped, so a pull request opened as a
+    # draft is labelled when it is marked ready and one opened ready is
+    # labelled immediately. A `synchronize` is skipped too: the score is a
+    # snapshot of the moment review was requested, not of the latest push.
+    if: github.event.pull_request.draft == false && github.event.action != 'synchronize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # A job's `permissions` replaces the workflow's `{}` outright rather than
+      # adding to it, so the checkout needs `contents: read` spelled out here.
+      contents: read
+      pull-requests: write
+    steps:
+      # `pull_request_target` resolves to the base commit, so this is the
+      # scorer as it was reviewed and merged, not the one the pull request
+      # proposes.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+
+      - name: Collect the pull request diff
+        id: diff
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        with:
+          script: |
+            const { writeFileSync } = require('node:fs');
+            const { owner, repo } = context.repo;
+            const pull = context.payload.pull_request;
+
+            // Not `pull.labels`: that list is a snapshot of the instant the
+            // event fired, and `gh pr create --label` applies its label in a
+            // second request a moment after the pull request exists, so the
+            // payload can still read as unlabelled. Ask for the current one.
+            const { data: latest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pull.number,
+            });
+
+            // A label the author set — an agent following skills/create-pr, or
+            // a human who has judged the review load — wins over the
+            // mechanical score.
+            const existing = latest.labels
+              .map((label) => label.name)
+              .find((name) => name.startsWith('size/'));
+            if (existing) {
+              core.info(`#${pull.number} already carries ${existing}: leaving it alone`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const files = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+
+            const lines = [];
+            for (const file of files) {
+              const before = file.previous_filename ?? file.filename;
+              lines.push(`diff --git a/${before} b/${file.filename}`);
+              lines.push(file.status === 'added' ? '--- /dev/null' : `--- a/${before}`);
+              lines.push(file.status === 'removed' ? '+++ /dev/null' : `+++ b/${file.filename}`);
+              if (file.patch) {
+                lines.push(file.patch);
+                continue;
+              }
+              // A binary or oversized file arrives without a patch. Stand in
+              // one significant line for each one the API counted: the score
+              // is what reading them would have produced, and only the
+              // breakdown is blank.
+              lines.push('@@');
+              lines.push(...Array(file.additions).fill('+unavailable'));
+              lines.push(...Array(file.deletions).fill('-unavailable'));
+            }
+
+            writeFileSync(process.env.DIFF_PATH, `${lines.join('\n')}\n`);
+            core.info(`Collected ${files.length} changed files`);
+            core.setOutput('skip', 'false');
+
+      - name: Score the diff
+        id: score
+        if: steps.diff.outputs.skip != 'true'
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        run: |
+          result="$(node scripts/pr-size.ts --json < "${DIFF_PATH}")"
+          echo "${result}"
+          {
+            echo "score=$(printf '%s' "${result}" | jq -r '.score')"
+            echo "label=$(printf '%s' "${result}" | jq -r '.label')"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Add the label
+        if: steps.diff.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LABEL: ${{ steps.score.outputs.label }}
+          SCORE: ${{ steps.score.outputs.score }}
+        with:
+          script: |
+            const label = process.env.LABEL;
+            core.info(`Score ${process.env.SCORE}: ${label}`);
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [label],
+            });
+
+  ai-assisted-label:
+    name: Label AI assistance
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Apply the label to match the commit trailers
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const LABEL = 'ai-assisted';
+            const { owner, repo } = context.repo;
+            const pull = context.payload.pull_request;
+
+            const commits = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/commits',
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+            // Git matches a trailer token case-insensitively, so the label has
+            // to as well: `assisted-by:` is the same disclosure.
+            const trailer = /^assisted-by:[ \t]*\S/im;
+            const assisted = commits.some(({ commit }) => trailer.test(commit.message));
+
+            // Not `pull.labels`, for the reason `Label review size` re-reads
+            // them too: a list captured when the event fired can disagree with
+            // the pull request by the time the job runs, and here the
+            // disagreement asks the API to remove a label that is not there.
+            const { data: latest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pull.number,
+            });
+            const labelled = latest.labels.some((label) => label.name === LABEL);
+
+            if (assisted === labelled) {
+              core.info(`#${pull.number} already reads as ${assisted ? '' : 'not '}AI-assisted`);
+              return;
+            }
+
+            if (assisted) {
+              await github.rest.issues.addLabels({
+                ...context.repo,
+                issue_number: pull.number,
+                labels: [LABEL],
+              });
+              core.info(`Added ${LABEL} to #${pull.number}`);
+              return;
+            }
+
+            // The trailer is the only source of truth: a branch that lost its
+            // agent commits to a force-push loses the label with them.
+            try {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: pull.number,
+                name: LABEL,
+              });
+            } catch (error) {
+              // Someone taking the label off between the read above and this
+              // call has produced the state being asked for.
+              if (error.status !== 404) {
+                throw error;
+              }
+              core.info(`${LABEL} was already gone from #${pull.number}`);
+              return;
+            }
+            core.info(`Removed ${LABEL} from #${pull.number}`);

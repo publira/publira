@@ -1,0 +1,273 @@
+package publicapi
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"connectrpc.com/connect"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/api/protomapper"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformconfig"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/signin"
+	"github.com/publira/publira/server/internal/tenanttz"
+)
+
+func (s *apiServer) GetTenant(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetTenantRequest],
+) (*connect.Response[publirav1.GetTenantResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	queries := s.queriesFor(ctx)
+
+	// Unlike the copy below, the locale is not optional: it decides which
+	// language every string on the site is read in, so a stored value this
+	// build cannot render is reported instead of silently becoming another.
+	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+
+	// Fetch tenant config (optional)
+	config, err := queries.GetTenantConfigByTenantID(ctx, tenant.ID)
+	copyrightText := ""
+	siteDescription := ""
+	siteTagline := ""
+	// A tenant with no config row, and one whose config could not be read, have
+	// chosen nothing about commenting. That is the column's own default too.
+	commentMode := publirattypesv1.CommentMode_COMMENT_MODE_DISABLED
+	// The same for the age rule, whose column defaults to asking for no proof.
+	// What this field decides is whether the sign-up form asks for a birth date
+	// at all; every body a rated series holds is gated by GetEpisodeDetail,
+	// which reads the rule itself and refuses the read rather than answering
+	// around it.
+	ageVerification := publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE
+	appStoreURL := ""
+	googlePlayURL := ""
+	// The column's default: the app sells through the external checkout.
+	appPurchaseRoute := publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT
+
+	if err == nil {
+		if config.CopyrightText.Valid {
+			copyrightText = config.CopyrightText.String
+		}
+		if config.SiteDescription.Valid {
+			siteDescription = config.SiteDescription.String
+		}
+		if config.SiteTagline.Valid {
+			siteTagline = config.SiteTagline.String
+		}
+		appStoreURL = config.AppStoreUrl.String
+		googlePlayURL = config.GooglePlayUrl.String
+		appPurchaseRoute, err = protomapper.AppPurchaseRouteFromStored(config.AppPurchaseRoute)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
+		}
+		commentMode, err = protomapper.CommentModeFromStored(config.CommentMode)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+		}
+		ageVerification, err = protomapper.AgeVerificationFromStored(config.AgeVerification)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
+		}
+	} else if err != sql.ErrNoRows {
+		// Log error but don't fail the request
+		_ = err
+	}
+	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
+	var acceptsAppStorePayments, acceptsGooglePlayPayments bool
+	if appPurchaseRoute == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
+		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
+	}
+
+	// A failed read is not answered as a tenant without a theme: web-host would
+	// cache the default palette as this tenant's brand.
+	var theme *publirattypesv1.TenantTheme
+	themeRow, err := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
+	switch {
+	case err == nil:
+		iconVariants, logoVariants, err := tenantBrandingImageVariants(ctx, queries, themeRow)
+		if err != nil {
+			return nil, s.internalError(ctx, "failed to read the tenant branding image variants", err, "tenant_id", tenant.ID.String())
+		}
+		theme = protomapper.TenantThemeFromGetRow(themeRow, iconVariants, logoVariants)
+	case !errors.Is(err, sql.ErrNoRows):
+		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
+	}
+
+	// Failed rather than answered without providers, which web-host would cache
+	// as a tenant whose readers cannot sign in with them.
+	signIn, err := signin.NewSettings(queries, s.encryptor).Get(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to read the tenant sign-in settings", err, "tenant_id", tenant.ID.String())
+	}
+	var appleSignIn *publirav1.TenantAppleSignIn
+	if signIn.Apple.Ready {
+		appleSignIn = &publirav1.TenantAppleSignIn{ServicesId: signIn.Apple.ServicesID}
+	}
+	var googleSignIn *publirav1.TenantGoogleSignIn
+	if signIn.Google.Ready {
+		googleSignIn = &publirav1.TenantGoogleSignIn{
+			WebClientId: signIn.Google.WebClientID,
+			IosClientId: signIn.Google.IOSClientID,
+		}
+	}
+
+	return connect.NewResponse(&publirav1.GetTenantResponse{
+		TenantPublicId:            tenant.PublicID,
+		TenantName:                tenant.Name,
+		TenantDomain:              tenant.Domain,
+		CopyrightText:             copyrightText,
+		SiteDescription:           siteDescription,
+		SiteTagline:               siteTagline,
+		Theme:                     theme,
+		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
+		DefaultLocale:             defaultLocale,
+		AcceptsPayments:           acceptsPayments,
+		AgeVerification:           ageVerification,
+		CommentMode:               commentMode,
+		WebPushVapidPublicKey:     s.publishedWebPushPublicKey(ctx),
+		AppStoreUrl:               appStoreURL,
+		GooglePlayUrl:             googlePlayURL,
+		AppPurchaseRoute:          appPurchaseRoute,
+		AcceptsAppStorePayments:   acceptsAppStorePayments,
+		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
+		AppleSignIn:               appleSignIn,
+		GoogleSignIn:              googleSignIn,
+	}), nil
+}
+
+// GetTenantLegalPages answers the terms and privacy pages the tenant names,
+// each in the translation the reader's locale resolves to. A page that is not
+// published is left out, so the storefront never links to a page it cannot
+// serve.
+func (s *apiServer) GetTenantLegalPages(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetTenantLegalPagesRequest],
+) (*connect.Response[publirav1.GetTenantLegalPagesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, dbmodels.GetTenantLegalPagesParams{
+		TenantID: tenant.ID,
+		Locale:   readerLocale,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetTenantLegalPagesResponse{}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenant.ID.String())
+	}
+
+	resp := &publirav1.GetTenantLegalPagesResponse{}
+	if row.TermsPublished {
+		resp.TermsPage = &publirav1.TenantLegalPage{
+			Slug:      row.TermsSlug.String,
+			Title:     row.TermsTitle.String,
+			VersionId: row.TermsPublishedVersionID.UUID.String(),
+			Locale:    row.TermsLocale.String,
+		}
+	}
+	if row.PrivacyPublished {
+		resp.PrivacyPage = &publirav1.TenantLegalPage{
+			Slug:      row.PrivacySlug.String,
+			Title:     row.PrivacyTitle.String,
+			VersionId: row.PrivacyPublishedVersionID.UUID.String(),
+			Locale:    row.PrivacyLocale.String,
+		}
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// tenantAcceptsPayments deliberately fails closed. The public response only
+// exposes whether Checkout can be offered; plaintext credentials remain inside
+// paymentsettings while it verifies that the enabled settings can be decrypted.
+func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUID) bool {
+	if _, _, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID); err != nil {
+		if !paymentsettings.IsUnavailable(err) {
+			s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
+		}
+		return false
+	}
+	return true
+}
+
+// tenantAcceptsStorePayments answers which stores the tenant's app can charge
+// through, for a tenant on the store route. A store counts only once its key
+// decrypts, since ConfirmStorePurchase cannot verify a charge without it, so
+// this fails closed like tenantAcceptsPayments.
+func (s *apiServer) tenantAcceptsStorePayments(ctx context.Context, tenantID uuid.UUID) (appStore, googlePlay bool) {
+	stores := s.appStores(ctx)
+	_, appStoreErr := stores.LoadAppStoreCredentials(ctx, tenantID)
+	_, googlePlayErr := stores.LoadGooglePlayCredentials(ctx, tenantID)
+	return s.storeAcceptsPayments(ctx, tenantID, storeAppStore, appStoreErr),
+		s.storeAcceptsPayments(ctx, tenantID, storeGooglePlay, googlePlayErr)
+}
+
+// storeAcceptsPayments reads the outcome of loading one store's credentials.
+// A store that is off says nothing worth logging; a ready one whose key does
+// not decrypt is a fault an operator has to see.
+func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID, store string, err error) bool {
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		s.logger.WarnContext(ctx, "could not determine tenant store payment availability", "tenant_id", tenantID, "store", store, "error", err)
+	}
+	return false
+}
+
+// tenantBrandingImageVariants reads the variants of the theme's icon and logo.
+func tenantBrandingImageVariants(
+	ctx context.Context,
+	queries Querier,
+	row dbmodels.GetTenantThemeByTenantIDRow,
+) (iconVariants, logoVariants []*publirattypesv1.TenantImageVariant, err error) {
+	imageIDs := make([]uuid.UUID, 0, 2)
+	if row.IconImageID.Valid {
+		imageIDs = append(imageIDs, row.IconImageID.UUID)
+	}
+	if row.LogoImageID.Valid {
+		imageIDs = append(imageIDs, row.LogoImageID.UUID)
+	}
+	if len(imageIDs) == 0 {
+		return nil, nil, nil
+	}
+
+	variantRows, err := queries.ListTenantImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
+
+	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], nil
+}
+
+// publishedWebPushPublicKey answers the key GetTenant publishes. A failed read
+// publishes none rather than failing the site chrome over it.
+func (s *apiServer) publishedWebPushPublicKey(ctx context.Context) string {
+	publicKey, err := s.webPushKeys.PublicKey(ctx)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to read the web push public key", "error", err)
+		return ""
+	}
+	return publicKey
+}

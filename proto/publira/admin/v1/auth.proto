@@ -1,0 +1,269 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message AdminAuthServiceLoginRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message AdminAuthServiceLoginResponse {
+  // Empty while mfa_challenge is set: the password was right, but the session
+  // is not issued until the second factor is settled.
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  AdminAuthServiceMfaChallenge mfa_challenge = 3;
+}
+
+// What the account still owes before the login can finish.
+enum MfaChallengeKind {
+  MFA_CHALLENGE_KIND_UNSPECIFIED = 0;
+  // The account has a confirmed authenticator and owes a code from it.
+  MFA_CHALLENGE_KIND_VERIFY = 1;
+  // The account has no authenticator and the tenant requires one of its role,
+  // so the only thing this challenge can complete is an enrollment.
+  MFA_CHALLENGE_KIND_ENROLL = 2;
+}
+
+// The half-finished session a password alone earns. The token is signed and
+// short-lived, and no RPC other than the MFA ones accepts it.
+message AdminAuthServiceMfaChallenge {
+  string token = 1;
+  string expires_at = 2;
+  MfaChallengeKind kind = 3;
+}
+
+message AdminAuthServiceVerifyMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  // A code from the authenticator, or one of the recovery codes handed out at
+  // enrollment. Which one it was is reported back in the response.
+  string code = 3;
+}
+
+message AdminAuthServiceVerifyMfaResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  bool recovery_code_used = 3;
+  int32 remaining_recovery_codes = 4;
+}
+
+message AdminAuthServiceGetMfaStatusRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceGetMfaStatusResponse {
+  bool enabled = 1;
+  string enabled_at = 2;
+  int32 remaining_recovery_codes = 3;
+  // The tenant requires MFA of this account's role. With enabled false, the
+  // console has to send the account to enrollment before anything else.
+  bool required = 4;
+}
+
+message AdminAuthServiceStartMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Sent instead of an Authorization header when the login stopped at an
+  // enroll challenge. A signed-in account enrolling voluntarily leaves it
+  // empty and is identified by its session.
+  string challenge_token = 2;
+}
+
+message AdminAuthServiceStartMfaEnrollmentResponse {
+  // Base32 secret, for an authenticator that is typed into rather than
+  // scanned. It is readable only here and only until the next start.
+  string secret = 1;
+  // otpauth:// URI (RFC 6238 parameters) the console renders as a QR code.
+  string otpauth_uri = 2;
+}
+
+message AdminAuthServiceConfirmMfaEnrollmentRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  string code = 3;
+}
+
+message AdminAuthServiceConfirmMfaEnrollmentResponse {
+  // Plaintext exactly once; only hashes are kept.
+  repeated string recovery_codes = 1;
+  // Set when a challenge token finished the login rather than a session.
+  publira.types.v1.User user = 2;
+  publira.types.v1.AccessToken access_token = 3;
+}
+
+message AdminAuthServiceDisableMfaRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string code = 2;
+}
+
+message AdminAuthServiceDisableMfaResponse {
+  bool disabled = 1;
+}
+
+message AdminAuthServiceRegenerateMfaRecoveryCodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string code = 2;
+}
+
+message AdminAuthServiceRegenerateMfaRecoveryCodesResponse {
+  // Replaces every code the account held, used or not.
+  repeated string recovery_codes = 1;
+}
+
+message AdminAuthServiceLogoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceLogoutResponse {}
+
+message AdminAuthServiceRequestPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message AdminAuthServiceRequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message AdminAuthServiceConfirmPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message AdminAuthServiceConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
+message AdminAuthServiceGetMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceGetMeResponse {
+  publira.types.v1.User user = 1;
+}
+
+message AdminAuthServiceGetTenantByDomainRequest {
+  repeated string domains = 1;
+}
+
+message AdminAuthServiceGetTenantByDomainResponse {
+  // Primary key (UUID) for internal routing / TenantContext.
+  string tenant_id = 1;
+  // The tenant's saved default locale (ja, en) so the console proxy can publish
+  // the display language in the round trip it already makes. Never empty: a
+  // stored code naming no supported locale fails this RPC rather than answering
+  // another language.
+  string default_locale = 2;
+}
+
+message AdminAuthServiceGetTenantRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceTenant {
+  string public_id = 1;
+  string name = 2;
+  string domain = 3;
+  string admin_domain = 4;
+}
+
+message AdminAuthServiceGetTenantResponse {
+  AdminAuthServiceTenant tenant = 1;
+}
+
+message AdminAuthServiceGetTenantConfigRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceGetTenantConfigResponse {
+  string copyright_text = 1;
+  string site_description = 2;
+  string site_tagline = 3;
+}
+
+message AdminAuthServiceGetTenantAdminInvitationStateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message AdminAuthServiceGetTenantAdminInvitationStateResponse {
+  string email = 1;
+  string status = 2;
+  string expires_at = 3;
+  bool account_exists = 4;
+}
+
+message AdminAuthServiceAcceptTenantAdminInvitationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string name = 3;
+  string password = 4;
+}
+
+message AdminAuthServiceAcceptTenantAdminInvitationResponse {
+  bool accepted = 1;
+  bool account_created = 2;
+}
+
+message AdminAuthServiceUpdateTenantConfigRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string copyright_text = 2;
+  string site_description = 3;
+  string site_tagline = 4;
+}
+
+message AdminAuthServiceUpdateTenantConfigResponse {
+  string copyright_text = 1;
+  string site_description = 2;
+  string site_tagline = 3;
+}
+
+message AdminAuthServiceRequestEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string current_email = 2;
+  string new_email = 3;
+  string current_password = 4;
+}
+
+message AdminAuthServiceRequestEmailChangeResponse {
+  bool requested = 1;
+}
+
+message AdminAuthServiceConfirmEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message AdminAuthServiceConfirmEmailChangeResponse {
+  bool confirmed = 1;
+  bool changed = 2;
+  string pending_confirmation_for = 3;
+}
+
+service AdminAuthService {
+  rpc Login(AdminAuthServiceLoginRequest) returns (AdminAuthServiceLoginResponse) {}
+  rpc Logout(AdminAuthServiceLogoutRequest) returns (AdminAuthServiceLogoutResponse) {}
+  rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
+  rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
+  rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
+  rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
+  rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
+  rpc GetTenantConfig(AdminAuthServiceGetTenantConfigRequest) returns (AdminAuthServiceGetTenantConfigResponse) {}
+  rpc GetTenantAdminInvitationState(AdminAuthServiceGetTenantAdminInvitationStateRequest) returns (AdminAuthServiceGetTenantAdminInvitationStateResponse) {}
+  rpc AcceptTenantAdminInvitation(AdminAuthServiceAcceptTenantAdminInvitationRequest) returns (AdminAuthServiceAcceptTenantAdminInvitationResponse) {}
+  rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
+  rpc RequestEmailChange(AdminAuthServiceRequestEmailChangeRequest) returns (AdminAuthServiceRequestEmailChangeResponse) {}
+  rpc ConfirmEmailChange(AdminAuthServiceConfirmEmailChangeRequest) returns (AdminAuthServiceConfirmEmailChangeResponse) {}
+  rpc VerifyMfa(AdminAuthServiceVerifyMfaRequest) returns (AdminAuthServiceVerifyMfaResponse) {}
+  rpc GetMfaStatus(AdminAuthServiceGetMfaStatusRequest) returns (AdminAuthServiceGetMfaStatusResponse) {}
+  rpc StartMfaEnrollment(AdminAuthServiceStartMfaEnrollmentRequest) returns (AdminAuthServiceStartMfaEnrollmentResponse) {}
+  rpc ConfirmMfaEnrollment(AdminAuthServiceConfirmMfaEnrollmentRequest) returns (AdminAuthServiceConfirmMfaEnrollmentResponse) {}
+  rpc DisableMfa(AdminAuthServiceDisableMfaRequest) returns (AdminAuthServiceDisableMfaResponse) {}
+  rpc RegenerateMfaRecoveryCodes(AdminAuthServiceRegenerateMfaRecoveryCodesRequest) returns (AdminAuthServiceRegenerateMfaRecoveryCodesResponse) {}
+}

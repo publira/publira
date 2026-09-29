@@ -1,0 +1,61 @@
+{
+  "name": "@publira/layouts",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./site-layout": {
+      "types": "./dist/site-layout.d.mts",
+      "default": "./dist/site-layout.mjs"
+    },
+    "./auth-screen": {
+      "types": "./dist/auth-screen.d.mts",
+      "default": "./dist/auth-screen.mjs"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.mts",
+      "default": "./dist/admin/index.mjs"
+    },
+    "./navigation": {
+      "types": "./dist/navigation.d.mts",
+      "default": "./dist/navigation.mjs"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@publira/icons": "workspace:*",
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@publira/tsdown-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "next": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^16.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

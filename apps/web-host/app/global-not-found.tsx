@@ -1,0 +1,66 @@
+import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
+import { buttonVariants } from "@publira/ui-components/button";
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import "./globals.css";
+
+/** The one locale this document renders, named where `lang` is set from it. */
+const NOT_FOUND_LOCALE: Locale = "en";
+
+/**
+ * App-wide 404 for URLs that match no route at all. Next.js skips the normal
+ * layout tree (including `app/[tenant_id]/[locale]/layout.tsx`) and renders
+ * this full HTML document directly, so no tenant RPC runs here.
+ *
+ * Contrast with `(site)/not-found.tsx`, which handles `notFound()` for resources
+ * under a resolved tenant and keeps the site chrome.
+ *
+ * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
+ * tokens are imported here because this file bypasses the tenant root layout.
+ * Tenant-specific `/theme.css` is intentionally omitted: there is no tenant
+ * context on an unmatched URL, so the screen renders in the brand defaults.
+ *
+ * The link back is styled from `buttonVariants` rather than rendered as
+ * `LinkButton`, which is a client component: this document is static and has
+ * nothing else to hydrate.
+ *
+ * The locale is a constant rather than the `[locale]` segment every other page
+ * follows. An unmatched URL — including a path `proxy.ts` rewrote because no
+ * published page has it — reaches no layout under `[tenant_id]/[locale]`, so
+ * this document renders as a static page with nothing to resolve the tenant's
+ * language in. The copy
+ * comes from the shared catalog, which carries every locale, so the constant
+ * chooses a language rather than reporting one: `en` is the repository's
+ * default for a page that has no reader-specific answer to give.
+ */
+export const metadata: Metadata = {
+  description: sharedMessage(
+    "host.errors.not_found_description",
+    NOT_FOUND_LOCALE
+  ),
+  title: sharedMessage("host.errors.not_found_title", NOT_FOUND_LOCALE),
+};
+
+const GlobalNotFound = () => (
+  <html lang={NOT_FOUND_LOCALE}>
+    <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
+      <main className="mx-auto grid max-w-measure-prose gap-4 px-6 py-16">
+        <h1 className="font-serif text-3xl leading-tight">
+          {sharedMessage("host.errors.not_found_title", NOT_FOUND_LOCALE)}
+        </h1>
+        <p className="text-foreground">
+          {sharedMessage("host.errors.not_found_description", NOT_FOUND_LOCALE)}
+        </p>
+        <div className="mt-2">
+          <Link className={buttonVariants({ variant: "outline" })} href="/">
+            {sharedMessage("host.common.back_to_top", NOT_FOUND_LOCALE)}
+          </Link>
+        </div>
+      </main>
+    </body>
+  </html>
+);
+
+export default GlobalNotFound;

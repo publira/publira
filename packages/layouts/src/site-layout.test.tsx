@@ -1,0 +1,128 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen } from "@testing-library/react";
+import type { AnchorHTMLAttributes } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  SiteLayout,
+  SiteLayoutBrand,
+  SiteLayoutFooter,
+  SiteLayoutFooterContent,
+  SiteLayoutFooterCopyright,
+  SiteLayoutFooterLink,
+  SiteLayoutFooterLinks,
+  SiteLayoutFooterNote,
+  SiteLayoutHeader,
+  SiteLayoutMain,
+  SiteLayoutNav,
+  SiteLayoutNavLink,
+  SiteLayoutNavSkeleton,
+} from "./site-layout";
+import {
+  SiteLayoutActions,
+  SiteLayoutPrimaryAction,
+  SiteLayoutSecondaryAction,
+} from "./site-layout-actions";
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} data-next-link="true">
+      {children}
+    </a>
+  ),
+}));
+
+afterEach(cleanup);
+
+describe("SiteLayout slots", () => {
+  it("composes the brand, the navigation, and the body from child slots", () => {
+    render(
+      <SiteLayout>
+        <SiteLayoutHeader>
+          <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
+          <SiteLayoutNav>
+            <SiteLayoutNavLink href="/series">Series</SiteLayoutNavLink>
+          </SiteLayoutNav>
+        </SiteLayoutHeader>
+        <SiteLayoutMain>Body</SiteLayoutMain>
+      </SiteLayout>
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Aoto Press" }).dataset.nextLink
+    ).toBe("true");
+    expect(
+      screen.getByRole("link", { name: "Series" }).getAttribute("href")
+    ).toBe("/series");
+    expect(screen.getByText("Body")).toBeTruthy();
+  });
+
+  it("adds the caller's classes to the header band without dropping its own", () => {
+    render(
+      <SiteLayoutHeader className="absolute top-0">
+        <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
+      </SiteLayoutHeader>
+    );
+
+    const header = screen.getByRole("banner");
+    expect(header.className).toContain("border-b");
+    expect(header.className).toContain("absolute top-0");
+  });
+
+  it("renders each footer area from its own child slot", () => {
+    render(
+      <SiteLayoutFooter>
+        <SiteLayoutFooterLinks aria-label="Footer links">
+          <SiteLayoutFooterLink href="/terms">
+            Terms of service
+          </SiteLayoutFooterLink>
+        </SiteLayoutFooterLinks>
+        <SiteLayoutFooterContent>
+          <SiteLayoutFooterNote>Notice</SiteLayoutFooterNote>
+          <SiteLayoutFooterCopyright>© Publira</SiteLayoutFooterCopyright>
+        </SiteLayoutFooterContent>
+      </SiteLayoutFooter>
+    );
+
+    expect(
+      screen.getByRole("navigation", { name: "Footer links" })
+    ).toBeTruthy();
+    expect(screen.getByText("Notice")).toBeTruthy();
+    expect(screen.getByText("© Publira")).toBeTruthy();
+  });
+
+  it("renders the header actions from separate child slots", () => {
+    render(
+      <SiteLayoutActions>
+        <SiteLayoutSecondaryAction href="/login">
+          Sign in
+        </SiteLayoutSecondaryAction>
+        <SiteLayoutPrimaryAction href="/signup">
+          Get started
+        </SiteLayoutPrimaryAction>
+      </SiteLayoutActions>
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Sign in" }).getAttribute("href")
+    ).toBe("/login");
+    expect(
+      screen.getByRole("link", { name: "Get started" }).getAttribute("href")
+    ).toBe("/signup");
+  });
+});
+
+describe("SiteLayoutNavSkeleton", () => {
+  it("stands in for the navigation without naming a link", () => {
+    render(<SiteLayoutNavSkeleton />);
+
+    // The whole point of the stand-in: an href the caller cannot name yet is
+    // not rendered as a link a reader could follow.
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryByRole("navigation")).toBeNull();
+  });
+});

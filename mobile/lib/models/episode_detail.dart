@@ -1,0 +1,174 @@
+import 'package:publira/models/series_item.dart';
+
+/// Which way the pages of an episode are turned, as
+/// `publira.types.v1.ReadingDirection` names them.
+///
+/// [rtl] is what a series nobody has set is read in. A name this build does
+/// not know is read as [rtl] rather than flipping the work.
+enum ReadingDirection { rtl, ltr }
+
+/// Whether the reader may see an episode body, as `GetEpisodeDetail` reports
+/// it.
+enum EpisodeAccess {
+  /// The episode is free, so the body is public.
+  free,
+
+  /// The episode is paid and this reader holds no purchase or ticket.
+  locked,
+
+  /// The episode is paid and this reader holds a purchase or an active ticket.
+  entitled,
+
+  /// The tenant makes a reader prove an age for this series' rating and this
+  /// reader has not. It outranks the three above, so a free body and a bought
+  /// one are both withheld.
+  ageRestricted,
+
+  /// The server named an access state this build does not know.
+  unknown;
+
+  /// Reads `publira.v1.EpisodeAccess` as protojson writes it: by name, and
+  /// omitted entirely when it is the zero value.
+  static EpisodeAccess fromWire(Object? raw) {
+    return switch (raw) {
+      'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
+      'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
+      'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
+      'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
+      _ => EpisodeAccess.unknown,
+    };
+  }
+}
+
+/// One body image of an episode, in reading order.
+class EpisodeImageItem {
+  const EpisodeImageItem({
+    required this.id,
+    required this.url,
+    required this.displayOrder,
+    this.width = 0,
+    this.height = 0,
+  });
+
+  final String id;
+
+  /// Absolute image-server URL, already resolved against the configured image
+  /// base and carrying whatever media token the API attached.
+  final Uri url;
+
+  final int displayOrder;
+
+  /// Stored pixel size. `0` means the record predates the size columns, not a
+  /// zero-pixel page, so the reader falls back to the decoded image instead of
+  /// reserving an empty box.
+  final int width;
+  final int height;
+}
+
+/// A published episode next to the one being read, in the same series, as
+/// `publira.types.v1.EpisodeNeighbor` describes it.
+///
+/// It holds what an offer to open that episode needs and nothing about the
+/// reader: what they may do with the neighbour's body is decided when they
+/// open it.
+class EpisodeNeighbor {
+  const EpisodeNeighbor({
+    required this.id,
+    required this.title,
+    required this.orderIndex,
+    required this.price,
+    required this.isFree,
+    this.purchaseSurface = EpisodePurchaseSurface.all,
+  });
+
+  /// Public id (`public_id`), which addresses the episode.
+  final String id;
+  final String title;
+  final int orderIndex;
+
+  /// What the episode costs. It stays the stored price while a free window is
+  /// open on it, because that is what it costs again once the window closes.
+  final int price;
+
+  /// Whether the body is public right now, which is [price] of 0 or an open
+  /// free window. It is read rather than derived from [price], so an offer
+  /// cannot call an episode paid that opens for nothing at the moment the
+  /// reader takes it.
+  final bool isFree;
+
+  /// Where the episode may be bought, so an offer of one sold on the
+  /// storefront alone names that rather than a price the app cannot take.
+  final EpisodePurchaseSurface purchaseSurface;
+}
+
+/// An episode body plus the series it was read under.
+class EpisodeDetail {
+  const EpisodeDetail({
+    required this.episode,
+    required this.seriesId,
+    required this.seriesTitle,
+    required this.access,
+    required this.images,
+    this.previousEpisode,
+    this.nextEpisode,
+    this.imageRequestHeaders = const {},
+    this.ageRating,
+    this.creators = const [],
+    this.readingDirection = ReadingDirection.rtl,
+    this.spreadStartIndex = 1,
+  });
+
+  final EpisodeItem episode;
+  final String seriesId;
+  final String seriesTitle;
+  final EpisodeAccess access;
+
+  /// Body pages in `displayOrder`. Empty while access is [EpisodeAccess.locked].
+  final List<EpisodeImageItem> images;
+
+  /// The published episodes either side of this one in the same series, or
+  /// `null` at the ends of it. A draft or scheduled episode is never one of
+  /// them, so the pair moves as the series is published and reordered.
+  final EpisodeNeighbor? previousEpisode;
+  final EpisodeNeighbor? nextEpisode;
+
+  /// Headers [images] must be fetched with. They travel with the pages because
+  /// the same read decided both which pages exist and who is asking for them.
+  final Map<String, String> imageRequestHeaders;
+
+  /// Who the series is meant for, taken from the series `GetEpisodeDetail`
+  /// returned beside the body. The viewer gates on it the way the series
+  /// screen does, so a continue-reading card or a deep link cannot open the
+  /// pages without the confirmation.
+  final SeriesAgeRating? ageRating;
+
+  /// Who this episode is credited to, in the tenant's role priority order.
+  /// They are the episode's own rather than the series', so an artist who took
+  /// over part way through is named on the episodes they drew and no others.
+  final List<SeriesCreator> creators;
+
+  /// Which way the pages are turned. Already resolved: the episode's own
+  /// value where it states one, and its series' where it does not.
+  final ReadingDirection readingDirection;
+
+  /// Zero-based index of the page from which two pages share a screen. Every
+  /// page before it stands alone. Already resolved the same way. 1 is the
+  /// cover standing alone, which is what a series nobody has set uses.
+  final int spreadStartIndex;
+}
+
+/// A member's reaction state for an episode, as `RatingService` reports it.
+class EpisodeReaction {
+  const EpisodeReaction({
+    required this.score,
+    required this.ratingCount,
+    required this.allowsMultiplePresses,
+  });
+
+  /// Zero before this reader reacts, otherwise their score from one to five.
+  final int score;
+  final int ratingCount;
+
+  /// Whether another press raises the score instead of being a no-op.
+  final bool allowsMultiplePresses;
+}

@@ -1,0 +1,66 @@
+# Database Agent Guide
+
+Conventions for `db/` (migrations, sqlc queries, seeds). Prefer this file for schema work; root [AGENTS.md](../AGENTS.md) remains the top-level source of truth for repo-wide agent policy.
+
+## Migrations are append-only
+
+`migrations/` is the golang-migrate history. A schema change is always a **new** migration; the files already on `main` are never edited, renamed, or deleted.
+
+A migration that exists only on an open branch is not one of those files. Nothing outside its author's own database has applied it, so it is corrected in place for as long as the branch is open: review feedback edits the file rather than stacking a second migration, which would leave the merged history carrying a redundant pair forever.
+
+Rewriting an applied migration changes nothing in a database that already recorded that version in `schema_migrations` — golang-migrate will not run the version a second time. The edit reaches only databases built from scratch afterwards, so environments silently drift apart. Correct a mistake by stacking another migration on top of it.
+
+The `Test / DB Migrations` CI job enforces this: it diffs `migrations/` against `origin/main` and fails when any change there is not a plain addition, so a modified, renamed, or deleted migration cannot merge.
+
+### Adding a migration
+
+- Create the pair with `task db:create NAME=<name>`. It runs `migrate create -ext sql -dir ./migrations -tz UTC`, which names both files with a 14-digit UTC timestamp.
+- Keep the numbering 14 digits wide and zero-padded. golang-migrate orders versions numerically while sqlc reads the directory in lexicographic order, and equal width is what keeps those two orders the same.
+- Keep the version above every version already on `main`. `schema_migrations` holds a single version and `migrate up` applies only what sorts above it, so a migration that ends up below one which merged first is skipped forever on a database that already applied the newer version — and `migrate up` still reports success. When another migration lands on `main` while the branch is open, renumber after the rebase: create a fresh pair with `task db:create` and move the contents across. That is a plain addition, so it satisfies the append-only guard. Check it before pushing with `scripts/check-migration-order.sh`, which is what the `Test / DB Migrations` CI job runs.
+- Write a `down` that actually undoes the `up`. The `Test / DB Migrations` CI job runs `up` → `down -all` → `up` against an empty database, so a broken `down` fails the build.
+- Give `CREATE INDEX CONCURRENTLY` a migration of its own, and prefer it for an index on a table that already carries rows a running deployment writes to. The golang-migrate postgres driver hands a file to PostgreSQL as one query string, and a string holding more than one statement runs as an implicit transaction — the one place that statement cannot execute. Alone in its file it runs outside one, and so does the matching `DROP INDEX CONCURRENTLY` in the down migration.
+- After changing schema SQL that sqlc reads, regenerate from the repo root with `task gen` and confirm `sqlc diff` is clean. See [`server/AGENTS.md`](../server/AGENTS.md) for the full Go verification checklist.
+
+### The initial schema
+
+Versions `00000000000001`–`00000000000008` hold the initial schema, one migration per domain: `platform`, `identity`, `catalog`, `pages`, `notifications`, `commerce`, `engagement`, `outbox`. Each is self-contained — its own tables, constraints, indexes, foreign keys, and RLS policies — with the foreign keys that close a cycle inside the domain applied at the end of the file. Cross-domain foreign keys always point backwards, so the numbering doubles as the dependency order.
+
+These sequence numbers never collide with later timestamps: `00000000000008` is far smaller than any 14-digit UTC timestamp, so the history stays monotonic.
+
+### Rebuilding a local database
+
+`migrate up` cannot move a database whose `schema_migrations` records a version that no longer exists in `migrations/`, and it cannot apply a migration whose objects are already there. Recreate the database with `task db:reset` instead of patching it by hand.
+
+## Query files
+
+`query/` holds one file per domain or aggregate, named after it: `series.sql`, `episode_image.sql`, `access_ticket.sql`. There is no catch-all file, and no file may become one — a query that fits none of the existing files gets a new file named after its own aggregate rather than a general one.
+
+A query goes in the file of the aggregate it reads or writes. When it spans several, it goes with the aggregate the caller is acting on rather than the table it happens to select from: `UserHasEpisodeContentAccess` answers whether a grant exists, so it lives in `access_ticket.sql`, and `GetPurchasableEpisodeForTenant` reads an episode only to price a checkout, so it lives in `payment.sql`.
+
+Split a file by sub-aggregate before it outgrows its siblings — images and join tables apart from the entity they decorate, as `series_image.sql` and `series_creator.sql` are apart from `series.sql`. Roughly 800 lines is the ceiling: past that the file no longer reads as a unit, and finding the right neighbour for a new query costs more context than the query itself.
+
+sqlc emits one `<file>.sql.go` per source and one shared `Querier` interface for the package, so moving a query between files changes only which generated file its method lands in. It also does not delete the output of a source that went away: when a query file is removed or renamed, delete its stale `server/internal/db/gen/<file>.sql.go` by hand, or the package will not compile.
+
+No lint can tell a domain name from a generic one, so this rule is enforced by review.
+
+## Views and functions
+
+sqlc compiles every query on its own — a query cannot call another — so a rule several queries ask about has no home in `query/` and ends up written out once per query. A view is that home: `published_free_episodes` answers "which published episodes may a reader open without paying" for the catalog's filter and its count alike, where six queries would otherwise each carry the predicate and drift apart. A query that needs such an answer reads the view rather than spelling the rule again.
+
+Declare every view `WITH (security_invoker = true)`. Without it a view runs with the rights of its owner, and its owner is the role that applies migrations, which bypasses row-level security: a tenant-scoped query reading through it would see every tenant's rows. `TestDBPublicRoleSeesNothingWithoutTenantSetting` lists the relations a storefront request reads, views included, and fails when one of them answers a connection that set no tenant.
+
+A rule that takes an argument from the query, such as which reader is asking, is a SQL function instead, as `reader_may_open_episode` is, and stays `SECURITY INVOKER` for the same reason.
+
+## Layout (quick map)
+
+| Path | Role |
+| --- | --- |
+| `migrations/` | golang-migrate DDL, append-only |
+| `query/` | sqlc query sources, one file per domain or aggregate |
+| `seeds/` | Seed SQL; `baseline/` is environment-common, `dev/` is local data |
+
+Migration vs seed responsibilities: see `seeds/README.md` and the root `README.md` database section.
+
+## Targeting another database
+
+`task db:*` points at the Dev Container `db` service by default. Export `PUBLIRA_DB_URL` to run the same tasks against an ephemeral database — that is how the bootstrap check (`e2e/bootstrap/`) drives `task db:setup` against its own Compose project. Keep the default in `Taskfile.yaml` as the `db` hostname; do not hardcode a second URL.

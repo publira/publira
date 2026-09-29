@@ -1,0 +1,57 @@
+{
+  "name": "@publira/web-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/publira/publira.git",
+    "directory": "apps/web-platform"
+  },
+  "type": "module",
+  "imports": {
+    "#lib/*": "./lib/*",
+    "#components/*": "./components/*"
+  },
+  "scripts": {
+    "build": "next build",
+    "dev": "PNCH_CACHE_APP=web-platform next dev --port ${PORT:-4100}",
+    "start": "PNCH_CACHE_APP=web-platform next start",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit",
+    "typegen": "next typegen"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "@publira/api-client": "workspace:*",
+    "@publira/brand": "workspace:*",
+    "@publira/i18n": "workspace:*",
+    "@publira/icons": "workspace:*",
+    "@publira/layouts": "workspace:*",
+    "@publira/next-cache-handlers": "catalog:",
+    "@publira/tracing": "workspace:*",
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*",
+    "@publira/web-session": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "temporal-polyfill": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
+    "@publira/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

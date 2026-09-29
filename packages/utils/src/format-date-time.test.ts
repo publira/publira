@@ -1,0 +1,627 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  currentWeekday,
+  DEFAULT_TIME_ZONE,
+  endOfDayIsoString,
+  formatDate,
+  formatDateTime,
+  formatPlainDate,
+  formatPlainYearMonth,
+  formatRelativeTime,
+  formatWeekdayName,
+  fromDateTimeLocalValue,
+  parseInstant,
+  startOfDayIsoString,
+  toDateTimeLocalValue,
+  toInstantIsoString,
+  WEEKDAY_NUMBERS,
+} from "./format-date-time";
+
+/** Fixed UTC instant used across multi-zone display tests. */
+const UTC_INSTANT = "2024-03-10T10:00:00.000Z";
+
+describe("DEFAULT_TIME_ZONE", () => {
+  it("is UTC, the tenant time zone column default", () => {
+    expect(DEFAULT_TIME_ZONE).toBe("UTC");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("formats the same UTC instant differently per IANA time zone", () => {
+    // 10:00 UTC → 19:00 KST, 03:00 PDT (America/Los_Angeles, UTC-7 in March)
+    expect(
+      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "Asia/Seoul" })
+    ).toBe("2024/03/10 19:00");
+    expect(
+      formatDateTime(UTC_INSTANT, {
+        locale: "ja",
+        timeZone: "America/Los_Angeles",
+      })
+    ).toBe("2024/03/10 3:00");
+    expect(formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "UTC" })).toBe(
+      "2024/03/10 10:00"
+    );
+  });
+
+  it("defaults timeZone to UTC when omitted", () => {
+    expect(formatDateTime(UTC_INSTANT, { locale: "ja" })).toBe(
+      "2024/03/10 10:00"
+    );
+    expect(
+      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: DEFAULT_TIME_ZONE })
+    ).toBe(formatDateTime(UTC_INSTANT, { locale: "ja" }));
+  });
+
+  it("accepts offset-bearing ISO strings", () => {
+    expect(
+      formatDateTime("2024-03-10T19:00:00+09:00", {
+        locale: "ja",
+        timeZone: "Asia/Seoul",
+      })
+    ).toBe("2024/03/10 19:00");
+  });
+
+  it("returns fallback for empty or invalid values", () => {
+    expect(formatDateTime("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDateTime("not-a-date", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
+    expect(formatDateTime("not-a-date", { locale: "ja" })).toBe("not-a-date");
+  });
+
+  it("rejects zone-less timestamps (no host-local Date.parse)", () => {
+    // Without Z/offset, Instant.from fails; must not interpret via host TZ.
+    expect(
+      formatDateTime("2024-03-10T10:00", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+    expect(
+      formatDateTime("2024-03-10T10:00:00", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+    expect(formatDateTime("2024-03-10", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
+  });
+
+  it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
+    const instant = parseInstant(UTC_INSTANT);
+    if (!instant) {
+      throw new Error("expected UTC_INSTANT to parse");
+    }
+
+    const ja = formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "UTC" });
+    const en = formatDateTime(UTC_INSTANT, { locale: "en", timeZone: "UTC" });
+
+    expect(ja).toBe("2024/03/10 10:00");
+    expect(en).not.toBe(ja);
+    expect(en).toBe(
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(instant.epochMilliseconds)
+    );
+  });
+});
+
+describe("formatDate", () => {
+  it("uses the calendar day of the given zone, not the UTC day", () => {
+    // 2024-03-10T23:00Z is already 2024-03-11 in Seoul and still 03-10 in LA.
+    const lateInstant = "2024-03-10T23:00:00.000Z";
+    expect(
+      formatDate(lateInstant, { locale: "ja", timeZone: "Asia/Seoul" })
+    ).toBe("2024/03/11");
+    expect(
+      formatDate(lateInstant, { locale: "ja", timeZone: "America/Los_Angeles" })
+    ).toBe("2024/03/10");
+    expect(formatDate(lateInstant, { locale: "ja", timeZone: "UTC" })).toBe(
+      "2024/03/10"
+    );
+  });
+
+  it("defaults timeZone to UTC when omitted", () => {
+    // 23:00Z would already be the next day in any zone ahead of UTC.
+    expect(formatDate("2024-03-10T23:00:00.000Z", { locale: "ja" })).toBe(
+      "2024/03/10"
+    );
+  });
+
+  it("returns fallback for empty or invalid values", () => {
+    expect(formatDate("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDate("not-a-date", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatDate("2024-03-10", { fallback: "-", locale: "ja" })).toBe("-");
+  });
+
+  it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
+    const lateInstant = "2024-03-10T23:00:00.000Z";
+    const instant = parseInstant(lateInstant);
+    if (!instant) {
+      throw new Error("expected lateInstant to parse");
+    }
+
+    const ja = formatDate(lateInstant, { locale: "ja", timeZone: "UTC" });
+    const en = formatDate(lateInstant, { locale: "en", timeZone: "UTC" });
+
+    expect(ja).toBe("2024/03/10");
+    expect(en).not.toBe(ja);
+    expect(en).toBe(
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      }).format(instant.epochMilliseconds)
+    );
+  });
+});
+
+describe("parseInstant", () => {
+  it("parses offset-bearing timestamps to the same instant", () => {
+    const utc = parseInstant(UTC_INSTANT);
+    const jst = parseInstant("2024-03-10T19:00:00+09:00");
+    expect(utc).not.toBeNull();
+    expect(jst).not.toBeNull();
+    expect(
+      Temporal.Instant.compare(utc as Temporal.Instant, jst as Temporal.Instant)
+    ).toBe(0);
+  });
+
+  it("orders instants regardless of the offset they were written with", () => {
+    const earlier = parseInstant(
+      "2024-03-10T19:00:00+09:00"
+    ) as Temporal.Instant;
+    const later = parseInstant("2024-03-10T12:00:00Z") as Temporal.Instant;
+    // Lexicographic string comparison would get this backwards.
+    expect(Temporal.Instant.compare(earlier, later)).toBe(-1);
+  });
+
+  it("returns null for empty, zone-less, or invalid values", () => {
+    expect(parseInstant("")).toBeNull();
+    expect(parseInstant("   ")).toBeNull();
+    expect(parseInstant("not-a-date")).toBeNull();
+    expect(parseInstant("2024-03-10T10:00")).toBeNull();
+    expect(parseInstant("2024-03-10")).toBeNull();
+  });
+});
+
+describe("toInstantIsoString", () => {
+  it("passes absolute timestamps through, normalized to UTC", () => {
+    expect(toInstantIsoString(UTC_INSTANT, "Asia/Seoul")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T19:00:00+09:00", "UTC")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+  });
+
+  it("interprets zone-less wall clocks in the given zone, not the host zone", () => {
+    expect(toInstantIsoString("2024-03-10T19:00", "Asia/Seoul")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T03:00", "America/Los_Angeles")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T19:00:30", "Asia/Seoul")).toBe(
+      "2024-03-10T10:00:30Z"
+    );
+  });
+
+  it("returns empty string for empty or unparseable values", () => {
+    expect(toInstantIsoString("", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("   ", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("not-a-date", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("2024-03-10", "Asia/Seoul")).toBe("");
+  });
+});
+
+describe("date-only day boundaries", () => {
+  it("brackets the calendar day of the given zone", () => {
+    expect(startOfDayIsoString("2024-03-10", "Asia/Seoul")).toBe(
+      "2024-03-09T15:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-03-10", "Asia/Seoul")).toBe(
+      "2024-03-10T14:59:59.999999999Z"
+    );
+    expect(startOfDayIsoString("2024-03-10", "UTC")).toBe(
+      "2024-03-10T00:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-03-10", "UTC")).toBe(
+      "2024-03-10T23:59:59.999999999Z"
+    );
+  });
+
+  it("keeps the end strictly after the start on a 23-hour DST day", () => {
+    // 2024-03-10 in America/Los_Angeles loses an hour to spring-forward.
+    const start = startOfDayIsoString("2024-03-10", "America/Los_Angeles");
+    const end = endOfDayIsoString("2024-03-10", "America/Los_Angeles");
+    expect(start).toBe("2024-03-10T08:00:00Z");
+    expect(end).toBe("2024-03-11T06:59:59.999999999Z");
+    expect(
+      Temporal.Instant.compare(
+        parseInstant(start) as Temporal.Instant,
+        parseInstant(end) as Temporal.Instant
+      )
+    ).toBe(-1);
+  });
+
+  it("covers the full 25-hour fall-back day", () => {
+    expect(startOfDayIsoString("2024-11-03", "America/Los_Angeles")).toBe(
+      "2024-11-03T07:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-11-03", "America/Los_Angeles")).toBe(
+      "2024-11-04T07:59:59.999999999Z"
+    );
+  });
+
+  it("ends the day immediately before the next day starts", () => {
+    const end = parseInstant(
+      endOfDayIsoString("2024-03-10", "Asia/Seoul")
+    ) as Temporal.Instant;
+    const nextStart = parseInstant(
+      startOfDayIsoString("2024-03-11", "Asia/Seoul")
+    ) as Temporal.Instant;
+    expect(nextStart.since(end).total({ unit: "nanosecond" })).toBe(1);
+  });
+
+  it("includes sub-microsecond instants at the very end of the day", () => {
+    // A coarser end (…:59.999999Z) would drop these; the helper must not assume
+    // the consumer stores only microseconds.
+    const end = parseInstant(
+      endOfDayIsoString("2024-03-10", "UTC")
+    ) as Temporal.Instant;
+    for (const value of [
+      "2024-03-10T23:59:59.999999Z",
+      "2024-03-10T23:59:59.999999001Z",
+      "2024-03-10T23:59:59.999999999Z",
+    ]) {
+      const at = parseInstant(value) as Temporal.Instant;
+      expect(Temporal.Instant.compare(at, end)).toBeLessThanOrEqual(0);
+    }
+  });
+
+  it("returns empty string for empty or non date-only input", () => {
+    for (const input of [
+      "",
+      "   ",
+      "not-a-date",
+      "2024-03-10T00:00",
+      "2024-13-40",
+    ]) {
+      expect(startOfDayIsoString(input, "Asia/Seoul")).toBe("");
+      expect(endOfDayIsoString(input, "Asia/Seoul")).toBe("");
+    }
+  });
+});
+
+describe("toDateTimeLocalValue", () => {
+  it("converts an absolute instant to datetime-local wall clock in the given zone", () => {
+    expect(toDateTimeLocalValue(UTC_INSTANT, "Asia/Seoul")).toBe(
+      "2024-03-10T19:00"
+    );
+    expect(toDateTimeLocalValue(UTC_INSTANT, "America/Los_Angeles")).toBe(
+      "2024-03-10T03:00"
+    );
+    expect(toDateTimeLocalValue(UTC_INSTANT, "UTC")).toBe("2024-03-10T10:00");
+  });
+
+  it("does not depend on the host local time zone", () => {
+    // Same absolute + same IANA zone must be stable under any process TZ.
+    expect(
+      toDateTimeLocalValue("2024-07-01T00:00:00Z", "Pacific/Auckland")
+    ).toBe("2024-07-01T12:00");
+  });
+
+  it("returns fallback for empty or invalid values", () => {
+    expect(toDateTimeLocalValue("", "Asia/Seoul")).toBe("");
+    expect(toDateTimeLocalValue("bogus", "Asia/Seoul")).toBe("");
+    expect(toDateTimeLocalValue("bogus", "Asia/Seoul", { fallback: "—" })).toBe(
+      "—"
+    );
+  });
+
+  it("rejects zone-less timestamps (no host-local Date.parse)", () => {
+    expect(toDateTimeLocalValue("2024-03-10T10:00", "Asia/Seoul")).toBe("");
+    expect(toDateTimeLocalValue("2024-03-10T10:00:00", "UTC")).toBe("");
+    expect(
+      toDateTimeLocalValue("2024-03-10T10:00", "UTC", { fallback: "—" })
+    ).toBe("—");
+  });
+});
+
+describe("fromDateTimeLocalValue", () => {
+  it("converts datetime-local wall clock + IANA zone to a UTC instant", () => {
+    expect(fromDateTimeLocalValue("2024-03-10T19:00", "Asia/Seoul")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(
+      fromDateTimeLocalValue("2024-03-10T03:00", "America/Los_Angeles")
+    ).toBe("2024-03-10T10:00:00Z");
+    expect(fromDateTimeLocalValue("2024-03-10T10:00", "UTC")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+  });
+
+  it("accepts optional seconds in the wall-clock string", () => {
+    expect(fromDateTimeLocalValue("2024-03-10T19:00:30", "Asia/Seoul")).toBe(
+      "2024-03-10T10:00:30Z"
+    );
+  });
+
+  it("round-trips with toDateTimeLocalValue", () => {
+    const zones = ["Asia/Seoul", "America/Los_Angeles", "Europe/London", "UTC"];
+    for (const timeZone of zones) {
+      const local = toDateTimeLocalValue(UTC_INSTANT, timeZone);
+      const back = fromDateTimeLocalValue(local, timeZone);
+      // Minute precision: original has :00 seconds
+      expect(back).toBe("2024-03-10T10:00:00Z");
+      expect(toDateTimeLocalValue(back, timeZone)).toBe(local);
+    }
+  });
+
+  it("returns empty string for empty or invalid input", () => {
+    expect(fromDateTimeLocalValue("", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("   ", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("not-a-datetime", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("2024-13-40T99:99", "Asia/Seoul")).toBe("");
+  });
+
+  it("rejects Z, numeric offsets, and time-zone annotations", () => {
+    // PlainDateTime.from would ignore +09:00 / [Asia/Seoul]; must not.
+    expect(fromDateTimeLocalValue("2024-03-10T19:00Z", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("2024-03-10T19:00+09:00", "Asia/Seoul")).toBe(
+      ""
+    );
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00-07:00", "America/Los_Angeles")
+    ).toBe("");
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00[Asia/Seoul]", "Asia/Seoul")
+    ).toBe("");
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00+09:00[Asia/Seoul]", "Asia/Seoul")
+    ).toBe("");
+  });
+});
+
+describe("DST boundaries (America/Los_Angeles)", () => {
+  const zone = "America/Los_Angeles";
+
+  it("spring-forward: non-existent local time is disambiguated (compatible)", () => {
+    // 2024-03-10: clocks jump 02:00 → 03:00 PDT. 02:30 does not exist.
+    // Temporal compatible maps the gap forward to 03:30 PDT = 10:30Z.
+    const iso = fromDateTimeLocalValue("2024-03-10T02:30", zone);
+    expect(iso).toBe("2024-03-10T10:30:00Z");
+    expect(toDateTimeLocalValue(iso, zone)).toBe("2024-03-10T03:30");
+  });
+
+  it("fall-back: ambiguous local time uses compatible (earlier) instant", () => {
+    // 2024-11-03: clocks fall back 02:00 → 01:00. 01:30 occurs twice.
+    // compatible prefers the earlier occurrence (PDT, -07:00) = 08:30Z.
+    const iso = fromDateTimeLocalValue("2024-11-03T01:30", zone);
+    expect(iso).toBe("2024-11-03T08:30:00Z");
+    expect(toDateTimeLocalValue(iso, zone)).toBe("2024-11-03T01:30");
+  });
+
+  it("formats instants correctly on both sides of spring-forward", () => {
+    // Just before transition (still PST, UTC-8): 2024-03-10T09:59:00Z → 01:59
+    expect(
+      formatDateTime("2024-03-10T09:59:00Z", { locale: "ja", timeZone: zone })
+    ).toBe("2024/03/10 1:59");
+    // Just after (PDT, UTC-7): 2024-03-10T10:00:00Z → 03:00
+    expect(
+      formatDateTime("2024-03-10T10:00:00Z", { locale: "ja", timeZone: zone })
+    ).toBe("2024/03/10 3:00");
+  });
+});
+
+describe("formatPlainDate", () => {
+  it("renders the calendar day it was given, whatever the host zone", () => {
+    expect(formatPlainDate("2026-03-14", { locale: "ja" })).toBe("2026/03/14");
+  });
+
+  it("uses the UI locale rather than a fixed one", () => {
+    const ja = formatPlainDate("2026-03-14", { locale: "ja" });
+    const en = formatPlainDate("2026-03-14", { locale: "en" });
+
+    expect(en).not.toBe(ja);
+  });
+
+  it("returns fallback for a value that is not a calendar day", () => {
+    expect(formatPlainDate("", { fallback: "-", locale: "ja" })).toBe("-");
+    expect(formatPlainDate("2026-03", { fallback: "-", locale: "ja" })).toBe(
+      "-"
+    );
+    expect(
+      formatPlainDate("2026-03-14T00:00:00Z", { fallback: "-", locale: "ja" })
+    ).toBe("-");
+  });
+
+  it("falls back to the original value when no fallback is given", () => {
+    expect(formatPlainDate("not-a-date", { locale: "ja" })).toBe("not-a-date");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  /** 2026-09-09 12:00 in UTC, the zone these cases fall back to. */
+  const now = Temporal.Instant.from("2026-09-09T12:00:00Z");
+
+  it("counts seconds, minutes, and hours below a day", () => {
+    expect(
+      formatRelativeTime("2026-09-09T11:59:30Z", { locale: "en", now })
+    ).toBe("30 seconds ago");
+    expect(
+      formatRelativeTime("2026-09-09T11:45:00Z", { locale: "en", now })
+    ).toBe("15 minutes ago");
+    expect(
+      formatRelativeTime("2026-09-09T09:00:00Z", { locale: "en", now })
+    ).toBe("3 hours ago");
+  });
+
+  it("says yesterday once the calendar day changes, not after 24 hours", () => {
+    // 23:00 and 01:00 UTC: two hours apart, on either side of midnight.
+    expect(
+      formatRelativeTime("2026-09-08T23:00:00Z", {
+        locale: "en",
+        now: Temporal.Instant.from("2026-09-09T01:00:00Z"),
+      })
+    ).toBe("yesterday");
+  });
+
+  it("words a gap of no whole months in weeks, not as this month", () => {
+    // 11 August to 9 September is 29 days and zero whole months, because
+    // adding a month to the 11th lands after the 9th.
+    expect(
+      formatRelativeTime("2026-08-11T12:00:00Z", { locale: "en", now })
+    ).toBe("4 weeks ago");
+    // A day earlier is one whole month, and reads as one.
+    expect(
+      formatRelativeTime("2026-08-09T12:00:00Z", { locale: "en", now })
+    ).toBe("last month");
+  });
+
+  it("counts days, weeks, months, and years above that", () => {
+    expect(
+      formatRelativeTime("2026-09-06T12:00:00Z", { locale: "en", now })
+    ).toBe("3 days ago");
+    expect(
+      formatRelativeTime("2026-08-26T12:00:00Z", { locale: "en", now })
+    ).toBe("2 weeks ago");
+    expect(
+      formatRelativeTime("2026-01-18T12:00:00Z", { locale: "en", now })
+    ).toBe("7 months ago");
+    expect(
+      formatRelativeTime("2024-09-09T12:00:00Z", { locale: "en", now })
+    ).toBe("2 years ago");
+  });
+
+  it("counts the days in the time zone it is given", () => {
+    // The same two instants fall on one calendar day in Los Angeles (07:00 and
+    // 09:00) and on two in Seoul (23:00 and 01:00), so the phrase differs.
+    const value = "2026-09-09T14:00:00Z";
+    const later = Temporal.Instant.from("2026-09-09T16:00:00Z");
+
+    expect(
+      formatRelativeTime(value, {
+        locale: "en",
+        now: later,
+        timeZone: "America/Los_Angeles",
+      })
+    ).toBe("2 hours ago");
+    expect(
+      formatRelativeTime(value, {
+        locale: "en",
+        now: later,
+        timeZone: "Asia/Seoul",
+      })
+    ).toBe("yesterday");
+  });
+
+  it("words the phrase in the UI locale", () => {
+    expect(
+      formatRelativeTime("2026-09-06T12:00:00Z", { locale: "ja", now })
+    ).toBe("3 日前");
+  });
+
+  it("returns fallback for a value that is not an absolute timestamp", () => {
+    expect(formatRelativeTime("", { fallback: "-", locale: "en", now })).toBe(
+      "-"
+    );
+    expect(
+      formatRelativeTime("2026-09-09", { fallback: "-", locale: "en", now })
+    ).toBe("-");
+  });
+
+  it("falls back to the original value when no fallback is given", () => {
+    expect(formatRelativeTime("not-a-date", { locale: "en", now })).toBe(
+      "not-a-date"
+    );
+  });
+});
+
+describe("formatWeekdayName", () => {
+  it("names the day the EXTRACT(DOW) number stands for", () => {
+    expect(formatWeekdayName(0, { locale: "en" })).toBe("Sunday");
+    expect(formatWeekdayName(1, { locale: "en" })).toBe("Monday");
+    expect(formatWeekdayName(6, { locale: "en" })).toBe("Saturday");
+  });
+
+  it("names the day in the UI locale", () => {
+    expect(formatWeekdayName(1, { locale: "ja" })).toBe("月曜日");
+  });
+
+  it("writes a short name where one is asked for", () => {
+    expect(formatWeekdayName(1, { locale: "en", style: "short" })).toBe("Mon");
+  });
+
+  it("returns fallback for a number that is not a weekday", () => {
+    expect(formatWeekdayName(7, { fallback: "-", locale: "en" })).toBe("-");
+    expect(formatWeekdayName(-1, { fallback: "-", locale: "en" })).toBe("-");
+    expect(formatWeekdayName(1.5, { fallback: "-", locale: "en" })).toBe("-");
+  });
+
+  it("falls back to the number itself when no fallback is given", () => {
+    expect(formatWeekdayName(9, { locale: "en" })).toBe("9");
+  });
+
+  it("covers the whole week, Sunday first", () => {
+    const names = WEEKDAY_NUMBERS.map((weekday) =>
+      formatWeekdayName(weekday, { locale: "en" })
+    );
+
+    expect(names).toEqual([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
+  });
+});
+
+describe("currentWeekday", () => {
+  it("counts the day the way EXTRACT(DOW) does, Sunday first", () => {
+    // 2026-03-01 is a Sunday, and each following instant is one day later.
+    const sunday = Temporal.Instant.from("2026-03-01T12:00:00Z");
+
+    expect(
+      WEEKDAY_NUMBERS.map((offset) =>
+        currentWeekday("UTC", { now: sunday.add({ hours: offset * 24 }) })
+      )
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("answers with the day in the given zone, not the one in UTC", () => {
+    // 22:00 Sunday in UTC is already Monday morning in Seoul.
+    const instant = Temporal.Instant.from("2026-03-01T22:00:00Z");
+
+    expect(currentWeekday("UTC", { now: instant })).toBe(0);
+    expect(currentWeekday("Asia/Seoul", { now: instant })).toBe(1);
+  });
+
+  it("answers with the day in a zone behind UTC", () => {
+    // 02:00 Monday in UTC is still Sunday evening in Los Angeles.
+    const instant = Temporal.Instant.from("2026-03-02T02:00:00Z");
+
+    expect(currentWeekday("UTC", { now: instant })).toBe(1);
+    expect(currentWeekday("America/Los_Angeles", { now: instant })).toBe(0);
+  });
+});
+
+describe("formatPlainYearMonth", () => {
+  it("renders the month it was given, whatever the host zone", () => {
+    expect(formatPlainYearMonth("2026-03", { locale: "en" })).toBe(
+      "March 2026"
+    );
+    expect(formatPlainYearMonth("2026-03", { locale: "ja" })).toBe("2026年3月");
+  });
+
+  it("returns fallback for a value that is not a month", () => {
+    expect(formatPlainYearMonth("", { fallback: "-", locale: "en" })).toBe("-");
+    expect(
+      formatPlainYearMonth("2026-03-14", { fallback: "-", locale: "en" })
+    ).toBe("-");
+    expect(
+      formatPlainYearMonth("2026-13", { fallback: "-", locale: "en" })
+    ).toBe("-");
+  });
+});

@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+// Request to check the platform setup status.
+message CheckSetupStatusRequest {}
+
+// Response carrying the platform setup status.
+message CheckSetupStatusResponse {
+  // True once the platform has been set up, meaning at least one user exists.
+  bool setup_completed = 1;
+  // UI locale code (ja, en) the console renders in for a visitor who has not
+  // signed in. The login screen has no session to read the platform settings
+  // with, and this RPC is the unauthenticated read it already makes, so the
+  // saved language travels with the status rather than being guessed there.
+  //
+  // Empty until the platform is set up: the settings row is created with the
+  // first operator, so before that there is no saved language to report and
+  // the setup screen negotiates one from Accept-Language instead.
+  string default_locale = 2;
+}
+
+// Request to create the first operator account.
+message CreateInitialUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  // UI locale code (ja, en) the platform starts on, chosen by the operator on
+  // the setup screen. Required: the settings row is created here and has no
+  // column default for the locale, so the first language is never left unstated.
+  string default_locale = 4;
+}
+
+// Response returned after the first operator account is created.
+message CreateInitialUserResponse {}
+
+// Initial platform setup, served without authentication.
+service PlatformSetupService {
+  // Reports whether the platform has already been set up.
+  rpc CheckSetupStatus(CheckSetupStatusRequest) returns (CheckSetupStatusResponse) {}
+  // Creates the first operator account, allowed only while no user exists.
+  rpc CreateInitialUser(CreateInitialUserRequest) returns (CreateInitialUserResponse) {}
+}

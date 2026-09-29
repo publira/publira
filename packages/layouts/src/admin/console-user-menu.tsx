@@ -1,0 +1,143 @@
+import { Menu } from "@base-ui/react/menu";
+import { LogoutIcon, SettingsIcon, UserIcon } from "@publira/icons";
+import { StatusChip } from "@publira/ui-components/badge";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+const itemClassName =
+  "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground";
+
+export const ConsoleHeaderUser = ({ children }: { children: ReactNode }) => (
+  <Menu.Root>{children}</Menu.Root>
+);
+
+/** Alias for the composed account menu. */
+export const ConsoleUserMenu = ConsoleHeaderUser;
+
+export const ConsoleUserMenuTrigger = ({
+  "aria-label": ariaLabel,
+  children,
+}: {
+  /** Names the account menu trigger, which shows only an initial or an icon. */
+  "aria-label": string;
+  children?: ReactNode;
+}) => (
+  <Menu.Trigger
+    aria-label={ariaLabel}
+    className="inline-flex size-9 items-center justify-center rounded-control border border-input text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted"
+  >
+    {children ?? (
+      <UserIcon aria-hidden="true" className="size-4 text-foreground" />
+    )}
+  </Menu.Trigger>
+);
+
+export const ConsoleUserMenuInitial = ({ children }: { children: string }) => {
+  const [initial] = [...children.trim()];
+
+  return initial ? initial.toUpperCase() : null;
+};
+
+/**
+ * Fixed, like the sticky console header its trigger sits in, so the menu does
+ * not trail its trigger by a frame while the page scrolls.
+ */
+export const ConsoleUserMenuContent = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <Menu.Portal>
+    <Menu.Positioner
+      align="end"
+      className="z-40 outline-hidden"
+      positionMethod="fixed"
+      sideOffset={8}
+    >
+      <Menu.Popup className="w-64 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating outline-hidden">
+        {children}
+      </Menu.Popup>
+    </Menu.Positioner>
+  </Menu.Portal>
+);
+
+export const ConsoleUserMenuIdentity = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <div className="grid justify-items-start gap-1 px-3 py-2">{children}</div>
+);
+
+export const ConsoleUserMenuName = ({ children }: { children: ReactNode }) => (
+  <p className="max-w-full truncate text-sm font-medium text-foreground">
+    {children}
+  </p>
+);
+
+export const ConsoleUserMenuPublicId = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <p className="max-w-full truncate text-xs text-muted-foreground">
+    {children}
+  </p>
+);
+
+export const ConsoleUserMenuRole = ({ children }: { children: ReactNode }) => (
+  <StatusChip status="info">{children}</StatusChip>
+);
+
+export const ConsoleUserMenuSeparator = () => (
+  <Menu.Separator className="my-1.5 h-px bg-border" />
+);
+
+export const ConsoleUserMenuAccountLink = ({
+  children,
+  href,
+}: {
+  children: ReactNode;
+  href: string;
+}) => (
+  <Menu.LinkItem
+    className={itemClassName}
+    closeOnClick
+    render={<Link href={href} />}
+  >
+    <SettingsIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+    {children}
+  </Menu.LinkItem>
+);
+
+export const ConsoleUserMenuLogout = ({
+  action,
+  children,
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  children: ReactNode;
+}) => <form action={action}>{children}</form>;
+
+/**
+ * The sign-out control itself, so the caller writes its accessible name and its
+ * visible label on the button rather than handing them to the form around it.
+ */
+export const ConsoleUserMenuLogoutButton = ({
+  "aria-label": ariaLabel,
+  children,
+}: {
+  "aria-label"?: string;
+  children: ReactNode;
+}) => (
+  // The item stays mounted through the submit: closing the menu on click would
+  // unmount the form the Action is submitting.
+  <Menu.Item
+    className={itemClassName}
+    closeOnClick={false}
+    nativeButton
+    render={<button aria-label={ariaLabel} type="submit" />}
+  >
+    <LogoutIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+    {children}
+  </Menu.Item>
+);

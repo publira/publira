@@ -1,0 +1,2 @@
+DROP INDEX idx_series_listings_schedule_weekdays;
+DROP INDEX idx_series_listings_tenant_status;

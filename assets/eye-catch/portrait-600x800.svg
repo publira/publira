@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <title>Eye-catch source, portrait 3:4 below the accepted minimum</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c1121f" />
+      <stop offset="1" stop-color="#00b4d8" />
+    </linearGradient>
+    <pattern id="dots" width="50" height="50" patternUnits="userSpaceOnUse">
+      <circle cx="25" cy="25" r="14" fill="#ffffff" opacity="0.25" />
+    </pattern>
+  </defs>
+
+  <rect width="600" height="800" fill="url(#field)" />
+  <rect width="600" height="800" fill="url(#dots)" />
+  <!-- registration marks, so a crop can be told from the whole -->
+  <g fill="none" stroke="#ffffff" stroke-width="5" opacity="0.85">
+    <path d="M 30 66 L 30 30 L 66 30" />
+    <path d="M 570 66 L 570 30 L 534 30" />
+    <path d="M 30 734 L 30 770 L 66 770" />
+    <path d="M 570 734 L 570 770 L 534 770" />
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="3" opacity="0.7">
+    <line x1="270" y1="400" x2="330" y2="400" />
+    <line x1="300" y1="370" x2="300" y2="430" />
+    <circle cx="300" cy="400" r="30" />
+  </g>
+</svg>

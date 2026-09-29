@@ -1,0 +1,588 @@
+package outbox
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenanttz"
+)
+
+// The reader's auth mail. Every event carries the tenant whose storefront the
+// account belongs to: the link points at that tenant's domain, and the language
+// and SMTP settings the mail goes out with are the tenant's own.
+const (
+	EventTypeReaderEmailVerificationEmail       = "reader_email_verification_email"
+	EventTypeReaderEmailChangeConfirmationEmail = "reader_email_change_confirmation_email"
+	EventTypeReaderEmailChangedNoticeEmail      = "reader_email_changed_notice_email"
+	EventTypeReaderPasswordResetEmail           = "reader_password_reset_email"
+	EventTypeReaderPasswordChangedNoticeEmail   = "reader_password_changed_notice_email"
+	EventTypeReaderSignupAttemptNoticeEmail     = "reader_signup_attempt_notice_email"
+)
+
+// ReaderEmailVerificationEmailPayload names the verification row the mail is
+// about and carries the link's secret, which is the one thing the row cannot
+// give back — it stores the hash alone.
+type ReaderEmailVerificationEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	TokenID  string `json:"token_id"`
+	Token    string `json:"token"`
+}
+
+// ReaderEmailChangeConfirmationEmailPayload is one event per address to
+// confirm. Which side it addresses comes from the token the payload carries,
+// since a change request writes one token hash per side.
+type ReaderEmailChangeConfirmationEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	TokenID  string `json:"token_id"`
+	Token    string `json:"token"`
+}
+
+// ReaderEmailChangedNoticeEmailPayload names the completed change request. The
+// notice announces an address that is already stored, so it needs no token.
+type ReaderEmailChangedNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	TokenID  string `json:"token_id"`
+}
+
+// ReaderPasswordResetEmailPayload names the reset row and carries the link's
+// secret, as the verification payload does.
+type ReaderPasswordResetEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	TokenID  string `json:"token_id"`
+	Token    string `json:"token"`
+}
+
+// ReaderPasswordChangedNoticeEmailPayload names the account whose password was
+// changed. The change writes no token row, so the reader's own row is all the
+// notice points at.
+type ReaderPasswordChangedNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	UserID   string `json:"user_id"`
+}
+
+// ReaderSignupAttemptNoticeEmailPayload names the account a sign-up tried to
+// reuse. The attempt stores nothing, so the reader's own row is all the notice
+// points at and there is no token to carry.
+type ReaderSignupAttemptNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	UserID   string `json:"user_id"`
+}
+
+// NewReaderEmailVerificationEmailHandler sends a new reader the link that
+// activates their account. A verification row that is gone, already used, or
+// expired is a sign-up this event no longer speaks for, and the event is
+// dropped rather than delivered.
+func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader email verification email"); err != nil {
+			return err
+		}
+		var payload ReaderEmailVerificationEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader email verification email payload: %w", err))
+		}
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		if err != nil {
+			return Permanent(err)
+		}
+		if strings.TrimSpace(payload.Token) == "" {
+			return Permanent(errors.New("reader email verification email payload has an empty token"))
+		}
+
+		verification, err := queries.GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
+			TenantID:  tenantID,
+			TokenHash: auth.HashToken(payload.Token),
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load reader email verification token: %w", err)
+		}
+		if verification.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if verification.UsedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_used")
+			return nil
+		}
+		if !verification.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
+			return nil
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, verification.UserID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", verification.UserID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		verifyURL, err := tenantSiteTokenURL(delivery.tenant, "/verify", payload.Token)
+		if err != nil {
+			return fmt.Errorf("build reader email verification url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+			Template: "reader_email_verification",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"expires_at":  verification.ExpiresAt.UTC().Format(time.RFC3339Nano),
+				"tenant_name": delivery.tenantName,
+				"verify_url":  verifyURL,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// NewReaderEmailChangeConfirmationEmailHandler sends one side of an address
+// change its confirmation link. The stored token hashes decide which side, so a
+// mail can never invite the wrong address to confirm.
+func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader email change confirmation email"); err != nil {
+			return err
+		}
+		var payload ReaderEmailChangeConfirmationEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader email change confirmation email payload: %w", err))
+		}
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		if err != nil {
+			return Permanent(err)
+		}
+		if strings.TrimSpace(payload.Token) == "" {
+			return Permanent(errors.New("reader email change confirmation email payload has an empty token"))
+		}
+
+		changeToken, err := queries.GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
+			TenantID:              tenantID,
+			CurrentEmailTokenHash: auth.HashToken(payload.Token),
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load reader email change token: %w", err)
+		}
+		if changeToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if changeToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !changeToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
+			return nil
+		}
+		recipient := changeToken.CurrentEmail
+		if changeToken.MatchedTarget == "new_email" {
+			recipient = changeToken.NewEmail
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		confirmURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-email", payload.Token)
+		if err != nil {
+			return fmt.Errorf("build reader email change confirmation url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
+			Template: "reader_email_change_confirmation",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"confirm_url":    confirmURL,
+				"current_email":  changeToken.CurrentEmail,
+				"expires_at":     changeToken.ExpiresAt.UTC().Format(time.RFC3339Nano),
+				"new_email":      changeToken.NewEmail,
+				"recipient_kind": changeToken.MatchedTarget,
+				"tenant_name":    delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// NewReaderEmailChangedNoticeEmailHandler tells the previous address that the
+// change went through. The completed request row holds both addresses, so the
+// notice names what was actually stored rather than what was asked for.
+func NewReaderEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader email changed notice email"); err != nil {
+			return err
+		}
+		var payload ReaderEmailChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader email changed notice email payload: %w", err))
+		}
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		if err != nil {
+			return Permanent(err)
+		}
+
+		changeToken, err := queries.GetUserEmailChangeTokenByIDForTenant(ctx, dbmodels.GetUserEmailChangeTokenByIDForTenantParams{
+			TenantID: tenantID,
+			ID:       tokenID,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader email change request %s no longer exists", tokenID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader email change token: %w", err)
+		}
+		// The event is written in the transaction that completes the change, so
+		// an incomplete row means the payload names something else entirely.
+		if !changeToken.CompletedAt.Valid {
+			return Permanent(fmt.Errorf("reader email change request %s is not completed", tokenID))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, changeToken.CurrentEmail, emailrenderer.Request{
+			Template: "reader_email_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"new_email":      changeToken.NewEmail,
+				"previous_email": changeToken.CurrentEmail,
+				"tenant_name":    delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// NewReaderPasswordResetEmailHandler sends the reader's password reset link. A
+// token row that is gone, completed, or expired is a request this event no
+// longer speaks for, and the event is dropped rather than delivered.
+func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader password reset email"); err != nil {
+			return err
+		}
+		var payload ReaderPasswordResetEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader password reset email payload: %w", err))
+		}
+		tenantID, tokenID, err := tenantAuthEventIDs(event, payload.TenantID, payload.TokenID)
+		if err != nil {
+			return Permanent(err)
+		}
+		if strings.TrimSpace(payload.Token) == "" {
+			return Permanent(errors.New("reader password reset email payload has an empty token"))
+		}
+
+		resetToken, err := queries.GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
+			TenantID:  tenantID,
+			TokenHash: auth.HashToken(payload.Token),
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_not_found")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load reader password reset token: %w", err)
+		}
+		if resetToken.ID != tokenID {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_id_mismatch")
+			return nil
+		}
+		if resetToken.CompletedAt.Valid {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_completed")
+			return nil
+		}
+		if !resetToken.ExpiresAt.After(time.Now()) {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "token_expired")
+			return nil
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, resetToken.UserID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", resetToken.UserID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		resetURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-password", payload.Token)
+		if err != nil {
+			return fmt.Errorf("build reader password reset url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+			Template: "reader_password_reset",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"expires_at":  resetToken.ExpiresAt.UTC().Format(time.RFC3339Nano),
+				"reset_url":   resetURL,
+				"tenant_name": delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// NewReaderPasswordChangedNoticeEmailHandler tells a reader that the password
+// on their account was changed. A change made by someone who got hold of the
+// old password leaves the reader locked out and told nothing, so this mail is
+// the one report of it, and the link it carries is the reset form — the way
+// back in for the owner of the mailbox, and no help to whoever made the change.
+func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader password changed notice email"); err != nil {
+			return err
+		}
+		var payload ReaderPasswordChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader password changed notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		readerID, err := uuid.Parse(payload.UserID)
+		if err != nil {
+			return Permanent(fmt.Errorf("%s payload has an invalid user_id", event.EventType))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, readerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", readerID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		// The worker reads past RLS, so the account the payload names is checked
+		// against the tenant the mail goes out for rather than assumed to be one
+		// of its readers.
+		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
+		}
+		resetURL, err := tenantSiteURL(delivery.tenant, "/reset-password")
+		if err != nil {
+			return fmt.Errorf("build reader password reset url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+			Template: "reader_password_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"email":       reader.Email,
+				"reset_url":   resetURL,
+				"tenant_name": delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// NewReaderSignupAttemptNoticeEmailHandler tells a reader that a sign-up was
+// attempted with their address. The sign-up itself is answered as though the
+// address were free, so this mail is the only report the attempt produces, and
+// it carries no link that acts on the account — only the page that leads back
+// into the account the reader already has.
+func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader signup attempt notice email"); err != nil {
+			return err
+		}
+		var payload ReaderSignupAttemptNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader signup attempt notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		readerID, err := uuid.Parse(payload.UserID)
+		if err != nil {
+			return Permanent(fmt.Errorf("%s payload has an invalid user_id", event.EventType))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, readerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", readerID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		// The worker reads past RLS, so the account the payload names is checked
+		// against the tenant the mail goes out for rather than assumed to be one
+		// of its readers.
+		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
+		}
+		// Which way back in the notice offers is the account's state at the
+		// moment it goes out. A reset sets a password an unconfirmed account
+		// still cannot sign in with, so the one page that helps there is the
+		// resend form; both are pages the recipient has to fill in themselves,
+		// which is what keeps the attempt from reaching the account.
+		accountState, actionPath := "confirmed", "/reset-password"
+		if !reader.EmailVerifiedAt.Valid {
+			accountState, actionPath = "unconfirmed", "/resend-verification"
+		}
+		actionURL, err := tenantSiteURL(delivery.tenant, actionPath)
+		if err != nil {
+			return fmt.Errorf("build reader signup attempt notice url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+			Template: "reader_signup_attempt_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"account_state": accountState,
+				"action_url":    actionURL,
+				"email":         reader.Email,
+				"tenant_name":   delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// tenantAuthEventIDs checks what every tenant-scoped auth event shares, the
+// reader's and the admin console's alike: the tenant the row belongs to is named
+// by both the event and its payload — the table's own check constraint requires
+// them to agree — and its token_id points at a row the handler can reload.
+func tenantAuthEventIDs(event dbmodels.OutboxEvent, tenantID, tokenID string) (uuid.UUID, uuid.UUID, error) {
+	parsedTenant, err := tenantAuthEventTenantID(event, tenantID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	parsedToken, err := uuid.Parse(tokenID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("%s payload has an invalid token_id", event.EventType)
+	}
+	return parsedTenant, parsedToken, nil
+}
+
+// tenantAuthEventTenantID is the half of the check above that an event naming
+// no token row still owes: the tenant is named by the event and by its payload
+// alike, which is what the table's own check constraint requires.
+func tenantAuthEventTenantID(event dbmodels.OutboxEvent, tenantID string) (uuid.UUID, error) {
+	parsedTenant, err := uuid.Parse(tenantID)
+	if err != nil || !event.TenantID.Valid || parsedTenant != event.TenantID.UUID {
+		return uuid.Nil, fmt.Errorf("%s payload has an invalid tenant_id", event.EventType)
+	}
+	return parsedTenant, nil
+}
+
+// tenantDelivery is what every tenant-scoped auth mail needs beyond its own
+// row: the tenant the link points into, the language and zone the mail is
+// written in, and where to hand the message to.
+type tenantDelivery struct {
+	locale     string
+	settings   emailsettings.SMTPSettings
+	tenant     dbmodels.Tenant
+	tenantName string
+	timeZone   string
+}
+
+// resolveTenantDelivery reads the locale before the SMTP settings on purpose. A
+// tenant locale no catalog covers will not start rendering after a retry, and an
+// SMTP outage must not disguise it as a failure that can.
+func resolveTenantDelivery(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	encryptor emailsettings.SecretManager,
+) (tenantDelivery, error) {
+	tenant, err := queries.GetTenantByID(ctx, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return tenantDelivery{}, Permanent(fmt.Errorf("tenant %s no longer exists", tenantID))
+	}
+	if err != nil {
+		return tenantDelivery{}, fmt.Errorf("load tenant: %w", err)
+	}
+	tenantLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return tenantDelivery{}, Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
+	}
+	settings, err := resolveSMTPSettings(ctx, queries, tenantID, encryptor)
+	if err != nil {
+		return tenantDelivery{}, fmt.Errorf("resolve smtp settings: %w", err)
+	}
+	tenantName := strings.TrimSpace(tenant.Name)
+	if tenantName == "" {
+		tenantName = "Publira"
+	}
+	return tenantDelivery{
+		locale:     tenantLocale,
+		settings:   settings,
+		tenant:     tenant,
+		tenantName: tenantName,
+		timeZone:   tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
+	}, nil
+}
+
+// tenantSiteURL builds a link into the tenant's own storefront. The worker runs
+// outside the request that produced the event, so the origin comes from the
+// tenant's configured domain rather than from an incoming Host header. A
+// tenant without one fails the mail for good, while a malformed deployment
+// setting is retried until an operator fixes it.
+func tenantSiteURL(tenant dbmodels.Tenant, path string) (string, error) {
+	origin, err := tenantorigin.Site(tenant)
+	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
+		return "", Permanent(err)
+	}
+	if err != nil {
+		return "", err
+	}
+	return origin.JoinPath(path).String(), nil
+}
+
+// tenantSiteTokenURL is the same link carrying the secret the mail exists to
+// deliver, which the database stores only as a hash.
+func tenantSiteTokenURL(tenant dbmodels.Tenant, path, token string) (string, error) {
+	base, err := tenantSiteURL(tenant, path)
+	if err != nil {
+		return "", err
+	}
+	return base + "?token=" + url.QueryEscape(token), nil
+}

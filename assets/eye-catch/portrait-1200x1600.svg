@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+  <title>Eye-catch source, portrait 3:4</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f4c81" />
+      <stop offset="1" stop-color="#7b2cbf" />
+    </linearGradient>
+    <pattern id="weave" width="80" height="80" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#ffffff" opacity="0.1" />
+      <rect x="40" y="40" width="40" height="40" fill="#ffffff" opacity="0.1" />
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="1600" fill="url(#field)" />
+  <rect width="1200" height="1600" fill="url(#weave)" />
+  <g fill="none" stroke="#ffffff" opacity="0.45">
+    <circle cx="600" cy="800" r="1000" stroke-width="8" />
+    <circle cx="600" cy="800" r="909.1" stroke-width="18" />
+    <circle cx="600" cy="800" r="818.2" stroke-width="8" />
+    <circle cx="600" cy="800" r="727.3" stroke-width="18" />
+    <circle cx="600" cy="800" r="636.4" stroke-width="8" />
+    <circle cx="600" cy="800" r="545.5" stroke-width="18" />
+    <circle cx="600" cy="800" r="454.5" stroke-width="8" />
+    <circle cx="600" cy="800" r="363.6" stroke-width="18" />
+    <circle cx="600" cy="800" r="272.7" stroke-width="8" />
+    <circle cx="600" cy="800" r="181.8" stroke-width="18" />
+    <circle cx="600" cy="800" r="90.9" stroke-width="8" />
+  </g>
+  <!-- registration marks, so a crop can be told from the whole -->
+  <g fill="none" stroke="#ffffff" stroke-width="10" opacity="0.85">
+    <path d="M 60 132 L 60 60 L 132 60" />
+    <path d="M 1140 132 L 1140 60 L 1068 60" />
+    <path d="M 60 1468 L 60 1540 L 132 1540" />
+    <path d="M 1140 1468 L 1140 1540 L 1068 1540" />
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="6" opacity="0.7">
+    <line x1="540" y1="800" x2="660" y2="800" />
+    <line x1="600" y1="740" x2="600" y2="860" />
+    <circle cx="600" cy="800" r="60" />
+  </g>
+</svg>

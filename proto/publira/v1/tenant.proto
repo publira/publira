@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message GetTenantRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale. Each page is read in its published translation in
+  // this locale, else the tenant's default locale, else its oldest published
+  // one, and TenantLegalPage.locale names the one read. Empty means the
+  // tenant's default locale.
+  string locale = 2;
+}
+
+// A published page the tenant names for a role, in one of its translations.
+// The slug is in storage form ("/privacy"), which is also the path the
+// storefront serves it at.
+message TenantLegalPage {
+  string slug = 1;
+  // The title of the translation read.
+  string title = 2;
+  // The published version of the translation read, which a sign-up sends back
+  // in CreateUserRequest.agreed_page_version_ids.
+  string version_id = 3;
+  // The locale of the translation read, which differs from the one asked for
+  // when the page has no published translation in it.
+  string locale = 4;
+}
+
+// The pages the tenant names as its terms of service and its privacy policy.
+// A role is absent where the tenant has named no page for it, and where the
+// page it named is not published, so a link built from one always resolves.
+message GetTenantLegalPagesResponse {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
+}
+
+message GetTenantResponse {
+  string tenant_public_id = 1;
+  string tenant_name = 2;
+  string tenant_domain = 3;
+  string copyright_text = 4;
+  string site_description = 5;
+  string site_tagline = 6;
+  // Public branding colors (defaults applied when unset).
+  publira.types.v1.TenantTheme theme = 7;
+  // IANA time zone name used to render tenant wall-clock date/time (e.g. Asia/Tokyo).
+  // Never empty; the default is applied when unset.
+  string timezone = 8;
+  // UI locale code used when the visitor has not chosen one (ja, en). The
+  // tenant's own saved value, never a stand-in: a stored code naming no
+  // supported locale fails this RPC rather than answering another language.
+  string default_locale = 9;
+  // Whether the tenant can currently accept episode payments. This never
+  // exposes payment-provider credentials or their configuration details.
+  bool accepts_payments = 10;
+  // How reader comments on this tenant's episodes are published, for every
+  // series that states nothing of its own. A series carrying its own mode
+  // overrides this one, and CatalogService.GetSeriesDetail carries the two
+  // already resolved, so a page about one series reads the mode there rather
+  // than here.
+  publira.types.v1.CommentMode comment_mode = 11;
+  // Which of this tenant's age ratings a reader has to prove an age for. The
+  // public site reads it to decide whether the sign-up form asks for a birth
+  // date at all, so it is answered here rather than only where a body is
+  // opened.
+  publira.types.v1.AgeVerification age_verification = 12;
+  // VAPID public key for Web Push. Empty means Web Push is not configured.
+  string web_push_vapid_public_key = 13;
+  // The store listings of the tenant's app, where the storefront sends a
+  // reader to buy an episode sold in the app alone. Empty where the tenant has
+  // no listing in that store.
+  string app_store_url = 14;
+  string google_play_url = 15;
+  // 16 and 17 held the legal pages, which GetTenantLegalPages now reads in the
+  // reader's locale.
+  reserved 16, 17;
+  reserved "terms_page", "privacy_page";
+  // Which purchase the tenant's app offers for an episode it may sell. Never
+  // APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
+  // through the external checkout.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 18;
+  // Whether the tenant's app can sell an episode through the App Store's and
+  // Google Play's in-app purchase right now: the route is
+  // APP_PURCHASE_ROUTE_STORE and that store is ready, which is what
+  // PurchaseService.StartStorePurchase requires. The route needs only one
+  // ready store, so the app on the other platform offers no purchase. Like
+  // accepts_payments, this exposes nothing of the credentials.
+  bool accepts_app_store_payments = 19;
+  bool accepts_google_play_payments = 20;
+  // The providers a reader can sign in with, with the public client IDs each
+  // one signs in through. A provider is absent where the tenant has not
+  // enabled it or it is not ready, and AuthService.LoginWithIdToken refuses it
+  // then.
+  TenantAppleSignIn apple_sign_in = 21;
+  TenantGoogleSignIn google_sign_in = 22;
+}
+
+// How a client signs a reader in with Apple. The iOS app signs in with its own
+// bundle identifier, which GetTenantMobileAppAssociation names.
+message TenantAppleSignIn {
+  // The Services ID the storefront signs in with. Empty where only the iOS app
+  // may.
+  string services_id = 1;
+}
+
+// How a client signs a reader in with Google. The Android app signs in with
+// web_client_id as its server client ID.
+message TenantGoogleSignIn {
+  // Empty where the tenant has no client of that kind.
+  string web_client_id = 1;
+  string ios_client_id = 2;
+}
+
+message GetTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// The Android app the tenant's links open in, as assetlinks.json names it.
+message TenantAndroidAppAssociation {
+  string application_id = 1;
+  // Colon-separated hex in capital letters (AA:BB:...), one per signing
+  // certificate. Never empty.
+  repeated string sha256_cert_fingerprints = 2;
+}
+
+// The iOS app the tenant's links open in, which apple-app-site-association
+// names as <team_id>.<bundle_identifier>.
+message TenantIosAppAssociation {
+  string team_id = 1;
+  string bundle_identifier = 2;
+}
+
+// A platform is absent where the tenant has no app on it, and nothing stands
+// in for it.
+message GetTenantMobileAppAssociationResponse {
+  TenantAndroidAppAssociation android = 1;
+  TenantIosAppAssociation ios = 2;
+}
+
+service TenantService {
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+  rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
+  rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
+}

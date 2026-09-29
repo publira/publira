@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_notifications_tenant_subject_user;

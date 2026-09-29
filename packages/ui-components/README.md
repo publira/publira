@@ -1,0 +1,74 @@
+# @publira/ui-components
+
+The UI components shared by web-admin, web-host, and the other apps.
+
+## Principles
+
+- Build on Base UI
+- Keep the styles consistent with the brand tokens (`@publira/brand/theme.css`)
+- Provide thin wrappers so each screen writes fewer one-off classes
+
+## Installing and loading
+
+Add it as a workspace dependency and load the styles from the global CSS.
+
+```css
+@import "@publira/ui-components/styles.css";
+```
+
+## Main components
+
+### Forms
+
+- [Button / LinkButton](./src/button) - buttons
+- [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - the form field parts
+- [Fieldset](./src/fieldset) - a group of fields closed as one
+- [Input](./src/input) - a text input
+- [Textarea](./src/textarea) - a multi-line text input
+- [Select](./src/select) - a select box
+- [Combobox / MultiCombobox](./src/combobox) - searchable single and multiple selection
+- [Checkbox](./src/checkbox) - a checkbox
+- [RadioGroup](./src/radio-group) - a group of radio buttons
+- [Switch](./src/switch) - a toggle switch
+- [FormMessage](./src/form-message) - a form message
+- [FormActions](./src/form-actions) - the form action area
+- [ActionForm](./src/action-form) - a `<form>` around `useActionState`, for a Server Action
+- [Skeleton / SkeletonText / SkeletonLine / SkeletonCard](./src/skeleton) - loading placeholders
+
+### Everything else
+
+- [Badge / StatusChip](./src/badge) - status indicators and supplementary labels
+- [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
+- [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow / TableSkeleton](./src/table) - the table primitives
+- [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
+- [Tabs / TabsList / TabsTab / TabsPanel](./src/tabs) - one panel at a time, with the row of tabs that switches them
+- [Popover](./src/popover) - the floating surfaces placed in a header and similar places
+- [LocaleSwitcher](./src/locale-switcher) - the display-language control a header offers
+- [ToastProvider / useToastManager](./src/toast) - the toasts a screen raises after an action
+- [Identifier / IdentifierCopy / IdentifierValue](./src/identifier) - a public ID or a code an operator copies off a detail screen
+- [Figure / FigureLine / FigureLabel / FigureValue](./src/figure-line) - a labelled figure, such as a count or an amount
+- [EmptyState](./src/empty-state) - the empty state
+- [SectionError](./src/section-error) - one section of a page that failed to load
+- [SectionErrorCatch](./src/section-error-fallback) - a section-level error boundary
+- [OfflineNotice](./src/offline-notice) - the floating notice shown while the connection is gone
+- [QrCode / toQrCodePath](./src/qr-code) - a QR code for a camera to read
+
+## Usage
+
+For how to use a component and for examples, follow its link in the list above.
+
+### Subpath imports
+
+Every component can be imported directly:
+
+```tsx
+import { Button } from "@publira/ui-components/button";
+import { Input } from "@publira/ui-components/input";
+import { Card } from "@publira/ui-components/card";
+```
+
+## Development
+
+```bash
+pnpm build --filter @publira/ui-components
+```

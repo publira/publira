@@ -1,0 +1,114 @@
+import { readFileSync } from "node:fs";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  DEFAULT_TENANT_THEME,
+  DEFAULT_TENANT_THEME_COLORS,
+  isTenantThemeFontFamily,
+  resolveTenantThemeColors,
+  toPubliraThemeCssText,
+  toPubliraThemeCssVariables,
+} from "./theme-css-variables";
+
+describe("theme-css-variables", () => {
+  it("falls back to brand defaults for empty input", () => {
+    expect(resolveTenantThemeColors(null)).toEqual(DEFAULT_TENANT_THEME);
+    expect(resolveTenantThemeColors({})).toEqual(DEFAULT_TENANT_THEME);
+  });
+
+  it("merges partial theme and lowercases valid hex colors", () => {
+    const resolved = resolveTenantThemeColors({
+      primaryColor: "#AABBCC",
+      secondaryColor: "not-a-color",
+    });
+
+    expect(resolved.primaryColor).toBe("#aabbcc");
+    expect(resolved.secondaryColor).toBe(
+      DEFAULT_TENANT_THEME_COLORS.secondaryColor
+    );
+    expect(resolved.accentColor).toBe(DEFAULT_TENANT_THEME_COLORS.accentColor);
+  });
+
+  it("maps theme colors to --publira-color-* CSS variables", () => {
+    const vars = toPubliraThemeCssVariables({
+      backgroundColor: "#445566",
+      primaryColor: "#112233",
+    });
+
+    expect(vars["--publira-color-primary"]).toBe("#112233");
+    expect(vars["--publira-color-background"]).toBe("#445566");
+    expect(vars["--publira-color-foreground"]).toBe(
+      DEFAULT_TENANT_THEME_COLORS.foregroundColor
+    );
+    expect(
+      Object.keys(vars).every((key) => key.startsWith("--publira-color-"))
+    ).toBe(true);
+    expect(Object.keys(vars)).toHaveLength(
+      Object.keys(DEFAULT_TENANT_THEME_COLORS).length
+    );
+  });
+
+  it("builds a :root CSS text block for style-tag injection", () => {
+    const css = toPubliraThemeCssText({ primaryColor: "#112233" });
+    expect(css.startsWith(":root{")).toBe(true);
+    expect(css.endsWith("}")).toBe(true);
+    expect(css).toContain("--publira-color-primary:#112233");
+    expect(css).toContain(
+      `--publira-color-background:${DEFAULT_TENANT_THEME_COLORS.backgroundColor}`
+    );
+  });
+
+  it("emits configured font stacks without overriding defaults for empty values", () => {
+    const vars = toPubliraThemeCssVariables({
+      serifFontFamily: '"Noto Serif KR", serif',
+    });
+
+    expect(vars["--publira-font-serif"]).toBe('"Noto Serif KR", serif');
+    expect(vars["--publira-font-sans"]).toBeUndefined();
+  });
+
+  it("only accepts a safe CSS font-family list", () => {
+    expect(
+      isTenantThemeFontFamily('"Noto Sans SC", PingFang SC, sans-serif')
+    ).toBe(true);
+    for (const value of [
+      "Noto Sans; color:red",
+      "Noto Sans { color: red }",
+      "url(font)",
+      "Noto Sans/serif",
+      '"unclosed',
+      "Noto Sans,, sans-serif",
+      "Noto Sans\\, serif",
+      "Noto Sans\nserif",
+    ]) {
+      expect(isTenantThemeFontFamily(value)).toBe(false);
+    }
+  });
+});
+
+describe("the fallbacks in @publira/brand's theme.css", () => {
+  // That package is a stylesheet with no build or test of its own, so the
+  // agreement between its `var()` fallbacks and the defaults declared here is
+  // asserted from this side. The path is relative because nothing in this
+  // package imports that CSS at runtime.
+  const themeCss = readFileSync(
+    new URL("../../brand/theme.css", import.meta.url),
+    "utf-8"
+  );
+
+  it("name the same colors as DEFAULT_TENANT_THEME_COLORS", () => {
+    const pattern =
+      /var\(\s*(?<token>--publira-color-[a-z-]+)\s*,\s*(?<color>#[0-9a-f]{6})\s*\)/gu;
+    const fallbacks = Object.fromEntries(
+      [...themeCss.matchAll(pattern)].map((match) => [
+        match.groups?.token,
+        match.groups?.color,
+      ])
+    );
+
+    expect(fallbacks).toEqual(
+      toPubliraThemeCssVariables(DEFAULT_TENANT_THEME_COLORS)
+    );
+  });
+});

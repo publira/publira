@@ -1,0 +1,95 @@
+# Infra Docker Agent Guide
+
+Conventions for production container images under `infra/docker/`. Prefer this file for Docker image work; root [AGENTS.md](../../AGENTS.md) remains the top-level source of truth for repo-wide agent policy.
+
+Human-facing placement rationale and full decision tables: [`README.md`](./README.md).
+
+## Layout
+
+| Path | Role |
+| --- | --- |
+| `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
+| `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
+| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install: `db migrate` over the `db/migrations` it carries, `db roles` over the `db/seeds/baseline` it carries, every maintenance job an operator runs by hand (the worker schedules them as well), the `policy` and `retention` commands that change the platform policy and the retention defaults, the `smtp` commands that save and test the platform's SMTP settings, the `storage` commands that save and test the platform's object store, the `tenant` commands that create and manage a tenant, and the `webpush` commands that turn on Web Push |
+| `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
+| `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
+| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
+
+Dev Container is **out of scope** here: its image is built in the `publira/base-images` repository, and `.devcontainer/` holds only the configuration that runs it.
+
+## Placement rules
+
+1. **One Dockerfile per runtime role**, not per service. Switch target with build `ARG`s.
+2. **Build context is always the repository root** (`.`). Use  
+   `docker build -f infra/docker/<role>/Dockerfile ... .`
+3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`.
+4. **Do not** reintroduce template → copy expansion under service directories.
+5. New runtime family (not web/server/publiractl/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
+
+### ARG map
+
+| Role | Required ARG | Optional | Resolves to |
+| --- | --- | --- | --- |
+| `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
+| `server` | — | `VERSION` | `server/cmd/publira` → binary `/app/publira`; the process is the container argument (`server`, the default, or `worker`), not a build ARG |
+| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`db migrate`, `db roles`, `job <kind>`), not a build ARG |
+| `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
+
+## Implementation rules
+
+1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
+   - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
+   - publiractl: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
+   - server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
+2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
+3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, as `web/Dockerfile` does:
+
+   ```dockerfile
+   # renovate: datasource=npm depName=turbo versioning=semver
+   ARG TURBO_VERSION=2.10.8
+   ```
+
+4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for server / Web:
+   - liveness `GET /livez`
+   - readiness `GET /readyz`
+5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`). `turbo prune` does not carry repo-root assets; `@publira/i18n/catalog` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
+6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
+   - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
+   - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
+7. **publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
+8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
+9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
+
+## Verification after Dockerfile changes
+
+From the **repository root**, prefer Task (same entrypoint as CI):
+
+```bash
+# Role representatives (web-host / publira / publiractl / email-renderer)
+task docker:verify
+
+# Or only what you touched
+task docker:build:web APP_NAME=web-admin PORT=4000
+task docker:build:server
+task docker:build:publiractl
+task docker:build:node APP_NAME=email-renderer PORT=8080
+
+# Runtime smoke (publiractl brings up its own PostgreSQL through compose.smoke.yaml)
+task docker:smoke:web APP_NAME=web-host PORT=3000
+task docker:smoke:node APP_NAME=email-renderer PORT=8080
+task docker:smoke:publiractl
+```
+
+Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
+
+After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together. A new **maintenance job** is not a new target — it is a `publiractl job` subcommand, so none of those three registrations change.
+
+Docker CI strategy and build triage: [`README.md`](./README.md) (its CI strategy and build-failure triage sections).  
+Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  
+Branch ruleset required check is the final aggregator job name **`Summary`** only (UI: `CI / Summary`).
+
+## Do not
+
+- Commit generated per-service Dockerfiles “from templates”.
+- Use Alpine for Next.js **build** when the runner is Debian-based distroless (glibc / native addons such as `sharp`).
+- Put production image logic into the Dev Container image (`publira/base-images`).

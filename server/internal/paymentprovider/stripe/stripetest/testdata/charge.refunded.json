@@ -1,0 +1,35 @@
+{
+  "id": "evt_3QfJq1Lk4f8bA7xY1rEfUnD0",
+  "object": "event",
+  "api_version": "",
+  "created": 1767312000,
+  "data": {
+    "object": {
+      "id": "ch_3QfJq1Lk4f8bA7xY0hIjKlMn",
+      "object": "charge",
+      "amount": 500,
+      "amount_captured": 500,
+      "amount_refunded": 500,
+      "captured": true,
+      "created": 1767225560,
+      "currency": "jpy",
+      "livemode": false,
+      "metadata": {},
+      "paid": true,
+      "payment_intent": "pi_3QfJq1Lk4f8bA7xY0aBcDeFg",
+      "refunded": true,
+      "status": "succeeded"
+    },
+    "previous_attributes": {
+      "amount_refunded": 0,
+      "refunded": false
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_Qx7yZ1aB2cD3eF",
+    "idempotency_key": "4f0c2a1e-7b7d-4e0a-9d6c-2f6f0b8f1c3a"
+  },
+  "type": "charge.refunded"
+}

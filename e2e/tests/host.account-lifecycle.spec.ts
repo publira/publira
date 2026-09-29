@@ -1,0 +1,625 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyScenarioSql, querySql, runSql } from "../src/db";
+import { openHostUserMenu, signInAsMember } from "../src/host";
+import {
+  clearMessagesTo,
+  countMessagesTo,
+  tokenFromLink,
+  waitForMessageTo,
+} from "../src/mail";
+import {
+  ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP,
+  ACCOUNT_LIFECYCLE_MEMBER,
+  ACCOUNT_LIFECYCLE_REPLAY_PASSWORD,
+  ACCOUNT_LIFECYCLE_RESET_PASSWORD,
+  ACCOUNT_LIFECYCLE_SCENARIO,
+  ACCOUNT_LIFECYCLE_SIGNUP,
+  ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP,
+  ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL,
+} from "../src/scenarios/account-lifecycle";
+import {
+  expectLoginPage,
+  fillLoginForm,
+  HOST_LOGIN_FAILED_MESSAGE,
+  HOST_SESSION_COOKIE_NAME,
+  sessionCookieValue,
+} from "../src/session";
+import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
+
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+
+/** The paths the mailed links point at, on the tenant's own domain. */
+const VERIFY_PATH = "/verify";
+const CONFIRM_PASSWORD_PATH = "/confirm-password";
+const RESET_PASSWORD_PATH = "/reset-password";
+const RESEND_VERIFICATION_PATH = "/resend-verification";
+
+/**
+ * The pending page says the same thing for a free address and a registered one,
+ * so the copy names no outcome: which mail was sent is what the mailbox says.
+ */
+const SIGNUP_SENT_MESSAGE =
+  "We sent an email to the address you entered. Open it to continue.";
+/** Subject of the mail a sign-up for a registered address sends its owner. */
+const SIGNUP_ATTEMPT_SUBJECT = "Seed Tenant sign-up attempt";
+const VERIFIED_MESSAGE =
+  "Your email address has been confirmed. You can sign in now.";
+const VERIFY_FAILED_MESSAGE =
+  "Could not confirm your email address. The link may have expired or be invalid.";
+const RESET_SENT_MESSAGE =
+  "We sent a reset email. Open the link in it to set a new password.";
+const RESET_DONE_MESSAGE =
+  "Your password has been reset. Sign in with your new password.";
+const RESET_CONFIRM_FAILED_MESSAGE =
+  "Could not reset your password. The link may have expired or be invalid.";
+/**
+ * The resend page says the same thing for every address, the way the reset
+ * request does: a sign-up waiting to be confirmed, one already confirmed, and
+ * an address with no account at all all end here.
+ */
+const RESEND_SENT_MESSAGE =
+  "We sent a confirmation email. Open the link in it to finish signing up.";
+/** What a failed confirmation offers instead of a dead end. */
+const RESEND_VERIFICATION_LINK = "Send a new confirmation email";
+/** What each flow says about a link that arrived without its token. */
+const VERIFY_LINK_INVALID_MESSAGE =
+  "This confirmation link is not valid. Request a new confirmation email.";
+const RESET_LINK_INVALID_MESSAGE =
+  "This password reset link is not valid. Request a new reset email.";
+const RESET_PASSWORD_LINK = "Back to password reset";
+
+const accountStatus = (email: string): string =>
+  querySql(`SELECT status FROM users WHERE email = '${email}';`);
+
+const accountName = (email: string): string =>
+  querySql(`SELECT name FROM users WHERE email = '${email}';`);
+
+const accountCount = (email: string): string =>
+  querySql(`SELECT count(*) FROM users WHERE email = '${email}';`);
+
+const isEmailConfirmed = (email: string): boolean =>
+  querySql(`
+    SELECT email_verified_at IS NOT NULL
+    FROM users
+    WHERE email = '${email}';
+  `) === "t";
+
+/**
+ * Whether the account's verification token has already been spent.
+ *
+ * A replay is only a replay against a token the flow has consumed, so the
+ * tests below read this before reopening a link a second time.
+ */
+const isVerificationTokenUsed = (email: string): boolean =>
+  querySql(`
+    SELECT used_at IS NOT NULL
+    FROM user_email_verification_tokens
+    WHERE user_id = (SELECT id FROM users WHERE email = '${email}');
+  `) === "t";
+
+/**
+ * The same, for the member's password reset. A request deletes the account's
+ * earlier tokens before it issues one, so there is never more than a row here.
+ */
+const isResetTokenCompleted = (): boolean =>
+  querySql(`
+    SELECT completed_at IS NOT NULL
+    FROM user_password_reset_tokens
+    WHERE user_id = (
+      SELECT id FROM users WHERE public_id = '${ACCOUNT_LIFECYCLE_MEMBER.publicId}'
+    );
+  `) === "t";
+
+/**
+ * Date the account's verification token out.
+ *
+ * The API issues it 24 hours ahead, so nothing but the clock in the row can
+ * put a link past its expiry inside a test run.
+ */
+const expireVerificationToken = (email: string): void => {
+  runSql(`
+    UPDATE user_email_verification_tokens
+    SET expires_at = NOW() - INTERVAL '1 hour'
+    WHERE user_id = (SELECT id FROM users WHERE email = '${email}');
+  `);
+};
+
+/** The same, for the member's outstanding password reset. */
+const expireResetToken = (): void => {
+  runSql(`
+    UPDATE user_password_reset_tokens
+    SET expires_at = NOW() - INTERVAL '1 hour'
+    WHERE user_id = (
+      SELECT id FROM users WHERE public_id = '${ACCOUNT_LIFECYCLE_MEMBER.publicId}'
+    );
+  `);
+};
+
+const sessionCookie = async (page: Page): Promise<string | undefined> => {
+  const cookies = await page.context().cookies();
+  return sessionCookieValue(cookies, HOST_SESSION_COOKIE_NAME);
+};
+
+/** Fill `/signup` and submit it. */
+const submitSignup = async (
+  page: Page,
+  account: { email: string; name: string; password: string }
+): Promise<void> => {
+  await page.goto(hostUrl("/signup"));
+  await page.getByLabel("Name").fill(account.name);
+  await page.getByLabel("Email address").fill(account.email);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
+  await page.getByLabel("Confirm password").fill(account.password);
+  await page.getByRole("button", { name: "Sign up" }).click();
+};
+
+/** Fill `/resend-verification` and submit it. */
+const submitResendVerification = async (
+  page: Page,
+  email: string
+): Promise<void> => {
+  await page.goto(hostUrl("/resend-verification"));
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Send confirmation email" }).click();
+};
+
+/** Fill `/reset-password` and submit it. */
+const submitResetRequest = async (page: Page, email: string): Promise<void> => {
+  await page.goto(hostUrl("/reset-password"));
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Send reset email" }).click();
+};
+
+/**
+ * Open a mailed link on the origin the browser reaches web-host on.
+ */
+const openWithToken = (
+  page: Page,
+  pathname: string,
+  token: string
+): Promise<unknown> =>
+  page.goto(hostUrl(`${pathname}?token=${encodeURIComponent(token)}`));
+
+/** Set a new password on the `/confirm-password` form and submit it. */
+const submitNewPassword = async (
+  page: Page,
+  password: string
+): Promise<void> => {
+  await page.getByLabel(/^New password\s*\*?$/u).fill(password);
+  await page.getByLabel(/^Confirm new password\s*\*?$/u).fill(password);
+  await page.getByRole("button", { name: "Reset password" }).click();
+};
+
+/**
+ * A reader's first contact with a tenant site: signing up, confirming the
+ * address, and resetting a forgotten password.
+ *
+ * Every token below is read out of Mailpit (`e2e/compose.yaml`), because the
+ * API stores them hashed and the mailed link is the only readable form of one.
+ *
+ * The suite owns every account it touches — `100_account_lifecycle.sql` — and
+ * re-applies that scenario afterwards to put the member's password back and
+ * remove the accounts the sign-ups created. `mode: "serial"` keeps a
+ * confirmation in the same order as the request that issued its token, keeps
+ * a replay after the use it replays, and keeps the reset that changes the
+ * member's password to the end.
+ */
+test.describe("web-host reader account lifecycle", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeAll(async () => {
+    applyScenarioSql(ACCOUNT_LIFECYCLE_SCENARIO);
+    // Mail from an earlier run of this suite is still in the sink, and its
+    // links point at tokens the scenario has just deleted.
+    await Promise.all([
+      clearMessagesTo(ACCOUNT_LIFECYCLE_SIGNUP.email),
+      clearMessagesTo(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email),
+      clearMessagesTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email),
+      clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email),
+      clearMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL),
+    ]);
+  });
+
+  test.afterAll(() => {
+    applyScenarioSql(ACCOUNT_LIFECYCLE_SCENARIO);
+  });
+
+  test("signing up lands on the pending page and issues no session", async ({
+    page,
+  }) => {
+    await submitSignup(page, ACCOUNT_LIFECYCLE_SIGNUP);
+
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_SIGNUP.email}`)
+    ).toBeVisible();
+
+    expect(await sessionCookie(page)).toBeUndefined();
+    // The worker opens the account after the form has answered.
+    await expect
+      .poll(() => accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email))
+      .toBe("inactive");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(false);
+  });
+
+  test("the mailed link confirms the address and the new account signs in", async ({
+    page,
+  }) => {
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_SIGNUP.email);
+    const token = tokenFromLink(message, VERIFY_PATH);
+
+    await openWithToken(page, VERIFY_PATH, token);
+
+    await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe("active");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(true);
+
+    await signInAsMember(page, ACCOUNT_LIFECYCLE_SIGNUP, "/my");
+
+    await expect(page).toHaveURL(/\/my\/?$/u);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "My Page" })
+    ).toBeVisible();
+    await openHostUserMenu(page);
+    await expect(
+      page.getByRole("menu").getByText(ACCOUNT_LIFECYCLE_SIGNUP.name)
+    ).toBeVisible();
+    expect(await sessionCookie(page)).toBeTruthy();
+  });
+
+  test("reopening the consumed verification link reports the confirmation again", async ({
+    page,
+  }) => {
+    // The same message the test above read; nothing has been sent to this
+    // address since, so the link in it is the one the flow already spent.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_SIGNUP.email);
+    const token = tokenFromLink(message, VERIFY_PATH);
+    expect(isVerificationTokenUsed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(true);
+
+    await openWithToken(page, VERIFY_PATH, token);
+
+    // A reader who opens their link twice is told the address is confirmed,
+    // rather than that something went wrong with a confirmation that worked.
+    await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe("active");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(true);
+  });
+
+  /**
+   * A registered address ends where a free one ends, so the browser says
+   * nothing about which addresses have accounts. The only place the difference
+   * appears is the account owner's mailbox, and what arrives there reports the
+   * attempt rather than acting on the account.
+   */
+  test("signing up with a registered address lands on the pending page and tells its owner", async ({
+    page,
+  }) => {
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+
+    await submitSignup(page, {
+      email: ACCOUNT_LIFECYCLE_MEMBER.email,
+      name: "Impersonating Signup",
+      password: "another-password",
+    });
+
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_MEMBER.email}`)
+    ).toBeVisible();
+    expect(await sessionCookie(page)).toBeUndefined();
+
+    // The worker queues the notice in the same transaction as anything else it
+    // does with the sign-up, so once the notice arrives the rows below are final.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+
+    // No account was added under the address, and the registered one is as it
+    // was: still its owner's, and still confirmed.
+    expect(accountCount(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("1");
+    expect(accountName(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(
+      ACCOUNT_LIFECYCLE_MEMBER.name
+    );
+    expect(accountStatus(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("active");
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(true);
+
+    expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
+    expect(message.text).toContain(RESET_PASSWORD_PATH);
+    expect(message.text).not.toContain(RESEND_VERIFICATION_PATH);
+    // Nothing that confirms an address: whoever submitted the form must not be
+    // able to reach this account through the mail their attempt produced.
+    expect(() => tokenFromLink(message, VERIFY_PATH)).toThrow();
+  });
+
+  /**
+   * The same attempt on an account that is registered but still unconfirmed.
+   * A reset would set a password that account cannot be signed into with, so
+   * the notice its owner receives names the resend page instead.
+   */
+  test("signing up with an unconfirmed address tells its owner how to finish the first sign-up", async ({
+    page,
+  }) => {
+    await submitSignup(page, ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP);
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      false
+    );
+    // The verification mail that sign-up sent is not the one under test, and
+    // the notice below is read as the newest message at this address. It is
+    // waited for before the mailbox is cleared: the sign-up hands it to the
+    // sink after the response the browser already followed, so clearing an
+    // empty mailbox would leave it in flight to arrive after the notice.
+    await waitForMessageTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email);
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email);
+
+    await submitSignup(page, {
+      email: ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email,
+      name: "Unconfirmed Impersonating Signup",
+      password: "another-password",
+    });
+
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    expect(await sessionCookie(page)).toBeUndefined();
+
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email
+    );
+
+    // The waiting account is as its first sign-up left it: one account, under
+    // the name that created it, still inactive and still unconfirmed.
+    expect(accountCount(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe("1");
+    expect(accountName(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.name
+    );
+    expect(accountStatus(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      "inactive"
+    );
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe(
+      false
+    );
+
+    expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
+    expect(message.text).toContain(RESEND_VERIFICATION_PATH);
+    expect(message.text).not.toContain(RESET_PASSWORD_PATH);
+    // The resend page is a form the owner fills in themselves: the attempt
+    // produces no link that confirms the address on its own.
+    expect(() => tokenFromLink(message, VERIFY_PATH)).toThrow();
+  });
+
+  test("an expired verification link reports the failure and leaves the account unconfirmed", async ({
+    page,
+  }) => {
+    await submitSignup(page, ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP);
+    await page.waitForURL(/\/signup\/pending\/?$/u);
+
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
+    );
+    const token = tokenFromLink(message, VERIFY_PATH);
+    expireVerificationToken(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email);
+
+    await openWithToken(page, VERIFY_PATH, token);
+
+    await expect(page.getByText(VERIFY_FAILED_MESSAGE)).toBeVisible();
+    // The account cannot be signed into or reset while it is unconfirmed, so
+    // the failure has to offer the one thing that still works on it.
+    await expect(
+      page.getByRole("link", { name: RESEND_VERIFICATION_LINK })
+    ).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
+      "inactive"
+    );
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
+      false
+    );
+  });
+
+  /**
+   * The way out of the expiry above, and the reason this suite runs in order:
+   * the account it confirms is the one the test before it left unconfirmed.
+   */
+  test("a resend confirms the address whose first link expired", async ({
+    page,
+  }) => {
+    // The expired link's mail is still in the sink, and both carry a `/verify`
+    // link, so the one this test spends has to be the only one there.
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email);
+
+    await submitResendVerification(
+      page,
+      ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
+    );
+
+    await page.waitForURL(/\/resend-verification\/requested\/?$/u);
+    await expect(page.getByText(RESEND_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email}`)
+    ).toBeVisible();
+
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
+    );
+    await openWithToken(page, VERIFY_PATH, tokenFromLink(message, VERIFY_PATH));
+
+    await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();
+    expect(accountStatus(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(
+      "active"
+    );
+    expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email)).toBe(true);
+
+    // The resend left the account alone, so the password from the sign-up is
+    // still the one that signs in.
+    await signInAsMember(page, ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP, "/my");
+    await expect(page).toHaveURL(/\/my\/?$/u);
+  });
+
+  test("a resend for an unregistered address lands on the same page and mails nothing", async ({
+    page,
+  }) => {
+    await submitResendVerification(page, ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL);
+
+    await page.waitForURL(/\/resend-verification\/requested\/?$/u);
+    await expect(page.getByText(RESEND_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL}`)
+    ).toBeVisible();
+
+    expect(accountCount(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe("0");
+    expect(await countMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe(0);
+  });
+
+  test("a reset request for a registered address lands on the requested page", async ({
+    page,
+  }) => {
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+
+    await submitResetRequest(page, ACCOUNT_LIFECYCLE_MEMBER.email);
+
+    await page.waitForURL(/\/reset-password\/requested\/?$/u);
+    await expect(page.getByText(RESET_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_MEMBER.email}`)
+    ).toBeVisible();
+
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    expect(tokenFromLink(message, CONFIRM_PASSWORD_PATH)).toHaveLength(64);
+  });
+
+  test("a reset request for an unregistered address lands on the same page and mails nothing", async ({
+    page,
+  }) => {
+    await submitResetRequest(page, ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL);
+
+    await page.waitForURL(/\/reset-password\/requested\/?$/u);
+    await expect(page.getByText(RESET_SENT_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByText(`Sent to: ${ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL}`)
+    ).toBeVisible();
+
+    expect(accountCount(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe("0");
+    expect(await countMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe(0);
+  });
+
+  test("a verification link without a token says so and offers a new confirmation email", async ({
+    page,
+  }) => {
+    await page.goto(hostUrl(VERIFY_PATH));
+
+    await expect(page.getByText(VERIFY_LINK_INVALID_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: RESEND_VERIFICATION_LINK })
+    ).toBeVisible();
+  });
+
+  test("a reset link without a token names the reset link and leads back to the request", async ({
+    page,
+  }) => {
+    await page.goto(hostUrl(CONFIRM_PASSWORD_PATH));
+
+    await expect(page.getByText(RESET_LINK_INVALID_MESSAGE)).toBeVisible();
+    await page.getByRole("link", { name: RESET_PASSWORD_LINK }).click();
+    await page.waitForURL(/\/reset-password\/?$/u);
+  });
+
+  test("an expired reset link reports the failure and leaves the password alone", async ({
+    page,
+  }) => {
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    await submitResetRequest(page, ACCOUNT_LIFECYCLE_MEMBER.email);
+    await page.waitForURL(/\/reset-password\/requested\/?$/u);
+
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    const token = tokenFromLink(message, CONFIRM_PASSWORD_PATH);
+    expireResetToken();
+
+    await openWithToken(page, CONFIRM_PASSWORD_PATH, token);
+    await submitNewPassword(page, ACCOUNT_LIFECYCLE_RESET_PASSWORD);
+
+    await expect(page.getByRole("status")).toContainText(
+      RESET_CONFIRM_FAILED_MESSAGE
+    );
+
+    await signInAsMember(page, ACCOUNT_LIFECYCLE_MEMBER, "/my");
+    await expect(page).toHaveURL(/\/my\/?$/u);
+  });
+
+  test("the mailed link sets a new password, and only the new one signs in", async ({
+    page,
+  }) => {
+    await clearMessagesTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    await submitResetRequest(page, ACCOUNT_LIFECYCLE_MEMBER.email);
+    await page.waitForURL(/\/reset-password\/requested\/?$/u);
+
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    const token = tokenFromLink(message, CONFIRM_PASSWORD_PATH);
+
+    await openWithToken(page, CONFIRM_PASSWORD_PATH, token);
+    await submitNewPassword(page, ACCOUNT_LIFECYCLE_RESET_PASSWORD);
+
+    await page.waitForURL(/\/login\?reset=done$/u);
+    await expect(page.getByRole("status")).toContainText(RESET_DONE_MESSAGE);
+
+    await page.goto(hostUrl("/login?returnTo=%2Fmy"));
+    await fillLoginForm(page, ACCOUNT_LIFECYCLE_MEMBER);
+    await expectLoginPage(page);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
+
+    await signInAsMember(
+      page,
+      {
+        email: ACCOUNT_LIFECYCLE_MEMBER.email,
+        password: ACCOUNT_LIFECYCLE_RESET_PASSWORD,
+      },
+      "/my"
+    );
+
+    await expect(page).toHaveURL(/\/my\/?$/u);
+    await expect(
+      page.getByRole("heading", { name: "Reading history" })
+    ).toBeVisible();
+  });
+
+  test("reopening the consumed reset link cannot set a second password", async ({
+    page,
+  }) => {
+    // The same message the test above spent, so this is a genuine replay of a
+    // completed reset rather than a fresh one.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+    const token = tokenFromLink(message, CONFIRM_PASSWORD_PATH);
+    expect(isResetTokenCompleted()).toBe(true);
+
+    await openWithToken(page, CONFIRM_PASSWORD_PATH, token);
+    await submitNewPassword(page, ACCOUNT_LIFECYCLE_REPLAY_PASSWORD);
+
+    // The completed reset is reported as done rather than as a failure, the
+    // way a confirmation link opened twice is — but the password it carried
+    // never reaches the account.
+    await page.waitForURL(/\/login\?reset=done$/u);
+
+    await page.goto(hostUrl("/login?returnTo=%2Fmy"));
+    await fillLoginForm(page, {
+      email: ACCOUNT_LIFECYCLE_MEMBER.email,
+      password: ACCOUNT_LIFECYCLE_REPLAY_PASSWORD,
+    });
+    await expectLoginPage(page);
+    await expect(page.getByRole("status")).toContainText(
+      HOST_LOGIN_FAILED_MESSAGE
+    );
+
+    await signInAsMember(
+      page,
+      {
+        email: ACCOUNT_LIFECYCLE_MEMBER.email,
+        password: ACCOUNT_LIFECYCLE_RESET_PASSWORD,
+      },
+      "/my"
+    );
+    await expect(page).toHaveURL(/\/my\/?$/u);
+  });
+});

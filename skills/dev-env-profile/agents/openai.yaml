@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev Environment Profile"
+  short_description: "Prepare an isolated local worktree stack safely"
+  default_prompt: "Use $dev-env-profile to prepare this worktree before development."

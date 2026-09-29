@@ -1,0 +1,656 @@
+import { encryptSessionPayload } from "@publira/web-session";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import type { NextRequest } from "next/server";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockResolvePublishedPageSlugs, mockResolveTenant } = vi.hoisted(() => ({
+  mockResolvePublishedPageSlugs:
+    vi.fn<(tenantId: string) => Promise<ReadonlySet<string> | null>>(),
+  mockResolveTenant: vi.fn(),
+}));
+
+vi.mock("./lib/api-client", () => ({
+  apiClient: {},
+}));
+
+vi.mock("./lib/tenant-resolution", () => ({
+  createTenantResolver: () => mockResolveTenant,
+}));
+
+vi.mock("./lib/published-page-slugs", () => ({
+  createPublishedPageSlugResolver: () => mockResolvePublishedPageSlugs,
+}));
+
+beforeEach(() => {
+  mockResolvePublishedPageSlugs.mockResolvedValue(
+    new Set(["/authors-wanted", "/privacy"])
+  );
+});
+
+const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
+const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const COOKIE_NAME = "publira_web_host_auth";
+
+const sealedCookie = (expiresAt: string): Promise<string> =>
+  encryptSessionPayload(
+    { accessToken: "header.payload.signature", expiresAt },
+    PUBLIRA_AUTH_SECRET
+  );
+
+/**
+ * The proxy only reads `nextUrl`, `url`, `headers`, and `cookies.get`, so a
+ * `NextRequest` is more machinery than these cases need.
+ */
+const request = (
+  url: string,
+  cookies: Readonly<Record<string, string>> = {}
+): NextRequest => {
+  const nextUrl = Object.assign(new URL(url), {
+    clone: () => new URL(url),
+  });
+  return {
+    cookies: {
+      get: (name: string) =>
+        Object.hasOwn(cookies, name)
+          ? { name, value: cookies[name] }
+          : undefined,
+    },
+    headers: new Headers({ host: new URL(url).host }),
+    nextUrl,
+    url,
+  } as unknown as NextRequest;
+};
+
+const RESOLVED_LOCALE_COOKIE = "publira_resolved_locale";
+
+const resolvedLocaleCookie = (response: {
+  headers: Headers;
+}): string | undefined =>
+  response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith(`${RESOLVED_LOCALE_COOKIE}=`));
+
+const deletedCookieNames = (response: { headers: Headers }): string[] =>
+  response.headers
+    .getSetCookie()
+    .filter((value) => /Max-Age=0|Expires=Thu, 01 Jan 1970/u.test(value))
+    .map((value) => value.split("=")[0]);
+
+describe("web-host proxy session handling", () => {
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Member pages without cookies are sent to login", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/settings"));
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/login");
+    // `returnTo` travels with the locale prefix removed.
+    expect(location.searchParams.get("returnTo")).toBe("/settings");
+  });
+
+  it("The announcements page is read without a session", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/announcements")
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("Sending to login keeps reader locale", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/settings")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/en/login");
+    expect(location.searchParams.get("returnTo")).toBe("/settings");
+  });
+
+  it("Cookies that cannot be decrypted will be deleted when sent from the member page.", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/settings", {
+        [COOKIE_NAME]: "not-a-session",
+      })
+    );
+
+    expect(response.headers.get("location")).toContain("/login");
+    expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
+  });
+
+  it("If you open /login with a valid session, return to member page", async () => {
+    const cookie = await sealedCookie(
+      Temporal.Now.instant().add({ minutes: 1 }).toString()
+    );
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/login", { [COOKIE_NAME]: cookie })
+    );
+
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/my"
+    );
+  });
+
+  /**
+   * The loop this guards against: a session revoked elsewhere still decrypts and
+   * has not reached its local expiry, so without the marker the proxy would read
+   * it as active, bounce `/login` back to `/my`, and `/my` would redirect to
+   * `/login` again — forever.
+   */
+  it("Do not bounce /login caused by revocation, delete cookies and display", async () => {
+    const cookie = await sealedCookie(
+      Temporal.Now.instant().add({ minutes: 1 }).toString()
+    );
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(
+        "https://shop.example.com/login?returnTo=%2Fmy&reason=session_revoked",
+        { [COOKIE_NAME]: cookie }
+      )
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(deletedCookieNames(response)).toContain(COOKIE_NAME);
+  });
+
+  it("Expiration markers do not work on member pages", async () => {
+    const cookie = await sealedCookie(
+      Temporal.Now.instant().add({ minutes: 1 }).toString()
+    );
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/settings?reason=session_revoked", {
+        [COOKIE_NAME]: cookie,
+      })
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(deletedCookieNames(response)).toEqual([]);
+  });
+});
+
+describe("web-host proxy locale routing", () => {
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Rewrite path with locale under tenant and locale", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/series/SR01")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/series/SR01`
+    );
+  });
+
+  it("Slugs for individual pages are posted to /page under locale", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/privacy")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/page/privacy`
+    );
+  });
+
+  it("Rewrite URL without locale to internal route of tenant's default locale", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/series`
+    );
+  });
+
+  // The default locale is a tenant setting rather than a constant of this app,
+  // so a locale-less URL on an `en` tenant must not fall back to `/ja`.
+  it("For tenants whose default locale is en, rewrite URLs without locale as en.", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/series`
+    );
+  });
+
+  it("Rewrite the top as en even if the default locale is en.", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en`
+    );
+  });
+
+  it("URLs that specify the default locale are sent to the regular URL with the path and query preserved.", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/ja/series/SR01?source=bookmark")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/series/SR01");
+    expect(location.search).toBe("?source=bookmark");
+  });
+
+  it("Send /en to the regular URL even if the default locale is en for tenants", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/series/SR01?source=bookmark")
+    );
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/series/SR01");
+    expect(location.search).toBe("?source=bookmark");
+  });
+
+  // A URL that names a locale is the reader's own choice, so it is never pulled
+  // back to the default locale.
+  it("Even if the default locale is en, /ja URLs are delivered as is.", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/ja/series"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/series`
+    );
+  });
+
+  // The language a locale-less URL is served in is the tenant's saved setting,
+  // so a read that cannot produce it has no second choice to fall back on.
+  // Serving the request anyway would put some other language under a URL the
+  // reader will bookmark as this tenant's own.
+  it("Fail a URL without locale when the tenant read is unavailable", async () => {
+    mockResolveTenant.mockRejectedValue(new Error("upstream unavailable"));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("30");
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  // `createTenantResolver` refuses a stored code this build serves no catalog
+  // for, and the proxy has nothing to do with that refusal but report it.
+  it("Fail a URL without locale when the stored default locale has no catalog", async () => {
+    mockResolveTenant.mockRejectedValue(
+      new Error("tenant default locale is not supported: fr")
+    );
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("Answer 404 when the host resolves to no tenant", async () => {
+    mockResolveTenant.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://unknown.example.com/series"));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("theme.css and normal Route Handler do not include locale", async () => {
+    const { proxy } = await import("./proxy");
+
+    const theme = await proxy(request("https://shop.example.com/theme.css"));
+    const route = await proxy(request("https://shop.example.com/api/v1/views"));
+
+    expect(theme.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/theme.css`
+    );
+    expect(route.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/api/v1/views`
+    );
+  });
+
+  it.each(["/robots.txt", "/sitemap.xml", "/sitemap/1.xml"])(
+    "rewrites the crawler document %s to the tenant without a locale",
+    async (pathname) => {
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        request(`https://shop.example.com${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        `/${TENANT_ID}${pathname}`
+      );
+    }
+  );
+
+  it.each([
+    "/api/v1/webhook/payment/stripe",
+    "/api/v1/webhook/payment/pay_jp",
+    "/api/v1/webhook/payment/app-store",
+    "/api/v1/webhook/stripe",
+  ])(
+    "rewrites the webhook %s to the tenant without a locale",
+    async (pathname) => {
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        request(`https://shop.example.com${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        `/${TENANT_ID}${pathname}`
+      );
+    }
+  );
+
+  it("serves the association documents on the tenant without a locale or a redirect", async () => {
+    const { proxy } = await import("./proxy");
+
+    const documents = ["assetlinks.json", "apple-app-site-association"];
+    const responses = await Promise.all(
+      documents.map((document) =>
+        proxy(request(`https://shop.example.com/.well-known/${document}`))
+      )
+    );
+
+    for (const [index, response] of responses.entries()) {
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://shop.example.com/${TENANT_ID}/.well-known/${documents[index]}`
+      );
+    }
+  });
+});
+
+describe("web-host proxy retired paths", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Send /authors to /creators permanently", async () => {
+    const { proxy } = await import("./proxy");
+
+    const list = await proxy(request("https://shop.example.com/authors"));
+    const detail = await proxy(
+      request("https://shop.example.com/authors/CR01?token=djF8Zg")
+    );
+
+    expect(list.status).toBe(308);
+    expect(new URL(list.headers.get("location") ?? "").pathname).toBe(
+      "/creators"
+    );
+    expect(detail.status).toBe(308);
+    const detailLocation = new URL(detail.headers.get("location") ?? "");
+    expect(detailLocation.pathname).toBe("/creators/CR01");
+    expect(detailLocation.search).toBe("?token=djF8Zg");
+  });
+
+  // The move is permanent; the locale prefix is a tenant setting, so the
+  // request the reader made is answered in the language it named and the
+  // redundant default prefix is dropped by the temporary redirect afterwards.
+  it("Keep the locale prefix on the moved path", async () => {
+    const { proxy } = await import("./proxy");
+
+    const prefixed = await proxy(
+      request("https://shop.example.com/en/authors/CR01")
+    );
+    const defaultPrefixed = await proxy(
+      request("https://shop.example.com/ja/authors")
+    );
+
+    expect(prefixed.status).toBe(308);
+    expect(new URL(prefixed.headers.get("location") ?? "").pathname).toBe(
+      "/en/creators/CR01"
+    );
+    expect(defaultPrefixed.status).toBe(308);
+    expect(
+      new URL(defaultPrefixed.headers.get("location") ?? "").pathname
+    ).toBe("/ja/creators");
+  });
+
+  it("Leave /creators and a slug that merely starts with the old name alone", async () => {
+    const { proxy } = await import("./proxy");
+
+    const moved = await proxy(request("https://shop.example.com/creators"));
+    const slug = await proxy(
+      request("https://shop.example.com/authors-wanted")
+    );
+
+    expect(moved.headers.get("location")).toBeNull();
+    expect(moved.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/creators`
+    );
+    expect(slug.headers.get("location")).toBeNull();
+    expect(slug.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/authors-wanted`
+    );
+  });
+});
+
+describe("web-host proxy published pages", () => {
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Serve a page at a path the site also routes", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(
+      new Set(["/contact", "/series"])
+    );
+    const { proxy } = await import("./proxy");
+
+    const series = await proxy(request("https://shop.example.com/series"));
+    const contact = await proxy(request("https://shop.example.com/en/contact"));
+
+    expect(series.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/series`
+    );
+    expect(contact.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/page/contact`
+    );
+  });
+
+  it("Serve a page at a member path without sending the reader to login", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/my"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/my"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/my`
+    );
+  });
+
+  it("Serve a page at a retired path instead of redirecting it", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/authors"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/authors"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/authors`
+    );
+  });
+
+  it("Still drop the redundant default prefix from a page's URL", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/series"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/ja/series"));
+
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/series"
+    );
+  });
+
+  it("Send a path no page has to the app's routes", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/privacy"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/new-feature")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/new-feature`
+    );
+  });
+
+  it("Send every path to the app's routes when the slugs cannot be read", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/privacy"));
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/privacy`
+    );
+  });
+});
+
+describe("web-host proxy internal revalidation", () => {
+  it("Exclude revalidation paths from proxy matcher", async () => {
+    const { config } = await import("./proxy");
+
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
+    ).toBe(false);
+  });
+});
+
+describe("web-host proxy resolved locale cookie", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "en",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Publish the tenant default on the rewritten document", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/series"));
+
+    const cookie = resolvedLocaleCookie(response);
+    expect(cookie).toContain(`${RESOLVED_LOCALE_COOKIE}=en`);
+    // The inline `<html lang>` script reads it from `document.cookie`.
+    expect(cookie).not.toContain("HttpOnly");
+    expect(cookie).toContain("Path=/");
+  });
+
+  it("Publish it on the redirects the proxy answers with", async () => {
+    const { proxy } = await import("./proxy");
+
+    const canonical = await proxy(
+      request("https://shop.example.com/en/series")
+    );
+    const login = await proxy(request("https://shop.example.com/settings"));
+
+    expect(resolvedLocaleCookie(canonical)).toContain(
+      `${RESOLVED_LOCALE_COOKIE}=en`
+    );
+    expect(resolvedLocaleCookie(login)).toContain(
+      `${RESOLVED_LOCALE_COOKIE}=en`
+    );
+  });
+
+  it("Leave the response alone when the browser already carries the default", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/series", {
+        [RESOLVED_LOCALE_COOKIE]: "en",
+      })
+    );
+
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
+  it("Say nothing about the default on a path outside the locale tree", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/theme.css"));
+
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+});

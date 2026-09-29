@@ -1,0 +1,878 @@
+import type { Locator, Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { querySql, runSql } from "../src/db";
+import { signInAsMember } from "../src/host";
+import {
+  revalidateHostTags,
+  tenantSeriesDetailTag,
+  tenantSeriesTag,
+} from "../src/revalidate";
+import { SEED_TENANT_ID } from "../src/scenarios/auth";
+import { SEED_MEMBER } from "../src/scenarios/member-announcements";
+import { SEED_TENANT } from "../src/scenarios/multi-tenant";
+import {
+  FREE_LAST_EPISODE_PATH,
+  FREE_LAST_EPISODE_SERIES_TITLE,
+  FREE_LAST_EPISODE_TITLE,
+  LAST_EPISODE_PATH,
+  LAST_EPISODE_PRICE_LABEL,
+  NEXT_EPISODE_PATH,
+  NEXT_EPISODE_TITLE,
+  PENULTIMATE_EPISODE_PATH,
+  VIEWER_EPISODE_ID,
+  VIEWER_EPISODE_PATH,
+  VIEWER_EPISODE_TITLE,
+  VIEWER_PAGE_COUNT,
+  VIEWER_PROGRESS_LABEL,
+  episodePageLabel,
+  viewerPageImageId,
+  viewerPageLabel,
+} from "../src/scenarios/viewer-pages";
+import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
+import { turnToEndPage } from "../src/viewer";
+
+const seriesPath = `/series/${SEED_TENANT.series.publicId}`;
+
+/** The seed member's read of the seeded episode, if they have finished it. */
+const READ_STATE_SCOPE = `
+  FROM episode_reads r
+      JOIN users u ON u.id = r.user_id
+      JOIN episodes e ON e.id = r.episode_id
+  WHERE u.email = '${SEED_MEMBER.email}'
+      AND e.public_id = '${VIEWER_EPISODE_ID}'
+`;
+
+/** `read_at` of that read, or an empty string when there is none. */
+const episodeReadAt = (): string =>
+  querySql(`SELECT r.read_at ${READ_STATE_SCOPE};`);
+
+/**
+ * How many `episode_complete` events the read has been projected into.
+ *
+ * The projection is filed under `(source_table, source_id)`, so counting the
+ * events that name this read is what tells a repeated notification apart from
+ * a second completion.
+ */
+const episodeCompleteEventCount = (): string =>
+  querySql(`
+    SELECT COUNT(*)
+    FROM content_events ce
+    WHERE ce.event_type = 'episode_complete'
+        AND ce.source_table = 'episode_reads'
+        AND ce.source_id IN (SELECT r.id ${READ_STATE_SCOPE});
+  `);
+
+/** The seed member's reaction to the seeded episode, if they have given one. */
+const REACTION_SCOPE = `
+  FROM episode_ratings r
+      JOIN users u ON u.id = r.user_id
+      JOIN episodes e ON e.id = r.episode_id
+  WHERE u.email = '${SEED_MEMBER.email}'
+      AND e.public_id = '${VIEWER_EPISODE_ID}'
+`;
+
+/**
+ * Put this member back where they had never reacted to the episode.
+ *
+ * The events go first, because they are found through the rating they came
+ * from and `content_events` keeps no foreign key to `episode_ratings` that
+ * would take them along. The headcount trigger follows the rating row.
+ *
+ * The headcount a guest is shown comes from the cached public episode read
+ * rather than from Postgres, so the tags that read carries are dropped after
+ * the delete the way the Server Action behind the control drops them.
+ */
+const clearEpisodeReaction = async (): Promise<void> => {
+  runSql(`
+    BEGIN;
+    DELETE FROM content_events ce
+    WHERE ce.event_type = 'rating'
+        AND ce.user_id IN (
+            SELECT u.id FROM users u WHERE u.email = '${SEED_MEMBER.email}'
+        )
+        AND ce.episode_id IN (
+            SELECT e.id FROM episodes e WHERE e.public_id = '${VIEWER_EPISODE_ID}'
+        );
+    DELETE FROM episode_ratings
+    WHERE (tenant_id, user_id, episode_id) IN (
+        SELECT r.tenant_id, r.user_id, r.episode_id ${REACTION_SCOPE}
+    );
+    COMMIT;
+  `);
+  await revalidateHostTags([
+    tenantSeriesDetailTag(SEED_TENANT_ID),
+    tenantSeriesTag(SEED_TENANT_ID, SEED_TENANT.series.publicId),
+  ]);
+};
+
+/**
+ * Put this member back where they had never finished the episode.
+ *
+ * The events go first, because they are found through the read they came from
+ * and `content_events` keeps no foreign key to `episode_reads` that would take
+ * them along.
+ */
+const clearEpisodeReadState = (): void => {
+  runSql(`
+    BEGIN;
+    DELETE FROM content_events ce
+    WHERE ce.source_table = 'episode_reads'
+        AND ce.source_id IN (SELECT r.id ${READ_STATE_SCOPE});
+    DELETE FROM episode_reads
+    WHERE id IN (SELECT r.id ${READ_STATE_SCOPE});
+    COMMIT;
+  `);
+};
+
+/** The seed member's saved position in the seeded episode. */
+const READING_POSITION_SCOPE = `
+  FROM episode_reading_positions p
+      JOIN users u ON u.id = p.user_id
+      JOIN episodes e ON e.id = p.episode_id
+  WHERE u.email = '${SEED_MEMBER.email}'
+      AND e.public_id = '${VIEWER_EPISODE_ID}'
+`;
+
+/**
+ * The zero-based page that position names, or an empty string when the member
+ * has no position in the episode.
+ */
+const savedPageIndex = (): string =>
+  querySql(`SELECT p.page_index ${READING_POSITION_SCOPE};`);
+
+/** Put this member back where they had never opened the episode. */
+const clearReadingPosition = (): void => {
+  runSql(`
+    DELETE FROM episode_reading_positions
+    WHERE (tenant_id, user_id, episode_id) IN (
+        SELECT p.tenant_id, p.user_id, p.episode_id ${READING_POSITION_SCOPE}
+    );
+  `);
+};
+
+/**
+ * Read the episode again and again until `control` is on the page after its
+ * last one.
+ *
+ * The reader headcount is part of the control's accessible name and comes from
+ * a cached read. Revalidation marks such an entry stale rather than dropping
+ * it, so a single navigation can be left waiting on a name that never changes.
+ */
+const pollEndPageControl = (
+  page: Page,
+  control: Locator,
+  message: string
+): Promise<void> =>
+  expect
+    .poll(
+      async () => {
+        await page.goto(hostPath(VIEWER_EPISODE_PATH));
+        return await turnToEndPage(page, control);
+      },
+      { message, timeout: 60_000 }
+    )
+    .toBe(true);
+
+const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
+
+/**
+ * The page after the last one, inside the viewer.
+ *
+ * Named as a landmark because the rows below the reader link to the same
+ * episode and label themselves the same way, so "Next episode" alone matches
+ * both.
+ */
+const endPage = (page: Page) =>
+  page.getByRole("region", { exact: true, name: "The end" });
+
+/** The reading history section of `/my`, which names itself as a landmark. */
+const readingHistory = (page: Page) =>
+  page.getByRole("region", { name: "Reading history" });
+
+/** The history's entry for the seeded episode, as the link that opens it. */
+const historyEntry = (page: Page) =>
+  readingHistory(page).getByRole("link", { name: VIEWER_EPISODE_TITLE });
+
+/**
+ * The viewer's report that the episode is finished, answered.
+ *
+ * `sendBeacon` hands the report to the browser, which delivers it on its own
+ * schedule, so the next screen this reader opens could otherwise be rendered
+ * from a history the read had not reached yet. The Route Handler answers only
+ * after the API has stored the read, so its response is the moment the history
+ * behind every screen contains it. Start waiting before the last page turn:
+ * the viewer sends the beacon the moment that page appears.
+ */
+const episodeReadReported = (page: Page): Promise<unknown> =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && response.url().endsWith("/read")
+  );
+
+const pageCanvas = (page: Page, pageNumber: number) =>
+  page.locator(`canvas[aria-label="${viewerPageLabel(pageNumber)}"]`);
+
+const expectFirstPageDrawn = (page: Page): Promise<void> =>
+  expect(pageCanvas(page, 1)).toHaveAttribute("data-page-status", "loaded");
+
+/**
+ * Turn pages until the reader reports the last one, and hand back every
+ * progress value it passed through.
+ *
+ * The reading direction is right to left, so ArrowLeft is the next page. The
+ * `<progress>` reports the last page currently on screen, which is what makes
+ * "the value went up" one statement whether the reader is showing a single
+ * page or a spread.
+ *
+ * A turn shows at most two pages, so no episode needs more turns than it has
+ * pages. That bound is what fails the test on a reader that has stopped
+ * moving, rather than pressing the key until the suite times out.
+ */
+const turnToLastPage = async (
+  page: Page,
+  passed: readonly number[] = []
+): Promise<number[]> => {
+  const progress = readingProgress(page);
+  const current = Number(await progress.getAttribute("value"));
+  const visited = [...passed, current];
+
+  if (current >= VIEWER_PAGE_COUNT || visited.length > VIEWER_PAGE_COUNT) {
+    return visited;
+  }
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(progress).not.toHaveAttribute("value", String(current));
+
+  return turnToLastPage(page, visited);
+};
+
+/**
+ * Turn `count` pages forward, waiting for the reader to report each one.
+ *
+ * Recursive rather than a loop for the reason `turnToLastPage` is: each turn
+ * has to be awaited before the next key press, and the reader's own report is
+ * what says the turn happened.
+ */
+const turnPages = async (page: Page, count: number): Promise<void> => {
+  if (count <= 0) {
+    return;
+  }
+
+  const progress = readingProgress(page);
+  const current = await progress.getAttribute("value");
+  await page.keyboard.press("ArrowLeft");
+  await expect(progress).not.toHaveAttribute("value", String(current));
+
+  return turnPages(page, count - 1);
+};
+
+const isStrictlyAscending = (values: readonly number[]): boolean =>
+  values.every(
+    (value, index) => index === 0 || value > (values[index - 1] ?? value)
+  );
+
+/**
+ * Reading one episode from its first page to its last, on the origin that
+ * serves the reader and its body images alike.
+ *
+ * What a finished read leaves behind is asserted through the reader's own
+ * screens: `/my` lists it in the reading history, and the series page marks
+ * the episode as finished. The reader's saved position is asserted the same
+ * way — what they can see of it is the page the episode opens at, which is
+ * what the resume test reads back.
+ *
+ * Two things are still read from the database, because they are not the
+ * reader's to see: the stored `read_at` a repeated read must not move, and the
+ * `episode_complete` events the engagement report counts. Those are storage and
+ * analytics invariants of one reading, not state any screen reports.
+ *
+ * That read state and that position are the only things this suite writes, and
+ * no other suite touches them, so the tests stay independent of one another
+ * rather than running serially. Each test that writes one arranges it for
+ * itself, which is also what makes a retry start from an unopened episode.
+ */
+test.describe("web-host episode reading", () => {
+  test.afterAll(async () => {
+    clearEpisodeReadState();
+    await clearEpisodeReaction();
+    clearReadingPosition();
+  });
+
+  test("turning pages moves the reading progress to the last page of the episode", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+
+    await expect(readingProgress(page)).toHaveAttribute(
+      "max",
+      String(VIEWER_PAGE_COUNT)
+    );
+
+    const visited = await turnToLastPage(page);
+
+    expect(visited.at(0), "the reader opens on the first page").toBe(1);
+    expect(visited.at(-1), "the last turn reaches the last page").toBe(
+      VIEWER_PAGE_COUNT
+    );
+    expect(
+      isStrictlyAscending(visited),
+      `every turn moved the reader forward: ${visited.join(", ")}`
+    ).toBe(true);
+    await expect(pageCanvas(page, VIEWER_PAGE_COUNT)).toHaveAttribute(
+      "data-page-status",
+      "loaded"
+    );
+  });
+
+  test("finishing the episode puts it in the reader's history and marks it on the series page", async ({
+    page,
+  }) => {
+    clearEpisodeReadState();
+    clearReadingPosition();
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_BASE_URL);
+    await expect(
+      readingHistory(page).getByText("No reading history yet"),
+      "the reader has finished nothing yet"
+    ).toBeVisible();
+
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    const readReported = episodeReadReported(page);
+    await turnToLastPage(page);
+    await readReported;
+
+    await page.goto(hostPath("/my"));
+    await expect(historyEntry(page)).toHaveAttribute(
+      "href",
+      hostPath(VIEWER_EPISODE_PATH)
+    );
+
+    await page.goto(hostPath(seriesPath));
+    await expect(
+      page
+        .getByRole("listitem")
+        .filter({ hasText: VIEWER_EPISODE_TITLE })
+        .getByText("Finished"),
+      "the series page marks the episode the reader finished"
+    ).toBeVisible();
+
+    const firstReadAt = episodeReadAt();
+    await expect
+      .poll(episodeCompleteEventCount, {
+        message: "the read reached the engagement projection",
+      })
+      .toBe("1");
+
+    // The reader stopped on the last page, so that is where the episode opens
+    // again. Waiting for the position to be written is what makes the return
+    // land somewhere this test can name, and it puts the reader back on the
+    // last page without a single turn — which is the re-read this asserts is
+    // not a second completion.
+    await expect
+      .poll(savedPageIndex, { message: "the last page was saved" })
+      .toBe(String(VIEWER_PAGE_COUNT - 1));
+
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(VIEWER_PAGE_COUNT)
+    );
+    await expect(pageCanvas(page, VIEWER_PAGE_COUNT)).toHaveAttribute(
+      "data-page-status",
+      "loaded"
+    );
+
+    expect(episodeReadAt(), "the first read keeps its timestamp").toBe(
+      firstReadAt
+    );
+    expect(
+      episodeCompleteEventCount(),
+      "a re-read is not a second completion"
+    ).toBe("1");
+
+    // A later session renders the history from the stored read rather than
+    // from anything this browser was still holding.
+    await page.context().clearCookies();
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_BASE_URL);
+    await expect(
+      historyEntry(page),
+      "the history is still there in a new session"
+    ).toBeVisible();
+  });
+
+  test("reopening the episode puts the member back on the page they stopped on", async ({
+    page,
+  }) => {
+    clearReadingPosition();
+    expect(savedPageIndex(), "the member has never opened the episode").toBe(
+      ""
+    );
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+
+    await turnPages(page, 3);
+    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
+
+    // `sendBeacon` hands the position to the browser, which delivers it on its
+    // own schedule, and the viewer waits for the reader to settle before
+    // handing over anything at all. Opening the episode saves the first page
+    // on its own, so what this waits for is a page past it: `-1` stands for a
+    // member who still has no position at all.
+    await expect
+      .poll(() => Number(savedPageIndex() || "-1"), {
+        message: "the page the reader stopped on reached the database",
+      })
+      .toBeGreaterThan(0);
+
+    await page.reload();
+
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(stoppedOn)
+    );
+  });
+
+  test("a reading position moved while offline is recorded once the connection returns", async ({
+    page,
+  }) => {
+    clearReadingPosition();
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+    // Opening the episode saves the first page on its own; waiting for it keeps
+    // that save from being the one the drop below catches.
+    await expect
+      .poll(savedPageIndex, { message: "the first page was saved on opening" })
+      .toBe("0");
+
+    await page.context().setOffline(true);
+    const refused = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.method() === "POST" &&
+        request.url().endsWith("/reading-position")
+    );
+    await turnPages(page, 3);
+    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
+    await refused;
+    expect(savedPageIndex(), "nothing reached the database offline").toBe("0");
+
+    await page.context().setOffline(false);
+
+    await expect
+      .poll(() => Number(savedPageIndex()), {
+        message: "the page turned to offline reached the database on reconnect",
+      })
+      .toBeGreaterThan(0);
+    await page.reload();
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(stoppedOn)
+    );
+  });
+
+  test("the series page and the home page offer the episode the member stopped in", async ({
+    page,
+  }) => {
+    clearEpisodeReadState();
+    clearReadingPosition();
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+
+    await turnPages(page, 2);
+    await expect
+      .poll(() => Number(savedPageIndex() || "-1"), {
+        message: "the page the reader stopped on reached the database",
+      })
+      .toBeGreaterThan(0);
+
+    await page.goto(hostPath(seriesPath));
+    await expect(
+      page.getByRole("link", { name: "Continue reading" })
+    ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
+    // The dot at the head of a row says what the button above the list says,
+    // so it has to land on the same episode. It is a mark rather than words,
+    // and this is the name it carries for a reader who cannot see it.
+    await expect(
+      page
+        .getByRole("listitem")
+        .filter({ hasText: VIEWER_EPISODE_TITLE })
+        .getByText("Next to read")
+    ).toBeAttached();
+
+    await page.goto(hostPath("/"));
+    await expect(
+      page
+        .getByRole("region", { name: "Continue reading" })
+        .getByRole("link", { name: SEED_TENANT.series.title })
+    ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
+  });
+
+  test("a page that fails to load is retried on its own", async ({ page }) => {
+    // The first attempt at the first page only. The retry the reader asks for
+    // reaches the network, which is what makes this the failure of one page
+    // rather than of the episode.
+    await page.route(
+      (url) => url.pathname === `/images/episodes/${viewerPageImageId(1)}`,
+      (route) => route.abort("failed"),
+      { times: 1 }
+    );
+
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+
+    const firstPage = pageCanvas(page, 1);
+    await expect(firstPage).toHaveAttribute("data-page-status", "error");
+    await expect(
+      page.getByText(
+        "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again."
+      )
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Reload" }).click();
+
+    await expect(firstPage).toHaveAttribute("data-page-status", "loaded");
+    await expect(
+      page.getByText(
+        "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again."
+      )
+    ).toHaveCount(0);
+    // The control is drawn over the page, where a click near the edge of the
+    // viewport would otherwise turn it: asking for the page again must not
+    // carry the reader past it.
+    await expect(readingProgress(page)).toHaveAttribute("value", "1");
+    const visited = await turnToLastPage(page);
+    expect(visited.at(-1), "the rest of the episode is still readable").toBe(
+      VIEWER_PAGE_COUNT
+    );
+  });
+
+  test("a page refused mid-read draws its reload control and leaves the drawn pages on screen", async ({
+    page,
+  }) => {
+    // The first page opens on its own, so the spread after it holds pages 2
+    // and 3. Only the third is refused, and only its first attempt: the page
+    // beside it is drawn, and the reload reaches the network.
+    await page.route(
+      (url) => url.pathname === `/images/episodes/${viewerPageImageId(3)}`,
+      (route) => route.abort("internetdisconnected"),
+      { times: 1 }
+    );
+
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    await turnPages(page, 1);
+
+    const drawnPage = pageCanvas(page, 2);
+    const refusedPage = pageCanvas(page, 3);
+    await expect(refusedPage).toHaveAttribute("data-page-status", "error");
+    await expect(
+      page.getByText(
+        "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again."
+      )
+    ).toBeVisible();
+    await expect(drawnPage, "the page beside it stays drawn").toHaveAttribute(
+      "data-page-status",
+      "loaded"
+    );
+    await expect(drawnPage).toBeInViewport();
+
+    await page.getByRole("button", { name: "Reload" }).click();
+
+    await expect(refusedPage).toHaveAttribute("data-page-status", "loaded");
+    await expect(drawnPage).toHaveAttribute("data-page-status", "loaded");
+    await expect(readingProgress(page)).toHaveAttribute("value", "3");
+  });
+
+  test("the end of an episode opens the next one in a single click", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+
+    await expect(
+      page.getByRole("link", { name: NEXT_EPISODE_TITLE }),
+      "nothing over the pages links out of the episode; only the row under the reader does"
+    ).toHaveCount(1);
+
+    const nextEpisode = endPage(page).getByRole("link", {
+      name: NEXT_EPISODE_TITLE,
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one offers the next episode"
+    ).toBe(true);
+    await expect(nextEpisode).toHaveAttribute(
+      "href",
+      hostPath(NEXT_EPISODE_PATH)
+    );
+    await nextEpisode.click();
+
+    await expect(page).toHaveURL(new RegExp(`${NEXT_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: NEXT_EPISODE_TITLE })
+    ).toBeVisible();
+  });
+
+  test("the next episode opened while offline arrives once the connection returns", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    const nextEpisode = endPage(page).getByRole("link", {
+      name: NEXT_EPISODE_TITLE,
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one offers the next episode"
+    ).toBe(true);
+
+    // Survives a soft navigation only. Without the retry a refused navigation
+    // falls back to loading the document, whose error page the browser reloads
+    // on reconnect, which reaches the next episode as well.
+    await page.evaluate(() => {
+      document.documentElement.dataset.e2eSoftNavigation = "pending";
+    });
+    await page.context().setOffline(true);
+    const refused = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.resourceType() === "fetch" &&
+        request.url().includes(NEXT_EPISODE_PATH)
+    );
+    await nextEpisode.click();
+    await refused;
+    // The retry checks for the connection with a `HEAD` against the current
+    // URL, so one of those refused after the navigation is what says it is
+    // being held rather than failed. Only then is the absence of the error
+    // boundary, and of a document load, worth asserting.
+    await page.waitForEvent(
+      "requestfailed",
+      (request) => request.method() === "HEAD"
+    );
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-e2e-soft-navigation",
+      "pending"
+    );
+
+    await page.context().setOffline(false);
+
+    await expect(page).toHaveURL(new RegExp(`${NEXT_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: NEXT_EPISODE_TITLE })
+    ).toBeVisible();
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
+    await expect(
+      page.locator("html"),
+      "the document was not reloaded to get there"
+    ).toHaveAttribute("data-e2e-soft-navigation", "pending");
+  });
+
+  test("a paid next episode says what it costs before the reader opens it", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(PENULTIMATE_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "More episodes" })
+    ).toBeVisible();
+    // The episode being read is free, so the only price on the page is the one
+    // the row puts on the episode it offers.
+    await expect(page.getByText(LAST_EPISODE_PRICE_LABEL)).toBeVisible();
+
+    await page
+      .getByRole("link", { name: SEED_TENANT.series.paidEpisodeTitle })
+      .click();
+
+    await expect(page).toHaveURL(new RegExp(`${LAST_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByText("This episode is paid"),
+      "the gate still decides who reads a paid body"
+    ).toBeVisible();
+  });
+
+  test("the last episode of a series says so and offers to follow it", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(LAST_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You are up to date" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: `Sign in to follow ${SEED_TENANT.series.title}`,
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Next episode" }),
+      "there is no episode after the last one to offer in the rows"
+    ).toHaveCount(0);
+
+    // The paid last episode is gated, so its pages are read on a free one.
+    await page.goto(hostPath(FREE_LAST_EPISODE_PATH));
+    await expect(
+      page.locator(
+        `canvas[aria-label="${episodePageLabel(FREE_LAST_EPISODE_TITLE, 1)}"]`
+      )
+    ).toHaveAttribute("data-page-status", "loaded");
+
+    await expect(
+      page.getByRole("link", { name: "Next episode" }),
+      "nor over the pages"
+    ).toHaveCount(0);
+
+    const nextEpisode = endPage(page).getByRole("button", {
+      name: "Next episode",
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one keeps the control"
+    ).toBe(true);
+    await expect(nextEpisode, "with nothing to open").toBeDisabled();
+    await expect(
+      endPage(page).getByRole("heading", { name: "You are up to date" })
+    ).toBeVisible();
+    await expect(
+      endPage(page).getByRole("link", {
+        name: `Sign in to follow ${FREE_LAST_EPISODE_SERIES_TITLE}`,
+      })
+    ).toBeVisible();
+  });
+
+  test("only the end of a series suggests other works to read", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(LAST_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You may also like" })
+    ).toBeVisible();
+
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You may also like" }),
+      "the next episode is the one offer a panel in the middle of a series makes"
+    ).toHaveCount(0);
+  });
+
+  test("the running head below the viewer names the instalment and leads back to the work", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toContainText(VIEWER_EPISODE_TITLE);
+    await expect(heading, "the episode carries its number").toContainText(
+      "Episode 2"
+    );
+    await expect(
+      page.getByRole("link", { exact: true, name: SEED_TENANT.series.title }),
+      "the work is named once, by the link the panel ends on"
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Back to the series" })
+    ).toHaveAttribute("href", hostPath(seriesPath));
+    await expect(page.getByText(`${VIEWER_PAGE_COUNT} pages`)).toBeVisible();
+  });
+
+  test("the running head names who the episode is credited to, in what role", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+
+    // An episode carries its own credits, baked from the series when it was
+    // created, so the role is one of the tenant's own vocabulary and the page
+    // shows it without reordering anything.
+    await expect(
+      page.getByText(`Original Author ${SEED_TENANT.creatorName}`).first()
+    ).toBeVisible();
+  });
+
+  test("a reader reacts to an episode, and the reaction survives a reload", async ({
+    page,
+  }) => {
+    await clearEpisodeReaction();
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+
+    const loginLink = page.getByRole("link", {
+      exact: true,
+      name: "Sign in to react to this episode. Readers who reacted: 0",
+    });
+    await expect(
+      loginLink,
+      "a reaction is a reader's, so a guest reaches it only by finishing the episode"
+    ).toHaveCount(0);
+    await pollEndPageControl(
+      page,
+      loginLink,
+      "the headcount a guest is shown never went back to no readers"
+    );
+    await expect(loginLink).toHaveAttribute(
+      "href",
+      new RegExp(`returnTo=${encodeURIComponent(VIEWER_EPISODE_PATH)}`, "u")
+    );
+
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+
+    // The member may resume a page another reading scenario saved, so the end
+    // page is reached by turning rather than assumed to be on screen.
+    const reactButton = page.getByRole("button", {
+      exact: true,
+      name: "React to this episode. Readers who reacted: 0",
+    });
+    await pollEndPageControl(
+      page,
+      reactButton,
+      "the member was never offered the episode with no reaction of their own"
+    );
+    await reactButton.click();
+
+    const reacted = page.getByRole("button", {
+      exact: true,
+      name: "You have reacted to this episode. Readers who reacted: 1",
+    });
+    await expect(
+      reacted,
+      "one press in single mode fills the control and counts the reader once"
+    ).toBeVisible();
+
+    await reacted.click();
+    await expect(reacted, "a second press changes nothing").toBeVisible();
+
+    await pollEndPageControl(
+      page,
+      reacted,
+      "the reaction was not there when the episode was opened again"
+    );
+  });
+});

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY notifications_tenant_id_id_key;

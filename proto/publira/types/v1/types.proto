@@ -1,0 +1,496 @@
+syntax = "proto3";
+
+package publira.types.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1";
+
+// Common data models shared across services
+
+// TenantContext identifies a tenant for internal RPC wiring.
+// tenant_id is the primary key (UUID), not the public-facing short code.
+message TenantContext {
+  string tenant_id = 1;
+}
+
+message User {
+  string public_id = 1;
+  string name = 2;
+  string role = 3;
+  // The reader's own birth date as YYYY-MM-DD, empty when they have given
+  // none. Set where a User stands for the account the request authenticated
+  // as, which is GetMe and UpdateMe; empty everywhere a User names someone the
+  // caller is merely looking at, so a console listing accounts never carries
+  // it.
+  string birth_date = 4;
+  // The account's email address, under the same rule as birth_date: set by the
+  // public API's GetMe and UpdateMe, so a form can offer the reader their own
+  // address, and empty wherever a User names someone else.
+  string email = 5;
+}
+
+// AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.
+message AccessToken {
+  string token = 1;
+  string expires_at = 2;
+}
+
+// One entry of the creator-role vocabulary a tenant curates: original author,
+// artist, writer, supervisor, and whatever else its catalogue needs. It orders
+// the credits everywhere they are shown, so the leading role leads without
+// anyone ordering each series by hand.
+message CreatorRole {
+  string public_id = 1;
+  string name = 2;
+  // The role's primary key, which the admin API addresses it by.
+  string id = 3;
+}
+
+// Where an episode credit was written. Series rows are baked onto an episode
+// when it is created; episode rows are additions made for that episode alone.
+enum CreatorCreditSource {
+  CREATOR_CREDIT_SOURCE_UNSPECIFIED = 0;
+  CREATOR_CREDIT_SOURCE_SERIES = 1;
+  CREATOR_CREDIT_SOURCE_EPISODE = 2;
+}
+
+message Creator {
+  // 3 held `role` as a free string. The field keeps its name and becomes a
+  // CreatorRole, so the old number is reserved to keep a client from reading
+  // the new value as the old one.
+  reserved 3;
+
+  string public_id = 1;
+  string name = 2;
+  string profile_text = 4;
+  string icon_image_url = 5;
+  int64 icon_image_file_size_bytes = 6;
+  string icon_image_updated_at = 7;
+  // The role this credit is held in. Set where a Creator stands for a credit
+  // on a series; empty where it stands for the person alone, as the creator
+  // console reads them.
+  CreatorRole role = 8;
+  // Set when this creator stands for an episode credit. It lets an editor see
+  // which rows are local additions that a later range edit must leave alone.
+  CreatorCreditSource source = 9;
+  // The creator's primary key. The admin API addresses a creator by it, and
+  // the reader API sets it on a series' credits so a reader can follow them.
+  string id = 10;
+}
+
+message Label {
+  string public_id = 1;
+  string name = 2;
+  string eye_catch_image_updated_at = 3;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 4;
+  // The label's primary key, which the admin API addresses it by.
+  string id = 5;
+}
+
+message SeriesEyeCatchVariant {
+  // Label format: "{ratio}_{width}w" (for example "portrait_1200w",
+  // "landscape_1600w").
+  string label = 1;
+  // Intended use: portrait / square / landscape / og.
+  string variant_type = 7;
+  string url = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int64 file_size_bytes = 6;
+}
+
+// ImageCropRect names the part of an uploaded image a caller wants kept. It
+// is stated in pixels of that upload, with the origin at its top-left corner,
+// and it stands on its own: nothing records the image it was measured
+// against, so a rectangle only means anything alongside the bytes it came
+// with.
+//
+// The rectangle says where the cut is taken, not what shape comes out. The
+// server still fits it to the target aspect ratio, so a selection that is a
+// few pixels off that ratio delivers the ratio delivery expects.
+message ImageCropRect {
+  int32 x = 1;
+  int32 y = 2;
+  int32 width = 3;
+  int32 height = 4;
+}
+
+// Whether a series is still gaining episodes. Stored on
+// series_listings.status, so it is the tenant's statement about the series
+// rather than something derived from the episodes it happens to hold.
+enum SeriesStatus {
+  SERIES_STATUS_UNSPECIFIED = 0;
+  // New episodes are still coming.
+  SERIES_STATUS_ONGOING = 1;
+  // The series has ended; no further episode is planned.
+  SERIES_STATUS_COMPLETED = 2;
+  // Paused, with more episodes intended.
+  SERIES_STATUS_HIATUS = 3;
+}
+
+// Who a series is meant for. A client interposes its own confirmation on a
+// rated series; whether the reader has to prove an age is a separate tenant
+// setting.
+enum SeriesAgeRating {
+  SERIES_AGE_RATING_UNSPECIFIED = 0;
+  // No age restriction.
+  SERIES_AGE_RATING_ALL = 1;
+  SERIES_AGE_RATING_R15 = 2;
+  SERIES_AGE_RATING_R18 = 3;
+}
+
+// One entry of the classification a tenant curates. The genre list is short,
+// ordered by the tenant, and managed from the console; `public_id` is what a
+// filter names, so a rename does not move it.
+message Genre {
+  string public_id = 1;
+  string name = 2;
+  // Unique within the tenant, derived from the name. It identifies the name
+  // rather than standing in for it: two genres cannot differ by case or
+  // spacing alone.
+  string slug = 3;
+  // The eye-catch the console uploaded, as a label carries one. Filled by the
+  // genre RPCs themselves; a genre listed on a series carries names only.
+  string eye_catch_image_updated_at = 4;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 5;
+  // The genre's primary key, which the admin API addresses it by.
+  string id = 6;
+}
+
+// A free-form label written on the series form. Tags have no console of their
+// own and no order: a tag exists because a series carries it, and stops
+// existing when the last one lets it go. It is addressed by slug, which is why
+// it carries no public_id.
+message Tag {
+  string name = 1;
+  string slug = 2;
+}
+
+message Series {
+  string public_id = 1;
+  string title = 2;
+  string synopsis = 3;
+  Label label = 4;
+  repeated Creator creators = 5;
+  int32 reading_period_hours = 6;
+  bool is_published = 11;
+  string published_at = 12;
+  // Fields 7 and 8 are removed (formerly eye_catch_image_url and
+  // eye_catch_image_file_size_bytes).
+  reserved 7, 8;
+  string eye_catch_image_updated_at = 9;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 10;
+  SeriesStatus status = 13;
+  // The weekdays a new episode is expected, as EXTRACT(DOW) numbers: 0 is
+  // Sunday and 6 is Saturday. Ascending, without duplicates. Empty means the
+  // series keeps no weekly schedule, which is a statement rather than a gap.
+  repeated int32 schedule_weekdays = 14;
+  SeriesAgeRating age_rating = 15;
+  // In the tenant's genre order, not the order they were assigned in.
+  repeated Genre genres = 16;
+  // By name, so a series presents its tags the same way every time.
+  repeated Tag tags = 17;
+  // How many published episodes of this series a reader can open without
+  // paying: the ones priced at 0, and the priced ones a free window is open
+  // on at the moment of the read. It is counted per read rather than stored,
+  // so an episode leaving its free window stops counting the moment it does,
+  // and a series with no free episode carries 0 rather than nothing.
+  int32 free_episode_count = 18;
+  // What the series is rated, to one decimal on the 1-5 scale its episodes are
+  // reacted to on. A reader never rates a series directly: the figure is the
+  // reaction points its episodes collected over the reads they were finished
+  // on, pulled towards the tenant's own mean while few readers have finished
+  // any of them, so a series two people read does not top the list at 5.0.
+  //
+  // 0 means the series has no figure yet rather than the worst one: nobody has
+  // reacted to it, or the reactions have not reached the daily aggregates the
+  // figure is derived from. A client shows nothing in that case rather than a
+  // zero. Set on the reads where a Series stands for one series a reader
+  // opened, and empty in the lists that carry a series as a link.
+  double rating_average = 19;
+  // How many readers are behind `rating_average`. A reader counts once for the
+  // series however many of its episodes they reacted to, so this is a
+  // headcount and not a count of reactions. It is set and cleared together
+  // with the figure.
+  int64 rating_count = 20;
+  // Which surfaces the series may be shown on. Set on the console's reads;
+  // SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
+  // the catalog has already left out every series the caller may not show.
+  SurfaceAvailability availability = 21;
+  string id = 22;
+}
+
+message Episode {
+  string public_id = 1;
+  string title = 2;
+  int32 order_index = 3;
+  int32 price = 4;
+  int32 reading_period_hours = 5;
+  string status = 6;
+  string scheduled_at = 7;
+  string published_at = 8;
+  // Who this episode is credited to, in role priority order. Every episode
+  // carries its own credits, baked from the series when it was created, so an
+  // artist who took over at episode 12 is on episode 12 onwards and not on the
+  // eleven before it. Set where an Episode stands for one episode a reader or
+  // an editor opened; empty in the lists that carry an episode as a link.
+  repeated Creator creators = 9;
+  // How many readers have rated this episode. Set on the same reads `creators`
+  // is: a rating is given at the end of an episode, so the figure belongs to
+  // the episode a reader opened rather than to every link that names it.
+  //
+  // It counts readers rather than the points they gave, so it means the same
+  // thing whichever press mode the tenant chose. It is the stored tally rather
+  // than a count taken at read time, so the episode read carries one more
+  // column instead of one more scan.
+  int64 rating_count = 10;
+  // Which way the pages are turned, and the zero-based index of the page from
+  // which two pages share a screen: every page before it stands alone. Both are
+  // resolved — the episode's own value where it states one, and its series'
+  // where it does not — so a viewer lays the body out from these two fields
+  // alone. Set on the reads that carry `creators`; READING_DIRECTION_UNSPECIFIED
+  // and 0 in the lists that carry an episode as a link.
+  //
+  // The index may lie past the last page when the series states it for longer
+  // episodes than this one, and the episode is then laid out without a spread.
+  ReadingDirection reading_direction = 11;
+  int32 spread_start_index = 12;
+  // The episode's own availability, and SURFACE_AVAILABILITY_UNSPECIFIED
+  // where it follows its series. Set on the console's reads and unspecified on
+  // the public ones, like Series.availability. It is the override rather than
+  // a resolved value because the series bounds it: an episode is shown only
+  // where its series is too, so a series and an episode naming different
+  // single surfaces leave the episode shown nowhere, which no one value says.
+  SurfaceAvailability availability = 13;
+  // Which surfaces the episode may be bought on, resolved: the episode's own
+  // value, else its series', else the tenant's. Set on GetEpisodeDetail, on
+  // the episodes GetSeriesDetail lists, and on the console's GetEpisode and
+  // the episode writes that answer in its shape; SURFACE_AVAILABILITY_UNSPECIFIED
+  // elsewhere. A client offers the checkout only where this names its own
+  // surface, because StartEpisodeCheckout refuses it anywhere else.
+  SurfaceAvailability purchase_availability = 14;
+  string id = 15;
+}
+
+// Which way the pages of a work are turned. A series states it for every one
+// of its episodes, and an episode may state its own.
+enum ReadingDirection {
+  READING_DIRECTION_UNSPECIFIED = 0;
+  // The reader turns from right to left, the binding of most manga. It is what
+  // a series nobody has set is read in.
+  READING_DIRECTION_RIGHT_TO_LEFT = 1;
+  READING_DIRECTION_LEFT_TO_RIGHT = 2;
+}
+
+message EpisodeImage {
+  string id = 1;
+  string image_url = 2;
+  string content_type = 3;
+  int64 file_size_bytes = 4;
+  int32 display_order = 5;
+  int32 width = 6;
+  int32 height = 7;
+}
+
+// A stored tenant branding image, in the shape the eye-catch images already
+// use. `variant_type` names what the image is for — `logo` or `icon` — the
+// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
+// are the image server's job: it resizes on request from the stored master.
+message TenantImageVariant {
+  string label = 1;
+  string url = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int64 file_size_bytes = 6;
+  string variant_type = 7;
+}
+
+message TenantTheme {
+  // 4 held `logo_url` and 29 held `icon_url`, single URL strings. Both are
+  // stored tenant images now and are carried the way `Series` carries its
+  // eye-catch — variants plus the image's `updated_at` — so the old names are
+  // reserved to keep a client from reading the new values as the old ones.
+  reserved 4, 29;
+  reserved "logo_url", "icon_url";
+
+  string primary_color = 1;
+  string secondary_color = 2;
+  string accent_color = 3;
+  string background_color = 5;
+  string foreground_color = 6;
+  string surface_color = 7;
+  string surface_foreground_color = 8;
+  string card_color = 9;
+  string card_foreground_color = 10;
+  string popover_color = 11;
+  string popover_foreground_color = 12;
+  string primary_foreground_color = 13;
+  string secondary_foreground_color = 14;
+  string accent_foreground_color = 15;
+  string muted_color = 16;
+  string muted_foreground_color = 17;
+  string border_color = 18;
+  string input_color = 19;
+  string ring_color = 20;
+  string success_color = 21;
+  string success_foreground_color = 22;
+  string warning_color = 23;
+  string warning_foreground_color = 24;
+  string destructive_color = 25;
+  string destructive_foreground_color = 26;
+  string info_color = 27;
+  string info_foreground_color = 28;
+  // Tenant icon, uploaded and stored independently from the logo. The
+  // variant list is empty when the tenant has not set one.
+  string icon_image_updated_at = 30;
+  repeated TenantImageVariant icon_image_variants = 31;
+  // Tenant logo. The variant list is empty when the tenant has not set one.
+  string logo_image_updated_at = 32;
+  repeated TenantImageVariant logo_image_variants = 33;
+  // A CSS font-family list for reading text. Empty uses the brief's default stack.
+  string serif_font_family = 34;
+  // A CSS font-family list for interface text. Empty uses the brief's default stack.
+  string sans_font_family = 35;
+}
+
+// A page as seen through one of its translations, which supplies the title and
+// the published version.
+message Page {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string published_version_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+  bool display_in_footer = 7;
+  // The locale of the translation the title and published version come from.
+  // A public read names the one it served, which differs from the one asked
+  // for when the page has no published translation in that locale.
+  string locale = 8;
+}
+
+// One locale's rendering of a page: its title and the version of its own
+// history that is live.
+message PageTranslation {
+  string id = 1;
+  string page_id = 2;
+  string locale = 3;
+  string title = 4;
+  string published_version_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message PageVersion {
+  string id = 1;
+  string page_id = 2;
+  int32 version_number = 3;
+  string content_markdown = 4;
+  string author_user_id = 5;
+  string status = 6;
+  string publish_at = 7;
+  string created_at = 8;
+  string published_at = 9;
+}
+// How comments a reader writes on an episode are published. The tenant states
+// it once (tenant_config.comment_mode) and one series may state its own
+// instead (series_listings.comment_mode), so a storefront deciding whether an
+// episode page offers commenting at all reads the mode of the series it is in.
+enum CommentMode {
+  COMMENT_MODE_UNSPECIFIED = 0;
+  // Commenting is off: the storefront shows no comment section, and posting is
+  // refused. This is what a tenant that has never chosen gets.
+  COMMENT_MODE_DISABLED = 1;
+  // A posted comment is readable by everyone as soon as it is stored.
+  COMMENT_MODE_IMMEDIATE = 2;
+  // A posted comment waits for a staff approval before anyone but its author
+  // can read it.
+  COMMENT_MODE_APPROVAL_REQUIRED = 3;
+}
+
+// The client a public read or write that acts on a work is made from: the
+// catalog, and the reader's own follows, reading history, library, ratings,
+// comments, and views. A work may be withheld from either of them
+// (SurfaceAvailability), and the server answers each one with the works it may
+// show, so the rule lives on the server rather than in two clients filtering a
+// full catalog.
+enum ClientSurface {
+  // Answered as CLIENT_SURFACE_WEB, so a caller that names nothing keeps
+  // seeing what the storefront sees.
+  CLIENT_SURFACE_UNSPECIFIED = 0;
+  // The tenant's web storefront.
+  CLIENT_SURFACE_WEB = 1;
+  // The tenant's mobile app.
+  CLIENT_SURFACE_APP = 2;
+}
+
+// How a tenant's app sells an episode the app may sell
+// (tenant_config.app_purchase_route). Where an episode may be bought at all is
+// SurfaceAvailability; this says only which purchase the app offers for it.
+enum AppPurchaseRoute {
+  // Never answered by a read. A write naming it is rejected: the tenant states
+  // one of the two routes.
+  APP_PURCHASE_ROUTE_UNSPECIFIED = 0;
+  // The web checkout, opened in the system browser. What every tenant sells
+  // through until it chooses otherwise.
+  APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT = 1;
+  // The App Store's or Google Play's own in-app purchase.
+  APP_PURCHASE_ROUTE_STORE = 2;
+}
+
+// Which surfaces a work may be shown on, or an episode bought on.
+//
+// Where a work is shown, a series states it (series.availability) and an
+// episode may narrow it (episodes.availability): an episode is shown only where
+// its series is, so its own value can take it off a surface but never put it on
+// one its series is kept off. A work kept off a surface is absent from every
+// list, search, ranking, and recommendation read that surface makes, and from
+// the reader's own lists read there, and a read or write of it by public ID
+// answers not_found exactly as it does for an unpublished one.
+//
+// Where an episode is bought, the tenant states a default
+// (tenant_config.purchase_availability), and a series and then an episode may
+// each replace the value above it rather than narrow it.
+enum SurfaceAvailability {
+  // On a series write, the default the column carries: both surfaces. On an
+  // episode, following its series.
+  SURFACE_AVAILABILITY_UNSPECIFIED = 0;
+  // The storefront and the app.
+  SURFACE_AVAILABILITY_ALL = 1;
+  // The storefront alone.
+  SURFACE_AVAILABILITY_WEB = 2;
+  // The app alone.
+  SURFACE_AVAILABILITY_APP = 3;
+}
+
+// Which of a tenant's age ratings a reader has to prove an age for
+// (tenant_config.age_verification). The values are the rungs of one ladder
+// rather than a switch per rating: a tenant that gated `r15` while leaving
+// `r18` open would be stating a policy nobody means.
+enum AgeVerification {
+  AGE_VERIFICATION_UNSPECIFIED = 0;
+  // Nothing is proven. A rated series still carries its rating, and a client
+  // still interposes its own confirmation on one, but no birth date is asked
+  // for and none is checked. This is what a tenant that has never chosen gets.
+  AGE_VERIFICATION_NONE = 1;
+  // `r18` series demand a proven 18. `r15` series are left to the client's
+  // confirmation.
+  AGE_VERIFICATION_R18 = 2;
+  // `r15` series demand a proven 15 and `r18` series a proven 18.
+  AGE_VERIFICATION_R15_AND_R18 = 3;
+}
+
+// How long each kind of record that expires is kept before a purge batch
+// deletes it, in whole days. Each value is from 1 to 36500.
+message RetentionPeriods {
+  // A comment its author withdrew, counted from the withdrawal.
+  int32 withdrawn_comment_days = 1;
+  // A raw engagement event, counted from when it occurred.
+  int32 content_event_days = 2;
+  // A daily ranking snapshot, counted from the end of its period. The newest
+  // period is kept whatever its age.
+  int32 daily_ranking_snapshot_days = 3;
+  // A weekly ranking snapshot, counted like a daily one.
+  int32 weekly_ranking_snapshot_days = 4;
+}

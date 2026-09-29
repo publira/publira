@@ -1,0 +1,718 @@
+-- name: BumpUserCredentialsVersion :one
+UPDATE users
+SET credentials_version = credentials_version + 1
+WHERE id = $1
+RETURNING *;
+
+-- name: GetUserByEmailForTenant :one
+SELECT *
+FROM users
+WHERE tenant_id = $1
+    AND email = $2
+LIMIT 1;
+
+-- name: GetUserByID :one
+SELECT *
+FROM users
+WHERE id = $1;
+
+-- name: GetUserByIDForUpdate :one
+SELECT *
+FROM users
+WHERE id = $1
+FOR UPDATE;
+
+-- name: CreateUser :one
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: CreateTenantUserRole :one
+INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: ListTenantUserRoles :many
+SELECT role
+FROM tenant_user_roles
+WHERE user_id = $1
+ORDER BY role;
+
+-- Worker fan-out: every user that holds a tenant_user_roles row is a
+-- tenant admin for that tenant. DISTINCT so one person with two roles
+-- is still one notification.
+-- name: ListTenantAdminIDs :many
+SELECT DISTINCT tur.user_id
+FROM tenant_user_roles tur
+WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
+ORDER BY tur.user_id;
+
+-- name: CountPendingEndUsers :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.status = 'inactive'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    );
+
+-- ListEndUsers lists the end users (the ones that hold no tenant_user_roles
+-- row) in (created_at, id) DESC. Tenant members are left out deliberately:
+-- this result is the complete set behind the platform user list, and the
+-- client does not top it up with ListTenantMembers.
+-- Forward uses the DESC query; backward uses ASC so the index can be scanned
+-- in reverse. The handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListEndUsersDesc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
+FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+    AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
+    AND (
+        sqlc.narg('status')::text IS NULL
+        OR sqlc.narg('status')::text = ''
+        OR u.status = sqlc.narg('status')::text
+    )
+    AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
+    AND (
+        sqlc.narg('tenant_public_id')::text IS NULL
+        OR sqlc.narg('tenant_public_id')::text = ''
+        OR t.public_id = sqlc.narg('tenant_public_id')::text
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEndUsersAsc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
+FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+    AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
+    AND (
+        sqlc.narg('status')::text IS NULL
+        OR sqlc.narg('status')::text = ''
+        OR u.status = sqlc.narg('status')::text
+    )
+    AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
+    AND (
+        sqlc.narg('tenant_public_id')::text IS NULL
+        OR sqlc.narg('tenant_public_id')::text = ''
+        OR t.public_id = sqlc.narg('tenant_public_id')::text
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- Platform ListTenantMembers lists the administrative and editorial users of
+-- a tenant in (created_at, id) DESC. It stays a separate query from admin's
+-- ListTenantUsers because the columns differ: this one also returns the
+-- email and the status, and it carries no search filter.
+-- Forward uses the DESC query; backward uses ASC so the index can be scanned
+-- in reverse. The handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListTenantMembersDesc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantMembersAsc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC
+-- query; backward uses ASC so the index can be scanned in reverse. The
+-- handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- The search filter is applied in SQL. Matching only the single page the
+-- handler has already fetched would drop every matching user that sits on a
+-- later page.
+-- name: ListTenantUsersDesc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.public_id), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantUsersAsc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.public_id), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- Admin ListReaders lists the tenant's readers: its accounts that hold no
+-- tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
+-- through idx_users_tenant_created_at. Forward uses the DESC query; backward
+-- uses ASC, and the handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- The birth date is a NULL placeholder: a list has no use for it, so only the
+-- single read hands it out.
+-- name: ListTenantReadersDesc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    NULL::date AS birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (sqlc.narg('status')::text IS NULL OR u.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantReadersAsc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    NULL::date AS birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (sqlc.narg('status')::text IS NULL OR u.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: GetTenantReaderByPublicID :one
+-- One reader in the shape ListTenantReaders* returns. A staff account and an
+-- account of another tenant are both no rows.
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    u.birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.public_id = sqlc.arg('public_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    );
+
+-- name: GetTenantReaderByID :one
+-- GetTenantReaderByPublicID keyed by the primary key. A staff account and an
+-- account of another tenant are both no rows.
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    u.birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id = sqlc.arg('id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    );
+
+-- name: SuspendTenantReader :one
+-- Suspends a reader and invalidates the sessions they hold. A reader who is
+-- already suspended is no rows, like a staff account and another tenant's.
+UPDATE users
+SET status = 'suspended',
+    credentials_version = credentials_version + 1
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.id = sqlc.arg('id')
+    AND users.status <> 'suspended'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    users.birth_date;
+
+-- name: UnsuspendTenantReader :one
+-- A reader who never confirmed their address goes back to inactive, the state
+-- VerifyUserEmail activates. A reader who is not suspended is no rows.
+UPDATE users
+SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.id = sqlc.arg('id')
+    AND users.status = 'suspended'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    users.birth_date;
+
+-- name: SetTenantReaderBirthDate :one
+-- Sets or clears a reader's birth date past the written-once guard of
+-- SetUserBirthDateByID. Writing the date already stored is no rows, like a
+-- staff account and another tenant's.
+UPDATE users
+SET birth_date = sqlc.narg('birth_date')::date
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.id = sqlc.arg('id')
+    AND users.birth_date IS DISTINCT FROM sqlc.narg('birth_date')::date
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    users.birth_date;
+
+-- name: DeleteTenantReader :one
+-- Hard delete, as DeleteUserByID. A staff account and another tenant's are no
+-- rows.
+DELETE FROM users
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.id = sqlc.arg('id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id;
+
+-- name: ActivateInactiveUserByID :exec
+-- Only an account waiting for its address to be confirmed becomes active, so
+-- confirming the address never lifts a suspension.
+UPDATE users
+SET status = 'active'
+WHERE id = $1
+    AND status = 'inactive';
+
+-- name: DeleteTenantUserRolesByUserID :exec
+DELETE FROM tenant_user_roles
+WHERE user_id = $1;
+
+-- CountOtherActiveTenantAdmins counts the active tenant_admin members of a
+-- tenant other than one user: who is left to sign in to the console once that
+-- user is removed or demoted.
+-- name: CountOtherActiveTenantAdmins :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND u.id <> sqlc.arg('user_id')::uuid
+    AND u.status = 'active'
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+            AND tur.role = 'tenant_admin'
+    );
+
+-- name: GetUserByPublicID :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.public_id = $1
+LIMIT 1;
+
+-- name: GetUserByPublicIDForTenant :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.public_id = $2
+LIMIT 1;
+
+-- name: GetUserByIDForTenant :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+LIMIT 1;
+
+-- name: UnsuspendUserByID :one
+-- A user who never confirmed their address goes back to inactive, the state
+-- VerifyUserEmail activates.
+UPDATE users
+SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserStatusByID :one
+UPDATE users
+SET status = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserEmailVerifiedAtByID :one
+UPDATE users
+SET email_verified_at = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserEmailByID :one
+UPDATE users
+SET email = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserPasswordHashByID :one
+UPDATE users
+SET password_hash = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: TakeOverUnverifiedUserByID :one
+-- Confirms an address nobody had confirmed on the strength of a provider's
+-- verified claim to it. The password goes: whoever set it never proved the
+-- address was theirs, and could otherwise sign in beside its owner.
+UPDATE users
+SET password_hash = NULL,
+    email_verified_at = NOW(),
+    status = CASE
+        WHEN status = 'inactive' THEN 'active'
+        ELSE status
+    END,
+    credentials_version = credentials_version + 1
+WHERE id = sqlc.arg('id')
+    AND email_verified_at IS NULL
+RETURNING *;
+
+-- name: DeleteUserByID :exec
+-- Hard delete. Related rows go with the user wherever the foreign key cascades.
+DELETE FROM users
+WHERE id = $1;
+
+-- name: UpdateUserNameByID :one
+UPDATE users
+SET name = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: SetUserBirthDateByID :one
+-- Written once. The IS NULL guard is what makes that true of two requests that
+-- race as well as of two a reader sends in turn: the second matches no row and
+-- comes back as no rows, which the caller reports as a refusal rather than as
+-- a missing account.
+UPDATE users
+SET birth_date = $2
+WHERE id = $1
+    AND birth_date IS NULL
+RETURNING *;
+
+-- name: GetUserNotificationSettings :one
+SELECT *
+FROM user_notification_settings
+WHERE tenant_id = $1
+    AND user_id = $2
+LIMIT 1;
+
+-- name: UpsertUserNotificationSettings :one
+INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled, updated_at)
+VALUES ($1, $2, $3, NOW())
+ON CONFLICT (user_id) DO UPDATE
+SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: ListTenantUserIDs :many
+-- Worker fan-out: everyone an announcement addressed to the whole tenant
+-- reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
+-- row to — every user the tenant owns — so the bell counts what the
+-- announcements inbox lists rather than a subset of it.
+--
+-- Keyset paging on user_id, because the result grows with the tenant's
+-- readership and the caller writes one row per recipient. The pair is
+-- `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+-- below every UUID, so it is what the first page asks for.
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id > sqlc.arg('after_user_id')
+ORDER BY u.id
+LIMIT sqlc.arg('limit');

@@ -1,0 +1,487 @@
+import type { Locator, Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import {
+  createPageViaUi,
+  fillField,
+  pageFormFields,
+  signInAsSeedAdmin,
+} from "../src/admin";
+import { applyScenarioSql, deletePagesByIds } from "../src/db";
+import { uniqueSuffix } from "../src/scenarios/admin-publish";
+import {
+  MULTI_TENANT_SCENARIO,
+  OTHER_TENANT,
+} from "../src/scenarios/multi-tenant";
+import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+
+const adminUrl = (pathname: string): string =>
+  `${WEB_ADMIN_BASE_URL}${pathname}`;
+
+const hostUrl = (pathname: string): string =>
+  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+
+/**
+ * One row of the workspace's version table, picked by its version cell so
+ * `v1` cannot also select `v10`.
+ */
+const versionRow = (page: Page, versionNumber: number): Locator =>
+  page.getByRole("row").filter({
+    has: page.getByRole("cell", { exact: true, name: `v${versionNumber}` }),
+  });
+
+const versionStatus = (
+  page: Page,
+  versionNumber: number,
+  label: string
+): Locator => versionRow(page, versionNumber).getByText(label, { exact: true });
+
+/** Publish one version from the workspace's version table. */
+const publishVersion = async (
+  page: Page,
+  versionNumber: number
+): Promise<void> => {
+  await versionRow(page, versionNumber)
+    .getByRole("button", { name: "Publish" })
+    .click();
+  await expect(versionStatus(page, versionNumber, "Published")).toBeVisible({
+    timeout: 30_000,
+  });
+};
+
+/** The public site's footer link list, named by its `aria-label`. */
+const footerLinks = (page: Page): Locator =>
+  page.getByRole("navigation", { name: "Footer links" });
+
+/**
+ * Read the public URL until it shows `title` as its heading.
+ *
+ * Publishing a version and renaming a page both drop the tenant's page cache
+ * tags, and the admin API asks web-host to do that out of band from the
+ * redirect the console has already followed. So the public read is a poll
+ * rather than a single request after a fixed wait.
+ */
+const expectPublicPageHeading = async (
+  page: Page,
+  pathname: string,
+  title: string
+): Promise<void> => {
+  await expect(async () => {
+    await page.goto(hostUrl(pathname));
+    await expect(
+      page.getByRole("heading", { level: 1, name: title })
+    ).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 60_000 });
+};
+
+/**
+ * Published page management: the console screens under `/pages` and the public
+ * page they put up at `/page/[...slug]` on the same tenant's web-host.
+ *
+ * `apps/web-host/lib/published-page-path.ts` and its unit test hold the
+ * path-matching rules, and the reserved slugs live in `server/internal/pageslug`;
+ * this is their end-to-end counterpart, not a replacement.
+ *
+ * Every page is created through the console with a unique slug and deleted in
+ * `afterEach`, so `task e2e:test` against a long-lived stack neither depends on
+ * nor accumulates rows.
+ */
+test.describe("admin published pages", () => {
+  /** Page uuids created by the current test; drained by afterEach. */
+  let createdPageIds: string[] = [];
+
+  test.beforeEach(async ({ page }) => {
+    createdPageIds = [];
+    await signInAsSeedAdmin(page, "/pages");
+  });
+
+  test.afterEach(() => {
+    deletePagesByIds(createdPageIds);
+    createdPageIds = [];
+  });
+
+  const trackPage = (pageId: string): string => {
+    createdPageIds.push(pageId);
+    return pageId;
+  };
+
+  test("creates a page as a draft the public site does not serve", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Draft Page ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## Draft\n\nDraft body ${suffix}`,
+        slug,
+        title,
+      })
+    );
+
+    await expect(page).toHaveURL(new RegExp(`/pages/${pageId}`, "u"));
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible();
+
+    // The list row says the same thing about the page it links to.
+    await page.goto(adminUrl("/pages"));
+    await expect(
+      page.locator("tr", { hasText: title }).getByText("Draft", { exact: true })
+    ).toBeVisible();
+
+    // No published page has the slug, so the path goes to the app's routes and
+    // matches none of them.
+    const response = await page.goto(hostUrl(slug));
+    expect(response?.status(), await page.content()).toBe(404);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
+  });
+
+  test("publishing a version makes the page reachable on the tenant's web-host", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Published Page ${suffix}`;
+    const body = `Published body ${suffix}`;
+
+    trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## Heading\n\n${body}`,
+        slug,
+        title,
+      })
+    );
+
+    await publishVersion(page, 1);
+
+    await expectPublicPageHeading(page, slug, title);
+    await expect(page.getByText(body)).toBeVisible();
+  });
+
+  test("unpublishing takes the page off the public site and out of the footer", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Unpublished Page ${suffix}`;
+    const body = `Unpublished body ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## Heading\n\n${body}`,
+        displayInFooter: true,
+        slug,
+        title,
+      })
+    );
+
+    await publishVersion(page, 1);
+    await expectPublicPageHeading(page, slug, title);
+    await expect(
+      footerLinks(page).getByRole("link", { name: title })
+    ).toBeVisible();
+
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await page.getByRole("button", { exact: true, name: "Unpublish" }).click();
+    // The version is kept and says so: it is the page's pointer that was cleared.
+    await expect(versionStatus(page, 1, "Previously published")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("button", { exact: true, name: "Unpublish" })
+    ).toHaveCount(0);
+
+    // The page's own URL and the footer link both come off the same cache tags.
+    await expect(async () => {
+      await page.goto(hostUrl(slug));
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Page not found" })
+      ).toBeVisible({ timeout: 5000 });
+      await expect(
+        footerLinks(page).getByRole("link", { name: title })
+      ).toHaveCount(0);
+    }).toPass({ timeout: 60_000 });
+
+    // Nothing about the body had to be entered again to put it back up.
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await publishVersion(page, 1);
+    await expectPublicPageHeading(page, slug, title);
+    await expect(page.getByText(body)).toBeVisible();
+  });
+
+  test("editing the title and the body reaches the public page", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Edited Page ${suffix}`;
+    const body = `First body ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## First version\n\n${body}`,
+        slug,
+        title,
+      })
+    );
+
+    await publishVersion(page, 1);
+    await expectPublicPageHeading(page, slug, title);
+
+    // The title lives on the page rather than on a version, so renaming it
+    // changes the public page without publishing anything — and the one save
+    // control writes it without adding a version that repeats the same body.
+    const editedTitle = `${title} (edited)`;
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    const titleField = page.getByRole("textbox", { name: "Title" });
+    await fillField(titleField, editedTitle);
+    await page.getByRole("button", { name: "Save page" }).click();
+    // The toast is what says the Action finished. The field cannot say it —
+    // `fillField` already put the text there, so asserting on it passes while
+    // the request is still in flight, and the navigation below would then
+    // cancel the very save it is meant to read back on the public page.
+    // FlashToast strips `?saved=1` via a client replace, so the URL cannot say
+    // it either.
+    await expect(page.getByText("Page saved.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(titleField).toHaveValue(editedTitle);
+    await expect(versionRow(page, 2)).toHaveCount(0);
+
+    await expectPublicPageHeading(page, slug, editedTitle);
+
+    // The body does live on a version: the same control saves it as a draft,
+    // and only publishing that draft moves the public page.
+    const editedBody = `Revised body ${suffix}`;
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await fillField(
+      page.getByRole("textbox", { name: "Content" }),
+      `## Revision\n\n${editedBody}`
+    );
+    // The preview tab renders what is in the editor, before any of it is
+    // saved. It is asserted through the rendered heading: the body text is
+    // also the editor's own value, which `getByText` would match as well.
+    await page.getByRole("tab", { name: "Preview" }).click();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Revision" })
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Save page" }).click();
+    await expect(versionStatus(page, 2, "Draft")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.goto(hostUrl(slug));
+    await expect(page.getByText(body)).toBeVisible();
+    await expect(page.getByText(editedBody)).toHaveCount(0);
+
+    await page.goto(adminUrl(`/pages/${pageId}`));
+    await publishVersion(page, 2);
+
+    await expect(async () => {
+      await page.goto(hostUrl(slug));
+      await expect(page.getByText(editedBody)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 60_000 });
+    await expect(page.getByText(body)).toHaveCount(0);
+  });
+
+  test("a translation in another language keeps its own title, history, and publication", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Translated Page ${suffix}`;
+    const translatedTitle = `E2E 翻訳ページ ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## English\n\nEnglish body ${suffix}`,
+        slug,
+        title,
+      })
+    );
+
+    // The seed tenant's default locale is English, so the page starts with
+    // that one translation and every other locale is waiting to be added.
+    const languages = page.getByRole("navigation", { name: "Languages" });
+    await expect(
+      languages.getByRole("link", { exact: true, name: "English" })
+    ).toHaveAttribute("aria-current", "page");
+    await languages.getByRole("link", { name: /^日本語/u }).click();
+    await expect(
+      page.getByRole("heading", { name: "No 日本語 translation yet" })
+    ).toBeVisible();
+
+    await fillField(
+      page.getByRole("textbox", { name: "Title" }),
+      translatedTitle
+    );
+    await page.getByRole("button", { name: "Add translation" }).click();
+    await expect(page.getByText("Translation added.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      translatedTitle
+    );
+    await expect(
+      page.getByText("No versions yet.", { exact: false })
+    ).toBeVisible();
+
+    await fillField(
+      page.getByRole("textbox", { name: "Content" }),
+      `## 日本語\n\n日本語の本文 ${suffix}`
+    );
+    await page.getByRole("button", { name: "Save page" }).click();
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible({
+      timeout: 30_000,
+    });
+    await publishVersion(page, 1);
+
+    // The English translation is untouched: its title, its single version,
+    // and that version still a draft.
+    await languages.getByRole("link", { exact: true, name: "English" }).click();
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      title
+    );
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible();
+    await expect(versionRow(page, 2)).toHaveCount(0);
+
+    // Deleting the Japanese translation leaves the page with its English one.
+    await page.goto(adminUrl(`/pages/${pageId}?locale=ja`));
+    await page.getByRole("button", { name: "Delete this translation" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await expect(page.getByText("Translation deleted.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      title
+    );
+    await expect(
+      languages.getByRole("link", { name: /^日本語\s?\(not added\)$/u })
+    ).toBeVisible();
+    // The last translation offers no deletion at all.
+    await expect(
+      page.getByRole("button", { name: "Delete this translation" })
+    ).toHaveCount(0);
+  });
+
+  test("a slug that collides with an existing page is refused", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+
+    trackPage(
+      await createPageViaUi(page, { slug, title: `E2E Slug Owner ${suffix}` })
+    );
+
+    await page.goto(adminUrl("/pages/new"));
+    const fields = pageFormFields(page);
+    await fillField(fields.slug, slug);
+    await fillField(fields.title, `E2E Slug Duplicate ${suffix}`);
+    await page.getByRole("button", { name: "Create page" }).click();
+
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "A page with the same slug already exists" })
+    ).toBeVisible();
+    // Still on the create form — no redirect, and no second page.
+    await expect(page).toHaveURL(/\/pages\/new/u);
+  });
+
+  test("a page is served at a path the site also routes, and its footer link leads there", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    // `/series/<id>` is the series screen's route, so without the page this
+    // path is that screen answering "not found". A unique id keeps the page off
+    // every path another spec reads while it runs.
+    const slug = `/series/e2e-page-${suffix}`;
+    const title = `E2E Series Path Page ${suffix}`;
+    const body = `Served in place of the series screen ${suffix}`;
+
+    trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: body,
+        displayInFooter: true,
+        slug,
+        title,
+      })
+    );
+    await publishVersion(page, 1);
+
+    await expectPublicPageHeading(page, slug, title);
+    await expect(page.getByText(body)).toBeVisible();
+
+    await page.goto(hostUrl("/"));
+    await footerLinks(page).getByRole("link", { name: title }).click();
+    await expect(page).toHaveURL(new RegExp(`${slug}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: title })
+    ).toBeVisible();
+  });
+
+  test("a slug that would take over the sign-in screen is refused beside the field", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+
+    await page.goto(adminUrl("/pages/new"));
+    const fields = pageFormFields(page);
+    await fillField(fields.slug, "/login");
+    await fillField(fields.title, `E2E Reserved Slug ${suffix}`);
+    await page.getByRole("button", { name: "Create page" }).click();
+
+    await expect(
+      page.getByText(
+        "The site keeps this path for signing in, signing up, the links in its emails, or account settings."
+      )
+    ).toBeVisible();
+    await expect(fields.slug).toHaveAttribute("aria-invalid", "true");
+    await expect(page).toHaveURL(/\/pages\/new/u);
+  });
+
+  test("a slug the site answers as a locale prefix is refused beside the field", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+
+    await page.goto(adminUrl("/pages/new"));
+    const fields = pageFormFields(page);
+    await fillField(fields.slug, "/ja");
+    await fillField(fields.title, `E2E Locale Slug ${suffix}`);
+    await page.getByRole("button", { name: "Create page" }).click();
+
+    await expect(
+      page.getByText(
+        "The site answers this path itself, as a language prefix, its API, or a health check, before it looks for a page."
+      )
+    ).toBeVisible();
+    await expect(fields.slug).toHaveAttribute("aria-invalid", "true");
+    await expect(page).toHaveURL(/\/pages\/new/u);
+  });
+
+  test("another tenant's page is not found in the edit screen", async ({
+    page,
+  }) => {
+    applyScenarioSql(MULTI_TENANT_SCENARIO);
+
+    const response = await page.goto(
+      adminUrl(`/pages/${OTHER_TENANT.page.id}`)
+    );
+    // Cache Components commits the shell with 200. What renders below it is the
+    // console not-found page, never the foreign page's workspace.
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
+    await expect(page.getByText(OTHER_TENANT.page.title)).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Content" })).toHaveCount(0);
+  });
+});

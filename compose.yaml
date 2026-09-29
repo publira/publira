@@ -1,0 +1,121 @@
+# Dependency services for local development: PostgreSQL, Valkey (Redis
+# protocol), RustFS (S3), Mailpit, and Jaeger, and the Traefik edge in front of
+# a host-side `task dev`.
+#
+# `docker compose up -d` from the repository root brings the whole stack up and
+# publishes every port on 127.0.0.1, so `task dev` also works for a developer
+# who does not use the Dev Container.
+#
+# The Dev Container layers `.devcontainer/compose.yaml` on top of this file
+# (`dockerComposeFile` in devcontainer.json). That overlay adds `app`, points
+# `traefik` at it, and resets the published ports below, because a container
+# reaches these services by service name.
+#
+# Loopback only, like `e2e/compose.yaml`: none of these services authenticates
+# a caller, so a bare `<port>:<port>` would hand the whole dev stack to anyone
+# on the same network.
+#
+# Deliberately no `name:`. A merged `name` outranks every other source, so it
+# would collapse the per-worktree project names (derived from the directory of
+# the first compose file) into a single shared project.
+
+services:
+  db:
+    image: postgres:18.6-alpine3.23@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: publira
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  # Trace collector and UI for the Go servers. All-in-one, in memory: the
+  # spans are a debugging aid for the current session, not a record worth
+  # surviving a restart.
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
+    restart: unless-stopped
+    ports:
+      # OTLP intake (http/protobuf, the protocol the SDKs are configured for)
+      # and the query UI.
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:16686:16686"
+
+  # SMTP sink and UI for the mail the app sends. `MP_DATABASE` is what makes
+  # the mailbox a file instead of the temporary one Mailpit deletes on exit,
+  # so a message stays readable across a restart or a Dev Container rebuild.
+  mailpit:
+    image: axllent/mailpit:v1.31.3@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      # SMTP intake and the web UI.
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpit-data:/data
+
+  # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
+  # Valkey is Redis-protocol compatible; keep service name / PUBLIRA_REDIS_URL as redis://...
+  redis:
+    image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # S3-compatible local object storage (RustFS).
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: publira
+      RUSTFS_SECRET_KEY: publirapass
+    ports:
+      # S3 endpoint and the console UI.
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # The edge in front of a host-side `task dev`: the three apps and the images
+  # under one origin on `localhost:3080`, as in the Dev Container, routed by the
+  # committed infra/proxy/traefik/dynamic with the host's backend addresses.
+  traefik:
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    restart: unless-stopped
+    command:
+      - "--entrypoints.web.address=:3080"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+    environment:
+      # Where services.yaml sends every backend: the host's processes.
+      PUBLIRA_EDGE_BACKEND_HOST: host.docker.internal
+    # Docker Desktop resolves host.docker.internal itself; Docker Engine on
+    # Linux resolves it through this mapping.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3080:3080"
+    volumes:
+      - ./infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+
+volumes:
+  mailpit-data:
+  postgres-data:
+  rustfs-data:

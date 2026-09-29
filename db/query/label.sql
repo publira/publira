@@ -1,0 +1,402 @@
+-- name: GetPublishedLabelByPublicID :one
+-- Returns a label of the tenant that label_surfaces puts on the surface. The
+-- row comes back even when the label has no published series, because a label
+-- has no unpublished state of its own. A label that does not exist, one of
+-- another tenant, and one whose published series are all kept off the surface
+-- return no row.
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    ) AS published_series_count
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.public_id = sqlc.arg('public_id')
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = l.id
+            AND ls.surface = sqlc.arg('surface')::text
+    )
+LIMIT 1;
+
+-- name: GetLabelByPublicIDForTenant :one
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.public_id = $2
+LIMIT 1;
+
+-- name: GetLabelByIDForTenant :one
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.id = $2
+LIMIT 1;
+
+-- name: CreateLabelImage :one
+INSERT INTO label_images (
+        id,
+        tenant_id,
+        label_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING *;
+
+-- name: CreateLabelImageVariant :one
+INSERT INTO label_image_variants (
+        id,
+        tenant_id,
+        label_image_id,
+        variant_type,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING *;
+
+-- name: GetLabelImageVariantByTypeAndWidthForTenant :one
+SELECT liv.object_key,
+    liv.content_type
+FROM label_image_variants liv
+JOIN label_images li ON li.id = liv.label_image_id
+WHERE liv.label_image_id = $1
+    AND li.tenant_id = $2
+    AND liv.variant_type = $3
+    AND liv.width = $4
+LIMIT 1;
+
+-- name: ListLabelImageVariantsByImageIDs :many
+SELECT id,
+    label_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM label_image_variants
+WHERE label_image_id = ANY(@image_ids::uuid[])
+ORDER BY label_image_id,
+    variant_type,
+    width;
+
+-- name: LockLabelByIDForTenant :one
+-- Lock the label row so concurrent eye-catch writes serialize, the way
+-- LockSeriesByPublicIDForTenant does for a series. The read of the row's
+-- current eye_catch_image_id has to be a separate statement: READ COMMITTED
+-- freezes this statement's snapshot before it waits for the lock.
+SELECT id
+FROM labels
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE;
+
+-- name: TouchLabelImage :exec
+-- Records that the eye-catch changed after one of its ratios was replaced.
+UPDATE label_images
+SET updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteLabelImageVariantsByType :execrows
+-- Clears one aspect ratio of an eye-catch, like the series query above.
+DELETE FROM label_image_variants
+WHERE label_image_id = $1
+    AND variant_type = $2;
+
+-- Admin ListLabels is (created_at, id) DESC. Forward uses the DESC query;
+-- backward uses ASC so the index can be scanned in reverse. The handler flips
+-- ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListLabelsByTenantDesc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at DESC, labels.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListLabelsByTenantAsc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at ASC, labels.id ASC
+LIMIT sqlc.arg('limit');
+
+-- The public ListPublishedLabels keeps the order of the admin pair above and
+-- adds the calling surface, which the console does not have.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedLabelsDesc :many
+SELECT labels.id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = labels.id
+            AND ls.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at DESC, labels.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedLabelsAsc :many
+-- The backward direction of ListPublishedLabelsDesc.
+SELECT labels.id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = labels.id
+            AND ls.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at ASC, labels.id ASC
+LIMIT sqlc.arg('limit');
+
+-- The SQL catalog search backend's label search orders by name instead of
+-- creation, so it takes its own pair of queries rather than the
+-- ListPublishedLabels* pair above. A search backend answers with ids, so this
+-- is stage one and ListPublishedLabelsByIDs is stage two; the name comes along
+-- because the next token is built from it.
+-- Unlike GetPublishedLabelDetail, which answers for a label whose last series
+-- was taken down so a shared URL stays valid, a search hit has to have
+-- something behind it, hence the EXISTS.
+-- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+-- with ESCAPE '!'. ILIKE '%q%' cannot ride a btree, so the scan is sequential
+-- once the tenant has been narrowed, the same trade the series search makes.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedLabelsBySearchNameAsc :many
+SELECT l.id,
+    l.name
+FROM labels l
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) >= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) > (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY l.name ASC,
+    l.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedLabelsBySearchNameDesc :many
+-- The backward direction of ListPublishedLabelsBySearchNameAsc.
+SELECT l.id,
+    l.name
+FROM labels l
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) <= (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (l.name, l.id) < (
+                sqlc.narg('cursor_name')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY l.name DESC,
+    l.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedLabelsByIDs :many
+-- Stage two of the label search. It checks for a published series again
+-- because stage one may come from a search index that lags behind an
+-- unpublish. No ORDER BY: the caller sorts the rows into stage one's id order.
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.id = ANY(sqlc.arg('ids')::uuid [])
+    AND EXISTS (
+        SELECT 1
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    );
+
+-- name: CreateLabel :one
+INSERT INTO labels (
+        id,
+        tenant_id,
+        public_id,
+        name,
+        eye_catch_image_id
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: UpdateLabel :exec
+UPDATE labels
+SET name = $2,
+    eye_catch_image_id = $3
+WHERE id = $1;

@@ -1,0 +1,162 @@
+{
+  "name": "@publira/ui-components",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./action-form": {
+      "types": "./dist/action-form/index.d.mts",
+      "default": "./dist/action-form/index.mjs"
+    },
+    "./badge": {
+      "types": "./dist/badge/index.d.mts",
+      "default": "./dist/badge/index.mjs"
+    },
+    "./button": {
+      "types": "./dist/button/index.d.mts",
+      "default": "./dist/button/index.mjs"
+    },
+    "./card": {
+      "types": "./dist/card/index.d.mts",
+      "default": "./dist/card/index.mjs"
+    },
+    "./checkbox": {
+      "types": "./dist/checkbox/index.d.mts",
+      "default": "./dist/checkbox/index.mjs"
+    },
+    "./combobox": {
+      "types": "./dist/combobox/index.d.mts",
+      "default": "./dist/combobox/index.mjs"
+    },
+    "./dialog": {
+      "types": "./dist/dialog/index.d.mts",
+      "default": "./dist/dialog/index.mjs"
+    },
+    "./empty-state": {
+      "types": "./dist/empty-state/index.d.mts",
+      "default": "./dist/empty-state/index.mjs"
+    },
+    "./field": {
+      "types": "./dist/field/index.d.mts",
+      "default": "./dist/field/index.mjs"
+    },
+    "./fieldset": {
+      "types": "./dist/fieldset/index.d.mts",
+      "default": "./dist/fieldset/index.mjs"
+    },
+    "./figure-line": {
+      "types": "./dist/figure-line/index.d.mts",
+      "default": "./dist/figure-line/index.mjs"
+    },
+    "./form-actions": {
+      "types": "./dist/form-actions/index.d.mts",
+      "default": "./dist/form-actions/index.mjs"
+    },
+    "./form-message": {
+      "types": "./dist/form-message/index.d.mts",
+      "default": "./dist/form-message/index.mjs"
+    },
+    "./identifier": {
+      "types": "./dist/identifier/index.d.mts",
+      "default": "./dist/identifier/index.mjs"
+    },
+    "./input": {
+      "types": "./dist/input/index.d.mts",
+      "default": "./dist/input/index.mjs"
+    },
+    "./offline-notice": {
+      "types": "./dist/offline-notice/index.d.mts",
+      "default": "./dist/offline-notice/index.mjs"
+    },
+    "./popover": {
+      "types": "./dist/popover/index.d.mts",
+      "default": "./dist/popover/index.mjs"
+    },
+    "./locale-switcher": {
+      "types": "./dist/locale-switcher/index.d.mts",
+      "default": "./dist/locale-switcher/index.mjs"
+    },
+    "./qr-code": {
+      "types": "./dist/qr-code/index.d.mts",
+      "default": "./dist/qr-code/index.mjs"
+    },
+    "./radio-group": {
+      "types": "./dist/radio-group/index.d.mts",
+      "default": "./dist/radio-group/index.mjs"
+    },
+    "./section-error": {
+      "types": "./dist/section-error/index.d.mts",
+      "default": "./dist/section-error/index.mjs"
+    },
+    "./section-error-fallback": {
+      "types": "./dist/section-error-fallback/index.d.mts",
+      "default": "./dist/section-error-fallback/index.mjs"
+    },
+    "./select": {
+      "types": "./dist/select/index.d.mts",
+      "default": "./dist/select/index.mjs"
+    },
+    "./skeleton": {
+      "types": "./dist/skeleton/index.d.mts",
+      "default": "./dist/skeleton/index.mjs"
+    },
+    "./switch": {
+      "types": "./dist/switch/index.d.mts",
+      "default": "./dist/switch/index.mjs"
+    },
+    "./table": {
+      "types": "./dist/table/index.d.mts",
+      "default": "./dist/table/index.mjs"
+    },
+    "./tabs": {
+      "types": "./dist/tabs/index.d.mts",
+      "default": "./dist/tabs/index.mjs"
+    },
+    "./textarea": {
+      "types": "./dist/textarea/index.d.mts",
+      "default": "./dist/textarea/index.mjs"
+    },
+    "./toast": {
+      "types": "./dist/toast/index.d.mts",
+      "default": "./dist/toast/index.mjs"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@publira/icons": "workspace:*",
+    "@publira/utils": "workspace:*",
+    "class-variance-authority": "0.7.1",
+    "uqr": "0.1.3"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@publira/tsdown-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "next": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^16.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

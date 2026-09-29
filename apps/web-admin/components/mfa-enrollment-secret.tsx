@@ -1,0 +1,61 @@
+"use client";
+
+import { QrCode } from "@publira/ui-components/qr-code";
+import type { QrCodePath } from "@publira/ui-components/qr-code";
+
+import { ClientMessage, useClientMessages } from "#components/client-message";
+
+interface MfaEnrollmentSecretProps {
+  qr: QrCodePath;
+  secret: string;
+}
+
+/**
+ * What an authenticator app needs to add the account: the code to scan, and
+ * the same secret in the form that can be typed in when a camera is not an
+ * option.
+ */
+export const MfaEnrollmentSecret = ({
+  qr,
+  secret,
+}: MfaEnrollmentSecretProps) => {
+  const t = useClientMessages();
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-1">
+        <p className="text-sm font-medium text-foreground">
+          <ClientMessage message="admin.auth.mfa.enroll_scan_title" />
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.auth.mfa.enroll_scan_description" />
+        </p>
+      </div>
+
+      <div className="flex justify-center">
+        <QrCode
+          aria-label={t("admin.auth.mfa.enroll_qr_label")}
+          path={qr.path}
+          size={qr.size}
+        />
+      </div>
+
+      <div className="grid gap-1">
+        <p className="text-sm font-medium text-foreground">
+          <ClientMessage message="admin.auth.mfa.enroll_secret_label" />
+        </p>
+        {/*
+          The secret is typed into an authenticator by hand when the QR code
+          cannot be scanned, so it is set in the monospace face that keeps its
+          ambiguous characters apart.
+        */}
+        <code className="block font-mono text-sm tracking-wider break-all text-foreground">
+          {secret}
+        </code>
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.auth.mfa.enroll_secret_help" />
+        </p>
+      </div>
+    </div>
+  );
+};

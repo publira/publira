@@ -1,0 +1,591 @@
+import type { Label } from "@publira/api-client/admin/types";
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
+import { z } from "zod";
+
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
+import { apiClient, withSessionHeaders } from "./api";
+import type { CropRect } from "./crop-rect";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
+import {
+  mentionsAspectImageRejection,
+  mentionsImageRejection,
+  mentionsStorageNotConfigured,
+} from "./image-rejection";
+import { getMessagesFor } from "./messages";
+import { getAccessToken } from "./session";
+
+export interface LabelItem {
+  /** The primary key an edit addresses the label by. */
+  id: string;
+  publicId: string;
+  name: string;
+  eyeCatchImageUpdatedAt: string;
+  eyeCatchImageVariants: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
+}
+
+export type ListLabelsResult = CursorPageTokens &
+  (
+    | { ok: true; labels: LabelItem[] }
+    | {
+        ok: false;
+        message: string;
+        labels: LabelItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
+      }
+  );
+
+export type CreateLabelResult =
+  | { ok: true; label: LabelItem }
+  | { ok: false; message: string };
+
+export type UpdateLabelResult =
+  | { ok: true; label: LabelItem }
+  | { ok: false; message: string };
+
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing label from
+ * another tenant's label would leak whether it exists.
+ *
+ * The flag exists because `getLabel()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller.
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
+export type GetLabelResult =
+  | { ok: true; label: LabelItem }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
+
+const invalidArgumentMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return mentionsImageRejection(error)
+    ? t("admin.labels.image_invalid")
+    : t("errors.rpc.invalid-argument");
+};
+
+const mapErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      "invalid-argument": await invalidArgumentMessage(error, locale),
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
+  });
+};
+
+/** The generated `Label` fields {@link mapLabel} reads (see `series.ts`). */
+type RawLabel = Pick<
+  Label,
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "id"
+  | "name"
+  | "publicId"
+>;
+
+const mapLabel = (label: RawLabel): LabelItem => ({
+  eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt ?? "",
+  eyeCatchImageVariants: (label.eyeCatchImageVariants ?? []).flatMap(
+    (variant) => {
+      const mappedVariant = {
+        contentType: variant.contentType ?? "",
+        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+        height: variant.height ?? 0,
+        label: variant.label ?? "",
+        url: variant.url ?? "",
+        variantType: variant.variantType ?? "",
+        width: variant.width ?? 0,
+      };
+      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+        ? [mappedVariant]
+        : [];
+    }
+  ),
+  id: label.id,
+  name: label.name,
+  publicId: label.publicId,
+});
+
+const listLabelsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions,
+  sessionId: string
+): Promise<ListLabelsResult> => {
+  "use cache: private";
+  cacheTag(`labels-${tenantId}`);
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.label.listLabels(
+      {
+        ...cursorPageRequest(options),
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ...cursorPageTokens(response),
+      labels: (response.labels ?? []).map((item) => mapLabel(item)),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * One page of the tenant's labels, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
+export const listLabels = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListLabelsResult> =>
+  listLabelsForSession(tenantId, locale, options, await getAccessToken());
+
+const listAllLabelsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<ListLabelsResult> => {
+  "use cache: private";
+  cacheTag(`labels-${tenantId}`);
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const labels: LabelItem[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.label.listLabels(
+          {
+            limit,
+            tenant: { tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.labels ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          labels.push(mapLabel(item));
+        }
+      }
+    );
+
+    // Match listAllCreators / episode reorder: never hand the form a partial
+    // option list that looks complete.
+    if (walkStop !== "completed") {
+      dropFailedCacheEntry();
+      return {
+        ...emptyCursorPageTokens,
+        labels: [],
+        message: t("admin.labels.list_failed"),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return {
+      ...emptyCursorPageTokens,
+      labels: labels.toSorted((a, b) =>
+        a.name.localeCompare(b.name, toIntlLocale(locale))
+      ),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * Every label in the tenant for combobox pickers (series form, etc.).
+ *
+ * Walks `ListLabels` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/labels` list keeps {@link listLabels}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by name for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide labels beyond the rows already read.
+ */
+export const listAllLabels = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListLabelsResult> =>
+  listAllLabelsForSession(tenantId, locale, await getAccessToken());
+
+export const createLabel = async (
+  input: {
+    tenantId: string;
+    name: string;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale
+): Promise<CreateLabelResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.label.createLabel(
+      {
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
+        name: input.name,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.label?.id?.trim()) {
+      return {
+        message: t("admin.labels.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      label: mapLabel(response.label),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const updateLabel = async (
+  input: {
+    tenantId: string;
+    id: string;
+    name: string;
+    clearEyeCatchImage?: boolean;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
+  locale: Locale
+): Promise<UpdateLabelResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.label.updateLabel(
+      {
+        clearEyeCatchImage: input.clearEyeCatchImage,
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
+        labelId: input.id,
+        name: input.name,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.label?.id?.trim()) {
+      return {
+        message: t("admin.labels.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      label: mapLabel(response.label),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+const getLabelInputSchema = z.object({
+  publicId: z.string().trim().min(1).max(255),
+  tenantId: z.string().trim().min(1).max(255),
+});
+
+const getLabelForSession = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<GetLabelResult> => {
+  "use cache: private";
+  const parsed = getLabelInputSchema.safeParse(input);
+  if (!parsed.success) {
+    // Same notFound as a missing / other-tenant label: the URL is not a
+    // resource, and wording that said "malformed" would only help an
+    // attacker probe which strings the server accepts.
+    return { notFound: true, ok: false };
+  }
+
+  cacheTag(`labels-${parsed.data.tenantId}`);
+  cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.label.getLabel(
+      {
+        publicId: parsed.data.publicId,
+        tenant: { tenantId: parsed.data.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.label?.publicId?.trim()) {
+      dropFailedCacheEntry();
+      return {
+        message: t("admin.labels.list_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      label: mapLabel(response.label),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
+    dropFailedCacheEntry();
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export const getLabel = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale
+): Promise<GetLabelResult> =>
+  getLabelForSession(input, locale, await getAccessToken());
+
+export type LabelEyeCatchAspectResult =
+  | { ok: true; label: LabelItem }
+  /**
+   * The API refused the image itself. It carries no message: the minimum to
+   * name is the one of the ratio that was refused, and only the slot that
+   * submitted knows which ratio that is and what size it asks for.
+   */
+  | { ok: false; imageRejected: true }
+  | { ok: false; message: string };
+
+/**
+ * Replaces the image of one aspect ratio of the label eye-catch. The other
+ * ratios keep the images they already hold, so the eye-catch has to exist
+ * before one ratio can be swapped on its own.
+ */
+export const uploadLabelEyeCatchAspectImage = async (
+  input: {
+    tenantId: string;
+    id: string;
+    variantType: string;
+    imageContentType?: string;
+    imageData: Uint8Array;
+    /** Where in the upload the cut is taken; omitted, the API centres it. */
+    crop?: CropRect;
+  },
+  locale: Locale
+): Promise<LabelEyeCatchAspectResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.label.uploadLabelEyeCatchAspectImage(
+      {
+        crop: input.crop,
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        labelId: input.id,
+        tenant: { tenantId: input.tenantId },
+        variantType: input.variantType,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.label?.id?.trim()) {
+      return {
+        message: t("admin.labels.save_failed"),
+        ok: false,
+      };
+    }
+
+    return { label: mapLabel(response.label), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    if (mentionsAspectImageRejection(error)) {
+      return { imageRejected: true, ok: false };
+    }
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};

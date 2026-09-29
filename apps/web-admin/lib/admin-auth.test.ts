@@ -1,0 +1,507 @@
+import { MfaChallengeKind } from "@publira/api-client/admin/auth";
+import { Code, ConnectError } from "@publira/api-client/errors";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  acceptTenantAdminInvitation,
+  confirmAdminPasswordReset,
+  getAdminCurrentUser,
+  getTenantAdminInvitationState,
+  isAdminSessionValid,
+  isTenantAdminRole,
+  loginAdmin,
+  requestAdminPasswordReset,
+} from "./admin-auth";
+
+const {
+  mockAcceptTenantAdminInvitation,
+  mockCacheLife,
+  mockConfirmPasswordReset,
+  mockGetMe,
+  mockGetAccessToken,
+  mockGetTenantAdminInvitationState,
+  mockLogin,
+  mockRequestPasswordReset,
+} = vi.hoisted(() => ({
+  mockAcceptTenantAdminInvitation: vi.fn(),
+  mockCacheLife: vi.fn(),
+  mockConfirmPasswordReset: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetMe: vi.fn(),
+  mockGetTenantAdminInvitationState: vi.fn(),
+  mockLogin: vi.fn(),
+  mockRequestPasswordReset: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: () =>
+    Promise.resolve(new Headers({ "x-forwarded-for": "203.0.113.7" })),
+}));
+
+vi.mock("./session", () => ({
+  getAccessToken: mockGetAccessToken,
+}));
+
+vi.mock("@publira/api-client/admin/client", () => ({
+  createAdminApiClient: () => ({
+    auth: {
+      acceptTenantAdminInvitation: mockAcceptTenantAdminInvitation,
+      confirmPasswordReset: mockConfirmPasswordReset,
+      createSession: vi.fn(),
+      deleteSession: vi.fn(),
+      getMe: mockGetMe,
+      getTenantAdminInvitationState: mockGetTenantAdminInvitationState,
+      login: mockLogin,
+      requestPasswordReset: mockRequestPasswordReset,
+    },
+  }),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetAccessToken.mockResolvedValue("valid-token");
+});
+
+describe("loginAdmin", () => {
+  const credentials = ["admin@example.com", "hunter2", "tenant_001"] as const;
+
+  it("reports the session a password alone finished the login with", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2026-09-03T00:00:00Z", token: "session" },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toEqual({
+      accessToken: "session",
+      expiresAt: Temporal.Instant.from("2026-09-03T00:00:00Z"),
+      kind: "session",
+      ok: true,
+    });
+  });
+
+  it("reports the challenge an account owing a code earned instead", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toEqual({
+      challengeKind: "verify",
+      challengeToken: "challenge",
+      expiresAt: Temporal.Instant.from("2026-09-03T00:05:00Z"),
+      kind: "challenge",
+      ok: true,
+    });
+  });
+
+  it("names the enrollment a tenant holds an administrator at", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.ENROLL,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toMatchObject({
+      challengeKind: "enroll",
+      kind: "challenge",
+    });
+  });
+
+  it("refuses a challenge with no token to spend", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        token: "   ",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it("refuses a challenge whose expiry cannot be read", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "not-a-date",
+        kind: MfaChallengeKind.VERIFY,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it("refuses a session whose expiry cannot be read", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "not-a-date", token: "session" },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it("refuses a challenge kind this console has no screen for", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.UNSPECIFIED,
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    // Signing in on the password alone would make the second factor optional.
+    expect(result).toEqual({
+      message: "Could not sign you in. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("getAdminCurrentUser", () => {
+  it("asks for a fresh login for an empty accessToken", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("");
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
+    expect(mockGetMe).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a fresh login for a whitespace-only accessToken", async () => {
+    // getAccessToken always returns a trimmed value, so a whitespace-only token
+    // is the same case as an empty one.
+    mockGetAccessToken.mockResolvedValueOnce("");
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
+    expect(mockGetMe).not.toHaveBeenCalled();
+  });
+
+  it("fails without asking for a fresh login when the API returns no user", async () => {
+    mockGetMe.mockResolvedValueOnce({});
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("does not ask for a fresh login when the API returns a user with an empty publicId", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Test User", publicId: "", role: "admin" },
+    });
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns the user read from a valid response", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
+    });
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({
+      ok: true,
+      user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
+    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("passes the access token from getAccessToken straight to the API", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("valid-token");
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Test User", publicId: "user-001", role: "admin" },
+    });
+    await getAdminCurrentUser("tenant_001");
+    expect(mockGetMe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenant: { tenantId: "tenant_001" },
+      }),
+      { headers: { Authorization: "Bearer valid-token" } }
+    );
+  });
+
+  it("fails without asking for a fresh login on a permission error, and keeps that answer cached", async () => {
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh login when the session is rejected", async () => {
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("rethrows an unexpected error", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("Network error"));
+    await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(
+      "Network error"
+    );
+  });
+
+  it("returns a user whose name and role are empty as long as it has a publicId", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "  ", publicId: "user-002", role: "" },
+    });
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({
+      ok: true,
+      user: { name: "", publicId: "user-002", role: "" },
+    });
+  });
+});
+
+describe("isAdminSessionValid", () => {
+  it("returns false for an empty accessToken", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("");
+    const result = await isAdminSessionValid("tenant_001");
+    expect(result).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns true when a valid user comes back", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Test User", publicId: "user-001", role: "admin" },
+    });
+    const result = await isAdminSessionValid("tenant_001");
+    expect(result).toBe(true);
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("returns false on an expected error", async () => {
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
+    const result = await isAdminSessionValid("tenant_001");
+    expect(result).toBe(false);
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("rethrows an unexpected error", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
+    await expect(isAdminSessionValid("tenant_001")).rejects.toThrow(
+      "Unauthorized"
+    );
+  });
+});
+
+describe("isTenantAdminRole", () => {
+  it("allows tenant_admin", () => {
+    expect(isTenantAdminRole("tenant_admin")).toBe(true);
+  });
+
+  it("allows admin as well", () => {
+    expect(isTenantAdminRole("admin")).toBe(true);
+  });
+
+  it("rejects editor", () => {
+    expect(isTenantAdminRole("editor")).toBe(false);
+  });
+
+  it("normalizes mixed case and whitespace before deciding", () => {
+    expect(isTenantAdminRole("  TENANT_ADMIN ")).toBe(true);
+  });
+});
+
+describe("tenant admin invitation", () => {
+  it("reads the state of an invitation", async () => {
+    mockGetTenantAdminInvitationState.mockResolvedValueOnce({
+      accountExists: true,
+      email: "admin@example.com",
+      expiresAt: "2026-03-31T00:00:00Z",
+      status: "pending",
+    });
+
+    await expect(
+      getTenantAdminInvitationState("tenant_001", "token_001")
+    ).resolves.toEqual({
+      accountExists: true,
+      email: "admin@example.com",
+      expiresAt: "2026-03-31T00:00:00Z",
+      status: "pending",
+    });
+  });
+
+  it("accepts an invitation", async () => {
+    mockAcceptTenantAdminInvitation.mockResolvedValueOnce({
+      accepted: true,
+      accountCreated: true,
+    });
+
+    await expect(
+      acceptTenantAdminInvitation(
+        "tenant_001",
+        "token_001",
+        "en",
+        "Jane Doe",
+        "password"
+      )
+    ).resolves.toEqual({
+      accepted: true,
+      accountCreated: true,
+      ok: true,
+    });
+  });
+
+  it("sends the password with the spaces typed around it", async () => {
+    mockAcceptTenantAdminInvitation.mockResolvedValueOnce({
+      accepted: true,
+      accountCreated: true,
+    });
+
+    await acceptTenantAdminInvitation(
+      "tenant_001",
+      "token_001",
+      "en",
+      "Jane Doe",
+      "  correct horse  "
+    );
+
+    expect(mockAcceptTenantAdminInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ password: "  correct horse  " })
+    );
+  });
+
+  it("translates an expired error", async () => {
+    mockAcceptTenantAdminInvitation.mockRejectedValueOnce(
+      new ConnectError("invitation expired", Code.FailedPrecondition)
+    );
+
+    await expect(
+      acceptTenantAdminInvitation("tenant_001", "token_001", "en")
+    ).resolves.toEqual({
+      message:
+        "This invitation link has expired. Ask an administrator to send a new one.",
+      ok: false,
+    });
+  });
+});
+
+describe("admin password reset", () => {
+  it("sends the password reset mail", async () => {
+    mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
+
+    await expect(
+      requestAdminPasswordReset("tenant_001", "admin@example.com", "en")
+    ).resolves.toEqual({ ok: true, requested: true });
+  });
+
+  it("names the operator's address, so the mail allowance is theirs rather than the console's", async () => {
+    mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
+
+    await requestAdminPasswordReset("tenant_001", "admin@example.com", "en");
+
+    expect(mockRequestPasswordReset).toHaveBeenCalledWith(expect.anything(), {
+      headers: { "X-Forwarded-For": "203.0.113.7" },
+    });
+  });
+
+  it("translates an input error from sending the password reset mail", async () => {
+    mockRequestPasswordReset.mockRejectedValueOnce(
+      new ConnectError("invalid email address", Code.InvalidArgument)
+    );
+
+    await expect(
+      requestAdminPasswordReset("tenant_001", "invalid", "en")
+    ).resolves.toEqual({
+      message: "Check the email address.",
+      ok: false,
+    });
+  });
+
+  it("resets the password", async () => {
+    mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
+    ).resolves.toEqual({ confirmed: true, ok: true });
+  });
+
+  it("sends the new password with the spaces typed around it", async () => {
+    mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
+
+    await confirmAdminPasswordReset(
+      "tenant_001",
+      "token_001",
+      "  correct horse  ",
+      "en"
+    );
+
+    expect(mockConfirmPasswordReset).toHaveBeenCalledWith(
+      expect.objectContaining({ newPassword: "  correct horse  " }),
+      expect.anything()
+    );
+  });
+
+  it("turns an expired token into the expired path", async () => {
+    mockConfirmPasswordReset.mockRejectedValueOnce(
+      new ConnectError("password reset token expired", Code.FailedPrecondition)
+    );
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
+    ).resolves.toEqual({
+      message: "This reset link has expired. Request the reset email again.",
+      ok: false,
+      reason: "expired",
+    });
+  });
+
+  it("turns an invalid token into the invalid path", async () => {
+    mockConfirmPasswordReset.mockRejectedValueOnce(
+      new ConnectError("password reset token not found", Code.NotFound)
+    );
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
+    ).resolves.toEqual({
+      message: "This reset link is invalid. Request the reset email again.",
+      ok: false,
+      reason: "invalid",
+    });
+  });
+});

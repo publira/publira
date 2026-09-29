@@ -1,0 +1,123 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13 and later gate notifications on this permission. The app
+         asks for it the first time the reader turns new-episode notifications
+         on from the account screen, never at launch. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Install-time, so it never prompts. Android 14 and later need it to
+         report the screenshots the episode viewer answers with a notice. -->
+    <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE"/>
+    <application
+        android:label="@string/app_name"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- The action every push carries as its click_action, so a tap on
+                 a notification the OS drew reaches the app rather than only
+                 resuming it. -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <!-- Flutter's own deep linking would hand the raw https URL to
+                 go_router, which matches none of the in-app paths. app_links
+                 parses it first. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <!-- App Links for the tenant host this build is pinned to. The
+                 host is tenant.host of the app manifest; path prefixes cover
+                 the public site, including a locale segment. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/announcements"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/announcements"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/announcements"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/announcements"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/announcements"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/verify"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/reset-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/confirm-password"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/announcements"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- The browser a paid episode's checkout is opened in. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+    </queries>
+</manifest>

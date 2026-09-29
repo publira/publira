@@ -1,0 +1,403 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/admin/v1/email.proto";
+import "publira/types/v1/types.proto";
+import "publira/platform/v1/policy.proto";
+
+message GetTenantTimezoneRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantTimezoneResponse {
+  // IANA time zone name (e.g. Asia/Tokyo). Never empty; the default is applied when unset.
+  string timezone = 1;
+}
+
+message UpdateTenantTimezoneRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // IANA time zone name (e.g. Asia/Tokyo). Unknown or blank names are rejected.
+  string timezone = 2;
+}
+
+message UpdateTenantTimezoneResponse {
+  string timezone = 1;
+}
+
+message GetTenantDefaultLocaleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantDefaultLocaleResponse {
+  // UI locale code (ja, en). The tenant's own saved value: a stored code
+  // naming no supported locale fails this RPC rather than answering another
+  // language.
+  string default_locale = 1;
+}
+
+message UpdateTenantDefaultLocaleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // UI locale code (ja, en). Unknown or blank codes are rejected.
+  string default_locale = 2;
+}
+
+message UpdateTenantDefaultLocaleResponse {
+  string default_locale = 1;
+}
+
+message GetTenantCommentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantCommentSettingsResponse {
+  // Never COMMENT_MODE_UNSPECIFIED: a tenant that has saved nothing is
+  // disabled, and a stored value naming no mode fails this RPC.
+  publira.types.v1.CommentMode comment_mode = 1;
+  // How many distinct readers have to report one comment before it is hidden
+  // without waiting for staff. 0 is a tenant that wants no automatic removal.
+  uint32 auto_hide_report_threshold = 2;
+}
+
+message UpdateTenantCommentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // COMMENT_MODE_UNSPECIFIED is rejected. Turning commenting off is
+  // COMMENT_MODE_DISABLED, which is a choice rather than the absence of one.
+  publira.types.v1.CommentMode comment_mode = 2;
+  // 0 turns the automatic removal off. A value above the server's ceiling is
+  // rejected rather than clamped, so a mistyped threshold is not saved as a
+  // number the tenant did not choose.
+  uint32 auto_hide_report_threshold = 3;
+}
+
+message UpdateTenantCommentSettingsResponse {
+  publira.types.v1.CommentMode comment_mode = 1;
+  uint32 auto_hide_report_threshold = 2;
+}
+
+message GetTenantAgeVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantAgeVerificationResponse {
+  // Never AGE_VERIFICATION_UNSPECIFIED: a tenant that has saved nothing
+  // verifies no age, and a stored value naming no rule fails this RPC.
+  publira.types.v1.AgeVerification age_verification = 1;
+}
+
+message UpdateTenantAgeVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // AGE_VERIFICATION_UNSPECIFIED is rejected. Asking for no proof is
+  // AGE_VERIFICATION_NONE, which is a choice rather than the absence of one.
+  publira.types.v1.AgeVerification age_verification = 2;
+}
+
+message UpdateTenantAgeVerificationResponse {
+  publira.types.v1.AgeVerification age_verification = 1;
+}
+
+// Where this tenant's episodes may be bought unless a series or an episode
+// states otherwise, and the store listings of its app.
+message TenantPurchaseSettings {
+  // Never SURFACE_AVAILABILITY_UNSPECIFIED on a read: a tenant that has chosen
+  // nothing sells on both surfaces.
+  publira.types.v1.SurfaceAvailability purchase_availability = 1;
+  // An https:// URL, or empty where the app has no listing in that store.
+  string app_store_url = 2;
+  string google_play_url = 3;
+}
+
+message GetTenantPurchaseSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantPurchaseSettingsResponse {
+  TenantPurchaseSettings settings = 1;
+}
+
+message UpdateTenantPurchaseSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Every field is written. SURFACE_AVAILABILITY_UNSPECIFIED stores both
+  // surfaces, and a store URL that is not an https:// URL is invalid_argument.
+  TenantPurchaseSettings settings = 2;
+}
+
+message UpdateTenantPurchaseSettingsResponse {
+  TenantPurchaseSettings settings = 1;
+}
+
+// A page the tenant names as its terms of service or its privacy policy.
+message TenantLegalPage {
+  string page_id = 1;
+  string slug = 2;
+  string title = 3;
+  // False once the page has been unpublished. The nomination is kept, so the
+  // page is linked again when it is republished, but until then the storefront
+  // links to nothing for it.
+  bool published = 4;
+}
+
+// The tenant's terms of service and privacy policy. A field is absent where
+// the tenant has named no page for it.
+message TenantLegalPages {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
+}
+
+message GetTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantLegalPagesResponse {
+  TenantLegalPages pages = 1;
+}
+
+message UpdateTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both are written, and an empty id names no page. An id has to name a
+  // published page of this tenant, except that the page already named for the
+  // same role may be kept while it is unpublished; anything else is
+  // invalid_argument.
+  string terms_page_id = 2;
+  string privacy_page_id = 3;
+}
+
+message UpdateTenantLegalPagesResponse {
+  TenantLegalPages pages = 1;
+}
+
+// The Android app the tenant publishes, as assetlinks.json names it.
+message TenantAndroidAppAssociation {
+  // The production application ID, the android.applicationId of the app
+  // manifest.
+  string application_id = 1;
+  // The SHA-256 fingerprint of every certificate the published app is signed
+  // with, as colon-separated hex (AA:BB:...). At least one is required, and a
+  // read answers them in capital letters.
+  repeated string sha256_cert_fingerprints = 2;
+}
+
+// The iOS app the tenant publishes, which apple-app-site-association names as
+// <team_id>.<bundle_identifier>.
+message TenantIosAppAssociation {
+  // The ten-character Apple Developer Team ID. A read answers it in capital
+  // letters.
+  string team_id = 1;
+  // The production bundle identifier, the ios.bundleIdentifier of the app
+  // manifest.
+  string bundle_identifier = 2;
+}
+
+// The apps the tenant's links open in. A platform is absent where the tenant
+// has no app on it.
+message TenantMobileAppAssociation {
+  TenantAndroidAppAssociation android = 1;
+  TenantIosAppAssociation ios = 2;
+}
+
+message GetTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantMobileAppAssociationResponse {
+  TenantMobileAppAssociation association = 1;
+}
+
+message UpdateTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both platforms are written, and an absent one is cleared. A present one
+  // needs every field, in the formats the app manifest accepts; anything else
+  // is invalid_argument. While the tenant's app sells through the store, a
+  // change that leaves no ready store an app to sell in is failed_precondition.
+  TenantMobileAppAssociation association = 2;
+}
+
+message UpdateTenantMobileAppAssociationResponse {
+  TenantMobileAppAssociation association = 1;
+}
+
+// Non-secret view of how readers sign in with Apple. The .p8 private key never
+// appears here.
+message TenantAppleSignInSettings {
+  bool enabled = 1;
+  // The Services ID the storefront signs in with. Empty where only the iOS
+  // app signs in with Apple.
+  string services_id = 2;
+  // The team and the ID of the Sign in with Apple key, which the server signs
+  // its client secret with. Not secret, and answered as stored.
+  string team_id = 3;
+  string key_id = 4;
+  bool private_key_configured = 5;
+  // Display hint derived at write time. Empty when no key is stored.
+  string private_key_hint = 6;
+  // The bundle identifier the iOS app signs in with, which the tenant's iOS
+  // app association names. Empty where it names none, and edited there, not
+  // here.
+  string bundle_identifier = 7;
+  // True when enabled, the key is stored, and services_id or
+  // bundle_identifier is not empty.
+  bool ready = 8;
+}
+
+// How readers sign in with Google. Every field is public: verifying an ID
+// token needs no secret.
+message TenantGoogleSignInSettings {
+  bool enabled = 1;
+  // The OAuth client ID of the web application, which the storefront and the
+  // Android app sign in with.
+  string web_client_id = 2;
+  // The OAuth client ID of the iOS app.
+  string ios_client_id = 3;
+  // True when enabled and a client ID is stored.
+  bool ready = 4;
+}
+
+message TenantSignInSettings {
+  TenantAppleSignInSettings apple = 1;
+  TenantGoogleSignInSettings google = 2;
+}
+
+message GetTenantSignInSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantSignInSettingsResponse {
+  TenantSignInSettings settings = 1;
+}
+
+message AppleSignInSettingsUpdate {
+  bool enabled = 1;
+  // A Services ID in reverse-domain form. An empty value clears it.
+  string services_id = 2;
+  // Ten capital letters and digits each. Both are required while enabled; an
+  // empty value clears one.
+  string team_id = 3;
+  string key_id = 4;
+  SecretUpdateMode private_key_update_mode = 5;
+  // The contents of the .p8 file the Apple Developer account issued for Sign
+  // in with Apple, a PKCS #8 EC private key in PEM form.
+  string private_key = 6;
+}
+
+message GoogleSignInSettingsUpdate {
+  bool enabled = 1;
+  // Client IDs ending in .apps.googleusercontent.com. One of them is required
+  // while enabled; an empty value clears one.
+  string web_client_id = 2;
+  string ios_client_id = 3;
+}
+
+message UpdateTenantSignInSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both providers are written, and an absent one is written disabled with its
+  // key left as it is. A malformed value, and an enabled provider missing what
+  // it needs, is invalid_argument.
+  AppleSignInSettingsUpdate apple = 2;
+  GoogleSignInSettingsUpdate google = 3;
+}
+
+message UpdateTenantSignInSettingsResponse {
+  TenantSignInSettings settings = 1;
+}
+
+// A tenant's own retention periods, in whole days. An absent field follows the
+// platform default; a present one is from 1 to 36500, and may be longer or
+// shorter than that default.
+message TenantRetentionOverrides {
+  optional int32 withdrawn_comment_days = 1;
+  optional int32 content_event_days = 2;
+  optional int32 daily_ranking_snapshot_days = 3;
+  optional int32 weekly_ranking_snapshot_days = 4;
+}
+
+message GetTenantRetentionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantRetentionSettingsResponse {
+  // What the tenant has saved. Every field is absent for a tenant that has
+  // saved nothing.
+  TenantRetentionOverrides overrides = 1;
+  // What an absent override follows.
+  publira.types.v1.RetentionPeriods platform_defaults = 2;
+  // The periods the console and the purge batches apply to this tenant.
+  publira.types.v1.RetentionPeriods effective = 3;
+  // Version of the saved row the overrides were read at. Zero when the tenant
+  // has saved nothing yet.
+  int64 revision = 4;
+}
+
+message UpdateTenantRetentionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required: every override is written, and a field left absent clears that
+  // override, so a screen that edits one of them sends the others back as it
+  // read them.
+  TenantRetentionOverrides overrides = 2;
+  // Required: the revision the values in this request were derived from, as
+  // read from GetTenantRetentionSettingsResponse.revision. Zero states that
+  // nothing is expected to be saved yet. The write is refused with
+  // FAILED_PRECONDITION when the stored row moved on.
+  int64 expected_revision = 3;
+}
+
+message UpdateTenantRetentionSettingsResponse {
+  TenantRetentionOverrides overrides = 1;
+  publira.types.v1.RetentionPeriods platform_defaults = 2;
+  publira.types.v1.RetentionPeriods effective = 3;
+  int64 revision = 4;
+}
+
+message TenantCommunityLimitOverrides {
+  publira.platform.v1.MinuteDayLimit comment_post = 1;
+  publira.platform.v1.MinuteDayLimit comment_report = 2;
+  optional int32 duplicate_comment_window_minutes = 3;
+  publira.platform.v1.MinuteDayLimit episode_rating = 4;
+  publira.platform.v1.HourDayLimit contact_message_per_account = 5;
+  publira.platform.v1.HourDayLimit contact_message_per_client = 6;
+  publira.platform.v1.MinuteDayLimit viewer_preferences = 7;
+}
+message GetTenantCommunityLimitSettingsRequest { publira.types.v1.TenantContext tenant = 1; }
+message GetTenantCommunityLimitSettingsResponse {
+  TenantCommunityLimitOverrides overrides = 1;
+  publira.platform.v1.CommunityLimitDefaults platform_defaults = 2;
+  publira.platform.v1.CommunityLimitDefaults effective = 3;
+  int64 revision = 4;
+}
+message UpdateTenantCommunityLimitSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  TenantCommunityLimitOverrides overrides = 2;
+  int64 expected_revision = 3;
+}
+message UpdateTenantCommunityLimitSettingsResponse {
+  TenantCommunityLimitOverrides overrides = 1;
+  publira.platform.v1.CommunityLimitDefaults platform_defaults = 2;
+  publira.platform.v1.CommunityLimitDefaults effective = 3;
+  int64 revision = 4;
+}
+
+// Per-tenant operational settings, separate from TenantConfig (site copy) and
+// TenantTheme (colors).
+service TenantSettingsService {
+  rpc GetTenantTimezone(GetTenantTimezoneRequest) returns (GetTenantTimezoneResponse) {}
+  rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}
+  rpc GetTenantDefaultLocale(GetTenantDefaultLocaleRequest) returns (GetTenantDefaultLocaleResponse) {}
+  rpc UpdateTenantDefaultLocale(UpdateTenantDefaultLocaleRequest) returns (UpdateTenantDefaultLocaleResponse) {}
+  rpc GetTenantCommentSettings(GetTenantCommentSettingsRequest) returns (GetTenantCommentSettingsResponse) {}
+  rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
+  rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
+  rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
+  rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
+  rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
+  rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
+  rpc UpdateTenantLegalPages(UpdateTenantLegalPagesRequest) returns (UpdateTenantLegalPagesResponse) {}
+  rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
+  rpc UpdateTenantMobileAppAssociation(UpdateTenantMobileAppAssociationRequest) returns (UpdateTenantMobileAppAssociationResponse) {}
+  rpc GetTenantSignInSettings(GetTenantSignInSettingsRequest) returns (GetTenantSignInSettingsResponse) {}
+  rpc UpdateTenantSignInSettings(UpdateTenantSignInSettingsRequest) returns (UpdateTenantSignInSettingsResponse) {}
+  rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
+  rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
+  rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
+  rpc UpdateTenantCommunityLimitSettings(UpdateTenantCommunityLimitSettingsRequest) returns (UpdateTenantCommunityLimitSettingsResponse) {}
+}

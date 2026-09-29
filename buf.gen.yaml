@@ -1,0 +1,27 @@
+version: v2
+# Empty the `out` directories before generating, so a generated file orphaned by
+# a deleted proto disappears instead of lingering. Set here rather than as a
+# `--clean` flag on one call site: every `buf generate` — `task gen` locally and
+# the drift check in CI — has to behave the same, or the CI failure would ask for
+# a regeneration that cannot fix it. Both directories hold nothing but buf
+# output, so there is nothing else to lose.
+clean: true
+# Remote plugin versions are pinned so `buf generate` is reproducible: without a
+# pin, buf resolves the latest plugin at run time, so the same proto produces a
+# different stamp depending on who ran `task gen` and when. Each pin must equal
+# the runtime library the generated code is compiled against; the `# renovate:`
+# annotations let Renovate bump the pin in the same PR as that library (see the
+# customManagers in .github/renovate.json5).
+plugins:
+  # renovate: datasource=go depName=google.golang.org/protobuf
+  - remote: buf.build/protocolbuffers/go:v1.36.12
+    out: server/internal/proto/gen
+    opt: paths=source_relative
+  # renovate: datasource=go depName=connectrpc.com/connect
+  - remote: buf.build/connectrpc/go:v1.21.0
+    out: server/internal/proto/gen
+    opt: paths=source_relative
+  # renovate: datasource=npm depName=@bufbuild/protobuf
+  - remote: buf.build/bufbuild/es:v2.15.0
+    out: packages/api-client/src/gen
+    opt: target=ts

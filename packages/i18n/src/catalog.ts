@@ -1,0 +1,60 @@
+/**
+ * Synchronous lookup into the repo-root locale catalog.
+ *
+ * `rpcErrorMessage` and the form helpers run inside `catch` / `safeParse` and
+ * must stay sync, so both locales are imported statically. Per-route UI
+ * catalogs still load through `loadMessages` so unused locales stay out of a
+ * chunk.
+ */
+
+import { CATALOGS } from "./__generated__/locale-catalogs";
+import type { LocaleMessages } from "./__generated__/locale-catalogs";
+import { getMessage } from "./i18n";
+import type { Locale, MessageKey } from "./i18n";
+
+export type SharedMessages = LocaleMessages;
+
+const RPC_MESSAGE_KEYS = {
+  conflict: "errors.rpc.conflict",
+  forbidden: "errors.rpc.forbidden",
+  "invalid-argument": "errors.rpc.invalid-argument",
+  "not-found": "errors.rpc.not-found",
+  "rate-limited": "errors.rpc.rate-limited",
+  unauthenticated: "errors.rpc.unauthenticated",
+  unavailable: "errors.rpc.unavailable",
+} as const satisfies Record<string, MessageKey<SharedMessages>>;
+
+export type SharedRpcDisposition = keyof typeof RPC_MESSAGE_KEYS;
+
+/**
+ * The catalog for `locale`.
+ *
+ * `locale` is required: a caller that cannot name one has a locale to resolve
+ * rather than a catalog to read, and defaulting the argument here would answer
+ * every such caller in the same language regardless of the reader.
+ */
+export const sharedCatalog = (locale: Locale): SharedMessages =>
+  CATALOGS[locale];
+
+export const sharedMessage = (
+  key: MessageKey<SharedMessages>,
+  locale: Locale
+): string => getMessage(sharedCatalog(locale), key);
+
+/**
+ * Shared wording for one RPC failure category, or `undefined` when that
+ * category has no shared copy (`precondition` / `unexpected`).
+ */
+export const sharedRpcErrorMessage = (
+  disposition: SharedRpcDisposition | string,
+  locale: Locale
+): string | undefined => {
+  if (!Object.hasOwn(RPC_MESSAGE_KEYS, disposition)) {
+    return undefined;
+  }
+
+  return sharedMessage(
+    RPC_MESSAGE_KEYS[disposition as SharedRpcDisposition],
+    locale
+  );
+};

@@ -1,0 +1,632 @@
+-- Durable member follows. Episode, series, and creator follows have
+-- distinct source tables; content_events must not be used to model any of them.
+
+-- name: CreateEpisodeFollow :one
+INSERT INTO episode_follows (tenant_id, user_id, episode_id)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('episode_id')
+)
+ON CONFLICT (tenant_id, user_id, episode_id) DO NOTHING
+RETURNING *;
+
+-- name: DeleteEpisodeFollow :execrows
+DELETE FROM episode_follows
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND user_id = sqlc.arg('user_id')
+    AND episode_id = sqlc.arg('episode_id');
+
+-- name: CreateCreatorFollow :one
+INSERT INTO creator_follows (tenant_id, user_id, creator_id)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('creator_id')
+)
+ON CONFLICT (tenant_id, user_id, creator_id) DO NOTHING
+RETURNING *;
+
+-- name: DeleteCreatorFollow :execrows
+DELETE FROM creator_follows
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND user_id = sqlc.arg('user_id')
+    AND creator_id = sqlc.arg('creator_id');
+
+-- name: CreateSeriesFollow :one
+INSERT INTO series_follows (tenant_id, user_id, series_id)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('series_id')
+)
+ON CONFLICT (tenant_id, user_id, series_id) DO NOTHING
+RETURNING *;
+
+-- name: DeleteSeriesFollow :execrows
+DELETE FROM series_follows
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND user_id = sqlc.arg('user_id')
+    AND series_id = sqlc.arg('series_id');
+
+-- name: ListUserFollowsByCreatedAtDesc :many
+-- The API can expose one timeline while keeping each relationship's storage
+-- and future aggregates independent. Public joins make a target that is no
+-- longer visible, or that the calling surface may not show, disappear from
+-- this member's list without revealing why.
+SELECT target_type,
+    target_id,
+    created_at
+FROM (
+    SELECT 'episode'::text AS target_type,
+        ef.episode_id AS target_id,
+        ef.created_at
+    FROM episode_follows ef
+        JOIN episodes e ON e.tenant_id = ef.tenant_id
+            AND e.id = ef.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    UNION ALL
+    SELECT 'creator'::text AS target_type,
+        cf.creator_id AS target_id,
+        cf.created_at
+    FROM creator_follows cf
+        JOIN creators c ON c.tenant_id = cf.tenant_id
+            AND c.id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND EXISTS (
+            SELECT 1
+            FROM series_creators sc
+                JOIN series s ON s.id = sc.series_id
+            WHERE sc.tenant_id = c.tenant_id
+                AND sc.creator_id = c.id
+                AND s.tenant_id = c.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
+        )
+    UNION ALL
+    SELECT 'series'::text AS target_type,
+        sf.series_id AS target_id,
+        sf.created_at
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
+) AS follows
+WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) <= (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) < (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+ORDER BY created_at DESC,
+    target_type ASC,
+    target_id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListUserFollowsByCreatedAtAsc :many
+-- The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
+-- the returned rows to preserve the public newest-first display order.
+SELECT target_type,
+    target_id,
+    created_at
+FROM (
+    SELECT 'episode'::text AS target_type,
+        ef.episode_id AS target_id,
+        ef.created_at
+    FROM episode_follows ef
+        JOIN episodes e ON e.tenant_id = ef.tenant_id
+            AND e.id = ef.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    UNION ALL
+    SELECT 'creator'::text AS target_type,
+        cf.creator_id AS target_id,
+        cf.created_at
+    FROM creator_follows cf
+        JOIN creators c ON c.tenant_id = cf.tenant_id
+            AND c.id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND EXISTS (
+            SELECT 1
+            FROM series_creators sc
+                JOIN series s ON s.id = sc.series_id
+            WHERE sc.tenant_id = c.tenant_id
+                AND sc.creator_id = c.id
+                AND s.tenant_id = c.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
+        )
+    UNION ALL
+    SELECT 'series'::text AS target_type,
+        sf.series_id AS target_id,
+        sf.created_at
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
+) AS follows
+WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) >= (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (created_at, target_type, target_id) > (
+            sqlc.narg('cursor_created_at')::timestamptz,
+            sqlc.narg('cursor_target_type')::text,
+            sqlc.narg('cursor_target_id')::uuid
+        )
+    )
+ORDER BY created_at ASC,
+    target_type DESC,
+    target_id DESC
+LIMIT sqlc.arg('limit');
+
+-- These projections are used only while constructing the public Follow API
+-- response. The follow relations and their cursor queries remain UUID-only.
+-- name: ListPublishedEpisodeFollowTargetPublicIDsByIDs :many
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    JOIN episode_listings el ON el.tenant_id = e.tenant_id
+        AND el.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = ANY(sqlc.arg('ids')::uuid [])
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    );
+
+-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
+SELECT c.id,
+    c.public_id
+FROM creators c
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.id = ANY(sqlc.arg('ids')::uuid [])
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.tenant_id = c.tenant_id
+            AND sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    );
+
+-- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
+SELECT s.id,
+    s.public_id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = ANY(sqlc.arg('ids')::uuid [])
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    );
+
+-- name: UserFollowsPublishedEpisode :one
+-- Matches GetPublishedEpisodeForTenant, so a draft, scheduled, or
+-- otherwise non-public episode is indistinguishable from an unfollowed one.
+SELECT EXISTS (
+    SELECT 1
+    FROM episode_follows ef
+        JOIN episodes e ON e.tenant_id = ef.tenant_id
+            AND e.id = ef.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.user_id = sqlc.arg('user_id')
+        AND ef.episode_id = sqlc.arg('episode_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+) AS follows_published_episode;
+
+-- name: UserFollowsPublishedCreator :one
+-- Creators are public when they have at least one active series, matching
+-- GetPublishedCreatorForTenant.
+SELECT EXISTS (
+    SELECT 1
+    FROM creator_follows cf
+        JOIN creators c ON c.tenant_id = cf.tenant_id
+            AND c.id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND cf.creator_id = sqlc.arg('creator_id')
+        AND EXISTS (
+            SELECT 1
+            FROM series_creators sc
+                JOIN series s ON s.id = sc.series_id
+            WHERE sc.tenant_id = c.tenant_id
+                AND sc.creator_id = c.id
+                AND s.tenant_id = c.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
+        )
+) AS follows_published_creator;
+
+-- name: UserFollowsPublishedSeries :one
+-- Matches GetPublishedSeriesID, so an unpublished series is
+-- indistinguishable from an unfollowed one.
+SELECT EXISTS (
+    SELECT 1
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND sf.series_id = sqlc.arg('series_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
+) AS follows_published_series;
+
+-- name: ListEpisodeFollowerIDs :many
+-- Worker fan-out: who is told about a new episode. The union of the follows
+-- that point at the episode, at the series it belongs to, and at a creator
+-- credited on it. UNION rather than UNION ALL, so a reader who follows both
+-- the series and its creator is one recipient and gets one notification.
+--
+-- The credits come from episode_creators rather than series_creators because
+-- the episode is the unit that is credited: a guest who appears on this
+-- episode alone reaches their followers, and someone who has since left the
+-- series team is not announced with an episode they were not on.
+--
+-- Keyset paging on user_id, because the result grows with the tenant's
+-- readership and the caller writes one row per recipient. The cursor is
+-- pushed into each branch rather than applied to the union, so every branch
+-- still drives its own index. The nil UUID sorts below every UUID, so it is
+-- what the first page asks for.
+SELECT user_id
+FROM (
+    SELECT sf.user_id
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND e.id = sqlc.arg('episode_id')
+        AND sf.user_id > sqlc.arg('after_user_id')
+    UNION
+    SELECT cf.user_id
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND ec.episode_id = sqlc.arg('episode_id')
+        AND cf.user_id > sqlc.arg('after_user_id')
+    UNION
+    SELECT ef.user_id
+    FROM episode_follows ef
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.episode_id = sqlc.arg('episode_id')
+        AND ef.user_id > sqlc.arg('after_user_id')
+) AS followers
+ORDER BY user_id
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyFollowUpdatesDesc :many
+-- The episodes that have arrived in what this member follows, most recently
+-- published first.
+--
+-- The two branches are the two follows an episode can arrive through: the
+-- series it belongs to, and a creator credited on the episode itself. The
+-- credits come from episode_creators for the reason ListEpisodeFollowerIDs
+-- takes them from there — a guest who appears on one episode reaches the
+-- people who follow them, and someone who has since left the series team is
+-- not announced with an episode they were not on. UNION rather than UNION ALL,
+-- so a member who follows both a series and one of its creators sees the
+-- episode once.
+--
+-- Publication is re-checked on both the series and the listing, and the
+-- calling surface on the episode, so the list never names something the
+-- storefront has taken down or the surface may not show; that is the same rule
+-- ListMyEpisodeReads applies to a history entry.
+--
+-- Each branch starts from the member's own follows, on
+-- idx_series_follows_tenant_user_created_at and
+-- idx_creator_follows_tenant_user_created_at, so the scan is bounded by what
+-- one member follows rather than by the tenant's catalogue.
+--
+-- Backward calls ListMyFollowUpdatesAsc, and the caller sorts the rows back.
+-- cursor rules: proto/README.md.
+SELECT series_id,
+    episode_id,
+    episode_public_id,
+    episode_title,
+    episode_order_index,
+    published_at
+FROM (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    UNION
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+        JOIN episodes e ON e.tenant_id = ec.tenant_id
+            AND e.id = ec.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+) AS updates
+WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) <= (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) < (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+ORDER BY published_at DESC,
+    episode_id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyFollowUpdatesAsc :many
+-- The backward direction of ListMyFollowUpdatesDesc.
+SELECT series_id,
+    episode_id,
+    episode_public_id,
+    episode_title,
+    episode_order_index,
+    published_at
+FROM (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    UNION
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+        JOIN episodes e ON e.tenant_id = ec.tenant_id
+            AND e.id = ec.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+) AS updates
+WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) >= (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) > (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+ORDER BY published_at ASC,
+    episode_id ASC
+LIMIT sqlc.arg('limit');

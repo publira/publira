@@ -1,0 +1,154 @@
+/**
+ * `static` because Tailwind emits a theme variable only when a utility names
+ * it, and the reading line heights are read through `var()` instead.
+ */
+@theme static {
+  /* Installed faces only: no `@font-face` backs either stack. */
+  --font-sans: var(
+    --publira-font-sans,
+    "Hiragino Sans",
+    "BIZ UDPGothic",
+    "Yu Gothic",
+    "Noto Sans CJK JP",
+    "Noto Sans JP",
+    system-ui,
+    sans-serif
+  );
+  --font-serif: var(
+    --publira-font-serif,
+    "Hiragino Mincho ProN",
+    "BIZ UDPMincho",
+    "Yu Mincho",
+    "Noto Serif CJK JP",
+    "Noto Serif JP",
+    serif
+  );
+
+  --leading-reading-cjk: 1.9;
+  --leading-reading-latin: 1.6;
+}
+
+@theme {
+  /* Controls: inputs, buttons, chips, small thumbnails. */
+  --radius-control: 0.25rem;
+  /* Artwork and floating layers: covers, eyecatches, dialogs, popovers, toasts. */
+  --radius-surface: 0.5rem;
+
+  /* The only shadow. An in-flow surface is separated by a hairline instead. */
+  --shadow-floating: 0 8px 24px -12px rgb(31 29 26 / 0.35);
+
+  /* A state change a person asked for: a dialog opening, a toggle switching. */
+  --transition-duration-state: 150ms;
+  --ease-state: var(--ease-out);
+
+  /* Forty full-width characters at the base size. */
+  --max-width-measure-prose: 40rem;
+}
+
+@theme {
+  --color-background: var(--publira-color-background, #f5f5f2);
+  --color-foreground: var(--publira-color-foreground, #1f1d1a);
+
+  --color-surface: var(--publira-color-surface, #fafaf8);
+  --color-surface-foreground: var(--publira-color-surface-foreground, #1f1d1a);
+  --color-card: var(--publira-color-card, #ffffff);
+  --color-card-foreground: var(--publira-color-card-foreground, #1f1d1a);
+  --color-popover: var(--publira-color-popover, #ffffff);
+  --color-popover-foreground: var(--publira-color-popover-foreground, #1f1d1a);
+
+  --color-primary: var(--publira-color-primary, #2b4c8c);
+  --color-primary-foreground: var(--publira-color-primary-foreground, #ffffff);
+  --color-secondary: var(--publira-color-secondary, #c63d17);
+  --color-secondary-foreground: var(
+    --publira-color-secondary-foreground,
+    #ffffff
+  );
+
+  --color-accent: var(--publira-color-accent, #e3e9f5);
+  --color-accent-foreground: var(--publira-color-accent-foreground, #22407a);
+  --color-muted: var(--publira-color-muted, #e8e8e3);
+  --color-muted-foreground: var(--publira-color-muted-foreground, #5f5e59);
+
+  --color-border: var(--publira-color-border, #d6d6d0);
+  --color-input: var(--publira-color-input, #cfcfc8);
+  --color-ring: var(--publira-color-ring, #2b4c8c);
+
+  --color-success: var(--publira-color-success, #2a6b3f);
+  --color-success-foreground: var(--publira-color-success-foreground, #ffffff);
+  --color-warning: var(--publira-color-warning, #8a5a0b);
+  --color-warning-foreground: var(--publira-color-warning-foreground, #ffffff);
+  --color-destructive: var(--publira-color-destructive, #8f1d1d);
+  --color-destructive-foreground: var(
+    --publira-color-destructive-foreground,
+    #ffffff
+  );
+  --color-info: var(--publira-color-info, #2f5d8a);
+  --color-info-foreground: var(--publira-color-info-foreground, #ffffff);
+}
+
+/**
+ * Paints one subtree from a `--publira-color-*` set of its own, for a preview
+ * that must show a theme other than the document's.
+ *
+ * `@theme` resolves every `--color-*` token once, on `:root`, so a descendant
+ * inherits the value that was already substituted there and overriding
+ * `--publira-color-*` further down has no effect. Re-deriving the tokens here
+ * makes the substitution happen on this element instead. Each `var()` is
+ * written without a fallback on purpose: an unset `--publira-color-*` leaves
+ * the token invalid at computed-value time, which for a custom property means
+ * the inherited value — the document's own token.
+ */
+.publira-theme-scope {
+  --font-sans: var(
+    --publira-font-sans,
+    "Hiragino Sans",
+    "BIZ UDPGothic",
+    "Yu Gothic",
+    "Noto Sans CJK JP",
+    "Noto Sans JP",
+    system-ui,
+    sans-serif
+  );
+  --font-serif: var(
+    --publira-font-serif,
+    "Hiragino Mincho ProN",
+    "BIZ UDPMincho",
+    "Yu Mincho",
+    "Noto Serif CJK JP",
+    "Noto Serif JP",
+    serif
+  );
+
+  --color-background: var(--publira-color-background);
+  --color-foreground: var(--publira-color-foreground);
+
+  --color-surface: var(--publira-color-surface);
+  --color-surface-foreground: var(--publira-color-surface-foreground);
+  --color-card: var(--publira-color-card);
+  --color-card-foreground: var(--publira-color-card-foreground);
+  --color-popover: var(--publira-color-popover);
+  --color-popover-foreground: var(--publira-color-popover-foreground);
+
+  --color-primary: var(--publira-color-primary);
+  --color-primary-foreground: var(--publira-color-primary-foreground);
+  --color-secondary: var(--publira-color-secondary);
+  --color-secondary-foreground: var(--publira-color-secondary-foreground);
+
+  --color-accent: var(--publira-color-accent);
+  --color-accent-foreground: var(--publira-color-accent-foreground);
+  --color-muted: var(--publira-color-muted);
+  --color-muted-foreground: var(--publira-color-muted-foreground);
+
+  --color-border: var(--publira-color-border);
+  --color-input: var(--publira-color-input);
+  --color-ring: var(--publira-color-ring);
+
+  --color-success: var(--publira-color-success);
+  --color-success-foreground: var(--publira-color-success-foreground);
+  --color-warning: var(--publira-color-warning);
+  --color-warning-foreground: var(--publira-color-warning-foreground);
+  --color-destructive: var(--publira-color-destructive);
+  --color-destructive-foreground: var(--publira-color-destructive-foreground);
+  --color-info: var(--publira-color-info);
+  --color-info-foreground: var(--publira-color-info-foreground);
+}

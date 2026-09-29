@@ -1,0 +1,140 @@
+"use client";
+
+import { getLocaleLabel, getLocales } from "@publira/i18n";
+import { LanguageIcon } from "@publira/icons/language-icon";
+import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@publira/ui-components/popover";
+import { Skeleton } from "@publira/ui-components/skeleton";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
+
+import { useClientMessages } from "./client-message";
+import { useLocale, useTenantDefaultLocale } from "./locale-context";
+
+/**
+ * Header control that swaps the locale segment and keeps the rest of the path.
+ *
+ * Each locale is a real link, so the choice is shareable and works without
+ * JavaScript — the point of putting the locale in the URL instead of a cookie.
+ * The target is built from `usePathname()` normalised through
+ * {@link toBarePathname}, which erases the difference between the prerendered
+ * shell's rewritten pathname and the browser's public one.
+ *
+ * The query string is deliberately dropped: reading it needs
+ * `useSearchParams()`, which adds nothing the reader would miss when switching
+ * language — the target is the same page, unfiltered.
+ *
+ * `usePathname()` aborts the prerender of a route whose own dynamic segment has
+ * no value yet, so the site layout renders this inside a `<Suspense>` with
+ * {@link LocaleSwitcherSkeleton}: the control streams in and the rest of the
+ * shell stays static.
+ *
+ * The language names come from `getLocaleLabel`, the same registry the cookie
+ * consoles read. They are autonyms — a language is offered in its own language
+ * — so they are identical in both directions and belong to the registry rather
+ * than to a per-locale catalog.
+ */
+/** Same footprint as the rendered control, so the header does not shift. */
+export const LocaleSwitcherSkeleton = () => (
+  <div
+    aria-hidden="true"
+    className="size-9 animate-pulse rounded-control bg-muted"
+  />
+);
+
+export const LocaleSwitcher = () => {
+  const currentLocale = useLocale();
+  const defaultLocale = useTenantDefaultLocale();
+  const t = useClientMessages();
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
+
+  const label = t("host.nav.locale_switcher");
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={label}
+        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
+      >
+        <LanguageIcon aria-hidden="true" className="size-5" />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-48" sideOffset={8}>
+        <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">
+          {label}
+        </PopoverTitle>
+        <div className="grid gap-0.5">
+          {getLocales().map((locale) => {
+            const current = locale === currentLocale;
+
+            return (
+              <Link
+                aria-current={current ? "true" : undefined}
+                className={
+                  current
+                    ? "rounded-control bg-muted px-3 py-2 text-sm font-medium text-foreground"
+                    : "rounded-control px-3 py-2 text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
+                }
+                href={withLocalePrefix(locale, defaultLocale, barePathname)}
+                hrefLang={locale}
+                key={locale}
+                lang={locale}
+              >
+                {getLocaleLabel(locale)}
+              </Link>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+/**
+ * Same footprint as the rendered list, so the panel does not shift as the copy
+ * arrives. One row per registry entry, counted from the same `getLocales()`
+ * the list itself maps, so a locale added to the registry cannot leave the two
+ * disagreeing.
+ */
+export const LocaleSwitcherLinksSkeleton = () => (
+  <div aria-hidden="true" className="grid gap-1">
+    {getLocales().map((locale) => (
+      <Skeleton className="h-9 rounded-control" key={locale} />
+    ))}
+  </div>
+);
+
+/**
+ * The same choice {@link LocaleSwitcher} offers, laid out as rows.
+ *
+ * The drawer the phone header opens is already a panel, so the popover the
+ * band uses would be a second one inside it. The options collapse into the
+ * drawer instead, behind the one row
+ * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
+ * drawer on the way to the other language.
+ */
+export const LocaleSwitcherLinks = () => {
+  const currentLocale = useLocale();
+  const defaultLocale = useTenantDefaultLocale();
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
+
+  return getLocales().map((locale) => (
+    <SiteLayoutMobileNavigationLink
+      current={locale === currentLocale}
+      href={withLocalePrefix(locale, defaultLocale, barePathname)}
+      hrefLang={locale}
+      key={locale}
+      lang={locale}
+    >
+      {getLocaleLabel(locale)}
+    </SiteLayoutMobileNavigationLink>
+  ));
+};

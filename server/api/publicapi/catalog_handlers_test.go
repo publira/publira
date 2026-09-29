@@ -1,0 +1,1444 @@
+package publicapi
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"net/url"
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
+)
+
+// assertCreatorRole checks that the role the aggregate carried through the
+// creators JSON reached the response as a CreatorRole. Both catalog reads build
+// their credits from the same fixture, so a mapping that dropped or flattened
+// the role would otherwise pass on the name alone.
+func assertCreatorRole(t *testing.T, creator *publirattypesv1.Creator) {
+	t.Helper()
+
+	if creator.GetRole() == nil {
+		t.Fatalf("creator %q carries no role", creator.GetName())
+	}
+	if got := creator.GetRole().GetPublicId(); got != "ROLEAUTHOR01" {
+		t.Fatalf("creator role public_id = %q, want ROLEAUTHOR01", got)
+	}
+	if got := creator.GetRole().GetName(); got != "Original Author" {
+		t.Fatalf("creator role name = %q, want Original Author", got)
+	}
+}
+
+func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	seriesImageID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Creator A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+	if len(resp.Msg.Series) != 1 {
+		t.Fatalf("series count = %d, want 1", len(resp.Msg.Series))
+	}
+	if resp.Msg.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series[0].PublicId)
+	}
+	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
+		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
+	}
+	assertCreatorRole(t, resp.Msg.Series[0].Creators[0])
+	if got := len(resp.Msg.Series[0].EyeCatchImageVariants); got != 1 {
+		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
+	}
+	if resp.Msg.Series[0].EyeCatchImageVariants[0].Url == "" {
+		t.Fatalf("eye_catch_image_variants url is empty")
+	}
+	// A list card states the same three things the detail page does, so a
+	// storefront does not have to open a series to know it has ended or who it
+	// is for.
+	if resp.Msg.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("series status = %s, want COMPLETED", resp.Msg.Series[0].Status)
+	}
+	if want := []int32{2, 6}; !slices.Equal(resp.Msg.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series[0].ScheduleWeekdays, want)
+	}
+	if resp.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series[0].AgeRating)
+	}
+	// A card says how much of the series a reader can open for nothing, so a
+	// storefront can shelve it without asking the detail page.
+	if resp.Msg.Series[0].FreeEpisodeCount != 2 {
+		t.Fatalf("series free_episode_count = %d, want 2", resp.Msg.Series[0].FreeEpisodeCount)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func seriesDetailColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "status", "schedule_weekdays", "age_rating", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "free_episode_count", "creators", "genres", "tags", "label_info"})
+}
+
+// seriesIDRows is what the keyset half of a page returns: ids only, already in
+// page order.
+func seriesIDRows(ids ...uuid.UUID) *sqlmock.Rows {
+	rows := sqlmock.NewRows([]string{"id"})
+	for _, id := range ids {
+		rows.AddRow(id)
+	}
+	return rows
+}
+
+// seriesDetailRows builds the display rows for `ids`, one second apart starting
+// at `newest`, so the cursor keys of the rows differ.
+func seriesDetailRows(newest time.Time, ids []uuid.UUID) *sqlmock.Rows {
+	rows := seriesDetailColumns()
+	for i, id := range ids {
+		publishedAt := newest.Add(-time.Duration(i) * time.Second)
+		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, "ongoing", []byte("{}"), "all", publishedAt, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`))
+	}
+	return rows
+}
+
+// newSeriesIDs makes `count` ids in the order a page would return them.
+func newSeriesIDs(count int) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, count)
+	for range count {
+		ids = append(ids, uuid.Must(uuid.NewV7()))
+	}
+	return ids
+}
+
+func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// The handler asks for one id past the page to learn that a next page exists.
+	ids := newSeriesIDs(3)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailRows(now, ids[:2]))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	if got := len(resp.Msg.Series); got != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token for the next page")
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryPublishedAt := now.Add(-time.Second)
+	token := webToken(pagination.Forward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	ids := newSeriesIDs(1)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailRows(now.Add(-2*time.Second), ids))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	if got := len(resp.Msg.Series); got != 1 {
+		t.Fatalf("series count = %d, want 1", got)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryPublishedAt := now.Add(-10 * time.Second)
+	token := webToken(pagination.Backward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// A backward page scans ascending, so the oldest id of the page comes first.
+	olderID := uuid.Must(uuid.NewV7())
+	newerID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesIDRows(olderID, newerID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(olderID, "SERIES_OLD", "Older", nil, "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(newerID, "SERIES_NEW", "Newer", nil, "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	got := make([]string, 0, len(resp.Msg.Series))
+	for _, series := range resp.Msg.Series {
+		got = append(got, series.PublicId)
+	}
+	if !slices.Equal(got, []string{"SERIES_NEW", "SERIES_OLD"}) {
+		t.Fatalf("series = %v, want the backward page flipped back to newest first", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
+	for _, test := range seriesRecoveryCases() {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			sortKey, sortArg := test.boundarySortKey(now)
+			token := webToken(test.direction, test.orderName, sortKey, boundaryID.String())
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, sortArg, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
+				Token:  token,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			}
+			wantPrevious := test.direction == pagination.Forward
+			if (resp.Msg.PreviousToken != "") != wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, wantPrevious)
+			}
+			if (resp.Msg.NextToken != "") == wantPrevious {
+				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, !wantPrevious)
+			}
+
+			// The recovery token points back the way the client came and is
+			// marked inclusive, so the boundary row is in the page it returns.
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			cursor, err := decodeSurfaceToken(recoveryToken, "web")
+			if err != nil {
+				t.Fatalf("decode recovery token: %v", err)
+			}
+			wantKeys := []string{test.orderName, sortKey, boundaryID.String(), seriesInclusiveKey}
+			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
+				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+// seriesRecoveryCase is one empty page: the order it was requested in, the
+// direction the client was moving, and the keyset query that answers it.
+// published_at and title are separate SQL branches carrying different sort key
+// types, so both orders are walked in each direction.
+type seriesRecoveryCase struct {
+	name          string
+	order         publirav1.SeriesOrder
+	orderName     string
+	boundaryTitle string
+	direction     pagination.Direction
+	wantQuery     string
+}
+
+// boundarySortKey returns the boundary value as the token spells it and as the
+// query receives it. A title order carries the title itself; the default order
+// carries a timestamp, which only the caller's clock can supply.
+func (c seriesRecoveryCase) boundarySortKey(now time.Time) (string, any) {
+	if c.boundaryTitle != "" {
+		return c.boundaryTitle, c.boundaryTitle
+	}
+	return now.Format(time.RFC3339Nano), now
+}
+
+func seriesRecoveryCases() []seriesRecoveryCase {
+	return []seriesRecoveryCase{
+		{
+			name:      "forward by published_at into a page whose rows are gone",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+			orderName: "published_at_desc",
+			direction: pagination.Forward,
+			wantQuery: dbmodels.ListActiveSeriesIDsByPublishedAtDesc,
+		},
+		{
+			name:      "backward by published_at into a page whose rows are gone",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+			orderName: "published_at_desc",
+			direction: pagination.Backward,
+			wantQuery: dbmodels.ListActiveSeriesIDsByPublishedAtAsc,
+		},
+		{
+			name:          "forward by title into a page whose rows are gone",
+			order:         publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			orderName:     "title_asc",
+			boundaryTitle: "Series 001",
+			direction:     pagination.Forward,
+			wantQuery:     dbmodels.ListActiveSeriesIDsByTitleAsc,
+		},
+		{
+			name:          "backward by title into a page whose rows are gone",
+			order:         publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			orderName:     "title_asc",
+			boundaryTitle: "Series 001",
+			direction:     pagination.Backward,
+			wantQuery:     dbmodels.ListActiveSeriesIDsByTitleDesc,
+		},
+	}
+}
+
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	// The recovery token's own direction picks the query, so the cases the
+	// empty page produced are the cases coming back in.
+	for _, test := range seriesRecoveryCases() {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			sortKey, sortArg := test.boundarySortKey(now)
+			token := webToken(
+				test.direction,
+				test.orderName,
+				sortKey,
+				boundaryID.String(),
+				seriesInclusiveKey,
+			)
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, true, sortArg, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
+				Token:  token,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
+	tests := []struct {
+		name      string
+		order     publirav1.SeriesOrder
+		wantQuery string
+	}{
+		{
+			name:      "unspecified falls back to newest first",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED,
+			wantQuery: dbmodels.ListActiveSeriesIDsByPublishedAtDesc,
+		},
+		{
+			name:      "oldest first",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC,
+			wantQuery: dbmodels.ListActiveSeriesIDsByPublishedAtAsc,
+		},
+		{
+			name:      "title ascending",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			wantQuery: dbmodels.ListActiveSeriesIDsByTitleAsc,
+		},
+		{
+			name:      "title descending",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC,
+			wantQuery: dbmodels.ListActiveSeriesIDsByTitleDesc,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := webToken(pagination.Forward, "title_asc", "Series 001", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, "Series 001", int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesRejectsTokenFromAnotherOrder(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	token := webToken(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+		Token:  token,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument when the token was built for another order", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesRejectsUnknownOrder(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Order:  publirav1.SeriesOrder(99),
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// The fourth key exists only to mark a recovery cursor, so anything else in
+// that position is a token this server did not issue.
+func TestCatalogListPublishedSeriesRejectsUnknownFourthKey(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	token := webToken(
+		pagination.Forward,
+		"published_at_desc",
+		now.Format(time.RFC3339Nano),
+		uuid.Must(uuid.NewV7()).String(),
+		"exclusive",
+	)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:  token,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesRejectsBrokenToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:  "not-a-token",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  101,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantAID := uuid.Must(uuid.NewV7())
+	tenantBID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	seriesAID := uuid.Must(uuid.NewV7())
+	seriesBID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantAID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesAID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantAID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantBID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesBID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantBID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantAID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries for TENANT_A: %v", err)
+	}
+	respB, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantBID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries for TENANT_B: %v", err)
+	}
+
+	if len(respA.Msg.Series) != 1 || respA.Msg.Series[0].PublicId != "SERIES_A" {
+		t.Fatalf("TENANT_A response = %+v, want SERIES_A only", respA.Msg.Series)
+	}
+	if len(respB.Msg.Series) != 1 || respB.Msg.Series[0].PublicId != "SERIES_B" {
+		t.Fatalf("TENANT_B response = %+v, want SERIES_B only", respB.Msg.Series)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestListActiveSeriesQueriesHavePublicationGuards(t *testing.T) {
+	// Both halves of a page filter on their own; neither may lean on the other
+	// to keep unpublished series out.
+	queries := map[string]string{
+		"listActiveSeriesIDsByPublishedAtDesc": dbmodels.ListActiveSeriesIDsByPublishedAtDesc,
+		"listActiveSeriesIDsByPublishedAtAsc":  dbmodels.ListActiveSeriesIDsByPublishedAtAsc,
+		"listActiveSeriesIDsByTitleAsc":        dbmodels.ListActiveSeriesIDsByTitleAsc,
+		"listActiveSeriesIDsByTitleDesc":       dbmodels.ListActiveSeriesIDsByTitleDesc,
+		"listActiveSeriesByIDs":                dbmodels.ListActiveSeriesByIDs,
+	}
+	requiredSnippets := []string{
+		"s.is_published = true",
+		"s.published_at IS NOT NULL",
+		"s.published_at <= NOW()",
+	}
+	for name, query := range queries {
+		for _, snippet := range requiredSnippets {
+			if !strings.Contains(query, snippet) {
+				t.Fatalf("%s does not contain %q", name, snippet)
+			}
+		}
+	}
+}
+
+func TestCatalogGetSeriesDetailContract(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	seriesImageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
+		WithArgs("web", "SERIESPUB", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "comment_mode", "is_published", "published_at", "free_episode_count", "creators", "genres", "tags", "episodes"}).
+			AddRow(
+				seriesID,
+				"SERIESPUB",
+				"Public Series",
+				"LABEL001",
+				"Weekly Jump",
+				seriesImageID,
+				nil,
+				"Public Synopsis",
+				"ongoing",
+				[]byte("{1,4}"),
+				"r15",
+				"immediate",
+				true,
+				now,
+				// The one episode is priced, so this is the count of a free
+				// window standing open on it.
+				int32(1),
+				[]byte(`[{"name":"Creator A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
+				[]byte(`[{"public_id":"GENRE00001","name":"Fantasy","slug":"fantasy"}]`),
+				[]byte(`[{"name":"Swordplay","slug":"swordplay"}]`),
+				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z","purchase_availability":"app"}]`),
+			))
+	// The series carries a rating, so the tenant's age rule is read; this one
+	// verifies nothing, so the series asks no age of anyone.
+	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
+	expectSeriesRating(mock, tenantID, seriesID, 4.2, 128)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIESPUB",
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+
+	if resp.Msg.Series == nil {
+		t.Fatalf("series is nil")
+	}
+	if resp.Msg.Series.PublicId != "SERIESPUB" {
+		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series.PublicId)
+	}
+	if resp.Msg.Series.Label == nil || resp.Msg.Series.Label.Name != "Weekly Jump" {
+		t.Fatalf("series label = %+v, want Weekly Jump", resp.Msg.Series.Label)
+	}
+	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Creator A" {
+		t.Fatalf("series creators = %+v, want one creator Creator A", resp.Msg.Series.Creators)
+	}
+	assertCreatorRole(t, resp.Msg.Series.Creators[0])
+	if got := len(resp.Msg.Series.EyeCatchImageVariants); got != 1 {
+		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
+	}
+	if resp.Msg.Series.Creators[0].IconImageUrl == "" {
+		t.Fatalf("creator icon_image_url is empty")
+	}
+	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].PublicId != "EP001" {
+		t.Fatalf("episodes = %+v, want one published episode EP001", resp.Msg.Episodes)
+	}
+	if got := resp.Msg.Episodes[0].PurchaseAvailability; got != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
+		t.Fatalf("episode purchase_availability = %s, want APP", got)
+	}
+	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING {
+		t.Fatalf("series status = %s, want ONGOING", resp.Msg.Series.Status)
+	}
+	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	}
+	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series.AgeRating)
+	}
+	if resp.Msg.Series.FreeEpisodeCount != 1 {
+		t.Fatalf("series free_episode_count = %d, want 1", resp.Msg.Series.FreeEpisodeCount)
+	}
+	if resp.Msg.Series.RatingAverage != 4.2 || resp.Msg.Series.RatingCount != 128 {
+		t.Fatalf("series rating = %v over %d readers, want 4.2 over 128",
+			resp.Msg.Series.RatingAverage, resp.Msg.Series.RatingCount)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// The episode detail carries the rating of the series it belongs to, so a
+// client can interpose its confirmation without a second read.
+func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r18", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
+	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectEpisodeCreditsLookup(mock)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("series age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	}
+	// The rating states who the series is for; it decides nothing about the
+	// body, which stays locked here because the episode is paid.
+	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("access = %s, want LOCKED", resp.Msg.Access)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// A stored rating this build does not know fails the read rather than
+// reporting the episode as unrestricted.
+func TestCatalogGetEpisodeDetailFailsOnAStoredRatingItDoesNotKnow(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r12", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetEpisodeDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
+		WithArgs("web", "SERIES_DRAFT", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "comment_mode", "is_published", "published_at", "free_episode_count", "creators", "genres", "tags", "episodes"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, false, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`[]`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES_DRAFT",
+	}))
+
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
+		WithArgs("web", "SERIES_MISSING", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "comment_mode", "is_published", "published_at", "free_episode_count", "creators", "genres", "tags", "episodes"}))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES_MISSING",
+	}))
+
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
+		WithArgs("web", "SERIESPUB", tenantID).
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIESPUB",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailPreservesContextCanceled(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
+		WithArgs("web", "SERIESPUB", tenantID).
+		WillReturnError(context.Canceled)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIESPUB",
+	}))
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListPublishedSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
+	normalEpisodeID := uuid.Must(uuid.NewV7())
+	normalSeriesID := uuid.Must(uuid.NewV7())
+
+	tests := []struct {
+		name     string
+		publicID string
+		rows     *sqlmock.Rows
+		wantCode connect.Code
+	}{
+		{
+			// Paid episode without session: metadata OK, body locked (no images).
+			name:     "normal-paid-locked",
+			publicID: "EPISODE001",
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), normalSeriesID, int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"),
+		},
+		{
+			name:     "unpublished",
+			publicID: "EPISODE_DRAFT",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "scheduled-boundary-not-reached",
+			publicID: "EPISODE_SCHEDULED",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "cross-tenant",
+			publicID: "EPISODE_OTHER_TENANT",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "not-found",
+			publicID: "EPISODE_MISSING",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}),
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+				WithArgs(tenantID, nil, tc.publicID, "web").
+				WillReturnRows(tc.rows)
+			if tc.wantCode == 0 {
+				expectEpisodeNeighborsLookup(mock, tenantID, normalSeriesID, int32(1), normalEpisodeID)
+				expectEpisodeCreditsLookup(mock)
+			}
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: tc.publicID,
+			}))
+
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetEpisodeDetail: %v", err)
+				}
+				if resp.Msg.Episode == nil {
+					t.Fatalf("episode is nil")
+				}
+				if resp.Msg.Episode.PublicId != tc.publicID {
+					t.Fatalf("episode public_id = %q, want %q", resp.Msg.Episode.PublicId, tc.publicID)
+				}
+				if resp.Msg.Series == nil || resp.Msg.Series.PublicId != "SERIES001" {
+					t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series.GetPublicId())
+				}
+				if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+					t.Fatalf("access = %v, want %v", resp.Msg.Access, publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED)
+				}
+				if len(resp.Msg.Images) != 0 {
+					t.Fatalf("images count = %d, want 0 for locked paid episode", len(resp.Msg.Images))
+				}
+			} else {
+				if connect.CodeOf(err) != tc.wantCode {
+					t.Fatalf("GetEpisodeDetail code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+				}
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+// A free body stays a plain public URL. An entitled body carries the media
+// token, which is what lets the reader's <img> request name them at
+// image-server: a browser cannot put the bearer on that request.
+func assertEpisodeImageURL(
+	t *testing.T,
+	imageURL string,
+	tenantID uuid.UUID,
+	episodeID uuid.UUID,
+	access publirav1.EpisodeAccess,
+) {
+	t.Helper()
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		t.Fatalf("image url %q: %v", imageURL, err)
+	}
+	token := parsed.Query().Get(auth.MediaTokenQueryParam)
+
+	// A locked episode returns no images at all, so a token on one would be a
+	// URL nobody should have been handed.
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		if token != "" {
+			t.Errorf("image url %q carries a media token, want a locked episode to return no images", imageURL)
+		}
+		return
+	}
+	if token == "" {
+		t.Fatalf("image url %q has no media token", imageURL)
+	}
+
+	claims, err := testutil.TokenManager().Verify(token, auth.AudienceMedia)
+	if err != nil {
+		t.Fatalf("Verify media token: %v", err)
+	}
+	// A free body's reader may have no session at all, so its token names the
+	// synthetic subject instead of a reader; an entitled one names the reader
+	// whose grant image-server re-checks.
+	wantSubject := auth.FreeEpisodeMediaSubject
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		wantSubject = testPublicUserPublicID
+	}
+	if claims.Subject != wantSubject {
+		t.Errorf("media token subject = %q, want %q", claims.Subject, wantSubject)
+	}
+	if claims.TenantID != tenantID.String() {
+		t.Errorf("media token tenant = %q, want %q", claims.TenantID, tenantID.String())
+	}
+	if claims.EpisodeID != episodeID.String() {
+		t.Errorf("media token episode = %q, want %q", claims.EpisodeID, episodeID.String())
+	}
+}
+
+func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
+	tests := []struct {
+		name   string
+		price  int32
+		authed bool
+		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
+		invalidBearer bool
+		// grantKind is the episode_content_grants kind the reader holds, empty
+		// for none.
+		grantKind      string
+		wantAccess     publirav1.EpisodeAccess
+		wantSource     publirav1.EpisodeEntitlementSource
+		wantImageCount int
+	}{
+		{
+			name:           "free-unauthenticated",
+			price:          0,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_FREE,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-unauthenticated-locked",
+			price:          500,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
+		},
+		{
+			name:           "paid-authed-with-purchase-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "purchase",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-with-ticket-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "access_ticket",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-as-credited-creator-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "creator",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-without-grant-locked",
+			price:          500,
+			authed:         true,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
+		},
+		{
+			name:           "paid-invalid-bearer-locked",
+			price:          500,
+			invalidBearer:  true,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			episodeID := uuid.Must(uuid.NewV7())
+			seriesID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+				WithArgs(tenantID, nil, "EPISODE001", "web").
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, tc.price == 0, nil, int64(0), "all"))
+
+			if tc.authed {
+				// authenticateAccessToken looks up tenant again via tenantByContext
+				expectTenantLookup(mock, tenantID, "TENANT", now)
+				expectAuthSession(mock, tenantID, userID, now)
+				grantRows := sqlmock.NewRows([]string{"kind"})
+				if tc.grantKind != "" {
+					grantRows.AddRow(tc.grantKind)
+				}
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeEntitlementSource)).
+					WithArgs(tenantID, userID, episodeID).
+					WillReturnRows(grantRows)
+			} else if tc.invalidBearer {
+				// Token verify fails after tenant re-lookup; no content-access or images queries.
+				expectTenantLookup(mock, tenantID, "TENANT", now)
+			}
+
+			expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+			expectEpisodeCreditsLookup(mock)
+
+			if tc.wantImageCount > 0 {
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
+					WithArgs(episodeID).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800)))
+			}
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			var req *connect.Request[publirav1.GetEpisodeDetailRequest]
+			switch {
+			case tc.authed:
+				req = newAuthedPublicRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				}, tenantID.String())
+			case tc.invalidBearer:
+				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				})
+				req.Header().Set("Authorization", "Bearer not-a-valid-jwt")
+			default:
+				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				})
+			}
+
+			resp, err := client.GetEpisodeDetail(context.Background(), req)
+			if err != nil {
+				t.Fatalf("GetEpisodeDetail: %v", err)
+			}
+			if resp.Msg.Access != tc.wantAccess {
+				t.Fatalf("access = %v, want %v", resp.Msg.Access, tc.wantAccess)
+			}
+			if resp.Msg.EntitlementSource != tc.wantSource {
+				t.Fatalf("entitlement source = %v, want %v", resp.Msg.EntitlementSource, tc.wantSource)
+			}
+			if len(resp.Msg.Images) != tc.wantImageCount {
+				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)
+			}
+			for _, image := range resp.Msg.Images {
+				assertEpisodeImageURL(t, image.ImageUrl, tenantID, episodeID, tc.wantAccess)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestGetPublishedEpisodeQueryHasPublicationGuards(t *testing.T) {
+	requiredSnippets := []string{
+		"s.is_published = true",
+		"s.published_at IS NOT NULL",
+		"s.published_at <= NOW()",
+		"el.status = 'published'",
+		"el.published_at IS NOT NULL",
+		"el.published_at <= NOW()",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(dbmodels.GetPublishedEpisodeForTenant, snippet) {
+			t.Fatalf("dbmodels.GetPublishedEpisodeForTenant does not contain %q", snippet)
+		}
+	}
+}
+
+// The detail carries the episodes either side of the one being read, so a
+// viewer draws its own navigation from the response it already has. The fields
+// restate the neighbour's price rather than the reader's standing in it, which
+// is what lets a locked episode's detail stay as cacheable as a free one.
+func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE002", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE002", "Chapter Two", int32(2), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(2), episodeID,
+		episodeNeighbor{direction: -1, publicID: "EPISODE001", title: "Chapter One", orderIndex: 1, price: 0, isFree: true},
+		episodeNeighbor{direction: 1, publicID: "EPISODE003", title: "Chapter Three", orderIndex: 3, price: 500},
+	)
+	expectEpisodeCreditsLookup(mock)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE002",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+
+	previous := resp.Msg.PreviousEpisode
+	if previous.GetPublicId() != "EPISODE001" || previous.GetTitle() != "Chapter One" || previous.GetOrderIndex() != 1 {
+		t.Fatalf("previous_episode = %+v, want Chapter One at order 1", previous)
+	}
+	if previous.GetPrice() != 0 || !previous.GetIsFree() {
+		t.Fatalf("previous_episode price = %d, is_free = %t, want a free neighbour", previous.GetPrice(), previous.GetIsFree())
+	}
+
+	next := resp.Msg.NextEpisode
+	if next.GetPublicId() != "EPISODE003" || next.GetTitle() != "Chapter Three" || next.GetOrderIndex() != 3 {
+		t.Fatalf("next_episode = %+v, want Chapter Three at order 3", next)
+	}
+	if next.GetPrice() != 500 || next.GetIsFree() {
+		t.Fatalf("next_episode price = %d, is_free = %t, want a paid neighbour", next.GetPrice(), next.GetIsFree())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// A priced episode inside an open free window is free to read while the window
+// lasts, and its price is what it costs again afterwards. The link carries both,
+// so a viewer marks it free without contradicting the price beside it.
+func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
+		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 500, isFree: true},
+	)
+	expectEpisodeCreditsLookup(mock)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	next := resp.Msg.NextEpisode
+	if !next.GetIsFree() {
+		t.Fatalf("next_episode is_free = %t, want a neighbour inside a free window to read as free", next.GetIsFree())
+	}
+	if next.GetPrice() != 500 {
+		t.Fatalf("next_episode price = %d, want the price it costs once the window closes", next.GetPrice())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// An end of the series leaves its side unset rather than naming the episode
+// being read, so a viewer can draw one link where there is only one.
+func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
+		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 0, isFree: true},
+	)
+	expectEpisodeCreditsLookup(mock)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if resp.Msg.PreviousEpisode != nil {
+		t.Fatalf("previous_episode = %+v, want none before the first episode", resp.Msg.PreviousEpisode)
+	}
+	if resp.Msg.NextEpisode.GetPublicId() != "EPISODE002" {
+		t.Fatalf("next_episode = %q, want EPISODE002", resp.Msg.NextEpisode.GetPublicId())
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// The neighbour query is what keeps a draft or scheduled episode from becoming
+// a link on a published one, on both sides of the episode being read.
+func TestListPublishedEpisodeNeighborsQueryHasPublicationGuards(t *testing.T) {
+	requiredSnippets := []string{
+		"s.is_published = true",
+		"s.published_at IS NOT NULL",
+		"s.published_at <= NOW()",
+		"el.status = 'published'",
+		"el.published_at IS NOT NULL",
+		"el.published_at <= NOW()",
+		// is_free follows the same rule as the body access it describes.
+		"FROM published_free_episodes fe",
+	}
+	for _, snippet := range requiredSnippets {
+		if strings.Count(dbmodels.ListPublishedEpisodeNeighborsForTenant, snippet) != 2 {
+			t.Fatalf("dbmodels.ListPublishedEpisodeNeighborsForTenant does not contain %q on both sides", snippet)
+		}
+	}
+}

@@ -1,0 +1,142 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Publira repository CodeRabbit config.
+# Inherits Organization Settings; overrides only monorepo-specific paths and rules.
+# Resolved config: comment `@coderabbitai configuration` on a PR.
+inheritance: true
+
+tone_instructions: >-
+  Be concise and technical. No praise. Focus on bugs, security, contract breaks, and policy violations. Skip style nits and anything lint already catches. Keep code identifiers, paths, and commands as-is.
+
+reviews:
+  # Org sets assertive / auto_review off / noise flags. Repo-specific only below.
+  path_filters:
+    # Repository-specific exclusions. CodeRabbit's own built-in ignored paths still
+    # apply on top of these, but that list is not published, so nothing here leans on
+    # it: every generated / vendored path is named even when a default may cover it.
+    - "!**/gen/**"
+    - "!**/__generated__/**"
+    - "!packages/**/dist/**"
+    - "!**/*.tsbuildinfo"
+    - "!pnpm-lock.yaml"
+    - "!mobile/pubspec.lock"
+    - "!.devcontainer/devcontainer-lock.json"
+    - "!skills-lock.json"
+    - "!.agents/skills/**"
+    - "!mobile/**/Generated.xcconfig"
+    - "!mobile/ios/Flutter/flutter_export_environment.sh"
+    - "!mobile/android/**/GeneratedPluginRegistrant.*"
+
+  path_instructions:
+    - path: "apps/**/*.{ts,tsx}"
+      instructions: |
+        Next.js App Router monorepo (web-admin / web-host / web-platform).
+        Source of truth: AGENTS.md and apps/AGENTS.md.
+
+        - React: user actions in event handlers only. No props→state via useEffect.
+          Reset edit state on entity switch with parent key remount. useEffectEvent
+          only from inside Effects (never pass to onClick etc.).
+        - Next.js cache: wire both cacheHandler (singular) and cacheHandlers (plural)
+          to Redis via @publira/next-cache-handlers. Flag changes that drop either.
+        - Never leak secrets or server-only env to the client.
+        - Prefer packages/* for shared UI; keep app-only code under apps/*.
+
+    - path: "packages/**/*.{ts,tsx}"
+      instructions: |
+        Shared packages. Prioritize breaking API changes, public export semantics,
+        and overly wide types. Hand-written api-client code must keep a clear
+        boundary from Connect-generated clients. Do not reimplement or patch
+        generated clients in hand-written sources (packages/**/gen/**,
+        packages/**/__generated__/**, and packages/**/dist/** are path-filtered
+        and not reviewed).
+
+    - path: "server/**/*.go"
+      instructions: |
+        Go backend. Rules: server/AGENTS.md.
+
+        - Schema-first: change proto/ or db/migrations + db/query first, then task gen.
+          Prefer source-side diffs; server/internal/proto/gen/ and sqlc outputs are path-filtered
+          so hand-edits there are not visible to review — flag PRs that change
+          generated-looking code without corresponding proto/SQL sources.
+        - Keep cmd/ thin; real logic in api/ and internal/.
+        - Emphasize error handling, context propagation, authz (tenant / role).
+        - Flag queries or handlers that break multi-tenant isolation.
+        - publiractl commands are one-shot (run and exit), not long-lived daemons.
+
+    - path: "server/api/**/*.go"
+      instructions: |
+        ConnectRPC handlers. Check input validation, authz, tenant resolution, and
+        audit logging. Suggest moving bloated business logic into internal/.
+
+    - path: "db/**"
+      instructions: |
+        PostgreSQL / sqlc. Rules: db/AGENTS.md.
+
+        - migrations/ is append-only once merged: flag any edit, rename, or
+          deletion of a migration file that is already on main. A migration the
+          PR itself adds is still being written, so ask for it to be corrected in
+          place rather than stacked on. A schema change is a new timestamped
+          pair, and every up needs a down that undoes it.
+        - migration = DDL; seed = idempotent DML. Flag mixed responsibilities.
+        - Strongly flag destructive DDL (DROP / TRUNCATE / drop constraints) and RLS disable.
+        - sqlc queries must be parameterized; flag string-concatenated dynamic SQL.
+
+    - path: "proto/**/*.proto"
+      instructions: |
+        Public contracts. Flag field-number reuse/removal, semantic breaks, and
+        incompatible renames/type changes. Remind that task gen is required after edits.
+
+    - path: "mobile/**/*.{dart,kt,swift}"
+      instructions: |
+        Flutter mobile. Check domain/API contract drift vs web, secure storage and
+        auth token handling, and accidental platform-specific leaks.
+
+    - path: "infra/**"
+      instructions: |
+        Production Docker / build. Flag bad build context from repo root, secret COPY,
+        unnecessary root, and pointless cache-busting layers.
+        See infra/docker/README.md and infra/docker/AGENTS.md.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        CI workflow. Job layout, path filters, and triage: .github/workflows/README.md
+        (source of truth for host CI; infra/docker/README.md covers image builds only).
+
+        - Flag secret exposure, unsafe pull_request_target, excessive permissions,
+          and missing verification steps.
+        - Adding/renaming a job also needs scripts/ci-plan-jobs.sh, the Summary
+          aggregator (needs + env), and .github/workflows/README.md updated together.
+
+    - path: "**/*.md"
+      instructions: |
+        Markdown this repository owns is written in English. Source of truth: the
+        "Documentation and test labels: English" section of AGENTS.md.
+
+        - The one translated copy is README.ja.md, paired with the root README.md.
+          No other directory gets a *.ja.md.
+        - Japanese README files that are still around are leftovers awaiting
+          translation, not a precedent. Never ask an English line to match the
+          Japanese entries surrounding it.
+        - The "Output language" section of AGENTS.md sets the language of replies to
+          the user, not the language of documents stored in the repository. Do not
+          cite it to ask for Japanese prose in a Markdown file.
+        - Japanese stays where it is the subject rather than the prose: user-facing
+          UI strings, including the ones quoted in a code example, locales/*.json
+          values, and Japanese test fixtures.
+
+    - path: "**/*.{test,spec}.{ts,tsx,go,dart}"
+      instructions: |
+        Prefer readable names, failure paths, and edge cases. Go DB integration should
+        follow internal/testutil / Testcontainers; flag tests that assume a shared local DB.
+
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >-
+        Short English Conventional Commits title (e.g. feat(server): ..., fix(web-admin): ...). The PR title becomes the merge commit message.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: off
+    docstrings:
+      mode: off

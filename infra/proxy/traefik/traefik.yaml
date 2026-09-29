@@ -1,0 +1,35 @@
+# Traefik static configuration.
+#
+# The Dev Container and the E2E stack pass the same settings on the command
+# line instead of mounting this file, because each of them listens on a
+# different address and only the Dev Container exposes the dashboard. What is
+# not environment-specific is here, and this is the file a deployment mounts.
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      middlewares:
+        # Runs before any router, so every route on this entrypoint loses its
+        # inbound W3C Trace Context. `@file` is the provider namespace; the
+        # middleware itself is defined in dynamic/routes.yaml.
+        - strip-trace-context@file
+
+  # TLS termination is a deployment decision — which certificate source, which
+  # listen address, which real-IP header — so only the shape is here.
+  #
+  # websecure:
+  #   address: ":443"
+  #   http:
+  #     middlewares:
+  #       - strip-trace-context@file
+  #     tls: {}
+
+providers:
+  file:
+    # routes.yaml (the contract) and services.yaml (this environment's backend
+    # addresses) are merged from this one directory.
+    directory: /etc/traefik/dynamic
+    # Editing either file takes effect without restarting Traefik. A bind
+    # mount that delivers no file events needs a restart instead.
+    watch: true

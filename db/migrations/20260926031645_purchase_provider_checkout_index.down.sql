@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS purchases_provider_checkout_id_key;

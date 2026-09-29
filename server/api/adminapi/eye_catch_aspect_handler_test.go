@@ -1,0 +1,627 @@
+package adminapi
+
+import (
+	"bytes"
+	"context"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
+	"regexp"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/api/protomapper"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+)
+
+// aspectJPEG encodes a plain JPEG of the given size. A ratio upload is checked
+// against that ratio's minimum, which the 1x1 fixtures cannot meet.
+func aspectJPEG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			img.Set(x, y, color.RGBA{R: uint8(x % 256), G: uint8(y % 256), B: 0x40, A: 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, nil); err != nil {
+		t.Fatalf("jpeg.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// halvedAspectPNG encodes a lossless PNG whose left half is red and right
+// half blue, so a test can tell which part of it the handler kept.
+func halvedAspectPNG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			if x < width/2 {
+				img.Set(x, y, color.RGBA{R: 0xff, A: 0xff})
+				continue
+			}
+			img.Set(x, y, color.RGBA{B: 0xff, A: 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// decodeUploadedImage decodes one uploaded object and reports its size and the
+// 8-bit color at its centre.
+func decodeUploadedImage(t *testing.T, encoded []byte) (width, height int, r, b uint32) {
+	t.Helper()
+	img, _, err := image.Decode(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatalf("image.Decode: %v", err)
+	}
+	bounds := img.Bounds()
+	cr, _, cb, _ := img.At(bounds.Min.X+bounds.Dx()/2, bounds.Min.Y+bounds.Dy()/2).RGBA()
+	return bounds.Dx(), bounds.Dy(), cr >> 8, cb >> 8
+}
+
+func seriesRowColumns() []string {
+	return []string{
+		"id", "public_id", "title", "label_id", "label_public_id", "label_name", "synopsis",
+		"reading_period_hours", "status", "schedule_weekdays", "age_rating",
+		"comment_mode", "reading_direction", "spread_start_index", "is_published", "published_at",
+		"eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes", "availability",
+		"purchase_availability",
+	}
+}
+
+func labelRowColumns() []string {
+	return []string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}
+}
+
+func eyeCatchVariantColumns(imageIDColumn string) []string {
+	return []string{"id", imageIDColumn, "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
+}
+
+// createdImageVariantRow stands in for the `RETURNING *` of an image variant
+// insert. The handler discards the row, so only its shape has to line up.
+func createdImageVariantRow(imageIDColumn string, tenantID, imageID uuid.UUID, variantType string, now time.Time) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", "tenant_id", imageIDColumn, "label", "variant_type", "storage_provider",
+		"object_key", "content_type", "file_size_bytes", "width", "height", "created_at",
+	}).AddRow(
+		uuid.Must(uuid.NewV7()), tenantID, imageID, variantType+"_1200w", variantType, "s3",
+		"tenants/TENANT/key", "image/jpeg", int64(4096), int32(1200), int32(1200), now,
+	)
+}
+
+func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+
+	mock.ExpectBegin()
+	// The row is locked and the eye-catch re-read behind it before anything
+	// is cleared, so two uploads racing on the same ratio serialize.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES001"))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+	// Only the requested ratio is cleared; the other three keep their rows.
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
+		WithArgs(imageID, "landscape").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+	// landscape is delivered at 800 / 1200 / 1600 px wide.
+	for range 3 {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesImageVariant)).
+			WillReturnRows(createdImageVariantRow("series_image_id", tenantID, imageID, "landscape", now))
+	}
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchSeriesImage)).
+		WithArgs(imageID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
+	landscapeID := uuid.Must(uuid.NewV7())
+	portraitID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
+			AddRow(landscapeID, imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)).
+			AddRow(portraitID, imageID, "portrait", "portrait_1200w", "image/jpeg", int64(4096), int32(1200), int32(1600)))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "landscape",
+		ImageData:        aspectJPEG(t, 1600, 900),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
+	}
+	ratios := map[string]string{}
+	for _, variant := range resp.Msg.Series.GetEyeCatchImageVariants() {
+		ratios[variant.GetVariantType()] = variant.GetUrl()
+	}
+	if ratios["landscape"] != protomapper.EyeCatchVariantURL("series", imageID, "landscape", 1600, landscapeID) ||
+		ratios["portrait"] != protomapper.EyeCatchVariantURL("series", imageID, "portrait", 1200, portraitID) {
+		t.Fatalf("variant urls = %v, want landscape and portrait addressed by their own rows", ratios)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadSeriesEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "landscape",
+		ImageData:        aspectJPEG(t, 1600, 900),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("error code = %v, want failed_precondition (err: %v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadSeriesEyeCatchAspectImageRejectsAnUnknownRatio(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "banner",
+		ImageData:        aspectJPEG(t, 1600, 900),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadSeriesEyeCatchAspectImageRejectsASourceBelowTheRatioMinimum(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "landscape",
+		ImageData:        aspectJPEG(t, 800, 450),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.T) {
+	storageProvider := &recordingStorageProvider{}
+	testServer, mock := newTestAdminServerWithStorage(t, storageProvider)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES001"))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
+		WithArgs(imageID, "landscape").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+	for range 3 {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesImageVariant)).
+			WillReturnRows(createdImageVariantRow("series_image_id", tenantID, imageID, "landscape", now))
+	}
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchSeriesImage)).
+		WithArgs(imageID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
+			AddRow(uuid.Must(uuid.NewV7()), imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	// The red left half of the upload, which is exactly the landscape
+	// minimum, so the ratio is still delivered at all three of its widths.
+	// The source is already 16:9, so ignoring the rectangle would centre the
+	// crop on the red/blue seam and deliver something that is not red.
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "landscape",
+		ImageData:        halvedAspectPNG(t, 3200, 1800),
+		ImageContentType: "image/png",
+		Crop:             &publirattypesv1.ImageCropRect{X: 0, Y: 0, Width: 1600, Height: 900},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req); err != nil {
+		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
+	}
+
+	uploads := storageProvider.recorded()
+	if len(uploads) != 3 {
+		t.Fatalf("uploaded %d objects, want 3", len(uploads))
+	}
+	wantSizes := map[int]int{800: 450, 1200: 675, 1600: 900}
+	for _, upload := range uploads {
+		width, height, r, b := decodeUploadedImage(t, upload.Data)
+		wantHeight, ok := wantSizes[width]
+		if !ok {
+			t.Fatalf("upload %q is %d px wide, want one of the landscape widths", upload.ObjectKey, width)
+		}
+		if height != wantHeight {
+			t.Fatalf("upload %q is %dx%d, want %dx%d", upload.ObjectKey, width, height, width, wantHeight)
+		}
+		delete(wantSizes, width)
+		if r < 200 || b > 40 {
+			t.Fatalf("upload %q centre is r=%d b=%d, want the red left half", upload.ObjectKey, r, b)
+		}
+	}
+	if len(wantSizes) != 0 {
+		t.Fatalf("missing uploads for widths %v", wantSizes)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadSeriesEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, testSeriesID).
+		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:         testSeriesID.String(),
+		VariantType:      "landscape",
+		ImageData:        aspectJPEG(t, 3200, 1800),
+		ImageContentType: "image/jpeg",
+		Crop:             &publirattypesv1.ImageCropRect{X: 2000, Y: 0, Width: 1600, Height: 900},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
+	}
+	// The image is fine; the selection is not, so the violation names it.
+	assertBadRequestField(t, err, "crop")
+	assertExpectations(t, mock)
+}
+
+func TestUploadLabelEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		LabelId:          labelID.String(),
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 2400, 2400),
+		ImageContentType: "image/jpeg",
+		Crop:             &publirattypesv1.ImageCropRect{X: 0, Y: 1300, Width: 1200, Height: 1200},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadLabelEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
+	}
+	assertBadRequestField(t, err, "crop")
+	assertExpectations(t, mock)
+}
+
+func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(labelID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteLabelImageVariantsByType)).
+		WithArgs(imageID, "square").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+	// square is delivered at 600 / 900 / 1200 px wide.
+	for range 3 {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabelImageVariant)).
+			WillReturnRows(createdImageVariantRow("label_image_id", tenantID, imageID, "square", now))
+	}
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchLabelImage)).
+		WithArgs(imageID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+	squareID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("label_image_id")).
+			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		LabelId:          labelID.String(),
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 1200, 1200),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UploadLabelEyeCatchAspectImage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadLabelEyeCatchAspectImage: %v", err)
+	}
+	variants := resp.Msg.Label.GetEyeCatchImageVariants()
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("labels", imageID, "square", 1200, squareID) {
+		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
+	}
+	assertExpectations(t, mock)
+}
+
+func genreRowColumns() []string {
+	return []string{"id", "public_id", "name", "slug", "display_order", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}
+}
+
+func TestUploadGenreEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
+		WillReturnRows(sqlmock.NewRows(genreRowColumns()).
+			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, nil, nil))
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		GenreId:          genreID.String(),
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 1200, 1200),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("error code = %v, want failed_precondition (err: %v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	genreRow := func() *sqlmock.Rows {
+		return sqlmock.NewRows(genreRowColumns()).
+			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, imageID, now)
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
+		WillReturnRows(genreRow())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(genreID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
+		WillReturnRows(genreRow())
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteGenreImageVariantsByType)).
+		WithArgs(imageID, "square").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+	// square is delivered at 600 / 900 / 1200 px wide.
+	for range 3 {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateGenreImageVariant)).
+			WillReturnRows(createdImageVariantRow("genre_image_id", tenantID, imageID, "square", now))
+	}
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchGenreImage)).
+		WithArgs(imageID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
+		WillReturnRows(genreRow())
+	squareID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("genre_image_id")).
+			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		GenreId:          genreID.String(),
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 1200, 1200),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
+	}
+	variants := resp.Msg.Genre.GetEyeCatchImageVariants()
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("genres", imageID, "square", 1200, squareID) {
+		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
+	}
+	assertExpectations(t, mock)
+}

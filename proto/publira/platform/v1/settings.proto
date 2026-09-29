@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+// Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
+// own service (PlatformEmailSettingsService); everything else lands here.
+message PlatformSettings {
+  // IANA time zone name (e.g. Asia/Tokyo, America/Los_Angeles, UTC) applied to
+  // newly created tenants. Never empty in a response.
+  string default_timezone = 1;
+  // UI locale code (ja, en) the platform console falls back to when the
+  // operator has chosen no display language of their own. It stands in for no
+  // other row: tenant creation states its own locale, and a tenant read
+  // resolves the tenant's. Never empty in a response — a settings row that
+  // names no supported locale fails the read instead.
+  string default_locale = 2;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Never zero
+  // in a response: a row that cannot be read fails the read instead.
+  int64 revision = 3;
+}
+
+message GetPlatformSettingsRequest {}
+
+message GetPlatformSettingsResponse {
+  PlatformSettings settings = 1;
+}
+
+message UpdatePlatformSettingsRequest {
+  string default_timezone = 1;
+  // Required: the settings row has no column default for the locale, so a save
+  // that omitted it could not create the row at all. A timezone-only screen
+  // sends back the locale it read. Unknown or blank codes are rejected before
+  // any write.
+  string default_locale = 2;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformSettings.revision. Zero states that no settings row is
+  // expected to exist yet. The write is refused with FAILED_PRECONDITION when
+  // the stored row moved on, so a save that read one field before another
+  // session changed it cannot roll that change back.
+  int64 expected_revision = 3;
+}
+
+message UpdatePlatformSettingsResponse {
+  PlatformSettings settings = 1;
+}
+
+service PlatformSettingsService {
+  rpc GetPlatformSettings(GetPlatformSettingsRequest) returns (GetPlatformSettingsResponse) {}
+  rpc UpdatePlatformSettings(UpdatePlatformSettingsRequest) returns (UpdatePlatformSettingsResponse) {}
+}

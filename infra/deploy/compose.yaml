@@ -1,0 +1,213 @@
+# A whole Publira install on one host, from the repository's own images: the
+# processes and variables README.md describes, wired together.
+#
+# Every value comes from `.env` beside this file, which `.env.example` lists;
+# a required one left empty stops `docker compose` before anything starts. The
+# images are referenced, never built: `task docker:verify:full` builds them as
+# `publira/<name>:local`, and a deployment pulls them from its own registry.
+#
+# `name:` is fixed, unlike the root compose.yaml, since a host runs one install
+# whose volumes keep their names across every command; `publira` would share
+# them with the Dev Container's stack, which takes that name from the checkout.
+
+name: publira-deploy
+
+x-secret-encryption: &secret-encryption
+  PUBLIRA_SECRET_ENCRYPTION_KEYS: ${PUBLIRA_SECRET_ENCRYPTION_KEYS:?}
+  PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID: ${PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID:?}
+
+x-tenant-url: &tenant-url
+  PUBLIRA_TENANT_URL_SCHEME: ${PUBLIRA_TENANT_URL_SCHEME:-}
+
+# Where `publira server` and the worker send cache revalidation. The Platform
+# Console's URL is left empty unless it runs, since a destination that never
+# answers keeps the worker retrying the event.
+x-revalidate: &revalidate
+  PUBLIRA_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
+  PUBLIRA_WEB_HOST_INTERNAL_URL: http://web-host:3000
+  PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://web-admin:4000
+  PUBLIRA_WEB_PLATFORM_INTERNAL_URL: ${PUBLIRA_WEB_PLATFORM_INTERNAL_URL:-}
+
+x-web-app: &web-app
+  PUBLIRA_GRPC_URL: http://server:8100
+  PNCH_REDIS_URL: redis://valkey:6379
+  PNCH_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
+
+services:
+  postgres:
+    image: postgres:18.6-alpine3.23@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: publira
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${PUBLIRA_POSTGRES_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  # Holds caches and rate limit counters only, so nothing is persisted.
+  valkey:
+    image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # The object store. An install on an external store drops this service and
+  # gives `publiractl setup` that store instead.
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${PUBLIRA_RUSTFS_ACCESS_KEY:?}
+      RUSTFS_SECRET_KEY: ${PUBLIRA_RUSTFS_SECRET_KEY:?}
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # The edge. The routing is the repository's own routes.yaml, mounted as it
+  # stands; only the backend addresses in services.yaml are this file's.
+  proxy:
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    restart: unless-stopped
+    ports:
+      # Loopback, like every port the root compose.yaml publishes: whatever
+      # terminates TLS on this host forwards here.
+      - "127.0.0.1:${PUBLIRA_EDGE_PORT:?}:80"
+    volumes:
+      - ../proxy/traefik/traefik.yaml:/etc/traefik/traefik.yaml:ro
+      - ../proxy/traefik/dynamic/routes.yaml:/etc/traefik/dynamic/routes.yaml:ro
+      - ./services.yaml:/etc/traefik/dynamic/services.yaml:ro
+    depends_on:
+      - server
+      - web-host
+      - web-admin
+
+  server:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/publira:${PUBLIRA_IMAGE_TAG:?}
+    restart: unless-stopped
+    environment:
+      <<: [*secret-encryption, *tenant-url, *revalidate]
+      PUBLIRA_AUTH_JWT_SECRET: ${PUBLIRA_AUTH_JWT_SECRET:?}
+      PUBLIRA_PUBLIC_DB_URL: postgres://publira_public:${PUBLIRA_PUBLIC_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_ADMIN_DB_URL: postgres://publira_admin:${PUBLIRA_ADMIN_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_PLATFORM_DB_URL: postgres://publira_platform:${PUBLIRA_PLATFORM_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_REDIS_URL: redis://valkey:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  worker:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/publira:${PUBLIRA_IMAGE_TAG:?}
+    command: ["worker"]
+    restart: unless-stopped
+    environment:
+      <<: [*secret-encryption, *tenant-url, *revalidate]
+      PUBLIRA_WORKER_DB_URL: postgres://publira_outbox:${PUBLIRA_OUTBOX_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_TICKER_DB_URL: postgres://publira_ticker:${PUBLIRA_TICKER_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_CONTENT_STATS_DB_URL: postgres://publira_content_stats:${PUBLIRA_CONTENT_STATS_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_EMAIL_RENDERER_URL: ${PUBLIRA_EMAIL_RENDERER_URL:-}
+      PUBLIRA_PLATFORM_APP_URL: ${PUBLIRA_PLATFORM_APP_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web-host:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-host:${PUBLIRA_IMAGE_TAG:?}
+    restart: unless-stopped
+    environment:
+      <<: [*web-app, *tenant-url]
+      PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_HOST_AUTH_SECRET:?}
+    depends_on:
+      - server
+      - valkey
+
+  web-admin:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-admin:${PUBLIRA_IMAGE_TAG:?}
+    restart: unless-stopped
+    environment:
+      <<: [*web-app, *tenant-url]
+      PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
+    depends_on:
+      - server
+      - valkey
+
+  # Optional: the Platform Console. Runs when COMPOSE_PROFILES names
+  # `web-platform`, together with PUBLIRA_WEB_PLATFORM_INTERNAL_URL and
+  # PUBLIRA_PLATFORM_APP_URL in .env.
+  web-platform:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-platform:${PUBLIRA_IMAGE_TAG:?}
+    profiles: [web-platform]
+    restart: unless-stopped
+    environment:
+      <<: *web-app
+      PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_PLATFORM_AUTH_SECRET:-}
+    depends_on:
+      - server
+      - valkey
+
+  # Optional: the HTML part of every mail. Runs when COMPOSE_PROFILES names
+  # `email-renderer`, together with PUBLIRA_EMAIL_RENDERER_URL in .env.
+  email-renderer:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/email-renderer:${PUBLIRA_IMAGE_TAG:?}
+    profiles: [email-renderer]
+    restart: unless-stopped
+
+  # Run by hand, never kept running: `docker compose run --rm publiractl <command>`.
+  # `db migrate` and `db roles` connect as the superuser; every other command
+  # as the role it names. The role passwords are mounted as files for
+  # `db roles`, and the object store's secret key for `setup`, since
+  # publiractl never takes a secret from its environment.
+  publiractl:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/publiractl:${PUBLIRA_IMAGE_TAG:?}
+    profiles: [publiractl]
+    environment:
+      <<: [*secret-encryption, *tenant-url]
+      PUBLIRA_DB_URL: postgres://postgres:${PUBLIRA_POSTGRES_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_PLATFORM_DB_URL: postgres://publira_platform:${PUBLIRA_PLATFORM_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_CONTENT_STATS_DB_URL: postgres://publira_content_stats:${PUBLIRA_CONTENT_STATS_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+    secrets:
+      - public-db-password
+      - admin-db-password
+      - platform-db-password
+      - outbox-db-password
+      - ticker-db-password
+      - content-stats-db-password
+      - rustfs-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+secrets:
+  public-db-password:
+    environment: PUBLIRA_PUBLIC_DB_PASSWORD
+  admin-db-password:
+    environment: PUBLIRA_ADMIN_DB_PASSWORD
+  platform-db-password:
+    environment: PUBLIRA_PLATFORM_DB_PASSWORD
+  outbox-db-password:
+    environment: PUBLIRA_OUTBOX_DB_PASSWORD
+  ticker-db-password:
+    environment: PUBLIRA_TICKER_DB_PASSWORD
+  content-stats-db-password:
+    environment: PUBLIRA_CONTENT_STATS_DB_PASSWORD
+  rustfs-secret-key:
+    environment: PUBLIRA_RUSTFS_SECRET_KEY
+
+volumes:
+  postgres-data:
+  rustfs-data:

@@ -1,0 +1,545 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:publira/api/episode_image_client.dart';
+import 'package:publira/api/episode_page_store.dart';
+import 'package:publira/api/image_cipher.dart';
+
+import 'support/fake_offline_library.dart';
+import 'support/jwt_fixture.dart';
+
+const _pageUrl = 'http://images.test/media/PAGE0001';
+const _keyId = 'cache-key-0001';
+
+/// Subject of the media token a free body's image URL carries
+/// (`server/internal/auth`.`FreeEpisodeMediaSubject`). It stands in for the
+/// reader that path does not have, so it names nobody and is the same for
+/// every reader of the episode inside one rotation window.
+const _freeSubject = 'anonymous-free-episode';
+
+final _plaintext = Uint8List.fromList(
+  List<int>.generate(200, (index) => index % 251),
+);
+
+void main() {
+  final readerToken = jwtWithSubject('USRPUBLIC0001');
+  final mediaToken = jwtWithSubject('USRPUBLIC0002');
+  final freeToken = jwtWithSubject(_freeSubject);
+
+  /// image-server's stream is its own inverse, so the fixtures are built with
+  /// the very function under test. What pins that function to the server is
+  /// the known-answer vector in `image_cipher_test.dart`.
+  Uint8List encrypted(String token, String subject) => decryptImageBytes(
+    ciphertext: _plaintext,
+    keyId: _keyId,
+    subject: subject,
+    token: token,
+  );
+
+  Map<String, String> encryptionHeaders({
+    String algorithm = imageEncryptionAlgorithm,
+    String contentType = 'image/webp',
+    String keyId = _keyId,
+  }) => {
+    imageEncryptionHeader: algorithm,
+    imageContentTypeHeader: contentType,
+    imageKeyIdHeader: keyId,
+  };
+
+  EpisodeImageClient clientAnswering(
+    Future<http.Response> Function(http.Request request) handler, {
+    EpisodePageStore? pages,
+  }) => EpisodeImageClient(httpClient: MockClient(handler), pages: pages);
+
+  /// Lets the write the client did not wait for land before it is asserted on.
+  Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+  test('fetch passes an unencrypted page through untouched', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        _plaintext,
+        200,
+        headers: const {'content-type': 'image/webp'},
+      ),
+    );
+
+    expect(await client.fetch(Uri.parse(_pageUrl)), _plaintext);
+  });
+
+  test(
+    'fetch decrypts a page authorized by the Authorization header',
+    () async {
+      final client = clientAnswering(
+        (_) async => http.Response.bytes(
+          encrypted(readerToken, 'USRPUBLIC0001'),
+          200,
+          headers: encryptionHeaders(),
+        ),
+      );
+
+      final bytes = await client.fetch(
+        Uri.parse(_pageUrl),
+        headers: {'authorization': 'Bearer $readerToken'},
+      );
+
+      expect(bytes, _plaintext);
+    },
+  );
+
+  test(
+    'fetch decrypts a page authorized by the media token in the URL',
+    () async {
+      final client = clientAnswering(
+        (_) async => http.Response.bytes(
+          encrypted(mediaToken, 'USRPUBLIC0002'),
+          200,
+          headers: encryptionHeaders(),
+        ),
+      );
+
+      final bytes = await client.fetch(
+        Uri.parse('$_pageUrl?$mediaTokenQueryParam=$mediaToken'),
+      );
+
+      expect(bytes, _plaintext);
+    },
+  );
+
+  test('fetch prefers the Authorization header over the media token', () async {
+    // image-server reads the two in that order and derives the key from the
+    // one it picked, so a URL carrying both still decrypts with the header.
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    final bytes = await client.fetch(
+      Uri.parse('$_pageUrl?$mediaTokenQueryParam=$mediaToken'),
+      headers: {'authorization': 'Bearer $readerToken'},
+    );
+
+    expect(bytes, _plaintext);
+  });
+
+  test('fetch decrypts a free page for a reader with no credential', () async {
+    // The API puts a per-episode, per-window media token on a free body's
+    // image URL, and image-server encrypts under it. A signed-out reader sends
+    // no header, so that token is the whole of the material they hold.
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(freeToken, _freeSubject),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    final bytes = await client.fetch(
+      Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+    );
+
+    expect(bytes, _plaintext);
+  });
+
+  test('fetch decrypts a free page for a signed-in reader', () async {
+    // The same URL, read with a bearer. image-server resolves the header
+    // first, finds a reader this body is readable by, and encrypts under that
+    // token instead of under the free material the URL still carries.
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    final bytes = await client.fetch(
+      Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+      headers: {'authorization': 'Bearer $readerToken'},
+    );
+
+    expect(bytes, _plaintext);
+  });
+
+  test('fetch reports a free page whose material it cannot read', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(freeToken, _freeSubject),
+        200,
+        headers: encryptionHeaders(),
+      ),
+    );
+
+    // A `t` that is not a JWT has no subject to derive a key from, which is
+    // the same dead end as a URL that carries no `t` at all.
+    await expectLater(
+      client.fetch(Uri.parse('$_pageUrl?$mediaTokenQueryParam=not-a-jwt')),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.decryption,
+        ),
+      ),
+    );
+  });
+
+  test('fetch asks for a rendition this app can decode', () async {
+    String? accept;
+    final client = clientAnswering((request) async {
+      accept = request.headers['accept'];
+      return http.Response.bytes(_plaintext, 200);
+    });
+
+    await client.fetch(Uri.parse(_pageUrl));
+
+    // Flutter has no AVIF codec, so the converter must not be offered one.
+    expect(accept, isNotNull);
+    expect(accept, contains('image/webp'));
+    expect(accept, isNot(contains('image/avif')));
+  });
+
+  test('fetch sends the tenant and reader headers it was given', () async {
+    Map<String, String>? sent;
+    final client = clientAnswering((request) async {
+      sent = request.headers;
+      return http.Response.bytes(_plaintext, 200);
+    });
+
+    await client.fetch(
+      Uri.parse(_pageUrl),
+      headers: {
+        'x-forwarded-host': 'localhost',
+        'authorization': 'Bearer $readerToken',
+      },
+    );
+
+    expect(sent?['x-forwarded-host'], 'localhost');
+    expect(sent?['authorization'], 'Bearer $readerToken');
+  });
+
+  test(
+    'fetch rejects an encryption algorithm this build cannot reverse',
+    () async {
+      final client = clientAnswering(
+        (_) async => http.Response.bytes(
+          _plaintext,
+          200,
+          headers: encryptionHeaders(algorithm: 'aes-gcm-v2'),
+        ),
+      );
+
+      await expectLater(
+        client.fetch(
+          Uri.parse(_pageUrl),
+          headers: {'authorization': 'Bearer $readerToken'},
+        ),
+        throwsA(
+          isA<EpisodeImageException>().having(
+            (error) => error.kind,
+            'kind',
+            EpisodeImageFailureKind.decryption,
+          ),
+        ),
+      );
+    },
+  );
+
+  test('fetch rejects an encrypted page missing its key id', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(keyId: ''),
+      ),
+    );
+
+    await expectLater(
+      client.fetch(
+        Uri.parse(_pageUrl),
+        headers: {'authorization': 'Bearer $readerToken'},
+      ),
+      throwsA(isA<EpisodeImageException>()),
+    );
+  });
+
+  test(
+    'fetch rejects an encrypted page the request carries no key for',
+    () async {
+      final client = clientAnswering(
+        (_) async => http.Response.bytes(
+          encrypted(readerToken, 'USRPUBLIC0001'),
+          200,
+          headers: encryptionHeaders(),
+        ),
+      );
+
+      await expectLater(
+        client.fetch(Uri.parse(_pageUrl)),
+        throwsA(
+          isA<EpisodeImageException>().having(
+            (error) => error.kind,
+            'kind',
+            EpisodeImageFailureKind.decryption,
+          ),
+        ),
+      );
+    },
+  );
+
+  test('fetch reports a page the server refused', () async {
+    final client = clientAnswering((_) async => http.Response('denied', 403));
+
+    await expectLater(
+      client.fetch(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.response,
+        ),
+      ),
+    );
+  });
+
+  test('fetch reports an unreachable image server', () async {
+    final client = clientAnswering((_) async {
+      throw http.ClientException('connection refused');
+    });
+
+    await expectLater(
+      client.fetch(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test('fetch keeps the page it decoded for the next read', () async {
+    final pages = InMemoryOfflineLibrary();
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(),
+      ),
+      pages: pages,
+    );
+
+    await client.fetch(
+      Uri.parse(_pageUrl),
+      headers: {'authorization': 'Bearer $readerToken'},
+    );
+    await settle();
+
+    // What is kept is the page, not the stream image-server sent: the key that
+    // reverses it belongs to a token that is gone in a day.
+    expect(pages.pages[episodePageKey(Uri.parse(_pageUrl))], _plaintext);
+  });
+
+  test('keep finishes with the page on the device', () async {
+    final pages = InMemoryOfflineLibrary();
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        encrypted(readerToken, 'USRPUBLIC0001'),
+        200,
+        headers: encryptionHeaders(),
+      ),
+      pages: pages,
+    );
+
+    await client.keep(
+      Uri.parse(_pageUrl),
+      headers: {'authorization': 'Bearer $readerToken'},
+    );
+
+    expect(pages.pages[episodePageKey(Uri.parse(_pageUrl))], _plaintext);
+  });
+
+  test('keep reports a device that did not keep the page', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        _plaintext,
+        200,
+        headers: const {'content-type': 'image/webp'},
+      ),
+      pages: _RefusingPageStore(),
+    );
+
+    // A store swallows what it could not write, so the page is read back
+    // rather than reported as saved on the store's word.
+    await expectLater(
+      client.keep(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.storage,
+        ),
+      ),
+    );
+  });
+
+  test('keep reports a page it could not fetch or find', () async {
+    final pages = InMemoryOfflineLibrary();
+    final client = clientAnswering((_) async {
+      throw http.ClientException('connection refused');
+    }, pages: pages);
+
+    await expectLater(
+      client.keep(Uri.parse(_pageUrl)),
+      throwsA(isA<EpisodeImageException>()),
+    );
+    expect(pages.pages, isEmpty);
+  });
+
+  test(
+    'fetch answers from the device when the server cannot be reached',
+    () async {
+      final pages = InMemoryOfflineLibrary();
+      await pages.writePage(episodePageKey(Uri.parse(_pageUrl)), _plaintext);
+      final client = clientAnswering((_) async {
+        throw http.ClientException('connection refused');
+      }, pages: pages);
+
+      expect(await client.fetch(Uri.parse(_pageUrl)), _plaintext);
+    },
+  );
+
+  test('a page saved under one media token is found under the next', () async {
+    final pages = InMemoryOfflineLibrary();
+    await pages.writePage(
+      episodePageKey(Uri.parse('$_pageUrl?t=first-token')),
+      _plaintext,
+    );
+    final client = clientAnswering((_) async {
+      throw http.ClientException('connection refused');
+    }, pages: pages);
+
+    expect(
+      await client.fetch(Uri.parse('$_pageUrl?t=second-token')),
+      _plaintext,
+    );
+  });
+
+  test(
+    'a free page decoded once is drawn again once its material has rotated',
+    () async {
+      final pages = InMemoryOfflineLibrary();
+      var reachable = true;
+      final client = clientAnswering((_) async {
+        if (!reachable) {
+          throw http.ClientException('connection refused');
+        }
+        return http.Response.bytes(
+          encrypted(freeToken, _freeSubject),
+          200,
+          headers: encryptionHeaders(),
+        );
+      }, pages: pages);
+
+      await client.fetch(
+        Uri.parse('$_pageUrl?$mediaTokenQueryParam=$freeToken'),
+      );
+      await settle();
+      reachable = false;
+
+      // The free material rotates daily and is not written down, so what decides
+      // whether a saved free page can be drawn is the page's address, which
+      // leaves the token out.
+      expect(
+        await client.fetch(
+          Uri.parse('$_pageUrl?$mediaTokenQueryParam=next-window-token'),
+        ),
+        _plaintext,
+      );
+    },
+  );
+
+  test('fetch reports an unreachable server the device cannot cover', () async {
+    final client = clientAnswering((_) async {
+      throw http.ClientException('connection refused');
+    }, pages: InMemoryOfflineLibrary());
+
+    await expectLater(
+      client.fetch(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test('a refusal is not answered from the device', () async {
+    final pages = InMemoryOfflineLibrary();
+    await pages.writePage(episodePageKey(Uri.parse(_pageUrl)), _plaintext);
+    final client = clientAnswering(
+      (_) async => http.Response('denied', 403),
+      pages: pages,
+    );
+
+    await expectLater(
+      client.fetch(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.response,
+        ),
+      ),
+    );
+  });
+
+  test('a page is not confused with one that differs in the query', () async {
+    // Only the media token is dropped from the address, so two pages the API
+    // distinguishes by any other field keep their own saved copies.
+    expect(
+      episodePageKey(Uri.parse('$_pageUrl?size=large')),
+      isNot(episodePageKey(Uri.parse('$_pageUrl?size=small'))),
+    );
+    expect(
+      episodePageKey(Uri.parse('$_pageUrl?size=large&t=first-token')),
+      episodePageKey(Uri.parse('$_pageUrl?size=large&t=second-token')),
+    );
+  });
+
+  test('a device that refuses the save still hands over the page', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        _plaintext,
+        200,
+        headers: const {'content-type': 'image/webp'},
+      ),
+      pages: _RefusingPageStore(),
+    );
+
+    expect(await client.fetch(Uri.parse(_pageUrl)), _plaintext);
+    // Nothing awaits the save, so a refusal that escaped would surface as an
+    // unhandled async error and fail this test rather than the call above.
+    await settle();
+  });
+}
+
+/// [EpisodePageStore] that rejects every call, standing in for a full or
+/// locked device.
+class _RefusingPageStore implements EpisodePageStore {
+  @override
+  Future<Uint8List?> readPage(String key) async =>
+      throw const FileSystemException('unreadable');
+
+  @override
+  Future<void> writePage(String key, Uint8List bytes) async =>
+      throw const FileSystemException('device is full');
+}

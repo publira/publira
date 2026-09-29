@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+// An end user as the platform operator sees them.
+message EndUser {
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  string status = 4;
+  string created_at = 5;
+  repeated string tenant_ids = 6;
+  // Display name of the user's tenant. Empty when the user has no tenant.
+  string tenant_name = 7;
+  // The user's primary key, which every request that changes a user addresses
+  // it by.
+  string id = 8;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListEndUsersRequest {
+  // Removed with the move to cursor pagination.
+  reserved 2;
+  reserved "offset";
+  // Replaced by user_ids.
+  reserved 6;
+  reserved "public_ids";
+
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 1;
+  // Filters.
+  string created_after = 3;  // RFC 3339
+  string status = 4;         // active, suspended, inactive
+  string created_before = 5; // RFC 3339
+  // Tenant public_id. Empty means every tenant.
+  string tenant_public_id = 7;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 8;
+  // Restricts the list to these users, by primary key (EndUser.id).
+  repeated string user_ids = 9;
+}
+
+message ListEndUsersResponse {
+  repeated EndUser users = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetEndUserRequest {
+  string public_id = 1;
+}
+
+message GetEndUserResponse {
+  EndUser user = 1;
+}
+
+message SuspendEndUserRequest {
+  reserved 1;
+  reserved "public_id";
+  // The user's primary key (EndUser.id).
+  string user_id = 2;
+}
+
+message SuspendEndUserResponse {
+  EndUser user = 1;
+}
+
+message UnsuspendEndUserRequest {
+  reserved 1;
+  reserved "public_id";
+  // The user's primary key (EndUser.id).
+  string user_id = 2;
+}
+
+message UnsuspendEndUserResponse {
+  EndUser user = 1;
+}
+
+message DeleteEndUserRequest {
+  reserved 1;
+  reserved "public_id";
+  // The user's primary key (EndUser.id).
+  string user_id = 2;
+}
+
+message DeleteEndUserResponse {
+  string public_id = 1;
+}
+
+// End user administration for the platform operator.
+service PlatformUserService {
+  rpc ListEndUsers(ListEndUsersRequest) returns (ListEndUsersResponse) {}
+  rpc GetEndUser(GetEndUserRequest) returns (GetEndUserResponse) {}
+  rpc SuspendEndUser(SuspendEndUserRequest) returns (SuspendEndUserResponse) {}
+  rpc UnsuspendEndUser(UnsuspendEndUserRequest) returns (UnsuspendEndUserResponse) {}
+  rpc DeleteEndUser(DeleteEndUserRequest) returns (DeleteEndUserResponse) {}
+}

@@ -1,0 +1,134 @@
+{
+  "name": "@publira/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.mts",
+      "default": "./dist/errors.mjs"
+    },
+    "./error-messages": {
+      "types": "./dist/error-messages.d.mts",
+      "default": "./dist/error-messages.mjs"
+    },
+    "./pagination": {
+      "types": "./dist/pagination.d.mts",
+      "default": "./dist/pagination.mjs"
+    },
+    "./forwarded-for": {
+      "types": "./dist/forwarded-for.d.mts",
+      "default": "./dist/forwarded-for.mjs"
+    },
+    "./public": {
+      "types": "./dist/public/index.d.mts",
+      "default": "./dist/public/index.mjs"
+    },
+    "./public/client": {
+      "types": "./dist/public/client.d.mts",
+      "default": "./dist/public/client.mjs"
+    },
+    "./public/auth": {
+      "types": "./dist/public/auth.d.mts",
+      "default": "./dist/public/auth.mjs"
+    },
+    "./public/catalog": {
+      "types": "./dist/public/catalog.d.mts",
+      "default": "./dist/public/catalog.mjs"
+    },
+    "./public/comment": {
+      "types": "./dist/public/comment.d.mts",
+      "default": "./dist/public/comment.mjs"
+    },
+    "./public/notification": {
+      "types": "./dist/public/notification.d.mts",
+      "default": "./dist/public/notification.mjs"
+    },
+    "./public/page": {
+      "types": "./dist/public/page.d.mts",
+      "default": "./dist/public/page.mjs"
+    },
+    "./public/types": {
+      "types": "./dist/public/types.d.mts",
+      "default": "./dist/public/types.mjs"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.mts",
+      "default": "./dist/admin/index.mjs"
+    },
+    "./admin/client": {
+      "types": "./dist/admin/client.d.mts",
+      "default": "./dist/admin/client.mjs"
+    },
+    "./admin/auth": {
+      "types": "./dist/admin/auth.d.mts",
+      "default": "./dist/admin/auth.mjs"
+    },
+    "./admin/access-ticket": {
+      "types": "./dist/admin/access-ticket.d.mts",
+      "default": "./dist/admin/access-ticket.mjs"
+    },
+    "./admin/royalty": {
+      "types": "./dist/admin/royalty.d.mts",
+      "default": "./dist/admin/royalty.mjs"
+    },
+    "./admin/series": {
+      "types": "./dist/admin/series.d.mts",
+      "default": "./dist/admin/series.mjs"
+    },
+    "./admin/tenant": {
+      "types": "./dist/admin/tenant.d.mts",
+      "default": "./dist/admin/tenant.mjs"
+    },
+    "./admin/theme": {
+      "types": "./dist/admin/theme.d.mts",
+      "default": "./dist/admin/theme.mjs"
+    },
+    "./admin/types": {
+      "types": "./dist/admin/types.d.mts",
+      "default": "./dist/admin/types.mjs"
+    },
+    "./platform/client": {
+      "types": "./dist/platform/client.d.mts",
+      "default": "./dist/platform/client.mjs"
+    },
+    "./platform/types": {
+      "types": "./dist/platform/types.d.mts",
+      "default": "./dist/platform/types.mjs"
+    },
+    "./email/renderer": {
+      "types": "./dist/email/renderer.d.mts",
+      "default": "./dist/email/renderer.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
+    "@bufbuild/protobuf": "2.15.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-node": "2.2.0",
+    "@connectrpc/connect-web": "2.2.0",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/semantic-conventions": "catalog:",
+    "@publira/i18n": "workspace:*",
+    "@publira/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

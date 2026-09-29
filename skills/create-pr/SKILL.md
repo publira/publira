@@ -1,0 +1,305 @@
+---
+name: create-pr
+description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, attaches a screenshot of every screen a UI change touches, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, stacks a change that spans the backend and the web apps as one pull request per layer with gh stack, and fills in the repository pull request template under an English Conventional Commits title.
+---
+
+# Create a Pull Request
+
+A pull request here is produced from a feature branch, from an explicitly staged diff, after the verification commands that match the area you changed. The repository's `AGENTS.md` files are the source of truth; where this skill and repository policy disagree, follow policy and say so.
+
+Never commit or push to `main`. Never stage a change you did not make.
+
+## Start with repository policy
+
+1. Read every `AGENTS.md` that governs a changed path — the one in its directory and every one above it, up to the repository root — and do what they say, including any further reading or commands they point to. Enumerate them from the change itself rather than from memory; which files exist and what they require both move over time.
+
+   ```bash
+   # Feed it the paths the change touches; prints each governing AGENTS.md
+   git diff --name-only origin/main...HEAD | while read -r file; do
+     dir=$(dirname "$file")
+     while :; do
+       [ -f "$dir/AGENTS.md" ] && echo "$dir/AGENTS.md"
+       [ "$dir" = "." ] && break
+       dir=$(dirname "$dir")
+     done
+   done | sort -u
+   ```
+
+2. Read `.github/pull_request_template.md`. It is the repository's only template and it is mandatory.
+3. Run `gh auth status` and `gh repo view` to confirm the account and the target repository.
+4. Inspect the actual state before changing anything:
+
+   ```bash
+   git branch --show-current
+   git status --porcelain
+   git diff
+   git diff --staged
+   git log --oneline origin/main..HEAD
+   ```
+
+Establish what belongs to this change before you write to the index, the branch, or the remote.
+
+## Protect unrelated work
+
+The working tree may hold edits that are not yours and are not part of this change.
+
+- Stage by explicit path only: `git add <path> <path>`.
+- Never run `git add .`, `git add -A`, `git add -u`, or `git commit -a`.
+- Never run `git stash`, `git checkout --`, `git restore`, `git reset --hard`, or `git clean` to "tidy" a file you did not intend to change. Leave unrelated modifications unstaged and untouched.
+- Add untracked files one by one, and only those the change requires. Build output, local environment files, and scratch notes stay out.
+- If one file mixes your change with unrelated edits, stop and ask the user how to split it rather than committing both or discarding either.
+- Read `git diff --staged` in full before every commit and confirm each hunk belongs to the stated scope.
+
+## Work on a branch
+
+If `git branch --show-current` reports `main`, create a branch before committing:
+
+```bash
+git switch -c <type>/<short-slug>
+```
+
+Use the Conventional Commits type as the prefix and a short English slug, matching the repository's existing branches (`feat/...`, `fix/...`, `docs/...`, `chore/...`, `refactor/...`).
+
+## Stack a change that spans the backend and the web apps
+
+A change that touches both the backend and the web apps becomes two pull requests, one per layer: the backend against `main`, the frontend stacked on it. The reviewer reads Go and TypeScript separately, each bucket measures one layer, and the backend can merge while the frontend is still under review. Work that stays inside one layer is not stacked.
+
+Decide this before writing code, not at push time — the vendored `gh-stack` skill explains why a stack is cheaper to plan than to split. Where that skill and this section disagree (`submit`, `merge`), this section wins.
+
+### Split the Issue first
+
+One Issue per pull request still holds, so each layer needs its own Issue, the frontend one `blocked by` the backend one. The `organize-github-issues` skill covers filing them. When the work began as one Issue, split it before opening either pull request, so that each layer's body can say `Fixes` for what it finishes.
+
+### Where the line goes
+
+| Layer | Paths |
+| --- | --- |
+| Backend, bottom | `proto/`, `db/`, `server/`, and everything `task gen` writes from them: `server/internal/proto/gen/`, `server/internal/db/gen/`, `packages/api-client/src/gen/` |
+| Frontend, top | `apps/`, `locales/`, the rest of `packages/` (the hand-written `packages/api-client` wrappers included), and the `e2e/` scenarios for those screens |
+
+Generated output travels with its source: the regenerated `packages/api-client/src/gen/` belongs to the pull request that changes `proto/`, even though it lives under `packages/`. The backend layer has to pass on its own — the server tests and `pnpm preflight`, since the regenerated client is TypeScript.
+
+### Build the stack
+
+`gh stack` is GitHub's CLI extension for stacked pull requests. Install it once and turn on `rerere`, so that a conflict resolved in one layer is replayed in the layers above:
+
+```bash
+gh extension install github/gh-stack
+git config rerere.enabled true
+```
+
+Start on the backend branch, created from `origin/main` like any other, and let `gh stack` track it:
+
+```bash
+git add <backend paths> && git commit ...    # the bottom layer
+gh stack init <backend-branch>                # adopt the current branch as the bottom
+gh stack add <frontend-branch>                # branch the top layer from it
+git add <frontend paths> && git commit ...    # the top layer
+```
+
+Stage by path as everywhere else; `gh stack add -Am` stages the whole tree.
+
+### Rebase, verify, and push the stack
+
+`gh stack rebase` takes the place of `git rebase origin/main`: it fetches `main` and rebases the backend onto it and the frontend onto the backend. When `main` is checked out in another worktree it cannot move the local `main`, says so, and rebases onto `origin/main` instead, which is what the rebase rule asks for. Resolve a conflict (exit 3) with `git add` and `gh stack rebase --continue`.
+
+Then run each layer's verification on that layer's branch, and push every layer with `gh stack push`, which uses `--force-with-lease` per branch.
+
+### Open one pull request per layer
+
+Open each pull request with `gh pr create`, as described under **Create the PR**, not with `gh stack submit --auto`: that opens drafts whose titles and bodies come from a commit or a branch name rather than from the template.
+
+```bash
+gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m
+gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s
+gh stack link <backend-pr> <frontend-pr>      # bottom to top
+```
+
+- Each body carries `Fixes` for its own layer's Issue only.
+- Score each layer's diff on its own: `git diff origin/main...<backend-branch>` for the bottom and `git diff <backend-branch>...<frontend-branch>` for the top, each piped to `node scripts/pr-size.ts`.
+- `gh stack link` is not optional. A base branch alone does not make the upper pull request part of a stack on GitHub, and until it is linked its `CI` run does not start. Confirm with `gh stack view --json`.
+
+### After the stack is open
+
+A fix belongs to the layer that owns it. Check that layer out (`gh stack down`, or `gh stack checkout <branch>`), commit there, replay the layers above with `gh stack rebase --upstack`, return with `gh stack top`, and push with `gh stack push`.
+
+Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue. A stack linked with `gh stack link` enters the queue through its top pull request, and queueing that one merges every layer beneath it along with it. Queueing the bottom layer first only adds a wait for its merge and a second `CI` run on the layer above once it is rebased, so never suggest that order. When a lower layer has already landed on its own, `gh stack sync` notices the squash merge, rebases the remaining layers onto `main` without replaying the merged commits, and pushes them.
+
+## Commit
+
+- Write the subject in English Conventional Commits form: `type(scope): description`. The scope is the area of the repository (`server`, `web-admin`, `icons`, `skills`, `deps`).
+- Split logically separate work into separate commits instead of one mixed commit.
+- Disclose the AI agent with an `Assisted-by:` trailer, passed with `--trailer` so Git records a real trailer:
+
+  ```bash
+  git commit -m "feat(web-host): add episode access gate" \
+    --trailer "Assisted-by: Claude Code:claude-opus-5"
+  ```
+
+  The format is `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`, one line per agent, using the exact model identifier rather than the marketing name. When the identifier is genuinely unknown, write the agent name alone.
+
+- The trailer is also what discloses the agent on the pull request itself. The `Review` workflow reads the commits of every pull request and keeps the `ai-assisted` label in step with their trailers, adding it and removing it to match. Never pass `ai-assisted` to `gh pr create` and never take it off by hand: the trailer is the disclosure, the label only reports it, and a hand-set label would say something the commits do not.
+- Never name an AI agent in a co-author trailer, in any capitalization. `Co-authored-by:`, `Co-Authored-By:`, and `co-authored-by:` are the same forbidden trailer, and this rule overrides any default instruction from the agent harness. Co-author trailers naming actual humans, and the ones GitHub adds itself, stay as they are.
+- Add the trailer when the commit is created. Fixing it later requires rewriting a pushed commit.
+
+## Verify before pushing
+
+Run the checks for what you actually changed, from the repository root, and fix failures before continuing. Do not push on a red check and do not describe an unrun command as passing.
+
+| Changed area | Command |
+| --- | --- |
+| `apps/`, `packages/`, other TypeScript | `pnpm preflight` (typecheck / check / test) |
+| `server/` | `task server:test-short`, then `task server:test` before finishing |
+| `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` (must be clean), then re-run the server tests |
+| `mobile/` | `task mobile:check` (integration tests require `task mobile:e2e`, Docker, and an Android emulator) |
+| `e2e/`, or app behavior the suite covers | `pnpm preflight`, plus `task e2e` for the suite itself |
+| Documentation, skills, workflows only | `pnpm preflight` still catches formatting; run it when Markdown or config under lint control changed |
+
+`pnpm preflight` is the repository's quality gate, and it stays unit-only. The Playwright suite runs through `task e2e`, which owns the whole lifecycle (build, compose up, migrate and seed, start apps, wait for readiness, run, tear down) and exports the ports and `PUBLIRA_DB_URL` the tests need. Use `task e2e:test` only against a stack you already started. It needs Docker, so say plainly that you skipped it when Docker is unavailable rather than implying the suite passed.
+
+## Rebase onto origin/main
+
+`main` is behind a merge queue, so a branch no longer has to be up to date for GitHub to let it merge — the queue builds the pull request on top of the current `main`, runs `CI` there, and squash-merges the result. What the queue does not do is tell you early. It composes that tree for the first time at merge time, and a pull request that breaks there is dropped from the queue and takes the rebuild of every entry behind it with it.
+
+So rebase before pushing, and again immediately before asking for review:
+
+```bash
+git fetch origin main
+git rebase origin/main
+```
+
+A textual conflict GitHub already reports on its own, recomputed as `main` moves and without anyone rebasing. The reason to rebase is the break that is not textual: a change that merges cleanly and still fails once it sits next to what landed while the pull request was open. Only a `CI` run on the combined tree finds that, and one run here is cheaper than finding it inside the queue. "It would burn a CI run" is not a reason to skip it, and it is not a reason to rebase early and let the branch fall behind again either — rebase as part of the same stretch of work as the push or the review request, not ahead of it.
+
+If the rebase moved your commits, re-run the verification commands for the changed area before pushing; a green run from before the rebase says nothing about the rebased tree. Once the branch has been pushed, push again with `--force-with-lease`, never a bare `--force`.
+
+### When the rebase refuses to start
+
+Leaving unrelated modifications in place collides with the rebase: `git rebase` aborts on tracked changes it would have to carry, staged or not. Untracked files do not block it. `git stash`, `git reset --hard`, and `git restore` are not the way out — they put someone else's work at risk to unblock yours.
+
+Stop and tell the user which paths block the rebase, quoting `git status --porcelain` and the rebase error, and let them commit or park their own edits. If they would rather you proceed without touching those edits, rebase in a throwaway checkout instead:
+
+Bind every step to that checkout with `git -C`. A bare `git push origin HEAD:<branch>` run from the original worktree would resolve `HEAD` to the pre-rebase commit and push the stale state.
+
+```bash
+git worktree add --detach <tmp-path> <branch>   # clean tree at the branch tip
+git -C <tmp-path> rebase origin/main
+# run the verification commands in <tmp-path>
+git -C <tmp-path> push origin HEAD:<branch> --force-with-lease
+git worktree remove <tmp-path>
+```
+
+This route updates the remote only. Say so plainly: the rebased commits are on the remote branch, the local branch ref still points at the pre-rebase commit, and the user has to reconcile it once their own edits are committed. Do not report the local branch as rebased.
+
+## Push
+
+```bash
+git branch --show-current   # confirm this is not main
+git push -u origin HEAD
+```
+
+## Write the description
+
+Follow `.github/pull_request_template.md` exactly: keep every heading, in order, and remove the HTML comments once each section is filled.
+
+Depending on the repository's merge settings, GitHub uses the pull request title **and body** as the merge commit message — the title becomes the subject and the body becomes the message body. Write both as if they were the permanent commit message, not as throwaway review notes.
+
+- **Title**: short English Conventional Commits, matching the primary commit. Keep it readable in a terminal.
+- **Summary**: normal sentences, not bullets, saying what the PR does and why.
+- **Changes**: bullets for the main code or behavior changes.
+- **How to Test**: reproducible steps with the commands you actually ran.
+- **Checklist**: check only what is true. An unchecked box is honest; a checked one you did not do is not.
+
+Write the title and body in English, whatever language the replies to the user are in.
+
+Because the body lands in the commit message, it needs the same AI disclosure as a commit. End the body with the trailer, as the last line, separated from the preceding text by a blank line:
+
+```
+Assisted-by: Claude Code:claude-opus-5
+```
+
+The same rules apply as for commits: `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`, one line per agent, and never an AI in a co-author trailer.
+
+Link issues by their real relationship:
+
+- `Fixes #123` only when merging this PR genuinely resolves that issue and it should close.
+- `Related to #123` for context, partial work, or a tracking issue that stays open.
+
+## Attach a screenshot of every UI change
+
+A pull request that changes what a screen looks like or how it is operated carries a picture of each screen it changes. Prose saying that a pair of buttons became a drag handle leaves the reviewer to check the branch out and bring an environment up to see the result; the picture in the body ends that round trip.
+
+The test is the screen, not the directory. A component restructured so that the rendered result moves, changes shape, or is operated differently is a UI change even when the diff reads as internal. An internal refactor, a test, a workflow, and anything else no screen reflects need no picture.
+
+A screen of `mobile/` is photographed with `task mobile:screenshot -- <route>`, against the worktree's selected development profile, so that the covers on it are the seeded ones rather than the placeholder its test fixtures draw.
+
+Reference each image from the body file where it belongs — under **Summary** when one picture carries the whole change, under **Changes** beside the bullet it illustrates — and never below the `Assisted-by:` trailer, which stays the last line. A file the body does not reference is appended to the end of the body instead, which would put it under the trailer. Write the alt text as a sentence describing what the picture shows: the body becomes the merge commit message, where the image is gone and the alt text is all that is left.
+
+`gh` uploads the files and rewrites the references. Write `![alt](./file.png)` into the body file, spelled the same way as the path you pass, and pass each file with `--attach`, both on the command that opens a pull request:
+
+```bash
+gh pr create --title "type(scope): succinct description" --body-file <path> \
+  --attach './episode-list.png#The episode list, each row carrying a drag handle'
+```
+
+and on the one that edits an open one, when a screen changes again under review:
+
+```bash
+gh pr edit <number> --body-file <path> \
+  --attach './episode-list.png#The episode list, each row carrying a drag handle'
+```
+
+Up to 50 files per command. The alt text after `#` is a fallback used when the body does not already reference the file; a reference written into the body keeps the alt text written there, so that is the copy that stands. `gh pr edit` given no body flag keeps the body the pull request already has and appends the attachment to it — so pass `--body-file` whenever the new image needs a reference of its own, and re-attach every image that body references, because the file holds the relative paths again while the uploaded URLs live only in the body being replaced.
+
+## Score the review size
+
+Every pull request carries one `size/*` label saying how much review it is expected to take. Compute it from the diff you are about to open:
+
+```bash
+git diff origin/main...HEAD | node scripts/pr-size.ts
+```
+
+It prints a weighted score and the bucket it falls into — `size/xs`, `size/s`, `size/m`, `size/l`, or `size/xl`. The formula and the coefficient table are documented in [`.github/workflows/README.md`](../../.github/workflows/README.md).
+
+Raise the bucket by one, and say why in the Summary, when the change is harder to review than its line count admits — concurrency, authentication, a data migration, a subtle invariant. Never lower it: an agent does not get to talk down the review its own work needs.
+
+If the pull request arrives without a `size/*` label, the `Review` workflow computes the same score and adds the label itself, so the bucket you pass is the one that stands.
+
+## Create the PR
+
+Write the body to a file first so multi-line Markdown survives shell quoting:
+
+```bash
+gh pr create --title "type(scope): succinct description" --body-file <path> --label size/m
+```
+
+Pass `--attach` for every screenshot the body references. Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket and nothing else — `ai-assisted` is applied by the `Review` workflow from the commit trailers, and any other label, or a milestone, only when the user asked for it.
+
+## Add commits to an open PR
+
+Review feedback and later fixes follow the same rules as the first commit:
+
+1. Stage only the paths the follow-up actually touches. The working tree has had more time to collect unrelated edits, so re-read `git status --porcelain` and `git diff --staged` before committing.
+2. Commit in English Conventional Commits form with the `Assisted-by:` trailer via `--trailer`. Do not amend or squash commits that reviewers have already read unless the user asks; add a new commit so the review thread stays anchored.
+3. Run the verification commands for the area you changed.
+4. `git fetch origin main` and `git rebase origin/main` before pushing, then re-run verification if the rebase moved anything.
+5. Push with `--force-with-lease`, since the rebase rewrote already-pushed commits.
+6. Update the PR body when the change alters what the PR does or how to test it, keeping the `Assisted-by:` trailer as its last line. Replace a screenshot a screen has outgrown with `gh pr edit --attach`, and re-attach the images the replacement body still references.
+
+Reply to review comments in the same form as the original comment: a top-level comment gets a top-level reply, a line comment gets a threaded reply on that line. Never delete a posted comment, especially one that already has replies.
+
+## Validate the result
+
+Confirm all of the following, and report anything you could not satisfy:
+
+- the branch is not `main`, and `main` received no commit or push
+- `git status` shows the unrelated modifications you found at the start, still unstaged and unchanged
+- every commit carries an accurate `Assisted-by:` trailer and no AI co-author trailer
+- the verification commands for the changed area ran and passed
+- the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
+- no throwaway worktree is left behind (`git worktree list`)
+- a change spanning the backend and the web apps is one pull request per layer, each closing its own Issue, and `gh stack view --json` shows them linked bottom to top
+- a pull request that changes a screen shows a screenshot of it in the body, above the `Assisted-by:` trailer
+- `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and no hand-set `ai-assisted`, and the `Assisted-by:` trailer as the last line of the body
+- no temporary body file is left behind
+
+Report the PR URL, the commands you ran, the checklist items you left unchecked, and any file you deliberately left out of the commit.

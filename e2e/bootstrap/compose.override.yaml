@@ -1,0 +1,35 @@
+# Overlay on the repository-root ../../compose.yaml for the bootstrap check.
+#
+# The check must exercise the *real* dependency-service definitions (image,
+# volume mount) because that is where the regression it guards against happened.
+# Only the three data stores are started; `mailpit` / `jaeger` stay down
+# and `task dev` runs on the host.
+#
+# This file changes the two things a host-side check needs:
+#   - published ports, offset from e2e/compose.yaml (5433 / 6380 / 9003) so a
+#     bootstrap run never collides with a Playwright E2E stack. `!override`,
+#     because the default merge appends to the base file's ports and would
+#     publish the standard 5432 / 6379 / 9000 alongside them
+#   - a `db` healthcheck, so `compose up --wait` actually waits for Postgres
+#
+# Relative paths in the base file resolve against the repository root (the first
+# `-f` wins), so keep this file free of relative paths.
+
+services:
+  db:
+    ports: !override
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  redis:
+    ports: !override
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_REDIS_PORT:-6381}:6379"
+
+  rustfs:
+    ports: !override
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT:-9002}:9000"

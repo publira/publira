@@ -1,0 +1,12 @@
+{
+  "kind": "androidpublisher#productPurchase",
+  "purchaseTimeMillis": "1758700800000",
+  "purchaseState": 0,
+  "consumptionState": 0,
+  "developerPayload": "",
+  "orderId": "GPA.3325-8110-0921-40561",
+  "purchaseType": 0,
+  "acknowledgementState": 0,
+  "obfuscatedExternalAccountId": "0192f7a6-3c5e-7b3a-9d2e-1f0a2b3c4d5e",
+  "regionCode": "JP"
+}

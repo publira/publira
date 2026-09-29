@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_creator_follows_tenant_creator_user;

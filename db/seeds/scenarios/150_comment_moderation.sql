@@ -1,0 +1,330 @@
+-- Scenario: a tenant whose comments wait for staff approval
+--
+-- `admin.comment-moderation.spec.ts` posts a comment as a reader, approves it
+-- from the console, and reads it back off the public site. That round trip
+-- needs `tenant_config.comment_mode = 'approval_required'`, which is one
+-- setting for a whole tenant: the tenant of `140_episode_comments.sql` runs on
+-- `immediate` so its own suite can read a comment back without an approval
+-- step, so the two cannot share one.
+--
+-- The tenant therefore owns both sides of the round trip: an administrator to
+-- sign into its console as, and a member to post as. A reader may not report
+-- their own comment, so there is a second member to send the report the suite
+-- works from the console. Password hashes match the dev seed (`adminpass` for
+-- the admin, `memberpass` for both members).
+-- Applying this file is also how the suite resets itself: the comment rows it
+-- wrote are deleted below, so a re-run starts from an empty queue.
+--
+-- public_id values are hard-coded in e2e/src/scenarios/comment-moderation.ts.
+--   tenant   ModrTNNTAAA1 (moderate.localhost / admin.moderate.localhost)
+--   label    ModrLABLAAA1
+--   creator  ModrAUTHAAA1
+--   series   ModrSERSAAA1
+--   episode  ModrEPSDAAA1
+--   admin    ModrADMNAAA1 (moderate-admin@example.com)
+--   member   ModrMMBRAAA1 (moderate-member@example.com)
+--   reporter ModrMMBRAAA2 (moderate-reporter@example.com)
+
+WITH tenant_seed AS (
+    SELECT '018f0f70-0001-7000-8000-000000000001'::uuid AS id
+)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
+SELECT
+    ts.id,
+    'ModrTNNTAAA1',
+    'moderate.localhost:' || :'tenant_port',
+    'admin.moderate.localhost:' || :'tenant_port',
+    'Moderation Tenant',
+    'active',
+    'en'
+FROM tenant_seed ts
+ON CONFLICT (public_id) DO UPDATE
+SET domain = EXCLUDED.domain,
+    admin_domain = EXCLUDED.admin_domain,
+    name = EXCLUDED.name,
+    status = EXCLUDED.status,
+    default_locale = EXCLUDED.default_locale;
+
+-- `approval_required`: a posted comment is stored pending and reaches nobody
+-- but its author until staff approve it, which is the queue this suite works.
+INSERT INTO tenant_config (tenant_id, comment_mode)
+SELECT t.id, 'approval_required'
+FROM tenants t
+WHERE t.public_id = 'ModrTNNTAAA1'
+ON CONFLICT (tenant_id) DO UPDATE
+SET comment_mode = EXCLUDED.comment_mode,
+    updated_at = NOW();
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'ModrTNNTAAA1'
+),
+label_seed AS (
+    SELECT '018f0f71-0001-7000-8000-000000000001'::uuid AS id
+)
+INSERT INTO labels (id, tenant_id, public_id, name)
+SELECT
+    ls.id AS label_id,
+    ts.id AS tenant_id,
+    'ModrLABLAAA1',
+    'Moderation Label 01'
+FROM label_seed ls
+CROSS JOIN tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    name = EXCLUDED.name;
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'ModrTNNTAAA1'
+),
+creator_seed AS (
+    SELECT '018f0f72-0001-7000-8000-000000000001'::uuid AS id
+)
+INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
+SELECT
+    cs.id AS creator_id,
+    ts.id AS tenant_id,
+    'ModrAUTHAAA1',
+    'Moderation Author 001',
+    'Profile text for Moderation Author 001'
+FROM creator_seed cs
+CROSS JOIN tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    name = EXCLUDED.name,
+    profile_text = EXCLUDED.profile_text;
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'ModrTNNTAAA1'
+)
+INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
+SELECT
+    '018f0f73-0001-7000-8000-000000000001'::uuid,
+    ts.id AS tenant_id,
+    l.id AS label_id,
+    'ModrSERSAAA1',
+    'Moderation Series 001',
+    true,
+    NOW() - INTERVAL '1 day'
+FROM tenant_scope ts
+JOIN labels l ON l.id = '018f0f71-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    label_id = EXCLUDED.label_id,
+    title = EXCLUDED.title,
+    is_published = EXCLUDED.is_published,
+    published_at = EXCLUDED.published_at,
+    updated_at = NOW();
+
+INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
+SELECT
+    s.id AS series_id,
+    'Moderation series synopsis for Moderation Series 001',
+    72,
+    s.tenant_id
+FROM series s
+WHERE s.id = '018f0f73-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (series_id) DO UPDATE
+SET synopsis = EXCLUDED.synopsis,
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    tenant_id = EXCLUDED.tenant_id;
+
+\set seed_tenant ModrTNNTAAA1
+\ir ../creator_roles.sql
+
+INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)
+SELECT
+    s.id AS series_id,
+    c.id AS creator_id,
+    cr.id,
+    1,
+    s.tenant_id
+FROM series s
+JOIN creators c ON c.id = '018f0f72-0001-7000-8000-000000000001'::uuid
+JOIN creator_roles cr ON cr.tenant_id = s.tenant_id AND cr.name = 'Original Author'
+WHERE s.id = '018f0f73-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
+SET display_order = EXCLUDED.display_order,
+    tenant_id = EXCLUDED.tenant_id;
+
+INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+SELECT
+    '018f0f74-0001-7000-8000-000000000001'::uuid,
+    s.id AS series_id,
+    'ModrEPSDAAA1',
+    'Moderation Episode 001-01',
+    1,
+    s.tenant_id
+FROM series s
+WHERE s.id = '018f0f73-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (public_id) DO UPDATE
+SET series_id = EXCLUDED.series_id,
+    title = EXCLUDED.title,
+    order_index = EXCLUDED.order_index,
+    tenant_id = EXCLUDED.tenant_id;
+
+-- Free, so posting depends on the comment mode alone: a paid episode nobody
+-- bought would refuse the post for a reason this suite is not about.
+INSERT INTO episode_listings (
+    episode_id,
+    price,
+    reading_period_hours,
+    status,
+    scheduled_at,
+    published_at,
+    tenant_id
+)
+SELECT
+    e.id AS episode_id,
+    0,
+    72,
+    'published',
+    NULL::timestamptz,
+    NOW() - INTERVAL '12 hours',
+    e.tenant_id
+FROM episodes e
+WHERE e.id = '018f0f74-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (episode_id) DO UPDATE
+SET price = EXCLUDED.price,
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
+    scheduled_at = EXCLUDED.scheduled_at,
+    published_at = EXCLUDED.published_at,
+    tenant_id = EXCLUDED.tenant_id;
+
+-- Three pages, so the suite can turn past the last one: the comment section is
+-- the page after it. The objects themselves are uploaded by
+-- `e2e/scripts/upload-episode-pages.sh`, which reads these object keys back out
+-- of the database, so the two cannot drift apart.
+INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
+SELECT
+    ('018f0f77-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    e.tenant_id,
+    e.id,
+    page_number
+FROM episodes e
+CROSS JOIN generate_series(1, 3) AS page_number
+WHERE e.id = '018f0f74-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    episode_id = EXCLUDED.episode_id,
+    display_order = EXCLUDED.display_order;
+
+INSERT INTO episode_image_variants (
+    id,
+    tenant_id,
+    episode_image_id,
+    label,
+    storage_provider,
+    object_key,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+)
+SELECT
+    ('018f0f78-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    e.tenant_id,
+    ('018f0f77-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    'original',
+    's3',
+    'tenants/ModrTNNTAAA1/episodes/ModrEPSDAAA1/page-'
+        || lpad(page_number::text, 2, '0')
+        || '-original.jpg',
+    'image/jpeg',
+    -- Reported to the reader as the page's byte size. What the browser
+    -- downloads is image-server's rendition rather than this JPEG, so the
+    -- fixture's own size only has to be in the right range.
+    120000,
+    -- db/seeds/objects/episode-page/page-NN.jpg
+    1050,
+    1500
+FROM episodes e
+CROSS JOIN generate_series(1, 3) AS page_number
+WHERE e.id = '018f0f74-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    episode_image_id = EXCLUDED.episode_image_id,
+    label = EXCLUDED.label,
+    storage_provider = EXCLUDED.storage_provider,
+    object_key = EXCLUDED.object_key,
+    content_type = EXCLUDED.content_type,
+    file_size_bytes = EXCLUDED.file_size_bytes,
+    width = EXCLUDED.width,
+    height = EXCLUDED.height;
+
+\ir ../episode_creators.sql
+
+WITH user_seed (id, public_id, email, password_hash, name) AS (
+    VALUES
+        (
+            '018f0f75-0001-7000-8000-000000000001'::uuid,
+            'ModrADMNAAA1',
+            'moderate-admin@example.com',
+            '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
+            'Moderation E2E Admin'
+        ),
+        (
+            '018f0f75-0002-7000-8000-000000000002'::uuid,
+            'ModrMMBRAAA1',
+            'moderate-member@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Moderation E2E Member'
+        ),
+        (
+            '018f0f75-0003-7000-8000-000000000003'::uuid,
+            'ModrMMBRAAA2',
+            'moderate-reporter@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Moderation E2E Reporter'
+        )
+)
+INSERT INTO users (
+    id,
+    tenant_id,
+    public_id,
+    email,
+    password_hash,
+    name,
+    status,
+    email_verified_at
+)
+SELECT
+    us.id,
+    t.id,
+    us.public_id,
+    us.email,
+    us.password_hash,
+    us.name,
+    'active',
+    NOW()
+FROM user_seed us
+JOIN tenants t ON t.public_id = 'ModrTNNTAAA1'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    name = EXCLUDED.name,
+    status = EXCLUDED.status,
+    email_verified_at = EXCLUDED.email_verified_at;
+
+INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
+SELECT
+    '018f0f76-0001-7000-8000-000000000001'::uuid,
+    u.id,
+    'tenant_admin',
+    u.tenant_id
+FROM users u
+WHERE u.public_id = 'ModrADMNAAA1'
+ON CONFLICT (user_id, role) DO NOTHING;
+
+-- The queue starts empty: the suite posts every comment it approves through
+-- the site, so a leftover row would let an assertion pass without the round
+-- trip having happened.
+DELETE FROM episode_comments
+WHERE episode_id = '018f0f74-0001-7000-8000-000000000001'::uuid;

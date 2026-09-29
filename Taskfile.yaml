@@ -1,0 +1,156 @@
+version: "3"
+
+includes:
+  db:
+    taskfile: ./db/Taskfile.yaml
+    dir: ./db
+  deploy:
+    # Keep cwd at repository root, where the scripts resolve their paths.
+    taskfile: ./infra/deploy/Taskfile.yaml
+  docker:
+    # Keep cwd at repository root so docker build context stays `.`
+    taskfile: ./infra/docker/Taskfile.yaml
+  e2e:
+    # Keep cwd at repository root so scripts can reach server/apps/db paths.
+    taskfile: ./e2e/Taskfile.yaml
+  mobile:
+    taskfile: ./mobile/Taskfile.yaml
+    dir: ./mobile
+  server:
+    taskfile: ./server/Taskfile.yaml
+    dir: ./server
+
+tasks:
+  # Public tasks are alphabetized; internal tasks are at the bottom.
+  deps:
+    desc: Install and update project dependencies
+    cmds:
+      - pnpm install
+      - task: server:deps
+
+  dev:
+    desc: Start both web and server development tasks
+    cmds:
+      - task: storage:init
+      - task: dev-all
+
+  dev-env:create:
+    desc: Create and select an isolated local development profile (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh create {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:destroy:
+    desc: Destroy an unselected, stopped isolated local development profile (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh destroy {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:env:
+    desc: Print shell exports for the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh env
+
+  dev-env:init:
+    desc: Create database, migrate/seed, and seed storage for the selected profile
+    cmds:
+      - bash scripts/dev-env.sh init
+
+  dev-env:list:
+    desc: List isolated local development profiles
+    cmds:
+      - bash scripts/dev-env.sh list
+
+  dev-env:select:
+    desc: Select an isolated local development profile for this worktree (NAME=<identifier>)
+    cmds:
+      - bash scripts/dev-env.sh select {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  dev-env:show:
+    desc: Show the selected isolated local development profile (without secrets)
+    cmds:
+      - bash scripts/dev-env.sh show
+
+  dev-env:start:
+    desc: Start every process in the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh start
+
+  dev-env:stop:
+    desc: Stop processes started by the selected isolated local development profile
+    cmds:
+      - bash scripts/dev-env.sh stop
+
+  dev-env:test:
+    desc: Verify isolated local development profile derivation
+    cmds:
+      - bash scripts/dev-env/lib_test.sh
+
+  e2e:
+    desc: Run Playwright E2E (build stack, sample suite, always tear down)
+    cmds:
+      - task: e2e:run
+
+  gen:
+    desc: Generate SQL and protobuf artifacts
+    cmds:
+      - sqlc generate
+      - buf generate
+
+  images:gen:
+    desc: Render the images under assets/ to the paths assets/images.json maps them to
+    cmds:
+      - node scripts/render-images.ts
+
+  lint:
+    desc: Run frontend, shared, and server lint checks
+    cmds:
+      - pnpm check
+      - task: server:lint
+
+  setup:
+    desc: Run project dependency and database setup
+    cmds:
+      - task: deps
+      - task: mobile:deps
+      - task: db:setup
+      - task: storage:seed
+
+  storage:init:
+    desc: Initialize the storage backend (create the S3 bucket and save it as the platform's object store)
+    cmds:
+      - bash scripts/storage-init.sh
+
+  storage:seed:
+    desc: Upload the development seed's images to the object keys its rows name
+    cmds:
+      - task: storage:init
+      - bash scripts/storage-seed.sh
+
+  test:
+    desc: Run monorepo tests and server Go tests
+    cmds:
+      - pnpm test
+      - task: server:test
+
+  typecheck:
+    desc: Run TypeScript type checks across packages
+    cmds:
+      - pnpm typecheck
+
+  dev-all:
+    desc: Run web and server development tasks concurrently
+    internal: true
+    deps:
+      - task: dev-web
+      - task: server:dev
+
+  dev-web:
+    desc: Start web development servers via Turbo
+    internal: true
+    cmds:
+      - pnpm dev

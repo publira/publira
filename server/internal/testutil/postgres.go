@@ -1,0 +1,657 @@
+// Package testutil provides shared helpers for integration tests that need a real PostgreSQL.
+package testutil
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbmigrate"
+	"github.com/publira/publira/server/internal/dbroles"
+)
+
+const (
+	// Keep the database name aligned with db/seeds/baseline role grants (GRANT CONNECT ON DATABASE publira).
+	// Must not be the system database name "postgres" so Snapshot/Restore can work.
+	defaultDatabase = "publira"
+	defaultUser     = "postgres"
+	defaultPassword = "password"
+
+	// Match CI postgres service major version closely enough for schema compatibility.
+	defaultPostgresImage = "postgres:18-alpine"
+
+	platformDBUser     = "publira_platform"
+	platformDBPassword = "platformpass"
+
+	// The admin API role is deliberately not BYPASSRLS: every statement it runs
+	// is filtered by the tenant isolation policies.
+	adminDBUser     = "publira_admin"
+	adminDBPassword = "adminpass"
+
+	// The public API role is likewise RLS-bound, so a catalog query that forgets
+	// its tenant predicate still cannot reach another tenant's rows.
+	publicDBUser     = "publira_public"
+	publicDBPassword = "publicpass"
+
+	// The ticker role spans every tenant like the platform role, but holds no
+	// blanket grant: the seed names the tables it may touch one by one, which is
+	// what the tests opening this connection are there to exercise.
+	tickerDBUser     = "publira_ticker"
+	tickerDBPassword = "tickerpass"
+
+	// The outbox worker's own login. It carries the blanket grant like the API
+	// roles, minus the platform console's tables, of which the seed grants back
+	// by name the five the mail paths read.
+	outboxDBUser     = "publira_outbox"
+	outboxDBPassword = "outboxpass"
+
+	// The nightly batches' login. It reads and writes the catalog across every
+	// tenant and has no business with the platform console's tables at all.
+	contentStatsDBUser     = "publira_content_stats"
+	contentStatsDBPassword = "contentstatspass"
+)
+
+// SeededPassword is the plaintext behind the password hash of every user seeded
+// by this package. Tests that drive a real Login need the cleartext.
+const SeededPassword = "password-for-tests-only"
+
+// PostgresEnv holds a shared Testcontainers PostgreSQL instance prepared with
+// migrations and application roles. Prefer [StartPostgres] from tests.
+type PostgresEnv struct {
+	Container *postgres.PostgresContainer
+	// Superuser DSN (sslmode=disable).
+	URL string
+	// Application (platform API) DSN using publira_platform.
+	PlatformURL string
+	// Application (admin API) DSN using publira_admin, which is subject to RLS.
+	AdminURL string
+	// Application (public API) DSN using publira_public, which is subject to RLS.
+	PublicURL string
+	// Ticker job DSN using publira_ticker, the BYPASSRLS login with per-table grants.
+	TickerURL string
+	// Outbox worker DSN using publira_outbox.
+	OutboxURL string
+	// Batch job DSN using publira_content_stats.
+	ContentStatsURL string
+
+	// Superuser pool used for setup and seeding.
+	DB *sql.DB
+}
+
+var (
+	sharedMu  sync.Mutex
+	sharedEnv *PostgresEnv
+	sharedErr error
+)
+
+// StartPostgres returns a process-wide PostgreSQL environment (container +
+// migrations + app roles). Safe to call from multiple tests; the first call
+// starts the container. Skips when -short is set or Docker is unavailable.
+//
+// Between tests, call [PostgresEnv.Reset] so each case sees a clean schema
+// (roles and migrations remain; application data is wiped via Snapshot/Restore).
+func StartPostgres(t *testing.T) *PostgresEnv {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping PostgreSQL integration test in short mode")
+	}
+
+	sharedMu.Lock()
+	defer sharedMu.Unlock()
+
+	if sharedEnv != nil || sharedErr != nil {
+		if sharedErr != nil {
+			if isDockerUnavailable(sharedErr) {
+				t.Skipf("skipping PostgreSQL integration test: Docker unavailable: %v", sharedErr)
+			}
+			t.Fatalf("postgres testcontainer: %v", sharedErr)
+		}
+		return sharedEnv
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	env, err := startPostgres(ctx)
+	if err != nil {
+		sharedErr = err
+		if isDockerUnavailable(err) {
+			t.Skipf("skipping PostgreSQL integration test: Docker unavailable: %v", err)
+		}
+		t.Fatalf("postgres testcontainer: %v", err)
+	}
+	sharedEnv = env
+	return sharedEnv
+}
+
+// StartBarePostgres starts a PostgreSQL container of the test's own, with no
+// migration applied and no role of this repository created, which roles being
+// cluster-wide makes the shared one unable to stand in for. It returns the
+// superuser URL and terminates the container when the test ends.
+func StartBarePostgres(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping PostgreSQL integration test in short mode")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
+	container, err := postgres.Run(
+		ctx,
+		defaultPostgresImage,
+		postgres.WithDatabase(defaultDatabase),
+		postgres.WithUsername(defaultUser),
+		postgres.WithPassword(defaultPassword),
+		postgres.BasicWaitStrategies(),
+	)
+	if err != nil {
+		if isDockerUnavailable(err) {
+			t.Skipf("skipping PostgreSQL integration test: Docker unavailable: %v", err)
+		}
+		t.Fatalf("start postgres container: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			t.Errorf("terminate postgres container: %v", err)
+		}
+	})
+	connURL, err := container.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatalf("connection string: %v", err)
+	}
+	return connURL
+}
+
+func startPostgres(ctx context.Context) (*PostgresEnv, error) {
+	container, err := postgres.Run(
+		ctx,
+		defaultPostgresImage,
+		postgres.WithDatabase(defaultDatabase),
+		postgres.WithUsername(defaultUser),
+		postgres.WithPassword(defaultPassword),
+		postgres.BasicWaitStrategies(),
+		postgres.WithSQLDriver("pgx"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("start postgres container: %w", err)
+	}
+
+	connURL, err := container.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("connection string: %w", err)
+	}
+
+	if err := runMigrations(connURL); err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+
+	db, err := sql.Open("pgx", connURL)
+	if err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+	configurePool(db)
+
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+
+	if err := applyAppRoles(ctx, db); err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("apply app roles: %w", err)
+	}
+
+	// Snapshot after migrations + roles so Restore returns a clean empty schema.
+	// Close connections before snapshot so no session blocks DROP DATABASE.
+	if err := db.Close(); err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("close db before snapshot: %w", err)
+	}
+	if err := container.Snapshot(ctx); err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("snapshot: %w", err)
+	}
+
+	db, err = sql.Open("pgx", connURL)
+	if err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("reopen db after snapshot: %w", err)
+	}
+	configurePool(db)
+
+	platformURL, err := appConnectionString(connURL, platformDBUser, platformDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	adminURL, err := appConnectionString(connURL, adminDBUser, adminDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	publicURL, err := appConnectionString(connURL, publicDBUser, publicDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	tickerURL, err := appConnectionString(connURL, tickerDBUser, tickerDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	outboxURL, err := appConnectionString(connURL, outboxDBUser, outboxDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	contentStatsURL, err := appConnectionString(connURL, contentStatsDBUser, contentStatsDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+
+	return &PostgresEnv{
+		Container:       container,
+		URL:             connURL,
+		PlatformURL:     platformURL,
+		AdminURL:        adminURL,
+		PublicURL:       publicURL,
+		TickerURL:       tickerURL,
+		OutboxURL:       outboxURL,
+		ContentStatsURL: contentStatsURL,
+		DB:              db,
+	}, nil
+}
+
+// Reset restores the database to the post-migration snapshot (no application data).
+// Call at the start of each integration test (or in Cleanup) for isolation.
+// Do not run tests that call Reset in parallel against the shared env.
+func (e *PostgresEnv) Reset(t *testing.T) {
+	t.Helper()
+	if e == nil || e.Container == nil {
+		t.Fatal("postgres env is nil")
+	}
+
+	// Drop pooled connections so Restore can recreate the database.
+	if e.DB != nil {
+		_ = e.DB.Close()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	if err := e.Container.Restore(ctx); err != nil {
+		t.Fatalf("restore postgres snapshot: %v", err)
+	}
+
+	db, err := sql.Open("pgx", e.URL)
+	if err != nil {
+		t.Fatalf("reopen db after restore: %v", err)
+	}
+	configurePool(db)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		t.Fatalf("ping db after restore: %v", err)
+	}
+	e.DB = db
+}
+
+// CreateEmptyDatabase creates a database no migration has touched in the
+// shared container, drops it when the test ends, and returns its superuser URL.
+func (e *PostgresEnv) CreateEmptyDatabase(t *testing.T) string {
+	t.Helper()
+	name := "empty_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if _, err := e.DB.ExecContext(t.Context(), "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create database %s: %v", name, err)
+	}
+	t.Cleanup(func() {
+		if _, err := e.DB.ExecContext(context.Background(), "DROP DATABASE "+name+" WITH (FORCE)"); err != nil {
+			t.Errorf("drop database %s: %v", name, err)
+		}
+	})
+	u, err := url.Parse(e.URL)
+	if err != nil {
+		t.Fatalf("parse postgres url: %v", err)
+	}
+	u.Path = "/" + name
+	return u.String()
+}
+
+// OpenPlatformDB opens a connection as publira_platform (BYPASSRLS app user).
+// The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.PlatformURL, platformDBUser)
+}
+
+// OpenAdminDB opens a connection as publira_admin, the RLS-bound role the admin
+// API runs as. Statements only see rows of the tenant the session set through
+// app.current_tenant_id. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenAdminDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.AdminURL, adminDBUser)
+}
+
+// OpenPublicDB opens a connection as publira_public, the RLS-bound role the
+// public API runs as. Like the admin role it only sees rows of the tenant the
+// session set through app.current_tenant_id, so a public catalog query is
+// filtered by the database as well as by its own WHERE clause. The connection
+// is closed via t.Cleanup.
+func (e *PostgresEnv) OpenPublicDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.PublicURL, publicDBUser)
+}
+
+// OpenTickerDB opens a connection as publira_ticker, the BYPASSRLS login the
+// three ticker jobs run as. Unlike the other app roles it holds no blanket
+// table grant, so a job reading a table the seed never named fails here rather
+// than in production. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenTickerDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.TickerURL, tickerDBUser)
+}
+
+// OpenOutboxDB opens a connection as publira_outbox, the login the outbox
+// worker runs as. It bypasses RLS and owns River's schema, and the platform
+// console's tables reach it only through the grants the seed names. The
+// connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenOutboxDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.OutboxURL, outboxDBUser)
+}
+
+// OpenContentStatsDB opens a connection as publira_content_stats, the login the
+// nightly batches run as. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenContentStatsDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.ContentStatsURL, contentStatsDBUser)
+}
+
+func (e *PostgresEnv) openAppDB(t *testing.T, dsn, role string) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatalf("open %s db: %v", role, err)
+	}
+	db.SetMaxOpenConns(5)
+	db.SetMaxIdleConns(2)
+	db.SetConnMaxLifetime(time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		t.Fatalf("ping %s db: %v", role, err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}
+
+// PlatformOperator is a seeded platform_users row used for authenticated API tests.
+type PlatformOperator struct {
+	ID                 uuid.UUID
+	PublicID           string
+	Email              string
+	Name               string
+	Role               string
+	CredentialsVersion int32
+}
+
+// SeedPlatformOperator inserts an active platform operator (default role: platform_operator).
+// Uses the superuser connection so it works even before app-user grants are exercised.
+func (e *PostgresEnv) SeedPlatformOperator(t *testing.T, publicID, email, name string) PlatformOperator {
+	t.Helper()
+	return e.seedPlatformUser(t, publicID, email, name, auth.RolePlatformOperator)
+}
+
+// SeedPlatformSuperAdmin inserts an active platform_super_admin user.
+func (e *PostgresEnv) SeedPlatformSuperAdmin(t *testing.T, publicID, email, name string) PlatformOperator {
+	t.Helper()
+	return e.seedPlatformUser(t, publicID, email, name, auth.RolePlatformSuperAdmin)
+}
+
+// SeedPlatformAuditor inserts an active read-only platform_auditor user.
+func (e *PostgresEnv) SeedPlatformAuditor(t *testing.T, publicID, email, name string) PlatformOperator {
+	t.Helper()
+	return e.seedPlatformUser(t, publicID, email, name, auth.RolePlatformAuditor)
+}
+
+func (e *PostgresEnv) seedPlatformUser(t *testing.T, publicID, email, name, role string) PlatformOperator {
+	t.Helper()
+	if e.DB == nil {
+		t.Fatal("postgres env db is nil; call Reset first if needed")
+	}
+
+	publicID = defaultIfEmpty(publicID, "PLATUSER001")
+	email = defaultIfEmpty(email, "platform@example.com")
+	name = defaultIfEmpty(name, "Platform Operator")
+
+	passwordHash, err := auth.HashPassword(SeededPassword)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+
+	userID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	roleID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	queries := dbmodels.New(e.DB)
+	user, err := queries.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
+		ID:           userID,
+		PublicID:     publicID,
+		Email:        email,
+		PasswordHash: passwordHash,
+		Name:         name,
+	})
+	if err != nil {
+		t.Fatalf("CreatePlatformUser: %v", err)
+	}
+	if _, err := queries.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
+		ID:             roleID,
+		PlatformUserID: user.ID,
+		Role:           role,
+	}); err != nil {
+		t.Fatalf("CreatePlatformUserRole: %v", err)
+	}
+
+	return PlatformOperator{
+		ID:                 user.ID,
+		PublicID:           user.PublicID,
+		Email:              user.Email,
+		Name:               user.Name,
+		Role:               role,
+		CredentialsVersion: user.CredentialsVersion,
+	}
+}
+
+func configurePool(db *sql.DB) {
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Minute)
+}
+
+// MigrateTo takes the schema to one version of db/migrations, running the
+// `down` of every migration applied after it. It is what a test of a
+// migration's own effect on data needs: the shared container is migrated to
+// the head before any test runs, so the only way to watch a migration act on
+// rows that were already there is to take the schema back behind it, seed
+// them, and let [PostgresEnv.MigrateUp] apply it again.
+func (e *PostgresEnv) MigrateTo(t *testing.T, version uint) {
+	t.Helper()
+
+	m, err := newMigrate(e.URL)
+	if err != nil {
+		t.Fatalf("migrate to version %d: %v", version, err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Migrate(version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate to version %d: %v", version, err)
+	}
+}
+
+// MigrateUp applies every pending migration, which is how a test that called
+// [PostgresEnv.MigrateTo] leaves the schema where the rest of the suite
+// expects it.
+func (e *PostgresEnv) MigrateUp(t *testing.T) {
+	t.Helper()
+
+	m, err := newMigrate(e.URL)
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate up: %v", err)
+	}
+}
+
+// MigrateUpWith applies every pending migration of db/migrations together with
+// extra, a set of migration files keyed by file name, the way a deployment
+// applies a migration that arrived after the seed ran. The schema then records a
+// version db/migrations does not have, so call [PostgresEnv.Reset] afterwards.
+func (e *PostgresEnv) MigrateUpWith(t *testing.T, extra map[string]string) {
+	t.Helper()
+
+	migrationsDir, err := findMigrationsDir()
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("read migrations: %v", err)
+	}
+	dir := t.TempDir()
+	for _, entry := range entries {
+		if err := os.Symlink(filepath.Join(migrationsDir, entry.Name()), filepath.Join(dir, entry.Name())); err != nil {
+			t.Fatalf("link migration %s: %v", entry.Name(), err)
+		}
+	}
+	for name, content := range extra {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatalf("write migration %s: %v", name, err)
+		}
+	}
+
+	m, err := dbmigrate.New(dir, e.URL)
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate up: %v", err)
+	}
+}
+
+func newMigrate(postgresURL string) (*migrate.Migrate, error) {
+	migrationsDir, err := findMigrationsDir()
+	if err != nil {
+		return nil, err
+	}
+	return dbmigrate.New(migrationsDir, postgresURL)
+}
+
+func runMigrations(postgresURL string) error {
+	m, err := newMigrate(postgresURL)
+	if err != nil {
+		return err
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("migrate up: %w", err)
+	}
+	return nil
+}
+
+// applyAppRoles creates the login roles the way publiractl db roles does, with
+// the development passwords every URL above connects with.
+func applyAppRoles(ctx context.Context, db *sql.DB) error {
+	dir, err := dbroles.RepoDir()
+	if err != nil {
+		return err
+	}
+	_, err = dbroles.Apply(ctx, db, dir, map[string]string{
+		platformDBUser:     platformDBPassword,
+		adminDBUser:        adminDBPassword,
+		publicDBUser:       publicDBPassword,
+		tickerDBUser:       tickerDBPassword,
+		outboxDBUser:       outboxDBPassword,
+		contentStatsDBUser: contentStatsDBPassword,
+	})
+	return err
+}
+
+func findMigrationsDir() (string, error) {
+	return dbmigrate.RepoDir()
+}
+
+func appConnectionString(superuserURL, user, password string) (string, error) {
+	u, err := url.Parse(superuserURL)
+	if err != nil {
+		return "", fmt.Errorf("parse postgres url: %w", err)
+	}
+	u.User = url.UserPassword(user, password)
+	return u.String(), nil
+}
+
+func defaultIfEmpty(v, fallback string) string {
+	if strings.TrimSpace(v) == "" {
+		return fallback
+	}
+	return v
+}
+
+func isDockerUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, needle := range []string{
+		"cannot connect to the docker daemon",
+		"permission denied while trying to connect to the docker daemon",
+		"is the docker daemon running",
+		"docker provider failed",
+		"no such host",
+	} {
+		if strings.Contains(msg, needle) {
+			return true
+		}
+	}
+	return false
+}

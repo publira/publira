@@ -1,0 +1,326 @@
+-- The genre list is read in the order the tenant put it in, so the cursor
+-- sorts on (display_order, id) — the same pair idx_genres_tenant_display_order
+-- holds. Forward uses the ascending query; backward uses the descending one so
+-- the index is scanned in reverse, and the handler flips those rows back into
+-- display order.
+-- cursor rules: proto/README.md.
+-- name: ListGenresByTenantAsc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) >= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) > (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order ASC,
+    g.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListGenresByTenantDesc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) <= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) < (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order DESC,
+    g.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: GetGenreByIDForTenant :one
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = $1
+    AND g.id = $2
+LIMIT 1;
+
+-- name: ListGenresByIDsForTenant :many
+-- Resolves the genres a series form assigned. The caller compares the row
+-- count against what it asked for, so an id of another tenant reads as a
+-- genre that does not exist.
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order
+FROM genres g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND g.id = ANY(sqlc.arg('ids')::uuid[])
+ORDER BY g.display_order ASC,
+    g.id ASC;
+
+-- name: LockGenresForTenant :many
+-- Locks every genre of the tenant and hands back the order they are in now, so
+-- a reorder can check the client's expected order against a list no concurrent
+-- write can move underneath it. The names and eye-catches come along because a
+-- reorder answers with the whole list, and nothing in this transaction changes
+-- them.
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = $1
+ORDER BY g.display_order ASC,
+    g.id ASC
+FOR UPDATE OF g;
+
+-- name: GetMaxGenreDisplayOrderForTenant :one
+-- Where a newly created genre goes: after everything that already exists.
+SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
+FROM genres
+WHERE tenant_id = $1;
+
+-- name: CountSeriesByGenreIDForTenant :one
+-- Whether a genre may still be deleted. The refusal is the handler's, and this
+-- is what it is based on.
+SELECT COUNT(*)::int4 AS series_count
+FROM series_genres
+WHERE tenant_id = $1
+    AND genre_id = $2;
+
+-- name: CreateGenre :one
+INSERT INTO genres (
+        id,
+        tenant_id,
+        public_id,
+        name,
+        slug,
+        display_order
+    )
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: UpdateGenre :exec
+UPDATE genres
+SET name = $2,
+    slug = $3,
+    eye_catch_image_id = $4
+WHERE id = $1;
+
+-- name: UpdateGenreDisplayOrder :exec
+UPDATE genres
+SET display_order = $2
+WHERE id = $1;
+
+-- name: DeleteGenre :exec
+DELETE FROM genres
+WHERE id = $1;
+
+-- The public genre list: the tenant's whole genre list, in the order the
+-- console put it in, each genre carrying how many of its series are published
+-- right now. A genre no published series carries stays in the list, for the
+-- reason a label with no published series does — the URL of its page has to
+-- keep working after its last series is taken down.
+--
+-- The count is a sub-select rather than a join so it cannot multiply the
+-- genre rows, and it walks idx_series_genres_tenant_genre from the genre into
+-- the series it names.
+--
+-- The cursor is the same (display_order, id) pair the console list pages on;
+-- forward uses the ascending query and backward the descending one, and the
+-- handler flips those rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedGenresByTenantAsc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    g.eye_catch_image_id,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) >= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) > (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order ASC,
+    g.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPublishedGenresByTenantDesc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    g.eye_catch_image_id,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) <= (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (g.display_order, g.id) < (sqlc.narg('cursor_display_order')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY g.display_order DESC,
+    g.id DESC
+LIMIT sqlc.arg('limit');
+
+-- The series a page of genre tiles draws its covers from: per genre, the
+-- positions of its newest leaderboard for the surface first, then its newest
+-- published series, up to series_limit. The leaderboard only orders the genre's
+-- current members, so a series taken down, moved off the surface, re-rated, or
+-- removed from the genre since the batch ran drops out here.
+-- name: ListGenreFeaturedSeries :many
+WITH leaderboards AS (
+    SELECT DISTINCT ON (crs.genre_id) crs.genre_id,
+        crs.items
+    FROM content_ranking_snapshots crs
+    WHERE crs.tenant_id = sqlc.arg('tenant_id')
+        AND crs.genre_id = ANY(sqlc.arg('genre_ids')::uuid[])
+        AND crs.surface = sqlc.arg('surface')::text
+        AND crs.age_rating = 'all'
+        AND crs.ranking_key = sqlc.arg('ranking_key')::text
+        AND crs.entity_type = 'series'
+    ORDER BY crs.genre_id,
+        crs.period_start DESC,
+        crs.period_end DESC,
+        crs.computed_at DESC,
+        crs.id DESC
+),
+ranked AS (
+    SELECT l.genre_id,
+        (item->>'entity_id')::uuid AS series_id,
+        min((item->>'rank')::int) AS rank
+    FROM leaderboards l
+        CROSS JOIN LATERAL jsonb_array_elements(l.items) AS item
+    WHERE item->>'rank' IS NOT NULL
+    GROUP BY l.genre_id,
+        (item->>'entity_id')::uuid
+)
+SELECT g.genre_id::uuid AS genre_id,
+    f.id,
+    f.public_id,
+    f.title,
+    f.eye_catch_image_id
+FROM unnest(sqlc.arg('genre_ids')::uuid[]) AS g(genre_id)
+    CROSS JOIN LATERAL (
+        SELECT s.id,
+            s.public_id,
+            s.title,
+            s.eye_catch_image_id,
+            r.rank,
+            s.published_at
+        FROM series_genres sg
+            JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+            JOIN series_listings sl ON sl.series_id = s.id
+            LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.genre_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND sl.age_rating = 'all'
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+        ORDER BY r.rank ASC NULLS LAST,
+            s.published_at DESC,
+            s.id DESC
+        LIMIT sqlc.arg('series_limit')::int
+    ) f
+ORDER BY g.genre_id,
+    f.rank ASC NULLS LAST,
+    f.published_at DESC,
+    f.id DESC;
+
+-- name: GetGenreIDByPublicIDForTenant :one
+-- Whether a public ID the series list was filtered by names a genre of this
+-- tenant. A filter naming nothing is refused rather than answered with an
+-- empty list, so a storefront cannot show an empty page for a genre that was
+-- deleted or belongs to somebody else.
+SELECT g.id
+FROM genres g
+WHERE g.tenant_id = $1
+    AND g.public_id = $2
+LIMIT 1;

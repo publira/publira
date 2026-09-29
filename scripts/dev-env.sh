@@ -1,0 +1,335 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# shellcheck source=dev-env/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dev-env/lib.sh"
+
+usage() {
+  cat << 'EOF'
+Usage: scripts/dev-env.sh <command> [name]
+
+Commands:
+  create <name>  Allocate a profile and select it for this worktree.
+  select <name>  Select an existing profile for this worktree.
+  init [name]    Create its PostgreSQL database, apply migrations/seeds, and create its bucket.
+  start [name]   Start the complete isolated local stack.
+  stop [name]    Stop processes started by this profile.
+  destroy <name> Destroy one unselected, stopped profile after typing its name.
+  list           Show profiles and their current worktree selections.
+  show [name]    Print non-secret profile settings.
+  env [name]     Print shell export statements for a selected profile.
+EOF
+}
+
+profile_name_or_selected() {
+  if [[ $# -gt 0 ]]; then
+    dev_env_validate_name "$1"
+    printf '%s\n' "$1"
+    return 0
+  fi
+  local selected
+  if ! selected="$(dev_env_read_selection)"; then
+    dev_env_error "no profile is selected; run: task dev-env:create NAME=<name>"
+    return 1
+  fi
+  printf '%s\n' "${selected}"
+}
+
+create_profile() {
+  local name="$1" slot
+  dev_env_validate_name "${name}"
+  dev_env_ensure_home
+  # A name or slot is taken only once its profile is written, so both checks and
+  # the write run under one lock.
+  dev_env_lock_profiles
+  [[ ! -f "$(dev_env_profile_path "${name}")" ]] || dev_env_die "profile already exists: ${name}"
+  if ! slot="$(dev_env_next_slot)"; then
+    dev_env_error "no Valkey logical database is available (slots ${DEV_ENV_SLOT_MIN}-${DEV_ENV_SLOT_MAX})"
+    dev_env_error "destroy one of the profiles holding them and create this one again:"
+    dev_env_slot_holders | sed 's/^/  /' >&2
+    exit 1
+  fi
+  dev_env_write_profile "${name}" "${slot}"
+  dev_env_unlock_profiles
+  dev_env_select "${name}"
+  printf 'created and selected profile %q (run task dev-env:init)\n' "${name}"
+}
+
+init_profile() {
+  local name="$1"
+  dev_env_load_profile "${name}"
+  local db_name="publira_${DEV_ENV_NAME//-/_}"
+  local admin_url
+  admin_url="$(dev_env_postgres_admin_url)"
+  if ! psql "${admin_url}" -tAc "SELECT 1 FROM pg_database WHERE datname = '${db_name}'" | grep -qx '1'; then
+    psql "${admin_url}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${db_name}\""
+  fi
+  PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" PUBLIRA_EDGE_PORT="${PUBLIRA_EDGE_PORT}" task -d "${REPO_ROOT}" db:setup
+  PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
+    PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" \
+    PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \
+    PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
+    task -d "${REPO_ROOT}" storage:seed
+  printf 'initialized profile %q (database=%s, redis-db=%s, bucket=%s)\n' \
+    "${DEV_ENV_NAME}" "${db_name}" "${DEV_ENV_SLOT}" "${PUBLIRA_S3_BUCKET}"
+}
+
+start_profile() {
+  local name="$1" run_dir
+  dev_env_load_profile "${name}"
+  run_dir="$(dev_env_profile_run_dir "${name}")"
+  mkdir -p "${run_dir}"
+  if dev_env_profile_has_running_processes "${name}"; then
+    dev_env_die "profile ${name} already has running processes; run: task dev-env:stop"
+  fi
+  local port
+  for port in \
+    "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
+    "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
+    "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_WORKER_PORT}" \
+    "${PUBLIRA_EDGE_PORT}"; do
+    if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
+      dev_env_die "port ${port} is already in use; select a different profile"
+    fi
+  done
+  # The edge comes first, ahead of the migrations and the build: it is the one
+  # part of a profile Docker has to be there for, and a start that fails here
+  # has nothing running yet to shut down by hand. Python is looked up with it,
+  # because every service after the edge is started through it.
+  dev_env_require_commands python3
+  dev_env_start_edge "${name}"
+  init_profile "${name}"
+  task -d "${REPO_ROOT}" server:build
+
+  # Each service is started with nothing but its own line and the base
+  # variables, so the two settings a profile does not hold are taken from this
+  # shell and named here: where spans go, and the credential the object store
+  # signs with (storage-init.sh leaves it to each process).
+  local tracing=(
+    PUBLIRA_TRACING_ENABLED="${PUBLIRA_TRACING_ENABLED:-}"
+    OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+    OTEL_EXPORTER_OTLP_PROTOCOL="${OTEL_EXPORTER_OTLP_PROTOCOL:-}"
+    OTEL_TRACES_EXPORTER="${OTEL_TRACES_EXPORTER:-}"
+  )
+  local object_store=(
+    AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
+    AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
+    AWS_REGION="${AWS_REGION:-}"
+  )
+
+  # One process serves the API and the images: the edge forwards `/api` and
+  # `/images` to its edge listener, and the Next.js apps dial its internal one.
+  # The Redis URL is the image conversion cache's; the rate limit counters use
+  # it too once it is there.
+  dev_env_start_background "${run_dir}" server "${tracing[@]}" "${object_store[@]}" \
+    PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_PUBLIC_API_PORT}" \
+    PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
+    PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
+    PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
+    PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
+    PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
+    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+    PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
+    PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
+    PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
+    PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
+    PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
+    "${REPO_ROOT}/server/bin/publira" server
+  # The worker also runs the periodic jobs that promote due episodes, apply
+  # free window boundaries, turn over each tenant's calendar day, and rebuild
+  # and purge statistics, so it carries the ticker and content stats roles'
+  # connections and the revalidate targets too.
+  dev_env_start_background "${run_dir}" worker "${tracing[@]}" "${object_store[@]}" \
+    PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
+    PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
+    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_CONTENT_STATS_DB_URL}" \
+    PUBLIRA_WORKER_ADDR=":${PUBLIRA_WORKER_PORT}" \
+    PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
+    PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
+    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
+    PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
+    PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
+    PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
+    PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
+    "${REPO_ROOT}/server/bin/publira" worker
+  # The Node.js services run through the repository root's own scripts, which
+  # are `turbo run`: the task graph is the only thing that builds the `dist/` of
+  # the workspace packages they import, and a worktree that has never built them
+  # has none. The shared dependencies are built once here and each service is
+  # then started with `--only`, because four `dev` runs left to resolve the same
+  # `^build` themselves would each `rm -rf dist && tsdown` the same directories
+  # at the same time.
+  cd "${REPO_ROOT}"
+  pnpm build \
+    --filter "@publira/email-renderer^..." \
+    --filter "@publira/web-host^..." \
+    --filter "@publira/web-admin^..." \
+    --filter "@publira/web-platform^..."
+  dev_env_start_background "${run_dir}" email-renderer PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
+    pnpm dev --only --filter @publira/email-renderer
+  dev_env_start_background "${run_dir}" web-host "${tracing[@]}" PORT="${PUBLIRA_WEB_HOST_PORT}" \
+    PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
+    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
+    pnpm dev --only --filter @publira/web-host
+  dev_env_start_background "${run_dir}" web-admin "${tracing[@]}" PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
+    PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
+    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
+    pnpm dev --only --filter @publira/web-admin
+  dev_env_start_background "${run_dir}" web-platform "${tracing[@]}" PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
+    PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
+    pnpm dev --only --filter @publira/web-platform
+  printf 'started profile %q\n  host:     http://localhost:%s\n  admin:    http://admin.localhost:%s\n  platform: %s\n  logs:     %s\n' \
+    "${name}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}" "${run_dir}"
+}
+
+destroy_profile() {
+  local name="$1" profile_path db_name in_use redis_cli slot_is_clean=true
+  local leftovers=()
+  dev_env_validate_name "${name}"
+  profile_path="$(dev_env_profile_path "${name}")"
+  if [[ ! -f "${profile_path}" ]]; then
+    printf 'nothing to destroy: profile %q does not exist\n' "${name}"
+    return 0
+  fi
+  # Only what the profile names is read, rather than the whole of it: a profile
+  # written in an earlier shape is refused by a load, and destroying it is what
+  # that refusal asks for.
+  dev_env_load_profile_resources "${name}"
+  in_use="$(dev_env_profile_in_use "${name}")"
+  [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
+  ! dev_env_profile_has_running_processes "${name}" || dev_env_die "stop profile ${name} before destroying it"
+  # Every client this needs is resolved before the first step that removes
+  # something, so a missing one stops the run while there is still nothing to
+  # finish by hand.
+  dev_env_require_commands psql aws
+  redis_cli="$(dev_env_redis_cli)" ||
+    dev_env_die "required command not found: valkey-cli or redis-cli, to flush the profile's Valkey database"
+  read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
+  [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
+  db_name="publira_${DEV_ENV_NAME//-/_}"
+  # Each step is judged by what it leaves behind rather than by its exit status,
+  # because what is already gone is the outcome this command wanted.
+  psql "$(dev_env_postgres_admin_url)" \
+    -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)" ||
+    leftovers+=("the database ${db_name}")
+  if ! "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB; then
+    leftovers+=("the contents of Valkey database ${DEV_ENV_SLOT}")
+    slot_is_clean=false
+  fi
+  dev_env_remove_bucket "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_S3_ENDPOINT}" ||
+    leftovers+=("the bucket ${PUBLIRA_S3_BUCKET}")
+  # The profile file is what reserves the slot, so it goes as soon as the slot is
+  # clean: keeping it for a database or a bucket that outlived it holds a slot
+  # nothing uses. A slot still holding data keeps its reservation instead, or the
+  # next profile given it would read what is left there.
+  if [[ "${slot_is_clean}" == true ]]; then
+    rm -f "${profile_path}"
+  fi
+  if ((${#leftovers[@]} > 0)); then
+    dev_env_error "profile ${name} was not fully destroyed; these are still there:"
+    printf '  %s\n' "${leftovers[@]}" >&2
+    [[ "${slot_is_clean}" == true ]] ||
+      dev_env_error "it goes on holding slot ${DEV_ENV_SLOT} until that flush succeeds; destroy it again"
+    exit 1
+  fi
+  printf 'destroyed profile %q\n' "${name}"
+}
+
+show_profile() {
+  local name="$1" db_path db_name
+  dev_env_load_profile "${name}"
+  db_path="${PUBLIRA_DB_URL##*/}"
+  db_name="${db_path%%\?*}"
+  printf 'name: %s\nworktree: %s\nslot: %s\ndatabase: %s\nredis: %s\nbucket: %s\nweb-host: http://localhost:%s\nweb-admin: http://admin.localhost:%s\nweb-platform: %s\n' \
+    "${DEV_ENV_NAME}" "${DEV_ENV_OWNER_WORKTREE}" "${DEV_ENV_SLOT}" "${db_name}" "${PUBLIRA_REDIS_URL}" \
+    "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
+}
+
+print_env() {
+  local name="$1" key profile_path
+  dev_env_load_profile "${name}"
+  profile_path="$(dev_env_profile_path "${name}")"
+  for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}") PNCH_REDIS_URL PNCH_REVALIDATE_TOKEN \
+    PUBLIRA_TENANT_URL_SCHEME; do
+    printf 'export %s=%q\n' "${key}" "${!key}"
+  done
+}
+
+list_profiles() {
+  local profile name selected worktrees
+  dev_env_ensure_home
+  shopt -s nullglob
+  for profile in "${DEV_ENV_PROFILES_DIR}"/*.env; do
+    name="$(dev_env_profile_value "${profile}" DEV_ENV_NAME)"
+    selected=""
+    worktrees="$(dev_env_profile_in_use "${name}" | paste -sd ', ' -)"
+    [[ -n "${worktrees}" ]] && selected=" selected by ${worktrees}"
+    printf '%s (slot %s)%s\n' "${name}" "$(dev_env_profile_value "${profile}" DEV_ENV_SLOT)" "${selected}"
+  done
+  shopt -u nullglob
+}
+
+command="${1:-}"
+shift || true
+case "${command}" in
+  create)
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
+    create_profile "$1"
+    ;;
+  select)
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
+    dev_env_select "$1"
+    ;;
+  init)
+    profile_name="$(profile_name_or_selected "$@")" || exit 1
+    init_profile "${profile_name}"
+    ;;
+  start)
+    profile_name="$(profile_name_or_selected "$@")" || exit 1
+    start_profile "${profile_name}"
+    ;;
+  stop)
+    profile_name="$(profile_name_or_selected "$@")" || exit 1
+    dev_env_stop_profile "${profile_name}"
+    ;;
+  destroy)
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
+    destroy_profile "$1"
+    ;;
+  list) list_profiles ;;
+  show)
+    profile_name="$(profile_name_or_selected "$@")" || exit 1
+    show_profile "${profile_name}"
+    ;;
+  env)
+    profile_name="$(profile_name_or_selected "$@")" || exit 1
+    print_env "${profile_name}"
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

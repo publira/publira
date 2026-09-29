@@ -1,0 +1,124 @@
+import { cacheTag } from "next/cache";
+
+const normalized = (tenantId: string) => tenantId.trim();
+
+export const tenantSeriesListTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:series:list`;
+
+export const tenantSeriesDetailTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:series:detail`;
+
+export const tenantSeriesTag = (tenantId: string, seriesPublicId: string) =>
+  `tenant:${normalized(tenantId)}:series:${seriesPublicId.trim()}`;
+
+export const tenantCreatorsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:creators`;
+
+export const tenantLabelsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:labels`;
+
+export const tenantSiteTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:site`;
+
+/**
+ * What a cached read carries when its answer depends on what day it is where
+ * the tenant publishes — the weekday the storefront's schedule module opens
+ * on, and nothing else so far.
+ *
+ * Such an answer goes stale at the tenant's own midnight rather than on an
+ * edit, so the `ticker.roll_tenant_day` job drops this tag when that tenant's
+ * calendar day turns (`server/cmd/publira/README.md`). It is a tag of its own
+ * for exactly that reason: a daily drop aimed at the catalog's tags would take
+ * every series list and every series page with it, for a value that is one
+ * number on one module.
+ */
+export const tenantTodayTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:today`;
+
+/**
+ * The dynamic `/theme.css` Route Handler consumes this tag through
+ * `getTenantTheme()`. Keep it distinct from site chrome, so a theme save has
+ * an explicit, auditable invalidation target.
+ */
+export const tenantThemeTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:theme`;
+
+/**
+ * The apps the tenant's links open in, read by `/.well-known/assetlinks.json`
+ * and `/.well-known/apple-app-site-association` alone.
+ */
+export const tenantMobileAppAssociationTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:mobile-app-association`;
+
+/**
+ * Every published page of a tenant, the footer links included.
+ *
+ * The locale stays out of the tag. Each locale is already its own cache entry,
+ * because the read takes the locale as an argument, and a publish drops this
+ * one tag — not a per-locale one — so every locale of the list is cleared
+ * together.
+ */
+export const tenantPagesTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:pages`;
+
+/**
+ * One published page, in every locale.
+ *
+ * Same boundary as {@link tenantPagesTag}: the entry is per locale, the tag is
+ * not, and publishing any translation of the page drops
+ * `tenant:{id}:pages:{pageId}` once.
+ */
+export const tenantPageTag = (tenantId: string, pageId: string) =>
+  `tenant:${normalized(tenantId)}:pages:${pageId.trim()}`;
+
+export const tenantNotificationsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:notifications`;
+
+export const tenantFollowsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:follows`;
+
+/**
+ * The private read of this member's own episode reactions. A press refreshes
+ * only this island — not the public episode catalog, which is tagged on the
+ * series and dropped separately so other readers see the new headcount.
+ */
+export const tenantEpisodeRatingsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:episode-ratings`;
+
+export const tenantAnnouncementsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:announcements`;
+
+/**
+ * The banner above every page, which is the same announcement for every reader
+ * and is therefore cached once per tenant rather than per session.
+ *
+ * It is a tag of its own because it goes stale on its own schedule: the console
+ * drops it when an operator pins or unpins one, and the
+ * `ticker.expire_pinned_announcements` job drops it when a pinned window closes
+ * (`server/cmd/publira/README.md`). Aiming either of those at the announcements
+ * tag would rebuild every reader's inbox for a band that has nothing to do
+ * with it.
+ */
+export const tenantPinnedAnnouncementTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:announcements:pinned`;
+
+/**
+ * The cached public comment list of one episode. Posting and withdrawing both
+ * change what it answers, so the Actions behind those controls drop it.
+ *
+ * The viewer's own comments are read uncached and carry no tag: nothing holds
+ * them, so there is nothing to invalidate.
+ */
+export const tenantEpisodeCommentsTag = (
+  tenantId: string,
+  episodePublicId: string
+) =>
+  `tenant:${normalized(tenantId)}:episode:${episodePublicId.trim()}:comments`;
+
+export const applyCacheTag = (tag: string) => {
+  try {
+    cacheTag(tag);
+  } catch {
+    // Some unit tests run without Next cacheComponents runtime support.
+  }
+};

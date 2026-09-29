@@ -1,0 +1,580 @@
+// Package contentranking turns the daily engagement aggregates into the
+// ranking snapshots the public site and the app read, tenant-wide, per age
+// rating, and per genre. It owns the score formula for this repository: which signals count,
+// how much each is worth, and how quickly an older day fades. Every run
+// recomputes a whole period from content_daily_stats, so re-running a day
+// replaces its snapshot instead of adding to it. It also owns the retention
+// side of the same table: snapshots accumulate one period at a time and are
+// dropped on a deadline.
+package contentranking
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/tenantday"
+	"github.com/publira/publira/server/internal/tenantlock"
+)
+
+const (
+	// AlgorithmVersion stamps every snapshot this package writes. Bump it
+	// whenever the score formula changes — the weights, the recency decay, or
+	// the shape of an item — so a reader can tell a snapshot built by this
+	// build from one an older build left behind. It is part of the snapshot's
+	// unique key, so a bumped version writes alongside the old rows rather
+	// than overwriting them.
+	AlgorithmVersion = 3
+
+	// DailyRankingKey ranks a single day, WeeklyRankingKey the seven days
+	// ending on it. The days are the tenant's own, because the daily stats
+	// they are recomputed from are; the weekly ranking therefore never depends
+	// on a previous weekly run.
+	DailyRankingKey  = "daily"
+	WeeklyRankingKey = "weekly"
+
+	// weeklyWindowDays is the length of the weekly window, including its last
+	// day. It is fixed rather than configurable because period_start and
+	// period_end identify the snapshot: a ten-day window filed under the key
+	// "weekly" would describe itself incorrectly.
+	weeklyWindowDays = 7
+
+	// DefaultItemLimit bounds how many entities one snapshot carries. The
+	// items array is fetched whole by whoever renders the ranking, so the
+	// snapshot holds a leaderboard rather than the entire catalogue.
+	DefaultItemLimit = 50
+)
+
+// The score weights. They are constants rather than settings: a snapshot
+// records AlgorithmVersion, not the weights, so two runs that disagreed about
+// them would file incomparable rankings under the same version. Changing any
+// of these means bumping AlgorithmVersion.
+//
+// Each content_daily_stats row in a window contributes
+//
+//	viewWeight × view_count + uniqueViewerWeight × unique_viewer_count
+//	+ purchaseWeight × purchase_count + commentWeight × comment_count
+//	+ favoriteWeight × favorite_count + ratingWeight × rating_sum
+//
+// faded by 0.5 ^ (days before the window's last day / recencyHalfLifeDays),
+// and an entity's score is the sum over its rows. view_count is soft PV: a
+// reader opening a series or episode detail page, reported through
+// RecordContentView.
+//
+// The ordering behind the numbers: paying for an episode is the strongest
+// statement a reader makes, writing about it the next strongest, following a
+// series after that, and a view the weakest. A distinct viewer counts for more
+// than a repeat view, so a title read once by many outranks one refreshed by a
+// few. A comment sits above a rating because it costs the reader sentences
+// rather than a tap, and below a purchase because it costs them no money.
+//
+// ratingWeight is per point, because a rating is 1 to 5 with no neutral: it is
+// how far a reader took their reaction, not a judgement with a bad end. Nothing
+// is subtracted from rating_sum for that reason. A whole rating is therefore
+// worth ratingWeight * maxRatingScore, the 8 that places it between a comment
+// and a distinct viewer.
+const (
+	viewWeight          = 1
+	uniqueViewerWeight  = 2
+	purchaseWeight      = 20
+	commentWeight       = 10
+	favoriteWeight      = 8
+	ratingWeight        = 1.6
+	maxRatingScore      = 5
+	recencyHalfLifeDays = 3
+)
+
+// Aggregator rebuilds content_ranking_snapshots from content_daily_stats.
+// Its database connection must use a role with BYPASSRLS (or be a superuser),
+// because one run spans every tenant.
+type Aggregator struct {
+	db *sql.DB
+}
+
+// Options describes one ranking run.
+type Options struct {
+	// ReferenceDate is the last calendar day every window covers, read as each
+	// tenant's own local date. Zero means every tenant's own yesterday.
+	ReferenceDate time.Time
+	// ItemLimit bounds the items array of each snapshot. Zero means
+	// DefaultItemLimit.
+	ItemLimit int
+}
+
+// Result describes one ranking run. Every count covers the tenants the run
+// actually finished: each tenant commits on its own, so on an error the counts
+// describe the tenants that succeeded rather than the ones that were tried.
+type Result struct {
+	TenantCount   int
+	SnapshotCount int
+	ItemCount     int
+}
+
+// New constructs an Aggregator backed by db.
+func New(db *sql.DB) *Aggregator {
+	return &Aggregator{db: db}
+}
+
+// window is one period a run ranks, named by the key it is filed under.
+type window struct {
+	key  string
+	days int
+}
+
+// windows, entityTypes, surfaces, and ageRatings together decide how many
+// snapshots one tenant gets: each combination is its own row, because a reader
+// asks for one period and one kind of entity at a time, and each of the
+// tenant's genres adds a series snapshot per window and surface. Every combination is written on
+// every run, the empty ones included — an empty leaderboard is the answer that
+// a run happened and found nothing, which a missing row cannot say — so a
+// silent tenant costs the same rows a busy one does, and purge.go is what
+// takes the old periods away again.
+var (
+	windows     = []window{{key: DailyRankingKey, days: 1}, {key: WeeklyRankingKey, days: weeklyWindowDays}}
+	entityTypes = []string{"series", "episode"}
+)
+
+// surfaces are the clients a series ranking is cut for, named as series_surfaces
+// names them. Each gets its own leaderboard rather than a share of a mixed one:
+// cutting a mixed ranking to the item limit first would hand one surface's
+// places to series only the other may show. Episode rankings are not read by
+// surface and are written once.
+var surfaces = []string{"web", "app"}
+
+// ageRatings are the ratings a tenant-wide series ranking is cut for, for the
+// same reason as surfaces: filtering a mixed leaderboard at read time would
+// leave a rating's page with gaps and a handful of entries. The mixed ranking
+// is still written beside them, because the recommendation order ranks the
+// whole catalogue. A genre's ranking is all-ages alone.
+var ageRatings = []string{ageverification.RatingAll, ageverification.RatingR15, ageverification.RatingR18}
+
+// Run rebuilds every ranking snapshot ending on the reference date, for every
+// tenant. Each tenant is its own transaction, so a failure part-way through
+// leaves the tenants already ranked with a complete set of snapshots rather
+// than a half-written one.
+//
+// One tenant's failure does not stop the others: a lock timeout on one tenant
+// is no reason to leave every tenant after it without the day's snapshots. The
+// run finishes what it can and returns every failure together, so the exit
+// status still reports the day as failed.
+func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
+	if a == nil || a.db == nil {
+		return Result{}, errors.New("ranking aggregation requires a database")
+	}
+	itemLimit := opts.ItemLimit
+	if itemLimit <= 0 {
+		itemLimit = DefaultItemLimit
+	}
+	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
+		return Result{}, err
+	}
+
+	tenants, err := tenantday.List(ctx, a.db)
+	if err != nil {
+		return Result{}, fmt.Errorf("list tenants: %w", err)
+	}
+	now := time.Now()
+
+	var result Result
+	var failures []error
+	for _, tenant := range tenants {
+		referenceDate, err := tenant.Date(opts.ReferenceDate, now)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
+			continue
+		}
+		snapshots, items, err := a.rankTenant(ctx, tenant.ID, referenceDate, itemLimit)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("rank tenant %s at %s: %w", tenant.ID, referenceDate.Format(time.DateOnly), err))
+			// A cancelled context fails every remaining tenant the same way,
+			// so there is nothing left to salvage by carrying on.
+			if ctx.Err() != nil {
+				break
+			}
+			continue
+		}
+		result.TenantCount++
+		result.SnapshotCount += snapshots
+		result.ItemCount += items
+	}
+	return result, errors.Join(failures...)
+}
+
+// RunTenant rebuilds every snapshot of one tenant ending on referenceDate, one
+// of that tenant's calendar days. It is how a caller that tracks each tenant's
+// progress on its own ranks the days one tenant is missing without touching
+// the others.
+func (a *Aggregator) RunTenant(ctx context.Context, tenantID uuid.UUID, referenceDate time.Time, itemLimit int) (snapshotCount, itemCount int, err error) {
+	if a == nil || a.db == nil {
+		return 0, 0, errors.New("ranking aggregation requires a database")
+	}
+	if itemLimit <= 0 {
+		itemLimit = DefaultItemLimit
+	}
+	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
+		return 0, 0, err
+	}
+	return a.rankTenant(ctx, tenantID, referenceDate, itemLimit)
+}
+
+// requireBypassRLS refuses a connection that row-level security would scope to
+// one tenant. Both the aggregation and the purge span every tenant, and under
+// a tenant-scoped role they would silently do a fraction of their work; task
+// names the caller in the error.
+func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
+	var bypasses bool
+	err := db.QueryRowContext(ctx, `
+		SELECT rolsuper OR rolbypassrls
+		FROM pg_roles
+		WHERE rolname = current_user
+	`).Scan(&bypasses)
+	if err != nil {
+		return fmt.Errorf("check database role: %w", err)
+	}
+	if !bypasses {
+		return fmt.Errorf("%s requires a database role with BYPASSRLS", task)
+	}
+	return nil
+}
+
+// rankTenant writes every window, entity type, genre, surface, and age rating
+// for one tenant in a single transaction, so a reader never sees the daily ranking of
+// this run beside the weekly ranking of the last one, or a genre's ranking of
+// this run beside the tenant-wide ranking of the last one.
+//
+// The window scans behind those snapshots are bounded by the daily rows
+// the tenant produced — at most one per entity per day, capped by the size of
+// the catalogue — rather than by raw event volume, so they stay small next to
+// the aggregate-content-stats run that feeds them. The budget is the day,
+// shared with the links of the rebuild chain before and after it; judge one
+// run from the elapsed time in its completion log. If a run stops fitting, the
+// fix is upstream of the scan — fewer tenants per invocation, or a
+// materialised per-entity window rollup — because the item limit bounds only
+// what is written, not what is read.
+func (a *Aggregator) rankTenant(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	referenceDate time.Time,
+	itemLimit int,
+) (snapshotCount, itemCount int, err error) {
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	// This lock belongs inside the transaction: it keeps a concurrent run — a
+	// manual batch beside the worker's — from rewriting the same tenant's
+	// snapshots underneath this one. Its bounded wait turns an overlapping run
+	// into a failed run rather than one that waits out the day holding a
+	// transaction open.
+	if err := tenantlock.Take(ctx, tx, tenantID.String()+":content-ranking"); err != nil {
+		return 0, 0, err
+	}
+
+	genreIDs, err := listGenreIDs(ctx, tx, tenantID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("list genres: %w", err)
+	}
+
+	for _, w := range windows {
+		periodEnd := referenceDate
+		periodStart := periodEnd.AddDate(0, 0, -(w.days - 1))
+		requests := make([]snapshotRequest, 0, (1+len(ageRatings)+len(genreIDs))*len(surfaces)+1)
+		for _, entityType := range entityTypes {
+			if entityType != "series" {
+				requests = append(requests, snapshotRequest{entityType: entityType})
+				continue
+			}
+			for _, surface := range surfaces {
+				requests = append(requests, snapshotRequest{entityType: entityType, surface: sql.NullString{String: surface, Valid: true}})
+				for _, ageRating := range ageRatings {
+					requests = append(requests, snapshotRequest{
+						entityType: entityType,
+						surface:    sql.NullString{String: surface, Valid: true},
+						ageRating:  sql.NullString{String: ageRating, Valid: true},
+					})
+				}
+			}
+		}
+		for _, genreID := range genreIDs {
+			for _, surface := range surfaces {
+				requests = append(requests, snapshotRequest{
+					entityType: "series",
+					genreID:    uuid.NullUUID{UUID: genreID, Valid: true},
+					surface:    sql.NullString{String: surface, Valid: true},
+					ageRating:  sql.NullString{String: ageverification.RatingAll, Valid: true},
+				})
+			}
+		}
+		for _, req := range requests {
+			req.tenantID = tenantID
+			req.rankingKey = w.key
+			req.periodStart = periodStart.Format(time.DateOnly)
+			req.periodEnd = periodEnd.Format(time.DateOnly)
+			req.itemLimit = itemLimit
+			items, err := writeSnapshot(ctx, tx, req)
+			if err != nil {
+				return 0, 0, fmt.Errorf("write %s: %w", req, err)
+			}
+			snapshotCount++
+			itemCount += items
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, 0, err
+	}
+	return snapshotCount, itemCount, nil
+}
+
+type snapshotRequest struct {
+	tenantID    uuid.UUID
+	rankingKey  string
+	periodStart string
+	periodEnd   string
+	entityType  string
+	// genreID narrows the snapshot to one genre's series. Null is the
+	// tenant-wide ranking.
+	genreID uuid.NullUUID
+	// surface narrows a series snapshot to the series that surface may show.
+	// Null ranks every entity, which only an episode ranking does.
+	surface sql.NullString
+	// ageRating narrows a series snapshot to the series carrying that rating.
+	// Null ranks every rating together.
+	ageRating sql.NullString
+	itemLimit int
+}
+
+func (r snapshotRequest) String() string {
+	name := fmt.Sprintf("%s %s snapshot", r.rankingKey, r.entityType)
+	if r.ageRating.Valid {
+		name = fmt.Sprintf("%s %s", r.ageRating.String, name)
+	}
+	if r.surface.Valid {
+		name = fmt.Sprintf("%s %s", r.surface.String, name)
+	}
+	if r.genreID.Valid {
+		name = fmt.Sprintf("%s of genre %s", name, r.genreID.UUID)
+	}
+	return name
+}
+
+// listGenreIDs returns every genre of the tenant, the ones no series carries
+// included, so each gets a snapshot even when it has nothing to rank.
+func listGenreIDs(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT id FROM genres WHERE tenant_id = $1 ORDER BY id", tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var genreIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		genreIDs = append(genreIDs, id)
+	}
+	return genreIDs, rows.Err()
+}
+
+// writeSnapshot replaces one snapshot and reports how many items it holds.
+func writeSnapshot(ctx context.Context, tx *sql.Tx, req snapshotRequest) (int, error) {
+	rankable, err := countRankableRows(ctx, tx, req)
+	if err != nil {
+		return 0, fmt.Errorf("count rankable stats: %w", err)
+	}
+
+	var items int
+	err = tx.QueryRowContext(ctx, upsertSnapshotSQL,
+		req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface, req.ageRating,
+		req.rankingKey, req.itemLimit, AlgorithmVersion,
+		viewWeight, uniqueViewerWeight, purchaseWeight, favoriteWeight, ratingWeight,
+		recencyHalfLifeDays, commentWeight,
+	).Scan(&items)
+	if err != nil {
+		return 0, fmt.Errorf("upsert snapshot: %w", err)
+	}
+
+	// Every rankable row scores above zero, so an empty ranking built from one
+	// is a failed read rather than an unpopular period. Failing here rolls the
+	// transaction back before it can replace a good snapshot with an empty one.
+	if rankable > 0 && items == 0 {
+		return 0, fmt.Errorf("ranking produced no items from %d rankable daily stats rows", rankable)
+	}
+	return items, nil
+}
+
+// countRankableRows counts the daily rows that can contribute a positive score.
+// The condition mirrors the score formula: every weight is positive, so a row
+// carrying any of these signals reaches the ranking, and a row without them
+// cannot.
+func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (int64, error) {
+	var rankable int64
+	err := tx.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM content_daily_stats cds
+		WHERE cds.tenant_id = $1
+			AND cds.stat_date >= $2::date
+			AND cds.stat_date <= $3::date
+			AND cds.entity_type = $4
+			AND `+genreMemberSQL+`
+			AND `+surfaceMemberSQL+`
+			AND `+ratingMemberSQL+`
+			AND (
+				cds.view_count > 0
+				OR cds.unique_viewer_count > 0
+				OR cds.purchase_count > 0
+				OR cds.favorite_count > 0
+				OR cds.comment_count > 0
+				OR cds.rating_sum > 0
+			)
+	`, req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface, req.ageRating).Scan(&rankable)
+	return rankable, err
+}
+
+// genreMemberSQL admits a daily row cds to genre $5's ranking only for a
+// published series of that genre; a null $5 admits every row. A genre is only
+// ever ranked all-ages, which ratingMemberSQL enforces.
+const genreMemberSQL = `(
+	$5::uuid IS NULL
+	OR EXISTS (
+		SELECT 1
+		FROM series_genres sg
+			JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+		WHERE sg.tenant_id = $1
+			AND sg.genre_id = $5
+			AND sg.series_id = cds.entity_id
+			AND s.is_published = true
+			AND s.published_at IS NOT NULL
+			AND s.published_at <= now()
+	)
+)`
+
+// surfaceMemberSQL admits a daily row cds to a ranking for surface $6 only for
+// a series that surface may show at the time of the run; a null $6 admits
+// every row. The count and the upsert both apply it, so a period whose signals
+// all belong to series of the other surface is an empty leaderboard rather
+// than a failed read.
+const surfaceMemberSQL = `(
+	$6::text IS NULL
+	OR EXISTS (
+		SELECT 1
+		FROM series_surfaces ss
+		WHERE ss.tenant_id = $1
+			AND ss.series_id = cds.entity_id
+			AND ss.surface = $6
+	)
+)`
+
+// ratingMemberSQL admits a daily row cds to a ranking of age rating $7 only for
+// a series carrying that rating at the time of the run, a series with no
+// listing counting as all-ages; a null $7 admits every row.
+const ratingMemberSQL = `(
+	$7::text IS NULL
+	OR COALESCE((
+		SELECT sl.age_rating
+		FROM series_listings sl
+		WHERE sl.tenant_id = $1
+			AND sl.series_id = cds.entity_id
+	), 'all') = $7
+)`
+
+// upsertSnapshotSQL scores one window and files the leaderboard under the
+// snapshot's unique key.
+//
+// The score is a weighted sum over the window's daily rows, each faded by how
+// far it sits from the last day of the window. Ratings only ever add, because
+// the scale has no bad end: one point is a reader who reacted a little, not one
+// who disliked the episode. Because the fade is measured against the window
+// rather than against now, re-running a past day produces exactly the snapshot
+// the first run produced — except that a genre's ranking admits the series
+// that are its members at the time of the run, a surface's the series it may
+// show at that time, and a rating's the series carrying it at that time.
+//
+// The order is fully determined — score, then purchases, then viewers, then
+// entity id — so two runs over unchanged stats agree on every position, not
+// just on the set of entities.
+const upsertSnapshotSQL = `
+WITH bounds AS (
+	SELECT $2::date AS window_start, $3::date AS window_end
+), windowed AS (
+	SELECT
+		cds.entity_id,
+		sum(cds.view_count)::bigint AS view_count,
+		sum(cds.unique_viewer_count)::bigint AS viewer_days,
+		sum(cds.purchase_count)::bigint AS purchase_count,
+		sum(cds.rating_count)::bigint AS rating_count,
+		sum(cds.rating_sum)::bigint AS rating_sum,
+		sum(cds.favorite_count)::bigint AS favorite_count,
+		sum(cds.comment_count)::bigint AS comment_count,
+		max(cds.stat_date) AS last_active_date,
+		sum(
+			(
+				$11::numeric * cds.view_count
+				+ $12::numeric * cds.unique_viewer_count
+				+ $13::numeric * cds.purchase_count
+				+ $14::numeric * cds.favorite_count
+				+ $17::numeric * cds.comment_count
+				+ $15::numeric * cds.rating_sum
+			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $16::numeric)
+		) AS score
+	FROM content_daily_stats cds
+	CROSS JOIN bounds b
+	WHERE cds.tenant_id = $1
+		AND cds.entity_type = $4
+		AND cds.stat_date >= b.window_start
+		AND cds.stat_date <= b.window_end
+		AND ` + genreMemberSQL + `
+		AND ` + surfaceMemberSQL + `
+		AND ` + ratingMemberSQL + `
+	GROUP BY cds.entity_id
+), ranked AS (
+	SELECT
+		windowed.*,
+		row_number() OVER (
+			ORDER BY score DESC, purchase_count DESC, viewer_days DESC, entity_id
+		) AS position
+	FROM windowed
+	WHERE score > 0
+)
+INSERT INTO content_ranking_snapshots (
+	id, tenant_id, ranking_key, period_start, period_end, entity_type, genre_id,
+	surface, age_rating, items, algorithm_version, computed_at
+)
+SELECT
+	uuidv7(), $1, $8, b.window_start, b.window_end, $4, $5,
+	$6, $7, COALESCE((
+		SELECT jsonb_agg(
+			jsonb_build_object(
+				'rank', r.position,
+				'entity_id', r.entity_id,
+				'score', trim_scale(round(r.score, 4)),
+				'view_count', r.view_count,
+				'viewer_days', r.viewer_days,
+				'purchase_count', r.purchase_count,
+				'rating_count', r.rating_count,
+				'rating_sum', r.rating_sum,
+				'favorite_count', r.favorite_count,
+				'comment_count', r.comment_count,
+				'last_active_date', to_char(r.last_active_date, 'YYYY-MM-DD')
+			)
+			ORDER BY r.position
+		)
+		FROM ranked r
+		WHERE r.position <= $9::int
+	), '[]'::jsonb),
+	$10::int,
+	now()
+FROM bounds b
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating)
+DO UPDATE SET items = EXCLUDED.items, computed_at = EXCLUDED.computed_at
+RETURNING jsonb_array_length(items)
+`

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_purchases_stripe_payment_intent_id;

@@ -1,0 +1,90 @@
+import { LinkButton } from "@publira/ui-components/button";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Suspense } from "react";
+
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
+import { Message } from "#components/message";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+
+import { AnnouncementForm } from "../_components/announcement-form";
+import { createAnnouncementAction } from "../_lib/actions";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+  const t = await getMessagesFor(locale);
+
+  return { title: t("admin.announcements.new_title") };
+};
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_id");
+
+const AnnouncementFormSkeleton = () => (
+  <div className="grid gap-4">
+    <Skeleton className="h-10" />
+    <Skeleton className="h-28" />
+    <Skeleton className="h-20" />
+    <Skeleton className="ml-auto h-10 w-32" />
+  </div>
+);
+
+const AnnouncementFormData = async () => {
+  const tenantId = await getTenantId();
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
+
+  return (
+    <AnnouncementForm
+      action={createAnnouncementAction}
+      tenantId={tenantId}
+      timeZone={timeZone}
+    />
+  );
+};
+
+const NewAnnouncementPage = () => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.announcements.new_title" />
+          </Suspense>
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.announcements.new_description" />
+          </Suspense>
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/announcements" />} variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+            <Message message="admin.announcements.back_to_list" />
+          </Suspense>
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<AnnouncementFormSkeleton />}>
+        <AnnouncementFormData />
+      </Suspense>
+    </AdminPageContent>
+  </AdminPage>
+);
+
+export default NewAnnouncementPage;

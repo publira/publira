@@ -1,0 +1,409 @@
+package platformapi
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/tenanttz"
+)
+
+func TestListTenantsReturnsEmptyList(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantsDesc)).
+		WithArgs(sql.NullString{String: "", Valid: true}, sql.NullString{String: "", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenants(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if len(resp.Msg.Tenants) != 0 {
+		t.Fatalf("tenant count = %d, want 0", len(resp.Msg.Tenants))
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantRejectsEmptyDomain(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validIntegrationCreateTenantRequest()
+	req.Domain = ""
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertFieldViolation(t, err, "domain")
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantRejectsEmptyName(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validIntegrationCreateTenantRequest()
+	req.Name = "  "
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	if err.Error() != "invalid_argument: name is required" {
+		t.Fatalf("CreateTenant error = %q, want the message it has always had", err)
+	}
+	assertFieldViolation(t, err, "name")
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantRejectsInvalidInitialAdminEmails(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validIntegrationCreateTenantRequest()
+	req.InitialAdminEmails = []string{"invalid-email"}
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertFieldViolation(t, err, "initial_admin_emails")
+	assertIntegrationExpectations(t, mock)
+}
+
+// A public_id collision is the one conflict the caller never learns about: the
+// insert is retried from a savepoint with a freshly generated ID.
+func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	attempted := &publicIDArgument{}
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+		WillReturnError(duplicatePublicIDError())
+	expectPublicIDAttemptRolledBack(mock)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
+			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "UTC", "ja"))
+	expectPublicIDAttemptReleased(mock)
+	expectDefaultCreatorRoleInserts(mock, tenantID, now)
+	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if resp.Msg.Tenant.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
+	}
+	assertRetriedWithFreshPublicIDs(t, attempted, 2)
+	assertIntegrationExpectations(t, mock)
+}
+
+// Exhausting the retries is an internal failure, not the "public_id already
+// exists" answer the tenant unique-violation mapping would otherwise produce.
+func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	attempted := &publicIDArgument{}
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	for range publicid.MaxAttempts {
+		expectPublicIDAttempt(mock)
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+			WillReturnError(duplicatePublicIDError())
+		expectPublicIDAttemptRolledBack(mock)
+	}
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("CreateTenant error = %q, want database details hidden", err)
+	}
+	assertRetriedWithFreshPublicIDs(t, attempted, publicid.MaxAttempts)
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant", tenanttz.Default, "ja").
+		WillReturnError(duplicateDomainError())
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Domain Duplicate Tenant", Domain: "existing.example.com", DefaultLocale: "ja"}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "domain") {
+		t.Fatalf("CreateTenant error = %v, want domain duplicate message", err)
+	}
+	assertFieldViolation(t, err, "domain")
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant", tenanttz.Default, "ja").
+		WillReturnError(duplicateAdminDomainError())
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Subdomain Duplicate Tenant", Domain: "sub001.example.com", AdminDomain: "admin.sub001.example.com", DefaultLocale: "ja"}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "admin_domain") {
+		t.Fatalf("CreateTenant error = %v, want admin_domain duplicate message", err)
+	}
+	assertFieldViolation(t, err, "admin_domain")
+	assertIntegrationExpectations(t, mock)
+}
+
+// The locale stored is the one the request names, not the platform default:
+// the settings row here says "ja" and the tenant is still created as "en".
+func TestCreateTenantStoresRequestedLocale(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
+			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "UTC", "en"))
+	expectPublicIDAttemptReleased(mock)
+	expectDefaultCreatorRoleInserts(mock, tenantID, now)
+	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com", DefaultLocale: "  en  "}))
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if resp.Msg.Tenant.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+// A create request that names no locale, or an unsupported one, is rejected
+// before the transaction opens: the column has no default left to fall back on.
+func TestCreateTenantRejectsMissingOrUnsupportedLocale(t *testing.T) {
+	tests := []struct {
+		name          string
+		defaultLocale string
+	}{
+		{name: "missing", defaultLocale: ""},
+		{name: "blank", defaultLocale: "   "},
+		{name: "unknown code", defaultLocale: "fr"},
+		{name: "wrong case", defaultLocale: "EN"},
+		{name: "bcp47 region", defaultLocale: "en-US"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newIntegrationTestServer(t)
+			now := time.Now()
+			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
+
+			client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+			_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{
+				Name:          "New Tenant",
+				Domain:        "new.example.com",
+				DefaultLocale: tt.defaultLocale,
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreateTenant code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			assertFieldViolation(t, err, "default_locale")
+			assertIntegrationExpectations(t, mock)
+		})
+	}
+}
+
+func TestSuspendTenantSuccess(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	id := uuid.Must(uuid.NewV7())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
+		WithArgs(id, "suspended").
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "UTC", "ja"))
+	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: id.String()}))
+	if err != nil {
+		t.Fatalf("SuspendTenant: %v", err)
+	}
+	if resp.Msg.Tenant.Status != "suspended" {
+		t.Fatalf("tenant.status = %q, want suspended", resp.Msg.Tenant.Status)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestSuspendTenantNotFound(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	missing := uuid.Must(uuid.NewV7())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
+		WithArgs(missing, "suspended").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: missing.String()}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("SuspendTenant code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestResumeTenantSuccess(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	id := uuid.Must(uuid.NewV7())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
+		WithArgs(id, "active").
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "UTC", "ja"))
+	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ResumeTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ResumeTenantRequest{TenantId: id.String()}))
+	if err != nil {
+		t.Fatalf("ResumeTenant: %v", err)
+	}
+	if resp.Msg.Tenant.Status != "active" {
+		t.Fatalf("tenant.status = %q, want active", resp.Msg.Tenant.Status)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestPlatformTenantRequiresSession(t *testing.T) {
+	ts, _ := newIntegrationTestServer(t)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListTenants(context.Background(), newIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListTenants code = %v, want unauthenticated", connect.CodeOf(err))
+	}
+}
+
+func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, "tenant_admin", now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListTenants(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("ListTenants code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+// assertFieldViolation checks that err names field as the one request field it
+// refused, which is how the console tells its form fields apart.
+func assertFieldViolation(t *testing.T, err error, field string) {
+	t.Helper()
+	var rpcError *connect.Error
+	if !errors.As(err, &rpcError) {
+		t.Fatalf("error type = %T, want *connect.Error", err)
+	}
+	for _, detail := range rpcError.Details() {
+		value, detailErr := detail.Value()
+		if detailErr != nil {
+			t.Fatalf("detail: %v", detailErr)
+		}
+		if badRequest, ok := value.(*errdetails.BadRequest); ok {
+			if len(badRequest.FieldViolations) != 1 || badRequest.FieldViolations[0].Field != field {
+				t.Fatalf("field violations = %v, want %q", badRequest.FieldViolations, field)
+			}
+			return
+		}
+	}
+	t.Fatalf("error %v has no field violation, want %q", err, field)
+}

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Full E2E lifecycle: up → db → start apps → wait-ready → playwright → down.
+# Distinguishes readiness failure (before Playwright) from test failure.
+set -euo pipefail
+
+# shellcheck source=lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+ensure_run_dirs
+# Isolation helpers first: a regression here would let one run's stopServer
+# kill another run's server. Keep this before the project lock so the
+# tests can take (and release) throwaway locks of their own.
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/lib_test.sh"
+acquire_e2e_lock
+
+cleanup_done=0
+cleanup() {
+  if [[ "${cleanup_done}" -eq 1 ]]; then
+    return 0
+  fi
+  cleanup_done=1
+  e2e_log "teardown (always)"
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/down.sh" || true
+}
+trap cleanup EXIT INT TERM
+
+e2e_log "=== E2E run start (project=${COMPOSE_PROJECT_NAME}) ==="
+
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/db-setup.sh"
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/start-apps.sh"
+
+# Readiness phase — on failure exit before Playwright (message: "readiness failed:")
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/wait-ready.sh"
+
+e2e_log "=== Playwright phase ==="
+set +e
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/test.sh" "$@"
+test_status=$?
+set -e
+
+if [[ "${test_status}" -ne 0 ]]; then
+  e2e_err "Playwright tests failed (exit ${test_status})"
+  e2e_err "Artifacts: ${PUBLIRA_E2E_DIR}/test-results ${PUBLIRA_E2E_DIR}/playwright-report ${LOG_DIR}"
+  exit "${test_status}"
+fi
+
+e2e_log "=== E2E run succeeded ==="

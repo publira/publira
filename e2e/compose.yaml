@@ -1,0 +1,172 @@
+# Ephemeral dependency stack for E2E (project name: publira-e2e).
+# Apps (publira server, web-host) run on the host; only data stores are containerized.
+#
+# The exceptions are traefik, the edge in front of those host processes, and
+# the browser the screenshot projects render in.
+#
+# Host ports are offset from each service's default (5432 / 6379 / 9000 / 1025
+# / 8025) so they clear other local stacks. Override the variable a line below
+# names (and set a distinct COMPOSE_PROJECT_NAME) so a second stack can run
+# from the same checkout:
+#   postgres → localhost:${PUBLIRA_E2E_POSTGRES_PORT:-5433}
+#   redis    → localhost:${PUBLIRA_E2E_REDIS_PORT:-6380}
+#   rustfs   → localhost:${PUBLIRA_E2E_RUSTFS_PORT:-9003}
+#   mailpit  → localhost:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
+#              localhost:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026} (API)
+#   traefik  → localhost:${PUBLIRA_E2E_EDGE_PORT:-3080}
+#   browser  → localhost:${PUBLIRA_E2E_BROWSER_PORT:-3090}
+
+name: publira-e2e
+
+# Which run directory owns the stack. `scripts/lib.sh` reads it back off the
+# containers to refuse a run that would otherwise migrate and re-seed another
+# one's database: the compose-project lease disappears with its holder process,
+# while this label lives exactly as long as the container carrying it.
+x-run-dir-label: &run-dir-label
+  com.publira.e2e.run-dir: "${PUBLIRA_E2E_RUN_DIR:-}"
+
+services:
+  # SMTP sink for the mail the flows under test send, and the only way a spec
+  # can read a token the database keeps as a hash: the confirmation link is in
+  # the message, and Mailpit's HTTP API hands the message back. The Dev
+  # Container runs one under the service name `mailpit`, which resolves nowhere
+  # on the CI runner, so db-setup.sh points the seeded SMTP settings at this
+  # published port instead of that name.
+  #
+  # No volume, unlike the dev stack's: a run starts from an empty mailbox.
+  mailpit:
+    image: axllent/mailpit:v1.31.3@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+    labels: *run-dir-label
+    ports:
+      # SMTP intake and the web UI / API.
+      - "127.0.0.1:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026}:1025"
+      - "127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
+  postgres:
+    image: postgres:18.6-alpine3.23@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1
+    labels: *run-dir-label
+    environment:
+      POSTGRES_DB: publira
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    ports:
+      - "127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - e2e-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  redis:
+    # Valkey is Redis-protocol compatible; keep PUBLIRA_REDIS_URL as redis://...
+    image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    labels: *run-dir-label
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${PUBLIRA_E2E_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    labels: *run-dir-label
+    environment:
+      RUSTFS_ACCESS_KEY: publira
+      RUSTFS_SECRET_KEY: publirapass
+    ports:
+      - "127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT:-9003}:9000"
+    volumes:
+      - e2e-rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
+  # The public edge, matching what Traefik serves in the Dev Container: an
+  # episode body image is `/images/episodes/{id}` on the reader's own origin,
+  # so without something joining web-host and publira server's image routes under
+  # one host and port the browser cannot reach a page at all.
+  #
+  # `network_mode: host` because every backend is a host process on loopback,
+  # which a bridged container has no route to. Only the viewer performance
+  # suite goes through here; every other suite keeps talking to web-host
+  # directly.
+  #
+  # The routing is the repository's own: infra/proxy/traefik/dynamic is mounted
+  # as it stands, and only its services.yaml is replaced by one naming this
+  # run's host ports (scripts/up.sh writes it). The file provider merges what
+  # it finds in the directory.
+  traefik:
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    labels: *run-dir-label
+    network_mode: host
+    command:
+      # Loopback, like every published port above: a bare `:port` would listen
+      # on every interface, which host networking makes the real ones.
+      - "--entrypoints.web.address=127.0.0.1:${PUBLIRA_E2E_EDGE_PORT:-3080}"
+      # Inbound W3C Trace Context is dropped before any router runs, the same
+      # way the Dev Container edge does it.
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+    volumes:
+      # The repository's own dynamic directory, with this run's addresses laid
+      # over the services.yaml in it. The order matters: a file mount can only
+      # land on a path that already exists inside a read-only directory mount,
+      # and services.yaml is committed, so it does.
+      - ../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
+
+  # The browser the screenshot projects render in. Every other project drives
+  # the Playwright Chromium installed on the host; a screenshot is compared
+  # pixel by pixel, so it comes out of a pinned image instead
+  # (`browser/Dockerfile` says what the pinning buys).
+  #
+  # `network_mode: host` for traefik's reason: every app under test is a host
+  # process on loopback, and a `*.localhost` name has to reach the same
+  # loopback from inside the browser as from outside it.
+  browser:
+    build:
+      context: ./browser
+    labels: *run-dir-label
+    network_mode: host
+    init: true
+    # Chromium's renderer processes share memory through /dev/shm, which is
+    # 64 MB in a container by default and too small for a full-page shot.
+    ipc: host
+    command:
+      - "--host"
+      - "127.0.0.1"
+      - "--port"
+      - "${PUBLIRA_E2E_BROWSER_PORT:-3090}"
+    healthcheck:
+      # The endpoint is a WebSocket the client upgrades to, so accepting a
+      # connection is the whole readiness signal.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('node:net').connect(${PUBLIRA_E2E_BROWSER_PORT:-3090}, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
+volumes:
+  e2e-postgres-data:
+  e2e-rustfs-data:

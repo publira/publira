@@ -1,0 +1,62 @@
+version: "3"
+
+vars:
+  # Defaults to the Dev Container `db` service. Export PUBLIRA_DB_URL to point
+  # these tasks at an ephemeral database instead (e2e / bootstrap check), where
+  # the `db` hostname does not resolve.
+  DB_URL: '{{.PUBLIRA_DB_URL | default "postgres://postgres:password@db:5432/publira?sslmode=disable"}}'
+  # The port of the edge browsers reach the seeded tenants on, which their
+  # stored hosts carry. Defaults to the Dev Container's.
+  TENANT_PORT: '{{.PUBLIRA_EDGE_PORT | default "3080"}}'
+
+tasks:
+  # Public tasks are alphabetized; internal tasks are at the bottom.
+  console:
+    desc: Open an interactive PostgreSQL console
+    cmds:
+      - psql {{.DB_URL | q}}
+
+  create:
+    desc: Create a new migration template file
+    cmds:
+      - migrate create -ext sql -dir ./migrations -tz UTC {{.NAME | q}}
+    requires:
+      vars: [NAME]
+
+  drop:
+    desc: Drop and recreate the public schema
+    cmds:
+      - psql {{.DB_URL | q}} -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+  migrate:
+    desc: Apply all pending database migrations
+    cmds:
+      - migrate -path ./migrations -database {{.DB_URL | q}} up
+
+  reset:
+    desc: Rebuild the database from scratch
+    cmds:
+      - task: drop
+      - task: setup
+
+  rollback:
+    desc: Roll back the latest database migration
+    cmds:
+      - migrate -path ./migrations -database {{.DB_URL | q}} down 1
+
+  seed:
+    desc: "Seed the database. ENV=prod for production seed, default: dev"
+    vars:
+      ENV: '{{.ENV | default "dev"}}'
+    requires:
+      vars:
+        - name: ENV
+          enum: [dev, prod]
+    cmds:
+      - psql {{.DB_URL | q}} -v tenant_port={{.TENANT_PORT | q}} -f seeds/{{.ENV | q}}.sql
+
+  setup:
+    desc: Initialize database schema and seed data
+    cmds:
+      - task: migrate
+      - task: seed

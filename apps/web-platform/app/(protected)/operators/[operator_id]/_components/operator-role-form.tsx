@@ -1,0 +1,71 @@
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Select } from "@publira/ui-components/select";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getOperatorRoleSelectItems } from "#lib/operator-labels";
+
+import { updateOperatorRoleAction } from "../_lib/actions";
+
+export const OperatorRoleForm = async ({
+  currentRole,
+  disabled,
+  operatorId,
+  operatorPublicId,
+}: {
+  currentRole: string;
+  disabled?: boolean;
+  operatorId: string;
+  operatorPublicId: string;
+}) => {
+  const locale = await getPlatformLocale();
+  const [t, roleItems] = await Promise.all([
+    getMessagesFor(locale),
+    getOperatorRoleSelectItems(locale),
+  ]);
+
+  return (
+    <ActionForm action={updateOperatorRoleAction}>
+      <input name="operator_id" type="hidden" value={operatorId} />
+      <input name="operator_public_id" type="hidden" value={operatorPublicId} />
+      <div className="grid gap-4">
+        <Field>
+          <FieldLabel required={!disabled}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.common.role" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              <Select
+                defaultValue={currentRole}
+                disabled={disabled}
+                items={roleItems}
+                key={currentRole}
+                name="operator_role"
+                placeholder={t("platform.common.select_placeholder")}
+                required={!disabled}
+              />
+            </Suspense>
+          </FieldContent>
+        </Field>
+      </div>
+      {disabled ? null : (
+        <div className="mt-4 flex justify-end">
+          <ActionFormSubmit variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.common.save" />
+            </Suspense>
+          </ActionFormSubmit>
+        </div>
+      )}
+    </ActionForm>
+  );
+};

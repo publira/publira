@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+enum SecretUpdateMode {
+  SECRET_UPDATE_MODE_UNSPECIFIED = 0;
+  SECRET_UPDATE_MODE_UNCHANGED = 1;
+  SECRET_UPDATE_MODE_REPLACE = 2;
+  SECRET_UPDATE_MODE_CLEAR = 3;
+}
+
+enum TestEmailRecipientType {
+  TEST_EMAIL_RECIPIENT_TYPE_UNSPECIFIED = 0;
+  TEST_EMAIL_RECIPIENT_TYPE_SELF = 1;
+  TEST_EMAIL_RECIPIENT_TYPE_CUSTOM = 2;
+}
+
+message PlatformEmailSettings {
+  string host = 1;
+  int32 port = 2;
+  string username = 3;
+  string encryption = 4;
+  string from_address = 5;
+  string reply_to = 6;
+  bool has_password = 7;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Zero says
+  // no settings are saved yet; every other field is empty alongside it.
+  int64 revision = 8;
+}
+
+message GetPlatformEmailSettingsRequest {}
+
+message GetPlatformEmailSettingsResponse {
+  PlatformEmailSettings settings = 1;
+}
+
+message UpdatePlatformEmailSettingsRequest {
+  string host = 1;
+  int32 port = 2;
+  string username = 3;
+  SecretUpdateMode password_update_mode = 4;
+  string password = 5;
+  string encryption = 6;
+  string from_address = 7;
+  string reply_to = 8;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformEmailSettings.revision. Zero states that no settings are
+  // expected to exist yet. The write is refused with FAILED_PRECONDITION when
+  // the stored row moved on, so a save that read the row before another
+  // session changed it cannot roll that change back, the password included.
+  int64 expected_revision = 9;
+}
+
+message UpdatePlatformEmailSettingsResponse {
+  PlatformEmailSettings settings = 1;
+}
+
+message SendPlatformSmtpTestEmailRequest {
+  TestEmailRecipientType recipient_type = 1;
+  string recipient_email = 2;
+  string host = 3;
+  int32 port = 4;
+  string username = 5;
+  SecretUpdateMode password_update_mode = 6;
+  string password = 7;
+  string encryption = 8;
+  string from_address = 9;
+  string reply_to = 10;
+}
+
+message SendPlatformSmtpTestEmailResponse {
+  string recipient_email = 1;
+}
+
+service PlatformEmailSettingsService {
+  rpc GetPlatformEmailSettings(GetPlatformEmailSettingsRequest) returns (GetPlatformEmailSettingsResponse) {}
+  rpc UpdatePlatformEmailSettings(UpdatePlatformEmailSettingsRequest) returns (UpdatePlatformEmailSettingsResponse) {}
+  rpc SendPlatformSmtpTestEmail(SendPlatformSmtpTestEmailRequest) returns (SendPlatformSmtpTestEmailResponse) {}
+}

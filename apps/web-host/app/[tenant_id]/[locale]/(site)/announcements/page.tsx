@@ -1,0 +1,424 @@
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatDateTime } from "@publira/utils";
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import type { ReactNode } from "react";
+import { Suspense } from "react";
+
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
+import { LocaleField } from "#components/locale-field";
+import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { listMyAnnouncements } from "#lib/announcements";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getPageAlternates } from "#lib/page-alternates";
+import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { getTenantId } from "#lib/tenant-id";
+
+import {
+  markAllAnnouncementsAsReadAction,
+  markAnnouncementAsReadAction,
+  markAnnouncementAsReadAndNavigateAction,
+} from "./_lib/actions";
+import {
+  announcementsListHref,
+  parseAnnouncementsListSearchParams,
+} from "./_lib/search-params";
+
+const ANNOUNCEMENTS_PAGE_SIZE = 20;
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const [t, alternates] = await Promise.all([
+    getMessages(),
+    getPageAlternates("/announcements"),
+  ]);
+
+  return { alternates, title: t("host.announcements.title") };
+};
+
+/*
+ * The session id is left to `resolveAccessToken()` inside `#lib/announcements`.
+ * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
+ * a bearer token, so reading it here and passing the raw value on made every
+ * call fail `unauthenticated`; only the library's own cookie path decrypts it.
+ * Its presence is still read here, for a different question: read state is the
+ * one part of this page a visitor with no session has none of.
+ */
+
+/**
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
+ */
+const AnnouncementsPaginationNav = async ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const t = await getMessages();
+
+  return (
+    <ListPagination aria-label={t("host.announcements.pagination_aria")}>
+      {children}
+    </ListPagination>
+  );
+};
+
+/** The two directions, written once for both places this screen shows them. */
+const AnnouncementsPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <AnnouncementsPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? announcementsListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? announcementsListHref(nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </AnnouncementsPaginationNav>
+  </Suspense>
+);
+
+const AnnouncementsEmptyState = ({
+  nextToken,
+  previousToken,
+  token,
+}: {
+  nextToken: string;
+  previousToken: string;
+  token: string;
+}) => {
+  if (!token) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="host.announcements.list_empty" />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // The rows this page pointed at are gone. The server hands back a token for
+  // the neighbouring page when it can, and empty tokens when it cannot — then
+  // the only way out is the first page (`proto/README.md`).
+  return (
+    <div className="grid gap-6">
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+        <p>
+          <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+            <Message message="host.announcements.page_empty" />
+          </Suspense>
+        </p>
+        {previousToken || nextToken ? null : (
+          <LocaleLink
+            className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
+            href={announcementsListHref("")}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.announcements.first_page" />
+            </Suspense>
+          </LocaleLink>
+        )}
+      </div>
+      {previousToken || nextToken ? (
+        <AnnouncementsPagination
+          nextToken={nextToken}
+          previousToken={previousToken}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+const AnnouncementsSection = async ({
+  searchParams,
+}: {
+  searchParams: PageProps<"/[tenant_id]/[locale]/announcements">["searchParams"];
+}) => {
+  const [resolvedSearchParams, tenantId, locale, cookieStore] =
+    await Promise.all([searchParams, getTenantId(), getLocale(), cookies()]);
+  const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
+  // An announcement is the tenant's word to everyone who opens the site, so
+  // this page is read without signing in. What a session adds is read state:
+  // the unread marks and the controls that set them.
+  const hasSession = Boolean(
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
+  );
+
+  const [result, timeZone] = await Promise.all([
+    listMyAnnouncements(tenantId, undefined, {
+      limit: ANNOUNCEMENTS_PAGE_SIZE,
+      locale,
+      token,
+    }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+
+  const { nextToken, previousToken } = result;
+  // Only this page's rows are loaded, so this is a per-page count. A total
+  // would need its own RPC, which the cursor contract deliberately leaves out
+  // (`proto/README.md`).
+  const unreadCount = result.announcements.filter(
+    (item) => !item.isRead
+  ).length;
+
+  return (
+    <section className="border border-border bg-card p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">
+          <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+            <Message message="host.announcements.list_heading" />
+          </Suspense>
+        </h2>
+        <div className="flex items-center gap-2">
+          {hasSession ? (
+            <span
+              className={
+                unreadCount > 0
+                  ? "rounded-full bg-info px-3 py-1 text-xs font-medium text-info-foreground"
+                  : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+              }
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message
+                  message="host.announcements.unread_on_page"
+                  values={{ count: String(unreadCount) }}
+                />
+              </Suspense>
+            </span>
+          ) : null}
+          {hasSession && result.announcements.length > 0 ? (
+            // Offered on every non-empty page: the unread count above covers
+            // this page only, so a page with nothing unread can still sit in
+            // front of unread announcements further down the list.
+            <form action={markAllAnnouncementsAsReadAction}>
+              <LocaleField />
+              <input name="tenantId" type="hidden" value={tenantId} />
+              <button
+                className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                type="submit"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="host.common.mark_all_read" />
+                </Suspense>
+              </button>
+            </form>
+          ) : null}
+        </div>
+      </div>
+
+      {result.ok ? null : (
+        <SectionError className="mb-4">
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.announcements.list_error" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
+      )}
+
+      {/*
+        A failed read hands back an empty `announcements`, so the empty state
+        stays behind `result.ok` — otherwise the page says the list could not
+        be read and that there is nothing to read, one after the other.
+      */}
+      {result.ok && result.announcements.length === 0 ? (
+        <AnnouncementsEmptyState
+          nextToken={nextToken}
+          previousToken={previousToken}
+          token={token}
+        />
+      ) : null}
+
+      {result.announcements.length > 0 ? (
+        <div className="grid gap-6">
+          <div className="grid gap-3">
+            {result.announcements.map((announcement) => {
+              const linkAction = (() => {
+                if (!announcement.linkUrl) {
+                  return null;
+                }
+
+                if (!hasSession || announcement.isRead) {
+                  return (
+                    <LocaleLink
+                      className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                      href={announcement.linkUrl}
+                    >
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="host.announcements.open_link" />
+                      </Suspense>
+                    </LocaleLink>
+                  );
+                }
+
+                return (
+                  <form action={markAnnouncementAsReadAndNavigateAction}>
+                    <LocaleField />
+                    <input name="tenantId" type="hidden" value={tenantId} />
+                    <input
+                      name="announcementId"
+                      type="hidden"
+                      value={announcement.id}
+                    />
+                    <button
+                      className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                      type="submit"
+                    >
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="host.announcements.open_and_mark_read" />
+                      </Suspense>
+                    </button>
+                  </form>
+                );
+              })();
+
+              return (
+                <article
+                  className="rounded-xl border border-border/70 bg-background p-4"
+                  key={announcement.id}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="font-medium">{announcement.title}</h3>
+                    <div className="flex items-center gap-2">
+                      {hasSession ? (
+                        <span
+                          className={
+                            announcement.isRead
+                              ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                              : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
+                          }
+                        >
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-8" />}
+                          >
+                            {announcement.isRead ? (
+                              <Message message="host.common.read" />
+                            ) : (
+                              <Message message="host.common.unread" />
+                            )}
+                          </Suspense>
+                        </span>
+                      ) : null}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(announcement.createdAt, {
+                          fallback: "-",
+                          locale,
+                          timeZone,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {announcement.body}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {hasSession && !announcement.isRead ? (
+                      <form action={markAnnouncementAsReadAction}>
+                        <LocaleField />
+                        <input name="tenantId" type="hidden" value={tenantId} />
+                        <input
+                          name="announcementId"
+                          type="hidden"
+                          value={announcement.id}
+                        />
+                        <button
+                          className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                          type="submit"
+                        >
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-16" />}
+                          >
+                            <Message message="host.common.mark_read" />
+                          </Suspense>
+                        </button>
+                      </form>
+                    ) : null}
+                    {linkAction}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <AnnouncementsPagination
+            nextToken={nextToken}
+            previousToken={previousToken}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+const AnnouncementsSectionFallback = () => (
+  <section className="border border-border bg-card p-6">
+    <SkeletonLine className="mb-4 h-6 w-32" />
+    <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+  </section>
+);
+
+const AnnouncementsPage = ({
+  searchParams,
+}: PageProps<"/[tenant_id]/[locale]/announcements">) => (
+  <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <section className="border border-border bg-card p-6">
+      <h1 className="text-xl font-semibold">
+        <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
+          <Message message="host.announcements.title" />
+        </Suspense>
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+          <Message message="host.announcements.description" />
+        </Suspense>
+      </p>
+    </section>
+
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+          <Message message="host.announcements.list_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={<AnnouncementsSectionFallback />}>
+        <AnnouncementsSection searchParams={searchParams} />
+      </Suspense>
+    </SectionErrorBoundary>
+  </div>
+);
+
+export default AnnouncementsPage;

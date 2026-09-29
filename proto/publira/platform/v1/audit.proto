@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+message PlatformAuditLog {
+  string actor_user_public_id = 1;
+  string actor_role = 2;
+  string tenant_public_id = 3;
+  string action = 4;
+  string target_type = 5;
+  string target_id = 6;
+  string target_public_id = 14;
+  string outcome = 7;
+  string reason = 8;
+  string client_ip = 9;
+  string created_at = 10;
+  string actor_name = 11;
+  string tenant_name = 12;
+  string target_name = 13;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListAuditLogsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 2;
+  reserved "offset";
+  // Replaced by tenant_id.
+  reserved 3;
+  reserved "tenant_public_id";
+
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 1;
+  string actor_user_public_id = 4;
+  string action = 5;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 6;
+  // Restricts the list to entries about this tenant, by primary key.
+  string tenant_id = 7;
+}
+
+message ListAuditLogsResponse {
+  repeated PlatformAuditLog audit_logs = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+service PlatformAuditLogService {
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {}
+}

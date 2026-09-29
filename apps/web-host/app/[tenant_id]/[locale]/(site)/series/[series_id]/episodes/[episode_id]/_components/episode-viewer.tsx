@@ -1,0 +1,195 @@
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
+import { Suspense } from "react";
+
+import { EpisodeReactionSkeleton } from "#components/episode-reaction";
+import { EpisodeReactionControl } from "#components/episode-reaction-control";
+import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { resolveAccessToken } from "#lib/api-client";
+import type {
+  EpisodeDetail,
+  EpisodeImageItem,
+  EpisodeNeighborItem,
+  EpisodeSeriesSummary,
+  SeriesCommentMode,
+} from "#lib/catalog";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getMyReadingPosition } from "#lib/reading-position";
+import { getTenantId } from "#lib/tenant-id";
+import { getMyViewerPreferences } from "#lib/viewer-preferences";
+
+import { episodePath } from "../_lib/episode-path";
+import { resumePageIndex } from "../_lib/reading-position";
+import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
+import { toViewerPages } from "../_lib/viewer-pages";
+import { saveWideViewerAction } from "../_lib/wide-viewer-action";
+import { EpisodeBodyNotice } from "./episode-body-notice";
+import { EpisodeComicViewer } from "./episode-comic-viewer";
+import { EpisodeComments, EpisodeCommentsSkeleton } from "./episode-comments";
+import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
+import { EpisodeNextEpisodeOffer } from "./episode-next-episode-offer";
+import { EpisodeReadRecorder } from "./episode-read-recorder";
+import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+
+/**
+ * The reader itself, with the page it opens at and the recorders that keep
+ * that page up to date.
+ *
+ * The reading position is read here rather than alongside the episode body,
+ * because a free episode reaches this component without a session ever being
+ * resolved. It is read uncached and awaited before the viewer mounts: the page
+ * the reader resumes on is the page the viewer draws first, not one it jumps
+ * to once the reader is already looking at the first page. The viewer
+ * preferences are read beside it, so a wide viewer is wide from its first paint.
+ *
+ * What a reader does once they have finished — react to the episode, open the
+ * next one, read what others said about it, say something themselves — is the
+ * page after the last one. None of it is offered before the pages have been
+ * turned, because none of it is a reader's to give or to read until then.
+ */
+export const EpisodeViewer = async ({
+  commentMode,
+  commentToken,
+  episode,
+  images,
+  nextEpisode,
+  previousEpisode,
+  series,
+}: {
+  /** The series' resolved comment mode from GetSeriesDetail. */
+  commentMode: SeriesCommentMode;
+  /** Cursor of the comment page the URL asks for. Empty on the newest page. */
+  commentToken: string;
+  episode: EpisodeDetail;
+  images: EpisodeImageItem[];
+  /** Absent on the last published episode of the series. */
+  nextEpisode?: EpisodeNeighborItem;
+  /** Absent on the first one. */
+  previousEpisode?: EpisodeNeighborItem;
+  series: EpisodeSeriesSummary;
+}) => {
+  // An episode whose pages are not published yet says so and nothing else,
+  // so the catalog the reader's own chrome needs is read past the guard.
+  if (images.length === 0) {
+    return (
+      <EpisodeBodyNotice>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-72" />}>
+              <Message message="host.episode.images_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
+      </EpisodeBodyNotice>
+    );
+  }
+
+  const locale = await getLocale();
+  const [t, tenantId, accessToken] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantId(),
+    resolveAccessToken(),
+  ]);
+  const [savedPageIndex, viewerPreferences] = await Promise.all([
+    getMyReadingPosition({
+      accessToken,
+      episodeId: episode.id,
+      tenantId,
+    }),
+    getMyViewerPreferences({ accessToken, tenantId }),
+  ]);
+  const nextHref = nextEpisode
+    ? episodePath(series.publicId, nextEpisode.publicId)
+    : undefined;
+  const previousHref = previousEpisode
+    ? episodePath(series.publicId, previousEpisode.publicId)
+    : undefined;
+
+  return (
+    // A wide viewer fills the window, and the header gives way to it.
+    <div
+      className={cn(VIEWER_HEIGHT_CLASS, "w-full has-data-wide-viewer:h-svh")}
+    >
+      <EpisodeComicViewer
+        endPage={
+          <div className="grid justify-items-center gap-6">
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="host.episode.reaction.control_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<EpisodeReactionSkeleton />}>
+                <EpisodeReactionControl
+                  episodeId={episode.id}
+                  ratingCount={episode.ratingCount}
+                  returnTo={episodePath(series.publicId, episode.publicId)}
+                  seriesPublicId={series.publicId}
+                  tenantId={tenantId}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+            <EpisodeNextEpisodeOffer
+              episodePublicId={episode.publicId}
+              nextEpisode={nextEpisode}
+              series={series}
+              tenantId={tenantId}
+            />
+            {commentMode === "disabled" ? null : (
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="host.episode.comments.list_error" />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={<EpisodeCommentsSkeleton />}>
+                  <EpisodeComments
+                    commentMode={commentMode}
+                    episodeId={episode.id}
+                    episodePublicId={episode.publicId}
+                    seriesPublicId={series.publicId}
+                    tenantId={tenantId}
+                    token={commentToken}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
+            )}
+          </div>
+        }
+        initialPageIndex={
+          // A URL naming a page of comments was followed from the comment page,
+          // so that is where it opens rather than where the reader left off.
+          commentToken
+            ? images.length
+            : resumePageIndex(savedPageIndex, images.length)
+        }
+        pages={toViewerPages(episode.title, images, (values) =>
+          t("host.episode.viewer.page_title", values)
+        )}
+        readingDirection={episode.readingDirection}
+        saveWideViewer={
+          accessToken ? saveWideViewerAction.bind(null, tenantId) : undefined
+        }
+        spreadStartIndex={episode.spreadStartIndex}
+        wideViewerEnabled={viewerPreferences.wideViewerEnabled}
+      >
+        <EpisodeReadRecorder episode={episode} />
+        {accessToken ? (
+          <EpisodeReadingPositionRecorder episode={episode} />
+        ) : null}
+        <EpisodeNeighborKeyNavigation
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      </EpisodeComicViewer>
+    </div>
+  );
+};

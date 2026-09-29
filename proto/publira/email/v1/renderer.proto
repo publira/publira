@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package publira.email.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/email/v1;publiraemailv1";
+
+import "google/protobuf/struct.proto";
+
+message RenderEmailRequest {
+  string template = 1;
+  string locale = 2;
+  google.protobuf.Struct data = 3;
+  // IANA time zone used when a template formats an absolute timestamp.
+  string time_zone = 4;
+}
+
+// The HTML part alone. The subject line and the plain-text alternative are
+// composed from `locales/*.json` by the process that sends the mail, so a
+// caller that has no renderer still has a mail it can send.
+message RenderEmailResponse {
+  reserved 1, 3;
+  reserved "subject", "text";
+
+  string html = 2;
+}
+
+service EmailRendererService {
+  rpc RenderEmail(RenderEmailRequest) returns (RenderEmailResponse) {}
+}

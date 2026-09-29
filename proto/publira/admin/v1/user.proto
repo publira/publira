@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message AdminTenantUser {
+  string public_id = 1;
+  string name = 2;
+  string role = 3;
+}
+
+message ListTenantUsersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string query = 2;
+  int32 limit = 3;
+  string token = 4;
+}
+
+message ListTenantUsersResponse {
+  repeated AdminTenantUser users = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// A reader of the tenant's site: an account of the tenant that holds no staff
+// role.
+message AdminReader {
+  reserved 7;
+  reserved "has_birth_date";
+
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  // One of active, suspended, inactive.
+  string status = 4;
+  string created_at = 5;
+  // When the reader confirmed their address. Empty until they have.
+  string email_verified_at = 6;
+  // The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+  // always empty in ListReaders: staff read it on one reader, to act on a
+  // reader who asks for it to be corrected.
+  string birth_date = 8;
+  string id = 9;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListReadersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Matches a substring of the name or the email, ignoring case. Empty lists
+  // every reader.
+  string query = 2;
+  // One of active, suspended, inactive. Empty lists every status. Anything
+  // else is invalid_argument.
+  string status = 3;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another query or status is invalid_argument.
+  string token = 5;
+}
+
+message ListReadersResponse {
+  // Newest first.
+  repeated AdminReader readers = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetReaderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetReaderResponse {
+  AdminReader reader = 1;
+}
+
+message SuspendReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string reader_id = 3;
+}
+
+message SuspendReaderResponse {
+  AdminReader reader = 1;
+}
+
+message UnsuspendReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string reader_id = 3;
+}
+
+message UnsuspendReaderResponse {
+  AdminReader reader = 1;
+}
+
+message SetReaderBirthDateRequest {
+  reserved 2;
+  reserved "public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // YYYY-MM-DD, validated as a reader's own date is: a calendar date the
+  // tenant's calendar has reached, and not an implausibly old one. Empty clears
+  // the stored date.
+  string birth_date = 3;
+  string reader_id = 4;
+}
+
+message SetReaderBirthDateResponse {
+  AdminReader reader = 1;
+}
+
+message DeleteReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string reader_id = 3;
+}
+
+message DeleteReaderResponse {
+  string public_id = 1;
+  string reader_id = 2;
+}
+
+service AdminUserService {
+  rpc ListTenantUsers(ListTenantUsersRequest) returns (ListTenantUsersResponse) {}
+  // Lists the tenant's readers, newest first. Staff accounts are never in it.
+  rpc ListReaders(ListReadersRequest) returns (ListReadersResponse) {}
+  // Reads one reader. not_found for a staff account and for an account of
+  // another tenant.
+  rpc GetReader(GetReaderRequest) returns (GetReaderResponse) {}
+  // Suspends a reader and ends every session they hold. Suspending a reader
+  // who is already suspended changes nothing. not_found as GetReader.
+  rpc SuspendReader(SuspendReaderRequest) returns (SuspendReaderResponse) {}
+  // Lifts a suspension. The reader returns to active, or to inactive when
+  // they have not confirmed their address yet. Sessions ended by the
+  // suspension stay ended. A reader who is not suspended is left as they are.
+  // not_found as GetReader.
+  rpc UnsuspendReader(UnsuspendReaderRequest) returns (UnsuspendReaderResponse) {}
+  // Sets or clears a reader's birth date. A reader cannot rewrite their own
+  // once it is recorded, so this is how a wrong date gets corrected. The next
+  // age-gated read for the reader is decided on the new date. Writing the date
+  // already stored changes nothing. not_found as GetReader.
+  rpc SetReaderBirthDate(SetReaderBirthDateRequest) returns (SetReaderBirthDateResponse) {}
+  // Deletes a reader's account the way the reader's own DeleteMe does. not_found
+  // as GetReader.
+  rpc DeleteReader(DeleteReaderRequest) returns (DeleteReaderResponse) {}
+}

@@ -1,0 +1,284 @@
+-- Scenario: ranking snapshots for the development seed tenant.
+--
+-- A tenant the engagement batch has run for is what the ranking page, the top
+-- page's popularity module, and the genre tiles are about, and the development
+-- seed produces no reading signals, so nothing computes one. These rows are
+-- that batch's output, written directly: four tenant-wide snapshots per age
+-- rating and the current weekly snapshot of each genre, each filed for the web
+-- and the app alike because every seeded series is on both.
+--
+-- The ranking page and the top page's module read the all-ages ranking, so
+-- the markers below are all-ages works. The ranking of every rating together,
+-- which the recommendation order reads, is filed with the same positions: the
+-- rated works the seed ranks score below its top ten.
+--
+-- Two periods of each tenant-wide ranking, because a movement marker is the
+-- difference between them. Together they cover every marker the page can draw:
+-- a series that climbed, one that fell, one the earlier period did not rank at
+-- all, and one that held its position.
+--
+-- Applied to the seed tenant rather than a tenant of its own, and by
+-- `e2e/scripts/db-setup.sh` rather than by a spec, for the same reason
+-- `160_screenshot_baseline.sql` is: the screenshot projects photograph the
+-- state the stack was seeded with, before any suite has applied a scenario, so
+-- the chart has to be there from the start. A tenant of its own would also
+-- appear in the operator console's tenant list, which the platform baseline
+-- records.
+--
+-- The periods end on the tenant's own yesterday as of when this file is
+-- applied, and the tenant's daily_rebuild_progress is recorded as having got
+-- that far. The worker rebuilds the rankings from the stored signals on its
+-- own, so a seeded period older than its last pass would sit behind the empty
+-- snapshot that pass writes; recorded this way, its first pass finds nothing
+-- to do. No screen shows the periods, so the screenshots do not move with them.
+--
+-- The cold start — no snapshot, so the module keeps the recommendation shelf —
+-- is the Boundary Tenant of `010_multi_tenant.sql`, which has no signals to rank.
+
+BEGIN;
+
+-- The four snapshots, per age rating and surface. `items` carries only the two fields the
+-- ranking read looks at; the batch writes the scores beside them, and nothing
+-- on the screen shows a score.
+WITH tenant_scope AS (
+    SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
+    FROM tenants t
+    WHERE t.public_id = 'SeedTNNTAAA1'
+),
+-- computed_at stays a literal because the site prints it, and the snapshot
+-- with the latest one is the one it reads.
+snapshot_seed (snapshot, ranking_key, start_offset, end_offset, computed_at) AS (
+    VALUES
+        ('weekly-current', 'weekly', 6, 0, TIMESTAMPTZ '2026-04-20 06:00:00+00'),
+        ('weekly-previous', 'weekly', 13, 7, TIMESTAMPTZ '2026-04-13 06:00:00+00'),
+        ('daily-current', 'daily', 0, 0, TIMESTAMPTZ '2026-04-20 06:00:00+00'),
+        ('daily-previous', 'daily', 1, 1, TIMESTAMPTZ '2026-04-19 06:00:00+00')
+),
+
+-- Each row is one position: which snapshot, which rating's ranking, which
+-- place, and the number in `Seed Series NNN` that holds it. The development
+-- seed rates every series ending in 6 r15 and every one ending in 7 r18. The
+-- markers the specs read off the screen fall out of the difference between an
+-- all-ages period and the one before it:
+--
+--   weekly  042 1st, was 2nd   → up 1
+--           100 2nd, unranked  → new
+--           008 3rd, was 1st   → down 2
+--   daily   100 1st, was 1st   → unchanged
+--           099 3rd, unranked  → new
+snapshot_item (snapshot, age_rating, rank, series_number) AS (
+    VALUES
+        ('weekly-current', 'all', 1, 42),
+        ('weekly-current', 'all', 2, 100),
+        ('weekly-current', 'all', 3, 8),
+        ('weekly-current', 'all', 4, 63),
+        ('weekly-current', 'all', 5, 15),
+        ('weekly-current', 'all', 6, 99),
+        ('weekly-current', 'all', 7, 30),
+        ('weekly-current', 'all', 8, 58),
+        ('weekly-current', 'all', 9, 71),
+        ('weekly-current', 'all', 10, 88),
+        ('weekly-previous', 'all', 1, 8),
+        ('weekly-previous', 'all', 2, 42),
+        ('weekly-previous', 'all', 3, 15),
+        ('weekly-previous', 'all', 4, 30),
+        ('weekly-previous', 'all', 5, 63),
+        ('weekly-previous', 'all', 6, 58),
+        ('weekly-previous', 'all', 7, 71),
+        ('weekly-previous', 'all', 8, 99),
+        ('daily-current', 'all', 1, 100),
+        ('daily-current', 'all', 2, 42),
+        ('daily-current', 'all', 3, 99),
+        ('daily-current', 'all', 4, 8),
+        ('daily-current', 'all', 5, 63),
+        ('daily-current', 'all', 6, 15),
+        ('daily-current', 'all', 7, 88),
+        ('daily-current', 'all', 8, 30),
+        ('daily-current', 'all', 9, 58),
+        ('daily-current', 'all', 10, 71),
+        ('daily-previous', 'all', 1, 100),
+        ('daily-previous', 'all', 2, 8),
+        ('daily-previous', 'all', 3, 42),
+        ('daily-previous', 'all', 4, 63),
+        ('daily-previous', 'all', 5, 15),
+        ('daily-previous', 'all', 6, 30),
+        ('daily-previous', 'all', 7, 58),
+        ('daily-previous', 'all', 8, 71),
+        ('weekly-current', 'r15', 1, 16),
+        ('weekly-current', 'r15', 2, 6),
+        ('weekly-current', 'r15', 3, 46),
+        ('weekly-previous', 'r15', 1, 6),
+        ('weekly-previous', 'r15', 2, 16),
+        ('daily-current', 'r15', 1, 6),
+        ('daily-current', 'r15', 2, 26),
+        ('daily-current', 'r15', 3, 16),
+        ('daily-previous', 'r15', 1, 6),
+        ('daily-previous', 'r15', 2, 16),
+        ('weekly-current', 'r18', 1, 7),
+        ('weekly-current', 'r18', 2, 87),
+        ('weekly-current', 'r18', 3, 27),
+        ('weekly-previous', 'r18', 1, 87),
+        ('weekly-previous', 'r18', 2, 7),
+        ('daily-current', 'r18', 1, 87),
+        ('daily-current', 'r18', 2, 7),
+        ('daily-current', 'r18', 3, 57),
+        ('daily-previous', 'r18', 1, 7),
+        ('daily-previous', 'r18', 2, 87)
+)
+INSERT INTO content_ranking_snapshots (
+    id,
+    tenant_id,
+    ranking_key,
+    period_start,
+    period_end,
+    entity_type,
+    surface,
+    age_rating,
+    items,
+    algorithm_version,
+    computed_at
+)
+SELECT
+    uuidv7(),
+    ts.id AS tenant_id,
+    ss.ranking_key,
+    ts.yesterday - ss.start_offset,
+    ts.yesterday - ss.end_offset,
+    'series',
+    sf.surface,
+    rt.age_rating,
+    COALESCE((
+        SELECT jsonb_agg(
+            jsonb_build_object('rank', si.rank, 'entity_id', s.id)
+            ORDER BY si.rank
+        )
+        FROM snapshot_item si
+        JOIN series s
+            ON s.tenant_id = ts.id
+            AND s.public_id = 'SeedSERS'
+                || TRANSLATE(LPAD(si.series_number::text, 4, '0'), '0', 'A')
+        WHERE si.snapshot = ss.snapshot
+            AND si.age_rating = rt.items_of
+    ), '[]'::jsonb),
+    1,
+    ss.computed_at
+FROM snapshot_seed ss
+CROSS JOIN tenant_scope ts
+CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
+-- A NULL age_rating is the ranking of every rating together, filed with the
+-- all-ages positions.
+CROSS JOIN (VALUES (NULL, 'all'), ('all', 'all'), ('r15', 'r15'), ('r18', 'r18')) AS rt(age_rating, items_of)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating) DO UPDATE
+SET items = EXCLUDED.items,
+    computed_at = EXCLUDED.computed_at;
+
+-- The current week of each genre, in an order other than newest-first and
+-- consistent with the tenant-wide week. Action ranks only two series, so its
+-- tile fills the other two covers with the genre's newest.
+WITH tenant_scope AS (
+    SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
+    FROM tenants t
+    WHERE t.public_id = 'SeedTNNTAAA1'
+),
+-- Each row is one position: the number in `SeedGENRNNNN`, the place, and the
+-- number in `Seed Series NNN` that holds it.
+genre_item (genre_number, rank, series_number) AS (
+    VALUES
+        -- Fantasy
+        (1, 1, 7),
+        (1, 2, 43),
+        (1, 3, 19),
+        (1, 4, 85),
+        (1, 5, 61),
+        -- Romance
+        (2, 1, 44),
+        (2, 2, 8),
+        (2, 3, 62),
+        (2, 4, 20),
+        (2, 5, 80),
+        -- Mystery
+        (3, 1, 63),
+        (3, 2, 15),
+        (3, 3, 99),
+        (3, 4, 87),
+        (3, 5, 39),
+        (3, 6, 9),
+        -- Science fiction
+        (4, 1, 100),
+        (4, 2, 58),
+        (4, 3, 22),
+        (4, 4, 64),
+        (4, 5, 4),
+        -- Slice of life
+        (5, 1, 71),
+        (5, 2, 29),
+        (5, 3, 53),
+        (5, 4, 11),
+        -- Action
+        (6, 1, 42),
+        (6, 2, 30)
+)
+INSERT INTO content_ranking_snapshots (
+    id,
+    tenant_id,
+    ranking_key,
+    period_start,
+    period_end,
+    entity_type,
+    genre_id,
+    surface,
+    age_rating,
+    items,
+    algorithm_version,
+    computed_at
+)
+SELECT
+    uuidv7(),
+    ts.id AS tenant_id,
+    'weekly',
+    ts.yesterday - 6,
+    ts.yesterday,
+    'series',
+    g.id,
+    sf.surface,
+    'all',
+    COALESCE((
+        SELECT jsonb_agg(
+            jsonb_build_object('rank', gi.rank, 'entity_id', s.id)
+            ORDER BY gi.rank
+        )
+        FROM genre_item gi
+        JOIN series s
+            ON s.tenant_id = ts.id
+            AND s.public_id = 'SeedSERS'
+                || TRANSLATE(LPAD(gi.series_number::text, 4, '0'), '0', 'A')
+        WHERE 'SeedGENR'
+            || TRANSLATE(LPAD(gi.genre_number::text, 4, '0'), '0', 'A') = g.public_id
+    ), '[]'::jsonb),
+    1,
+    TIMESTAMPTZ '2026-04-20 06:00:00+00'
+FROM tenant_scope ts
+JOIN genres g
+    ON g.tenant_id = ts.id
+    AND g.public_id LIKE 'SeedGENR%'
+CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating) DO UPDATE
+SET items = EXCLUDED.items,
+    computed_at = EXCLUDED.computed_at;
+
+-- The chain has got as far as the snapshots above, for every link.
+INSERT INTO daily_rebuild_progress (
+    tenant_id, episode_reads_projected_at, content_stats_through, rankings_through, recommend_features_through
+)
+SELECT t.id, now(), d.yesterday, d.yesterday, d.yesterday
+FROM tenants t
+CROSS JOIN LATERAL (SELECT (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday) d
+WHERE t.public_id = 'SeedTNNTAAA1'
+ON CONFLICT (tenant_id) DO UPDATE
+SET episode_reads_projected_at = GREATEST(daily_rebuild_progress.episode_reads_projected_at, EXCLUDED.episode_reads_projected_at),
+    content_stats_through = GREATEST(daily_rebuild_progress.content_stats_through, EXCLUDED.content_stats_through),
+    rankings_through = GREATEST(daily_rebuild_progress.rankings_through, EXCLUDED.rankings_through),
+    recommend_features_through = GREATEST(daily_rebuild_progress.recommend_features_through, EXCLUDED.recommend_features_through),
+    updated_at = now();
+
+COMMIT;

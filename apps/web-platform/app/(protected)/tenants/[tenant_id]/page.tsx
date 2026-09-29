@@ -1,0 +1,403 @@
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import { Badge } from "@publira/ui-components/badge";
+import { Button, LinkButton } from "@publira/ui-components/button";
+import { Field, FieldLabel } from "@publira/ui-components/field";
+import { Input } from "@publira/ui-components/input";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatDateTime } from "@publira/utils";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { z } from "zod";
+
+import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { Message } from "#components/message";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSections,
+  PlatformSectionTitle,
+} from "#components/platform-page";
+import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
+import { getPlatformTenant } from "#lib/tenants";
+
+import { TenantSectionNav } from "./_components/tenant-section-nav";
+import {
+  resumeTenantAction,
+  suspendTenantAction,
+  updateTenantDomainAction,
+  updateTenantNameAction,
+} from "./_lib/actions";
+
+interface TenantDetailPageProps {
+  params: Promise<{
+    tenant_id: string;
+  }>;
+}
+
+const tenantDetailParamsSchema = z.object({
+  tenant_id: routeParamString(),
+});
+
+export const generateMetadata = async ({
+  params,
+}: TenantDetailPageProps): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const t = await getMessagesFor(locale);
+  const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+  if (!parsedParams) {
+    return { title: t("platform.tenants.heading") };
+  }
+
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const name =
+    tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
+
+  return {
+    title: name
+      ? t("platform.tenants.detail_title", { name })
+      : t("platform.tenants.heading"),
+  };
+};
+
+const TenantDetailSkeleton = () => (
+  <PlatformPageContent>
+    <div className="grid gap-6">
+      <Skeleton className="h-10 w-64" />
+      <PlatformSections>
+        <PlatformSection>
+          <SkeletonLine className="h-5 w-40" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </PlatformSection>
+        <PlatformSection>
+          <SkeletonLine className="h-5 w-40" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </PlatformSection>
+      </PlatformSections>
+    </div>
+  </PlatformPageContent>
+);
+
+/**
+ * A read that failed is not a tenant that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for a tenant that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const TenantLoadError = ({ message }: { message: string }) => (
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="platform.tenants.load_one_failed" />
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
+      <LinkButton render={<Link href="/tenants" />} variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
+      </LinkButton>
+    </SectionErrorActions>
+  </SectionError>
+);
+
+const TenantDetailContent = async ({
+  params,
+}: Pick<TenantDetailPageProps, "params">) => {
+  const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { tenant_id: tenantId } = parsedParams;
+  const locale = await getPlatformLocale();
+
+  const [t, tenantResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getPlatformTenant(tenantId, locale),
+    getPlatformDisplayTimeZone(),
+  ]);
+
+  // Before both branches below: a rejected session reads every record as
+  // missing, and a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult);
+
+  if (!tenantResult.ok) {
+    return <TenantLoadError message={tenantResult.message} />;
+  }
+
+  const { tenant } = tenantResult;
+  if (!tenant) {
+    notFound();
+  }
+  const tenantStatusLabel = await getTenantStatusLabel(tenant.status, locale);
+  const tenantStatusTone = getTenantStatusTone(tenant.status);
+  const saveLabel = t("platform.common.save");
+  const savingLabel = t("platform.common.saving");
+
+  return (
+    <>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageTitle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message
+                message="platform.tenants.detail_title"
+                values={{
+                  name: tenant.name,
+                }}
+              />
+            </Suspense>
+          </PlatformPageTitle>
+          <PlatformPageDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.tenants.detail_description" />
+            </Suspense>
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
+          <LinkButton render={<Link href="/tenants" />} variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
+          </LinkButton>
+          <LinkButton
+            render={
+              <Link
+                href={`/audit-logs?tenant_id=${encodeURIComponent(tenant.publicId)}`}
+              />
+            }
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.tenants.update_audit" />
+            </Suspense>
+          </LinkButton>
+          {tenant.status === "suspended" ? (
+            <form action={resumeTenantAction}>
+              <input name="tenant_id" type="hidden" value={tenant.id} />
+              <Button type="submit">
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.tenants.resume" />
+                </Suspense>
+              </Button>
+            </form>
+          ) : (
+            <form action={suspendTenantAction}>
+              <input name="tenant_id" type="hidden" value={tenant.id} />
+              <Button type="submit" variant="destructive">
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.tenants.suspend" />
+                </Suspense>
+              </Button>
+            </form>
+          )}
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6">
+          <TenantSectionNav current="detail" tenantId={tenant.publicId} />
+
+          <PlatformSections>
+            <PlatformSection>
+              <PlatformSectionHeader>
+                <PlatformSectionHeading>
+                  <PlatformSectionTitle>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.basic_title" />
+                    </Suspense>
+                  </PlatformSectionTitle>
+                  <PlatformSectionDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.basic_description" />
+                    </Suspense>
+                  </PlatformSectionDescription>
+                </PlatformSectionHeading>
+              </PlatformSectionHeader>
+              <ActionForm action={updateTenantNameAction}>
+                <input name="tenant_id" type="hidden" value={tenant.id} />
+                <input
+                  name="tenant_current_domain"
+                  type="hidden"
+                  value={tenant.domain}
+                />
+                <div className="grid gap-4">
+                  <Field>
+                    <FieldLabel required>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.name" />
+                      </Suspense>
+                    </FieldLabel>
+                    <Input
+                      key={tenant.name}
+                      defaultValue={tenant.name}
+                      name="tenant_name"
+                      required
+                      type="text"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.common.created_at" />
+                      </Suspense>
+                    </FieldLabel>
+                    <p className="text-sm">
+                      {formatDateTime(tenant.createdAt, {
+                        fallback: t("platform.common.unset"),
+                        locale,
+                        timeZone,
+                      })}
+                    </p>
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.common.status" />
+                      </Suspense>
+                    </FieldLabel>
+                    <p>
+                      <Badge tone={tenantStatusTone}>{tenantStatusLabel}</Badge>
+                    </p>
+                  </Field>
+                </div>
+                <ActionFormSubmit
+                  className="mt-4 ml-auto block"
+                  variant="outline"
+                >
+                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                  <ActionFormPending>{savingLabel}</ActionFormPending>
+                </ActionFormSubmit>
+              </ActionForm>
+            </PlatformSection>
+
+            <PlatformSection>
+              <PlatformSectionHeader>
+                <PlatformSectionHeading>
+                  <PlatformSectionTitle>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.domain_settings_title" />
+                    </Suspense>
+                  </PlatformSectionTitle>
+                  <PlatformSectionDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.domain_settings_description" />
+                    </Suspense>
+                  </PlatformSectionDescription>
+                </PlatformSectionHeading>
+              </PlatformSectionHeader>
+              <TenantDomainCautions showUpdateCaution />
+              <ActionForm action={updateTenantDomainAction}>
+                <input name="tenant_id" type="hidden" value={tenant.id} />
+                <input
+                  name="tenant_current_name"
+                  type="hidden"
+                  value={tenant.name}
+                />
+                <div className="grid gap-4">
+                  <Field>
+                    <FieldLabel required>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.domain" />
+                      </Suspense>
+                    </FieldLabel>
+                    <Input
+                      key={tenant.domain}
+                      defaultValue={tenant.domain}
+                      name="tenant_domain"
+                      placeholder="tenant-example.example.com"
+                      required
+                      type="text"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.admin_domain" />
+                      </Suspense>
+                    </FieldLabel>
+                    <Input
+                      key={tenant.adminDomain}
+                      defaultValue={tenant.adminDomain}
+                      name="tenant_admin_domain"
+                      placeholder={`admin.${tenant.domain}`}
+                      type="text"
+                    />
+                    <AdminDomainPreview
+                      adminDomain={tenant.adminDomain}
+                      domain={tenant.domain}
+                      showCurrentDomain
+                    />
+                  </Field>
+                </div>
+                <ActionFormSubmit
+                  className="mt-4 ml-auto block"
+                  variant="outline"
+                >
+                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                  <ActionFormPending>{savingLabel}</ActionFormPending>
+                </ActionFormSubmit>
+              </ActionForm>
+            </PlatformSection>
+          </PlatformSections>
+        </div>
+      </PlatformPageContent>
+    </>
+  );
+};
+
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
+const TenantDetailPage = ({ params }: TenantDetailPageProps) => (
+  <PlatformPage>
+    <Suspense fallback={<TenantDetailSkeleton />}>
+      <TenantDetailContent params={params} />
+    </Suspense>
+  </PlatformPage>
+);
+
+export default TenantDetailPage;

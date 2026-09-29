@@ -1,0 +1,788 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/connect_client.dart';
+import 'package:publira/auth/auth_failure.dart';
+import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
+import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/config.dart';
+
+import 'support/connect_fixture_server.dart';
+
+void main() {
+  late ConnectFixtureServer server;
+  late HttpAuthRepository auth;
+
+  setUp(() async {
+    server = ConnectFixtureServer();
+    await server.start();
+    auth = HttpAuthRepository(
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+    );
+  });
+
+  tearDown(() async {
+    await server.close();
+  });
+
+  test('signIn returns the session the API issued', () async {
+    final session = await auth.signIn(
+      email: ConnectFixtureServer.memberEmail,
+      password: ConnectFixtureServer.memberPassword,
+    );
+
+    expect(session.accessToken, ConnectFixtureServer.memberAccessToken);
+    expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
+    expect(session.userName, ConnectFixtureServer.memberName);
+    expect(session.expiresAt, isNotNull);
+    expect(session.hasExpired(DateTime.now()), isFalse);
+  });
+
+  test('signIn maps rejected credentials to invalidCredentials', () async {
+    expect(
+      () => auth.signIn(
+        email: ConnectFixtureServer.memberEmail,
+        password: 'wrong',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.invalidCredentials,
+        ),
+      ),
+    );
+  });
+
+  test('signIn maps an unreachable API to network', () async {
+    final closedBaseUrl = server.baseUrl;
+    await server.close();
+    final offline = HttpAuthRepository(
+      config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
+    );
+
+    expect(
+      () => offline.signIn(
+        email: ConnectFixtureServer.memberEmail,
+        password: ConnectFixtureServer.memberPassword,
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test('refresh confirms a stored token and re-reads its user', () async {
+    const stored = AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: '',
+      userName: '',
+    );
+
+    final refreshed = await auth.refresh(stored);
+
+    expect(refreshed.accessToken, ConnectFixtureServer.memberAccessToken);
+    expect(refreshed.userName, ConnectFixtureServer.memberName);
+    expect(refreshed.userPublicId, ConnectFixtureServer.memberPublicId);
+  });
+
+  const stored = AuthSession(
+    accessToken: ConnectFixtureServer.memberAccessToken,
+    userPublicId: ConnectFixtureServer.memberPublicId,
+    userName: ConnectFixtureServer.memberName,
+  );
+
+  test('readReaderAge reports the date and the tenant rule', () async {
+    server.memberBirthDate = '1990-04-02';
+
+    final age = await auth.readReaderAge(stored);
+
+    expect(age.birthDate, '1990-04-02');
+    expect(age.timeZone, 'UTC');
+    expect(age.verification, AgeVerification.checked);
+  });
+
+  test('readEmail reports the address the account holds', () async {
+    expect(await auth.readEmail(stored), ConnectFixtureServer.memberEmail);
+  });
+
+  test('readReaderAge reports an account that holds none', () async {
+    server.ageVerification = 'AGE_VERIFICATION_NONE';
+
+    final age = await auth.readReaderAge(stored);
+
+    expect(age.hasBirthDate, isFalse);
+    expect(age.verification, AgeVerification.none);
+  });
+
+  test(
+    'readReaderAge reports a tenant read that fails before GetMe answers',
+    () async {
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetMe');
+      final holding = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: client,
+      );
+      // Resolved once while the API answers, so only the read fails.
+      await holding.readReaderAge(stored);
+      server.tenantStatus = HttpStatus.serviceUnavailable;
+      client.release = client.settled.firstWhere(
+        (procedure) => procedure.endsWith('/GetTenant'),
+      );
+
+      await expectLater(
+        holding.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.network,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'readReaderAge reports a rejected session without waiting on the tenant',
+    () async {
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetTenant');
+      final holding = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: client,
+      );
+      final tenantAnswers = Completer<void>();
+      addTearDown(tenantAnswers.complete);
+      client.release = tenantAnswers.future;
+      server.activeAccessToken = 'another-token';
+
+      await expectLater(
+        holding.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.sessionExpired,
+          ),
+        ),
+      );
+    },
+  );
+
+  test('recordBirthDate writes the date beside the name it holds', () async {
+    final written = await auth.recordBirthDate(
+      stored.withUser(userPublicId: stored.userPublicId, userName: 'Stale'),
+      DateTime.utc(2001, 2, 3),
+    );
+
+    expect(written, '2001-02-03');
+    expect(server.memberBirthDate, '2001-02-03');
+    final request = server.requestsTo('UpdateMe').single;
+    expect(request.body['name'], ConnectFixtureServer.memberName);
+    expect(request.body['birthDate'], '2001-02-03');
+  });
+
+  test('recordBirthDate maps a date the API refuses to birthDateInvalid', () {
+    final unreached = DateTime.now().toUtc().add(const Duration(days: 2));
+
+    expect(
+      () => auth.recordBirthDate(stored, unreached),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.birthDateInvalid,
+        ),
+      ),
+    );
+  });
+
+  test('recordBirthDate maps a date already set to birthDateAlreadySet', () {
+    server.memberBirthDate = '1990-04-02';
+
+    expect(
+      () => auth.recordBirthDate(stored, DateTime.utc(2001, 2, 3)),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.birthDateAlreadySet,
+        ),
+      ),
+    );
+  });
+
+  test('signUp sends what the form collected', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+      birthDate: '1998-07-06',
+    );
+
+    final request = server.requestsTo('CreateUser').single;
+    expect(request.body['name'], 'New Reader');
+    expect(request.body['email'], 'new@example.com');
+    expect(request.body['password'], 'newpassword');
+    expect(request.body['birthDate'], '1998-07-06');
+  });
+
+  test('signUp sends the page versions the reader agreed to', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+      agreedPageVersionIds: ['terms-v2', 'privacy-v1'],
+    );
+
+    expect(server.signups['new@example.com']!.agreedPageVersionIds, [
+      'terms-v2',
+      'privacy-v1',
+    ]);
+  });
+
+  test('signUp leaves out a birth date the form did not ask for', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+    );
+
+    final body = server.requestsTo('CreateUser').single.body;
+    expect(body.containsKey('birthDate'), isFalse);
+    expect(body.containsKey('agreedPageVersionIds'), isFalse);
+  });
+
+  test('signUp maps a refused address to invalidInput', () async {
+    server.signupStatus = HttpStatus.badRequest;
+    server.signupErrorCode = 'invalid_argument';
+
+    await expectLater(
+      auth.signUp(
+        name: 'New Reader',
+        email: 'not-an-address',
+        password: 'newpassword',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.invalidInput,
+        ),
+      ),
+    );
+  });
+
+  test('signUp maps a spent mail allowance to rateLimited', () async {
+    server.signupStatus = HttpStatus.tooManyRequests;
+    server.signupErrorCode = 'resource_exhausted';
+
+    await expectLater(
+      auth.signUp(
+        name: 'New Reader',
+        email: 'new@example.com',
+        password: 'newpassword',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('verifyEmail confirms the address a sign-up left unconfirmed', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+    );
+
+    await auth.verifyEmail(ConnectFixtureServer.verificationToken);
+
+    expect(server.signups['new@example.com']!.verified, isTrue);
+  });
+
+  test(
+    'a reader who signed up reads their own account once signed in',
+    () async {
+      await auth.signUp(
+        name: 'New Reader',
+        email: 'new@example.com',
+        password: 'newpassword',
+      );
+      await auth.verifyEmail(ConnectFixtureServer.verificationToken);
+      final session = await auth.signIn(
+        email: 'new@example.com',
+        password: 'newpassword',
+      );
+
+      expect(await auth.readEmail(session), 'new@example.com');
+      expect((await auth.readReaderAge(session)).birthDate, isEmpty);
+    },
+  );
+
+  test('verifyEmail maps an unknown token to linkInvalid', () {
+    expect(
+      () => auth.verifyEmail('never-issued'),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkInvalid,
+        ),
+      ),
+    );
+  });
+
+  test('verifyEmail maps a spent link to linkExpired', () {
+    expect(
+      () => auth.verifyEmail(ConnectFixtureServer.expiredVerificationToken),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkExpired,
+        ),
+      ),
+    );
+  });
+
+  test('requestEmailVerification names the address it was given', () async {
+    await auth.requestEmailVerification('new@example.com');
+
+    expect(
+      server.requestsTo('RequestEmailVerification').single.body['email'],
+      'new@example.com',
+    );
+  });
+
+  test('requestEmailVerification maps a spent allowance to rateLimited', () {
+    server.verificationRequestStatus = HttpStatus.tooManyRequests;
+    server.verificationRequestErrorCode = 'resource_exhausted';
+
+    expect(
+      () => auth.requestEmailVerification('new@example.com'),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('requestPasswordReset names the address it was given', () async {
+    await auth.requestPasswordReset(ConnectFixtureServer.memberEmail);
+
+    expect(
+      server.requestsTo('RequestPasswordReset').single.body['email'],
+      ConnectFixtureServer.memberEmail,
+    );
+  });
+
+  test('requestPasswordReset maps a spent allowance to rateLimited', () {
+    server.passwordResetRequestStatus = HttpStatus.tooManyRequests;
+    server.passwordResetRequestErrorCode = 'resource_exhausted';
+
+    expect(
+      () => auth.requestPasswordReset(ConnectFixtureServer.memberEmail),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset sets the password Login then takes', () async {
+    await auth.confirmPasswordReset(
+      token: ConnectFixtureServer.passwordResetToken,
+      newPassword: 'replaced-password',
+    );
+
+    final session = await auth.signIn(
+      email: ConnectFixtureServer.memberEmail,
+      password: 'replaced-password',
+    );
+    expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
+  });
+
+  test('confirmPasswordReset maps an unknown token to linkInvalid', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: 'never-issued',
+        newPassword: 'replaced-password',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkInvalid,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset maps a spent link to linkExpired', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: ConnectFixtureServer.expiredPasswordResetToken,
+        newPassword: 'replaced-password',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkExpired,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset maps a blank password to invalidInput', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: ConnectFixtureServer.passwordResetToken,
+        newPassword: '   ',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.invalidInput,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'readSignUpRequirements reports the tenant rule without a session',
+    () async {
+      expect(
+        (await auth.readSignUpRequirements()).ageVerification,
+        AgeVerification.checked,
+      );
+
+      server.ageVerification = 'AGE_VERIFICATION_NONE';
+
+      expect(
+        (await auth.readSignUpRequirements()).ageVerification,
+        AgeVerification.none,
+      );
+      expect(server.requestsTo('GetTenant'), hasLength(2));
+    },
+  );
+
+  test('readSignUpRequirements reads the pages the tenant names', () async {
+    server
+      ..termsPage = {
+        'slug': '/legal/terms',
+        'title': ' Terms of service ',
+        'versionId': 'terms-v2',
+      }
+      ..privacyPage = {'slug': '/privacy', 'title': 'Privacy policy'};
+
+    final requirements = await auth.readSignUpRequirements();
+
+    expect(
+      requirements.termsPage,
+      const LegalPage(
+        slug: '/legal/terms',
+        title: 'Terms of service',
+        versionId: 'terms-v2',
+      ),
+    );
+    // A page named without a published version is not one to agree to.
+    expect(requirements.privacyPage, isNull);
+    expect(requirements.legalPages, [requirements.termsPage]);
+  });
+
+  test(
+    'readSignUpRequirements reports an unreachable tenant as a network failure',
+    () async {
+      // Resolved once while the API answers, so only the reads fail.
+      await auth.readSignUpRequirements();
+      server.tenantStatus = HttpStatus.serviceUnavailable;
+
+      await expectLater(
+        auth.readSignUpRequirements(),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.network,
+          ),
+        ),
+      );
+    },
+  );
+
+  test('refresh maps a token the API rejects to sessionExpired', () async {
+    server.activeAccessToken = 'another-token';
+    const stored = AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: ConnectFixtureServer.memberPublicId,
+      userName: ConnectFixtureServer.memberName,
+    );
+
+    expect(
+      () => auth.refresh(stored),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.sessionExpired,
+        ),
+      ),
+    );
+  });
+
+  Matcher failsWith(AuthFailureKind kind) => throwsA(
+    isA<AuthFailure>().having((failure) => failure.kind, 'kind', kind),
+  );
+
+  test('updateName renames the account and the session with it', () async {
+    final updated = await auth.updateName(stored, 'Renamed Reader');
+
+    expect(updated.userName, 'Renamed Reader');
+    expect(updated.accessToken, stored.accessToken);
+    expect(server.memberCurrentName, 'Renamed Reader');
+    final request = server.requestsTo('UpdateMe').single;
+    expect(request.body.containsKey('birthDate'), isFalse);
+  });
+
+  test('updateName maps a name the API refuses to invalidInput', () {
+    expect(
+      () => auth.updateName(stored, '   '),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('changePassword hands back the token that replaces this one', () async {
+    final changed = await auth.changePassword(
+      stored,
+      currentPassword: ConnectFixtureServer.memberPassword,
+      newPassword: 'replaced-password',
+    );
+
+    expect(
+      changed.accessToken,
+      ConnectFixtureServer.changedPasswordAccessToken,
+    );
+    expect(changed.userPublicId, stored.userPublicId);
+    expect(changed.expiresAt, isNotNull);
+    expect(server.memberCurrentPassword, 'replaced-password');
+    await expectLater(
+      () => auth.refresh(stored),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+    expect((await auth.refresh(changed)).userName, stored.userName);
+  });
+
+  test('changePassword maps a wrong current password to invalidInput', () {
+    expect(
+      () => auth.changePassword(
+        stored,
+        currentPassword: 'mistyped-password',
+        newPassword: 'replaced-password',
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('changePassword maps a rejected session to sessionExpired', () {
+    server.activeAccessToken = 'another-token';
+
+    expect(
+      () => auth.changePassword(
+        stored,
+        currentPassword: ConnectFixtureServer.memberPassword,
+        newPassword: 'replaced-password',
+      ),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+  });
+
+  test('requestEmailChange sends both addresses and the password', () async {
+    await auth.requestEmailChange(
+      stored,
+      currentEmail: ConnectFixtureServer.memberEmail,
+      newEmail: 'moved@example.com',
+      currentPassword: ConnectFixtureServer.memberPassword,
+    );
+
+    expect(server.requestedEmailChanges, ['moved@example.com']);
+  });
+
+  test('requestEmailChange maps an address already taken to invalidInput', () {
+    expect(
+      () => auth.requestEmailChange(
+        stored,
+        currentEmail: ConnectFixtureServer.memberEmail,
+        newEmail: ConnectFixtureServer.takenEmail,
+        currentPassword: ConnectFixtureServer.memberPassword,
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('requestEmailChange maps a wrong password to invalidInput', () {
+    expect(
+      () => auth.requestEmailChange(
+        stored,
+        currentEmail: ConnectFixtureServer.memberEmail,
+        newEmail: 'moved@example.com',
+        currentPassword: 'mistyped-password',
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test(
+    'confirmEmailChange reports a change both links have finished',
+    () async {
+      expect(
+        await auth.confirmEmailChange(ConnectFixtureServer.emailChangeToken),
+        EmailChangeProgress.changed,
+      );
+    },
+  );
+
+  test('confirmEmailChange reports the link still waited on', () async {
+    expect(
+      await auth.confirmEmailChange(
+        ConnectFixtureServer.pendingEmailChangeToken,
+      ),
+      EmailChangeProgress.awaitingCurrentEmail,
+    );
+    final request = server.requestsTo('ConfirmEmailChange').single;
+    expect(request.headers['authorization'], isNull);
+  });
+
+  test('confirmEmailChange maps an unknown token to linkInvalid', () {
+    expect(
+      () => auth.confirmEmailChange('never-issued'),
+      failsWith(AuthFailureKind.linkInvalid),
+    );
+  });
+
+  test('confirmEmailChange maps a spent link to linkExpired', () {
+    expect(
+      () =>
+          auth.confirmEmailChange(ConnectFixtureServer.expiredEmailChangeToken),
+      failsWith(AuthFailureKind.linkExpired),
+    );
+  });
+
+  test('confirmEmailChange maps an address taken meanwhile to linkExpired', () {
+    expect(
+      () => auth.confirmEmailChange(
+        ConnectFixtureServer.conflictingEmailChangeToken,
+      ),
+      failsWith(AuthFailureKind.linkExpired),
+    );
+  });
+
+  test('deleteAccount leaves nothing to sign in to', () async {
+    await auth.deleteAccount(
+      stored,
+      password: ConnectFixtureServer.memberPassword,
+    );
+
+    await expectLater(
+      () => auth.refresh(stored),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+    await expectLater(
+      () => auth.signIn(
+        email: ConnectFixtureServer.memberEmail,
+        password: ConnectFixtureServer.memberPassword,
+      ),
+      failsWith(AuthFailureKind.invalidCredentials),
+    );
+  });
+
+  test('deleteAccount maps a wrong password to invalidInput', () async {
+    await expectLater(
+      () => auth.deleteAccount(stored, password: 'mistyped-password'),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+    expect(server.memberDeleted, isFalse);
+  });
+
+  test(
+    'signOut sends Logout for the tenant with the token being dropped',
+    () async {
+      await auth.signOut(stored);
+
+      final request = server.requestsTo('Logout').single;
+      expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
+      expect(request.body['tenant'], {
+        'tenantId': ConnectFixtureServer.defaultTenantId,
+      });
+    },
+  );
+
+  test('signOut maps an unreachable API to network', () async {
+    final closedBaseUrl = server.baseUrl;
+    await server.close();
+    final offline = HttpAuthRepository(
+      config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
+    );
+
+    await expectLater(
+      () => offline.signOut(stored),
+      failsWith(AuthFailureKind.network),
+    );
+  });
+}
+
+/// Sends [held] only once [release] completes, so a test can decide which of
+/// two reads settles first.
+class _HoldingClient extends ConnectClient {
+  _HoldingClient({required super.baseUrl, required this.held});
+
+  final String held;
+  Future<void> release = Future.value();
+
+  final _settled = StreamController<String>.broadcast();
+
+  /// The procedure of each call as it settles, successfully or not.
+  Stream<String> get settled => _settled.stream;
+
+  @override
+  Future<Map<String, Object?>> unary(
+    String procedure,
+    Map<String, Object?> body, {
+    String? tenantId,
+    String? accessToken,
+  }) async {
+    if (procedure.endsWith('/$held')) {
+      await release;
+    }
+    try {
+      return await super.unary(
+        procedure,
+        body,
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+    } finally {
+      _settled.add(procedure);
+    }
+  }
+}

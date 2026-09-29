@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListLabelsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListLabelsResponse {
+  repeated publira.types.v1.Label labels = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
+message CreateLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+  bytes eye_catch_image_data = 3;
+  string eye_catch_image_content_type = 4;
+}
+
+message CreateLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
+message UpdateLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  reserved 2;
+  reserved "public_id";
+  string name = 3;
+  bytes eye_catch_image_data = 4;
+  string eye_catch_image_content_type = 5;
+  bool clear_eye_catch_image = 6;
+  // The label's primary key (Label.id).
+  string label_id = 7;
+}
+
+message UpdateLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
+// Replaces the image of one aspect ratio of a label eye-catch. The other
+// ratios keep the images they already hold.
+message UploadLabelEyeCatchAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  reserved 2;
+  reserved "public_id";
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre as it always has been.
+  publira.types.v1.ImageCropRect crop = 6;
+  // The label's primary key (Label.id).
+  string label_id = 7;
+}
+
+message UploadLabelEyeCatchAspectImageResponse {
+  publira.types.v1.Label label = 1;
+}
+
+service AdminLabelService {
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
+  rpc GetLabel(GetLabelRequest) returns (GetLabelResponse) {}
+  rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
+  rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
+  rpc UploadLabelEyeCatchAspectImage(UploadLabelEyeCatchAspectImageRequest) returns (UploadLabelEyeCatchAspectImageResponse) {}
+}

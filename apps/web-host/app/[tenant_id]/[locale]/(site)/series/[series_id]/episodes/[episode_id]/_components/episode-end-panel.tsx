@@ -1,0 +1,277 @@
+import type { Locale } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+import type { ReactNode } from "react";
+
+import { EpisodePrice } from "#components/episode-price";
+import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { FollowControlSkeleton } from "#components/follow-button";
+import { FollowControl } from "#components/follow-control";
+import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
+import {
+  RelatedSeries,
+  RelatedSeriesSkeleton,
+} from "#components/related-series";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { ShareControl } from "#components/share-control";
+import { ShareMenuSkeleton } from "#components/share-menu";
+import type {
+  EpisodeDetail,
+  EpisodeNeighborItem,
+  EpisodeSeriesSummary,
+} from "#lib/catalog";
+import { getLocale } from "#lib/locale";
+
+import { episodePath } from "../_lib/episode-path";
+
+/**
+ * Three covers, one row on a phone. The panel sits under the pages a reader
+ * just finished, so it suggests rather than lists.
+ */
+const RELATED_SERIES_COUNT = 3;
+
+/**
+ * One of the episodes either side of this one, as a row of the same shape the
+ * series page lists episodes in: the work's artwork, the number, the title,
+ * and what it costs.
+ *
+ * Episodes carry no artwork of their own anywhere in the data model, so every
+ * row shows the series' eye-catch; what tells the two rows apart is the
+ * `EpisodeNeighborDirection` above the title.
+ */
+const EpisodeNeighborRow = ({
+  children,
+  episode,
+  locale,
+  series,
+}: {
+  /** `EpisodeNeighborDirection`. */
+  children: ReactNode;
+  episode: EpisodeNeighborItem;
+  locale: Locale;
+  series: EpisodeSeriesSummary;
+}) => (
+  <li>
+    <LocaleLink
+      className="group flex items-center gap-3 py-3"
+      href={episodePath(series.publicId, episode.publicId)}
+    >
+      <EyeCatchFrame
+        alt=""
+        className="aspect-16/9 w-24 shrink-0 rounded-control"
+        preferredType="landscape"
+        sizes="96px"
+        variants={series.eyeCatchImageVariants}
+      />
+      <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+        <span className="grid min-w-0 flex-1 gap-1">
+          {children}
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+              <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+                <Message
+                  message="host.common.episode_number"
+                  values={{ number: episode.orderIndex }}
+                />
+              </Suspense>
+            </span>
+            {/* Wrapped rather than truncated, as on the series page: on a
+                phone the row leaves the title too little width to clip it. */}
+            <span className="line-clamp-2 underline-offset-4 group-hover:underline">
+              {episode.title}
+            </span>
+          </span>
+        </span>
+        <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
+          <EpisodePrice
+            locale={locale}
+            price={episode.isFree ? 0 : episode.price}
+            purchaseSurface={episode.purchaseSurface}
+          />
+        </span>
+      </span>
+    </LocaleLink>
+  </li>
+);
+
+/** Which side of this episode the row leads to, in the reader's words. */
+const EpisodeNeighborDirection = ({ children }: { children: ReactNode }) => (
+  <span className="text-sm text-muted-foreground">{children}</span>
+);
+
+/**
+ * What the reader is offered once the pages run out: the episodes either side
+ * of this one, and — at the end of the series — the news that there is none
+ * after it and the control that asks to be told when there is.
+ *
+ * It is an ordinary element under the reader rather than an extra page inside
+ * it, so the page count the viewer reports and the last page the read beacon
+ * watches for are the ones the episode actually has. That also keeps it out of
+ * the locked body: an episode nobody may read still ends somewhere, and the
+ * series is still the way on from it.
+ */
+export const EpisodeEndPanel = async ({
+  episode,
+  nextEpisode,
+  previousEpisode,
+  series,
+  shareText,
+  shareTitle,
+  tenantId,
+}: {
+  episode: EpisodeDetail;
+  /** Absent on the last published episode of the series. */
+  nextEpisode?: EpisodeNeighborItem;
+  /** Absent on the first one. */
+  previousEpisode?: EpisodeNeighborItem;
+  series: EpisodeSeriesSummary;
+  /**
+   * What a share of this episode says in words: the work and its credits.
+   * Neither is on this component's own reads, and a share sheet takes a string
+   * rather than a node, so both strings come from the page, which awaits the
+   * catalog for its own landmark label anyway.
+   */
+  shareText: string;
+  /** How the episode names itself — the same string its `<title>` holds. */
+  shareTitle: string;
+  tenantId: string;
+}) => {
+  const locale = await getLocale();
+
+  const returnTo = episodePath(series.publicId, episode.publicId);
+
+  return (
+    <div className="grid gap-10">
+      {/* First, because passing an episode on is what a reader does the moment
+          they finish it — before deciding whether to read the next one. */}
+      <div className="justify-self-start">
+        <Suspense fallback={<ShareMenuSkeleton />}>
+          <ShareControl
+            path={returnTo}
+            tenantId={tenantId}
+            text={shareText}
+            title={shareTitle}
+          />
+        </Suspense>
+      </div>
+
+      {previousEpisode || nextEpisode ? (
+        <section className="grid gap-4">
+          <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+              <Message message="host.episode.end.more_episodes" />
+            </Suspense>
+          </h2>
+          <ol className="divide-y divide-border border-b border-border">
+            {previousEpisode ? (
+              <EpisodeNeighborRow
+                episode={previousEpisode}
+                locale={locale}
+                series={series}
+              >
+                <EpisodeNeighborDirection>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="host.episode.navigation.previous" />
+                  </Suspense>
+                </EpisodeNeighborDirection>
+              </EpisodeNeighborRow>
+            ) : null}
+            {nextEpisode ? (
+              <EpisodeNeighborRow
+                episode={nextEpisode}
+                locale={locale}
+                series={series}
+              >
+                <EpisodeNeighborDirection>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="host.episode.navigation.next" />
+                  </Suspense>
+                </EpisodeNeighborDirection>
+              </EpisodeNeighborRow>
+            ) : null}
+          </ol>
+        </section>
+      ) : null}
+
+      {nextEpisode ? null : (
+        <section className="grid gap-3">
+          <h2 className="font-serif text-xl leading-tight">
+            <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+              <Message message="host.episode.end.up_to_date_title" />
+            </Suspense>
+          </h2>
+          <p className="max-w-measure-prose text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message
+                message="host.episode.end.up_to_date_description"
+                values={{ title: series.title }}
+              />
+            </Suspense>
+          </p>
+          <div className="justify-self-start">
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="host.follow.control_error" />
+                </Suspense>
+              }
+            >
+              {/* Member-specific, so it sits in a boundary of its own: the
+                  section around it stays on the shared public cache. */}
+              <Suspense fallback={<FollowControlSkeleton />}>
+                <FollowControl
+                  targetId={series.id}
+                  returnTo={returnTo}
+                  targetKind="series"
+                  targetName={series.title}
+                  tenantId={tenantId}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+          </div>
+        </section>
+      )}
+
+      {/* Only where the series has run out. While there is a next episode the
+          panel makes one offer, and a shelf of other works beside it is what
+          turns that one offer into a choice.
+
+          The section renders its own heading, so a read that fails takes the
+          whole thing with it rather than leaving a heading over nothing; the
+          boundary is still here for a throw, which is a defect rather than the
+          unreachable API the section answers by disappearing. */}
+      {nextEpisode ? null : (
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.related.list_error" />
+            </Suspense>
+          }
+        >
+          <Suspense
+            fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
+          >
+            <RelatedSeries
+              limit={RELATED_SERIES_COUNT}
+              seriesId={series.id}
+              seriesPublicId={series.publicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
+      )}
+
+      <p>
+        <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
+          href={`/series/${series.publicId}`}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="host.episode.end.back_to_series" />
+          </Suspense>
+        </LocaleLink>
+      </p>
+    </div>
+  );
+};

@@ -1,0 +1,220 @@
+name: Organize issues
+
+# Bucket for Issue-hygiene automation. Add a job per concern; keep this
+# workflow's name stable so later Issue-maintenance steps land here.
+
+on:
+  issues:
+    types: [opened, closed]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to check (empty = scan all open epics)"
+        required: false
+        type: string
+
+permissions: {}
+
+jobs:
+  close-completed-epics:
+    name: Close completed epics
+    if: github.event_name != 'issues' || github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Close the parent epic and post the completion comment.
+    permissions:
+      issues: write
+    # Two children closing at once must not both see the parent as incomplete.
+    # Do not cancel: a mid-walk close must finish.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.job }}
+      cancel-in-progress: false
+    steps:
+      - name: Close epics whose sub-issues are all closed
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const EPIC = 'epic';
+            const MAX_DEPTH = 8;
+            const COMMENT = 'Closing this Epic because all of its sub-issues are closed.';
+            const { owner, repo } = context.repo;
+
+            function startNumbers() {
+              if (context.eventName === 'workflow_dispatch') {
+                const raw = context.payload.inputs?.issue_number?.trim();
+                if (raw) {
+                  return [Number(raw)];
+                }
+                return null;
+              }
+              const number = context.payload.issue?.number;
+              return number ? [number] : [];
+            }
+
+            async function getIssue(number) {
+              const { data } = await github.rest.issues.get({
+                owner,
+                repo,
+                issue_number: number,
+              });
+              return data;
+            }
+
+            async function parentNumber(number) {
+              try {
+                const { data } = await github.request(
+                  'GET /repos/{owner}/{repo}/issues/{issue_number}/parent',
+                  { owner, repo, issue_number: number },
+                );
+                return data.number;
+              } catch (error) {
+                if (error.status === 404) {
+                  return null;
+                }
+                throw error;
+              }
+            }
+
+            async function listSubIssues(number) {
+              return github.paginate(
+                'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
+                { owner, repo, issue_number: number, per_page: 100 },
+              );
+            }
+
+            function isEpic(issue) {
+              return issue.labels.some((label) => label.name === EPIC);
+            }
+
+            async function closeIfComplete(issue) {
+              if (issue.state !== 'open' || !isEpic(issue)) {
+                return false;
+              }
+              const children = await listSubIssues(issue.number);
+              if (children.length === 0 || children.some((child) => child.state === 'open')) {
+                return false;
+              }
+              core.info(`Closing #${issue.number} (all ${children.length} sub-issues closed)`);
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: COMMENT,
+              });
+              return true;
+            }
+
+            async function walk(start) {
+              const seen = new Set();
+              let current = start;
+              for (let depth = 0; current && depth < MAX_DEPTH; depth++) {
+                if (seen.has(current)) {
+                  throw new Error(`Cycle detected at #${current}`);
+                }
+                seen.add(current);
+                const issue = await getIssue(current);
+                if (issue.state === 'open') {
+                  if (!(await closeIfComplete(issue))) {
+                    core.info(`#${current}: leave open`);
+                    return;
+                  }
+                } else {
+                  core.info(`#${current}: already closed`);
+                }
+                current = await parentNumber(current);
+              }
+            }
+
+            async function openEpicNumbers() {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: 'open',
+                labels: EPIC,
+                per_page: 100,
+              });
+              return issues.filter((issue) => !issue.pull_request).map((issue) => issue.number);
+            }
+
+            const starts = startNumbers();
+            const numbers = starts ?? (await openEpicNumbers());
+            for (const number of numbers) {
+              if (!Number.isInteger(number) || number <= 0) {
+                throw new Error(`Invalid issue number: ${number}`);
+              }
+              core.info(`Starting from #${number}`);
+              await walk(number);
+            }
+
+  label-area:
+    name: Label area from issue form
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Apply the area labels the reporter picked
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // An issue form renders each field as `### <label>` followed by
+            // the answer, and every Area option in .github/ISSUE_TEMPLATE
+            // carries the label it stands for in parentheses, so the answer
+            // is read back from the body rather than from a mapping kept in
+            // step with the forms.
+            const HEADING = '### Area';
+            const AREA_LABEL = /area\/[a-z0-9-]+/g;
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+
+            function areaSection(body) {
+              const lines = body.split(/\r?\n/);
+              const start = lines.findIndex((line) => line.trim() === HEADING);
+              if (start === -1) {
+                return '';
+              }
+              const rest = lines.slice(start + 1);
+              const end = rest.findIndex((line) => line.startsWith('### '));
+              return (end === -1 ? rest : rest.slice(0, end)).join('\n');
+            }
+
+            const picked = new Set(areaSection(issue.body ?? '').match(AREA_LABEL) ?? []);
+            if (picked.size === 0) {
+              core.info(`#${issue.number}: no area picked`);
+              return;
+            }
+
+            // Adding a label that does not exist would create it, so only
+            // labels the repository already defines are applied.
+            const defined = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const definedNames = new Set(defined.map((label) => label.name));
+            const present = new Set(issue.labels.map((label) => label.name));
+            const labels = [...picked].filter((name) => definedNames.has(name) && !present.has(name));
+            for (const name of picked) {
+              if (!definedNames.has(name)) {
+                core.warning(`#${issue.number}: ${name} is not a label in this repository`);
+              }
+            }
+            if (labels.length === 0) {
+              core.info(`#${issue.number}: nothing to add`);
+              return;
+            }
+            core.info(`#${issue.number}: adding ${labels.join(', ')}`);
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: issue.number,
+              labels,
+            });

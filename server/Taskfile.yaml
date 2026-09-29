@@ -1,0 +1,68 @@
+version: "3"
+
+vars:
+  BIN_DIR: bin
+
+tasks:
+  # Public tasks are alphabetized; internal tasks are at the bottom.
+  build:
+    desc: Build all server command binaries
+    cmds:
+      - go build -o {{.BIN_DIR}}/ ./cmd/...
+    sources:
+      - ./**/*.go
+      - ./go.mod
+      - ./go.sum
+    generates:
+      - "{{.BIN_DIR}}/*"
+
+  clean:
+    desc: Remove compiled server binaries
+    cmds:
+      - rm -rf {{.BIN_DIR}}
+
+  deps:
+    desc: Install and update server dependencies
+    cmds:
+      - task: tidy
+
+  dev:
+    desc: Run the server and the worker together in development mode
+    deps:
+      - task: dev-server
+      - task: dev-worker
+
+  dev-server:
+    desc: Run the API and image delivery server in development mode
+    cmds:
+      - go run ./cmd/publira server
+
+  dev-worker:
+    desc: Run the background worker in development mode
+    cmds:
+      - go run ./cmd/publira worker
+
+  lint:
+    desc: Run golangci-lint over the server module
+    cmds:
+      - golangci-lint run ./...
+
+  setup:
+    desc: Prepare server dependency setup
+    cmds:
+      - task: deps
+
+  test:
+    desc: Run all Go tests in the server module (includes Testcontainers DB integration tests; requires Docker)
+    cmds:
+      - go test ./...
+
+  test-short:
+    desc: Run Go tests excluding Testcontainers-backed integration tests
+    cmds:
+      - go test -short ./...
+
+  tidy:
+    desc: Sync and clean up Go module dependencies
+    cmds:
+      - go mod tidy

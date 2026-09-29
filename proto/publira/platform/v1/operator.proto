@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+message PlatformOperator {
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+  string created_at = 6;
+  // The operator's primary key, which every request that changes an operator
+  // addresses it by.
+  string id = 7;
+}
+
+message ListOperatorsRequest {
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 1;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 2;
+}
+
+message ListOperatorsResponse {
+  repeated PlatformOperator operators = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetOperatorRequest {
+  string public_id = 1;
+}
+
+message GetOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message CreateOperatorRequest {
+  string name = 1;
+  string email = 2;
+  string role = 3;
+}
+
+message CreateOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message UpdateOperatorRoleRequest {
+  reserved 1;
+  reserved "public_id";
+  string role = 2;
+  // The operator's primary key (PlatformOperator.id).
+  string operator_id = 3;
+}
+
+message UpdateOperatorRoleResponse {
+  PlatformOperator operator = 1;
+}
+
+message SuspendOperatorRequest {
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
+  string operator_id = 2;
+}
+
+message SuspendOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message UnsuspendOperatorRequest {
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
+  string operator_id = 2;
+}
+
+message UnsuspendOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message DeactivateOperatorRequest {
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
+  string operator_id = 2;
+}
+
+message DeactivateOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+service PlatformOperatorService {
+  rpc ListOperators(ListOperatorsRequest) returns (ListOperatorsResponse) {}
+  rpc GetOperator(GetOperatorRequest) returns (GetOperatorResponse) {}
+  rpc CreateOperator(CreateOperatorRequest) returns (CreateOperatorResponse) {}
+  rpc UpdateOperatorRole(UpdateOperatorRoleRequest) returns (UpdateOperatorRoleResponse) {}
+  rpc SuspendOperator(SuspendOperatorRequest) returns (SuspendOperatorResponse) {}
+  rpc UnsuspendOperator(UnsuspendOperatorRequest) returns (UnsuspendOperatorResponse) {}
+  rpc DeactivateOperator(DeactivateOperatorRequest) returns (DeactivateOperatorResponse) {}
+}

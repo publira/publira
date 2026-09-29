@@ -1,0 +1,44 @@
+{
+  "name": "@publira/monorepo",
+  "version": "0.1.0",
+  "description": "",
+  "license": "Apache-2.0",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "check": "ultracite check",
+    "dev": "turbo run dev",
+    "fix": "ultracite fix",
+    "locales:check": "node scripts/generate-locale-registry.ts --check",
+    "locales:generate": "node scripts/generate-locale-registry.ts",
+    "preflight": "pnpm locales:check && pnpm typecheck && pnpm check && pnpm reader-parity:check && pnpm test && pnpm test:scripts",
+    "reader-parity:check": "node scripts/check-reader-parity.ts",
+    "test": "turbo run test",
+    "test:scripts": "node --test \"scripts/*.test.ts\"",
+    "typecheck": "turbo run typecheck",
+    "typegen": "turbo run typegen"
+  },
+  "devDependencies": {
+    "eslint-plugin-github": "6.1.2",
+    "eslint-plugin-sonarjs": "4.2.1",
+    "lefthook": "2.1.14",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
+    "oxlint-plugin-react-doctor": "0.9.14",
+    "sharp": "0.35.4",
+    "temporal-polyfill": "catalog:",
+    "turbo": "2.11.4",
+    "typescript": "catalog:",
+    "ultracite": "7.12.0",
+    "vitest": "catalog:"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.21.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.6.0"
+}

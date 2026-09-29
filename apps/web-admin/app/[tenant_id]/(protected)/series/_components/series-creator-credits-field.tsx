@@ -1,0 +1,521 @@
+"use client";
+
+import type { DragEndEvent } from "@dnd-kit/react";
+import { toIntlLocale } from "@publira/i18n";
+import { CloseIcon, PlusIcon } from "@publira/icons";
+import { Button } from "@publira/ui-components/button";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItems,
+  ComboboxPopup,
+} from "@publira/ui-components/combobox";
+import type { ComboboxItem } from "@publira/ui-components/combobox";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+
+import { useAdminLocale } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
+import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
+import { useSetSubmittable } from "#components/submit-gate";
+import {
+  isCreditShareTotalSavable,
+  shareBpsToPercentText,
+  sharePercentToBps,
+  totalCreditShares,
+} from "#lib/credit-share";
+
+import type { SeriesCreatorCredit } from "../series-types";
+
+export interface CreatorOption {
+  id: string;
+  name: string;
+}
+
+export interface CreatorRoleOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * One row of the editor.
+ *
+ * A row exists before it says anything: pressing Add opens an empty one, and
+ * what it holds is chosen afterwards. `key` is what identifies it while that
+ * is still true — the credit itself cannot, because a row with no author yet
+ * is indistinguishable from the next one.
+ */
+interface CreditRow {
+  key: string;
+  creatorId: string;
+  roleId: string;
+  /** The share box as typed, parsed when the list is summed and posted. */
+  shareText: string;
+}
+
+const rowKey = (row: CreditRow): string => row.key;
+
+/** A row says something only once it names both halves of a credit. */
+const isComplete = (row: CreditRow): boolean =>
+  row.creatorId.length > 0 && row.roleId.length > 0;
+
+/**
+ * The rows the editor opens on, in the order the API read them back: role
+ * priority first, then the position inside a role.
+ *
+ * Nothing re-sorts them after that. The API orders a save by role priority and
+ * stores the position as `display_order`, so the grouping is restored on the
+ * next read — and a row that sorted itself the moment its author was chosen
+ * would move out from under the editor mid-edit.
+ *
+ * A credit written before roles existed states none, and a save has no way to
+ * say that, so it opens on the tenant's leading role — where the editor sees
+ * it and can change it before saving.
+ */
+const toInitialRows = (
+  credits: SeriesCreatorCredit[],
+  creatorRoles: CreatorRoleOption[]
+): CreditRow[] => {
+  const leadingRoleId = creatorRoles.at(0)?.id ?? "";
+
+  return credits.map((credit, index) => ({
+    creatorId: credit.creatorId,
+    key: String(index),
+    roleId: credit.roleId || leadingRoleId,
+    shareText: shareBpsToPercentText(credit.shareBps),
+  }));
+};
+
+/**
+ * The roles one row may state: every role of the tenant except the ones the
+ * author on this row already holds on another row. The pair is the identity of
+ * a credit, so a role that would repeat one is not offered rather than
+ * refused — which is the whole of the duplicate check the API also enforces.
+ */
+const toRoleItems = (
+  rows: CreditRow[],
+  creatorRoles: CreatorRoleOption[],
+  row: CreditRow
+): ComboboxItem[] => {
+  const heldElsewhere = new Set(
+    rows.flatMap((other) =>
+      other.key !== row.key && other.creatorId === row.creatorId
+        ? [other.roleId]
+        : []
+    )
+  );
+
+  return creatorRoles.flatMap((role) =>
+    heldElsewhere.has(role.id) ? [] : [{ label: role.name, value: role.id }]
+  );
+};
+
+/** The role a row ends up stating, which is the one it can still be given. */
+const toResolvedRoleId = (roleItems: ComboboxItem[], roleId: string): string =>
+  roleItems.some((item) => item.value === roleId)
+    ? roleId
+    : (roleItems.at(0)?.value ?? "");
+
+interface CreatorCreditRowProps {
+  creatorItems: ComboboxItem[];
+  creatorId: string;
+  id: string;
+  index: number;
+  onCreatorChange: (nextCreatorId: string) => void;
+  onRemove: () => void;
+  onRoleChange: (nextRoleId: string) => void;
+  onShareChange: (nextShareText: string) => void;
+  position: number;
+  roleItems: ComboboxItem[];
+  roleId: string;
+  shareText: string;
+}
+
+/**
+ * One credit: who, in what role, and where it sits among the credits sharing
+ * that role. Both halves stay editable, so correcting a credit is changing the
+ * row rather than deleting it and writing it again.
+ *
+ * Neither picker carries a visible label — the value in the box is the answer, and the
+ * placeholder says what is being asked — so the accessible name comes from a
+ * visually hidden one naming the row's position.
+ *
+ * `type` and `accept` are the role, which is what keeps a drag inside one
+ * role: the editor orders the artists among themselves, and the roles
+ * themselves are ordered on the author roles page.
+ */
+const CreatorCreditRow = ({
+  creatorItems,
+  creatorId,
+  id,
+  index,
+  onCreatorChange,
+  onRemove,
+  onRoleChange,
+  onShareChange,
+  position,
+  roleItems,
+  roleId,
+  shareText,
+}: CreatorCreditRowProps) => {
+  const t = useClientMessages();
+  // The author the row credits, or the position its unfilled picker is named by.
+  const label =
+    creatorItems.find((item) => item.value === creatorId)?.label ??
+    t("admin.series.form.creators_creator_field_label", {
+      position: String(position),
+    });
+
+  return (
+    <SortableItem
+      accept={roleId}
+      className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3"
+      id={id}
+      index={index}
+      label={label}
+      type={roleId}
+    >
+      <SortableItemHandle>
+        <ClientMessage
+          message="admin.series.form.creators_reorder"
+          values={{ position: String(position) }}
+        />
+      </SortableItemHandle>
+      <Field className="min-w-40 flex-1">
+        <FieldLabel className="sr-only">
+          <ClientMessage
+            message="admin.series.form.creators_creator_field_label"
+            values={{ position: String(position) }}
+          />
+        </FieldLabel>
+        <FieldContent>
+          <Combobox
+            items={creatorItems}
+            onValueChange={onCreatorChange}
+            value={creatorId}
+          >
+            <ComboboxInput
+              placeholder={t("admin.series.form.creators_search")}
+            />
+            <ComboboxPopup>
+              <ComboboxEmpty>
+                <ClientMessage message="admin.series.form.creators_no_match" />
+              </ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </Combobox>
+        </FieldContent>
+      </Field>
+      <Field className="min-w-32 flex-1 sm:max-w-48">
+        <FieldLabel className="sr-only">
+          <ClientMessage
+            message="admin.series.form.creators_role_field_label"
+            values={{ position: String(position) }}
+          />
+        </FieldLabel>
+        <FieldContent>
+          <Combobox
+            items={roleItems}
+            onValueChange={onRoleChange}
+            value={roleId}
+          >
+            <ComboboxInput
+              placeholder={t("admin.series.form.creators_role_search")}
+            />
+            <ComboboxPopup>
+              <ComboboxEmpty>
+                <ClientMessage message="admin.series.form.creators_role_no_match" />
+              </ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </Combobox>
+        </FieldContent>
+      </Field>
+      <CreditShareInput
+        onChange={onShareChange}
+        position={position}
+        value={shareText}
+      />
+      <Button
+        className="shrink-0"
+        onClick={onRemove}
+        size="icon"
+        type="button"
+        variant="ghost"
+      >
+        <CloseIcon aria-hidden="true" className="size-4" />
+        <span className="sr-only">
+          <ClientMessage
+            message="admin.series.form.creators_remove"
+            values={{ position: String(position) }}
+          />
+        </span>
+      </Button>
+    </SortableItem>
+  );
+};
+
+interface SeriesCreatorCreditsFieldProps {
+  creatorRoles: CreatorRoleOption[];
+  creatorRolesErrorMessage?: string;
+  creators: CreatorOption[];
+  creatorsErrorMessage?: string;
+  /** What the list of credits says about itself, under the list. */
+  description: ReactNode;
+  /**
+   * The credits the series holds, read once. The rows are this field's own
+   * state from then on, and what the form posts is the hidden field below —
+   * so a half-written row stays on screen without the rest of the form having
+   * to know about it.
+   */
+  initialCredits: SeriesCreatorCredit[];
+  legend: ReactNode;
+}
+
+/**
+ * Who the series is credited to, and in what capacity.
+ *
+ * This list is the template an episode is created from: editing it changes
+ * what the next episode is baked with and leaves the episodes that already
+ * exist with the team they shipped with, which is what the note under the list
+ * says.
+ *
+ * A `fieldset` rather than a `Field`, because the group holds several controls
+ * and a single `<label>` would have nothing to point at.
+ */
+export const SeriesCreatorCreditsField = ({
+  creatorRoles,
+  creatorRolesErrorMessage,
+  creators,
+  creatorsErrorMessage,
+  description,
+  initialCredits,
+  legend,
+}: SeriesCreatorCreditsFieldProps) => {
+  const locale = useAdminLocale();
+  // The save button belongs to the form around this field, which is told
+  // whether the shares as typed can be saved whenever that changes.
+  const setSavable = useSetSubmittable();
+  // Seeded once per mount: the edit route keys this form by the series' public
+  // id, so switching to another series remounts it with that series' credits.
+  const [rows, setRows] = useState(() =>
+    toInitialRows(initialCredits, creatorRoles)
+  );
+  // Only ever identifies a row, so it is never drawn and does not belong in
+  // state: bumping it must not redraw the list.
+  const nextRowKey = useRef(initialCredits.length);
+
+  const creatorItems = useMemo<ComboboxItem[]>(
+    () =>
+      creators
+        .map((creator) => ({ label: creator.name, value: creator.id }))
+        .toSorted((left, right) =>
+          left.label.localeCompare(right.label, toIntlLocale(locale))
+        ),
+    [creators, locale]
+  );
+  // The role each row can still be given, resolved before anything is drawn,
+  // so the list on screen is the list the form posts.
+  const resolvedRows = rows.map((row) => {
+    const roleItems = toRoleItems(rows, creatorRoles, row);
+    return {
+      ...row,
+      roleId: toResolvedRoleId(roleItems, row.roleId),
+      roleItems,
+    };
+  });
+  const credits = resolvedRows.flatMap((row) =>
+    isComplete(row)
+      ? [
+          {
+            creatorId: row.creatorId,
+            roleId: row.roleId,
+            shareBps: sharePercentToBps(row.shareText) ?? 0,
+          },
+        ]
+      : []
+  );
+  const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
+  const hasExhaustedAuthor = resolvedRows.some(
+    (row) => row.creatorId.length > 0 && row.roleId.length === 0
+  );
+
+  const handleAdd = useCallback(() => {
+    const key = String(nextRowKey.current);
+    nextRowKey.current += 1;
+    setRows((currentRows) => [
+      ...currentRows,
+      {
+        creatorId: "",
+        key,
+        roleId: creatorRoles.at(0)?.id ?? "",
+        shareText: "",
+      },
+    ]);
+  }, [creatorRoles]);
+
+  /**
+   * Writes the rows a share edit or a removal leaves, and tells the form
+   * whether they can be saved: those are the only two edits that move the sum.
+   */
+  const commitShareRows = (nextRows: CreditRow[]) => {
+    setRows(nextRows);
+    setSavable(
+      isCreditShareTotalSavable(
+        totalCreditShares(nextRows.map((row) => row.shareText))
+      )
+    );
+  };
+
+  const handleShareChange = (key: string, nextShareText: string) => {
+    commitShareRows(
+      rows.map((row) =>
+        row.key === key ? { ...row, shareText: nextShareText } : row
+      )
+    );
+  };
+
+  /**
+   * A drop reorders the rows, so the list the form posts is the list the
+   * editor just dragged into place.
+   */
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setRows((currentRows) => withItemMoved(currentRows, rowKey, event));
+  }, []);
+
+  const handleRemove = (key: string) => {
+    commitShareRows(rows.filter((row) => row.key !== key));
+  };
+
+  /**
+   * Changing who a row credits can take its role out of the offer — the new
+   * author may already hold it on another row — so the role is resolved and
+   * written here rather than left to differ from what is on screen.
+   */
+  const handleCreatorChange = useCallback(
+    (key: string, nextCreatorId: string) => {
+      setRows((currentRows) =>
+        currentRows.map((row) => {
+          if (row.key !== key) {
+            return row;
+          }
+          const next = { ...row, creatorId: nextCreatorId };
+          return {
+            ...next,
+            roleId: toResolvedRoleId(
+              toRoleItems(currentRows, creatorRoles, next),
+              row.roleId
+            ),
+          };
+        })
+      );
+    },
+    [creatorRoles]
+  );
+
+  const handleRoleChange = useCallback((key: string, nextRoleId: string) => {
+    setRows((currentRows) =>
+      currentRows.map((row) =>
+        row.key === key ? { ...row, roleId: nextRoleId } : row
+      )
+    );
+  }, []);
+
+  const canAdd = creatorItems.length > 0 && creatorRoles.length > 0;
+
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+
+      {creatorsErrorMessage ? (
+        <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>
+      ) : null}
+      {creatorRolesErrorMessage ? (
+        <FormMessage variant="destructive">
+          {creatorRolesErrorMessage}
+        </FormMessage>
+      ) : null}
+
+      {resolvedRows.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creators_none" />
+        </p>
+      ) : (
+        <SortableList className="grid gap-2" onDragEnd={handleDragEnd}>
+          {resolvedRows.map((row, index) => (
+            <CreatorCreditRow
+              creatorItems={creatorItems}
+              creatorId={row.creatorId}
+              id={row.key}
+              index={index}
+              key={row.key}
+              onCreatorChange={(nextCreatorId) =>
+                handleCreatorChange(row.key, nextCreatorId)
+              }
+              onRemove={() => handleRemove(row.key)}
+              onRoleChange={(nextRoleId) =>
+                handleRoleChange(row.key, nextRoleId)
+              }
+              onShareChange={(nextShareText) =>
+                handleShareChange(row.key, nextShareText)
+              }
+              position={index + 1}
+              roleItems={row.roleItems}
+              roleId={row.roleId}
+              shareText={row.shareText}
+            />
+          ))}
+        </SortableList>
+      )}
+      {resolvedRows.length > 0 ? (
+        <CreditShareSummary total={shareTotal} />
+      ) : null}
+
+      {creatorItems.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creators_empty" />
+        </p>
+      ) : null}
+      {creatorRoles.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creator_roles_empty" />
+        </p>
+      ) : null}
+      {hasExhaustedAuthor ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creators_all_roles_taken" />
+        </p>
+      ) : null}
+
+      {canAdd ? (
+        <div>
+          <Button onClick={handleAdd} type="button" variant="outline">
+            <PlusIcon aria-hidden="true" className="size-4" />
+            <ClientMessage message="admin.series.form.creators_add" />
+          </Button>
+        </div>
+      ) : null}
+
+      {/* The whole list as one field: the pair is the identity of a credit,
+          and two repeated fields would arrive as two lists to zip back
+          together. A row that names only half of one is not a credit yet, so
+          it waits here rather than failing the save. */}
+      <input
+        name="creator_credits"
+        type="hidden"
+        value={JSON.stringify(credits)}
+      />
+
+      {description}
+    </fieldset>
+  );
+};

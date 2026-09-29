@@ -1,0 +1,200 @@
+"use server";
+
+import type { Locale } from "@publira/i18n";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
+import { refresh } from "next/cache";
+import { z } from "zod";
+
+import { getActionLocale } from "#lib/action-messages";
+import { withAdminSessionReauth } from "#lib/auth-session";
+import {
+  commentActionFailure,
+  commentReportActionFailure,
+  moderateComment,
+  resolveCommentReport,
+} from "#lib/comment";
+import type { CommentModerationAction } from "#lib/comment";
+import { assertSameOrigin } from "#lib/csrf";
+import {
+  optionalTrimmedString,
+  requiredRecordId,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
+import { getMessagesFor } from "#lib/messages";
+
+import { COMMENT_REPORT_RESOLUTIONS } from "../comment-types";
+import type {
+  CommentActionState,
+  CommentReportActionState,
+} from "../comment-types";
+
+/**
+ * The reason is stored on the audit log row, which is where a tenant reads
+ * back why a comment was removed when it owes its author a statement of
+ * reasons. It is optional here and required by {@link purgeCommentAction}: a
+ * purged row leaves nothing behind but that entry.
+ */
+const moderationSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    commentId: requiredRecordId(t("admin.comments.validation.target_missing")),
+    reason: optionalTrimmedString(1000),
+    tenantId: requiredTrimmedString(
+      t("admin.comments.validation.tenant_missing")
+    ),
+  });
+};
+const moderationFormFields = {
+  commentId: { kind: "value", name: "comment_id" },
+  reason: "value",
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+/**
+ * The body every moderation Action shares: authenticate the submission, read
+ * the same three fields out of it, call the RPC the action names, and refresh
+ * the route so the list and the navigation badge both come back updated.
+ *
+ * `requireReason` is the one thing that differs, and it differs because the
+ * API requires it: a purge deletes the row, so the audit entry is the only
+ * record left that the comment existed.
+ */
+const moderate = async (
+  action: CommentModerationAction,
+  formData: FormData,
+  options: { requireReason?: boolean } = {}
+): Promise<CommentActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const input = toFormDataInput(formData, moderationFormFields);
+  const commentId =
+    typeof input.commentId === "string" ? input.commentId.trim() : "";
+  const schema = await moderationSchema(locale);
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    return commentActionFailure(
+      commentId,
+      toFormErrorMessage(parsed.error, { locale })
+    );
+  }
+  if (options.requireReason === true && parsed.data.reason === "") {
+    return commentActionFailure(
+      parsed.data.commentId,
+      t("admin.comments.validation.reason_required")
+    );
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    moderateComment(
+      {
+        action,
+        commentId: parsed.data.commentId,
+        reason: parsed.data.reason,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return commentActionFailure(parsed.data.commentId, result.message);
+  }
+
+  // Both reads are uncached (see `lib/comment.ts`), so there is no tag to
+  // drop: the route is re-rendered instead, which is also what brings the
+  // layout's queue badge back with the new count.
+  refresh();
+  return { commentId: parsed.data.commentId, message: "", ok: true };
+};
+
+// Every exported Action is written `async` rather than as an arrow returning
+// the promise `moderate` already produces: Next.js rejects an exported Server
+// Action that is not an async function, at build time.
+export const approveCommentAction = async (
+  _prevState: CommentActionState,
+  formData: FormData
+): Promise<CommentActionState> => await moderate("approve", formData);
+
+export const hideCommentAction = async (
+  _prevState: CommentActionState,
+  formData: FormData
+): Promise<CommentActionState> => await moderate("hide", formData);
+
+export const restoreCommentAction = async (
+  _prevState: CommentActionState,
+  formData: FormData
+): Promise<CommentActionState> => await moderate("restore", formData);
+
+export const purgeCommentAction = async (
+  _prevState: CommentActionState,
+  formData: FormData
+): Promise<CommentActionState> =>
+  await moderate("purge", formData, { requireReason: true });
+
+/**
+ * The report decision, which names a report rather than a comment: a comment
+ * several readers reported is several rows in the queue, and each of them is
+ * decided on its own.
+ */
+const reportDecisionSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    reason: optionalTrimmedString(1000),
+    reportId: requiredTrimmedString(
+      t("admin.comments.validation.target_missing")
+    ),
+    resolution: z.enum(COMMENT_REPORT_RESOLUTIONS),
+    tenantId: requiredTrimmedString(
+      t("admin.comments.validation.tenant_missing")
+    ),
+  });
+};
+const reportDecisionFormFields = {
+  reason: "value",
+  reportId: { kind: "value", name: "report_id" },
+  resolution: "value",
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+export const resolveCommentReportAction = async (
+  _prevState: CommentReportActionState,
+  formData: FormData
+): Promise<CommentReportActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const input = toFormDataInput(formData, reportDecisionFormFields);
+  const reportId =
+    typeof input.reportId === "string" ? input.reportId.trim() : "";
+  const schema = await reportDecisionSchema(locale);
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    return commentReportActionFailure(
+      reportId,
+      toFormErrorMessage(parsed.error, { locale })
+    );
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    resolveCommentReport(
+      {
+        reason: parsed.data.reason,
+        reportId: parsed.data.reportId,
+        resolution: parsed.data.resolution,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return commentReportActionFailure(parsed.data.reportId, result.message);
+  }
+
+  // The queue read is uncached like the comment list, so there is no tag to
+  // drop: re-rendering the route is what brings the decided report back in the
+  // state it is now in.
+  refresh();
+  return { message: "", ok: true, reportId: parsed.data.reportId };
+};

@@ -1,0 +1,341 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import type { PlatformOperator } from "@publira/api-client/platform/types";
+import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
+import { z } from "zod";
+
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
+import { getMessagesFor } from "./messages";
+import { normalizePlatformRole } from "./roles";
+
+const getPlatformOperatorInputSchema = z.object({
+  publicId: z.string().trim().min(1).max(255),
+});
+
+export interface PlatformOperatorSummary {
+  createdAt: string;
+  email: string;
+  id: string;
+  name: string;
+  publicId: string;
+  role: string;
+  status: string;
+}
+
+export interface ListPlatformOperatorsInput {
+  limit?: number;
+  locale: Locale;
+  token?: string;
+}
+
+export interface CreatePlatformOperatorInput {
+  email: string;
+  locale: Locale;
+  name: string;
+  role: string;
+}
+
+export type CreatePlatformOperatorResult =
+  | { ok: true; publicId?: string }
+  | { ok: false; message: string };
+
+export type ListPlatformOperatorsResult =
+  | {
+      nextToken: string;
+      ok: true;
+      operators: PlatformOperatorSummary[];
+      previousToken: string;
+    }
+  | {
+      message: string;
+      nextToken: string;
+      ok: false;
+      operators: PlatformOperatorSummary[];
+      previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
+/**
+ * The generated `PlatformOperator` fields {@link mapOperator} reads. Naming
+ * them against the message type is what makes a proto rename fail here — a
+ * restated structural type is a second copy of the message that goes on
+ * compiling once the two drift.
+ */
+type RawPlatformOperator = Pick<
+  PlatformOperator,
+  "createdAt" | "email" | "id" | "name" | "publicId" | "role" | "status"
+>;
+
+const mapOperator = (
+  operator: RawPlatformOperator
+): PlatformOperatorSummary => ({
+  createdAt: operator.createdAt,
+  email: operator.email,
+  id: operator.id,
+  name: operator.name,
+  publicId: operator.publicId,
+  role: normalizePlatformRole(operator.role),
+  status: operator.status,
+});
+
+/** The tag every operator read is filed under, and every operator write clears. */
+export const platformOperatorsCacheTag = "platform:operators";
+
+const listPlatformOperatorsForSession = async (
+  input: ListPlatformOperatorsInput,
+  sessionId: string
+): Promise<ListPlatformOperatorsResult> => {
+  "use cache: private";
+  cacheTag(platformOperatorsCacheTag);
+
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.operators.listOperators(
+      {
+        limit: input.limit ?? 20,
+        token: input.token ?? "",
+      },
+      buildSessionHeaders(sessionId)
+    );
+    return {
+      nextToken: response.nextToken ?? "",
+      ok: true,
+      operators: (response.operators ?? []).map(mapOperator),
+      previousToken: response.previousToken ?? "",
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: rpcErrorMessage(error, t("platform.operators.list_failed"), {
+        locale: input.locale,
+      }),
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export const listPlatformOperators = async (
+  input: ListPlatformOperatorsInput
+): Promise<ListPlatformOperatorsResult> =>
+  listPlatformOperatorsForSession(input, await resolveAccessToken());
+
+export const createPlatformOperator = async (
+  input: CreatePlatformOperatorInput
+): Promise<CreatePlatformOperatorResult> => {
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.operators.createOperator(
+      { email: input.email, name: input.name, role: input.role },
+      buildSessionHeaders(sessionId)
+    );
+    return { ok: true, publicId: response.operator?.publicId };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale: input.locale,
+        overrides: {
+          conflict: t("platform.operators.email_taken"),
+        },
+      }),
+      ok: false,
+    };
+  }
+};
+
+export const suspendPlatformOperator = async (
+  operatorId: string
+): Promise<boolean> => {
+  if (!operatorId.trim()) {
+    return false;
+  }
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    return false;
+  }
+  try {
+    await apiClient.operators.suspendOperator(
+      { operatorId },
+      buildSessionHeaders(sessionId)
+    );
+    return true;
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return false;
+  }
+};
+
+export const unsuspendPlatformOperator = async (
+  operatorId: string
+): Promise<boolean> => {
+  if (!operatorId.trim()) {
+    return false;
+  }
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    return false;
+  }
+  try {
+    await apiClient.operators.unsuspendOperator(
+      { operatorId },
+      buildSessionHeaders(sessionId)
+    );
+    return true;
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return false;
+  }
+};
+
+const getPlatformOperatorForSession = async (
+  publicId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<PlatformOperatorSummary | null> => {
+  "use cache: private";
+  cacheTag(platformOperatorsCacheTag);
+
+  // Locale is a cache-key argument so a later localized miss does not replay
+  // under the wrong language. This read currently returns null on a miss.
+  void locale;
+
+  if (!sessionId) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.operators.getOperator(
+      { publicId },
+      buildSessionHeaders(sessionId)
+    );
+    return response.operator ? mapOperator(response.operator) : null;
+  } catch (error) {
+    // Classified RPC failures mean "no operator to show"; unexpected ones rethrow.
+    rethrowUnclassifiedRpcError(error);
+    return null;
+  }
+};
+
+export const getPlatformOperator = async (
+  publicId: string,
+  locale: Locale
+): Promise<PlatformOperatorSummary | null> => {
+  const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
+  if (!parsed.success) {
+    // Same null as a missing operator: the URL is not a resource, and
+    // wording that said "malformed" would only help an attacker probe
+    // which strings the server accepts.
+    return null;
+  }
+
+  return getPlatformOperatorForSession(
+    parsed.data.publicId,
+    locale,
+    await resolveAccessToken()
+  );
+};
+
+export interface UpdatePlatformOperatorRoleInput {
+  locale: Locale;
+  operatorId: string;
+  role: string;
+}
+
+export type UpdatePlatformOperatorRoleResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export const updatePlatformOperatorRole = async (
+  input: UpdatePlatformOperatorRoleInput
+): Promise<UpdatePlatformOperatorRoleResult> => {
+  const sessionId = await resolveAccessToken();
+  if (!sessionId) {
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.operators.updateOperatorRole(
+      { operatorId: input.operatorId, role: input.role },
+      buildSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    const t = await getMessagesFor(input.locale);
+    return {
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale: input.locale,
+      }),
+      ok: false,
+    };
+  }
+};
+
+export const deactivatePlatformOperator = async (
+  operatorId: string
+): Promise<boolean> => {
+  if (!operatorId.trim()) {
+    return false;
+  }
+  const sid = await resolveAccessToken();
+  try {
+    await apiClient.operators.deactivateOperator(
+      { operatorId },
+      buildSessionHeaders(sid)
+    );
+    return true;
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return false;
+  }
+};

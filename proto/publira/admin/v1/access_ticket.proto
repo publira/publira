@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// AdminAccessTicket is a user-bound viewing grant for a single episode.
+// Distinct from purchases (payment); issued and revoked by tenant admins.
+message AdminAccessTicket {
+  string public_id = 1;
+  string episode_public_id = 2;
+  string episode_title = 3;
+  string series_public_id = 4;
+  string series_title = 5;
+  string user_public_id = 6;
+  string user_name = 7;
+  string user_email = 8;
+  // RFC3339; empty when the ticket does not expire.
+  string expires_at = 9;
+  // RFC3339; empty while the ticket is active.
+  string revoked_at = 10;
+  string note = 11;
+  string created_at = 12;
+  // active | expired | revoked
+  string status = 13;
+  string id = 14;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListAccessTicketsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Optional filters (empty = no filter).
+  string user_public_id = 4;
+  string episode_public_id = 5;
+  // When true, omit revoked tickets from the list.
+  bool active_only = 6;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 7;
+}
+
+message ListAccessTicketsResponse {
+  repeated AdminAccessTicket tickets = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message IssueAccessTicketRequest {
+  reserved 2, 3;
+  reserved "user_public_id", "episode_public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // RFC3339; empty for no expiry.
+  string expires_at = 4;
+  string note = 5;
+  // The primary key of the user who receives viewing rights.
+  string user_id = 6;
+  // The primary key of the episode the ticket grants.
+  string episode_id = 7;
+}
+
+message IssueAccessTicketResponse {
+  AdminAccessTicket ticket = 1;
+}
+
+message RevokeAccessTicketRequest {
+  reserved 2;
+  reserved "public_id";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string access_ticket_id = 3;
+}
+
+message RevokeAccessTicketResponse {
+  AdminAccessTicket ticket = 1;
+}
+
+service AdminAccessTicketService {
+  rpc ListAccessTickets(ListAccessTicketsRequest) returns (ListAccessTicketsResponse) {}
+  rpc IssueAccessTicket(IssueAccessTicketRequest) returns (IssueAccessTicketResponse) {}
+  rpc RevokeAccessTicket(RevokeAccessTicketRequest) returns (RevokeAccessTicketResponse) {}
+}

@@ -1,0 +1,1192 @@
+package dbtest
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/testutil"
+)
+
+// engagementSeed is one tenant's catalog + user, enough to insert content_events.
+type engagementSeed struct {
+	tenantID  uuid.UUID
+	userID    uuid.UUID
+	seriesID  uuid.UUID
+	episodeID uuid.UUID
+}
+
+func seedEngagementCatalog(t *testing.T, ctx context.Context, db *sql.DB, suffix string) engagementSeed {
+	t.Helper()
+	// public_id is varchar(12); keep the suffix short and unique per call.
+	tenant := mustInsertTenant(t, ctx, db,
+		"TNT"+suffix, suffix+".example.com", "admin-"+suffix+".example.com", "Tenant "+suffix)
+	user := mustInsertUser(t, ctx, db, tenant, "USR"+suffix, "user-"+suffix+"@example.com", "User "+suffix)
+	seriesID, episodeID := mustInsertSeriesAndEpisode(t, ctx, db, tenant, "SER"+suffix, "EP"+suffix)
+	return engagementSeed{
+		tenantID:  tenant,
+		userID:    user,
+		seriesID:  seriesID,
+		episodeID: episodeID,
+	}
+}
+
+func mustInsertSeries(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, seriesPublicID string) uuid.UUID {
+	t.Helper()
+	seriesID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO series (id, tenant_id, public_id, title, is_published)
+		VALUES ($1, $2, $3, $4, false)
+	`, seriesID, tenantID, seriesPublicID, seriesPublicID+" series")
+	if err != nil {
+		t.Fatalf("insert series %s: %v", seriesPublicID, err)
+	}
+	return seriesID
+}
+
+func mustInsertSeriesAndEpisode(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, seriesPublicID, episodePublicID string) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	seriesID := mustInsertSeries(t, ctx, db, tenantID, seriesPublicID)
+	episodeID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+		VALUES ($1, $2, $3, $4, 1, $5)
+	`, episodeID, seriesID, episodePublicID, episodePublicID, tenantID)
+	if err != nil {
+		t.Fatalf("insert episode %s: %v", episodePublicID, err)
+	}
+	return seriesID, episodeID
+}
+
+func withAdminTenant(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, fn func(ctx context.Context, conn *sql.Conn)) {
+	t.Helper()
+	db := pg.OpenAdminDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatalf("admin conn: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenantID.String()); err != nil {
+		t.Fatalf("set app.current_tenant_id: %v", err)
+	}
+	fn(ctx, conn)
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+	return err != nil && strings.Contains(err.Error(), "duplicate key")
+}
+
+// restrict_violation (23001) is what PostgreSQL raises for ON DELETE RESTRICT.
+// NO ACTION would be foreign_key_violation (23503) instead.
+func isRestrictViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23001"
+	}
+	return err != nil && strings.Contains(err.Error(), "violates RESTRICT")
+}
+
+func isCheckViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23514"
+	}
+	return err != nil && strings.Contains(err.Error(), "violates check constraint")
+}
+
+func checkName(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.ConstraintName
+	}
+	return ""
+}
+
+func nullUUID(id uuid.UUID) uuid.NullUUID {
+	return uuid.NullUUID{UUID: id, Valid: true}
+}
+
+func emptyPayload() json.RawMessage {
+	return json.RawMessage(`{}`)
+}
+
+func TestContentEventsRLSHidesOtherTenant(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	a := seedEngagementCatalog(t, ctx, pg.DB, "AAAA01")
+	b := seedEngagementCatalog(t, ctx, pg.DB, "BBBB02")
+	queries := dbmodels.New(pg.DB)
+
+	mine, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       a.tenantID,
+		UserID:         nullUUID(a.userID),
+		SeriesID:       a.seriesID,
+		EpisodeID:      a.episodeID,
+		DebounceBucket: 100,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("insert tenant A event: %v", err)
+	}
+	theirs, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       b.tenantID,
+		UserID:         nullUUID(b.userID),
+		SeriesID:       b.seriesID,
+		EpisodeID:      b.episodeID,
+		DebounceBucket: 100,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("insert tenant B event: %v", err)
+	}
+
+	withAdminTenant(t, pg, a.tenantID, func(ctx context.Context, conn *sql.Conn) {
+		var visible int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM content_events").Scan(&visible); err != nil {
+			t.Fatalf("count content_events: %v", err)
+		}
+		if visible != 1 {
+			t.Fatalf("visible events = %d, want 1", visible)
+		}
+
+		var eventType string
+		err := conn.QueryRowContext(ctx, "SELECT event_type FROM content_events WHERE id = $1", theirs.ID).Scan(&eventType)
+		if err == nil {
+			t.Fatalf("read tenant B event as tenant A: got %q", eventType)
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("read tenant B event error = %v, want sql.ErrNoRows", err)
+		}
+
+		if err := conn.QueryRowContext(ctx, "SELECT event_type FROM content_events WHERE id = $1", mine.ID).Scan(&eventType); err != nil {
+			t.Fatalf("read own event: %v", err)
+		}
+
+		_, err = conn.ExecContext(ctx, `
+			INSERT INTO content_events (
+				id, tenant_id, event_type, user_id, series_id, episode_id, debounce_bucket, payload
+			) VALUES ($1, $2, 'episode_view', $3, $4, $5, 1, '{}'::jsonb)
+		`, uuid.Must(uuid.NewV7()), b.tenantID, b.userID, b.seriesID, b.episodeID)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+			t.Fatalf("insert for another tenant error = %v, want SQLSTATE 42501", err)
+		}
+	})
+}
+
+func TestContentEventsSourceUniqueIsIdempotent(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "SRC00001")
+	queries := dbmodels.New(pg.DB)
+	sourceID := uuid.Must(uuid.NewV7())
+
+	first, err := queries.InsertProjectedSourceEvent(ctx, dbmodels.InsertProjectedSourceEventParams{
+		ID:          uuid.Must(uuid.NewV7()),
+		TenantID:    seed.tenantID,
+		EventType:   "purchase",
+		UserID:      seed.userID,
+		SeriesID:    seed.seriesID,
+		EpisodeID:   seed.episodeID,
+		SourceTable: "purchases",
+		SourceID:    sourceID,
+		Payload:     emptyPayload(),
+		OccurredAt:  time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("first purchase projection: %v", err)
+	}
+
+	_, err = queries.InsertProjectedSourceEvent(ctx, dbmodels.InsertProjectedSourceEventParams{
+		ID:          uuid.Must(uuid.NewV7()),
+		TenantID:    seed.tenantID,
+		EventType:   "purchase",
+		UserID:      seed.userID,
+		SeriesID:    seed.seriesID,
+		EpisodeID:   seed.episodeID,
+		SourceTable: "purchases",
+		SourceID:    sourceID,
+		Payload:     emptyPayload(),
+		OccurredAt:  time.Now().UTC(),
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("duplicate projection error = %v, want sql.ErrNoRows", err)
+	}
+
+	// The unique index itself must also reject a raw INSERT (no ON CONFLICT).
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, episode_id,
+			source_table, source_id, payload
+		) VALUES ($1, $2, 'purchase', $3, $4, $5, 'purchases', $6, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID, seed.episodeID, sourceID)
+	if !isUniqueViolation(err) {
+		t.Fatalf("raw duplicate source insert error = %v, want unique_violation", err)
+	}
+
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM content_events
+		WHERE tenant_id = $1 AND source_table = 'purchases' AND source_id = $2
+	`, seed.tenantID, sourceID).Scan(&count); err != nil {
+		t.Fatalf("count projections: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("projected rows = %d, want 1", count)
+	}
+	if first.EventType != "purchase" {
+		t.Fatalf("first event_type = %q, want purchase", first.EventType)
+	}
+}
+
+func TestContentEventsEpisodeViewDebounceUnique(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "DEB00001")
+	queries := dbmodels.New(pg.DB)
+	const bucket int64 = 20260815000
+
+	first, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		UserID:         nullUUID(seed.userID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: bucket,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("first episode_view: %v", err)
+	}
+
+	_, err = queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		UserID:         nullUUID(seed.userID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: bucket,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("same-bucket insert error = %v, want sql.ErrNoRows", err)
+	}
+
+	next, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		UserID:         nullUUID(seed.userID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: bucket + 1,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("next-bucket episode_view: %v", err)
+	}
+	if next.ID == first.ID {
+		t.Fatal("next-bucket insert reused the first row id")
+	}
+
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM content_events
+		WHERE tenant_id = $1 AND event_type = 'episode_view' AND episode_id = $2 AND debounce_bucket = $3
+	`, seed.tenantID, seed.episodeID, bucket).Scan(&count); err != nil {
+		t.Fatalf("count debounce bucket: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("same-bucket rows = %d, want 1", count)
+	}
+}
+
+func TestContentEventsExplainUsesExpectedIndexes(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "EXP00001")
+	queries := dbmodels.New(pg.DB)
+	if _, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		UserID:         nullUUID(seed.userID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: 1,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("seed event for explain: %v", err)
+	}
+
+	// Empty-or-tiny tables prefer seq scans. disable seqscan so the planner
+	// has to pick the index the query was written against. That is what these
+	// cases record: the engagement query shapes stay index-eligible.
+	cases := []struct {
+		name  string
+		query string
+		index string
+	}{
+		{
+			name:  "tenant occurred_at",
+			query: `SELECT * FROM content_events WHERE tenant_id = $1 ORDER BY occurred_at DESC LIMIT 20`,
+			index: "idx_content_events_tenant_occurred_at",
+		},
+		{
+			name:  "tenant type occurred_at",
+			query: `SELECT * FROM content_events WHERE tenant_id = $1 AND event_type = 'episode_view' ORDER BY occurred_at DESC LIMIT 20`,
+			index: "idx_content_events_tenant_type_occurred_at",
+		},
+	}
+
+	tx, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
+		t.Fatalf("disable seqscan: %v", err)
+	}
+
+	for _, tc := range cases {
+		rows, err := tx.QueryContext(ctx, "EXPLAIN "+tc.query, seed.tenantID)
+		if err != nil {
+			t.Fatalf("%s explain: %v", tc.name, err)
+		}
+		var plan strings.Builder
+		for rows.Next() {
+			var line string
+			if err := rows.Scan(&line); err != nil {
+				t.Fatalf("%s scan explain: %v", tc.name, err)
+			}
+			plan.WriteString(line)
+			plan.WriteByte('\n')
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("%s explain rows: %v", tc.name, err)
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatalf("%s close explain: %v", tc.name, err)
+		}
+		if !strings.Contains(plan.String(), tc.index) {
+			t.Fatalf("%s plan did not use %s:\n%s", tc.name, tc.index, plan.String())
+		}
+	}
+}
+
+// The public recommendation list asks for the newest tenant-wide snapshot of
+// one ranking key and entity type, so the genre and all three columns have to
+// be in the index ahead of computed_at. With any of them left out, the scan
+// walks past other rankings' snapshots before it can honour LIMIT 1.
+func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "EXPRNK01")
+	statDate := time.Now().UTC().Truncate(24 * time.Hour)
+	if _, err := dbmodels.New(pg.DB).UpsertContentRankingSnapshot(ctx, dbmodels.UpsertContentRankingSnapshotParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		TenantID:         seed.tenantID,
+		RankingKey:       "weekly",
+		PeriodStart:      statDate,
+		PeriodEnd:        statDate.Add(6 * 24 * time.Hour),
+		EntityType:       "series",
+		Surface:          sql.NullString{String: "web", Valid: true},
+		Items:            json.RawMessage(`[{"entity_id":"` + seed.seriesID.String() + `","score":1,"rank":1}]`),
+		AlgorithmVersion: 1,
+		ComputedAt:       time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("seed snapshot for explain: %v", err)
+	}
+
+	tx, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
+		t.Fatalf("disable seqscan: %v", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		EXPLAIN SELECT * FROM content_ranking_snapshots
+		WHERE tenant_id = $1 AND genre_id IS NULL AND surface = 'web' AND age_rating IS NULL AND ranking_key = 'weekly' AND entity_type = 'series'
+		ORDER BY computed_at DESC LIMIT 1
+	`, seed.tenantID)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	var plan strings.Builder
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("scan explain: %v", err)
+		}
+		plan.WriteString(line)
+		plan.WriteByte('\n')
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("explain rows: %v", err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatalf("close explain: %v", err)
+	}
+
+	const index = "idx_content_ranking_snapshots_tenant_leaderboard_computed"
+	if !strings.Contains(plan.String(), index) {
+		t.Fatalf("plan did not use %s:\n%s", index, plan.String())
+	}
+	// An index that stops before entity_type still shows up in the plan, so the
+	// filter has to be gone from it too: a Filter line means rows are read and
+	// discarded before LIMIT 1.
+	if strings.Contains(plan.String(), "Filter:") {
+		t.Fatalf("plan filters rows the index should have excluded:\n%s", plan.String())
+	}
+}
+
+func TestContentEventsCompositeFKUsesSeriesTenantUnique(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var (
+		uniqueDef string
+		fkDef     string
+	)
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT pg_get_constraintdef(oid)
+		FROM pg_constraint
+		WHERE conname = 'series_tenant_id_id_key'
+	`).Scan(&uniqueDef); err != nil {
+		t.Fatalf("series_tenant_id_id_key: %v", err)
+	}
+	if !strings.Contains(uniqueDef, "UNIQUE") || !strings.Contains(uniqueDef, "tenant_id") {
+		t.Fatalf("series_tenant_id_id_key def = %q, want UNIQUE (tenant_id, id)", uniqueDef)
+	}
+
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT pg_get_constraintdef(oid)
+		FROM pg_constraint
+		WHERE conname = 'content_events_tenant_series_id_fkey'
+	`).Scan(&fkDef); err != nil {
+		t.Fatalf("content_events_tenant_series_id_fkey: %v", err)
+	}
+	if !strings.Contains(fkDef, "REFERENCES series(tenant_id, id)") {
+		t.Fatalf("series composite FK def = %q, want REFERENCES series(tenant_id, id)", fkDef)
+	}
+	if !strings.Contains(fkDef, "ON DELETE RESTRICT") {
+		t.Fatalf("series composite FK def = %q, want ON DELETE RESTRICT", fkDef)
+	}
+
+	a := seedEngagementCatalog(t, ctx, pg.DB, "FKA00001")
+	b := seedEngagementCatalog(t, ctx, pg.DB, "FKB00002")
+
+	// Same-tenant insert succeeds.
+	if _, err := insertEpisodeView(ctx, pg.DB, a, a.userID, a.seriesID, a.episodeID, 1); err != nil {
+		t.Fatalf("same-tenant insert: %v", err)
+	}
+
+	// Cross-tenant series must fail the composite FK.
+	_, err := insertEpisodeView(ctx, pg.DB, a, a.userID, b.seriesID, a.episodeID, 2)
+	if !isForeignKeyViolation(err) {
+		t.Fatalf("cross-tenant series error = %v, want foreign_key_violation", err)
+	}
+	if !strings.Contains(err.Error(), "content_events_tenant_series_id_fkey") {
+		t.Fatalf("cross-tenant series error = %v, want content_events_tenant_series_id_fkey", err)
+	}
+}
+
+func TestContentEventsFKDeleteActions(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	restrictSeed := seedEngagementCatalog(t, ctx, pg.DB, "RST00001")
+	if _, err := insertEpisodeView(ctx, pg.DB, restrictSeed, restrictSeed.userID, restrictSeed.seriesID, restrictSeed.episodeID, 1); err != nil {
+		t.Fatalf("seed restrict event: %v", err)
+	}
+
+	// The series case uses a series of its own, with no episode: a series that
+	// still has one is blocked by episodes_series_id_fkey as well, and which of
+	// two blocking constraints reports the failure follows the order their
+	// triggers were created in rather than anything about the schema.
+	emptySeriesID := mustInsertSeries(t, ctx, pg.DB, restrictSeed.tenantID, "SERRST2")
+	if _, err := insertSeriesView(ctx, pg.DB, restrictSeed.tenantID, restrictSeed.userID, emptySeriesID, 1); err != nil {
+		t.Fatalf("seed restrict series view: %v", err)
+	}
+
+	_, err := pg.DB.ExecContext(ctx, `DELETE FROM series WHERE id = $1`, emptySeriesID)
+	if !isRestrictViolation(err) {
+		t.Fatalf("delete series error = %v, want restrict_violation (23001)", err)
+	}
+	if !strings.Contains(err.Error(), "content_events_tenant_series_id_fkey") {
+		t.Fatalf("delete series error = %v, want content_events_tenant_series_id_fkey", err)
+	}
+
+	_, err = pg.DB.ExecContext(ctx, `DELETE FROM episodes WHERE id = $1`, restrictSeed.episodeID)
+	if !isRestrictViolation(err) {
+		t.Fatalf("delete episode error = %v, want restrict_violation (23001)", err)
+	}
+	if !strings.Contains(err.Error(), "content_events_tenant_episode_id_fkey") {
+		t.Fatalf("delete episode error = %v, want content_events_tenant_episode_id_fkey", err)
+	}
+
+	cascadeSeed := seedEngagementCatalog(t, ctx, pg.DB, "CAS00001")
+	if _, err := insertEpisodeView(ctx, pg.DB, cascadeSeed, cascadeSeed.userID, cascadeSeed.seriesID, cascadeSeed.episodeID, 1); err != nil {
+		t.Fatalf("seed cascade event: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, cascadeSeed.userID); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+	var remaining int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM content_events WHERE tenant_id = $1
+	`, cascadeSeed.tenantID).Scan(&remaining); err != nil {
+		t.Fatalf("count after user delete: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("events after user delete = %d, want 0 (CASCADE)", remaining)
+	}
+}
+
+func TestContentEventsActorKeyAndTargetChecks(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "CHK00001")
+	queries := dbmodels.New(pg.DB)
+	anonID := uuid.Must(uuid.NewV7())
+
+	both, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		UserID:         nullUUID(seed.userID),
+		AnonymousID:    nullUUID(anonID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: 1,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("insert with both actors: %v", err)
+	}
+	if !both.ActorKey.Valid || both.ActorKey.UUID != seed.userID {
+		t.Fatalf("actor_key = %v, want user_id %s (user wins when both set)", both.ActorKey, seed.userID)
+	}
+
+	anonOnly, err := queries.InsertDebouncedEpisodeViewEvent(ctx, dbmodels.InsertDebouncedEpisodeViewEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       seed.tenantID,
+		AnonymousID:    nullUUID(anonID),
+		SeriesID:       seed.seriesID,
+		EpisodeID:      seed.episodeID,
+		DebounceBucket: 2,
+		Payload:        emptyPayload(),
+		OccurredAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("insert anonymous view: %v", err)
+	}
+	if !anonOnly.ActorKey.Valid || anonOnly.ActorKey.UUID != anonID {
+		t.Fatalf("actor_key = %v, want anonymous_id %s", anonOnly.ActorKey, anonID)
+	}
+
+	// No actor.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, series_id, episode_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'episode_view', $3, $4, 3, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.seriesID, seed.episodeID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_actor_check" {
+		t.Fatalf("missing actor error = %v (%s), want content_events_actor_check", err, checkName(err))
+	}
+
+	// episode_view requires episode_id.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'episode_view', $3, $4, 4, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_target_by_type_check" {
+		t.Fatalf("episode_view without episode error = %v (%s), want content_events_target_by_type_check", err, checkName(err))
+	}
+
+	// series_view must not carry an episode_id.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, episode_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'series_view', $3, $4, $5, 5, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID, seed.episodeID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_target_by_type_check" {
+		t.Fatalf("series_view with episode error = %v (%s), want content_events_target_by_type_check", err, checkName(err))
+	}
+
+	// episode_view requires debounce_bucket.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, episode_id, payload
+		) VALUES ($1, $2, 'episode_view', $3, $4, $5, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID, seed.episodeID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_view_bucket_check" {
+		t.Fatalf("episode_view without bucket error = %v (%s), want content_events_view_bucket_check", err, checkName(err))
+	}
+
+	// rating requires score 1–5.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, payload
+		) VALUES ($1, $2, 'rating', $3, $4, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_rating_requires_score_check" {
+		t.Fatalf("rating without score error = %v (%s), want content_events_rating_requires_score_check", err, checkName(err))
+	}
+
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, rating_score, payload
+		) VALUES ($1, $2, 'rating', $3, $4, 6, '{}'::jsonb)
+	`, uuid.Must(uuid.NewV7()), seed.tenantID, seed.userID, seed.seriesID)
+	if !isCheckViolation(err) || checkName(err) != "content_events_rating_score_check" {
+		t.Fatalf("rating score 6 error = %v (%s), want content_events_rating_score_check", err, checkName(err))
+	}
+
+	okRating, err := queries.InsertContentEvent(ctx, dbmodels.InsertContentEventParams{
+		ID:          uuid.Must(uuid.NewV7()),
+		TenantID:    seed.tenantID,
+		EventType:   "rating",
+		UserID:      nullUUID(seed.userID),
+		SeriesID:    nullUUID(seed.seriesID),
+		RatingScore: sql.NullInt16{Int16: 5, Valid: true},
+		Payload:     emptyPayload(),
+		OccurredAt:  time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("valid series rating: %v", err)
+	}
+	if okRating.RatingScore.Int16 != 5 {
+		t.Fatalf("rating_score = %d, want 5", okRating.RatingScore.Int16)
+	}
+}
+
+func TestEngagementSnapshotQueriesRoundTrip(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "SNP00001")
+	queries := dbmodels.New(pg.DB)
+	statDate := time.Date(2026, 8, 15, 0, 0, 0, 0, time.UTC)
+
+	stats, err := queries.UpsertContentDailyStats(ctx, dbmodels.UpsertContentDailyStatsParams{
+		ID:                uuid.Must(uuid.NewV7()),
+		TenantID:          seed.tenantID,
+		StatDate:          statDate,
+		EntityType:        "episode",
+		EntityID:          seed.episodeID,
+		ViewCount:         10,
+		UniqueViewerCount: 4,
+		PurchaseCount:     1,
+		RatingCount:       2,
+		RatingSum:         8,
+		FavoriteCount:     0,
+		CommentCount:      3,
+	})
+	if err != nil {
+		t.Fatalf("upsert daily stats: %v", err)
+	}
+	if stats.ViewCount != 10 {
+		t.Fatalf("view_count = %d, want 10", stats.ViewCount)
+	}
+	if stats.CommentCount != 3 {
+		t.Fatalf("comment_count = %d, want 3", stats.CommentCount)
+	}
+
+	userFeat, err := queries.UpsertUserRecommendFeatures(ctx, dbmodels.UpsertUserRecommendFeaturesParams{
+		TenantID:       seed.tenantID,
+		UserID:         seed.userID,
+		Features:       json.RawMessage(`{"recent_series":[]}`),
+		FeatureVersion: 1,
+		ComputedAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("upsert user features: %v", err)
+	}
+	if userFeat.FeatureVersion != 1 {
+		t.Fatalf("user feature_version = %d, want 1", userFeat.FeatureVersion)
+	}
+
+	itemFeat, err := queries.UpsertItemRecommendFeatures(ctx, dbmodels.UpsertItemRecommendFeaturesParams{
+		TenantID:       seed.tenantID,
+		EntityType:     "series",
+		EntityID:       seed.seriesID,
+		Features:       json.RawMessage(`{"view_7d":10}`),
+		FeatureVersion: 1,
+		ComputedAt:     time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("upsert item features: %v", err)
+	}
+	if itemFeat.EntityType != "series" {
+		t.Fatalf("item entity_type = %q, want series", itemFeat.EntityType)
+	}
+
+	snapshot, err := queries.UpsertContentRankingSnapshot(ctx, dbmodels.UpsertContentRankingSnapshotParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		TenantID:         seed.tenantID,
+		RankingKey:       "weekly_series",
+		PeriodStart:      statDate,
+		PeriodEnd:        statDate.Add(6 * 24 * time.Hour),
+		EntityType:       "series",
+		Surface:          sql.NullString{String: "web", Valid: true},
+		Items:            json.RawMessage(`[{"entity_id":"` + seed.seriesID.String() + `","score":1,"rank":1}]`),
+		AlgorithmVersion: 1,
+		ComputedAt:       time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("upsert ranking snapshot: %v", err)
+	}
+	if snapshot.RankingKey != "weekly_series" {
+		t.Fatalf("ranking_key = %q, want weekly_series", snapshot.RankingKey)
+	}
+}
+
+// The batch-built tables are read by the API roles and written only by the
+// maintenance batches. Their policies are tenant isolation, which would let a
+// tenant-scoped connection rewrite its own tenant's rankings and the inputs
+// behind them, so the baseline seed takes the DML grant back.
+func TestBatchDerivedTablesRefuseWritesFromTheAPIRoles(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "DRV00001")
+	tenant, series, episode, user := seed.tenantID, seed.seriesID, seed.episodeID, seed.userID
+
+	type statement struct {
+		sql  string
+		args []any
+	}
+	tables := []struct {
+		name                         string
+		seed, insert, update, delete statement
+	}{
+		{
+			name: "content_daily_stats",
+			seed: statement{`INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+				VALUES ($1, $2, '2026-08-15', 'series', $3, 1)`, []any{uuid.Must(uuid.NewV7()), tenant, series}},
+			insert: statement{`INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+				VALUES ($1, $2, '2026-08-16', 'series', $3, 9999)`, []any{uuid.Must(uuid.NewV7()), tenant, series}},
+			update: statement{"UPDATE content_daily_stats SET view_count = 9999 WHERE tenant_id = $1", []any{tenant}},
+			delete: statement{"DELETE FROM content_daily_stats WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "tenant_rating_totals",
+			seed: statement{"INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 5, 1)", []any{tenant}},
+			insert: statement{`INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 9999, 1)
+				ON CONFLICT (tenant_id) DO NOTHING`, []any{tenant}},
+			update: statement{"UPDATE tenant_rating_totals SET points = 9999 WHERE tenant_id = $1", []any{tenant}},
+			delete: statement{"DELETE FROM tenant_rating_totals WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "content_ranking_snapshots",
+			seed: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface)
+				VALUES ($1, $2, 'daily', '2026-08-15', '2026-08-15', 'series', 'web')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			insert: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface)
+				VALUES ($1, $2, 'daily', '2026-08-16', '2026-08-16', 'series', 'web')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			update: statement{`UPDATE content_ranking_snapshots SET items = '[{"entity_id":"` + series.String() + `","score":9999,"rank":1}]'
+				WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM content_ranking_snapshots WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "item_recommend_features",
+			seed: statement{"INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'series', $2)",
+				[]any{tenant, series}},
+			insert: statement{"INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'episode', $2)",
+				[]any{tenant, episode}},
+			update: statement{`UPDATE item_recommend_features SET features = '{"view_7d":9999}' WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM item_recommend_features WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "user_recommend_features",
+			seed: statement{"INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)", []any{tenant, user}},
+			insert: statement{`INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)
+				ON CONFLICT (tenant_id, user_id) DO NOTHING`, []any{tenant, user}},
+			update: statement{`UPDATE user_recommend_features SET features = '{"recent_series":[]}' WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM user_recommend_features WHERE tenant_id = $1", []any{tenant}},
+		},
+	}
+	for _, table := range tables {
+		if _, err := pg.DB.ExecContext(ctx, table.seed.sql, table.seed.args...); err != nil {
+			t.Fatalf("seed %s: %v", table.name, err)
+		}
+	}
+
+	for role, db := range map[string]*sql.DB{
+		"publira_admin":  pg.OpenAdminDB(t),
+		"publira_public": pg.OpenPublicDB(t),
+	} {
+		t.Run(role, func(t *testing.T) {
+			conn, err := db.Conn(ctx)
+			if err != nil {
+				t.Fatalf("open a connection: %v", err)
+			}
+			defer func() { _ = conn.Close() }()
+			if _, err := conn.ExecContext(ctx,
+				"SELECT set_config('app.current_tenant_id', $1, false)", tenant.String()); err != nil {
+				t.Fatalf("set app.current_tenant_id: %v", err)
+			}
+
+			for _, table := range tables {
+				// The row is visible to this connection, so the refusal below is
+				// the grant's and not the tenant isolation policy's.
+				var rows int
+				if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM "+table.name).Scan(&rows); err != nil {
+					t.Fatalf("read %s: %v", table.name, err)
+				}
+				if rows != 1 {
+					t.Fatalf("%s rows visible = %d, want the 1 seeded for this tenant", table.name, rows)
+				}
+
+				for name, write := range map[string]statement{
+					"insert": table.insert,
+					"update": table.update,
+					"delete": table.delete,
+				} {
+					if _, err := conn.ExecContext(ctx, write.sql, write.args...); !isInsufficientPrivilege(err) {
+						t.Fatalf("%s on %s: err = %v, want permission denied", name, table.name, err)
+					}
+				}
+			}
+		})
+	}
+}
+
+// insufficient_privilege (42501) is a missing grant. A row-level security
+// refusal of an INSERT raises the same code, but an UPDATE or DELETE the
+// policy filters out succeeds on zero rows instead.
+func isInsufficientPrivilege(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "42501"
+}
+
+func insertEpisodeView(ctx context.Context, db *sql.DB, seed engagementSeed, userID, seriesID, episodeID uuid.UUID, bucket int64) (uuid.UUID, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, episode_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'episode_view', $3, $4, $5, $6, '{}'::jsonb)
+	`, id, seed.tenantID, userID, seriesID, episodeID, bucket)
+	return id, err
+}
+
+func insertSeriesView(ctx context.Context, db *sql.DB, tenantID, userID, seriesID uuid.UUID, bucket int64) (uuid.UUID, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO content_events (
+			id, tenant_id, event_type, user_id, series_id, debounce_bucket, payload
+		) VALUES ($1, $2, 'series_view', $3, $4, $5, '{}'::jsonb)
+	`, id, tenantID, userID, seriesID, bucket)
+	return id, err
+}
+
+// upsertReadThroughStats files one episode's day with only the two columns the
+// read-through report reads.
+func upsertReadThroughStats(
+	t *testing.T,
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, episodeID uuid.UUID,
+	statDate time.Time,
+	completeCount, memberViewCount int64,
+) {
+	t.Helper()
+	if _, err := queries.UpsertContentDailyStats(ctx, dbmodels.UpsertContentDailyStatsParams{
+		ID:              uuid.Must(uuid.NewV7()),
+		TenantID:        tenantID,
+		StatDate:        statDate,
+		EntityType:      "episode",
+		EntityID:        episodeID,
+		CompleteCount:   completeCount,
+		MemberViewCount: memberViewCount,
+	}); err != nil {
+		t.Fatalf("upsert read-through stats: %v", err)
+	}
+}
+
+func TestEpisodeReadThroughSumsTheWindowAndPagesByCompletions(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "RTH00001")
+	_, secondEpisode := mustInsertSeriesAndEpisode(t, ctx, pg.DB, seed.tenantID, "SERRTH2", "EPRTH2")
+	_, thirdEpisode := mustInsertSeriesAndEpisode(t, ctx, pg.DB, seed.tenantID, "SERRTH3", "EPRTH3")
+	other := seedEngagementCatalog(t, ctx, pg.DB, "RTH00002")
+	queries := dbmodels.New(pg.DB)
+
+	periodStart := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
+	periodEnd := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
+
+	// Two days inside the window sum; the day after it must not.
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodStart, 4, 10)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodEnd, 3, 6)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, seed.episodeID, periodEnd.AddDate(0, 0, 1), 99, 99)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, secondEpisode, periodStart, 2, 8)
+	upsertReadThroughStats(t, ctx, queries, seed.tenantID, thirdEpisode, periodStart, 1, 0)
+	upsertReadThroughStats(t, ctx, queries, other.tenantID, other.episodeID, periodStart, 50, 50)
+
+	totals, err := queries.GetEpisodeReadThroughTotals(ctx, dbmodels.GetEpisodeReadThroughTotalsParams{
+		TenantID:    seed.tenantID,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+	})
+	if err != nil {
+		t.Fatalf("totals: %v", err)
+	}
+	if totals.CompleteCount != 10 || totals.MemberViewCount != 24 {
+		t.Fatalf("totals = (%d, %d), want (10, 24)", totals.CompleteCount, totals.MemberViewCount)
+	}
+
+	listParams := dbmodels.ListEpisodeReadThroughDescParams{
+		TenantID:    seed.tenantID,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+		Limit:       2,
+	}
+	first, err := queries.ListEpisodeReadThroughDesc(ctx, listParams)
+	if err != nil {
+		t.Fatalf("list desc: %v", err)
+	}
+	if len(first) != 2 {
+		t.Fatalf("first page rows = %d, want 2", len(first))
+	}
+	if first[0].EpisodeID != seed.episodeID || first[0].CompleteCount != 7 || first[0].MemberViewCount != 16 {
+		t.Fatalf("first row = %+v, want the summed window of the top episode", first[0])
+	}
+	if first[1].EpisodeID != secondEpisode {
+		t.Fatalf("second row = %s, want %s", first[1].EpisodeID, secondEpisode)
+	}
+
+	// The keyset resumes strictly after the boundary row.
+	boundary := first[len(first)-1]
+	nextParams := listParams
+	nextParams.CursorEntityID = uuid.NullUUID{UUID: boundary.EpisodeID, Valid: true}
+	nextParams.CursorCompleteCount = sql.NullInt64{Int64: boundary.CompleteCount, Valid: true}
+	next, err := queries.ListEpisodeReadThroughDesc(ctx, nextParams)
+	if err != nil {
+		t.Fatalf("list desc page 2: %v", err)
+	}
+	if len(next) != 1 || next[0].EpisodeID != thirdEpisode {
+		t.Fatalf("second page = %+v, want only %s", next, thirdEpisode)
+	}
+
+	// The ascending query walks back to the page the cursor came from.
+	backParams := dbmodels.ListEpisodeReadThroughAscParams{
+		TenantID:            seed.tenantID,
+		PeriodStart:         periodStart,
+		PeriodEnd:           periodEnd,
+		Limit:               2,
+		CursorEntityID:      uuid.NullUUID{UUID: next[0].EpisodeID, Valid: true},
+		CursorCompleteCount: sql.NullInt64{Int64: next[0].CompleteCount, Valid: true},
+	}
+	back, err := queries.ListEpisodeReadThroughAsc(ctx, backParams)
+	if err != nil {
+		t.Fatalf("list asc: %v", err)
+	}
+	if len(back) != 2 {
+		t.Fatalf("backward page rows = %d, want 2", len(back))
+	}
+	if back[0].EpisodeID != secondEpisode || back[1].EpisodeID != seed.episodeID {
+		t.Fatalf("backward page = (%s, %s), want (%s, %s) in ascending order",
+			back[0].EpisodeID, back[1].EpisodeID, secondEpisode, seed.episodeID)
+	}
+
+	// An inclusive recovery cursor returns the boundary row itself.
+	recoveryParams := backParams
+	recoveryParams.CursorInclusive = true
+	recovery, err := queries.ListEpisodeReadThroughAsc(ctx, recoveryParams)
+	if err != nil {
+		t.Fatalf("list asc recovery: %v", err)
+	}
+	if len(recovery) == 0 || recovery[0].EpisodeID != thirdEpisode {
+		t.Fatalf("recovery page = %+v, want the boundary row %s first", recovery, thirdEpisode)
+	}
+}
+
+// mustInsertEpisodeComment stores one comment in whichever state the caller
+// names, so a projection test can move a single row through the states that
+// decide whether it has an engagement event.
+func mustInsertEpisodeComment(
+	t *testing.T,
+	ctx context.Context,
+	db *sql.DB,
+	seed engagementSeed,
+	publicID, status string,
+	publishedAt sql.NullTime,
+) uuid.UUID {
+	t.Helper()
+	commentID := uuid.Must(uuid.NewV7())
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO episode_comments (
+			id, tenant_id, public_id, episode_id, user_id, body, status, published_at
+		) VALUES ($1, $2, $3, $4, $5, 'A comment about this episode.', $6, $7)
+	`, commentID, seed.tenantID, publicID, seed.episodeID, seed.userID, status, publishedAt)
+	if err != nil {
+		t.Fatalf("insert %s comment: %v", status, err)
+	}
+	return commentID
+}
+
+func TestProjectCommentContentEventFilesOnePublishedCommentOnce(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "CMT00001")
+	queries := dbmodels.New(pg.DB)
+
+	// A comment waiting for approval was never public and earns no event.
+	pending := mustInsertEpisodeComment(t, ctx, pg.DB, seed, "CMTPENDING01", "pending", sql.NullTime{})
+	_, err := queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: pending,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("pending comment projection error = %v, want sql.ErrNoRows", err)
+	}
+
+	publishedAt := time.Date(2026, time.September, 3, 4, 5, 6, 0, time.UTC)
+	published := mustInsertEpisodeComment(t, ctx, pg.DB, seed, "CMTPUBLISH01", "published",
+		sql.NullTime{Time: publishedAt, Valid: true})
+	event, err := queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: published,
+	})
+	if err != nil {
+		t.Fatalf("published comment projection: %v", err)
+	}
+	if event.EventType != "comment" {
+		t.Fatalf("event_type = %q, want comment", event.EventType)
+	}
+	if !event.UserID.Valid || event.UserID.UUID != seed.userID {
+		t.Fatalf("user_id = %v, want %s", event.UserID, seed.userID)
+	}
+	if !event.SeriesID.Valid || event.SeriesID.UUID != seed.seriesID {
+		t.Fatalf("series_id = %v, want the episode's own series %s", event.SeriesID, seed.seriesID)
+	}
+	if !event.EpisodeID.Valid || event.EpisodeID.UUID != seed.episodeID {
+		t.Fatalf("episode_id = %v, want %s", event.EpisodeID, seed.episodeID)
+	}
+	if !event.SourceTable.Valid || event.SourceTable.String != "episode_comments" {
+		t.Fatalf("source_table = %v, want episode_comments", event.SourceTable)
+	}
+	if !event.SourceID.Valid || event.SourceID.UUID != published {
+		t.Fatalf("source_id = %v, want the comment %s", event.SourceID, published)
+	}
+	// The event falls on the day the comment became readable rather than the day
+	// it was projected, so a late projection still lands on the right day.
+	if !event.OccurredAt.Equal(publishedAt) {
+		t.Fatalf("occurred_at = %s, want the comment's published_at %s", event.OccurredAt, publishedAt)
+	}
+
+	// A comment that already carries its event — one approved after a restore —
+	// files nothing a second time.
+	_, err = queries.ProjectCommentContentEvent(ctx, dbmodels.ProjectCommentContentEventParams{
+		ID:        uuid.Must(uuid.NewV7()),
+		TenantID:  seed.tenantID,
+		CommentID: published,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("repeated projection error = %v, want sql.ErrNoRows", err)
+	}
+
+	// Removal does not take the event back: content_events records what
+	// happened, and content_daily_stats is where a removed comment stops
+	// counting.
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE episode_comments
+		SET status = 'hidden', hidden_at = NOW(), hidden_reason = 'staff'
+		WHERE id = $1
+	`, published); err != nil {
+		t.Fatalf("hide the projected comment: %v", err)
+	}
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM content_events
+		WHERE tenant_id = $1 AND source_table = 'episode_comments' AND source_id = $2
+	`, seed.tenantID, published).Scan(&count); err != nil {
+		t.Fatalf("count comment projections: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("comment events after the removal = %d, want 1", count)
+	}
+}

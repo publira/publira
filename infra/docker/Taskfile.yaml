@@ -1,0 +1,210 @@
+version: "3"
+
+# Production image builds. Always run from the repository root
+# (included from the root Taskfile without dir override).
+#
+# Examples:
+#   task docker:build:web APP_NAME=web-host PORT=3000
+#   task docker:build:server
+#   task docker:build:publiractl
+#   task docker:build:node APP_NAME=email-renderer PORT=8080
+#   task docker:verify
+
+tasks:
+  build:web:
+    desc: Build a Next.js production image (APP_NAME required; PORT optional, default 3000)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "3000"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/web/Dockerfile \
+          --build-arg "APP_NAME={{.APP_NAME}}" \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/{{.APP_NAME}}:local" \
+          .
+
+  build:server:
+    desc: Build the publira image that runs `server` and `worker`, linking Manael/libvips (VERSION optional)
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/server/Dockerfile \
+          --build-arg "VERSION={{.VERSION}}" \
+          -t "publira/publira:local" \
+          .
+
+  build:publiractl:
+    desc: Build the publiractl image that carries every maintenance job (VERSION optional)
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/publiractl/Dockerfile \
+          --build-arg "VERSION={{.VERSION}}" \
+          -t "publira/publiractl:local" \
+          .
+
+  build:node:
+    desc: Build a long-running Node.js service image (APP_NAME required; PORT optional, default 8080)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/node/Dockerfile \
+          --build-arg "APP_NAME={{.APP_NAME}}" \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/{{.APP_NAME}}:local" \
+          .
+
+  # Representative set shared by local checks and CI (path-filtered / PR).
+  # Covers each role once: web / server / publiractl / node.
+  verify:
+    desc: Build representative images (web-host, publira, publiractl, email-renderer)
+    cmds:
+      - task: build:web
+        vars:
+          APP_NAME: web-host
+          PORT: "3000"
+      - task: build:server
+      - task: build:publiractl
+      - task: build:node
+        vars:
+          APP_NAME: email-renderer
+          PORT: "8080"
+
+  # Full matrix used by nightly CI and manual full verification.
+  verify:full:
+    desc: Build all production images documented in infra/docker/README.md
+    cmds:
+      - task: build:web
+        vars: { APP_NAME: web-host, PORT: "3000" }
+      - task: build:web
+        vars: { APP_NAME: web-admin, PORT: "4000" }
+      - task: build:web
+        vars: { APP_NAME: web-platform, PORT: "4100" }
+      - task: build:server
+      - task: build:publiractl
+      - task: build:node
+        vars: { APP_NAME: email-renderer, PORT: "8080" }
+
+  smoke:web:
+    desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "3000"}}'
+      CONTAINER_NAME: "publira-{{.APP_NAME}}-smoke"
+    cmds:
+      - |
+        set -euo pipefail
+        docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true
+        # Omit --rm so `docker logs` still works if the process exits before smoke finishes.
+        # Empty host port lets Docker pick a free port (avoids collisions with local :3000 etc.).
+        docker run -d \
+          --name "{{.CONTAINER_NAME}}" \
+          -p "127.0.0.1::{{.PORT}}" \
+          -e PNCH_REDIS_URL=disabled \
+          "publira/{{.APP_NAME}}:local"
+        cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        host_port="$(docker port "{{.CONTAINER_NAME}}" "{{.PORT}}" | awk -F: 'NR==1 { print $NF }')"
+        if [ -z "${host_port}" ]; then
+          echo "smoke failed: could not resolve host port for {{.CONTAINER_NAME}}" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        for _ in $(seq 1 30); do
+          if curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+            echo "smoke ok: {{.APP_NAME}} /livez (host port ${host_port})"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "smoke failed: {{.APP_NAME}} /livez did not become ready" >&2
+        docker logs "{{.CONTAINER_NAME}}" >&2 || true
+        exit 1
+
+  smoke:node:
+    desc: Run a /livez and /readyz smoke check against a built Node.js service image (APP_NAME, optional PORT)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+      CONTAINER_NAME: "publira-{{.APP_NAME}}-smoke"
+    cmds:
+      - |
+        set -euo pipefail
+        docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true
+        # Omit --rm so `docker logs` still works if the process exits before smoke finishes.
+        # Empty host port lets Docker pick a free port (avoids collisions with local :8080 etc.).
+        docker run -d \
+          --name "{{.CONTAINER_NAME}}" \
+          -p "127.0.0.1::{{.PORT}}" \
+          "publira/{{.APP_NAME}}:local"
+        cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        host_port="$(docker port "{{.CONTAINER_NAME}}" "{{.PORT}}" | awk -F: 'NR==1 { print $NF }')"
+        if [ -z "${host_port}" ]; then
+          echo "smoke failed: could not resolve host port for {{.CONTAINER_NAME}}" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        for _ in $(seq 1 30); do
+          if curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+            break
+          fi
+          sleep 1
+        done
+        if ! curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+          echo "smoke failed: {{.APP_NAME}} /livez did not become ready" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        if ! curl -fsS "http://127.0.0.1:${host_port}/readyz" | grep -q '"status":"ok"'; then
+          echo "smoke failed: {{.APP_NAME}} /readyz did not report status ok" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        echo "smoke ok: {{.APP_NAME}} /livez and /readyz (host port ${host_port})"
+
+  smoke:publiractl:
+    desc: Migrate an empty database with a built publiractl image, create its roles, and check a role signs in
+    vars:
+      PROJECT: publira-publiractl-smoke
+    cmds:
+      - |
+        set -euo pipefail
+        compose() { docker compose -p "{{.PROJECT}}" -f infra/docker/publiractl/compose.smoke.yaml "$@"; }
+        secrets="$(mktemp -d)"
+        cleanup() { compose down -v >/dev/null 2>&1 || true; }
+        trap 'cleanup; rm -rf "${secrets}"' EXIT
+        cleanup
+        compose run --rm -T publiractl db migrate
+        compose run --rm -T publiractl db migrate
+        head="$(find db/migrations -name '*.up.sql' -printf '%f\n' | cut -d_ -f1 | sort -n | tail -1)"
+        version="$(compose run --rm -T publiractl db version)"
+        if [ "${version}" != "$(printf 'version %s\ndirty false' "${head}")" ]; then
+          echo "smoke failed: db version reported ${version}, want version ${head}, not dirty" >&2
+          exit 1
+        fi
+        roles="public admin platform outbox ticker content-stats"
+        flags=""
+        for role in ${roles}; do
+          printf 'smoke-%s' "${role}" > "${secrets}/${role}"
+          flags="${flags} --${role}-password-file /run/secrets/${role}"
+        done
+        # The image runs as nonroot, which has to read what the runner wrote.
+        chmod 0755 "${secrets}" && chmod 0644 "${secrets}"/*
+        compose run --rm -T -v "${secrets}:/run/secrets:ro" publiractl db roles ${flags}
+        compose run --rm -T publiractl db roles
+        compose exec -T db psql "postgres://publira_admin:smoke-admin@127.0.0.1:5432/publira" -tAc 'SELECT count(*) FROM tenants' >/dev/null
+        echo "smoke ok: publiractl migrated an empty database to ${head} and created roles that sign in"

@@ -1,0 +1,663 @@
+# server
+
+The Go backend. It is operated as a single module, `github.com/publira/publira/server`.
+
+## Directory layout
+
+```text
+server/
+├── cmd/
+│   ├── publira/           # `publira server` (ConnectRPC API + image delivery) and `publira worker` (Outbox drain + River jobs)
+│   └── publiractl/        # The command that operates an install (`job <kind>` runs a maintenance job by hand)
+├── bin/                   # Binaries produced by task build
+└── internal/
+    ├── db/                # PostgreSQL integration tests for db/migrations and db/query
+    │   └── gen/           # sqlc-generated code (do not edit)
+    ├── proto/
+    │   └── gen/           # buf-generated code (do not edit)
+    └── testutil/          # Shared test helpers such as Testcontainers
+```
+
+## Responsibilities
+
+- Serving the API for multi-tenant operation
+- Business logic for content submission and publication
+- Full rebuilds of the daily content statistics
+- Purging view events past their retention window
+- The scheduled publication job (transition into the published state)
+- Authentication and security foundations
+
+## Implementation rules
+
+1. Schema-first development: change `proto/` or the golang-migrate files under `db/migrations/` (`.up.sql` / `.down.sql`) first, then run `task gen`
+2. Keep `cmd/` thin and put the implementation in `internal/`
+3. The background worker (`publira worker`, in `cmd/publira`) is a long-lived process separated from the API, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. `cmd/publiractl` runs one of those maintenance jobs by hand as `publiractl job <kind>`
+
+## Development commands
+
+```bash
+task db:setup
+task db:seed
+task db:create NAME=add_example_column
+task server:dev-server
+task server:dev-worker
+task server:tidy
+task server:build
+task server:lint
+task server:test
+```
+
+## Lint
+
+- `task server:lint` (= `golangci-lint run ./...`) runs the static analysis. It is the same configuration and the same version as the `Lint / Go` job in CI.
+- The rule set is [`.golangci.yml`](.golangci.yml). It enables golangci-lint's own `standard` default set (`errcheck` / `govet` / `ineffassign` / `staticcheck` / `unused`).
+- `golangci-lint` is installed in the Dev Container at a pinned version (`GOLANGCI_LINT_VERSION` in [`ci.yml`](../.github/workflows/ci.yml)). Install the same version when you run it outside the Dev Container.
+- Generated code (`internal/proto/gen/**`, `internal/db/gen/**`) is excluded automatically by its `DO NOT EDIT.` header. The hand-written integration tests under `internal/db/` stay in scope.
+
+## Tests
+
+- Unit tests mostly mock the database with `sqlmock`.
+- Integration tests against a real database start a PostgreSQL container with [Testcontainers for Go](https://golang.testcontainers.org/).
+  - Shared helpers: `internal/testutil` (applying migrations, seeding the app roles, Snapshot/Restore, seeding tenants and the catalog)
+  - Open a connection per app role with `OpenPlatformDB` / `OpenAdminDB` / `OpenPublicDB`. The latter two have RLS enabled, so they can verify the tenant boundary itself.
+  - Examples: `TestDB*` in `api/platformapi` (tenant creation, uniqueness constraints, state transitions), `TestDB*` in `api/adminapi` (tenant isolation), `TestDB*` in `api/publicapi` (published/unpublished filtering, member authentication)
+- Requirement: Docker must be usable locally (the affected tests skip when it is not running)
+- For a faster run, `go test -short ./...` skips the integration tests that start containers
+
+## Entrypoint details
+
+- `publira server` (the API and image delivery) and `publira worker` (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/publira/README.md](cmd/publira/README.md)
+- publiractl (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/publiractl/README.md](cmd/publiractl/README.md)
+
+## Graceful shutdown
+
+On SIGINT / SIGTERM the long-lived processes (`publira server` / `publira worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
+
+Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
+
+## Episode purchases
+
+A paid episode is sold as a one-time payment through the web payment provider the tenant chose. A provider is a package under `internal/paymentprovider` that implements `paymentprovider.Provider`, and `providers.Registry()` lists the ones a tenant may choose from. The purchase flow in `api/publicapi/purchase_handlers.go` reaches a provider only through that interface. This build ships [Stripe](#stripe), the worked example below, and [PAY.JP](#payjp).
+
+- **Start.** `StartEpisodeCheckout` loads the tenant's enabled provider and credentials from `tenant_payment_config` and calls `StartCheckout` with the purchase (tenant, reader, episode, price, reading period), the episode title, the URLs the reader returns to, and an idempotency key that is the same for every attempt of one reader at one episode. It answers the URL the provider gives back, which the storefront and the app send the reader to. An episode that already has a valid purchase does not start a checkout, and can be bought again once that purchase has expired.
+- **Return.** After paying or cancelling, the reader comes back to the episode URL on the tenant's `domain` with `checkout=success` or `checkout=cancelled`. The return confirms nothing; only a notification does.
+- **Notification.** `POST /api/v1/webhook/payment/<provider>` on `web-host` receives the provider's notifications on the tenant's public domain and forwards the raw body and every header to `ProcessPaymentWebhook` with the provider id. The API server refuses a provider the tenant does not use and hands the rest to `ParseNotification`, which verifies the notification against the tenant's credentials, reads the provider's API where the notification alone does not say enough, and answers `PurchaseCompleted`, `Refunded`, or `Ignored`.
+- **Purchase.** `PurchaseCompleted` creates a row in `purchases`, keyed by `(provider, provider_checkout_id)` so that a redelivered notification creates nothing more, and stores the id the provider's refunds name as `provider_payment_id`. The purchase it carries must belong to the tenant whose path it arrived on.
+- **Refund.** `Refunded` carries the total refunded so far on one payment. `refunded_amount` holds it, and `refunded_at` is set once it reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone. A refund that names no amount in JPY is recorded as a full refund.
+- **Held refund.** A provider need order neither its notifications nor its retries, so a refund can arrive before the purchase it reverses. Such a refund is kept in `unapplied_refunds` under `(provider, provider_payment_id)` and written onto the purchase by the notification that finally creates it.
+
+Without a usable configuration neither the checkout nor the webhook runs, and web-host turns the resulting `FailedPrecondition` into a 503, which the provider retries. A notification that does not verify or cannot be read is a 400, and a provider id the registry does not know is a 404. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
+
+Tenant administrators choose a provider from `ListPaymentProviders` and store the credential fields it declares through `AdminPaymentSettingsService`. Every field is stored encrypted in `tenant_payment_config`; a secret field is shown back masked and a public one as stored. Payments can be turned on only once every required field has a value, and choosing another provider clears the fields stored for the previous one.
+
+The same service stores the App Store Connect API key (issuer ID, key ID, and the `.p8` private key) and the Google Play service account's JSON key, in `tenant_app_store_config` and `tenant_google_play_config`, and the tenant's app purchase route (`tenant_config.app_purchase_route`): `external_checkout`, the web checkout above, or `store`, the store's in-app purchase. The app each store sells in is the one the tenant's mobile app association names. `TenantService.GetTenant` answers the route, and while it is `store`, `StartEpisodeCheckout` refuses `CLIENT_MOBILE` with `FailedPrecondition`.
+
+While the route is `store`, the app buys through `StartStorePurchase` and `ConfirmStorePurchase`. The first opens a row in `store_purchase_intents` for the episode and answers its ID and the product the episode's price is sold as (`episode_<price>`); the app sets the ID as the transaction's `appAccountToken` (App Store) or `obfuscatedAccountId` (Google Play). The second takes the StoreKit 2 signed transaction or the Play purchase token, verifies it with the store (the App Store Server API's Get Transaction Info, or `purchases.products.get` on the Google Play Developer API), and records a `purchases` row with `store` and `store_transaction_id` in place of the provider columns. A Play purchase is then consumed by `publira worker`. `StartStorePurchase` names the store the app is about to charge through and is refused unless that store is ready, and the intent keeps the episode's price and reading period, which the purchase is recorded on however late it is confirmed. Every confirmation spends the reader's store confirmation allowance of the platform policy before the store is asked. A transaction from the App Store sandbox or a Play license tester is recorded with `is_test`, opens the episode, and is left out of royalty statements and the daily content stats.
+
+A store's refund takes the purchase back as a provider's refund does, for the whole price. App Store Server Notifications V2 reach `POST /api/v1/webhook/payment/app-store` on the tenant's public domain, which forwards the raw body to `ProcessAppStoreNotification`; `REFUND` and `REVOKE` are applied and every other type is acknowledged. Register that URL for both the production and the sandbox server in App Store Connect. Google Play's refunds are read by `publira worker` from the Voided Purchases API every hour (`maintenance.sync_google_play_voided_purchases`, also `publiractl job sync-google-play-voided-purchases`), each pass rereading the 30 days the API keeps. A refund that arrives before the app has confirmed the purchase is kept in `unapplied_store_refunds` and applied by the confirmation that records it.
+
+### Stripe
+
+`internal/paymentprovider/stripe` starts a hosted Checkout Session per purchase. The session carries the purchase in its metadata, and its id and its payment intent's id become the checkout id and the payment id: `charge.refunded` names the payment intent and never the session. Its fields are the secret key (`secret_key`) and the webhook signing secret (`webhook_secret`), both secret and required, and it signs its notifications in `Stripe-Signature`.
+
+| Event | Answered as |
+| --- | --- |
+| `checkout.session.completed` | `PurchaseCompleted`, or `Ignored` while a delayed method such as konbini is unpaid |
+| `checkout.session.async_payment_succeeded` | `PurchaseCompleted` for a delayed method once it is paid |
+| `charge.refunded` | `Refunded` |
+| Any other | `Ignored` |
+
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the three events above. `/api/v1/webhook/stripe` still answers as a deprecated alias for the endpoints registered before, and will be removed in a later release. For local development, forward with the Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe
+```
+
+Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works.
+
+### PAY.JP
+
+`internal/paymentprovider/payjp` starts a hosted Checkout Session per purchase on PAY.JP's API v2, cards only and with 3-D Secure required. Its fields are the secret key (`secret_key`) and the webhook token (`webhook_token`), both secret and required.
+
+In the PAY.JP dashboard, register `https://<tenant-domain>/api/v1/webhook/payment/payjp` as the webhook endpoint, and store the secret key from the API settings page and the webhook token from the account settings. For local development, log in with the [PAY.JP CLI](https://docs.pay.jp/v2/guide/developers/payjp-cli) and forward test-mode events, which it delivers with the headers PAY.JP sends them with:
+
+```bash
+payjp-cli login
+payjp-cli listen --forward-to localhost:3080/api/v1/webhook/payment/payjp
+```
+
+For test cards, `4242 4242 4242 4242` with any future date and any three-digit CVC works; in test mode, 3-D Secure shows PAY.JP's test authentication screen, where the outcome is chosen.
+
+### Adding a payment provider
+
+GMO Payment Gateway, SB Payment Service, Sony Payment Services, and Veritrans give their specifications and test environments to merchants under contract only, so such a provider comes from a contributor who holds one. Its tests run from notifications recorded in its sandbox, so it stays tested in CI without one.
+
+```text
+internal/paymentprovider/
+├── provider.go           # Provider, Declaration, Field, Credentials, and the events
+├── registry.go           # Registry, and the rules a declaration is checked against
+├── paymentprovidertest/  # The contract suite: Fixture, RunParse, Harness, Run
+├── providers/            # providers.Registry(), the providers this build ships
+│   └── providerstest/    # The contract fixture of every registered provider
+└── <id>/                 # One provider
+    ├── <id>.go
+    └── <id>test/         # Its contract fixture
+        └── testdata/     # Notifications recorded from its sandbox
+```
+
+1. **Implement `paymentprovider.Provider`** in `internal/paymentprovider/<id>`.
+   - `Declaration()` answers the provider's `ID`, which is stored per tenant and is a segment of the webhook path, so it is lower case letters, digits, and `_`, starting with a letter; the `DisplayName` the console lists; the `SignatureHeader`; and the credential `Fields`. A field is `Secret` when it is never shown back, `Public` when the reader's browser needs it, as a publishable key, and `Required` when the provider cannot take payments without it. A field is never both secret and public.
+   - `StartCheckout` answers the URL the reader is sent to in order to pay. The provider carries `CheckoutRequest.Purchase` to the notification that confirms the payment, as Stripe does in the session's metadata, and passes `IdempotencyKey` on when its API accepts one.
+   - `ParseNotification` verifies a notification against the tenant's credentials, reading the provider's API with them when the payload is not signed or does not carry the total refunded, and answers `PurchaseCompleted` once the money has arrived, `Refunded` with the total refunded so far on the payment in the currency's minor unit and its upper-case ISO 4217 code, or `Ignored` for anything else. A notification that does not verify answers `ErrInvalidSignature`, and one that verifies but cannot be read `ErrMalformedNotification`.
+2. **Register it** in `providers.Registry()`.
+3. **Record its fixture.** `<id>test` implements `paymentprovidertest.Fixture`, and a constructor for it is added to the map in `providers/providerstest`. The fixture answers the provider it drives, two sets of credentials that sign differently, and three notifications: a completed checkout, a refund, and one the purchase flow ignores. To record them, point the sandbox's notifications at a URL you can read (for Stripe, `stripe listen --print-json`), make a test payment, refund it, and save each body the sandbox delivers under `testdata/`, with any personal data in it replaced by placeholders. The fixture writes the values the suite chooses — the checkout id, the payment id, the purchase, and the refunded amount — into the recorded body and signs it with the credentials it is given at the moment the test asks, so a signature that carries a timestamp never goes stale. A provider that reads its API answers from the fixture's fake of the endpoints it calls, which the fixture fills as it hands out each notification, as `payjptest` does. `stripetest` is the worked example.
+4. **Run the contract.** `TestEveryRegisteredProviderReadsItsNotifications` in `providers`, part of `task server:test-short`, runs `RunParse`: the purchase and the ids come back unchanged, the refund names its payment and its amount in JPY, the unrelated notification is ignored, one signed with the other credentials or not signed at all is refused, and the declaration names a signature header and requires nothing the fixture's credentials lack. `TestDBEveryRegisteredPaymentProviderPassesTheContract` in `api/publicapi`, part of `task server:test`, runs `Run`, delivering the same notifications through `ProcessPaymentWebhook` to PostgreSQL: a redelivered checkout creates one purchase, a refund that arrives first is held and applied, partial refunds close the purchase once their total reaches the price, and a forged notification or a checkout naming another tenant creates nothing. Both fail, naming the provider, while it has no fixture.
+5. **Add its console copy.** The payment settings page of `web-admin` lists the provider under its `DisplayName` and labels each field with `admin.settings.payment.fields.<id>.<field>`, a key every catalog in `locales/` carries and `PaymentCredentialName` in `apps/web-admin/app/[tenant_id]/(protected)/integrations/payment/_components/tenant-payment-settings-form.tsx` renders. A field with no key shows the name it is declared under.
+6. **Document its setup** in a section beside [Stripe](#stripe): what a tenant registers with the provider, and how to reach the sandbox from local development.
+
+The settings store, the admin RPCs, the console form, the webhook route, and the proxy routes are generic over the declaration, so nothing else changes.
+
+## Image storage configuration
+
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService` or `publiractl storage set`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (uploads on the platform pool, image reads on the admin pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
+
+Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, an image answers `503`, and the orphan sweep fails (the worker cancels the job).
+
+- An access key saved with the configuration is stored encrypted, so each of those processes needs `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` to use it.
+- Without one, each process signs with the credential the AWS SDK finds for itself: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`, a web identity token, or an instance role.
+
+### Initializing the bucket
+
+Creating the bucket is not the application's responsibility (it is never created from a regular request). In the development environment, the following task prepares it idempotently:
+
+```bash
+task storage:init
+```
+
+It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store with `publiractl storage set`, signed with the ambient credential. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
+
+### Development environment (RustFS)
+
+The Dev Container starts the S3-compatible RustFS and connects to it path-style (endpoint `http://rustfs:9000`, bucket `publira`, with the local-only credentials `publira` / `publirapass`). For the full list of values and the console URL, see [../README.md](../README.md#object-storage-for-development-rustfs).
+
+The Go integration tests against RustFS use the Testcontainers helper `StartRustFS` in `internal/testutil` to verify uploads in `internal/storage/s3` and fetches in `internal/imageserver` (skipped under `-short` or without Docker).
+
+## Image delivery (Manael)
+
+After checking permissions, the image routes of `publira server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
+
+For episode body images on a tenant site, the cached converted plaintext is never returned as-is: the server encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
+
+| Header | Value / meaning |
+| --- | --- |
+| `X-Publira-Image-Encryption` | `xor-hmac-sha256-v1` |
+| `X-Publira-Image-Content-Type` | The MIME type after decryption (`image/webp` / `image/avif`, and so on) |
+| `X-Publira-Image-Key-Id` | An opaque identifier for the converted rendition |
+
+`xor-hmac-sha256-v1` takes the JWT string as the HMAC key, computes HMAC-SHA-256 over `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id`, and uses that output as the HMAC key. It then XORs the body with a 32-byte stream produced by HMAC-SHA-256 over the 8-byte big-endian block number. The client performs the same steps with the `t` in the URL (or the Bearer JWT it sent), the JWT's `sub`, and the headers above.
+
+Which JWT a body is bound to depends on which rule let the request through:
+
+| Body | Bound to | `Cache-Control` |
+| --- | --- | --- |
+| Unlocked by a grant — a purchase, a ticket, or a credit on the episode | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
+| Free (`price = 0`) | The episode's rotating media token (see [Media tokens](#media-tokens-audience-media)) and its synthetic `sub` | `public, max-age=3600` |
+
+- `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`
+- `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
+
+Building requires libvips. For the details, see [cmd/publira/README.md](cmd/publira/README.md).
+
+## Platform Console URL
+
+- `PUBLIRA_PLATFORM_APP_URL`
+  - The base URL of the Platform Console that the worker builds the password reset and email change confirmation links from
+  - Example: `https://platform.example.com`
+  - When unset, `http://platform.localhost:3080` is used for local development
+
+## Internal URLs for Next.js revalidation
+
+With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `publira server` as soon as the write commits, and by `publira worker` for whatever that attempt did not finish. The tags go to every app whose URL is set, and an app without one is not a destination, so a deployment that runs no Platform Console leaves `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` unset. Both processes log their destinations at startup, and refuse to start when the token is set with none of the three, or with one that is not an absolute URL.
+
+- `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
+- `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
+- `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (for example `http://web-platform:4100`)
+
+These are URLs reachable inside the private network, not the public ones meant for browsers. The URL a payment provider returns the browser to is built from the tenant's `domain` on the scheme in `PUBLIRA_TENANT_URL_SCHEME`, not from any of them.
+
+## Email renderer
+
+- `PUBLIRA_EMAIL_RENDERER_URL`
+  - The URL of the ConnectRPC service that the worker uses to render the HTML part of its emails
+  - Example: `http://email-renderer:8080` (container-to-container)
+  - When unset, the worker delivers text-only mail. There is no default URL
+
+## Mobile push (Firebase Cloud Messaging)
+
+The worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.
+
+No environment variable configures it. Each tenant ships its own build of the app with its own Firebase project, so the credentials are a tenant setting: a tenant administrator saves the project id and a service account key through the Admin API's `AdminFcmSettingsService`, and the key is sealed with `PUBLIRA_SECRET_ENCRYPTION_KEYS` before it is stored. The key is refused unless it is a `service_account` credential for that same project, since FCM HTTP v1 accepts no other kind. No RPC returns it: a read answers whether credentials are stored and which project and service account they name.
+
+The worker reads the tenant's credentials for each delivery and rereads them at most every ten seconds, so a replacement or a removal reaches it without a restart. A tenant with no credentials has mobile push off: its devices are skipped and kept, and its Web Push and bell notifications are delivered as usual.
+
+A send reaches the devices it can. A run that reached none of them is retried as an outage; one that reached some completes, because a retry re-runs the whole send and FCM keeps no delivery record, so the devices that already took the message would take it again once per remaining attempt. The devices a partial run could not reach lose that alert and keep the `notifications` row behind it.
+
+## Web Push
+
+The public site registers browser subscriptions and the worker delivers them with VAPID. No environment variable configures it: the key pair is a platform setting generated the first time the Platform API's `GetPlatformWebPushSettings` is called or `publiractl webpush init` runs, with the private key sealed by `PUBLIRA_SECRET_ENCRYPTION_KEYS`. A process started without those keys cannot generate one: the read answers `failed_precondition`, and `publiractl webpush init` exits non-zero.
+
+Web Push is off until an operator saves a subject — the `mailto:` or `https:` contact a push service may reach the sender at — through `UpdatePlatformWebPushSubject` or `publiractl webpush init`. Until then web registrations are refused, the tenant response carries no public VAPID key, and the worker sends nothing to a browser. Each process rereads the setting every ten seconds, so a saved subject reaches every instance without a restart. A push service response of `410 Gone` removes the expired subscription.
+
+## Distributed tracing (OpenTelemetry)
+
+Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by default**: unless `PUBLIRA_TRACING_ENABLED` is set, neither the TracerProvider nor the propagator is replaced, and the behavior is exactly what it was before the instrumentation was introduced (the processes start without any collection backend).
+
+### What gets a span
+
+| Layer | Instrumentation | Span |
+| --- | --- | --- |
+| Inbound Connect / gRPC | `connectrpc.com/otelconnect` | One per RPC, named `AdminSeriesService/ListSeries` (the proto package is dropped from the name because the `rpc.service` attribute carries it) |
+| Inbound plain HTTP (the image routes) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
+| DB queries | `XSAM/otelsql` (wrapping the pgx driver in `internal/sqldb`) | One `db.query` per statement |
+| The scheduled publication batch | `internal/publishepisodes` | One parent span per `RunOnce` cycle |
+| A maintenance job's run on the worker | `internal/maintenancejobs` | One parent span per pass, named by its River kind (`maintenance.aggregate_content_stats`) and carrying `river.job.id` and `river.job.attempt`. A failed pass sets the span's status to error |
+| The Outbox worker | `internal/outbox` | One per drain and one per processed event (`outbox.drain` / `outbox.process`) |
+| Outbound HTTP (Next.js revalidation / email-renderer) | The `otelhttp` Transport | A client span and `traceparent` propagation |
+
+Propagation uses W3C Trace Context (`traceparent`) and Baggage. An inbound `traceparent` is **trusted as the parent**, which is what connects the web app, the API, and the DB queries beyond it into a single trace. It can be trusted because the gateway strips inbound headers; the next section describes that boundary.
+
+### Trace context arriving from outside
+
+**The trust boundary lives at the gateway**: `traceparent` / `tracestate` / `baggage` are removed from every request that came through a public entrypoint, as default middleware on that entrypoint.
+
+| Environment | Where it is stripped |
+| --- | --- |
+| Development | Traefik in `.devcontainer/compose.yaml`. The `web` entrypoint gets the `strip-trace-context` middleware (empty values in `headers.customRequestHeaders`) by default |
+| Production | The gateway's external entrypoint removes the same three headers before passing the request to the backend |
+
+Because the headers are gone, the RPC becomes a **new root span** on the API side. The caller's trace ID is not adopted, and setting `sampled=01` does not override the 10% sampling in production. A trace is joined up only inside the gateway.
+
+First-party server-to-server traffic does not pass through the gateway, so this removal does not apply to it. SSR (web-host / web-admin / web-platform) connects directly to the API's gRPC port, and publira server and worker call the Next.js revalidation endpoints directly through `PUBLIRA_WEB_*_INTERNAL_URL`. `traceparent` passes through in both cases, so "web app → API → DB query" remains a single trace.
+
+The mobile app and the browser run on the user's device, so they are not first-party and their trace context is stripped at the gateway.
+
+The stripping by Traefik in the development environment is verified by the connectivity checks in [`../e2e/routing/README.md`](../e2e/routing/README.md), which send requests that actually carry those headers.
+
+### Operational monitoring for the asynchronous audit log
+
+The asynchronous audit logs of the tenant and the platform console namespaces record the following low-cardinality OpenTelemetry metrics. `auditlog.entry_type` is `platform` or `tenant`, and `auditlog.drop_reason` is one of `queue_full`, `retry_exhausted`, and `shutdown`. Neither `action` nor the tenant ID is included as a metric attribute.
+
+| Metric | Kind | Meaning |
+| --- | --- | --- |
+| `publira.auditlog.queue.depth` | gauge | Events queued and waiting to be persisted |
+| `publira.auditlog.entries.enqueued` | counter | Events accepted into the queue |
+| `publira.auditlog.entries.persisted` | counter | Events persisted asynchronously |
+| `publira.auditlog.persist.failures` | counter | Failed persistence attempts (retries included) |
+| `publira.auditlog.entries.dropped` | counter | Events dropped before being persisted |
+
+Persistence retries, final drops, queue overflows, and shutdown drain deadlines are written to the structured log too. A continuously growing `queue.depth`, `persist.failures`, and `entries.dropped` are candidates for alerting. The meters are exported once an OTel MeterProvider is configured.
+
+### Resource attributes
+
+| Key | Value |
+| --- | --- |
+| `service.name` | `publira server` resolves it per Connect namespace, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls — and `publira-image-server` for the image routes. `publira worker` defaults to `publira-worker` and adds one per periodic job on top — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `publiractl job` reports for that job, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `publiractl job` resolves it per job, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features` / `publira-close-royalty-statements` / `publira-sync-google-play-voided-purchases`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
+| `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
+
+A container build carries no `.git`, so pass `VERSION` (`task docker:build:server VERSION=v1.2.3`) to stamp the version into the binary. Without it the value is `dev`.
+
+### Span attributes
+
+On top of the standard attributes that `otelconnect` / `otelhttp` / `otelsql` add (`rpc.system` / `rpc.service` / `rpc.method`, `http.request.method` / `http.route`, `db.system.name`), the following are set.
+
+| Key | When |
+| --- | --- |
+| `tenant.public_id` | After the tenant is resolved (the tenant-scope interceptor in Connect, and host resolution on the image routes) |
+| `enduser.id` | After authentication succeeds. The value is the public ID |
+| `db.operation.name` | The SQL keyword (`SELECT` / `INSERT` / …) |
+| `db.query.summary` | The query name taken from sqlc's `-- name: GetTenantByID :one` |
+| `db.query.text` | The generated SQL statement. sqlc emits it with placeholders (`$1`) intact, and argument values are never recorded |
+
+Email addresses, raw tokens, passwords, request bodies, and the `Authorization` header are never put on a span. Using public IDs instead of internal UUIDs is part of the same policy.
+
+### Sampling
+
+Sampling is parent-based, and only the handling of root spans changes with the deployment environment.
+
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT`            | Root span |
+| ------------------------------------------- | --------- |
+| `development` (default)                     | All       |
+| Anything else (`staging` / `production`, …) | 10%       |
+
+Setting `OTEL_TRACES_SAMPLER` bypasses these defaults and lets the SDK interpret the value. Heavy attributes such as `db.query.text` are only attached to sampled spans, so in production the full SQL text is only present on the sampled 10%.
+
+### Correlation with logs
+
+The slog handler in `internal/logging` adds `trace_id` / `span_id` to logs recorded with a `context.Context` that carries a span (the `*Context` methods such as `ErrorContext`). Each API's `internalDBError`, the shared path for DB errors, goes through it, so a `trace_id` from the logs can be searched directly in Jaeger or a similar tool.
+
+### Environment variables
+
+Only two variables are our own — the enable flag and the deployment environment. The rest are read by the OpenTelemetry SDK itself, so their names are unchanged.
+
+| Variable | Purpose |
+| --- | --- |
+| `PUBLIRA_TRACING_ENABLED` | Enables tracing (`true` / `1`, and so on). Unset or uninterpretable values mean disabled |
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `development` (default) / `staging` / `production`. Determines `deployment.environment.name` and the default sampling rate |
+| `OTEL_TRACES_EXPORTER` | `otlp` (default) / `console` / `none` |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` / `grpc` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | The destination (for example `http://jaeger:4318`) |
+| `OTEL_SERVICE_NAME` | Overrides `service.name` |
+| `OTEL_RESOURCE_ATTRIBUTES` | Additional resource attributes |
+| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | The sampler. Setting it bypasses the defaults above |
+
+To watch the behavior without a collection backend, `OTEL_TRACES_EXPORTER=console` prints spans to standard output.
+
+```bash
+PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-server
+```
+
+The Dev Container bundles Jaeger (its UI is at `http://localhost:16686`). For the details, see [../README.md](../README.md#distributed-tracing-jaeger).
+
+## Secret encryption configuration (AES-GCM)
+
+There is a foundation for encrypting secrets at rest with AES-GCM. For now, set the following environment variables when it is applied to a path that stores a secret field.
+
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS`
+  - Format: `key-id-1:base64key,key-id-2:base64key`
+  - `base64key` is a 16/24/32-byte AES key encoded in Base64 (standard or URL-safe)
+- `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`
+  - Names a key-id contained in `PUBLIRA_SECRET_ENCRYPTION_KEYS`
+  - New encryptions use this key-id
+
+Key rotation policy:
+
+1. Add the new key to `PUBLIRA_SECRET_ENCRYPTION_KEYS`
+2. Switch `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` to the new key ID
+3. Re-store and re-encrypt the existing data to gradually replace the ciphertext produced with the old key
+4. Remove the old key only after confirming that no data is decrypted with it any more
+
+Notes:
+
+- Never log a key or a plaintext
+- On an encryption or decryption failure, do not continue — treat it as a failure
+
+## Authentication (JWT access tokens)
+
+The API issues **HS256 JWT access tokens** from an email address and a password (`Login` / `Logout`), or from an Apple or Google ID token (`LoginWithIdToken`).  
+Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Authorization: Bearer <token>` is sent to the API.
+
+| Item | Value |
+| --- | --- |
+| Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start) |
+| TTL | 24h |
+| Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` |
+| Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
+| Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_host_auth` |
+
+### Sign in with Apple and Google
+
+Each tenant enables the providers its readers may sign in with through the Admin API's `TenantSettingsService.UpdateTenantSignInSettings`: for Google, the OAuth client IDs of its web application and its iOS app; for Apple, the Services ID the storefront signs in with, and the team, key ID, and `.p8` key of a Sign in with Apple key. The iOS app signs in with the bundle identifier of the tenant's iOS app association. The key is sealed with `PUBLIRA_SECRET_ENCRYPTION_KEYS` before it is stored, and no RPC returns it. `TenantService.GetTenant` answers the providers that are ready and their public client IDs.
+
+`AuthService.LoginWithIdToken` verifies the token against the provider's published keys (`https://appleid.apple.com/auth/keys`, `https://www.googleapis.com/oauth2/v3/certs`), refuses a nonce it has accepted before, and finds the reader by the linked provider account, by the address the provider vouches for, or creates one. `ListMyIdentities` and `UnlinkIdentity` manage the links; an account without a password keeps its last one, and confirms `DeleteMe` with a fresh ID token instead of a password.
+
+An Apple sign-in may carry its authorization code. `publira worker` exchanges it at `https://appleid.apple.com/auth/token` for a refresh token the link keeps, sealed, and revokes that token at `https://appleid.apple.com/auth/revoke` when the link or the account is deleted (`apple_sign_in_code_exchange` / `apple_sign_in_token_revoke` outbox events).
+
+### Media tokens (audience `media`)
+
+A browser cannot attach an `Authorization` header to an `<img>` request. So for a reader who may view a paid episode, `GetEpisodeDetail` returns the body image URLs with a `t=<JWT>` query appended.
+
+| Item | Value |
+| --- | --- |
+| Audience | `media` (separate from `public`; it does not pass to the API, and pasting an access token into the URL does not open the image) |
+| TTL | 15 minutes |
+| Scope | Only the single episode it was issued for (claim `eid`) |
+| Revocation | The same `users.credentials_version` as the access token |
+
+The token only states who the reader is; whether the image may be viewed is decided by the image routes, which consult purchases and access_tickets on every request, under the same rules as the API.
+
+Bodies that are free to everyone — `price = 0`, or a priced episode inside an open `episode_free_windows` period — get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
+
+| Item | Value |
+| --- | --- |
+| Subject | The synthetic `anonymous-free-episode`. A `users.public_id` is exactly 12 Base58 characters, so it resolves to no user and the token names no grant |
+| TTL | Two 24-hour rotation windows. `iat` is the start of the current window, so a token in hand always has at least one full window left |
+| Scope | Only the single episode it was issued for (claim `eid`) |
+| Revocation | None to revoke: it carries no reader, and rotation is what ends a copied URL |
+
+Every reader who opens one free episode within one window is handed the identical URL, which is what keeps a free page shareable. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a grant are `403` whether the token is present or not.
+
+### Admin media tokens (audience `admin-media`)
+
+Episode image previews in the admin UI also go through the browser's `<img>` / `next/image`, so they carry no `Authorization` either. `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` return the body image URLs with a `t=<JWT>` query appended.
+
+| Item | Value |
+| --- | --- |
+| Audience | `admin-media` (separate from both `media` and `admin`; it unlocks nothing on a tenant site and does not pass to the admin API) |
+| TTL | 15 minutes |
+| Scope | Only the single episode it was issued for (claim `eid`) |
+| Revocation | The same `users.credentials_version` as the access token |
+
+The token only states who the administrator is; on a console host the image routes consult the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
+
+## Admin MFA (TOTP)
+
+A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238) plus ten one-time recovery codes. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus`.
+
+| Item | Value |
+| --- | --- |
+| Algorithm | TOTP, 30-second period, SHA-1, 6 digits, a 160-bit secret — what every mainstream authenticator app assumes when the otpauth URI omits it |
+| Acceptance window | The current step and one on either side |
+| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a verify challenge token that already bought a session |
+| Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
+| Recovery codes | Ten per batch, shown once at enrollment or regeneration, stored as bcrypt hashes. Spending one leaves the row with `used_at` set |
+| Failure limit | Five refused codes lock the account for 15 minutes. The counter is per account and covers login, disabling, and regeneration alike |
+| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated` in `audit_logs` |
+
+### The challenge that stands in for half a session
+
+`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the platform policy requires one. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
+
+`VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
+
+A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design and is not recorded — once it enables the factor, the same token is refused with `mfa is already enabled`.
+
+### Requiring the factor
+
+`mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
+
+Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
+
+## View events (soft PV) and anonymous actors
+
+`ContentViewService.RecordContentView` records a view event in `content_events` for the series or episode detail page a reader opened. This is the Phase 1 soft PV, and it means nothing more than "the reader opened the page" (hard PV, which observes whether the body was actually read, comes later). The target is resolved before anything is written, so an unpublished, cross-tenant, or missing public ID is `not_found`; once it resolves, the recording is decoupled from the main processing and the RPC succeeds even when the write fails.
+
+The detail RPCs deliberately record nothing: their callers cache them, so recording lives in its own RPC and the reader's request is the only thing that files a view.
+
+| Item | Value |
+| --- | --- |
+| Event type | `episode_view` (episode target) / `series_view` (series target) |
+| actor | `user_id` while signed in, otherwise the `anonymous_id` from the `publira_aid` cookie (`content_events.actor_key` unifies them with `COALESCE`) |
+| Debounce | Fixed 30-minute epoch buckets (`floor(unix / 1800)`) plus `ON CONFLICT DO NOTHING` against a partial UNIQUE index. It is not a sliding window |
+| `series_id` | Resolved from `episodes` rather than taken from client input |
+| Authentication | Optional. A rejected or unverifiable bearer does not fail the call; the view falls back to the `publira_aid` cookie, and is recorded only if the request carried one. No identifier is minted for a caller that presented a session |
+| Prefetch | Nothing is recorded when `Sec-Purpose` / `Purpose` / `X-Purpose` / `X-Moz` / `Next-Router-Prefetch` indicate a speculative request |
+| Payload | `{"pv_kind":"soft"}` only. No personal data such as an IP address, a User-Agent, or an email address is stored |
+
+### The `publira_aid` cookie
+
+A cookie whose only purpose is counting signed-out readers. Its value is a UUIDv7 assigned by the server and contains nothing else. When the cookie is absent, or its value does not parse as a UUID, a new one is assigned and returned in the response's `Set-Cookie`.
+
+| Attribute | Value                                  |
+| --------- | -------------------------------------- |
+| Name      | `publira_aid`                          |
+| Path      | `/`                                    |
+| Max-Age   | 180 days                               |
+| Others    | `HttpOnly` / `Secure` / `SameSite=Lax` |
+
+## Rating events
+
+`RatingService.RateEpisode` records a signed-in reader's reaction to one episode, on a 1–5 scale with no neutral point. The reader's own score lives in `episode_ratings`, and every press that raises it files a `rating` event as well. Unlike a view event, it is an explicit action by the reader, so a failure is returned as an error rather than swallowed.
+
+| Item | Value |
+| --- | --- |
+| Event type | `rating` |
+| actor | `user_id` (sign-in required; anonymous reactions are not accepted) |
+| Target | `series_id` + `episode_id`, both resolved from `episodes` rather than taken from client input |
+| Score | `rating_score` carries the points the press added, not the score the reader now stands at |
+| Append-only | Pressing again appends another event; `episode_ratings` holds the score itself |
+
+There is no RPC for withdrawing or lowering a reaction, and none for rating a series directly. How expressive one press is follows `tenant_config.episode_rating_mode`, which a series may override in `series_listings.episode_rating_mode`: `single` stores the whole 5 on the first press, `multiple` lets the reader press their way up to it.
+
+| RPC | Answers |
+| --- | --- |
+| `RatingService.GetMyEpisodeRating` | This reader's score for one episode, the readers who have reacted to it, and the press mode governing it |
+| `RatingService.GetMySeriesRating` | The mean of this reader's own scores across the episodes of one series they reacted to |
+
+### The derived series rating
+
+A series is rated by the episodes it is made of. `CatalogService.GetSeriesDetail` carries `rating_average` and `rating_count` on the series, both derived on read and both absent — `0` — until the reactions reach the daily aggregates.
+
+| Item | Value |
+| --- | --- |
+| Source | The `series` rows of `content_daily_stats`, which already roll up every episode of the series |
+| Rate | `rating_sum / complete_count`, so a long or widely read series does not outrank a beloved one on volume |
+| Prior | Twenty imagined completed reads at the tenant's own mean, which a series with few finished reads is pulled towards. The mean comes from `tenant_rating_totals`, which `aggregate-content-stats` restates on the run that changes it |
+| Scale | Held to 1–5, the scale the reaction itself is given on |
+| `rating_count` | `series_rating_counts`, a trigger-maintained tally of the readers who reacted, counting each reader once per series |
+
+## Completion events and read-through
+
+`EpisodeReadService.MarkEpisodeAsRead` stores the business state — one `episode_reads` row per member and episode, keeping the first read time. Each stored read is also projected into `content_events` as an `episode_complete` event, which is what the aggregates and the ranking read; the two are kept apart so retention, re-aggregation, and metric definitions do not have to share one table.
+
+| Item | Value |
+| --- | --- |
+| Event type | `episode_complete` |
+| actor | `user_id` (sign-in required, so a completion has no anonymous form) |
+| Source | `source_table = 'episode_reads'`, `source_id = episode_reads.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what makes the projection replayable |
+| `occurred_at` | The read's own `read_at`, so a late projection still files the event on the day the member finished |
+| `series_id` | Resolved from `episodes` rather than taken from client input |
+| Failure | Swallowed. The read is already stored, and `publiractl job project-episode-reads` files whatever the request path lost |
+
+### The member's own reading history
+
+`EpisodeReadService.ListMyEpisodeReads` reads those same rows back for the member who wrote them, most recently finished first, with the episode and series each one names. It is the reader's counterpart of the operator's read-through report: cursor-paginated like every list RPC (`proto/README.md`), session-scoped, and `Cache-Control: private, no-store`.
+
+| Item | Value |
+| --- | --- |
+| Order | `read_at` descending, `episode_reads.id` as the tiebreaker, over `idx_episode_reads_tenant_user_read_at` |
+| Publication | Re-checked. An episode whose series or listing is no longer published drops out, so the history never names something the storefront has taken down |
+| Access | Not re-checked. The member did finish the episode, so an expired rental stays in the history the way an expired purchase stays in `ListMyPurchases` |
+
+### Read-through rate
+
+`content_daily_stats` carries the two halves of the rate per episode, rolled up to the series by summing its episodes:
+
+| Column | Meaning |
+| --- | --- |
+| `complete_count` | `episode_complete` events on that day |
+| `member_view_count` | `episode_view` events on that day whose `user_id` is set |
+
+The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete days in the tenant's own time zone, the same calendar day the audit log's date filter means, and names that zone in the response.
+
+## Comment events
+
+`CommentService.PostEpisodeComment` under the `immediate` comment mode and `AdminCommentService.ApproveComment` under `approval_required` are the two ways a comment becomes public, and each files a `comment` event in the transaction that publishes it. A comment that never became public files none: one waiting for approval has no event, and neither has one removed or withdrawn while it was still waiting.
+
+| Item | Value |
+| --- | --- |
+| Event type | `comment` |
+| actor | `user_id` (sign-in required, so a comment has no anonymous form) |
+| Source | `source_table = 'episode_comments'`, `source_id = episode_comments.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what keeps a comment approved after a restore from filing a second event |
+| `occurred_at` | The comment's own `published_at`, so the event falls on the day the comment became readable rather than the day it was written |
+| `series_id` | Resolved from `episodes` rather than taken from client input |
+| Failure | Returned. The event shares the transaction that published the comment, because no batch replays this projection the way `project-episode-reads` replays completions |
+
+### Comment counts
+
+`content_daily_stats.comment_count` is built from `episode_comments` rather than from those events: it counts the comments whose `published_at` falls on that day and that are still `published` when the aggregate runs. A comment hidden or withdrawn afterwards keeps the event it earned, leaves the count from the next rebuild of its day, and does not disturb a row `aggregate-content-stats` already wrote for a past day. The ranking snapshots and the recommendation features read that column alongside the other engagement totals.
+
+## Reading positions
+
+`EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, whether `episode_reads` already records it as finished, and every episode of the series they have finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone. That last list is read from `episode_reads` rather than derived from the progress row, because finishing an episode and saving a position in it are separate writes.
+
+| Item | Value |
+| --- | --- |
+| Session | Required. Every one of these RPCs answers for the signed-in member alone and responds `Cache-Control: private, no-store` |
+| Isolation | The member policy `episode_reads` uses: `app.current_tenant_id` and `app.current_user_id` both have to match the row |
+| `page_index` | Zero-based and below `page_count`. A page outside the episode is `invalid_argument`, an episode with no pages `failed_precondition` |
+| `page_count` | Counted from `episode_images` on every save, never taken from the request |
+| Access | Publication and paid-body access are checked on save and on read alike, so an unpublished episode or an expired rental has no position to resume |
+
+## API namespace separation
+
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces and keeps them apart by what it registers on each of its two listeners:
+
+- Edge-facing listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`)
+  - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API — under `/api`, plus `GET /images/…`, `/livez`, and `/readyz`
+  - This is what the reverse proxy forwards `/api` and `/images` to, prefixes kept, on every host
+- Internal listener, `:8100` (changeable with `PUBLIRA_PUBLIC_API_GRPC_ADDR`)
+  - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
+  - web-host, web-admin, and web-platform dial it directly over the private network
+
+The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+
+## Database users
+
+Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host and on the `publira_admin` pool on a console host.
+
+| Namespace or process | DB user | Environment variable | Local default |
+| --- | --- | --- | --- |
+| `publira.platform.v1` | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
+| `publira.admin.v1` | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
+| `publira.v1` | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
+| worker | `publira_outbox` (BYPASSRLS) | `PUBLIRA_WORKER_DB_URL` | `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable` |
+| worker periodic jobs | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
+| worker maintenance jobs | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl db | the schema owner (the superuser locally) | `PUBLIRA_DB_URL`, with no fallback | none: the command refuses to run without it |
+| publiractl job project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-content-events | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_EVENTS_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-ranking-snapshots | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-mfa-challenges | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_MFA_CHALLENGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-withdrawn-comments | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_COMMENT_PURGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job close-royalty-statements | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job sync-google-play-voided-purchases | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+
+`publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
+
+The platform console's own tables (`platform_*`) sit outside that split. They carry no row-level security — the console spans tenants, so a tenant isolation policy would have nothing to isolate on — which leaves the grant as the only control over the operators' password hashes and the platform SMTP credentials. The baseline seed therefore revokes every privilege on the whole `platform_` prefix from `publira_public`, `publira_admin`, `publira_content_stats`, and `publira_outbox`; matching the prefix rather than a list is what covers a table a later migration adds, since `ALTER DEFAULT PRIVILEGES` would otherwise grant it to all of them. `publira_platform` keeps them, `publira_outbox` is granted back read on the six its mail and push paths need and write on `platform_user_password_reset_tokens`, where it issues the console's reset links, and `publira_ticker` — which the revoke does not name, holding no blanket grant to take away — reaches only the four its own per-table list gives it. `TestPlatformTablesAreOutOfReachOfTheTenantRoles` and its neighbours in `internal/db` read the prefix out of the catalog, so the day a tenth `platform_` table lands they assert on it too.
+
+`PUBLIRA_WORKER_DB_URL` resolves on its own, with no fallback to `PUBLIRA_DB_URL`: leaving it unset lands on the development default in the table above and fails to authenticate anywhere that role's password is not `outboxpass`, rather than silently running the worker on the migration tooling's connection. Local development sets it to `publira_outbox` too — a `dev-env` profile writes that URL, and the Dev Container leaves the variable unset and takes the same role from the default — so the grants that role holds, `CREATE ON SCHEMA public` among them, are exercised on the first local run instead of on a production deploy.
+
+`PUBLIRA_TICKER_DB_URL` resolves on its own for the same reason, and the worker opens it as a second pool: the periodic jobs run inside that process but must not inherit the `CREATE ON SCHEMA public` their host holds for `rivermigrate`. `publira_ticker` is also the one role the seed grants table by table — it is named in no blanket `GRANT ... ON ALL TABLES` and in no `ALTER DEFAULT PRIVILEGES`, so a table a later migration adds reaches it only when someone puts it in that list. The jobs read a known set of catalog, follow, announcement, and recipient tables and write a handful of them, which is little enough to enumerate, and `TestTickerRole*` in `internal/db` runs them on this connection so a query that starts reading a table the seed never granted fails there rather than in production.
+
+River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed and with `publiractl db roles`, so running either again against an existing database is the fix.
+
+### Local development
+
+`task db:setup` applies `db/seeds/baseline/`, which creates the six login users in the table above without a password, and then `db/seeds/dev/000_role_passwords.sql`, which gives them the development passwords the local defaults above connect with.
+
+### Production
+
+`publiractl db roles` creates the users from the same files and sets the password each is given, after `publiractl db migrate` and on the same superuser connection; [its README](cmd/publiractl/README.md#db) has the flags and the order of first use. `task db:seed ENV=prod` applies the same files through `psql` and leaves every new user without a password, to be set with `ALTER ROLE ... PASSWORD` or with `publiractl db roles`.
+
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `publiractl job` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+
+## Notes on initial data
+
+- Using AuthService requires at least some data in `tenants` and `users`.
+- Use a `bcrypt` hash for `users.password_hash`.
+- Health checks (shared by the server, the worker, and the web apps):
+  - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
+  - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
+  - Server / worker: at minimum a DB `Ping`
+  - `publira server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
+  - Web (`web-admin` / `web-host` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
+  - Example `/readyz` responses (JSON):
+    - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`
+    - Dependency failure: `{"status":"unavailable","checks":{"db":{"status":"error","error":"..."}}}` (HTTP 503)
+    - Startup gate not yet open: `{"status":"starting","checks":{...}}` (HTTP 503)

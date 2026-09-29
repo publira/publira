@@ -1,0 +1,186 @@
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+import { applyScenarioSql } from "../src/db";
+import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
+import {
+  RANKED_GENRE,
+  RANKING_COMPUTED_ON,
+  RANKING_ENTRY_COUNT,
+  R18_RANKED_SERIES,
+  RANKING_SERIES,
+  seedSeriesImageId,
+} from "../src/scenarios/ranking";
+import { hostPath, WEB_HOST_OTHER_TENANT_BASE_URL } from "../src/urls";
+
+/**
+ * The ranking a reader sees: the numbered module the top page opens with, the
+ * chart behind it, the two periods and the age ratings that chart is kept in,
+ * and the order a genre tile draws its covers in.
+ *
+ * The positions come from `db/seeds/scenarios/170_ranking.sql`, which
+ * `task e2e:db` applies for the whole stack, so this suite seeds nothing of its
+ * own. The last test is the other half of the module — a tenant the batch has
+ * not ranked keeps the recommendation shelf — and that is the Boundary Tenant,
+ * which nothing ranks.
+ */
+
+/** One row of the chart, found by the work it is about. */
+const chartRow = (page: Page, title: string) =>
+  page.locator("main ol > li").filter({ hasText: title });
+
+test.describe("web-host ranking", () => {
+  test("the top page opens the week's chart with its positions", async ({
+    page,
+  }) => {
+    const response = await page.goto(hostPath("/"));
+    expect(response?.status(), await page.content()).toBe(200);
+
+    const chart = page.getByRole("region", { name: "Top 10 this week" });
+    await expect(chart.getByText("No. 1", { exact: true })).toBeVisible();
+    await expect(
+      chart.getByRole("link", { name: RANKING_SERIES.climbed.title })
+    ).toBeVisible();
+
+    await chart.getByRole("link", { name: "View all" }).click();
+
+    // `exact`: Playwright matches an accessible name as a case-insensitive
+    // substring, and this page's own copy talks about the ranking throughout.
+    await expect(
+      page.getByRole("heading", { exact: true, level: 1, name: "Ranking" })
+    ).toBeVisible();
+  });
+
+  test("the weekly chart states every position and how it moved", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/ranking?period=weekly"));
+
+    await expect(
+      page.getByText(`Updated ${RANKING_COMPUTED_ON}`)
+    ).toBeVisible();
+    await expect(page.locator("main ol > li")).toHaveCount(RANKING_ENTRY_COUNT);
+
+    const climbed = chartRow(page, RANKING_SERIES.climbed.title);
+    await expect(climbed).toContainText(
+      `No. ${RANKING_SERIES.climbed.weeklyRank}`
+    );
+    await expect(climbed).toContainText(RANKING_SERIES.climbed.weeklyMovement);
+
+    const entered = chartRow(page, RANKING_SERIES.held.title);
+    await expect(entered).toContainText(
+      `No. ${RANKING_SERIES.held.weeklyRank}`
+    );
+    await expect(entered).toContainText(RANKING_SERIES.held.weeklyMovement);
+
+    const fell = chartRow(page, RANKING_SERIES.fell.title);
+    await expect(fell).toContainText(`No. ${RANKING_SERIES.fell.weeklyRank}`);
+    await expect(fell).toContainText(RANKING_SERIES.fell.weeklyMovement);
+  });
+
+  test("the daily tab is a chart of its own, and the URL says which", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/ranking"));
+
+    const held = chartRow(page, RANKING_SERIES.held.title);
+    await expect(held).toContainText(`No. ${RANKING_SERIES.held.dailyRank}`);
+    await expect(held).toContainText(RANKING_SERIES.held.dailyMovement);
+
+    const entered = chartRow(page, RANKING_SERIES.entered.title);
+    await expect(entered).toContainText(
+      `No. ${RANKING_SERIES.entered.dailyRank}`
+    );
+    await expect(entered).toContainText(RANKING_SERIES.entered.dailyMovement);
+
+    await page.getByRole("link", { name: "Weekly" }).click();
+
+    await expect(page).toHaveURL(/period=weekly/u);
+    await expect(chartRow(page, RANKING_SERIES.held.title)).toContainText(
+      `No. ${RANKING_SERIES.held.weeklyRank}`
+    );
+  });
+
+  test("a rated ranking is a chart of its own behind the rating confirmation, and keeps its rating across periods", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/ranking?period=weekly"));
+
+    await expect(page.locator("main ol > li")).not.toHaveCount(0);
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+
+    await page
+      .getByRole("navigation", { name: "Ranking age rating" })
+      .getByRole("link", { name: "R18" })
+      .click();
+
+    await expect(page).toHaveURL(/period=weekly&rating=r18/u);
+    // A rated chart is a page of its own, kept out of the index.
+    await expect(page).toHaveTitle(/R18 ranking/u);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/u
+    );
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      /\/ranking\?rating=r18$/u
+    );
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
+    await page.getByRole("button", { name: "I am 18 or older" }).click();
+
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toContainText(
+      `No. ${R18_RANKED_SERIES.weeklyRank}`
+    );
+
+    await page.getByRole("link", { name: "Daily" }).click();
+
+    await expect(page).toHaveURL(/rating=r18/u);
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toContainText(
+      `No. ${R18_RANKED_SERIES.dailyRank}`
+    );
+  });
+
+  test("a genre tile draws its weekly leaderboard before its newest series", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/genres"));
+
+    const tile = page
+      .locator("main li")
+      .filter({ has: page.getByRole("link", { name: RANKED_GENRE.name }) });
+    const covers = tile.locator("img");
+    await expect(covers).toHaveCount(RANKED_GENRE.coverSeriesNumbers.length);
+
+    // The covers are `alt=""`, so the series each one is comes from its URL.
+    const imageIds = await covers.evaluateAll((images) =>
+      images.map(
+        (image) =>
+          /\/images\/series\/(?<id>[^/]+)\//u.exec(
+            image.getAttribute("src") ?? ""
+          )?.groups?.id
+      )
+    );
+    expect(imageIds).toEqual(
+      RANKED_GENRE.coverSeriesNumbers.map(seedSeriesImageId)
+    );
+  });
+
+  test("a tenant the batch has not ranked keeps the recommendation shelf", async ({
+    page,
+  }) => {
+    applyScenarioSql(MULTI_TENANT_SCENARIO);
+
+    await page.goto(`${WEB_HOST_OTHER_TENANT_BASE_URL}${hostPath("/")}`);
+
+    const shelf = page.getByRole("region", { name: "Recommended" });
+    await expect(
+      shelf.locator(`a[href^="${hostPath("/series/")}"]`).first()
+    ).toBeVisible();
+    await expect(shelf.getByRole("link", { name: "View all" })).toHaveAttribute(
+      "href",
+      hostPath("/series")
+    );
+    await expect(page.getByText("No. 1", { exact: true })).toHaveCount(0);
+  });
+});

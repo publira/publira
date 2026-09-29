@@ -1,0 +1,424 @@
+// Package contentstats rebuilds the daily engagement aggregates used by
+// rankings. It deliberately reads every source of truth for one day and
+// replaces that tenant's snapshot in a single transaction.
+package contentstats
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/tenantday"
+	"github.com/publira/publira/server/internal/tenantlock"
+)
+
+// Aggregator rebuilds content_daily_stats from content_events, purchases and
+// episode_comments.
+// Its database connection must use a role with BYPASSRLS (or be a superuser),
+// because each run reads and writes every tenant.
+type Aggregator struct {
+	db *sql.DB
+}
+
+// Result describes one aggregate run. Every count covers the tenants the run
+// actually finished: each tenant commits on its own, so on an error the counts
+// describe the tenants that succeeded rather than the ones that were tried.
+type Result struct {
+	TenantCount int
+	RowCount    int64
+}
+
+// New constructs an Aggregator backed by db.
+func New(db *sql.DB) *Aggregator {
+	return &Aggregator{db: db}
+}
+
+// Options describes one aggregate run.
+type Options struct {
+	// StatDate pins the calendar day to rebuild, read as each tenant's own
+	// local date. Zero means every tenant's own yesterday, which is a
+	// different day for tenants whose zones sit on either side of the run.
+	StatDate time.Time
+}
+
+// Run replaces the stats for one calendar day for every tenant. A day is the
+// tenant's own: content_daily_stats.stat_date covers the instants from that
+// tenant's local midnight to the next, the same day the console's date filters
+// mean. Each tenant is its own transaction, so a failure part-way through
+// leaves the tenants already rebuilt with a complete day rather than a
+// half-written one.
+//
+// One tenant's failure does not stop the others: a lock timeout on one tenant
+// is no reason to leave every tenant after it without the day. The run
+// finishes what it can and returns every failure together, so the exit status
+// still reports the day as failed.
+//
+// A cancelled context is the one failure that does stop the run: every tenant
+// left would fail for that same reason, so the loop ends at the tenant that
+// hit it rather than working through the rest.
+func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
+	if a == nil || a.db == nil {
+		return Result{}, errors.New("content stats aggregator requires a database")
+	}
+	if err := a.requireBypassRLS(ctx); err != nil {
+		return Result{}, err
+	}
+
+	tenants, err := tenantday.List(ctx, a.db)
+	if err != nil {
+		return Result{}, fmt.Errorf("list tenants: %w", err)
+	}
+	now := time.Now()
+
+	var result Result
+	var failures []error
+	for _, tenant := range tenants {
+		statDate, err := tenant.Date(opts.StatDate, now)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
+			continue
+		}
+		date := statDate.Format(time.DateOnly)
+		rows, err := a.aggregateTenant(ctx, tenant, date)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("aggregate tenant %s for %s: %w", tenant.ID, date, err))
+			// A cancelled context fails every remaining tenant the same way,
+			// so there is nothing left to salvage by carrying on.
+			if ctx.Err() != nil {
+				break
+			}
+			continue
+		}
+		result.TenantCount++
+		result.RowCount += rows
+	}
+	return result, errors.Join(failures...)
+}
+
+// RunTenant rebuilds one of tenant's calendar days, statDate, and reports the
+// rows it wrote. It is how a caller that tracks each tenant's progress on its
+// own rebuilds the days one tenant is missing without touching the others.
+func (a *Aggregator) RunTenant(ctx context.Context, tenant tenantday.Tenant, statDate time.Time) (int64, error) {
+	if a == nil || a.db == nil {
+		return 0, errors.New("content stats aggregator requires a database")
+	}
+	if err := a.requireBypassRLS(ctx); err != nil {
+		return 0, err
+	}
+	return a.aggregateTenant(ctx, tenant, statDate.Format(time.DateOnly))
+}
+
+func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
+	var bypasses bool
+	err := a.db.QueryRowContext(ctx, `
+		SELECT rolsuper OR rolbypassrls
+		FROM pg_roles
+		WHERE rolname = current_user
+	`).Scan(&bypasses)
+	if err != nil {
+		return fmt.Errorf("check database role: %w", err)
+	}
+	if !bypasses {
+		return errors.New("content stats aggregation requires a database role with BYPASSRLS")
+	}
+	return nil
+}
+
+func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenant, statDate string) (int64, error) {
+	tenantID := tenant.ID
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	// This lock belongs inside the transaction: it protects the delete/insert
+	// replacement from a concurrent run for the same tenant/day.
+	// Its bounded wait turns an overlapping run into a failed run rather than
+	// one that waits out the day holding a transaction open.
+	if err := tenantlock.Take(ctx, tx, tenantID.String()+":"+statDate); err != nil {
+		return 0, err
+	}
+
+	sources, err := countSources(ctx, tx, tenantID, statDate, tenant.TimeZone)
+	if err != nil {
+		return 0, fmt.Errorf("count aggregate sources: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM content_daily_stats
+		WHERE tenant_id = $1 AND stat_date = $2::date
+	`, tenantID, statDate); err != nil {
+		return 0, fmt.Errorf("delete previous stats: %w", err)
+	}
+
+	inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate, tenant.TimeZone)
+	if err != nil {
+		return 0, fmt.Errorf("insert rebuilt stats: %w", err)
+	}
+	rowCount, err := inserted.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("count inserted stats: %w", err)
+	}
+	// A source row must yield at least one non-zero aggregate row. This catches
+	// accidental empty reads before the transaction deletes good prior stats.
+	if sources.total() > 0 && rowCount == 0 {
+		return 0, fmt.Errorf("aggregate produced no rows from %d source rows", sources.total())
+	}
+
+	if _, err := tx.ExecContext(ctx, upsertRatingTotalsSQL, tenantID); err != nil {
+		return 0, fmt.Errorf("store rebuilt rating totals: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return rowCount, nil
+}
+
+type sourceCounts struct {
+	events    int64
+	purchases int64
+	comments  int64
+}
+
+func (s sourceCounts) total() int64 {
+	return s.events + s.purchases + s.comments
+}
+
+func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate, timeZone string) (sourceCounts, error) {
+	var counts sourceCounts
+	err := tx.QueryRowContext(ctx, `
+		SELECT
+			(SELECT count(*)
+			 FROM content_events
+			 WHERE tenant_id = $1
+			   AND occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+			   AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')),
+			(SELECT count(*)
+			 FROM purchases
+			 WHERE tenant_id = $1
+			   AND purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+			   AND NOT is_test),
+			(SELECT count(*)
+			 FROM episode_comments
+			 WHERE tenant_id = $1
+			   AND status = 'published'
+			   AND published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
+	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments)
+	return counts, err
+}
+
+// insertStatsSQL rebuilds one tenant's rows for one of its own calendar
+// days: $2 is that local date and $3 the zone it is read in, so the window is
+// the instants between two local midnights and stays 24 hours only where the
+// zone has no offset change that day.
+//
+// purchase_count comes from the purchases table alone. A purchase is also
+// projected into content_events, so counting both sources would double every
+// sale; purchases is the one that owns the fact. A store's test purchase is
+// left out, since no reader paid for it.
+//
+// comment_count comes from episode_comments for the same reason and one more:
+// content_events records that a comment was published and never that it was
+// taken down again, so a count built from the events would keep counting a
+// comment staff removed. Reading the comment rows instead means a hidden or
+// withdrawn comment is gone from the next rebuild of its day, while the row
+// this batch already wrote for a past day keeps the day as it stood.
+const insertStatsSQL = `
+WITH episode_events AS (
+	SELECT
+		ce.episode_id AS entity_id,
+		count(*) FILTER (WHERE ce.event_type = 'episode_view') AS view_count,
+		count(DISTINCT ce.actor_key) FILTER (WHERE ce.event_type = 'episode_view') AS unique_viewer_count,
+		count(*) FILTER (WHERE ce.event_type = 'episode_view' AND ce.user_id IS NOT NULL) AS member_view_count,
+		count(*) FILTER (WHERE ce.event_type = 'episode_complete') AS complete_count,
+		count(*) FILTER (WHERE ce.event_type = 'rating') AS rating_count,
+		COALESCE(sum(ce.rating_score) FILTER (WHERE ce.event_type = 'rating'), 0) AS rating_sum
+	FROM content_events ce
+	JOIN episodes e ON e.tenant_id = ce.tenant_id AND e.id = ce.episode_id
+	WHERE ce.tenant_id = $1
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND ce.event_type IN ('episode_view', 'episode_complete', 'rating')
+		AND ce.episode_id IS NOT NULL
+	GROUP BY ce.episode_id
+), purchases_by_episode AS (
+	SELECT p.episode_id AS entity_id, count(*) AS purchase_count
+	FROM purchases p
+	JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+	WHERE p.tenant_id = $1
+		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND NOT p.is_test
+	GROUP BY p.episode_id
+), published_comments AS (
+	SELECT c.episode_id AS entity_id, count(*) AS comment_count
+	FROM episode_comments c
+	WHERE c.tenant_id = $1
+		AND c.status = 'published'
+		AND c.published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND c.published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+	GROUP BY c.episode_id
+), episode_entities AS (
+	SELECT entity_id FROM episode_events
+	UNION
+	SELECT entity_id FROM purchases_by_episode
+	UNION
+	SELECT entity_id FROM published_comments
+), episode_stats AS (
+	SELECT
+		ep.entity_id,
+		COALESCE(ee.view_count, 0) AS view_count,
+		COALESCE(ee.unique_viewer_count, 0) AS unique_viewer_count,
+		COALESCE(ee.member_view_count, 0) AS member_view_count,
+		COALESCE(pe.purchase_count, 0) AS purchase_count,
+		COALESCE(ee.complete_count, 0) AS complete_count,
+		COALESCE(ee.rating_count, 0) AS rating_count,
+		COALESCE(ee.rating_sum, 0) AS rating_sum,
+		COALESCE(pc.comment_count, 0) AS comment_count
+	FROM episode_entities ep
+	LEFT JOIN episode_events ee ON ee.entity_id = ep.entity_id
+	LEFT JOIN purchases_by_episode pe ON pe.entity_id = ep.entity_id
+	LEFT JOIN published_comments pc ON pc.entity_id = ep.entity_id
+), series_direct_stats AS (
+	SELECT
+		ce.series_id AS entity_id,
+		count(*) FILTER (WHERE ce.event_type = 'series_view') AS view_count,
+		count(*) FILTER (WHERE ce.event_type = 'rating') AS rating_count,
+		COALESCE(sum(ce.rating_score) FILTER (WHERE ce.event_type = 'rating'), 0) AS rating_sum,
+		count(*) FILTER (WHERE ce.event_type = 'favorite') AS favorite_count
+	FROM content_events ce
+	WHERE ce.tenant_id = $1
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND (
+			ce.event_type IN ('series_view', 'favorite')
+			OR (ce.event_type = 'rating' AND ce.episode_id IS NULL)
+		)
+	GROUP BY ce.series_id
+), series_episode_rollup AS (
+	SELECT
+		e.series_id AS entity_id,
+		sum(es.view_count) AS view_count,
+		sum(es.member_view_count) AS member_view_count,
+		sum(es.purchase_count) AS purchase_count,
+		sum(es.complete_count) AS complete_count,
+		sum(es.rating_count) AS rating_count,
+		sum(es.rating_sum) AS rating_sum,
+		sum(es.comment_count) AS comment_count
+	FROM episode_stats es
+	JOIN episodes e ON e.id = es.entity_id AND e.tenant_id = $1
+	GROUP BY e.series_id
+), series_viewers AS (
+	SELECT e.series_id AS entity_id, ce.actor_key
+	FROM content_events ce
+	JOIN episodes e ON e.tenant_id = ce.tenant_id AND e.id = ce.episode_id
+	WHERE ce.tenant_id = $1
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND ce.event_type = 'episode_view'
+	UNION
+	SELECT ce.series_id AS entity_id, ce.actor_key
+	FROM content_events ce
+	WHERE ce.tenant_id = $1
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND ce.event_type = 'series_view'
+), series_viewer_counts AS (
+	SELECT entity_id, count(*) AS unique_viewer_count
+	FROM series_viewers
+	GROUP BY entity_id
+), series_entities AS (
+	SELECT entity_id FROM series_direct_stats
+	UNION
+	SELECT entity_id FROM series_episode_rollup
+	UNION
+	SELECT entity_id FROM series_viewer_counts
+), rebuilt_stats AS (
+	SELECT
+		'episode'::text AS entity_type,
+		entity_id,
+		view_count,
+		unique_viewer_count,
+		member_view_count,
+		purchase_count,
+		complete_count,
+		rating_count,
+		rating_sum,
+		0::bigint AS favorite_count,
+		comment_count
+	FROM episode_stats
+	UNION ALL
+	SELECT
+		'series'::text AS entity_type,
+		se.entity_id,
+		COALESCE(sd.view_count, 0) + COALESCE(sr.view_count, 0) AS view_count,
+		COALESCE(sv.unique_viewer_count, 0) AS unique_viewer_count,
+		COALESCE(sr.member_view_count, 0) AS member_view_count,
+		COALESCE(sr.purchase_count, 0) AS purchase_count,
+		COALESCE(sr.complete_count, 0) AS complete_count,
+		COALESCE(sd.rating_count, 0) + COALESCE(sr.rating_count, 0) AS rating_count,
+		COALESCE(sd.rating_sum, 0) + COALESCE(sr.rating_sum, 0) AS rating_sum,
+		COALESCE(sd.favorite_count, 0) AS favorite_count,
+		COALESCE(sr.comment_count, 0) AS comment_count
+	FROM series_entities se
+	LEFT JOIN series_direct_stats sd ON sd.entity_id = se.entity_id
+	LEFT JOIN series_episode_rollup sr ON sr.entity_id = se.entity_id
+	LEFT JOIN series_viewer_counts sv ON sv.entity_id = se.entity_id
+)
+INSERT INTO content_daily_stats (
+	id, tenant_id, stat_date, entity_type, entity_id,
+	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
+	rating_count, rating_sum, favorite_count, comment_count
+)
+SELECT
+	uuidv7(), $1, $2::date, entity_type, entity_id,
+	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
+	rating_count, rating_sum, favorite_count, comment_count
+FROM rebuilt_stats
+WHERE view_count > 0
+	OR unique_viewer_count > 0
+	OR member_view_count > 0
+	OR purchase_count > 0
+	OR complete_count > 0
+	OR rating_count > 0
+	OR rating_sum > 0
+	OR favorite_count > 0
+	OR comment_count > 0
+`
+
+// upsertRatingTotalsSQL restates one tenant's all-time reaction points and
+// completed reads, which is the mean a series with few finished reads is rated
+// against.
+//
+// It runs in the same transaction as the day it follows, so the totals never
+// describe a day that was rolled back. It re-sums rather than adding the day's
+// difference because the day it replaced is already gone by this point, and a
+// full sum is also what repairs a total that drifted for any other reason.
+//
+// The series rows alone: the episode rows hold the same reactions, and the
+// series rows are the rollup of them, so counting both would double every
+// point and every completed read.
+const upsertRatingTotalsSQL = `
+INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads, updated_at)
+SELECT
+	$1,
+	COALESCE(sum(cds.rating_sum), 0),
+	COALESCE(sum(cds.complete_count), 0),
+	now()
+FROM content_daily_stats cds
+WHERE cds.tenant_id = $1
+	AND cds.entity_type = 'series'
+ON CONFLICT (tenant_id) DO UPDATE
+SET points = EXCLUDED.points,
+	completed_reads = EXCLUDED.completed_reads,
+	updated_at = EXCLUDED.updated_at
+`

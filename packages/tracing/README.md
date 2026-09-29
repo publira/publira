@@ -1,0 +1,70 @@
+# `@publira/tracing`
+
+The shared package that registers the OpenTelemetry SDK from the `instrumentation.ts` of the Next.js apps (`web-host` / `web-admin` / `web-platform`). It reads the same environment variables and uses the same defaults as [`server/internal/tracing`](../../server/internal/tracing) on the Go side, so a single deployment configuration lines the whole stack's traces up.
+
+The registration itself is [`@vercel/otel`](https://www.npmjs.com/package/@vercel/otel). The spans Next.js already instruments (the inbound request, rendering, `fetch`) come out of this registration alone.
+
+## Usage
+
+```ts
+// apps/web-host/instrumentation.ts
+import { registerTracing } from "@publira/tracing";
+
+export const register = async () => {
+  await import("temporal-polyfill/global");
+  registerTracing("publira-web-host");
+};
+```
+
+The argument is the default `service.name`.
+
+## Environment variables
+
+Only two variables are ours — the enable flag and the deployment environment. The OpenTelemetry SDK reads the rest itself, so those keep their own names.
+
+| Variable | What it does |
+| --- | --- |
+| `PUBLIRA_TRACING_ENABLED` | Enables tracing (`true` / `1` / `t`, case-insensitive). Unset or unparseable means disabled |
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `development` (default) / `staging` / `production`. Decides `deployment.environment.name` and the default sampling rate |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where to send spans (for example `http://jaeger:4318`) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` / `http/json`. `@vercel/otel` has no gRPC OTLP |
+| `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | Overrides for the resource attributes |
+| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | The sampler. Setting it bypasses the defaults below and lets the SDK interpret the value |
+| `NEXT_OTEL_VERBOSE` | `1` emits Next.js's detailed spans (off by default) |
+
+## Resource attributes
+
+| Key | Value |
+| --- | --- |
+| `service.name` | The argument to `registerTracing` (`publira-web-host` / `publira-web-admin` / `publira-web-platform`). Overridable with `OTEL_SERVICE_NAME` |
+| `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
+| `node.env` / `process.runtime.name` | Runtime information `@vercel/otel` adds |
+| `cloud.provider` / `vercel.runtime` | The same, and left in place off Vercel |
+
+## Sampling
+
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT`           | Root span |
+| ------------------------------------------ | --------- |
+| `development` (default)                    | All       |
+| Anything else (`staging`, `production`, …) | 10%       |
+
+## `NEXT_OTEL_VERBOSE`
+
+By default Next.js emits only the spans on its own allowlist (`NextVanillaSpanAllowlist` in `next/dist/server/lib/trace/constants.js`): the request root span, rendering, `fetch`, `generateMetadata`, building the component tree, resolving segment modules, Route Handlers, and the proxy.
+
+`NEXT_OTEL_VERBOSE=1` adds the internal spans outside that allowlist (`BaseServer.renderToResponse`, `Router.executeRoute`, `AppRender.renderToReadableStream`, and so on). It multiplies the spans per request with stages application code cannot move, so set it only to follow Next.js's own internals.
+
+```bash
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
+```
+
+## How a trace is joined up
+
+| Segment | Instrumentation |
+| --- | --- |
+| Browser → the Next.js inbound | Built into Next.js (a root span such as `GET /[tenant_id]/[locale]`) |
+| `proxy.ts` | Built into Next.js (`middleware GET`). It lands in a **separate trace** from the page render |
+| SSR → the Go API over Connect / gRPC | The tracing interceptor in [`@publira/api-client`](../api-client) (the client span and sending `traceparent`) |
+| The Go API's inbound and its DB queries | [`server/internal/tracing`](../../server/README.md#distributed-tracing-opentelemetry) |
+
+Propagation is W3C Trace Context. The Go Connect handlers trust an inbound `traceparent` as the parent, so the web app, the API, and the database land in a single trace.

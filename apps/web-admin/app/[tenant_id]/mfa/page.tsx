@@ -1,0 +1,98 @@
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenMain,
+  AuthScreenPanel,
+  AuthScreenPattern,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+
+import { AdminLocaleProvider } from "#components/admin-locale-provider";
+import { Message } from "#components/message";
+import { buildLoginPath } from "#lib/admin-auth-shared";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { readMfaChallenge } from "#lib/mfa-challenge";
+import { getTenantId } from "#lib/tenant-id";
+
+import { MfaEnrollFlow } from "./_components/mfa-enroll-flow";
+import { MfaVerifyForm } from "./_components/mfa-verify-form";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+  const t = await getMessagesFor(locale);
+
+  return { title: t("admin.auth.mfa.title") };
+};
+
+const MfaPageFallback = () => (
+  <AuthScreenBody>
+    <SkeletonLine className="h-4 w-full" />
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-9 w-32" />
+  </AuthScreenBody>
+);
+
+/**
+ * The second half of a login.
+ *
+ * The challenge lives in a sealed cookie rather than the URL, so this screen
+ * has nothing to read from the request but that cookie: no challenge means the
+ * password step has not happened, or has run out, and the operator starts over
+ * at `/login`.
+ *
+ * The locale provider is here because the console's own layout is behind the
+ * session this screen exists to issue, and the forms below resolve their copy
+ * through it.
+ */
+const MfaPageContent = async () => {
+  const [tenantId, challenge] = await Promise.all([
+    getTenantId(),
+    readMfaChallenge(),
+  ]);
+  if (!challenge || challenge.tenantId !== tenantId) {
+    redirect(buildLoginPath(challenge?.nextPath));
+  }
+
+  return (
+    <AdminLocaleProvider>
+      {challenge.kind === "enroll" ? (
+        <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
+      ) : (
+        <MfaVerifyForm nextPath={challenge.nextPath} tenantId={tenantId} />
+      )}
+    </AdminLocaleProvider>
+  );
+};
+
+const MfaPage = () => (
+  <AuthScreen>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.auth.mfa.title" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
+
+      <Suspense fallback={<MfaPageFallback />}>
+        <MfaPageContent />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
+  </AuthScreen>
+);
+
+export default MfaPage;

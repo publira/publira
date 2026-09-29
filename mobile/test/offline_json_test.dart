@@ -1,0 +1,479 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
+import 'package:publira/offline/offline_json.dart';
+import 'package:publira/offline/offline_library.dart';
+
+Map<String, Object?> _index(
+  Map<String, Object?> episode, {
+  List<Map<String, Object?>>? series,
+}) => {
+  'version': offlineIndexVersion,
+  'series': ?series,
+  'details': const <String, Object?>{},
+  'episodes': {'SeedSERSAAA1/SeedEPSDAAA1': episode},
+};
+
+/// One saved series whose covers mix a resolved URL with a relative one.
+List<Map<String, Object?>> _series() => [
+  {
+    'id': 'SeedSERSAAA1',
+    'title': 'Seed Series 001',
+    'description': 'synopsis',
+    'eyeCatchVariants': [
+      {
+        'variantType': 'portrait',
+        'url': 'http://images.test/images/series/IMG/portrait/800',
+        'width': 800,
+        'height': 1066,
+      },
+      {
+        'variantType': 'portrait',
+        'url': 'images/series/IMG/portrait/400',
+        'width': 400,
+        'height': 533,
+      },
+    ],
+  },
+];
+
+Map<String, Object?> _episode({
+  required String access,
+  String? ownerId = 'SeedMMBRAAA1',
+}) => {
+  'ownerId': ?ownerId,
+  'checkedAt': '2026-09-01T00:00:00.000Z',
+  'seriesId': 'SeedSERSAAA1',
+  'seriesTitle': 'Seed Series 001',
+  'access': access,
+  'episode': const {
+    'id': 'SeedEPSDAAA1',
+    'title': 'Seed Episode 001-01',
+    'orderIndex': 1,
+    'price': 500,
+  },
+  'images': const <Object?>[],
+};
+
+void main() {
+  test('an index written under another version is dropped whole', () {
+    final decoded = OfflineIndex.fromJson({
+      ..._index(_episode(access: 'free')),
+      'version': offlineIndexVersion + 1,
+    });
+
+    expect(decoded, isNull);
+  });
+
+  test('an entitled record keeps the reader it was granted to', () {
+    final decoded = OfflineIndex.fromJson(_index(_episode(access: 'entitled')));
+
+    expect(decoded!.episodes.values.single.ownerId, 'SeedMMBRAAA1');
+    expect(
+      decoded.episodes.values.single.detail.access,
+      EpisodeAccess.entitled,
+    );
+  });
+
+  test('an entitled record naming no reader is dropped, not opened up', () {
+    // An empty owner is what marks a free body, so reading this leniently
+    // would turn a paid body into one a signed-out device may open.
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'entitled', ownerId: null)),
+    );
+
+    expect(decoded!.episodes, isEmpty);
+  });
+
+  test('a free record needs no reader', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free', ownerId: '')),
+    );
+
+    expect(decoded!.episodes.values.single.detail.access, EpisodeAccess.free);
+  });
+
+  test('a record with an access this build cannot read is dropped', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'EPISODE_ACCESS_SOMETHING_NEW', ownerId: null)),
+    );
+
+    expect(decoded!.episodes, isEmpty);
+  });
+
+  test('a cover rendition this build cannot address is dropped', () {
+    // A cover is written down already resolved against the image base, so a
+    // relative reference names no server to ask.
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: _series(),
+      ),
+    );
+
+    final variants = decoded!.series!.single.eyeCatchVariants;
+    expect(variants, hasLength(1));
+    expect(
+      variants.single.url.toString(),
+      'http://images.test/images/series/IMG/portrait/800',
+    );
+  });
+
+  test('the credits of a saved series survive the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          creators: [
+            SeriesCreator(
+              id: 'SeedAUTHAAA1',
+              name: 'Seed Author 001',
+              roleName: 'Story',
+            ),
+            SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002'),
+          ],
+        ),
+      ],
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final creators = decoded!.series!.single.creators;
+    expect(creators.map((creator) => creator.name), [
+      'Seed Author 001',
+      'Seed Author 002',
+    ]);
+    expect(creators.first.id, 'SeedAUTHAAA1');
+    expect(creators.map((creator) => creator.roleName), ['Story', '']);
+  });
+
+  test('the label of a saved series survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          labelId: 'SeedLABLAAA1',
+          labelName: 'Seed Label 01',
+        ),
+      ],
+    ).toJson();
+
+    final series = OfflineIndex.fromJson(written)!.series!.single;
+
+    expect(series.labelId, 'SeedLABLAAA1');
+    expect(series.labelName, 'Seed Label 01');
+  });
+
+  test('a label saved before its id was kept is named without one', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free'),
+        series: [
+          {..._series().single, 'labelName': 'Seed Label 01'},
+        ],
+      ),
+    );
+
+    final series = decoded!.series!.single;
+    expect(series.labelName, 'Seed Label 01');
+    expect(series.labelId, isEmpty);
+  });
+
+  test('the credits of a saved episode survive the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            creators: [
+              SeriesCreator(
+                id: 'SeedAUTHAAA4',
+                name: 'Guest Artist',
+                roleName: 'Art',
+              ),
+            ],
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final creator = decoded!.episodes.values.single.detail.creators.single;
+    expect(creator.id, 'SeedAUTHAAA4');
+    expect(creator.name, 'Guest Artist');
+    expect(creator.roleName, 'Art');
+  });
+
+  test('the layout of a saved episode survives the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            readingDirection: ReadingDirection.ltr,
+            spreadStartIndex: 0,
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.readingDirection, ReadingDirection.ltr);
+    expect(detail.spreadStartIndex, 0);
+  });
+
+  test(
+    'a body saved before layout was saved reads as it was laid out then',
+    () {
+      final decoded = OfflineIndex.fromJson(
+        _index(_episode(access: 'free', ownerId: '')),
+      );
+
+      final detail = decoded!.episodes.values.single.detail;
+      expect(detail.readingDirection, ReadingDirection.rtl);
+      expect(detail.spreadStartIndex, 1);
+    },
+  );
+
+  test('a negative spread start is read as the cover standing alone', () {
+    final decoded = OfflineIndex.fromJson(
+      _index({
+        ..._episode(access: 'free', ownerId: ''),
+        'spreadStartIndex': -2,
+      }),
+    );
+
+    expect(decoded!.episodes.values.single.detail.spreadStartIndex, 1);
+  });
+
+  test('a credit saved before roles were saved reads without a role', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: [
+          {
+            'id': 'SeedSERSAAA1',
+            'title': 'Seed Series 001',
+            'description': 'synopsis',
+            'creators': [
+              {'id': 'SeedAUTHAAA1', 'name': 'Seed Author 001'},
+            ],
+          },
+        ],
+      ),
+    );
+
+    final creator = decoded!.series!.single.creators.single;
+    expect(creator.name, 'Seed Author 001');
+    expect(creator.roleName, isEmpty);
+  });
+
+  test('the classification of a saved series survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          status: SeriesStatus.ongoing,
+          scheduleWeekdays: [1, 4],
+          ageRating: SeriesAgeRating.r15,
+          genres: [SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy')],
+          tags: [SeriesTag(slug: 'time-travel', name: 'Time travel')],
+        ),
+      ],
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+    final series = decoded!.series!.single;
+
+    expect(series.status, SeriesStatus.ongoing);
+    expect(series.scheduleWeekdays, [1, 4]);
+    expect(series.ageRating, SeriesAgeRating.r15);
+    expect(series.genres.single.name, 'Fantasy');
+    expect(series.genres.single.id, 'SeedGENRAAA1');
+    expect(series.tags.single.slug, 'time-travel');
+    expect(series.tags.single.name, 'Time travel');
+  });
+
+  test('an unrecognized stored age rating is read as unknown', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: [
+          {
+            'id': 'SeedSERSAAA1',
+            'title': 'Seed Series 001',
+            'description': 'synopsis',
+            'ageRating': 'r20',
+          },
+        ],
+      ),
+    );
+
+    expect(decoded!.series!.single.ageRating, SeriesAgeRating.unknown);
+  });
+
+  test(
+    'a series saved before this build carries no credits or classification',
+    () {
+      // Files written by an earlier build hold no `creators` or classification,
+      // and they are read rather than dropped: the series shows none until it
+      // is loaded again.
+      final decoded = OfflineIndex.fromJson(
+        _index(
+          _episode(access: 'free', ownerId: ''),
+          series: _series(),
+        ),
+      );
+
+      expect(decoded!.series!.single.creators, isEmpty);
+      expect(decoded.series!.single.status, isNull);
+      expect(decoded.series!.single.genres, isEmpty);
+      expect(decoded.series!.single.tags, isEmpty);
+      expect(decoded.series!.single.ageRating, isNull);
+    },
+  );
+
+  test('the episodes either side of a saved body survive the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-02',
+              orderIndex: 2,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            previousEpisode: EpisodeNeighbor(
+              id: 'SeedEPSDAAA0',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+              isFree: true,
+            ),
+            nextEpisode: EpisodeNeighbor(
+              id: 'SeedEPSDAAA2',
+              title: 'Seed Episode 001-03',
+              orderIndex: 3,
+              price: 500,
+              isFree: false,
+              purchaseSurface: EpisodePurchaseSurface.web,
+            ),
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.previousEpisode!.id, 'SeedEPSDAAA0');
+    expect(detail.previousEpisode!.purchaseSurface, EpisodePurchaseSurface.all);
+    expect(detail.nextEpisode!.title, 'Seed Episode 001-03');
+    expect(detail.nextEpisode!.price, 500);
+    expect(detail.nextEpisode!.purchaseSurface, EpisodePurchaseSurface.web);
+    expect(detail.nextEpisode!.isFree, isFalse);
+  });
+
+  test('a saved body at the end of its series carries no next episode', () {
+    // A neighbour that is not there is written as no key at all, which is what
+    // a body at either end of its series is saved as.
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free', ownerId: '')),
+    );
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.previousEpisode, isNull);
+    expect(detail.nextEpisode, isNull);
+  });
+
+  test('a neighbour naming no episode is dropped', () {
+    // There is nothing to open behind a neighbour with no public id, so the
+    // body is read as one with no episode on that side rather than offering
+    // something that goes nowhere.
+    final decoded = OfflineIndex.fromJson(
+      _index({
+        ..._episode(access: 'free', ownerId: ''),
+        'nextEpisode': const {'title': 'Seed Episode 001-02', 'orderIndex': 2},
+      }),
+    );
+
+    expect(decoded!.episodes.values.single.detail.nextEpisode, isNull);
+  });
+
+  test('a reading position survives the round trip', () {
+    final written = OfflineIndex(
+      positions: {
+        'SeedSERSAAA1/SeedEPSDAAA1': const SavedReadingPosition(
+          readerId: 'SeedMMBRAAA1',
+          pageIndex: 11,
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final position = decoded!.positions['SeedSERSAAA1/SeedEPSDAAA1']!;
+    expect(position.readerId, 'SeedMMBRAAA1');
+    expect(position.pageIndex, 11);
+  });
+
+  test('a position naming no reader is dropped', () {
+    // A position belongs to the member who left it, so one that names nobody
+    // is not a page to answer whoever is holding the phone with.
+    final decoded = OfflineIndex.fromJson({
+      ..._index(_episode(access: 'free', ownerId: '')),
+      'positions': const {
+        'SeedSERSAAA1/SeedEPSDAAA1': {'readerId': '', 'pageIndex': 11},
+      },
+    });
+
+    expect(decoded!.positions, isEmpty);
+  });
+
+  test('an index written before positions existed still reads', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free', ownerId: '')),
+    );
+
+    expect(decoded!.episodes, hasLength(1));
+    expect(decoded.positions, isEmpty);
+  });
+}

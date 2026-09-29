@@ -1,0 +1,1344 @@
+package adminapi
+
+import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
+	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"regexp"
+	"slices"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
+
+	"github.com/publira/publira/server/internal/pagination"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/publicid"
+)
+
+func seriesColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id",
+		"public_id",
+		"title",
+		"label_public_id",
+		"label_name",
+		"synopsis",
+		"reading_period_hours",
+		"status",
+		"schedule_weekdays",
+		"age_rating",
+		"is_published",
+		"published_at",
+		"created_at",
+		"eye_catch_image_id",
+		"eye_catch_image_updated_at",
+		"eye_catch_image_file_size_bytes",
+		"availability",
+	})
+}
+
+func seriesDetailColumns() []string {
+	return []string{
+		"id", "public_id", "title", "label_id", "label_public_id", "label_name", "synopsis",
+		"reading_period_hours", "status", "schedule_weekdays", "age_rating",
+		"comment_mode", "reading_direction", "spread_start_index", "is_published", "published_at", "eye_catch_image_id",
+		"eye_catch_image_updated_at", "eye_catch_image_file_size_bytes", "availability",
+		"purchase_availability",
+	}
+}
+
+func addSeriesRow(
+	rows *sqlmock.Rows,
+	id uuid.UUID,
+	publicID, title string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return rows.AddRow(id, publicID, title, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", true, createdAt, createdAt, nil, nil, int64(0), "all")
+}
+
+// Every series a read returns is presented with the creators, genres, and tags
+// it carries, each of them read for the whole page at once.
+func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesGenresBySeriesIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "slug"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesTagsBySeriesIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "name", "slug"}))
+}
+
+// A save states the whole classification, so it clears what the series carried
+// before writing what it carries now, and drops the tags nothing carries any
+// more.
+func expectSeriesClassificationReplace(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesGenresBySeriesID)).
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesTagsBySeriesID)).
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// Nothing is left unused in these cases, so the sweep locks no candidate
+	// and never reaches its delete.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockUnusedTagsForTenant)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+}
+
+func newSeriesClient(
+	t *testing.T,
+	tenantID, userID uuid.UUID,
+	now time.Time,
+) (publiraadminv1connect.AdminSeriesServiceClient, sqlmock.Sqlmock, string) {
+	t.Helper()
+	testServer, mock := newTestAdminServer(t)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	return publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+}
+
+func newListSeriesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListSeriesRequest] {
+	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
+
+func seriesPublicIDs(items []*publirattypesv1.Series) []string {
+	publicIDs := make([]string, 0, len(items))
+	for _, item := range items {
+		publicIDs = append(publicIDs, item.PublicId)
+	}
+	return publicIDs
+}
+
+func TestAdminSeriesRequiresSession(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListSeries(context.Background(), connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListSeries error code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
+	}
+	if err == nil || err.Error() != "unauthenticated: invalid token" {
+		t.Fatalf("ListSeries error = %v, want unauthenticated invalid token", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminSeriesAllowsValidSession(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
+	expectSeriesRelationLookups(mock)
+
+	resp, err := client.ListSeries(context.Background(), newListSeriesRequest(tenantID, sessionToken))
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if len(resp.Msg.Series) != 1 {
+		t.Fatalf("series count = %d, want 1", len(resp.Msg.Series))
+	}
+	if resp.Msg.Series[0].PublicId != "SERIES001" {
+		t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series[0].PublicId)
+	}
+	if !resp.Msg.Series[0].IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Msg.Series[0].IsPublished)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(
+				addSeriesRow(seriesColumns(), ids[0], "SERIES001", "First", now),
+				ids[1], "SERIES002", "Second", now.Add(-time.Minute),
+			),
+			ids[2], "SERIES003", "Third", now.Add(-2*time.Minute),
+		))
+	expectSeriesRelationLookups(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if len(resp.Msg.Series) != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", len(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
+		WithArgs(
+			tenantID,
+			sql.NullString{String: "completed", Valid: true},
+			sql.NullString{String: "r15", Valid: true},
+			uuid.NullUUID{},
+			false,
+			sql.NullTime{},
+			int32(2),
+		).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(seriesColumns(), ids[0], "SERIES001", "First", now),
+			ids[1], "SERIES002", "Second", now.Add(-time.Minute),
+		))
+	expectSeriesRelationLookups(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
+	req.Msg.Limit = 1
+	req.Msg.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES001"}) {
+		t.Fatalf("public_ids = %v, want the completed R15 row", seriesPublicIDs(resp.Msg.Series))
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{
+		"created_at_desc+status:completed+age_rating:r15",
+		now.Format(time.RFC3339Nano),
+		ids[0].String(),
+	}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+
+	// The same boundary is not in the hiatus list. Refuse it before a query can
+	// reinterpret its keyset position under that filter.
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	changedFilterReq := newListSeriesRequest(tenantID, sessionToken)
+	changedFilterReq.Msg.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
+	changedFilterReq.Msg.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS
+	changedFilterReq.Msg.Token = resp.Msg.NextToken
+	_, err = client.ListSeries(context.Background(), changedFilterReq)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListSeries changed-filter token code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+		t.Fatalf("ListSeries changed-filter token error = %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+// The last page is reachable by following next_token, without an offset.
+func TestListSeriesFollowsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
+	expectSeriesRelationLookups(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES003"}) {
+		t.Fatalf("public_ids = %v, want the page after the boundary row", seriesPublicIDs(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantAsc)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES002", "Older", now.Add(-2*time.Minute)),
+			uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(-time.Minute),
+		))
+	expectSeriesRelationLookups(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES001", "SERIES002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", seriesPublicIDs(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name                string
+		direction           pagination.Direction
+		wantQuery           string
+		wantRecoveryQuery   string
+		wantRecoveredSeries []string
+	}{
+		{
+			name:                "forward",
+			direction:           pagination.Forward,
+			wantQuery:           dbmodels.ListSeriesByTenantDesc,
+			wantRecoveryQuery:   dbmodels.ListSeriesByTenantAsc,
+			wantRecoveredSeries: []string{"SERIES001", "SERIES002"},
+		},
+		{
+			name:                "backward",
+			direction:           pagination.Backward,
+			wantQuery:           dbmodels.ListSeriesByTenantAsc,
+			wantRecoveryQuery:   dbmodels.ListSeriesByTenantDesc,
+			wantRecoveredSeries: []string{"SERIES002", "SERIES003"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, now, int32(21)).
+				WillReturnRows(seriesColumns())
+
+			req := newListSeriesRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListSeries(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListSeries: %v", err)
+			}
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
+			}
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			recoveryRows := addSeriesRow(seriesColumns(), boundaryID, "SERIES002", "Boundary", now)
+			if test.direction == pagination.Forward {
+				recoveryRows = addSeriesRow(recoveryRows, uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(time.Minute))
+			} else {
+				recoveryRows = addSeriesRow(recoveryRows, uuid.Must(uuid.NewV7()), "SERIES003", "Older", now.Add(-time.Minute))
+			}
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, true, now, int32(21)).
+				WillReturnRows(recoveryRows)
+			expectSeriesRelationLookups(mock)
+
+			recoveryReq := newListSeriesRequest(tenantID, sessionToken)
+			recoveryReq.Msg.Token = recoveryToken
+			recovered, err := client.ListSeries(context.Background(), recoveryReq)
+			if err != nil {
+				t.Fatalf("ListSeries recovery: %v", err)
+			}
+			if !slices.Equal(seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries) {
+				t.Fatalf("recovered public_ids = %v, want %v", seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestListSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "recovering backward",
+			direction: pagination.Backward,
+			wantQuery: dbmodels.ListSeriesByTenantAsc,
+		},
+		{
+			name:      "recovering forward",
+			direction: pagination.Forward,
+			wantQuery: dbmodels.ListSeriesByTenantDesc,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, true, now, int32(21)).
+				WillReturnRows(seriesColumns())
+
+			req := newListSeriesRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListSeries(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListSeries: %v", err)
+			}
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %d rows, want an empty page", len(resp.Msg.Series))
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListSeriesInvalidToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Token = "not-a-valid-token"
+	_, err := client.ListSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("ListSeries error = %v, want invalid_argument token is invalid", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesRequiresTitle(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "   ",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	labelID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, nil, nil))
+
+	mock.ExpectBegin()
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{UUID: labelID, Valid: true})
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIESNEW001", "New Series", testSeriesLabelID, "LABEL001", "Weekly", "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:       "New Series",
+		Synopsis:    "Synopsis",
+		LabelId:     labelID.String(),
+		IsPublished: true,
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.CreateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if resp.Msg.Series == nil {
+		t.Fatalf("series is nil")
+	}
+	if resp.Msg.Series.Title != "New Series" {
+		t.Fatalf("series title = %q, want New Series", resp.Msg.Series.Title)
+	}
+	assertExpectations(t, mock)
+}
+
+// A public_id collision never reaches the client: the insert is retried with a
+// freshly generated ID, and only a conflict on another constraint would surface.
+func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	attempted := &publicIDArgument{}
+	mock.ExpectBegin()
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "series_public_id_key"})
+	expectPublicIDAttemptRolledBack(mock)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
+			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all", nil))
+	expectPublicIDAttemptReleased(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, nil, nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, false, nil, nil, nil, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "New Series",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.CreateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if resp.Msg.Series.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("series public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Series.PublicId)
+	}
+	if len(attempted.values) != 2 {
+		t.Fatalf("public_id attempts = %v, want 2", attempted.values)
+	}
+	if attempted.values[0] == attempted.values[1] {
+		t.Fatalf("retry reused public_id %q", attempted.values[0])
+	}
+	for _, value := range attempted.values {
+		if !publicid.Valid(value) {
+			t.Fatalf("generated public_id %q is not 12 Base58 characters", value)
+		}
+	}
+	assertExpectations(t, mock)
+}
+
+// publicIDArgument matches any string argument and records what was passed, so
+// a test can assert on the public IDs the handler generated.
+type publicIDArgument struct {
+	values []string
+}
+
+func (a *publicIDArgument) Match(v driver.Value) bool {
+	value, ok := v.(string)
+	if !ok {
+		return false
+	}
+	a.values = append(a.values, value)
+
+	return true
+}
+
+func TestUpdateSeriesRequiresTitle(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId: testSeriesID.String(),
+		Title:    "\t",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UpdateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateSeriesSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1), true, false, false, false, false, false, false, false).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	mock.ExpectCommit()
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:    seriesID.String(),
+		Title:       "After",
+		Synopsis:    new("New synopsis"),
+		IsPublished: true,
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UpdateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if resp.Msg.Series == nil {
+		t.Fatalf("series is nil")
+	}
+	if resp.Msg.Series.Title != "After" {
+		t.Fatalf("series title = %q, want After", resp.Msg.Series.Title)
+	}
+	if !resp.Msg.Series.IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Msg.Series.IsPublished)
+	}
+	assertExpectations(t, mock)
+}
+
+// The listing metadata is written in the one shape the column holds: the
+// weekdays arrive out of order and duplicated, and what reaches the upsert is
+// ascending and distinct.
+func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "hiatus", pq.Array([]int32{1, 4}), "r18", sql.NullString{}, "rtl", int32(1), true, false, true, true, true, false, false, false).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "hiatus", []byte("{1,4}"), "r18", nil, nil, "rtl", int32(1)))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	mock.ExpectCommit()
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "Synopsis", nil, "hiatus", []byte("{1,4}"), "r18", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:       seriesID.String(),
+		Title:          "After",
+		Synopsis:       new("Synopsis"),
+		IsPublished:    true,
+		Status:         publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS.Enum(),
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{4, 1, 4}},
+		AgeRating:      publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18.Enum(),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UpdateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
+		t.Fatalf("series status = %s, want HIATUS", resp.Msg.Series.Status)
+	}
+	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("series age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	}
+	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	}
+	assertExpectations(t, mock)
+}
+
+// A weekday outside the week is refused before anything is read or written, so
+// the CHECK constraint is never the thing that reports it.
+func TestUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:       testSeriesID.String(),
+		Title:          "After",
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{7}},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UpdateSeries(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+// A stored status this build does not know is a data fault, and the read fails
+// on it rather than describing the series with a guess.
+func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+	expectSeriesRelationLookups(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.GetSeries(context.Background(), req); connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	assertExpectations(t, mock)
+}
+
+// testCreatorRolePublicID and testCreatorRoleID are the role every credit in
+// these tests is held in. The role vocabulary is exercised by its own tests;
+// here it only has to resolve.
+const testCreatorRolePublicID = "ROLEAUTHOR01"
+
+var testCreatorRoleID = uuid.MustParse("01900000-0000-7000-8000-00000000d001")
+
+// expectCreatorRoleLookup answers the role resolution a save runs alongside the
+// creator lookup.
+func expectCreatorRoleLookup(mock sqlmock.Sqlmock, tenantID, roleID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
+			AddRow(roleID, testCreatorRolePublicID, "Original Author", int32(1)))
+}
+
+// testCreatorCredits credits each creator in [testCreatorRoleID], in the order
+// given.
+func testCreatorCredits(creatorIDs ...uuid.UUID) []*publiraadminv1.SeriesCreatorCredit {
+	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(creatorIDs))
+	for _, creatorID := range creatorIDs {
+		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
+			CreatorId: creatorID.String(),
+			RoleId:    testCreatorRoleID.String(),
+		})
+	}
+	return credits
+}
+
+func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	creatorID1 := uuid.Must(uuid.NewV7())
+	creatorID2 := uuid.Must(uuid.NewV7())
+	roleID := testCreatorRoleID
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
+			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
+			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
+	expectCreatorRoleLookup(mock, tenantID, roleID)
+
+	mock.ExpectBegin()
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIESNEW001", "New Series", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:          "New Series",
+		Synopsis:       "Synopsis",
+		IsPublished:    true,
+		CreatorCredits: testCreatorCredits(creatorID1, creatorID2),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.CreateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if len(resp.Msg.Series.Creators) != 2 {
+		t.Fatalf("creator count = %d, want 2", len(resp.Msg.Series.Creators))
+	}
+	if resp.Msg.Series.Creators[0].PublicId != "CREATOR001" {
+		t.Fatalf("creator[0].public_id = %q, want CREATOR001", resp.Msg.Series.Creators[0].PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	creatorID1 := uuid.Must(uuid.NewV7())
+	creatorID2 := uuid.Must(uuid.NewV7())
+	roleID := testCreatorRoleID
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
+			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
+			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
+	expectCreatorRoleLookup(mock, tenantID, roleID)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1), true, false, false, false, false, false, false, false).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
+			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+		WithArgs(seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	mock.ExpectCommit()
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:       seriesID.String(),
+		Title:          "After",
+		Synopsis:       new("New synopsis"),
+		IsPublished:    true,
+		CreatorCredits: testCreatorCredits(creatorID1, creatorID2),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UpdateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if len(resp.Msg.Series.Creators) != 2 {
+		t.Fatalf("creator count = %d, want 2", len(resp.Msg.Series.Creators))
+	}
+	if resp.Msg.Series.Creators[1].PublicId != "CREATOR002" {
+		t.Fatalf("creator[1].public_id = %q, want CREATOR002", resp.Msg.Series.Creators[1].PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:          "New Series",
+		CreatorCredits: testCreatorCredits(uuid.Must(uuid.NewV7())),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
+	}
+	if err == nil || err.Error() != "invalid_argument: creator not found" {
+		t.Fatalf("CreateSeries error = %v, want invalid_argument creator not found", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesRefusesCreditSharesAboveOneWholeEpisode(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "New Series",
+		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
+			{CreatorId: episodeTestID(11).String(), RoleId: testCreatorRoleID.String(), ShareBps: 6000},
+			{CreatorId: episodeTestID(12).String(), RoleId: testCreatorRoleID.String(), ShareBps: 5000},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:       seriesID.String(),
+		Title:          "After",
+		CreatorCredits: testCreatorCredits(uuid.Must(uuid.NewV7())),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UpdateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
+	}
+	if err == nil || err.Error() != "invalid_argument: creator not found" {
+		t.Fatalf("UpdateSeries error = %v, want invalid_argument creator not found", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesRollsBackWhenListingInsertFails(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectBegin()
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesListing)).
+		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "New Series",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminGetSeriesTenantBoundary(t *testing.T) {
+	tests := []struct {
+		name         string
+		publicID     string
+		rows         *sqlmock.Rows
+		wantCode     connect.Code
+		wantSeriesID string
+	}{
+		{
+			name:     "normal",
+			publicID: "SERIES001",
+			rows: sqlmock.NewRows(seriesDetailColumns()).
+				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, time.Now(), nil, nil, int64(0), "all", nil),
+			wantSeriesID: "SERIES001",
+		},
+		{
+			name:     "cross-tenant",
+			publicID: "SERIES_OTHER_TENANT",
+			rows:     sqlmock.NewRows(seriesDetailColumns()),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "not-found",
+			publicID: "SERIES_MISSING",
+			rows:     sqlmock.NewRows(seriesDetailColumns()),
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
+				WithArgs(tenantID, tc.publicID).
+				WillReturnRows(tc.rows)
+			if tc.wantCode == 0 {
+				expectSeriesRelationLookups(mock)
+			}
+
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: tc.publicID,
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+			resp, err := client.GetSeries(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetSeries: %v", err)
+				}
+				if resp.Msg.Series == nil {
+					t.Fatalf("series is nil")
+				}
+				if resp.Msg.Series.PublicId != tc.wantSeriesID {
+					t.Fatalf("series public_id = %q, want %q", resp.Msg.Series.PublicId, tc.wantSeriesID)
+				}
+			} else {
+				if connect.CodeOf(err) != tc.wantCode {
+					t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+				}
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestAdminGetSeriesDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminGetSeriesPreservesContextCanceled(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnError(context.Canceled)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertExpectations(t, mock)
+}
+
+// testSeriesLabelID is the label a series row carries wherever it names one.
+var testSeriesLabelID = uuid.MustParse("01900000-0000-7000-8000-00000000a001")

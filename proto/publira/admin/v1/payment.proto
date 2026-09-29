@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/admin/v1/email.proto";
+import "publira/types/v1/types.proto";
+
+// One credential a payment provider declares.
+message PaymentCredentialField {
+  // The key the value is stored and sent under. The console names the field
+  // from its own catalogs by the provider id and this name.
+  string name = 1;
+  // A secret field is stored encrypted and never answered back in full.
+  bool secret = 2;
+  // A public field is handed to the reader's browser, as a publishable key is,
+  // and its value is answered back as stored.
+  bool public = 3;
+  // Every required field has to be stored before the provider takes payments.
+  bool required = 4;
+}
+
+// A payment provider a tenant may choose, as the server registers it.
+message PaymentProvider {
+  // The id stored in a tenant's settings and named in the webhook route.
+  string id = 1;
+  string display_name = 2;
+  repeated PaymentCredentialField fields = 3;
+  // The path on the tenant's storefront the provider's notifications are
+  // received on, such as "/api/v1/webhook/payment/stripe".
+  string webhook_path = 4;
+}
+
+message ListPaymentProvidersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListPaymentProvidersResponse {
+  // Ordered by id.
+  repeated PaymentProvider providers = 1;
+}
+
+// What is stored for one credential field of the tenant's provider. A secret
+// value never appears here.
+message PaymentCredentialFieldState {
+  string name = 1;
+  bool configured = 2;
+  // Display hint derived at write time: prefix + bullets + last four for a
+  // secret field, and the value itself for one that is not secret. Empty when
+  // the field is not stored.
+  string hint = 3;
+  // The stored value of a field the provider declares public, which the
+  // checkout page is given. Empty for every other field.
+  string public_value = 4;
+}
+
+// Non-secret view of a tenant's payment-provider settings.
+message TenantPaymentSettings {
+  reserved 3, 4, 5, 6;
+  reserved "secret_key_configured", "webhook_secret_configured", "secret_key_hint", "webhook_secret_hint";
+
+  // The id of the provider the tenant chose, or empty before one is saved.
+  string provider = 1;
+  bool enabled = 2;
+  // True when enabled and every field the provider requires is stored.
+  // Checkout and Webhook use this tenant's settings only when ready.
+  bool ready = 7;
+  // One entry per field the provider declares, in its declared order.
+  repeated PaymentCredentialFieldState fields = 8;
+}
+
+message GetTenantPaymentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantPaymentSettingsResponse {
+  TenantPaymentSettings settings = 1;
+}
+
+// A change to one credential field. A field the request leaves out is left as
+// it is.
+message PaymentCredentialFieldUpdate {
+  string name = 1;
+  SecretUpdateMode mode = 2;
+  // The new value; read only when mode is SECRET_UPDATE_MODE_REPLACE.
+  string value = 3;
+}
+
+message UpdateTenantPaymentSettingsRequest {
+  reserved 4, 5, 6, 7;
+  reserved "secret_key_update_mode", "secret_key", "webhook_secret_update_mode", "webhook_secret";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // A registered provider id. Choosing a provider other than the stored one
+  // clears every field stored for the previous one.
+  string provider = 2;
+  bool enabled = 3;
+  repeated PaymentCredentialFieldUpdate fields = 8;
+}
+
+message UpdateTenantPaymentSettingsResponse {
+  TenantPaymentSettings settings = 1;
+}
+
+// Non-secret view of the App Store Connect API key the server talks to the App
+// Store with. The .p8 private key never appears here.
+message TenantAppStorePaymentSettings {
+  bool enabled = 1;
+  // The issuer ID and the key ID are not secret and are answered as stored.
+  string issuer_id = 2;
+  string key_id = 3;
+  bool private_key_configured = 4;
+  // Display hint derived at write time. Empty when no key is stored.
+  string private_key_hint = 5;
+  // The app the store sells in: the bundle identifier the tenant's iOS app
+  // association names. Empty where it names none, and edited there, not here.
+  string bundle_identifier = 6;
+  // True when enabled, the key is stored, and bundle_identifier is not empty.
+  bool ready = 7;
+}
+
+// Non-secret view of the service account the server talks to Google Play as.
+// The JSON key never appears here.
+message TenantGooglePlayPaymentSettings {
+  bool enabled = 1;
+  // The client_email of the stored key, which the tenant grants access to in
+  // the Play Console. Empty when no key is stored.
+  string service_account_email = 2;
+  bool service_account_key_configured = 3;
+  // Display hint derived at write time. Empty when no key is stored.
+  string service_account_key_hint = 4;
+  // The app the store sells in: the application ID the tenant's Android app
+  // association names. Empty where it names none, and edited there, not here.
+  string package_name = 5;
+  // True when enabled, the key is stored, and package_name is not empty.
+  bool ready = 6;
+}
+
+message TenantStorePaymentSettings {
+  // Never APP_PURCHASE_ROUTE_UNSPECIFIED on a read.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 1;
+  TenantAppStorePaymentSettings app_store = 2;
+  TenantGooglePlayPaymentSettings google_play = 3;
+}
+
+message GetTenantStorePaymentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantStorePaymentSettingsResponse {
+  TenantStorePaymentSettings settings = 1;
+}
+
+message AppStorePaymentSettingsUpdate {
+  bool enabled = 1;
+  // A UUID, and a ten-character key ID in capital letters and digits. Both are
+  // required while enabled; an empty value clears one.
+  string issuer_id = 2;
+  string key_id = 3;
+  SecretUpdateMode private_key_update_mode = 4;
+  // The contents of the .p8 file App Store Connect issued, a PKCS #8 EC
+  // private key in PEM form.
+  string private_key = 5;
+}
+
+message GooglePlayPaymentSettingsUpdate {
+  bool enabled = 1;
+  SecretUpdateMode service_account_key_update_mode = 2;
+  // The JSON key file of a service account, as the Google Cloud console
+  // downloads it.
+  string service_account_key = 3;
+}
+
+message UpdateTenantStorePaymentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Every field is written, and an absent store is written disabled with its
+  // key left as it is. APP_PURCHASE_ROUTE_UNSPECIFIED is invalid_argument, and
+  // APP_PURCHASE_ROUTE_STORE is failed_precondition unless a store is ready
+  // once this request is applied.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 2;
+  AppStorePaymentSettingsUpdate app_store = 3;
+  GooglePlayPaymentSettingsUpdate google_play = 4;
+}
+
+message UpdateTenantStorePaymentSettingsResponse {
+  TenantStorePaymentSettings settings = 1;
+}
+
+// A consumable product the tenant creates in App Store Connect and the Play
+// Console, one per price its catalog sells in the app at.
+message TenantStoreProduct {
+  // The same ID in both stores, derived from the price.
+  string product_id = 1;
+  // The price in JPY.
+  int32 price = 2;
+  // How many episodes sell at this price, drafts and scheduled ones included.
+  int32 episode_count = 3;
+}
+
+message ListTenantStoreProductsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListTenantStoreProductsResponse {
+  // Ordered by price. Only paid episodes the app may show and sell are counted.
+  repeated TenantStoreProduct products = 1;
+}
+
+service AdminPaymentSettingsService {
+  rpc ListPaymentProviders(ListPaymentProvidersRequest) returns (ListPaymentProvidersResponse) {}
+  rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
+  rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
+  rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
+  rpc UpdateTenantStorePaymentSettings(UpdateTenantStorePaymentSettingsRequest) returns (UpdateTenantStorePaymentSettingsResponse) {}
+  rpc ListTenantStoreProducts(ListTenantStoreProductsRequest) returns (ListTenantStoreProductsResponse) {}
+}

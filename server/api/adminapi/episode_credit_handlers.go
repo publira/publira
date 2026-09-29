@@ -1,0 +1,202 @@
+package adminapi
+
+import (
+	"cmp"
+	"context"
+	"database/sql"
+	"errors"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/api/protomapper"
+	"github.com/publira/publira/server/internal/auditlog"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
+)
+
+// creditSourceEpisode marks a credit an editor wrote on the episode itself,
+// as against the `series` rows the bake writes. The distinction is what a
+// range edit across episodes has to respect: it moves the standing team and
+// leaves a guest where they were credited.
+const creditSourceEpisode = "episode"
+
+func (s *adminServer) ListEpisodeCredits(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListEpisodeCreditsRequest],
+) (*connect.Response[publiraadminv1.ListEpisodeCreditsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.episodeForCredits(ctx, tenant.ID, req.Msg.EpisodeId)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queriesFor(ctx).ListEpisodeCreatorsByEpisodeIDs(ctx, []uuid.UUID{episode.ID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "episode_id", episode.ID.String())
+	}
+	credits := protomapper.EpisodeCreditsByEpisodeID(rows)
+	return connect.NewResponse(&publiraadminv1.ListEpisodeCreditsResponse{
+		Creators:       credits[episode.ID],
+		CreatorCredits: episodeCreatorCredits(rows),
+	}), nil
+}
+
+func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) []*publiraadminv1.EpisodeCreatorCredit {
+	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(rows))
+	for _, row := range rows {
+		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
+			CreatorId: row.CreatorID.String(),
+			RoleId:    nullUUIDString(row.RoleID),
+			ShareBps:  row.ShareBps,
+		})
+	}
+	return credits
+}
+
+func (s *adminServer) ReplaceEpisodeCredits(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ReplaceEpisodeCreditsRequest],
+) (*connect.Response[publiraadminv1.ReplaceEpisodeCreditsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	shares := make([]int32, len(req.Msg.CreatorCredits))
+	for index, credit := range req.Msg.CreatorCredits {
+		shares[index] = credit.GetShareBps()
+	}
+	if err := validateCreditShares(shares, "creator_credits"); err != nil {
+		return nil, err
+	}
+	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
+	if err != nil {
+		return nil, err
+	}
+	setCreatorCreditShares(credits, shares)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin replace episode credits transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	// The lock on the episode is what serializes two editors saving its
+	// credits: the whole set is deleted and rewritten, so there is no credit
+	// row for the second save to wait on, and without this it would read the
+	// provenance of rows the first save has already replaced.
+	episode, err := s.queriesFor(txCtx).LockEpisodeByIDForTenant(txCtx, dbmodels.LockEpisodeByIDForTenantParams{
+		TenantID: tenant.ID,
+		ID:       episodeID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to lock episode for replace credits", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+	}
+	// What the episode carries now, so a credit the request keeps keeps saying
+	// where it came from. A separate statement from the lock, because READ
+	// COMMITTED freezes a statement's snapshot at its start and a read that
+	// waited inside the same one would answer from before the wait.
+	existing, err := s.queriesFor(txCtx).ListEpisodeCreatorsByEpisodeIDs(txCtx, []uuid.UUID{episode.ID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode credits before replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	sourceByPair := make(map[[2]uuid.UUID]string, len(existing))
+	for _, row := range existing {
+		sourceByPair[[2]uuid.UUID{row.CreatorID, row.RoleID.UUID}] = row.Source
+	}
+
+	if err := s.queriesFor(txCtx).DeleteEpisodeCreatorsByEpisodeID(txCtx, episode.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to delete episode credits", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	// display_order is the position in the request, which orders the creators
+	// who share a role: the read sorts by role priority first, so a global
+	// index keeps the order the editor gave within each role without carrying
+	// a second counter.
+	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right creatorCredit) int {
+		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
+	})
+	for index, credit := range ordered {
+		source, kept := sourceByPair[[2]uuid.UUID{credit.creator.ID, credit.role.ID}]
+		if !kept {
+			source = creditSourceEpisode
+		}
+		err := s.queriesFor(txCtx).CreateEpisodeCreator(txCtx, dbmodels.CreateEpisodeCreatorParams{
+			TenantID:     tenant.ID,
+			EpisodeID:    episode.ID,
+			CreatorID:    credit.creator.ID,
+			RoleID:       credit.role.ID,
+			DisplayOrder: int32(index),
+			Source:       source,
+			ShareBps:     credit.shareBps,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to create episode credit", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "creator_id", credit.creator.ID.String())
+		}
+	}
+	written, err := s.queriesFor(txCtx).ListEpisodeCreatorsByEpisodeIDs(txCtx, []uuid.UUID{episode.ID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode credits after replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the replaced episode credits", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit replace episode credits", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	s.reval.Send(ctx, owed)
+
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_credits_replaced",
+			TargetType:  "episode",
+			TargetID:    episode.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
+
+	return connect.NewResponse(&publiraadminv1.ReplaceEpisodeCreditsResponse{
+		Creators: protomapper.EpisodeCreditsByEpisodeID(written)[episode.ID],
+	}), nil
+}
+
+// episodeForCredits resolves the episode a credit read names, as the
+// not-found the console shows rather than as an empty credit list. The write
+// takes the row under a lock instead, so it has no use for this.
+func (s *adminServer) episodeForCredits(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	rawID string,
+) (dbmodels.GetEpisodeByIDForTenantRow, error) {
+	episodeID, err := parseRecordID(rawID, "episode_id")
+	if err != nil {
+		return dbmodels.GetEpisodeByIDForTenantRow{}, err
+	}
+	row, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{
+		TenantID: tenantID,
+		ID:       episodeID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.GetEpisodeByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return dbmodels.GetEpisodeByIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
+	}
+	return row, nil
+}

@@ -1,0 +1,758 @@
+-- name: CreateEpisodeBase :one
+INSERT INTO episodes (
+        id,
+        series_id,
+        public_id,
+        title,
+        order_index,
+        tenant_id,
+        availability,
+        purchase_availability
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: UpsertEpisodeListing :one
+INSERT INTO episode_listings (
+        episode_id,
+        price,
+        reading_period_hours,
+        status,
+        scheduled_at,
+        published_at,
+        tenant_id
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (episode_id) DO
+UPDATE
+SET price = EXCLUDED.price,
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
+    scheduled_at = EXCLUDED.scheduled_at,
+    published_at = EXCLUDED.published_at
+RETURNING *;
+
+-- name: ListEpisodesReadyToPublish :many
+SELECT el.episode_id
+FROM episode_listings el
+WHERE el.status = 'scheduled'
+    AND el.scheduled_at IS NOT NULL
+    AND el.scheduled_at <= NOW();
+
+-- name: ListEpisodesReadyToPublishWithTenantInfo :many
+SELECT el.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    t.id AS tenant_id,
+    t.public_id AS tenant_public_id,
+    t.name AS tenant_name,
+    t.domain AS tenant_domain
+FROM episode_listings el
+    JOIN episodes e ON e.id = el.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN tenants t ON t.id = el.tenant_id
+WHERE el.status = 'scheduled'
+    AND el.scheduled_at IS NOT NULL
+    AND el.scheduled_at <= NOW();
+
+-- name: GetPublishedEpisodeForFollowerNotification :one
+-- Worker read: what the episode_published notification of an episode the
+-- console published at once says. An episode that is no longer published by
+-- the time the event drains answers no row, so its followers are not told.
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.id = $2
+    AND el.status = 'published';
+
+-- name: MarkEpisodePublished :exec
+UPDATE episode_listings
+SET status = 'published',
+    published_at = NOW()
+WHERE episode_id = $1;
+
+-- name: ListPublishedEpisodesBySeries :many
+SELECT e.id,
+    e.series_id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    e.created_at,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON e.id = el.episode_id
+WHERE s.tenant_id = $1
+    AND e.series_id = $2
+    AND el.status = 'published'
+ORDER BY e.order_index ASC;
+
+-- Reordering has to see every episode under the series, so this stays a list
+-- without pagination. The list on screen uses the keyset scan below.
+-- The order is (order_index, id), the same as ListEpisodes: ReorderEpisodes
+-- compares it against what the client read back, and a different tiebreaker
+-- would reject a request that never conflicted.
+-- name: ListEpisodesBySeriesForTenant :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    e.availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND e.series_id = $2
+ORDER BY e.order_index ASC,
+    e.id ASC;
+
+-- Admin ListEpisodes is (order_index, id) ASC. Forward uses the ASC query;
+-- backward uses DESC so idx_episodes_series_order_index can be scanned in
+-- reverse. The handler flips DESC rows back into display order. order_index
+-- can tie, so the UUIDv7 id is the tiebreaker that keeps the order unique.
+-- cursor rules: proto/README.md.
+-- name: ListEpisodesBySeriesForTenantAsc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) >= (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) > (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY e.order_index ASC,
+    e.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodesBySeriesForTenantDesc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) <= (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) < (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY e.order_index DESC,
+    e.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
+SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE s.tenant_id = $1
+    AND e.series_id = $2;
+
+-- name: UpdateEpisodeOrderIndexByIDForTenantAndSeries :exec
+UPDATE episodes e
+SET order_index = sqlc.arg('order_index')
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND e.id = sqlc.arg('id');
+
+-- name: LockEpisodeByIDForTenant :one
+-- Lock the episode row so two calls that rewrite a set hanging off it — its
+-- credits — serialize. Locking the credit rows themselves would not do it: a
+-- replacement deletes and recreates the whole set, so an episode credited to
+-- nobody has no row to lock and two replacements would both write.
+--
+-- The read of the current credits must be a separate statement, for the reason
+-- the series lock's is: READ COMMITTED freezes a statement's snapshot at its
+-- start, so a read that waited for the lock inside the same statement would
+-- still answer from before the wait.
+SELECT id,
+    public_id
+FROM episodes
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE;
+
+-- name: LockEpisodesByIDsForTenantAndSeries :many
+-- The episodes a range edit names, resolved and locked in one statement. The
+-- lock is the one LockEpisodeByIDForTenant takes, for the same reason: a
+-- credit save on one of these episodes rewrites the whole set hanging off it,
+-- so the two have to serialize on the episode row rather than on credit rows a
+-- replacement is about to delete.
+--
+-- An id of another series or another tenant simply does not come back,
+-- which is what lets the handler refuse the request by comparing counts
+-- instead of checking each episode.
+--
+-- ORDER BY e.id is what keeps two range edits over overlapping ranges from
+-- deadlocking: both take the row locks in the same order.
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = sqlc.arg('series_id')
+    AND e.id = ANY(sqlc.arg('ids')::uuid[])
+ORDER BY e.id
+FOR UPDATE OF e;
+
+-- name: GetEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability,
+    -- Where the episode may be bought: its own value, NULL where it follows
+    -- the series, beside the value resolved through the series and the tenant.
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND e.public_id = $2
+LIMIT 1;
+
+-- name: GetEpisodeByIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability,
+    -- Where the episode may be bought: its own value, NULL where it follows
+    -- the series, beside the value resolved through the series and the tenant.
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND e.id = $2
+LIMIT 1;
+
+-- name: GetEpisodeSeriesByIDForTenant :one
+-- The episode an image upload names and the series it belongs to, so an
+-- upload that also names a series is refused for an episode of another one.
+SELECT e.id,
+    e.public_id,
+    e.series_id
+FROM episodes e
+WHERE e.tenant_id = $1
+    AND e.id = $2
+LIMIT 1;
+
+-- name: GetEpisodeByPublicIDForTenantAndSeries :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The same layout columns GetEpisodeByPublicIDForTenant reads.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    e.availability,
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND e.public_id = $3
+LIMIT 1;
+
+-- name: GetPublishedEpisodeForTenant :one
+-- A URL names the episode by its public ID and a reader's request by its ID;
+-- the caller passes the one it holds.
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    e.series_id,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    -- The work's artwork, which the links to the neighbouring episodes show.
+    s.eye_catch_image_id AS series_eye_catch_image_id,
+    si.updated_at AS series_eye_catch_image_updated_at,
+    -- The rating a client interposes its confirmation on. Reading it here
+    -- keeps the episode detail one round trip.
+    sl.age_rating AS series_age_rating,
+    -- The series' own comment mode, and NULL when it follows the tenant's.
+    -- Posting resolves the two, and reads the episode either way, so the
+    -- override travels with the episode rather than costing a query of its own.
+    sl.comment_mode AS series_comment_mode,
+    -- How the body is laid out: the episode's own values where it states them,
+    -- and the series' where it does not. Both halves travel so the handler
+    -- resolves them the one way the console's reads do.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    -- Whether the body is free to everyone right now, and the end of the free
+    -- window that makes it so, which the response shows as a countdown.
+    (fe.episode_id IS NOT NULL)::boolean AS is_free,
+    fe.free_until,
+    -- How many readers have rated this episode. The stored tally, so the join
+    -- is one row rather than a scan of the ratings, and an episode nobody has
+    -- rated has no row at all and reads as 0.
+    COALESCE(erc.count, 0)::bigint AS rating_count,
+    -- Where the episode may be bought, resolved through its series and the
+    -- tenant, so a client draws the purchase action without resolving it.
+    epa.purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
+    LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
+    AND erc.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        e.id = sqlc.narg('id')::uuid
+        OR e.public_id = sqlc.narg('public_id')::text
+    )
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+LIMIT 1;
+
+-- name: ListPublishedEpisodeNeighborsForTenant :many
+-- The published episodes on either side of one episode within its own series,
+-- in the (order_index, id) order the series detail lists them in. `direction`
+-- is -1 for the one before and 1 for the one after. A missing neighbour is a
+-- missing row rather than a null column, so an episode at an end of the series
+-- returns one row and the only episode of a series returns none.
+--
+-- The series predicate is repeated on both branches so the query answers for
+-- itself which episodes count as published: an episode of a series that has
+-- been taken down is not a link the storefront may offer, whichever episode
+-- was asked about.
+--
+-- `is_free` reads published_free_episodes, the free half of the body access
+-- rule, so a link cannot say "paid" about an episode that is free at the
+-- moment the reader would follow it. `purchase_availability` is resolved
+-- through the series and the tenant as the episode read resolves it.
+(
+    SELECT -1::int4 AS direction,
+        e.id,
+        e.public_id,
+        e.title,
+        e.order_index,
+        el.price,
+        EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.episode_id = e.id
+        ) AS is_free,
+        epa.purchase_availability
+    FROM episodes e
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+        JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND e.series_id = sqlc.arg('series_id')
+        AND (e.order_index, e.id) < (sqlc.arg('order_index')::int4, sqlc.arg('episode_id')::uuid)
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    ORDER BY e.order_index DESC,
+        e.id DESC
+    LIMIT 1
+)
+UNION ALL
+(
+    SELECT 1::int4 AS direction,
+        e.id,
+        e.public_id,
+        e.title,
+        e.order_index,
+        el.price,
+        EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.episode_id = e.id
+        ) AS is_free,
+        epa.purchase_availability
+    FROM episodes e
+        JOIN series s ON s.id = e.series_id
+        JOIN episode_listings el ON el.episode_id = e.id
+        JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    WHERE s.tenant_id = sqlc.arg('tenant_id')
+        AND e.series_id = sqlc.arg('series_id')
+        AND (e.order_index, e.id) > (sqlc.arg('order_index')::int4, sqlc.arg('episode_id')::uuid)
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+    ORDER BY e.order_index ASC,
+        e.id ASC
+    LIMIT 1
+);
+
+-- name: MarkPublishedEpisodeAsRead :one
+-- Inserts the first completed read only after checking publication and body
+-- access in the same statement. A duplicate returns the preserved read_at.
+--
+-- The returned id is likewise the one the first insert stored, so a repeated
+-- notification projects onto the same content_events row rather than a second
+-- completion for the same member and episode.
+INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
+SELECT sqlc.arg('id'), sqlc.arg('tenant_id'), sqlc.arg('user_id'), e.id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = sqlc.arg('episode_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+    AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id'), e.id)
+ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
+SET read_at = episode_reads.read_at
+RETURNING *;
+
+-- name: ListMyEpisodeReadsDesc :many
+-- The episodes this reader has finished, most recently finished first.
+--
+-- Publication and the calling surface are re-checked here, so a history entry
+-- never names an episode the storefront has taken down or the surface may not
+-- show; that is the same rule ListMyRecentSeries applies to a series. Body access is not re-checked: the reader did finish
+-- the episode, and a rental that has since expired is still part of what they
+-- read, which is also how ListMyPurchases keeps an expired purchase.
+--
+-- The scan starts from the (tenant_id, user_id) prefix of
+-- idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
+-- history rather than by the tenant's.
+--
+-- Backward calls ListMyEpisodeReadsAsc, and the caller sorts the rows back.
+-- cursor rules: proto/README.md.
+SELECT r.id,
+    r.read_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_read_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) <= (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) < (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.read_at DESC,
+    r.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyEpisodeReadsAsc :many
+-- The backward direction of ListMyEpisodeReadsDesc.
+SELECT r.id,
+    r.read_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_read_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) >= (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (r.read_at, r.id) > (
+                sqlc.narg('cursor_read_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY r.read_at ASC,
+    r.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyFinishedEpisodePublicIDsInSeries :many
+-- Which episodes of one series this reader has already finished, so the series
+-- detail can mark the rows of its episode list.
+--
+-- Publication and the surface are left to the caller: the list this answers
+-- is the episode list the series detail already holds for its surface, so an id
+-- that matches nothing in it marks nothing. What the query is scoped to is the reader, through the
+-- member RLS policy episode_reads carries and the columns repeated here.
+SELECT e.public_id
+FROM episode_reads r
+    JOIN episodes e ON e.id = r.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE r.tenant_id = sqlc.arg('tenant_id')
+    AND r.user_id = sqlc.arg('user_id')
+    AND s.id = sqlc.arg('series_id')
+ORDER BY e.order_index ASC,
+    e.id ASC;
+
+-- name: UpdateEpisodePublishScheduleByIDForTenant :exec
+UPDATE episode_listings el
+SET status = CASE
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN 'draft'
+        ELSE 'scheduled'
+    END,
+    scheduled_at = sqlc.narg('scheduled_at')::timestamptz,
+    published_at = CASE
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN NULL
+        ELSE el.published_at
+    END
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE el.episode_id = e.id
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND e.id = sqlc.arg('id');
+
+-- name: UpdateEpisodeLayoutByIDForTenant :exec
+-- Both overrides are written together, and NULL returns a value to following
+-- the series.
+UPDATE episodes
+SET reading_direction = sqlc.narg('reading_direction'),
+    spread_start_index = sqlc.narg('spread_start_index')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
+-- name: UpdateEpisodeAvailabilityByIDForTenant :exec
+-- NULL returns the episode to following its series.
+UPDATE episodes
+SET availability = sqlc.narg('availability')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
+-- name: GetResolvedEpisodePurchaseAvailability :one
+-- Where one episode may be bought, resolved through its series and the tenant.
+SELECT purchase_availability
+FROM episode_purchase_availability
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id');
+
+-- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
+-- NULL returns the episode to following its series.
+UPDATE episodes
+SET purchase_availability = sqlc.narg('purchase_availability')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
+-- name: CountDraftEpisodesForTenant :one
+-- For the tenant dashboard.
+SELECT COUNT(*)::int AS draft_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'draft';
+
+-- name: CountScheduledEpisodesForTenant :one
+-- For the tenant dashboard.
+SELECT COUNT(*)::int AS scheduled_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'scheduled';
+
+-- name: ListRecentEpisodesForDashboard :many
+-- The most recent draft and scheduled episodes, for the publish queue on the
+-- dashboard.
+SELECT
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    el.status,
+    el.scheduled_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status IN ('draft', 'scheduled')
+ORDER BY
+    CASE WHEN el.status = 'scheduled' THEN 0 ELSE 1 END ASC,
+    el.scheduled_at ASC NULLS LAST,
+    e.created_at DESC
+LIMIT $2;

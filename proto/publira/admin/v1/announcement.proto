@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// An announcement is addressed to everyone who opens the tenant's site; a
+// message to one person is a notification.
+message AdminAnnouncement {
+  reserved 5, 6, 7;
+  reserved "audience_type", "target_user_public_id", "target_user_name";
+
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  string link_url = 4;
+  string created_at = 8;
+  // Whether the site shows this announcement as a banner above every page.
+  bool pinned = 9;
+  // RFC 3339 instant the banner stops at. Empty leaves it up until the console
+  // takes it down.
+  string pinned_until = 10;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListAnnouncementsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListAnnouncementsResponse {
+  repeated AdminAnnouncement announcements = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message CreateAnnouncementRequest {
+  reserved 5, 6;
+  reserved "audience_type", "target_user_public_ids";
+
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 2;
+  string body = 3;
+  string link_url = 4;
+  bool pinned = 7;
+  // RFC 3339 instant the banner stops at. Empty pins it until the console takes
+  // it down, and it is ignored when pinned is false.
+  string pinned_until = 8;
+}
+
+message CreateAnnouncementResponse {
+  reserved 1;
+  reserved "announcements";
+
+  AdminAnnouncement announcement = 2;
+}
+
+// Takes the banner down without deleting the announcement, which stays in the
+// list it was posted to.
+message UnpinAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message UnpinAnnouncementResponse {}
+
+service AdminAnnouncementService {
+  rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
+  rpc CreateAnnouncement(CreateAnnouncementRequest) returns (CreateAnnouncementResponse) {}
+  rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
+}

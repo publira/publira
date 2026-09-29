@@ -1,0 +1,165 @@
+import { beforeAll, describe, expect, it } from "vitest";
+
+import { loadEmailMessages } from "./messages";
+import type { Messages } from "./messages";
+import { isTemplateId, resolveEmail, TEMPLATE_IDS } from "./registry";
+import { renderEmail } from "./render";
+
+const passwordResetData = {
+  expires_at: "2030-01-15T12:00:00Z",
+  reset_url: "https://reader.example.test/confirm-password?token=reset",
+  tenant_name: "Aoto Press",
+};
+
+describe("TEMPLATE_IDS", () => {
+  it("holds every mail the worker sends", () => {
+    expect(TEMPLATE_IDS).toEqual([
+      "tenant_admin_invitation",
+      "reader_email_verification",
+      "reader_email_change_confirmation",
+      "reader_email_changed_notice",
+      "reader_password_reset",
+      "reader_password_changed_notice",
+      "reader_signup_attempt_notice",
+      "admin_console_email_change_confirmation",
+      "admin_console_email_changed_notice",
+      "admin_console_password_reset",
+      "platform_console_email_change_confirmation",
+      "platform_console_email_changed_notice",
+      "platform_console_password_reset",
+      "staff_contact_message_notice",
+    ]);
+    expect(isTemplateId("tenant_admin_invitation")).toBe(true);
+    expect(isTemplateId("missing")).toBe(false);
+  });
+});
+
+describe("resolveEmail", () => {
+  let messages: Messages;
+
+  beforeAll(async () => {
+    messages = await loadEmailMessages("en");
+  });
+
+  it("an unknown template becomes unknown_template", () => {
+    const result = resolveEmail({
+      data: {},
+      locale: "en",
+      messages,
+      template: "password_reset",
+      timeZone: "UTC",
+    });
+
+    expect(result).toEqual({
+      message: "unknown template: password_reset",
+      ok: false,
+      reason: "unknown_template",
+    });
+  });
+
+  it("invalid data becomes invalid_data", () => {
+    const result = resolveEmail({
+      data: { tenant_name: "Aoto Press" },
+      locale: "en",
+      messages,
+      template: "tenant_admin_invitation",
+      timeZone: "UTC",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toBe("invalid_data");
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("an invalid timeZone becomes invalid_data", () => {
+    const result = resolveEmail({
+      data: passwordResetData,
+      locale: "en",
+      messages,
+      template: "reader_password_reset",
+      timeZone: "Local",
+    });
+
+    expect(result).toEqual({
+      message: "time_zone must be an IANA time zone",
+      ok: false,
+      reason: "invalid_data",
+    });
+  });
+
+  it("refuses a locale this build serves no catalog for", () => {
+    const result = resolveEmail({
+      data: passwordResetData,
+      locale: "fr",
+      messages,
+      template: "reader_password_reset",
+      timeZone: "UTC",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toBe("unsupported_locale");
+  });
+});
+
+describe("renderEmail", () => {
+  it("a failure comes back without being rendered to HTML", async () => {
+    const result = await renderEmail({
+      data: {},
+      locale: "en",
+      messages: await loadEmailMessages("en"),
+      template: "does_not_exist",
+      timeZone: "UTC",
+    });
+
+    expect(result).toEqual({
+      message: "unknown template: does_not_exist",
+      ok: false,
+      reason: "unknown_template",
+    });
+  });
+
+  it.each(["ja", "ko", "zh-Hans", "zh-Hant"] as const)(
+    "asks the client to autospace the %s body",
+    async (locale) => {
+      const result = await renderEmail({
+        data: passwordResetData,
+        locale,
+        messages: await loadEmailMessages(locale),
+        template: "reader_password_reset",
+        timeZone: "UTC",
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      // `Body` moves the style onto the cell that wraps the whole mail.
+      expect(result.html).toMatch(
+        new RegExp(`lang="${locale}" style="[^"]*text-autospace:normal`, "u")
+      );
+    }
+  );
+
+  it("leaves the English body without text-autospace", async () => {
+    const result = await renderEmail({
+      data: passwordResetData,
+      locale: "en",
+      messages: await loadEmailMessages("en"),
+      template: "reader_password_reset",
+      timeZone: "UTC",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.html).toMatch(/lang="en" style="[^"]*font-family:/u);
+    expect(result.html).not.toContain("text-autospace");
+  });
+});

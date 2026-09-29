@@ -1,0 +1,307 @@
+package platformapi
+
+import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/creatorroles"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/testutil"
+)
+
+func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmock) {
+	t.Helper()
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	queries := dbmodels.New(db)
+	return &platformServer{
+		queries:  queries,
+		db:       db,
+		recorder: auditlog.New(queries, slog.Default()),
+		tokens:   testutil.TokenManager(),
+		logger:   slog.Default(),
+		mail:     openMailGuard(),
+	}, mock
+}
+
+// newTestHandler builds the handler the way New does, with the limit on the
+// mail the console's forms cause given rather than read from the environment:
+// the counters would otherwise be the deployment's shared Redis, where one run
+// of these tests would charge the budget of the next.
+func newTestHandler(db *sql.DB, queries Querier) http.Handler {
+	api := newAPI(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard(), nil)
+	return handlerFromServer(api.server)
+}
+
+// openMailGuard allows far more than any case that is not about the mail limit
+// reaches, so those cases assert the behaviour they are about rather than the
+// limit they happen to sit under. Every one of them shares this process's
+// loopback address, which is a single origin as far as the limit is concerned.
+func openMailGuard() *mailguard.Guard {
+	return mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
+}
+
+func operatorTestUserColumns() []string {
+	return []string{"id", "public_id", "email", "password_hash", "name", "status", "created_at", "credentials_version"}
+}
+
+func issueTestPlatformToken(userPublicID, role string) string {
+	token, _, err := testutil.TokenManager().Issue(
+		userPublicID,
+		auth.AudiencePlatform,
+		"",
+		role,
+		1,
+		time.Now(),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return token
+}
+
+func operatorTestColumns() []string {
+	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
+}
+
+func newAuthedOperatorRequest[T any](msg *T) *connect.Request[T] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", "platform_operator"))
+	return req
+}
+
+func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
+		WithArgs("PLATUSER001").
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
+}
+
+// newOperatorActorContext signs a platform_operator in, as the authentication
+// interceptor does before a handler runs.
+func newOperatorActorContext(userID uuid.UUID) context.Context {
+	return context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
+		UserID: userID,
+		Role:   "platform_operator",
+		Email:  "platform@example.com",
+	})
+}
+
+func expectOperatorAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+func assertOperatorHandlerExpectations(t *testing.T, mock sqlmock.Sqlmock) {
+	t.Helper()
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
+// HTTP/Connect Integration Test Helpers
+
+// Constants for HTTP integration tests (Connect RPC via NewHandler)
+const (
+	integrationSessionToken = "platform-session-token"
+	integrationPlatformRole = "platform_operator"
+)
+
+func integrationTenantColumns() []string {
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+}
+
+func platformConfigColumns() []string {
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at", "revision"}
+}
+
+// platformConfigRow answers a settings row read with the given values. The
+// revision is the version a save states it is based on.
+func platformConfigRow(defaultTimezone, defaultLocale string, revision int64, now time.Time) *sqlmock.Rows {
+	return sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now, revision)
+}
+
+// expectPlatformConfigLookup expects the read of the platform settings row and
+// answers it with the given default time zone and locale.
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
+		WillReturnRows(platformConfigRow(defaultTimezone, defaultLocale, 1, now))
+}
+
+func integrationOperatorColumns() []string {
+	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
+}
+
+func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	server := httptest.NewServer(newTestHandler(db, dbmodels.New(db)))
+	t.Cleanup(server.Close)
+	return server, mock
+}
+
+func newIntegrationRequest[T any](msg T) *connect.Request[T] {
+	return connect.NewRequest(&msg)
+}
+
+func newAuthedIntegrationRequest[T any](msg T) *connect.Request[T] {
+	req := connect.NewRequest(&msg)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
+	return req
+}
+
+func newAuthedCreateTenantIntegrationRequest(msg *publirasplatformv1.CreateTenantRequest) *connect.Request[publirasplatformv1.CreateTenantRequest] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
+	return req
+}
+
+func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
+	return &publirasplatformv1.CreateTenantRequest{
+		DefaultLocale:      "ja",
+		Name:               "New Tenant",
+		Domain:             "new.example.com",
+		InitialAdminEmails: []string{"owner@example.com"},
+	}
+}
+
+func expectIntegrationAuth(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
+	_ = tenantID
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
+		WithArgs("PLATUSER001").
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
+}
+
+func assertIntegrationExpectations(t *testing.T, mock sqlmock.Sqlmock) {
+	t.Helper()
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
+func expectIntegrationAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+func duplicatePublicIDError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"}
+}
+
+// expectPublicIDAttempt expects the savepoint publicid.InsertTx takes before an
+// insert, followed by its release on success or its rollback on a collision.
+func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptReleased(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^RELEASE SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+// expectDefaultCreatorRoleInserts answers the creator-role vocabulary a tenant
+// is created with: one savepointed insert per role, inside the transaction the
+// tenant itself was written in.
+func expectDefaultCreatorRoleInserts(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+	for _, role := range creatorroles.Defaults {
+		expectPublicIDAttempt(mock)
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreatorRole)).
+			WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), role.Name, role.DisplayPriority).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "display_priority", "created_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), tenantID, "ROLEAUTHOR01", role.Name, role.DisplayPriority, now))
+		expectPublicIDAttemptReleased(mock)
+	}
+}
+
+// publicIDArgument matches any string argument and records what was passed, so
+// a test can assert on the public IDs the handler generated.
+type publicIDArgument struct {
+	values []string
+}
+
+func (a *publicIDArgument) Match(v driver.Value) bool {
+	value, ok := v.(string)
+	if !ok {
+		return false
+	}
+	a.values = append(a.values, value)
+
+	return true
+}
+
+// assertRetriedWithFreshPublicIDs checks that a retry did not reuse the ID that
+// just collided; reusing it would hit the same unique constraint again.
+func assertRetriedWithFreshPublicIDs(t *testing.T, attempted *publicIDArgument, want int) {
+	t.Helper()
+
+	if len(attempted.values) != want {
+		t.Fatalf("public_id attempts = %v, want %d", attempted.values, want)
+	}
+	seen := make(map[string]struct{}, want)
+	for _, value := range attempted.values {
+		if !publicid.Valid(value) {
+			t.Fatalf("generated public_id %q is not 12 Base58 characters", value)
+		}
+		if _, duplicate := seen[value]; duplicate {
+			t.Fatalf("retry reused public_id %q", value)
+		}
+		seen[value] = struct{}{}
+	}
+}
+
+func duplicateDomainError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"}
+}
+
+func duplicateAdminDomainError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_admin_domain_key"}
+}
+
+// mailGuardWith is a mail guard over in-process counters whose mail-request
+// limits are the ones given, and whose other values are the built-in defaults.
+func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guard {
+	policy := platformpolicy.Defaults()
+	policy.MailRequestsPerAddress = perAddress
+	policy.MailRequestsPerSource = perSource
+	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
+}

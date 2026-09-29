@@ -1,0 +1,875 @@
+package imageserver
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tenanttz"
+	"github.com/publira/publira/server/internal/tracing"
+)
+
+// requiredMinimumAgeForImage answers how old the tenant's rule makes a reader
+// prove they are before this episode's pages may leave. Both columns are
+// nullable: an unclassified series has no listing row and a tenant that has
+// saved nothing has no config row, and neither asks anything.
+//
+// The rule is applied here rather than in the queries because the API applies
+// the same one to the same episode. A body the API withholds whose pages this
+// server still serves is not withheld at all, and two spellings of the mapping
+// is how the two would come to disagree.
+func requiredMinimumAgeForImage(ageRating, ageVerification sql.NullString) (int, error) {
+	if !ageRating.Valid || ageRating.String == ageverification.RatingAll {
+		return 0, nil
+	}
+	rule := ageverification.None
+	if ageVerification.Valid {
+		rule = ageVerification.String
+	}
+	return ageverification.RequiredMinimumAge(rule, ageRating.String)
+}
+
+// readerClearsMinimumAge reports whether the reader behind this row is old
+// enough on the tenant's own calendar day. An account that has given no birth
+// date has proven nothing and does not clear it.
+func readerClearsMinimumAge(tenant dbmodels.Tenant, minimumAge int, birthDate sql.NullTime) (bool, error) {
+	if minimumAge <= 0 {
+		return true, nil
+	}
+	if !birthDate.Valid {
+		return false, nil
+	}
+	// The platform default is out of reach here — this server holds no
+	// platform-settings reader — and it is not needed: tenants.timezone is NOT
+	// NULL with a non-blank CHECK, so the last-resort constant only guards a
+	// row written before those constraints existed.
+	location, err := time.LoadLocation(tenanttz.Resolve(tenant.Timezone, nil))
+	if err != nil {
+		return false, err
+	}
+	return ageverification.AgeOn(birthDate.Time, ageverification.Today(time.Now(), location)) >= minimumAge, nil
+}
+
+// publicImageCacheControl is what a body anyone may read is served with. An
+// episode that is free by price stays free, so its pages can be held for the
+// full hour.
+const publicImageCacheControl = "public, max-age=3600"
+
+// publicImageMaxAgeSeconds is the ceiling above; freeWindowCacheControl never
+// exceeds it.
+const publicImageMaxAgeSeconds = 3600
+
+// freeWindowCacheControl bounds a public response to what is left of the free
+// window that made it public. A window shorter than the default hour shortens
+// the response with it, and one that closed between the query and here leaves
+// nothing cacheable at all.
+func freeWindowCacheControl(freeUntil, now time.Time) string {
+	remaining := int(freeUntil.Sub(now).Seconds())
+	if remaining < 0 {
+		remaining = 0
+	}
+	if remaining > publicImageMaxAgeSeconds {
+		remaining = publicImageMaxAgeSeconds
+	}
+	return "public, max-age=" + strconv.Itoa(remaining)
+}
+
+type ResolverQuerier interface {
+	GetTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
+	GetAdminTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
+}
+
+type TenantScopedQuerier interface {
+	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
+	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error)
+	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow, error)
+	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
+	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
+	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
+	GetEpisodeImageByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImageByIDForTenantParams) (dbmodels.GetEpisodeImageByIDForTenantRow, error)
+	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	GetUserByPublicIDForTenant(ctx context.Context, arg dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (dbmodels.User, error)
+	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
+}
+
+type TenantScopedQuerierFactory interface {
+	ForTenant(ctx context.Context, tenantID uuid.UUID) (TenantScopedQuerier, func(), error)
+}
+
+type ObjectResult struct {
+	Body          io.ReadCloser
+	ContentType   string
+	ContentLength int64
+}
+
+var ErrObjectNotFound = errors.New("object not found")
+
+type ObjectStore interface {
+	GetObject(ctx context.Context, key string) (ObjectResult, error)
+}
+
+// VersionedStore is an ObjectStore whose configuration can change. A converted
+// result is cached under the version it was read from, so a change of store is
+// not answered from the cache of the previous one.
+type VersionedStore interface {
+	ObjectStore
+	Version(ctx context.Context) (string, error)
+}
+
+// SiteDB is how one of a tenant's two host names reaches the database. The
+// pool belongs to that site's PostgreSQL login — publira_public for the
+// storefront, publira_admin for the console — and Tenants opens the
+// tenant-scoped queries on it.
+type SiteDB struct {
+	Pool    *sql.DB
+	Tenants TenantScopedQuerierFactory
+}
+
+type Handler struct {
+	resolverQuerier ResolverQuerier
+	public          SiteDB
+	admin           SiteDB
+	objects         ObjectStore
+	logger          *slog.Logger
+	tokens          *auth.TokenManager
+	cache           ImageCache
+	proxy           http.Handler
+	maxConverted    int
+}
+
+type imageCredential struct {
+	claims   *auth.AccessTokenClaims
+	rawToken string
+}
+
+// NewHandler builds the handler both of a tenant's host names are served by.
+// Which of the two a request arrived on is decided per request by
+// resolveTenantFromHost, and that answer picks the pool the request is
+// answered from as well as the rules the episode body route applies.
+//
+// The handler carries the image routes and nothing else: the health probes
+// belong to the listener it is mounted on, which names a check per pool that
+// listener serves, and the image routes may be one of several things on it.
+func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectStore, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	h := &Handler{
+		resolverQuerier: resolver,
+		public:          public,
+		admin:           admin,
+		objects:         objects,
+		logger:          logger,
+		tokens:          tokens,
+		cache:           newImageCacheFromEnv(logger),
+		maxConverted:    defaultMaxConvertedBytes,
+	}
+	origin, proxy, err := startOriginAndProxy(h)
+	if err != nil {
+		return nil, err
+	}
+	h.proxy = proxy
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
+	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
+	mux.HandleFunc("GET /images/genres/{media_id}/{variant_type}/{width}", h.handleGetGenreImage)
+	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
+	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
+	mux.HandleFunc("GET /images/tenants/{media_id}/{variant_type}", h.handleGetTenantImage)
+	return &Server{mux: mux, origin: origin}, nil
+}
+
+func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	objectKey := ""
+	contentTypeFromDB := ""
+	cacheControl := publicImageCacheControl
+	var cipher *imageCipher
+
+	if credential, ok := h.episodeImageCredential(r, tenant.ID); ok {
+		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant, mediaID, credential.claims)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "image not found", http.StatusNotFound)
+				return
+			}
+			h.logger.ErrorContext(ctx, "failed to evaluate token image access", "error", err, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if access != nil {
+			objectKey = access.ObjectKey
+			contentTypeFromDB = access.ContentType
+			cacheControl = "private, max-age=60"
+			cipher = &imageCipher{rawToken: credential.rawToken, subject: credential.claims.Subject}
+		}
+	}
+
+	// A staff preview is honoured on the console host alone, so an admin-media
+	// token cannot unlock a body on the storefront, where the response would
+	// be a shared cache entry.
+	if objectKey == "" && adminHost {
+		if claims, ok := h.adminEpisodeImageClaims(r, tenant.ID); ok {
+			access, err := h.grantedAdminEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Error(w, "image not found", http.StatusNotFound)
+					return
+				}
+				h.logger.ErrorContext(ctx, "failed to evaluate admin image access", "error", err, "media_id", mediaID.String())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if access != nil {
+				objectKey = access.ObjectKey
+				contentTypeFromDB = access.ContentType
+				cacheControl = "private, max-age=60"
+			}
+		}
+	}
+
+	if objectKey == "" {
+		publicAccess, err := tenantQueries.GetEpisodeImagePublicAccessByIDForTenant(ctx, dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams{
+			ID:       mediaID,
+			TenantID: tenant.ID,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "image not found", http.StatusNotFound)
+				return
+			}
+			h.logger.ErrorContext(ctx, "failed to evaluate public image access", "error", err, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
+		if !isPublished || !publicAccess.HasPublicAccess {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		minimumAge, ageErr := requiredMinimumAgeForImage(publicAccess.AgeRating, publicAccess.AgeVerification)
+		if ageErr != nil {
+			h.logger.ErrorContext(ctx, "failed to resolve the tenant age rule for an image", "error", ageErr, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if minimumAge > 0 {
+			// This path names no reader, so it cannot tell one who has proven
+			// an age from one who has not — and its response is a shared cache
+			// entry, which could not be told apart either. A body the rule
+			// covers therefore leaves only through the credentialed path
+			// above, and the API hands a reader who clears the rule the
+			// per-reader token that reaches it.
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		objectKey = publicAccess.ObjectKey
+		contentTypeFromDB = publicAccess.ContentType
+		if publicAccess.FreeUntil.Valid {
+			// The body is public only while the window is open, so the
+			// response must not outlive it: a copy still in a browser or a
+			// shared cache afterwards is a paid page being read for free, and
+			// the token that came with it still decrypts what is cached.
+			cacheControl = freeWindowCacheControl(publicAccess.FreeUntil.Time, time.Now())
+		}
+		// A free body leaves as ciphertext too, so what a page costs to
+		// extract does not depend on whether its episode is sold. The console
+		// host is left out: it renders bodies with an <img>, which cannot
+		// decrypt.
+		if !adminHost {
+			freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
+			if cipherErr != nil {
+				h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			cipher = freeCipher
+		}
+	}
+
+	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl, cipher)
+}
+
+// freeEpisodeImageCipher picks the key material a free body's response is
+// encrypted under. Its reader may hold no credential at all, so the key comes
+// from the deterministic per-episode, per-window media token the API puts on
+// the image URL: the reader derives it from the `t` they were handed, and
+// image-server recomputes the same token rather than trusting what the URL
+// carried.
+//
+// Only the URL is read here, never the Authorization header, so the response
+// stays a pure function of the request URL — which is what lets an encrypted
+// free body keep one shared cache entry. A presented token is used when it is
+// this tenant's and this episode's and has not expired, so a reader still
+// holding the previous window's URL decodes what they were handed. Anything
+// else — nothing presented, a malformed value, an expired one, another
+// episode's — is encrypted under the current window's token, so dropping `t`
+// yields ciphertext the request cannot read rather than a plaintext page.
+func (h *Handler) freeEpisodeImageCipher(r *http.Request, tenantID uuid.UUID, episodeID uuid.UUID) (*imageCipher, error) {
+	if rawToken := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam)); rawToken != "" && h.tokens != nil {
+		claims, err := h.tokens.Verify(rawToken, auth.AudienceMedia)
+		if err == nil && claims.TenantID == tenantID.String() && claims.EpisodeID == episodeID.String() {
+			return &imageCipher{rawToken: rawToken, subject: claims.Subject}, nil
+		}
+	}
+	token, _, err := h.tokens.IssueFreeEpisodeMediaToken(tenantID.String(), episodeID.String(), time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return &imageCipher{rawToken: token, subject: auth.FreeEpisodeMediaSubject}, nil
+}
+
+// episodeImageCredential resolves whatever credential the request carries into
+// the user it speaks for. API clients send Authorization: Bearer, but a browser
+// <img> cannot set a header, so an entitled reader's URL carries an
+// AudienceMedia token in the query instead. Both only name a user: the grant
+// itself is still read from the database by grantedEpisodeImage.
+func (h *Handler) episodeImageCredential(r *http.Request, tenantID uuid.UUID) (*imageCredential, bool) {
+	if h.tokens == nil {
+		return nil, false
+	}
+
+	rawToken, audience := "", ""
+	if token, ok := requestmeta.AccessTokenFromRequest(r); ok {
+		rawToken, audience = token, auth.AudiencePublic
+	} else if token := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam)); token != "" {
+		rawToken, audience = token, auth.AudienceMedia
+	}
+	if rawToken == "" {
+		return nil, false
+	}
+
+	claims, err := h.tokens.Verify(rawToken, audience)
+	if err != nil {
+		return nil, false
+	}
+	if claims.TenantID != "" && claims.TenantID != tenantID.String() {
+		return nil, false
+	}
+	// An absent tenant means "not tenant-scoped", which a media token must
+	// never be: skipping the check above would make one URL work against every
+	// tenant's image-server. Both scopes are demanded here rather than trusted
+	// from the issuer.
+	if audience == auth.AudienceMedia {
+		if strings.TrimSpace(claims.TenantID) == "" || strings.TrimSpace(claims.EpisodeID) == "" {
+			return nil, false
+		}
+	}
+	return &imageCredential{claims: claims, rawToken: rawToken}, true
+}
+
+// grantedEpisodeImage evaluates a verified credential against one image. A nil
+// row with a nil error means the credential unlocks nothing here — an unknown,
+// disabled, or password-rotated user, an unpublished episode, no grant, or a
+// media token issued for a different episode — and the caller falls back to
+// the public rule, which is the same one the API applies.
+func (h *Handler) grantedEpisodeImage(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenant dbmodels.Tenant,
+	mediaID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
+	user, err := h.activeUserForClaims(ctx, tenantQueries, tenant.ID, claims)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil
+	}
+
+	access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
+		ID:       mediaID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// A media token unlocks the episode it was issued for and no other. The
+	// URL is readable by anyone it reaches, so this is what keeps a shared
+	// link from covering the reader's whole library until it expires.
+	if claims.EpisodeID != "" && claims.EpisodeID != access.EpisodeID.String() {
+		return nil, nil
+	}
+	isPublished := access.IsPublished.Valid && access.IsPublished.Bool
+	if !isPublished || !access.HasAccess {
+		return nil, nil
+	}
+	// The token names the reader, so the rule is checked against the account it
+	// names rather than against whoever is holding the URL. A grant is not
+	// proof of an age: a purchased body is withheld from a reader the rule
+	// stops, the same way the API withholds it.
+	minimumAge, err := requiredMinimumAgeForImage(access.AgeRating, access.AgeVerification)
+	if err != nil {
+		return nil, err
+	}
+	clears, err := readerClearsMinimumAge(tenant, minimumAge, user.BirthDate)
+	if err != nil {
+		return nil, err
+	}
+	if !clears {
+		return nil, nil
+	}
+	return &access, nil
+}
+
+// adminEpisodeImageClaims is the console host's counterpart of
+// episodeImageCredential. Only AudienceAdminMedia on the query is accepted: an
+// admin access token in the URL would be a session, and a reader media token
+// is evaluated on the public path instead.
+func (h *Handler) adminEpisodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
+	if h.tokens == nil {
+		return nil, false
+	}
+	rawToken := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam))
+	if rawToken == "" {
+		return nil, false
+	}
+	claims, err := h.tokens.Verify(rawToken, auth.AudienceAdminMedia)
+	if err != nil {
+		return nil, false
+	}
+	if claims.TenantID != tenantID.String() {
+		return nil, false
+	}
+	if strings.TrimSpace(claims.EpisodeID) == "" {
+		return nil, false
+	}
+	return claims, true
+}
+
+// grantedAdminEpisodeImage evaluates a verified admin-media token against one
+// image. Tenant staff see the body regardless of publish state or price; a
+// nil row with a nil error means the credential is not staff (or is scoped
+// to a different episode) and the caller falls back to the public rule.
+func (h *Handler) grantedAdminEpisodeImage(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenantID uuid.UUID,
+	mediaID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.GetEpisodeImageByIDForTenantRow, error) {
+	user, err := h.activeUserForClaims(ctx, tenantQueries, tenantID, claims)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil
+	}
+	roles, err := tenantQueries.ListTenantUserRoles(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !auth.IsTenantStaff(roles) {
+		return nil, nil
+	}
+
+	access, err := tenantQueries.GetEpisodeImageByIDForTenant(ctx, dbmodels.GetEpisodeImageByIDForTenantParams{
+		ID:       mediaID,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims.EpisodeID != access.EpisodeID.String() {
+		return nil, nil
+	}
+	return &access, nil
+}
+
+func (h *Handler) activeUserForClaims(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenantID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.User, error) {
+	userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+		return nil, nil
+	}
+	tracing.SetEndUser(ctx, user.PublicID)
+	return &user, nil
+}
+
+func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetCreatorImageByIDForTenant(ctx, dbmodels.GetCreatorImageByIDForTenantParams{
+		ID:       mediaID,
+		TenantID: tenant.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load creator image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+// handleGetTenantImage serves a tenant branding image — the logo or the
+// icon, named by variant_type the way the series route names its aspect
+// ratio. The tenant is resolved from the host, so a media id only ever resolves
+// against the tenant whose domain the request arrived on. Renditions are not
+// stored per size: Manael resizes the stored master when the request carries
+// its `w` parameter.
+func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetTenantImageVariantByTypeForTenant(ctx, dbmodels.GetTenantImageVariantByTypeForTenantParams{
+		TenantImageID: mediaID,
+		TenantID:      tenant.ID,
+		VariantType:   variantType,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load tenant image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+	width, widthErr := strconv.Atoi(strings.TrimSpace(r.PathValue("width")))
+	if widthErr != nil || width <= 0 {
+		http.Error(w, "invalid width", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetSeriesImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams{
+		SeriesImageID: mediaID,
+		TenantID:      tenant.ID,
+		VariantType:   variantType,
+		Width:         int32(width),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load series image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+	width, widthErr := strconv.Atoi(strings.TrimSpace(r.PathValue("width")))
+	if widthErr != nil || width <= 0 {
+		http.Error(w, "invalid width", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetGenreImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams{
+		GenreImageID: mediaID,
+		TenantID:     tenant.ID,
+		VariantType:  variantType,
+		Width:        int32(width),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load genre image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+	width, widthErr := strconv.Atoi(strings.TrimSpace(r.PathValue("width")))
+	if widthErr != nil || width <= 0 {
+		http.Error(w, "invalid width", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetLabelImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams{
+		LabelImageID: mediaID,
+		TenantID:     tenant.ID,
+		VariantType:  variantType,
+		Width:        int32(width),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load label image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+// resolveTenantFromHost names the tenant a request belongs to and reports
+// whether it arrived on that tenant's console host: a `domain` match is the
+// storefront and an `admin_domain` match is the console.
+//
+// It runs on the public pool because it has to run before the site is known,
+// and it reads `tenants`, which carries no row-level security and which both
+// logins may select from.
+func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, bool, error) {
+	candidates := requestmeta.HostCandidatesFromRequest(r)
+	tenant, err := h.resolverQuerier.GetTenantByDomains(ctx, candidates)
+	if err == nil {
+		tracing.SetTenant(ctx, tenant.PublicID)
+		return tenant, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.Tenant{}, false, err
+	}
+	tenant, err = h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	if err != nil {
+		return dbmodels.Tenant{}, false, err
+	}
+	tracing.SetTenant(ctx, tenant.PublicID)
+	return tenant, true, nil
+}
+
+// tenantQueries opens the tenant-scoped queries on the pool belonging to the
+// login the site a request arrived on is answered as.
+func (h *Handler) tenantQueries(ctx context.Context, adminHost bool, tenantID uuid.UUID) (TenantScopedQuerier, func(), error) {
+	if adminHost {
+		return h.admin.Tenants.ForTenant(ctx, tenantID)
+	}
+	return h.public.Tenants.ForTenant(ctx, tenantID)
+}

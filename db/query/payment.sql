@@ -1,0 +1,331 @@
+-- name: GetTenantPaymentConfigByTenantID :one
+SELECT *
+FROM tenant_payment_config
+WHERE tenant_id = $1
+LIMIT 1;
+
+-- name: GetEnabledTenantPaymentConfigByTenantID :one
+SELECT *
+FROM tenant_payment_config
+WHERE tenant_id = $1
+    AND enabled = TRUE
+LIMIT 1;
+
+-- name: UpsertTenantPaymentConfig :one
+INSERT INTO tenant_payment_config (
+        tenant_id,
+        provider,
+        enabled,
+        credentials_encrypted,
+        credential_hints,
+        updated_at
+    )
+VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET provider = EXCLUDED.provider,
+    enabled = EXCLUDED.enabled,
+    credentials_encrypted = EXCLUDED.credentials_encrypted,
+    credential_hints = EXCLUDED.credential_hints,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: GetPurchasableEpisodeForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    s.public_id AS series_public_id,
+    el.price,
+    el.reading_period_hours,
+    -- Where the episode may be bought, which the caller holds against the
+    -- surface the checkout is started from.
+    epa.purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+WHERE e.id = sqlc.arg('id')
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    -- An episode the calling surface may not show is no row, as it is in the
+    -- catalog: a surface cannot sell what it cannot show.
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+LIMIT 1;
+
+-- name: UserHasValidPurchaseForEpisode :one
+-- Only a purchase counts: an access ticket does not stop the reader buying.
+SELECT EXISTS (
+    SELECT 1
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')
+        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')
+        AND g.kind = 'purchase'
+) AS has_purchase;
+
+-- name: ListMyPurchasesDesc :many
+-- The reader's library, newest purchase first. Publication is not re-checked,
+-- so a purchase outlives the episode being taken down, but the calling surface
+-- is: an episode that surface may not show is left out of the library read
+-- there, as it is left out of the catalog.
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.refunded_at,
+    p.purchased_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = sqlc.arg('user_id')::uuid
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) <= (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) < (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyPurchasesAsc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.refunded_at,
+    p.purchased_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
+    AND p.user_id = sqlc.arg('user_id')::uuid
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) >= (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) > (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: CreatePurchaseFromProviderCheckout :one
+-- The advisory lock serializes different checkouts for the same buyer and
+-- episode. The provider's request idempotency prevents duplicate checkouts in
+-- the ordinary case; this also keeps an exceptional concurrent pair from
+-- producing two entitlements.
+WITH locked AS (
+    SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            sqlc.arg('tenant_id')::uuid::text || ':' ||
+                sqlc.arg('user_id')::uuid::text || ':' ||
+                sqlc.arg('episode_id')::uuid::text,
+            0
+        )
+    )
+)
+INSERT INTO purchases (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price_at_purchase,
+    expires_at,
+    provider,
+    provider_checkout_id,
+    provider_payment_id
+)
+SELECT
+    sqlc.arg('id')::uuid,
+    sqlc.arg('tenant_id')::uuid,
+    sqlc.arg('user_id')::uuid,
+    sqlc.arg('episode_id')::uuid,
+    sqlc.arg('price_at_purchase')::integer,
+    sqlc.narg('expires_at')::timestamptz,
+    sqlc.arg('provider')::text,
+    sqlc.arg('provider_checkout_id')::text,
+    sqlc.narg('provider_payment_id')::text
+FROM locked
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')::uuid
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')::uuid
+        AND g.kind = 'purchase'
+)
+ON CONFLICT (provider, provider_checkout_id) DO NOTHING
+RETURNING *;
+
+-- name: RecordRefundOnPurchase :one
+-- Records what the provider has refunded against one purchase, matched by the
+-- payment the refund notification names. Nothing matches when the payment
+-- belongs to another tenant, another provider, or no purchase here, and the
+-- caller reads that empty result as a delivery it has no sale for.
+--
+-- The amount the provider reports is cumulative over every refund against the
+-- payment, so GREATEST keeps an out-of-order delivery from walking it back, and
+-- an event that reports no amount at all is recorded as a refund of the whole
+-- price. refunded_at follows from the amount rather than from the event:
+-- it is set once the refunded total reaches what was paid, and a repeated
+-- delivery of the same refund leaves the instant already stored.
+WITH refund AS (
+    SELECT p.id,
+        GREATEST(
+            COALESCE(p.refunded_amount, 0),
+            COALESCE(sqlc.narg('refunded_amount')::integer, p.price_at_purchase)
+        ) AS amount
+    FROM purchases p
+    WHERE p.tenant_id = sqlc.arg('tenant_id')
+        AND p.provider = sqlc.arg('provider')::text
+        AND p.provider_payment_id = sqlc.arg('provider_payment_id')::text
+)
+UPDATE purchases p
+SET refunded_amount = refund.amount,
+    refunded_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
+        ELSE p.refunded_at
+    END
+FROM refund
+WHERE p.id = refund.id
+RETURNING p.*;
+
+-- name: HoldUnappliedRefund :exec
+-- Keeps a refund whose purchase is not here yet, so the notification that
+-- creates the purchase can still apply it. The provider's payment is the
+-- identity, so a repeated delivery updates the row rather than adding one.
+--
+-- A NULL amount means the event reported none, which is applied as a refund of
+-- the whole price; it therefore outranks any number on a later merge, and
+-- between two numbers the larger wins, because the provider reports the total
+-- refunded so far.
+INSERT INTO unapplied_refunds (
+    tenant_id,
+    provider,
+    provider_payment_id,
+    refunded_amount
+)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('provider')::text,
+    sqlc.arg('provider_payment_id')::text,
+    sqlc.narg('refunded_amount')::integer
+)
+ON CONFLICT (tenant_id, provider, provider_payment_id) DO
+UPDATE
+SET refunded_amount = CASE
+        WHEN unapplied_refunds.refunded_amount IS NULL
+            OR EXCLUDED.refunded_amount IS NULL THEN NULL
+        ELSE GREATEST(unapplied_refunds.refunded_amount, EXCLUDED.refunded_amount)
+    END,
+    received_at = NOW();
+
+-- name: ApplyUnappliedRefundToPurchase :one
+-- Writes a held refund onto the purchase that has since been created, by the
+-- same rules RecordRefundOnPurchase uses. Nothing matches when no refund is
+-- held for the payment, which is the ordinary case.
+--
+-- The held row is left for the caller to delete once this has committed. A
+-- crash in between costs a repeat of an update that is idempotent, whereas
+-- deleting here would lose the refund if the update never landed.
+WITH held AS (
+    SELECT r.tenant_id,
+        r.provider,
+        r.provider_payment_id,
+        r.refunded_amount
+    FROM unapplied_refunds r
+    WHERE r.tenant_id = sqlc.arg('tenant_id')
+        AND r.provider = sqlc.arg('provider')::text
+        AND r.provider_payment_id = sqlc.arg('provider_payment_id')::text
+),
+refund AS (
+    SELECT p.id,
+        GREATEST(
+            COALESCE(p.refunded_amount, 0),
+            COALESCE(held.refunded_amount, p.price_at_purchase)
+        ) AS amount
+    FROM purchases p
+        JOIN held ON held.tenant_id = p.tenant_id
+            AND held.provider = p.provider
+            AND held.provider_payment_id = p.provider_payment_id
+)
+UPDATE purchases p
+SET refunded_amount = refund.amount,
+    refunded_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
+        ELSE p.refunded_at
+    END
+FROM refund
+WHERE p.id = refund.id
+RETURNING p.*;
+
+-- name: ReleaseUnappliedRefund :exec
+DELETE FROM unapplied_refunds
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text;

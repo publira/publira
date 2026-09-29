@@ -1,0 +1,258 @@
+import { LinkButton } from "@publira/ui-components/button";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { z } from "zod";
+
+import { Message } from "#components/message";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+  PlatformSection,
+} from "#components/platform-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import {
+  getPlatformTenant,
+  listPlatformTenantAdminInvitations,
+  listPlatformTenantMembers,
+} from "#lib/tenants";
+
+import { TenantSectionNav } from "../_components/tenant-section-nav";
+import { TenantMembersManager } from "./_components/tenant-members-manager";
+import {
+  buildMemberInvitationsPath,
+  buildMembersPath,
+  parseMemberInvitationFilters,
+} from "./_lib/search-params";
+
+const invitationPageSize = 20;
+
+type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
+
+const tenantMembersParamsSchema = z.object({
+  tenant_id: routeParamString(),
+});
+
+export const generateMetadata = async ({
+  params,
+}: TenantMembersPageProps): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const t = await getMessagesFor(locale);
+  const parsedParams = parseRouteParams(
+    tenantMembersParamsSchema,
+    await params
+  );
+  if (!parsedParams) {
+    return { title: t("platform.tenants.members_heading") };
+  }
+
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const name =
+    tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
+
+  return {
+    title: name
+      ? t("platform.tenants.members_title", { name })
+      : t("platform.tenants.members_heading"),
+  };
+};
+
+const TenantMembersSkeleton = () => (
+  <PlatformPageContent>
+    <div className="grid gap-6">
+      <Skeleton className="h-10 w-64" />
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-40" />
+        <TableSkeleton />
+      </PlatformSection>
+    </div>
+  </PlatformPageContent>
+);
+
+/**
+ * A read that failed is not a tenant that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for a tenant that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const TenantMembersLoadError = ({ message }: { message: string }) => (
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback="…">
+          <Message message="platform.tenants.members_load_failed" />
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
+      <LinkButton render={<Link href="/tenants" />} variant="outline">
+        <Suspense fallback="…">
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
+      </LinkButton>
+    </SectionErrorActions>
+  </SectionError>
+);
+
+const TenantMembersContent = async ({
+  params,
+  searchParams,
+}: Pick<TenantMembersPageProps, "params" | "searchParams">) => {
+  const parsedParams = parseRouteParams(
+    tenantMembersParamsSchema,
+    await params
+  );
+  if (!parsedParams) {
+    notFound();
+  }
+  const { tenant_id: tenantId } = parsedParams;
+  const pageFilters = parseMemberInvitationFilters(await searchParams);
+  const locale = await getPlatformLocale();
+
+  const [tenantResult, timeZone] = await Promise.all([
+    getPlatformTenant(tenantId, locale),
+    getPlatformDisplayTimeZone(),
+  ]);
+
+  // Before both branches below: a rejected session reads the tenant as missing,
+  // and a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult);
+
+  if (!tenantResult.ok) {
+    return <TenantMembersLoadError message={tenantResult.message} />;
+  }
+
+  const { tenant } = tenantResult;
+  if (!tenant) {
+    notFound();
+  }
+
+  const [membersResult, invitationsResult] = await Promise.all([
+    listPlatformTenantMembers({
+      locale,
+      tenantId: tenant.id,
+      token: pageFilters.membersToken || undefined,
+    }),
+    listPlatformTenantAdminInvitations({
+      limit: invitationPageSize,
+      locale,
+      tenantId: tenant.id,
+      token: pageFilters.token || undefined,
+    }),
+  ]);
+  await redirectToLoginIfSessionRejected(membersResult, invitationsResult);
+
+  const previousHref = invitationsResult.previousToken
+    ? buildMemberInvitationsPath(tenant.publicId, {
+        membersToken: pageFilters.membersToken,
+        token: invitationsResult.previousToken,
+      })
+    : undefined;
+  const nextHref = invitationsResult.nextToken
+    ? buildMemberInvitationsPath(tenant.publicId, {
+        membersToken: pageFilters.membersToken,
+        token: invitationsResult.nextToken,
+      })
+    : undefined;
+  const membersPreviousHref = membersResult.previousToken
+    ? buildMembersPath(tenant.publicId, {
+        membersToken: membersResult.previousToken,
+        token: pageFilters.token,
+      })
+    : undefined;
+  const membersNextHref = membersResult.nextToken
+    ? buildMembersPath(tenant.publicId, {
+        membersToken: membersResult.nextToken,
+        token: pageFilters.token,
+      })
+    : undefined;
+
+  return (
+    <>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageTitle>
+            <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+              <Message
+                message="platform.tenants.members_title"
+                values={{ name: tenant.name }}
+              />
+            </Suspense>
+          </PlatformPageTitle>
+          <PlatformPageDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="platform.tenants.members_description" />
+            </Suspense>
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
+          <LinkButton render={<Link href="/tenants" />} variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
+          </LinkButton>
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6">
+          <TenantSectionNav current="members" tenantId={tenant.publicId} />
+
+          <TenantMembersManager
+            invitationErrorMessage={
+              invitationsResult.ok ? undefined : invitationsResult.message
+            }
+            invitations={invitationsResult.invitations}
+            invitationsNextHref={nextHref}
+            invitationsPreviousHref={previousHref}
+            locale={locale}
+            members={membersResult.members}
+            membersErrorMessage={
+              membersResult.ok ? undefined : membersResult.message
+            }
+            membersNextHref={membersNextHref}
+            membersPreviousHref={membersPreviousHref}
+            tenantId={tenant.id}
+            timeZone={timeZone}
+          />
+        </div>
+      </PlatformPageContent>
+    </>
+  );
+};
+
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
+const TenantMembersPage = ({
+  params,
+  searchParams,
+}: TenantMembersPageProps) => (
+  <PlatformPage>
+    <Suspense fallback={<TenantMembersSkeleton />}>
+      <TenantMembersContent params={params} searchParams={searchParams} />
+    </Suspense>
+  </PlatformPage>
+);
+
+export default TenantMembersPage;

@@ -1,0 +1,249 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  isUnauthenticatedRpcError,
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
+import { FollowTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
+import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
+import { applyCacheTag, tenantFollowsTag } from "./cache-tags";
+import { getMessagesFor } from "./messages";
+
+/** Public catalog follow targets this app exposes on detail pages. */
+export const followTargetKinds = ["creator", "series"] as const;
+export type FollowTargetKind = (typeof followTargetKinds)[number];
+
+const followTargetTypeByKind: Record<FollowTargetKind, FollowTargetType> = {
+  creator: FollowTargetType.CREATOR,
+  series: FollowTargetType.SERIES,
+};
+
+const followTargetKindByType: Partial<
+  Record<FollowTargetType, FollowTargetKind>
+> = {
+  [FollowTargetType.CREATOR]: "creator",
+  [FollowTargetType.SERIES]: "series",
+};
+
+export const toFollowTargetType = (kind: FollowTargetKind): FollowTargetType =>
+  followTargetTypeByKind[kind];
+
+/** `null` for episode / unspecified — this app has no public page for those. */
+export const toFollowTargetKind = (
+  type: FollowTargetType
+): FollowTargetKind | null => followTargetKindByType[type] ?? null;
+
+/**
+ * `locale` reaches every read below as an argument rather than being resolved
+ * inside the cached scope, so the wording a failure is stored with belongs to
+ * the cache key instead of to whichever request filled the entry.
+ */
+/**
+ * Tag the private follow-status and follow-list reads carry, so `updateTag`
+ * in the Server Action refreshes only this member's follow island and list —
+ * not the public series or creator catalog cache.
+ */
+export const followsCacheTag = tenantFollowsTag;
+
+export type FollowStatusResult =
+  | { isFollowing: boolean; ok: true; signedIn: boolean }
+  | { message: string; ok: false };
+
+type CachedFollowStatusResult = FollowStatusResult & {
+  unexpected: boolean;
+};
+
+const isUnexpectedError = (error: unknown): boolean =>
+  rpcErrorDisposition(error) === "unexpected";
+
+const throwIfUnexpected = (unexpected: boolean, message: string): void => {
+  if (unexpected) {
+    throw new Error(message);
+  }
+};
+
+const followTargetMessage = (kind: FollowTargetKind, targetId: string) => ({
+  id: targetId,
+  type: toFollowTargetType(kind),
+});
+
+const readFollowStatus = async (
+  tenantId: string,
+  targetKind: FollowTargetKind,
+  targetId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<CachedFollowStatusResult> => {
+  "use cache: private";
+  applyCacheTag(followsCacheTag(tenantId));
+
+  if (!sessionId) {
+    return {
+      isFollowing: false,
+      ok: true,
+      signedIn: false,
+      unexpected: false,
+    };
+  }
+
+  const t = await getMessagesFor(locale);
+
+  try {
+    const response = await apiClient.follow.getMyFollowStatus(
+      {
+        surface: ClientSurface.WEB,
+        target: followTargetMessage(targetKind, targetId),
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+
+    return {
+      isFollowing: response.isFollowing ?? false,
+      ok: true,
+      signedIn: true,
+      unexpected: false,
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+    if (isUnauthenticatedRpcError(error)) {
+      return {
+        isFollowing: false,
+        ok: true,
+        signedIn: false,
+        unexpected: false,
+      };
+    }
+    return {
+      message: rpcErrorMessage(error, t("host.follow.status_failed"), {
+        locale,
+      }),
+      ok: false,
+      unexpected: isUnexpectedError(error),
+    };
+  }
+};
+
+/**
+ * The current member's follow state for one public catalog target.
+ *
+ * Guests skip the RPC: no session means "not signed in", which the island
+ * turns into a login link. A rejected session is treated the same way so a
+ * stale cookie does not personalize — or fail — the surrounding public page.
+ */
+export const getMyFollowStatus = async (
+  tenantId: string,
+  targetKind: FollowTargetKind,
+  targetId: string,
+  locale: Locale
+): Promise<FollowStatusResult> => {
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readFollowStatus(
+      tenantId,
+      targetKind,
+      targetId,
+      locale,
+      await resolveAccessToken()
+    ),
+    getMessagesFor(locale),
+  ]);
+  throwIfUnexpected(
+    unexpected,
+    result.ok ? t("host.follow.status_failed") : result.message
+  );
+  return result;
+};
+
+export const followTarget = async (input: {
+  locale: Locale;
+  targetId: string;
+  targetKind: FollowTargetKind;
+  tenantId: string;
+}): Promise<
+  { isFollowing: boolean; ok: true } | { message: string; ok: false }
+> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.follow.follow(
+      {
+        surface: ClientSurface.WEB,
+        target: followTargetMessage(input.targetKind, input.targetId),
+        tenant: { tenantId: input.tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+    return { isFollowing: true, ok: true };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, t("host.follow.follow_failed"), {
+        locale: input.locale,
+      }),
+      ok: false,
+    };
+  }
+};
+
+export const unfollowTarget = async (input: {
+  locale: Locale;
+  targetId: string;
+  targetKind: FollowTargetKind;
+  tenantId: string;
+}): Promise<
+  { isFollowing: boolean; ok: true } | { message: string; ok: false }
+> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.follow.unfollow(
+      {
+        surface: ClientSurface.WEB,
+        target: followTargetMessage(input.targetKind, input.targetId),
+        tenant: { tenantId: input.tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+    return { isFollowing: false, ok: true };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, t("host.follow.unfollow_failed"), {
+        locale: input.locale,
+      }),
+      ok: false,
+    };
+  }
+};

@@ -1,0 +1,1125 @@
+import type {
+  Page,
+  PageTranslation,
+  PageVersion,
+} from "@publira/api-client/admin/types";
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  Code,
+  isMissingResourceRpcError,
+  isRpcError,
+  RPC_FIELD_VIOLATION_REASON,
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+  rpcErrorHasFieldViolation,
+} from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { parseLocale, toIntlLocale } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
+
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
+import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
+import { getMessagesFor } from "./messages";
+import { getAccessToken } from "./session";
+
+export interface PageItem {
+  id: string;
+  slug: string;
+  title: string;
+  publishedVersionId: string;
+  displayInFooter: boolean;
+  /**
+   * The locale of the translation the title and published version come from;
+   * absent when the server names one this build does not serve.
+   */
+  locale?: Locale;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One locale's title and published version of a page. */
+export interface PageTranslationItem {
+  id: string;
+  locale: Locale;
+  title: string;
+  publishedVersionId: string;
+}
+
+export interface PageVersionItem {
+  id: string;
+  pageId: string;
+  versionNumber: number;
+  contentMarkdown: string;
+  authorUserId: string;
+  status: "draft" | "published";
+  publishAt: string;
+  createdAt: string;
+  publishedAt: string;
+}
+
+export type ListPagesResult = CursorPageTokens &
+  (
+    | { ok: true; pages: PageItem[] }
+    | {
+        ok: false;
+        message: string;
+        pages: PageItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
+      }
+  );
+
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing page from
+ * another tenant's page would leak whether it exists.
+ *
+ * The flag exists because `getPage()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller.
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
+export type ListPublishedPagesResult =
+  | { ok: true; pages: PageItem[] }
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
+export type GetPageResult =
+  | { ok: true; page: PageItem }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
+
+export type ListPageTranslationsResult =
+  | { ok: true; translations: PageTranslationItem[] }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
+
+export type ListPageVersionsResult =
+  | { ok: true; versions: PageVersionItem[] }
+  | {
+      ok: false;
+      message: string;
+      versions: PageVersionItem[];
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
+/**
+ * `field` names the input a failure belongs to, so the form can show the
+ * message beside it rather than above the save button.
+ */
+export type CreatePageResult =
+  | { ok: true; page: PageItem }
+  | { field?: "slug"; ok: false; message: string };
+
+export type UpdatePageResult =
+  | { ok: true; page: PageItem }
+  | { ok: false; message: string };
+
+export type CreatePageVersionResult =
+  | { ok: true; version: PageVersionItem }
+  | { ok: false; message: string };
+
+export type PublishPageVersionResult =
+  | { ok: true; version: PageVersionItem }
+  | { ok: false; message: string };
+
+export type UnpublishPageResult =
+  | { ok: true; page: PageItem }
+  | { ok: false; message: string };
+
+export type RollbackPageVersionResult =
+  | { ok: true; version: PageVersionItem }
+  | { ok: false; message: string };
+
+export type CreatePageTranslationResult =
+  | { ok: true; translation: PageTranslationItem }
+  | { ok: false; message: string };
+
+export type DeletePageTranslationResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** The tag every page read is filed under, and every write to the page list drops. */
+export const pagesCacheTag = (tenantId: string): string => `pages-${tenantId}`;
+
+/** The tag one page's reads carry, for a write that changes that page alone. */
+export const pageCacheTag = (tenantId: string, pageId: string): string =>
+  `page-${tenantId}-${pageId}`;
+
+const slugInvalidMessage = (
+  error: unknown,
+  t: Awaited<ReturnType<typeof getMessagesFor>>
+): string => {
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      "slug",
+      RPC_FIELD_VIOLATION_REASON.pageSlugReserved
+    )
+  ) {
+    return t("admin.pages.slug_reserved");
+  }
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      "slug",
+      RPC_FIELD_VIOLATION_REASON.pageSlugUnreachable
+    )
+  ) {
+    return t("admin.pages.slug_unreachable");
+  }
+  return rpcErrorHasFieldViolation(error, "slug")
+    ? t("admin.pages.slug_invalid")
+    : t("errors.validation");
+};
+
+/** Whether a failed save is about the slug: its format, a reserved or unreachable path, or a duplicate. */
+const isSlugError = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "slug") ||
+  rpcErrorDisposition(error) === "conflict";
+
+const mapErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      conflict: t("admin.pages.slug_conflict"),
+      // A page form is slug + title + body; only the slug has rules worth
+      // spelling out, and the server identifies it in BadRequest details.
+      "invalid-argument": slugInvalidMessage(error, t),
+      "not-found": t("admin.pages.not_found"),
+    },
+  });
+};
+
+/** The generated `Page` fields {@link mapPage} reads (see `series.ts`). */
+type RawPage = Pick<
+  Page,
+  | "createdAt"
+  | "displayInFooter"
+  | "id"
+  | "locale"
+  | "publishedVersionId"
+  | "slug"
+  | "title"
+  | "updatedAt"
+>;
+
+const mapPage = (page: RawPage): PageItem => ({
+  createdAt: page.createdAt ?? "",
+  displayInFooter: page.displayInFooter === true,
+  id: page.id,
+  locale: parseLocale(page.locale),
+  publishedVersionId: page.publishedVersionId ?? "",
+  slug: page.slug,
+  title: page.title,
+  updatedAt: page.updatedAt ?? "",
+});
+
+/** The generated `PageTranslation` fields {@link mapPageTranslations} reads (see `series.ts`). */
+type RawPageTranslation = Pick<
+  PageTranslation,
+  "id" | "locale" | "publishedVersionId" | "title"
+>;
+
+const mapPageTranslation = (
+  translation: RawPageTranslation
+): PageTranslationItem | null => {
+  const locale = parseLocale(translation.locale);
+
+  return locale
+    ? {
+        id: translation.id,
+        locale,
+        publishedVersionId: translation.publishedVersionId ?? "",
+        title: translation.title,
+      }
+    : null;
+};
+
+/** A translation in a locale this build no longer serves has no tab to show it in. */
+const mapPageTranslations = (
+  translations: RawPageTranslation[]
+): PageTranslationItem[] =>
+  translations.flatMap((translation) => {
+    const item = mapPageTranslation(translation);
+    return item ? [item] : [];
+  });
+
+/** The generated `PageVersion` fields {@link mapPageVersion} reads (see `series.ts`). */
+type RawPageVersion = Pick<
+  PageVersion,
+  | "authorUserId"
+  | "contentMarkdown"
+  | "createdAt"
+  | "id"
+  | "pageId"
+  | "publishAt"
+  | "publishedAt"
+  | "status"
+  | "versionNumber"
+>;
+
+const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
+  authorUserId: version.authorUserId ?? "",
+  contentMarkdown: version.contentMarkdown,
+  createdAt: version.createdAt ?? "",
+  id: version.id,
+  pageId: version.pageId,
+  publishAt: version.publishAt ?? "",
+  publishedAt: version.publishedAt ?? "",
+  status: version.status === "published" ? "published" : "draft",
+  versionNumber: version.versionNumber,
+});
+
+const listPagesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions,
+  sessionId: string
+): Promise<ListPagesResult> => {
+  "use cache: private";
+  cacheTag(pagesCacheTag(tenantId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      pages: [],
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.listPages(
+      {
+        ...cursorPageRequest(options),
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ...cursorPageTokens(response),
+      ok: true,
+      pages: (response.pages ?? []).map((page) => mapPage(page)),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      pages: [],
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * One page of the tenant's fixed pages, oldest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` ascending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
+export const listPages = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListPagesResult> =>
+  listPagesForSession(tenantId, locale, options, await getAccessToken());
+
+const listPublishedPagesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<ListPublishedPagesResult> => {
+  "use cache: private";
+  cacheTag(pagesCacheTag(tenantId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const pages: PageItem[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.pages.listPages(
+          { limit, tenant: { tenantId }, token },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.pages ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          const page = mapPage(item);
+          if (page.publishedVersionId) {
+            pages.push(page);
+          }
+        }
+      }
+    );
+
+    if (walkStop !== "completed") {
+      dropFailedCacheEntry();
+      return {
+        message: t("admin.pages.list_failed"),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return {
+      ok: true,
+      pages: pages.toSorted((a, b) =>
+        a.title.localeCompare(b.title, toIntlLocale(locale))
+      ),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * Every published page of the tenant, sorted by title, for pickers that may
+ * only name a page the storefront serves.
+ *
+ * An incomplete walk fails rather than handing the picker a partial list that
+ * looks complete.
+ */
+export const listPublishedPages = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListPublishedPagesResult> =>
+  listPublishedPagesForSession(tenantId, locale, await getAccessToken());
+
+const getPageForSession = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<GetPageResult> => {
+  "use cache: private";
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.getPage(
+      {
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.page?.id?.trim()) {
+      return { notFound: true, ok: false };
+    }
+
+    return {
+      ok: true,
+      page: mapPage(response.page),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    // `invalid_argument` counts as missing here. This endpoint takes only the
+    // tenant and the `[page_id]` segment, and the tenant is always a UUID
+    // written by `proxy.ts`, so the only input the server can reject is the id
+    // in the URL — "that is not a page id" and "there is no such page" are the
+    // same answer to the operator. (`server/api/adminapi/page_handlers.go`
+    // `parsePageID`.)
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { notFound: true, ok: false };
+    }
+    dropFailedCacheEntry();
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export const getPage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+  },
+  locale: Locale
+): Promise<GetPageResult> =>
+  getPageForSession(input, locale, await getAccessToken());
+
+const listPageVersionsForSession = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<ListPageVersionsResult> => {
+  "use cache: private";
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+      versions: [],
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.listVersions(
+      {
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      versions: (response.versions ?? []).map((version) =>
+        mapPageVersion(version)
+      ),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+      versions: [],
+    };
+  }
+};
+
+export const listPageVersions = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+  },
+  locale: Locale
+): Promise<ListPageVersionsResult> =>
+  listPageVersionsForSession(input, locale, await getAccessToken());
+
+export const createPage = async (
+  input: {
+    tenantId: string;
+    slug: string;
+    title: string;
+    displayInFooter?: boolean;
+  },
+  locale: Locale
+): Promise<CreatePageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.createPage(
+      {
+        displayInFooter: input.displayInFooter === true,
+        slug: input.slug,
+        tenant: { tenantId: input.tenantId },
+        title: input.title,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.page?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      page: mapPage(response.page),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...(isSlugError(error) ? { field: "slug" as const } : {}),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const updatePage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+    title: string;
+    displayInFooter?: boolean;
+  },
+  locale: Locale
+): Promise<UpdatePageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    // Omit displayInFooter when unset so title-only updates keep the existing value.
+    const response = await apiClient.pages.updatePage(
+      {
+        ...(input.displayInFooter === undefined
+          ? {}
+          : { displayInFooter: input.displayInFooter }),
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+        title: input.title,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.page?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      page: mapPage(response.page),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const createPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+    contentMarkdown: string;
+  },
+  locale: Locale
+): Promise<CreatePageVersionResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.createVersion(
+      {
+        contentMarkdown: input.contentMarkdown,
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.version?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      version: mapPageVersion(response.version),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const publishPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+    versionId: string;
+  },
+  locale: Locale
+): Promise<PublishPageVersionResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.publishVersion(
+      {
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+        versionId: input.versionId,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.version?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      version: mapPageVersion(response.version),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const unpublishPage = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+  },
+  locale: Locale
+): Promise<UnpublishPageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.unpublishPage(
+      {
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.page?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      page: mapPage(response.page),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const rollbackPageVersion = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale?: Locale;
+    versionId: string;
+  },
+  locale: Locale
+): Promise<RollbackPageVersionResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.rollbackToVersion(
+      {
+        locale: input.translationLocale ?? "",
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+        versionId: input.versionId,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.version?.id?.trim()) {
+      return {
+        message: t("admin.pages.save_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ok: true,
+      version: mapPageVersion(response.version),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+const listPageTranslationsForSession = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<ListPageTranslationsResult> => {
+  "use cache: private";
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.listPageTranslations(
+      {
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      translations: mapPageTranslations(response.translations ?? []),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    // The same reading of `invalid_argument` as `getPage`: the id in the URL
+    // is the only input the server can reject.
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { notFound: true, ok: false };
+    }
+    dropFailedCacheEntry();
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/** Every translation of a page, oldest first. A page always has one. */
+export const listPageTranslations = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale
+): Promise<ListPageTranslationsResult> =>
+  listPageTranslationsForSession(input, locale, await getAccessToken());
+
+const mapTranslationErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      conflict: t("admin.pages.translations.already_exists"),
+      "not-found": t("admin.pages.not_found"),
+      precondition: t("admin.pages.translations.last_translation"),
+    },
+  });
+};
+
+export const createPageTranslation = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale: Locale;
+    title: string;
+  },
+  locale: Locale
+): Promise<CreatePageTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.createPageTranslation(
+      {
+        locale: input.translationLocale,
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+        title: input.title,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const translation = response.translation
+      ? mapPageTranslation(response.translation)
+      : null;
+    if (!translation?.id.trim()) {
+      return {
+        message: t("admin.pages.translations.add_failed"),
+        ok: false,
+      };
+    }
+
+    return { ok: true, translation };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapTranslationErrorToMessage(
+        error,
+        t("admin.pages.translations.add_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** Deletes one translation with its versions. The server refuses the last one. */
+export const deletePageTranslation = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale: Locale;
+  },
+  locale: Locale
+): Promise<DeletePageTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.pages.deletePageTranslation(
+      {
+        locale: input.translationLocale,
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapTranslationErrorToMessage(
+        error,
+        t("admin.pages.translations.delete_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};

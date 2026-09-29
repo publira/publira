@@ -1,0 +1,1304 @@
+name: CI
+
+env:
+  # renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
+  TASK_VERSION: 3.53.1
+  # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
+  SQLC_VERSION: 1.31.1
+  # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
+  BUF_VERSION: 1.73.0
+  # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
+  MIGRATE_VERSION: 4.20.1
+  # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
+  GOLANGCI_LINT_VERSION: 2.14.0
+  # renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
+  WAIT4X_VERSION: 3.7.2
+  # renovate: datasource=flutter-version depName=flutter
+  FLUTTER_VERSION: 3.47.5
+  # Retry flags for every release download below, unquoted at each call site so
+  # they split into separate arguments. A transient response from github.com is
+  # not what the job downloading the archive is testing.
+  CURL_RETRY_FLAGS: "--retry 5 --retry-delay 2 --retry-all-errors"
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+  schedule:
+    # Nightly Docker full matrix (UTC) — catches cross-service drift missed by path filters
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      docker_mode:
+        description: "Docker images: verify = role representatives; full = all documented images"
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - full
+
+# Branch ruleset should require only the final job display name: "Summary"
+# (see job `summary` below). Intermediate jobs may be skipped by path filters.
+# The merge queue on `main` requires that same check on the merge group it
+# builds, which is what the `merge_group` trigger above answers.
+
+# Repo default is read-only GITHUB_TOKEN; paths-filter needs PR file list on pull_request.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      format: ${{ steps.plan.outputs.format }}
+      check: ${{ steps.plan.outputs.check }}
+      lint_go: ${{ steps.plan.outputs.lint_go }}
+      test_go: ${{ steps.plan.outputs.test_go }}
+      test_ts: ${{ steps.plan.outputs.test_ts }}
+      test_bash: ${{ steps.plan.outputs.test_bash }}
+      test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
+      test_mobile: ${{ steps.plan.outputs.test_mobile }}
+      test_mobile_e2e: ${{ steps.plan.outputs.test_mobile_e2e }}
+      test_mobile_ios: ${{ steps.plan.outputs.test_mobile_ios }}
+      test_e2e: ${{ steps.plan.outputs.test_e2e }}
+      test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
+      test_routing: ${{ steps.plan.outputs.test_routing }}
+      test_deploy: ${{ steps.plan.outputs.test_deploy }}
+      build: ${{ steps.plan.outputs.build }}
+      docker_any: ${{ steps.plan.outputs.docker_any }}
+      docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `push` and `merge_group` have no API file list, so paths-filter diffs
+          # locally — `github.event.before`..HEAD for a push, `base_sha`..`head_sha`
+          # for a merge group — and both endpoints must be present already, because
+          # `persist-credentials: false` leaves no credentials for a fallback
+          # `git fetch`. The other events need no history — `pull_request` uses the
+          # API file list, and `schedule` / `workflow_dispatch` skip the filter step
+          # entirely.
+          # Keep `'0'` quoted: a bare 0 is falsy and the `&&`/`||` chain would yield 1.
+          fetch-depth: ${{ (github.event_name == 'push' || github.event_name == 'merge_group') && '0' || '1' }}
+          persist-credentials: false
+
+      - name: Path filter
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # 'some-with-excludes': a file matches a filter when it matches at least one
+          # positive pattern and no negated one. The default 'some' would treat
+          # '!**/*.md' as just another alternative and never exclude anything.
+          # Applies to every filter below; all other patterns are positive, so their
+          # behaviour is unchanged.
+          predicate-quantifier: "some-with-excludes"
+          filters: |
+            # Documentation-only changes must not start any job. Referenced by
+            # every filter via the YAML anchor so the list stays in one place; as a
+            # filter of its own it is negation-only and therefore always false.
+            docs_excluded: &docs_excluded
+              - '!**/*.md'
+            # Formatting is inexpensive and includes Markdown. It deliberately
+            # does not use docs_excluded, unlike the heavier jobs below.
+            format:
+              - '**'
+            check:
+              - *docs_excluded
+              - 'apps/**'
+              - 'locales/**'
+              - 'packages/**'
+              - 'e2e/**'
+              - 'server/**'
+              - 'db/**'
+              - 'proto/**'
+              - 'sqlc.yaml'
+              - 'buf.yaml'
+              - 'buf.gen.yaml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - 'oxlint.config.ts'
+              - 'oxfmt.config.ts'
+              - '.github/workflows/ci.yml'
+              - '.gitattributes'
+              - 'scripts/check-design-tokens.ts'
+              - 'scripts/ci-plan-jobs.sh'
+            # Narrower than test_go on purpose: golangci-lint only reads Go
+            # sources and server/.golangci.yml, and `task gen` writes its output
+            # under server/, so a db/ or proto/ edit cannot change the result
+            # without also touching server/**.
+            lint_go:
+              - *docs_excluded
+              - 'server/**'
+              - 'scripts/check-go-mod-tidy.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_go:
+              - *docs_excluded
+              - 'server/**'
+              - 'db/**'
+              - 'proto/**'
+              - 'sqlc.yaml'
+              - 'buf.yaml'
+              - 'buf.gen.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_ts:
+              - *docs_excluded
+              - 'apps/**'
+              - 'locales/**'
+              - 'packages/**'
+              # scripts/ is outside the pnpm workspace, so `pnpm test` cannot
+              # reach it; this job runs its `node --test` suite as well.
+              - 'scripts/*.ts'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_bash:
+              - *docs_excluded
+              - '**/*.sh'
+              - 'scripts/dev-env.sh'
+              - 'scripts/dev-env/**'
+              - 'e2e/scripts/**'
+              - 'Taskfile.yaml'
+              - 'e2e/Taskfile.yaml'
+              - 'mobile/Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_db_migrations:
+              - *docs_excluded
+              - 'db/**'
+              - 'sqlc.yaml'
+              - 'scripts/check-migration-order.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_mobile:
+              - *docs_excluded
+              - 'mobile/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
+            test_mobile_ios:
+              - *docs_excluded
+              - 'mobile/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
+            test_mobile_e2e:
+              - *docs_excluded
+              - 'mobile/**'
+              - 'e2e/compose.yaml'
+              - 'e2e/scripts/db-setup.sh'
+              - 'e2e/scripts/down.sh'
+              - 'e2e/scripts/lib.sh'
+              - 'e2e/scripts/server.sh'
+              - 'e2e/scripts/stop-apps.sh'
+              - 'e2e/scripts/up.sh'
+              - 'e2e/scripts/upload-episode-pages.sh'
+              - 'e2e/scripts/worker.sh'
+              - 'scripts/storage-init.sh'
+              # db-setup.sh uploads the images the seed's rows name, and the
+              # reader this job drives draws them.
+              - 'scripts/storage-seed.sh'
+              - 'proto/publira/v1/catalog.proto'
+              - 'proto/publira/v1/domain.proto'
+              - 'server/**'
+              - 'db/migrations/**'
+              - 'db/seeds/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
+            test_e2e:
+              - *docs_excluded
+              - 'e2e/**'
+              # Traefik routing has its own job; a probe-only change must
+              # not start the Playwright suite.
+              - '!e2e/routing/**'
+              # The E2E edge mounts the same routers every environment runs.
+              - 'infra/proxy/traefik/**'
+              - 'apps/web-host/**'
+              - 'apps/web-admin/**'
+              - 'apps/web-platform/**'
+              # The stack builds and runs email-renderer: the worker renders
+              # every mail it delivers through it.
+              - 'apps/email-renderer/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'db/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - 'Taskfile.yaml'
+              - 'scripts/storage-init.sh'
+              - 'scripts/storage-seed.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_bootstrap:
+              - *docs_excluded
+              - 'compose.yaml'
+              - 'db/**'
+              - 'e2e/bootstrap/**'
+              # task dev starts every app and server, so any of their sources
+              # can break startup — Test / E2E covers web-host / web-admin /
+              # web-platform and their APIs, not the full task dev surface.
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'Taskfile.yaml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - 'scripts/storage-init.sh'
+              - 'scripts/storage-seed.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_routing:
+              - *docs_excluded
+              - 'compose.yaml'
+              - '.devcontainer/**'
+              - 'infra/proxy/**'
+              - 'e2e/routing/**'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_deploy:
+              - *docs_excluded
+              - 'infra/deploy/**'
+              # The deployment's edge mounts these routers unchanged.
+              - 'infra/proxy/traefik/**'
+              # The smoke runs the images these build.
+              - 'infra/docker/**'
+              - '.dockerignore'
+              - 'scripts/check-deploy-compose.sh'
+              - 'scripts/smoke-deploy-compose.sh'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            build:
+              - *docs_excluded
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_web:
+              - *docs_excluded
+              - 'apps/**'
+              - 'packages/**'
+              - 'locales/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - 'infra/docker/web/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_server:
+              - *docs_excluded
+              - 'server/**'
+              - 'infra/docker/server/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_publiractl:
+              - *docs_excluded
+              - 'server/**'
+              - 'infra/docker/publiractl/**'
+              - 'db/migrations/**'
+              - 'db/seeds/baseline/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_node:
+              - *docs_excluded
+              - 'apps/email-renderer/**'
+              - 'packages/**'
+              - 'locales/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.jsonc'
+              - 'infra/docker/node/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_core:
+              - *docs_excluded
+              - 'infra/docker/web/**'
+              - 'infra/docker/server/**'
+              - 'infra/docker/publiractl/**'
+              - 'infra/docker/node/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+
+      - name: Plan jobs
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DOCKER_MODE_INPUT: ${{ inputs.docker_mode }}
+          FILTER_FORMAT: ${{ steps.filter.outputs.format }}
+          FILTER_CHECK: ${{ steps.filter.outputs.check }}
+          FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
+          FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
+          FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
+          FILTER_TEST_BASH: ${{ steps.filter.outputs.test_bash }}
+          FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
+          FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
+          FILTER_TEST_MOBILE_E2E: ${{ steps.filter.outputs.test_mobile_e2e }}
+          FILTER_TEST_MOBILE_IOS: ${{ steps.filter.outputs.test_mobile_ios }}
+          FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
+          FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
+          FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
+          FILTER_TEST_DEPLOY: ${{ steps.filter.outputs.test_deploy }}
+          FILTER_BUILD: ${{ steps.filter.outputs.build }}
+          FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
+          FILTER_DOCKER_SERVER: ${{ steps.filter.outputs.docker_server }}
+          FILTER_DOCKER_PUBLIRACTL: ${{ steps.filter.outputs.docker_publiractl }}
+          FILTER_DOCKER_NODE: ${{ steps.filter.outputs.docker_node }}
+          FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
+        run: bash scripts/ci-plan-jobs.sh
+
+  format:
+    name: Lint and Format
+    needs: changes
+    if: needs.changes.outputs.format == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+
+      - name: Validate / Lint and Format
+        run: pnpm check
+
+      # Here rather than in Check, whose path filter leaves out mobile/: the
+      # matrix is held both to web-host and to the app, and this job runs for
+      # a change to either.
+      - name: Validate / Reader parity
+        run: pnpm reader-parity:check
+
+  check:
+    name: Check
+    needs: changes
+    if: needs.changes.outputs.check == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Setup / Install sqlc
+        uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
+        with:
+          sqlc-version: ${{ env.SQLC_VERSION }}
+
+      - name: Setup / Install buf
+        uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        with:
+          setup_only: true
+          version: ${{ env.BUF_VERSION }}
+
+      - name: Dependencies / Install
+        run: task deps
+
+      - name: Validate / Locale Catalog
+        run: pnpm locales:check
+
+      - name: Validate / sqlc Generated Diff
+        run: sqlc diff
+
+      # buf has no `diff` subcommand, so regenerate and compare against the
+      # committed tree. This is the same `buf generate` that `task gen` runs —
+      # `clean: true` lives in buf.gen.yaml so the recovery command below really
+      # does reproduce this result. Staging before the comparison keeps additions
+      # and deletions in the same diff as modifications — `git diff` alone would
+      # miss an untracked new file.
+      - name: Validate / buf Generated Diff
+        run: |
+          buf generate
+          git add -A -- server/internal/proto/gen packages/api-client/src/gen
+          if ! git diff --cached --exit-code -- server/internal/proto/gen packages/api-client/src/gen; then
+            echo "::error::Generated protobuf code is out of date. Run \`task gen\` and commit the result."
+            exit 1
+          fi
+
+      # packages/icons is where a raw <svg> normally lives. `qr-code.tsx` is the
+      # documented exception: it draws a generated image rather than an icon —
+      # the geometry is computed from the text it encodes, and the fixed
+      # black-on-white palette is what makes the code scannable — so nothing in
+      # @publira/icons could stand in for it. See apps/AGENTS.md "Icons".
+      - name: Validate / No hand-written SVG in JSX
+        run: |
+          if git grep -n '<svg' -- '*.tsx' '*.jsx' ':!packages/icons/src/**' ':!packages/ui-components/src/qr-code/qr-code.tsx'; then
+            echo "::error::Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md."
+            exit 1
+          fi
+
+      - name: Validate / Design tokens
+        run: node scripts/check-design-tokens.ts
+
+      - name: Validate / Typecheck
+        run: pnpm typecheck
+
+  lint-go:
+    name: Lint / Go
+    needs: changes
+    if: needs.changes.outputs.lint_go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      # scripts/check-go-mod-tidy.sh carries the reasoning; run it locally
+      # before pushing a dependency change.
+      - name: Validate / go mod tidy
+        run: scripts/check-go-mod-tidy.sh
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      # The action installs the pinned binary and caches the analysis results;
+      # the rule set itself lives in server/.golangci.yml, so this runs exactly
+      # what `task server:lint` runs locally.
+      - name: Validate / golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v${{ env.GOLANGCI_LINT_VERSION }}
+          working-directory: server
+
+  test-go:
+    name: Test / Go
+    needs: changes
+    if: needs.changes.outputs.test_go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      - name: Validate / Go Tests
+        working-directory: server
+        run: go test ./...
+
+  test-db-migrations:
+    name: Test / DB Migrations
+    needs: changes
+    if: needs.changes.outputs.test_db_migrations == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.23@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: publira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d publira" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The append-only guard below diffs against origin/main, so it needs the
+          # remote-tracking branch and a merge base. `persist-credentials: false`
+          # leaves no credentials for a fallback `git fetch`.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # An applied migration is immutable: golang-migrate never re-runs a version a
+      # database already recorded, so an edit reaches only databases built later.
+      # On `push` to main, origin/main and HEAD are the same commit and the diff is
+      # empty. See db/AGENTS.md.
+      - name: Validate / Migrations Are Append-Only
+        run: |
+          set -euo pipefail
+          violations="$(git diff --name-status --find-renames origin/main...HEAD -- db/migrations/ | grep -v "^A$(printf '\t')" || true)"
+          if [ -n "$violations" ]; then
+            echo "::error::db/migrations/ is append-only. Stack a new migration instead of editing, renaming, or deleting one."
+            echo "$violations"
+            exit 1
+          fi
+
+      # scripts/check-migration-order.sh carries the reasoning; run it locally
+      # before pushing. On `push` to main, origin/main and HEAD are the same
+      # commit and the branch adds nothing.
+      - name: Validate / Migrations Sort Above main
+        run: scripts/check-migration-order.sh
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Validate / Migrate Up (empty DB)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
+
+      - name: Validate / Migrate Down (round trip back to empty)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" down -all
+
+      - name: Validate / Migrate Up (re-apply after down)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
+
+  test-ts:
+    name: Test / TypeScript
+    needs: changes
+    if: needs.changes.outputs.test_ts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+
+      - name: Validate / TypeScript Tests
+        run: pnpm test
+
+      - name: Validate / Script Tests
+        run: pnpm test:scripts
+
+  test-bash:
+    name: Test / Bash
+    needs: changes
+    if: needs.changes.outputs.test_bash == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Install / Bash Tools
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends shellcheck shfmt
+
+      - name: Validate / Bash Style
+        run: |
+          shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')
+          shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')
+
+      - name: Validate / Bash Library Tests
+        run: |
+          task dev-env:test
+          task e2e:test-lib
+          task mobile:test-device-ports
+
+  test-mobile:
+    name: Test / Mobile
+    needs: changes
+    if: needs.changes.outputs.test_mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Validate / Format, Analyze, and Tests
+        run: task mobile:check
+
+  test-mobile-e2e:
+    name: Test / Mobile E2E
+    needs: changes
+    if: needs.changes.outputs.test_mobile_e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      COMPOSE_PROJECT_NAME: publira-mobile-e2e
+      PUBLIRA_E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
+      CI: true
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      - name: Setup / Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25.0.4+101.0.LTS"
+
+      # The wrapper fetches gradle-*-all.zip from services.gradle.org, the only
+      # third-party host this job still depends on at build time; restoring it
+      # removes the request instead of retrying it. `restore-keys` keeps the
+      # distribution and most dependencies across a build-file edit, since the
+      # exact key only survives while none of the hashed inputs change.
+      - name: Cache / Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper/dists
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('mobile/android/gradle/wrapper/gradle-wrapper.properties', 'mobile/android/**/*.gradle.kts', 'mobile/android/gradle.properties', 'mobile/pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Build / Server
+        run: task server:build
+
+      - name: Start / Server stack
+        run: |
+          set -euo pipefail
+          bash e2e/scripts/up.sh
+          bash mobile/scripts/e2e-db-setup.sh
+          bash e2e/scripts/server.sh start-wait
+          bash e2e/scripts/worker.sh start-wait
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup / Android emulator packages
+        id: emulator-packages
+        run: bash mobile/scripts/emulator-packages.sh
+
+      - name: Validate / Mobile E2E
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ steps.emulator-packages.outputs.api-level }}
+          target: ${{ steps.emulator-packages.outputs.target }}
+          arch: ${{ steps.emulator-packages.outputs.arch }}
+          profile: pixel_6
+          disable-animations: true
+          script: task mobile:test-integration
+        env:
+          PUBLIRA_LIVE_API: "true"
+
+      # A tenant's production build from the example manifest, through the
+      # command a tenant runs, signed with a throwaway upload key.
+      - name: Build / Tenant Android app
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -noprompt -keystore "${PUBLIRA_ANDROID_KEYSTORE}" \
+            -storepass "${PUBLIRA_ANDROID_KEYSTORE_PASSWORD}" -keypass "${PUBLIRA_ANDROID_KEY_PASSWORD}" \
+            -alias "${PUBLIRA_ANDROID_KEY_ALIAS}" -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Example Reader"
+          task mobile:build -- mobile/config/app.example.yaml apk
+        env:
+          PUBLIRA_BASE_URL: https://reader.example.com
+          PUBLIRA_ANDROID_KEYSTORE: ${{ runner.temp }}/upload.jks
+          PUBLIRA_ANDROID_KEYSTORE_PASSWORD: throwaway
+          PUBLIRA_ANDROID_KEY_ALIAS: upload
+          PUBLIRA_ANDROID_KEY_PASSWORD: throwaway
+
+      - name: Teardown / Server stack
+        if: always()
+        run: |
+          bash e2e/scripts/worker.sh stop || true
+          bash e2e/scripts/server.sh stop || true
+          bash e2e/scripts/down.sh || true
+
+      - name: Upload / Mobile E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-e2e-artifacts
+          path: |
+            mobile/.run/artifacts/
+            mobile/.run/logs/
+          if-no-files-found: ignore
+
+  test-mobile-ios:
+    name: Test / Mobile iOS
+    needs: changes
+    if: needs.changes.outputs.test_mobile_ios == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Validate / iOS builds
+        run: task mobile:test-ios-build
+
+      # What a build left changed in the tree is what has to be committed or
+      # ignored, and the runner is the only place it can be read.
+      - name: Diagnose / Working tree
+        if: failure()
+        run: git add --intent-to-add --all && git status --short && git diff
+
+  test-e2e:
+    name: Test / E2E
+    needs: changes
+    if: needs.changes.outputs.test_e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / Install wait4x
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) wait4x_arch="amd64" ;;
+            arm64) wait4x_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="wait4x-linux-${wait4x_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          (cd /tmp && sha256sum -c "${archive}.sha256sum")
+          tar -xzf "/tmp/${archive}" -C /tmp wait4x
+          sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
+          rm -f "/tmp/${archive}" "/tmp/${archive}.sha256sum" /tmp/wait4x
+
+      - name: Dependencies / Install
+        run: task deps
+
+      - name: Cache / Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Build + Readiness + Playwright
+        # prepare (build + browsers) then full lifecycle. Always tears down
+        # compose/apps (trap). Readiness failures print "readiness failed: …"
+        # and never start Playwright.
+        run: task e2e:run
+        env:
+          CI: true
+
+      - name: Upload / E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/.run/logs/
+          if-no-files-found: ignore
+
+  test-bootstrap:
+    name: Test / Bootstrap
+    needs: changes
+    if: needs.changes.outputs.test_bootstrap == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / Install wait4x
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) wait4x_arch="amd64" ;;
+            arm64) wait4x_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="wait4x-linux-${wait4x_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          (cd /tmp && sha256sum -c "${archive}.sha256sum")
+          tar -xzf "/tmp/${archive}" -C /tmp wait4x
+          sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
+          rm -f "/tmp/${archive}" "/tmp/${archive}.sha256sum" /tmp/wait4x
+
+      # Installs dependencies itself (`task setup`); no separate deps step.
+      # Always tears the compose project and dev processes down (trap).
+      - name: Bootstrap check
+        run: task e2e:bootstrap
+        env:
+          CI: true
+
+      - name: Upload / Bootstrap artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bootstrap-artifacts
+          path: e2e/bootstrap/.run/logs/
+          if-no-files-found: ignore
+
+  test-routing:
+    name: Test / Routing
+    needs: changes
+    if: needs.changes.outputs.test_routing == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      # One stack per proxy under infra/proxy — Traefik, nginx, Caddy — each in
+      # front of echo backends, no apps. Always tears the compose project down
+      # (trap).
+      - name: Routing check
+        run: task e2e:routing
+        env:
+          CI: true
+
+      - name: Upload / Routing artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: routing-artifacts
+          path: e2e/routing/.run/
+          # The path ends at a hidden segment, and the walk that resolves it
+          # starts there: without this it stops on `.run` and uploads nothing.
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  test-deploy:
+    name: Test / Deploy
+    needs: changes
+    if: needs.changes.outputs.test_deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Validate / Compose config
+        run: task deploy:check
+
+      # Every image the Compose file references, built into the local image
+      # store under the names .env.example gives them.
+      - name: Build / Images
+        run: task docker:verify:full
+
+      # Always tears the compose project and its volumes down (trap).
+      - name: Smoke / Compose stack
+        run: task deploy:smoke
+
+  build:
+    name: Build
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Dependencies / Install
+        run: task deps
+
+      - name: Build / Web
+        run: pnpm build
+
+      - name: Build / Server
+        run: task server:build
+
+  docker:
+    name: Docker / ${{ matrix.target }}
+    needs: changes
+    if: needs.changes.outputs.docker_any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.changes.outputs.docker_matrix) }}
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      # Use the default docker driver so `docker build -t …` loads into the local
+      # image store (docker-container Buildx does not, and smoke needs docker run).
+      - name: Build image
+        env:
+          DOCKER_TASK: ${{ matrix.task }}
+          DOCKER_ARG: ${{ matrix.arg }}
+          DOCKER_EXTRA: ${{ matrix.extra }}
+        run: |
+          set -euo pipefail
+          # The server and publiractl roles take no build ARG, so an empty entry
+          # must not reach task as an empty task name.
+          args=()
+          if [ -n "${DOCKER_ARG}" ]; then
+            args+=("${DOCKER_ARG}")
+          fi
+          if [ -n "${DOCKER_EXTRA}" ]; then
+            args+=("${DOCKER_EXTRA}")
+          fi
+          task "${DOCKER_TASK}" "${args[@]}"
+
+      - name: Smoke / Web /healthz
+        if: matrix.role == 'web'
+        env:
+          APP_NAME: ${{ matrix.target }}
+          PORT: ${{ matrix.port }}
+        run: task docker:smoke:web "APP_NAME=${APP_NAME}" "PORT=${PORT}"
+
+      - name: Smoke / Node service /livez /readyz
+        if: matrix.role == 'node'
+        env:
+          APP_NAME: ${{ matrix.target }}
+          PORT: ${{ matrix.port }}
+        run: task docker:smoke:node "APP_NAME=${APP_NAME}" "PORT=${PORT}"
+
+      - name: Smoke / publiractl db migrate and db roles
+        if: matrix.role == 'publiractl'
+        run: task docker:smoke:publiractl
+
+  # Single required status check for the branch ruleset (shown as "CI / Summary").
+  # Intermediate jobs may be skipped when their paths did not change.
+  summary:
+    name: Summary
+    if: always()
+    needs:
+      - changes
+      - format
+      - check
+      - lint-go
+      - test-go
+      - test-ts
+      - test-bash
+      - test-db-migrations
+      - test-mobile
+      - test-mobile-e2e
+      - test-mobile-ios
+      - test-e2e
+      - test-bootstrap
+      - test-routing
+      - test-deploy
+      - build
+      - docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate results
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          FORMAT: ${{ needs.format.result }}
+          CHECK: ${{ needs.check.result }}
+          LINT_GO: ${{ needs.lint-go.result }}
+          TEST_GO: ${{ needs.test-go.result }}
+          TEST_TS: ${{ needs.test-ts.result }}
+          TEST_BASH: ${{ needs.test-bash.result }}
+          TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
+          TEST_MOBILE: ${{ needs.test-mobile.result }}
+          TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
+          TEST_MOBILE_IOS: ${{ needs.test-mobile-ios.result }}
+          TEST_E2E: ${{ needs.test-e2e.result }}
+          TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
+          TEST_ROUTING: ${{ needs.test-routing.result }}
+          TEST_DEPLOY: ${{ needs.test-deploy.result }}
+          BUILD: ${{ needs.build.result }}
+          DOCKER: ${{ needs.docker.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for pair in \
+            "Detect changes=${CHANGES}" \
+            "Lint and Format=${FORMAT}" \
+            "Check=${CHECK}" \
+            "Lint / Go=${LINT_GO}" \
+            "Test / Go=${TEST_GO}" \
+            "Test / TypeScript=${TEST_TS}" \
+            "Test / Bash=${TEST_BASH}" \
+            "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
+            "Test / Mobile=${TEST_MOBILE}" \
+            "Test / Mobile E2E=${TEST_MOBILE_E2E}" \
+            "Test / Mobile iOS=${TEST_MOBILE_IOS}" \
+            "Test / E2E=${TEST_E2E}" \
+            "Test / Bootstrap=${TEST_BOOTSTRAP}" \
+            "Test / Routing=${TEST_ROUTING}" \
+            "Test / Deploy=${TEST_DEPLOY}" \
+            "Build=${BUILD}" \
+            "Docker=${DOCKER}"
+          do
+            name="${pair%%=*}"
+            result="${pair#*=}"
+            echo "${name}: ${result}"
+            case "${result}" in
+              success|skipped)
+                ;;
+              *)
+                echo "::error::Job failed: ${name} (${result})"
+                failed=1
+                ;;
+            esac
+          done
+          if [ "${failed}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All jobs succeeded or were skipped."

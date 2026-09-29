@@ -1,0 +1,98 @@
+@import "@publira/ui-components/styles.css";
+
+@source "./dist";
+
+/**
+ * Tailwind has no utility for `text-autospace`. The keywords are quoted
+ * because that is how `--value()` takes a literal; the emitted value is not.
+ */
+@utility text-autospace-* {
+  text-autospace: --value(
+    "normal",
+    "no-autospace",
+    "ideograph-alpha",
+    "ideograph-numeric",
+    "punctuation",
+    "insert",
+    "replace",
+    "auto",
+    [*],
+    --default(normal)
+  );
+}
+
+@layer base {
+  /**
+   * Browsers ship `no-autospace` as the initial value, so the spacing between
+   * CJK text and a Latin or digit run is only drawn when a stylesheet asks.
+   * Only the element that declares the language sets it, so a container's
+   * `text-autospace-*` reaches its whole subtree by inheritance.
+   */
+  [lang]:is(:lang(ja), :lang(ko), :lang(zh-Hans), :lang(zh-Hant)) {
+    @apply text-autospace;
+  }
+
+  :root {
+    @apply scheme-light;
+  }
+
+  html {
+    @apply bg-background;
+  }
+
+  body {
+    @apply min-h-screen text-foreground;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  ::selection {
+    @apply bg-primary/22;
+  }
+
+  /**
+   * Every transition in this UI answers an action, so under reduced motion
+   * there is nothing left to shorten: the end state is what the person asked
+   * for. `!important` is what reaches a utility from the base layer, and
+   * dropping the animation leaves a skeleton at its `muted` fill.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+/**
+ * The paper a console sign-in screen fills `AuthScreenPanel` with, ruled into
+ * squares a line of type wide.
+ *
+ * Every stop is hard, so each line is a hairline and the square between them is
+ * left at the colour it sits on: these are rules drawn on paper, not a surface
+ * washed from one colour into another. The line is mixed down from `border`
+ * because it repeats every 1.5rem, where the hairline that separates one
+ * section from the next appears once.
+ *
+ * Reading `border` is also what carries a tenant's own palette into the panel:
+ * the tenant console is painted from `/theme.css` like every other screen in
+ * it.
+ */
+@utility auth-screen-pattern {
+  --auth-screen-rule: color-mix(in oklab, var(--color-border) 60%, transparent);
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--auth-screen-rule) 0 1px,
+      transparent 1px 1.5rem
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--auth-screen-rule) 0 1px,
+      transparent 1px 1.5rem
+    );
+}

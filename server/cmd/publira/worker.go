@@ -1,0 +1,298 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/publira/publira/server/config"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/fcmsettings"
+	"github.com/publira/publira/server/internal/googleplay"
+	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/httpserver"
+	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/maintenancejobs"
+	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/signin"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tickerjobs"
+	"github.com/publira/publira/server/internal/tracing"
+	"github.com/publira/publira/server/internal/webpushsettings"
+)
+
+const (
+	workerServiceName = "publira-worker"
+
+	defaultWorkerAddr        = ":8003"
+	defaultWorkerDBURL       = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
+	defaultTickerDBURL       = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
+	defaultContentStatsDBURL = "postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable"
+)
+
+// runWorker hosts the one River client a deployment needs: it drains the
+// Outbox, runs the periodic jobs, and owns the maintenance jobs, so nothing
+// beside it has to invoke a job on a timer.
+func runWorker() int {
+	logger := logging.New(os.Stdout, nil)
+	slog.SetDefault(logger)
+
+	// One service.name per periodic job alongside the process default, so a run
+	// of publish-episodes is still a publira-publish-episodes trace, and a
+	// rebuild of the daily stats a publira-aggregate-content-stats one, now
+	// that none of them has a process or a schedule of its own.
+	serviceNames := append([]string{workerServiceName}, tickerjobs.ServiceNames()...)
+	serviceNames = append(serviceNames, maintenancejobs.ServiceNames()...)
+	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
+	if err != nil {
+		logger.Error("failed to initialize tracing", "error", err)
+	}
+
+	cfg, err := config.New()
+	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		return 1
+	}
+
+	// One client for the whole process: the periodic jobs record what they owe
+	// through it, and the handler below is what sends every recorded drop.
+	revalidateClient, err := newRevalidateClient(logger)
+	if err != nil {
+		logger.Error("failed to initialize next revalidate", "error", err)
+		return 1
+	}
+
+	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
+	if err != nil {
+		logger.Error("failed to initialize db", "error", err)
+		return 1
+	}
+	defer db.Close() //nolint:errcheck
+
+	// The periodic jobs get a pool of their own rather than sharing the one
+	// above. publira_outbox owns River's schema and holds CREATE on the public
+	// schema so rivermigrate can alter it; the jobs promote episodes and drop
+	// caches and create nothing, so they connect as the role that can do only
+	// that.
+	tickerDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_TICKER_DB_URL", defaultTickerDBURL))
+	if err != nil {
+		logger.Error("failed to initialize the ticker jobs db", "error", err)
+		return 1
+	}
+	defer tickerDB.Close() //nolint:errcheck
+
+	jobs, err := tickerjobs.New(tickerjobs.Config{
+		DB: tickerDB,
+		// No DB here on purpose: the ticker role may insert an outbox event and
+		// not update one, and a drop recorded a drain away needs no attempt of
+		// its own.
+		Revalidate: revalidate.NewRequester(revalidate.RequesterConfig{
+			Client:  revalidateClient,
+			Queries: dbmodels.New(tickerDB),
+			Logger:  logger,
+		}),
+		Logger:                     logger,
+		PublishInterval:            envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
+		PublishMaxRetries:          envInt("PUBLIRA_PUBLISH_MAX_RETRIES", tickerjobs.DefaultPublishMaxRetries),
+		FreeWindowInterval:         envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
+		TenantDayInterval:          envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
+		PinnedAnnouncementInterval: envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
+	})
+	if err != nil {
+		logger.Error("failed to initialize the ticker jobs", "error", err)
+		return 1
+	}
+	logger.Info("ticker jobs registered", jobs.Settings()...)
+
+	// The rebuild and purge work connects as publira_content_stats, the role
+	// the publiractl subcommands use for it. It is the third login in this
+	// process and the third pool: what the work may reach is decided by the
+	// role, and a process that hosts three kinds of job is still not a reason
+	// for any of them to borrow another's privileges.
+	contentStatsDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_CONTENT_STATS_DB_URL", defaultContentStatsDBURL))
+	if err != nil {
+		logger.Error("failed to initialize the maintenance jobs db", "error", err)
+		return 1
+	}
+	defer contentStatsDB.Close() //nolint:errcheck
+
+	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
+	// assigned to an interface is not nil, and it would slip past the guard in
+	// emailsettings.DecryptPassword into a nil-receiver method call. A process
+	// started without keys has to report an unusable manager, so a handler can
+	// retry once an operator restarts it with them.
+	var encryptor emailsettings.SecretManager
+	if len(cfg.Encryption.Keys) > 0 {
+		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if managerErr != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
+			return 1
+		}
+		encryptor = manager
+	}
+
+	// The bucket the orphan image sweep reclaims is read from the platform's
+	// settings when a run starts, so the worker starts before one is saved.
+	reclaimers := platformstorage.Reclaimers{Resolver: platformstorage.New(platformstorage.Config{
+		Queries: dbmodels.New(contentStatsDB),
+		Secrets: encryptor,
+		Logger:  logger,
+	}, platformstorage.NewStorage)}
+	maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
+		DB:         contentStatsDB,
+		Storage:    reclaimers,
+		Secrets:    encryptor,
+		GooglePlay: googleplay.NewClient(googleplay.Config{}),
+		Logger:     logger,
+	})
+	if err != nil {
+		logger.Error("failed to initialize the maintenance jobs", "error", err)
+		return 1
+	}
+	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
+
+	// Both senders read their credentials per delivery, so a tenant connecting
+	// its Firebase project or an operator saving the Web Push subject takes
+	// effect while this runs.
+	pushHandlers := outbox.PushHandlerConfig{
+		DB:        db,
+		Logger:    logger,
+		Sender:    fcmsettings.NewSenders(dbmodels.New(db), encryptor, fcmsettings.NewPushClient, fcmsettings.CacheTTL, logger),
+		WebSender: webpushsettings.NewSenders(dbmodels.New(db), encryptor, webpushsettings.NewPushClient, webpushsettings.CacheTTL, logger),
+	}
+
+	// Declared as the interface, never as *revalidate.Client: a typed nil
+	// assigned to an interface is not nil, and the handler would then answer
+	// every event by dropping nothing instead of reporting that this worker
+	// cannot send.
+	var invalidator outbox.CacheInvalidator
+	if revalidateClient != nil {
+		invalidator = revalidateClient
+	}
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, []outbox.PeriodicRegistrar{jobs, maintenanceJobs}, outbox.EmailHandlerConfig{
+		DB:        db,
+		Encryptor: encryptor,
+		Mailer:    internalsmtp.NewClient(),
+		Renderer:  resolveEmailRenderer(logger),
+	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
+		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
+		invalidator))
+	if err != nil {
+		logger.Error("failed to start the outbox drain", "error", err)
+		return 1
+	}
+
+	mux := http.NewServeMux()
+	// One check per pool: with three logins behind one process, a single "db"
+	// could not say which of them stopped answering.
+	health.Register(mux,
+		health.WithDBNamed("db.outbox", db),
+		health.WithDBNamed("db.ticker", tickerDB),
+		health.WithDBNamed("db.content_stats", contentStatsDB),
+		health.WithReady(worker.Ready),
+	)
+
+	addr := addrFromEnv("PUBLIRA_WORKER_ADDR", defaultWorkerAddr)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	logger.Info("starting worker", "addr", addr)
+	if err := httpserver.Serve(ctx, logger, []*http.Server{
+		httpserver.New(addr, mux),
+	}, func(ctx context.Context) error {
+		return worker.Stop(ctx)
+	}, shutdownTracing, func(context.Context) error {
+		return errors.Join(db.Close(), tickerDB.Close(), contentStatsDB.Close())
+	}); err != nil {
+		logger.Error("worker failed", "error", err)
+		return 1
+	}
+	return 0
+}
+
+func workerConfig(
+	logger *slog.Logger,
+	periodic []outbox.PeriodicRegistrar,
+	emailHandlers outbox.EmailHandlerConfig,
+	pushHandlers outbox.PushHandlerConfig,
+	staffHandlers outbox.StaffNotificationHandlerConfig,
+	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
+	episodePublishedHandlers outbox.EpisodePublishedNotificationHandlerConfig,
+	googlePlayHandlers outbox.GooglePlayHandlerConfig,
+	appleSignInHandlers outbox.AppleSignInHandlerConfig,
+	invalidator outbox.CacheInvalidator,
+) outbox.Config {
+	emailHandlers.Logger = logger
+	handlers := outbox.DefaultRegistry()
+	handlers.Register(outbox.EventTypeTenantAdminInvitationEmail, outbox.NewTenantAdminInvitationHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformPasswordResetEmail, outbox.NewPlatformPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformPasswordResetRequest, outbox.NewPlatformPasswordResetRequestHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangeConfirmationEmail, outbox.NewPlatformEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypePlatformEmailChangedNoticeEmail, outbox.NewPlatformEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailVerificationEmail, outbox.NewReaderEmailVerificationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailChangeConfirmationEmail, outbox.NewReaderEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailChangedNoticeEmail, outbox.NewReaderEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderPasswordResetEmail, outbox.NewReaderPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderPasswordChangedNoticeEmail, outbox.NewReaderPasswordChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderSignupAttemptNoticeEmail, outbox.NewReaderSignupAttemptNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderSignupRequest, outbox.NewReaderSignupRequestHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderPasswordResetRequest, outbox.NewReaderPasswordResetRequestHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeReaderEmailVerificationRequest, outbox.NewReaderEmailVerificationRequestHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeAdminPasswordResetEmail, outbox.NewAdminPasswordResetEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeAdminPasswordResetRequest, outbox.NewAdminPasswordResetRequestHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeAdminEmailChangeConfirmationEmail, outbox.NewAdminEmailChangeConfirmationEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeAdminEmailChangedNoticeEmail, outbox.NewAdminEmailChangedNoticeEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeContactMessageStaffEmail, outbox.NewContactMessageStaffEmailHandler(emailHandlers))
+	handlers.Register(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
+	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
+	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
+	handlers.Register(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
+	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
+	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
+	googlePlayHandlers.Logger = logger
+	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
+	appleSignInHandlers.Logger = logger
+	handlers.Register(outbox.EventTypeAppleSignInCodeExchange, outbox.NewAppleSignInCodeExchangeHandler(appleSignInHandlers))
+	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
+	return outbox.Config{
+		Logger:            logger,
+		Handlers:          handlers,
+		Periodic:          periodic,
+		DrainInterval:     envDuration("PUBLIRA_OUTBOX_DRAIN_INTERVAL", 0),
+		ClaimLimit:        envInt32("PUBLIRA_OUTBOX_CLAIM_LIMIT", 0),
+		MaxAttempts:       envInt("PUBLIRA_OUTBOX_MAX_ATTEMPTS", 0),
+		StaleProcessing:   envDuration("PUBLIRA_OUTBOX_STALE_PROCESSING", 0),
+		MaxWorkers:        envInt("PUBLIRA_OUTBOX_MAX_WORKERS", 0),
+		FetchCooldown:     envDuration("PUBLIRA_OUTBOX_FETCH_COOLDOWN", 0),
+		FetchPollInterval: envDuration("PUBLIRA_OUTBOX_FETCH_POLL_INTERVAL", 0),
+	}
+}
+
+// resolveEmailRenderer answers nil for a deployment that runs no renderer, so
+// its mail goes out as the text the worker composes itself. A default URL here
+// would instead point every such deployment at a service that is not there, and
+// retry each mail event until the row dead-letters.
+func resolveEmailRenderer(logger *slog.Logger) emailrenderer.Renderer {
+	url := strings.TrimSpace(os.Getenv("PUBLIRA_EMAIL_RENDERER_URL"))
+	if url == "" {
+		logger.Info("html email parts are disabled", "reason", "no email renderer URL is configured")
+		return nil
+	}
+	logger.Info("html email parts are enabled", "email_renderer_url", url)
+	return emailrenderer.NewClient(url)
+}

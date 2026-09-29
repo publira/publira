@@ -1,0 +1,17 @@
+-- INDEX: idx_series_follows_tenant_series_user
+-- The read that starts from the series: who asked to hear about it. The
+-- primary key is (tenant_id, user_id, series_id) and the existing index leads
+-- with the same two columns, so both answer "what does this reader follow"
+-- and neither answers this direction — publishing an episode would scan every
+-- follow the tenant holds.
+--
+-- user_id closes the index on what the fan-out actually reads, and it is also
+-- the key the recipient scan pages on, so one index serves the lookup and the
+-- cursor.
+--
+-- CONCURRENTLY, so building it does not block the follows readers keep
+-- writing. That is also why this statement is the whole file: the driver hands
+-- a migration to PostgreSQL as one query string, and a string holding more
+-- than one statement becomes an implicit transaction, which is the one place
+-- CONCURRENTLY cannot run.
+CREATE INDEX CONCURRENTLY idx_series_follows_tenant_series_user ON series_follows USING btree (tenant_id, series_id, user_id);

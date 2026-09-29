@@ -1,0 +1,101 @@
+"use server";
+
+import type { Locale } from "@publira/i18n";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import { updateMe } from "#lib/auth";
+import { birthDateFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
+import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
+import { getMessagesFor } from "#lib/messages";
+
+import { buildSettingsPath } from "./settings-form";
+
+const SETTINGS_RETURN_TO = "/settings";
+
+const updateProfileFormSchema = async (locale: Locale) => {
+  const [t, birthDate, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    birthDateFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+  const nameRequired = t("host.settings.name_required");
+
+  return z.object({
+    birthDate,
+    locale: localeFormSchema,
+    name: z
+      .string({ error: nameRequired })
+      .trim()
+      .min(1, nameRequired)
+      .max(100, t("host.settings.name_too_long")),
+    tenantId,
+  });
+};
+
+export const updateProfileAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  // The locale field falls back rather than failing, so a rejected submission
+  // is still worded in the reader's language.
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    updateProfileFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      birthDate: "value",
+      locale: "value",
+      name: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, { locale: submittedLocale })
+    );
+    redirect(errorPath);
+  }
+
+  const { birthDate, locale, name, tenantId } = parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SETTINGS_RETURN_TO,
+    tenantId
+  );
+  const updated = await withPublicSessionReauth(
+    locale,
+    SETTINGS_RETURN_TO,
+    () => updateMe(tenantId, { birthDate, name }, accessToken),
+    tenantId
+  );
+  if (!updated) {
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      t("host.settings.profile_update_failed")
+    );
+    redirect(errorPath);
+  }
+
+  const successPath = await buildSettingsPath(
+    locale,
+    tenantId,
+    "success",
+    t("host.settings.profile_updated")
+  );
+  redirect(successPath);
+};

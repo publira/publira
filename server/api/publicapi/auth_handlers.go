@@ -1,0 +1,1729 @@
+package publicapi
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net/mail"
+	"strings"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tracing"
+)
+
+const (
+	emailVerificationTokenTTL = 24 * time.Hour
+
+	defaultAnnouncementPageSize = int32(20)
+	maxAnnouncementPageSize     = int32(100)
+)
+
+// mintAccessToken signs a session for the user row as it stands. The row's
+// credentials_version goes into the token, so a caller that has just bumped it
+// has to mint from the updated row rather than the one it read first.
+func (s *apiServer) mintAccessToken(
+	tenant dbmodels.Tenant,
+	user dbmodels.User,
+	role string,
+) (*publirattypesv1.AccessToken, error) {
+	if s.tokens == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+	}
+	token, expiresAt, err := s.tokens.Issue(
+		user.PublicID,
+		auth.AudiencePublic,
+		tenant.ID.String(),
+		role,
+		user.CredentialsVersion,
+		time.Now(),
+	)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &publirattypesv1.AccessToken{
+		Token:     token,
+		ExpiresAt: auth.FormatExpiresAt(expiresAt),
+	}, nil
+}
+
+func (s *apiServer) issueAccessToken(
+	tenant dbmodels.Tenant,
+	user dbmodels.User,
+	role string,
+) (*connect.Response[publirav1.LoginResponse], error) {
+	accessToken, err := s.mintAccessToken(tenant, user, role)
+	if err != nil {
+		return nil, err
+	}
+	resp := &publirav1.LoginResponse{
+		User: &publirattypesv1.User{
+			PublicId: user.PublicID,
+			Name:     user.Name,
+			Role:     role,
+		},
+		AccessToken: accessToken,
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
+	if err != nil {
+		return "", s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", userID.String())
+	}
+	return auth.ResolveTenantRole(roles), nil
+}
+
+func (s *apiServer) authenticateAccessToken(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers http.Header,
+) (rpcmiddleware.SessionContext, error) {
+	tenant, err := s.tenantByContext(ctx, tenantCtx)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, err
+	}
+	rawToken, ok := auth.BearerTokenFromHeader(headers)
+	if !ok || s.tokens == nil {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	claims, err := s.tokens.Verify(rawToken, auth.AudiencePublic)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	if claims.TenantID != "" && claims.TenantID != tenant.ID.String() {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rpcmiddleware.SessionContext{}, invalidSessionError()
+		}
+		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get user by public id", err, "tenant_id", tenant.ID.String(), "public_id", claims.Subject)
+	}
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rpcmiddleware.SessionContext{}, invalidSessionError()
+		}
+		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to get user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	role, err := s.tenantRole(ctx, user.ID)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, err
+	}
+	tracing.SetEndUser(ctx, user.PublicID)
+	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, nil
+}
+
+func (s *apiServer) currentUserFromSession(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers http.Header,
+) (dbmodels.Tenant, dbmodels.User, string, error) {
+	authCtx, err := s.authenticateAccessToken(ctx, tenantCtx, headers)
+	if err != nil {
+		return dbmodels.Tenant{}, dbmodels.User{}, "", err
+	}
+	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
+}
+
+// optionalReaderFromSession names the caller when the request carries a bearer
+// token and answers a guest when it does not.
+//
+// An announcement is the tenant's word to everyone who opens the site, so the
+// rows themselves do not depend on knowing who is asking — only the read state
+// on them does. A session that is rejected therefore reads as a guest too,
+// rather than closing a page that is open to a first-time visitor; an Internal
+// failure is still one, because that is a fault rather than an answer.
+func (s *apiServer) optionalReaderFromSession(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers http.Header,
+) (dbmodels.Tenant, uuid.NullUUID, error) {
+	if _, hasBearer := auth.BearerTokenFromHeader(headers); !hasBearer {
+		tenant, err := s.tenantByContext(ctx, tenantCtx)
+		if err != nil {
+			return dbmodels.Tenant{}, uuid.NullUUID{}, err
+		}
+		return tenant, uuid.NullUUID{}, nil
+	}
+
+	session, authErr := s.authenticateAccessToken(ctx, tenantCtx, headers)
+	if authErr == nil {
+		return session.Tenant, uuid.NullUUID{UUID: session.User.ID, Valid: true}, nil
+	}
+	if connect.CodeOf(authErr) == connect.CodeInternal {
+		return dbmodels.Tenant{}, uuid.NullUUID{}, authErr
+	}
+
+	tenant, err := s.tenantByContext(ctx, tenantCtx)
+	if err != nil {
+		return dbmodels.Tenant{}, uuid.NullUUID{}, err
+	}
+	slog.InfoContext(ctx, "announcements: bearer session rejected, continuing without it",
+		"tenant_id", tenant.ID.String(),
+		"code", connect.CodeOf(authErr).String(),
+	)
+	return tenant, uuid.NullUUID{}, nil
+}
+
+func (s *apiServer) Login(
+	ctx context.Context,
+	req *connect.Request[publirav1.LoginRequest],
+) (*connect.Response[publirav1.LoginResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "invalid_credentials")
+			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+		}
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get user for login", err, "tenant_id", tenant.ID.String())
+	}
+	if !auth.VerifyUserPassword(req.Msg.Password, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+	}
+	if user.Status != "active" || !user.EmailVerifiedAt.Valid {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email is not verified"))
+	}
+	role, err := s.tenantRole(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	response, err := s.issueAccessToken(tenant, user, role)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
+		return nil, err
+	}
+	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "token_issued")
+	return response, nil
+}
+
+// The reader auth mails are enqueued as outbox_events rows in the
+// transaction that writes what they announce, and rendered and delivered by the
+// resident worker. Every row names the tenant the account belongs to, in the
+// column and in the payload alike, which is what the table's own check
+// constraint and its tenant-isolation policy both require.
+
+func enqueueReaderEmailChangeConfirmationEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, tokenID uuid.UUID,
+	recipientKind string,
+	token string,
+) error {
+	payload, err := json.Marshal(outbox.ReaderEmailChangeConfirmationEmailPayload{
+		TenantID: tenantID.String(),
+		TokenID:  tokenID.String(),
+		Token:    token,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal reader email change confirmation email event: %w", err)
+	}
+	// One row per side, so a failure to deliver to one address is retried on its
+	// own rather than resending the other.
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangeConfirmationEmail, payload,
+		"reader_email_change_confirmation_email:"+tokenID.String()+":"+recipientKind)
+}
+
+func enqueueReaderEmailChangedNoticeEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, tokenID uuid.UUID,
+) error {
+	payload, err := json.Marshal(outbox.ReaderEmailChangedNoticeEmailPayload{
+		TenantID: tenantID.String(),
+		TokenID:  tokenID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal reader email changed notice email event: %w", err)
+	}
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailChangedNoticeEmail, payload,
+		"reader_email_changed_notice_email:"+tokenID.String())
+}
+
+func enqueueReaderPasswordChangedNoticeEmail(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID, userID uuid.UUID,
+	credentialsVersion int32,
+) error {
+	payload, err := json.Marshal(outbox.ReaderPasswordChangedNoticeEmailPayload{
+		TenantID: tenantID.String(),
+		UserID:   userID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal reader password changed notice email event: %w", err)
+	}
+	// A change writes no row of its own, and a reader who changes their password
+	// twice has to hear about both. The version the change left behind is what
+	// separates them: it moves once per change and never moves back, so a retry
+	// of one change still collapses into a single send.
+	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordChangedNoticeEmail, payload,
+		fmt.Sprintf("reader_password_changed_notice_email:%s:%d", userID, credentialsVersion))
+}
+
+// queueReaderAuthRequest records a request from one of the forms that answer a
+// registered address exactly as they answer a free one. It is the only write
+// those handlers make, so the time they take does not depend on the address;
+// the worker decides which case it is in.
+func queueReaderAuthRequest(
+	ctx context.Context,
+	queries dbmodels.Querier,
+	tenantID uuid.UUID,
+	eventType string,
+	payload any,
+) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal %s event: %w", eventType, err)
+	}
+	requestID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             requestID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      eventType,
+		Payload:        body,
+		IdempotencyKey: eventType + ":" + requestID.String(),
+		AvailableAt:    time.Now().UTC(),
+	})
+	return err
+}
+
+// insertPublicOutboxEvent queues one side effect of a public-API write, in the
+// transaction that performs it. The auth mails above and the staff alerts a
+// reader's comment raises are all queued through here.
+func insertPublicOutboxEvent(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	eventType string,
+	payload []byte,
+	idempotencyKey string,
+) error {
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             eventID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      eventType,
+		Payload:        payload,
+		IdempotencyKey: idempotencyKey,
+		AvailableAt:    time.Now().UTC(),
+	})
+	// The insert is a no-op when the same key is already queued, and :one then
+	// returns no rows.
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
+}
+
+func (s *apiServer) CreateUser(
+	ctx context.Context,
+	req *connect.Request[publirav1.CreateUserRequest],
+) (*connect.Response[publirav1.CreateUserResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	name := strings.TrimSpace(req.Msg.Name)
+	email := strings.TrimSpace(req.Msg.Email)
+	password := req.Msg.Password
+	if name == "" || email == "" || strings.TrimSpace(password) == "" {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	// A form that did not ask sends nothing, and the account is created without
+	// one: whether a birth date is asked for is the tenant's rule, and a form
+	// that skipped it is not a sign-up to refuse.
+	var birthDate sql.NullTime
+	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+		today, todayErr := s.tenantToday(ctx, tenant)
+		if todayErr != nil {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "tenant_today_failed")
+			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String())
+		}
+		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
+		if parseErr != nil {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_birth_date")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
+		}
+		birthDate = sql.NullTime{Time: parsed, Valid: true}
+	}
+
+	agreedVersionIDs, err := s.signupConsents(ctx, tenant, req.Msg.AgreedPageVersionIds)
+	if err != nil {
+		reason := "consent_lookup_failed"
+		if connect.CodeOf(err) == connect.CodeInvalidArgument {
+			reason = "invalid_consent"
+		}
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
+		return nil, err
+	}
+
+	// Charged before the request is recorded, so a caller out of allowance
+	// leaves nothing behind for the worker to mail.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
+
+	// The hash is the one expensive step, and it runs for every sign-up: the
+	// address is not looked up until the worker takes the request.
+	passwordHash, err := auth.HashPassword(password)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	userID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	signup := outbox.ReaderSignupRequestPayload{
+		TenantID:     tenant.ID.String(),
+		UserID:       userID.String(),
+		Email:        email,
+		Name:         name,
+		PasswordHash: passwordHash,
+	}
+	if birthDate.Valid {
+		signup.BirthDate = birthDate.Time.Format(time.DateOnly)
+	}
+	for _, versionID := range agreedVersionIDs {
+		signup.AgreedPageVersionIDs = append(signup.AgreedPageVersionIDs, versionID.String())
+	}
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderSignupRequest, signup); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "signup_request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader signup request", err, "tenant_id", tenant.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, "", "requested")
+	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+}
+
+// signupConsents checks the page versions a sign-up agreed to against the
+// pages the tenant names as its terms and privacy policy, and answers the
+// versions to record. Every named page that is published needs exactly one
+// published version of its own; a tenant that names none needs nothing. The
+// version may belong to any translation, so the locale the pages are read in
+// does not matter here.
+func (s *apiServer) signupConsents(ctx context.Context, tenant dbmodels.Tenant, rawIDs []string) ([]uuid.UUID, error) {
+	tenantID := tenant.ID
+	required := map[uuid.UUID]bool{}
+	legal, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, dbmodels.GetTenantLegalPagesParams{
+		TenantID: tenantID,
+		Locale:   tenant.DefaultLocale,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenantID.String())
+	}
+	if legal.TermsPublished {
+		required[legal.TermsPageID.UUID] = false
+	}
+	if legal.PrivacyPublished {
+		required[legal.PrivacyPageID.UUID] = false
+	}
+
+	invalid := func(message string) error {
+		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New(message), "agreed_page_version_ids")
+	}
+	// Refused before any parsing or query, so an unauthenticated caller cannot
+	// make the server read an unbounded list.
+	if len(rawIDs) != len(required) {
+		return nil, invalid("agree to exactly one version of each page the tenant asks consent to")
+	}
+	versionIDs := make([]uuid.UUID, 0, len(rawIDs))
+	for _, raw := range rawIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, invalid("agreed page version id is not a valid id")
+		}
+		versionIDs = append(versionIDs, id)
+	}
+	if len(versionIDs) > 0 {
+		versions, err := s.queriesFor(ctx).ListPublishedPageVersionsByIDsForTenant(ctx, dbmodels.ListPublishedPageVersionsByIDsForTenantParams{
+			TenantID: tenantID,
+			Ids:      versionIDs,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read agreed page versions", err, "tenant_id", tenantID.String())
+		}
+		pageOf := make(map[uuid.UUID]uuid.UUID, len(versions))
+		for _, version := range versions {
+			pageOf[version.ID] = version.PageID
+		}
+		for _, id := range versionIDs {
+			pageID, ok := pageOf[id]
+			if !ok {
+				return nil, invalid("agreed page version is not a published version of this tenant")
+			}
+			agreed, named := required[pageID]
+			if !named {
+				return nil, invalid("agreed page version is not of a page the tenant asks consent to")
+			}
+			if agreed {
+				return nil, invalid("more than one version agreed to for the same page")
+			}
+			required[pageID] = true
+		}
+	}
+	for _, agreed := range required {
+		if !agreed {
+			return nil, invalid("consent to the tenant's terms and privacy policy is required")
+		}
+	}
+	return versionIDs, nil
+}
+
+func (s *apiServer) VerifyUserEmail(
+	ctx context.Context,
+	req *connect.Request[publirav1.VerifyUserEmailRequest],
+) (*connect.Response[publirav1.VerifyUserEmailResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+	verificationToken, err := s.queriesFor(ctx).GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
+		TenantID:  tenant.ID,
+		TokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("verification token not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get email verification token", err, "tenant_id", tenant.ID.String())
+	}
+	if verificationToken.UsedAt.Valid {
+		return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
+	}
+	if verificationToken.ExpiresAt.Before(time.Now()) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("verification token expired"))
+	}
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, verificationToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get user for email verification", err, "tenant_id", tenant.ID.String(), "user_id", verificationToken.UserID.String())
+	}
+	if err := s.queriesFor(ctx).MarkUserEmailVerificationTokenUsed(ctx, verificationToken.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to mark email verification token used", err, "tenant_id", tenant.ID.String(), "token_id", verificationToken.ID.String())
+	}
+	if _, err := s.queriesFor(ctx).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              user.ID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to mark email verified", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := s.queriesFor(ctx).ActivateInactiveUserByID(ctx, user.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to activate user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
+}
+
+// RequestEmailVerification mails a fresh activation link to an address whose
+// account has never been confirmed, which is the only way back for a reader
+// whose first link expired or never arrived: Login refuses an unverified
+// account, and a password reset sets a password that account still cannot sign
+// in with.
+//
+// Every address is answered the same way — an unverified account, a confirmed
+// one, and one that does not exist all end in requested: true — so the form
+// reports nothing about who is registered, and takes as long for one as for
+// another: the handler records the request, and the worker decides which case
+// the address is in. What separates them is the mailbox: only the first
+// receives anything.
+func (s *apiServer) RequestEmailVerification(
+	ctx context.Context,
+	req *connect.Request[publirav1.RequestEmailVerificationRequest],
+) (*connect.Response[publirav1.RequestEmailVerificationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	email := strings.TrimSpace(req.Msg.Email)
+	if email == "" {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
+
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderEmailVerificationRequest,
+		outbox.ReaderEmailVerificationRequestPayload{TenantID: tenant.ID.String(), Email: email},
+	); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification request", err, "tenant_id", tenant.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, "", "requested")
+	return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+}
+
+func (s *apiServer) RequestEmailChange(
+	ctx context.Context,
+	req *connect.Request[publirav1.RequestEmailChangeRequest],
+) (*connect.Response[publirav1.RequestEmailChangeResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+
+	newEmail := strings.TrimSpace(req.Msg.NewEmail)
+	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
+	currentPassword := req.Msg.CurrentPassword
+	if currentEmail == "" || newEmail == "" || strings.TrimSpace(currentPassword) == "" {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
+	}
+	if _, err := mail.ParseAddress(currentEmail); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
+	}
+	if _, err := mail.ParseAddress(newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if !strings.EqualFold(currentEmail, user.Email) {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+	}
+	if strings.EqualFold(newEmail, user.Email) {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+	}
+	// Charged here rather than at the top: every check above refuses on what the
+	// caller typed instead of on the account's password, so none of them is a
+	// guess and none of them should cost an allowance.
+	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
+	if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
+	}
+	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
+
+	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    newEmail,
+	})
+	if err == nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The session says who is asking, not that the address they named is
+	// theirs, so the mail this queues for it is bounded like any other mail to
+	// an address nobody has confirmed.
+	//
+	// Charged here rather than before the lookup above, which is the order the
+	// forms that must not disclose an account use. This one discloses on
+	// purpose and mails nothing when it does, so charging first would let any
+	// signed-in caller spend the allowance of every address they can name by
+	// naming ones that already have accounts.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	currentEmailToken := hex.EncodeToString(rawToken)
+	rawToken = make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	newEmailToken := hex.EncodeToString(rawToken)
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	// The delete below locks only the rows it finds, so two requests arriving at
+	// once each insert a token and leave two live links behind. Locking the
+	// account row orders them: the second one's statements then run on a
+	// snapshot that already holds the first one's token.
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was closed while this request waited, so the session
+			// it came with is over and there is no address left to move.
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			return nil, invalidSessionError()
+		}
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for an email change request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	// The password and the address above were checked against the row this
+	// request read before the transaction, and the lock is what makes those
+	// checks current. A password set while this request waited ends the session
+	// it came with, since every path that writes one bumps credentials_version.
+	if locked.CredentialsVersion != user.CredentialsVersion {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "stale_session")
+		return nil, invalidSessionError()
+	}
+	if !strings.EqualFold(currentEmail, locked.Email) {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+	}
+
+	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if _, err := txq.CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
+		ID:                    tokenID,
+		TenantID:              tenant.ID,
+		UserID:                user.ID,
+		CurrentEmail:          locked.Email,
+		NewEmail:              newEmail,
+		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
+		NewEmailTokenHash:     auth.HashToken(newEmailToken),
+		ExpiresAt:             time.Now().Add(emailVerificationTokenTTL),
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		return nil, s.internalDBError(ctx, "failed to create email change token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := enqueueReaderEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "current_email", currentEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := enqueueReaderEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "new_email", newEmailToken); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_enqueued")
+	return connect.NewResponse(&publirav1.RequestEmailChangeResponse{Requested: true}), nil
+}
+
+func (s *apiServer) ConfirmEmailChange(
+	ctx context.Context,
+	req *connect.Request[publirav1.ConfirmEmailChangeRequest],
+) (*connect.Response[publirav1.ConfirmEmailChangeResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "invalid_token")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+
+	changeToken, err := s.queriesFor(ctx).GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
+		TenantID:              tenant.ID,
+		CurrentEmailTokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("email change token not found"))
+		}
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get email change token", err, "tenant_id", tenant.ID.String())
+	}
+
+	if changeToken.CompletedAt.Valid {
+		return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+	}
+	if changeToken.ExpiresAt.Before(time.Now()) {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token expired"))
+	}
+
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, changeToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get user for email change confirm", err, "tenant_id", tenant.ID.String(), "user_id", changeToken.UserID.String())
+	}
+	if !strings.EqualFold(user.Email, changeToken.CurrentEmail) {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin email change confirm transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	matchedTarget := changeToken.MatchedTarget
+	if matchedTarget == "current_email" {
+		if err := txq.MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
+			return nil, s.internalDBError(ctx, "failed to confirm current email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+		}
+	} else {
+		if err := txq.MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
+			return nil, s.internalDBError(ctx, "failed to confirm new email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+		}
+	}
+
+	currentEmailConfirmed := changeToken.CurrentEmailConfirmedAt.Valid || matchedTarget == "current_email"
+	newEmailConfirmed := changeToken.NewEmailConfirmedAt.Valid || matchedTarget == "new_email"
+	if !currentEmailConfirmed || !newEmailConfirmed {
+		pendingTarget := "current_email"
+		if !newEmailConfirmed {
+			pendingTarget = "new_email"
+		}
+		if err := tx.Commit(); err != nil {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+			return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+		}
+		auth.AuditEvent(req.Header(), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "waiting_for_"+pendingTarget)
+		return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{
+			Confirmed:              true,
+			Changed:                false,
+			PendingConfirmationFor: pendingTarget,
+		}), nil
+	}
+
+	if _, err := txq.UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
+		ID:    user.ID,
+		Email: changeToken.NewEmail,
+	}); err != nil {
+		if dberr.IsUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		}
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
+		return nil, s.internalDBError(ctx, "failed to update user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := txq.MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
+		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+	}
+	// The notice rides the same transaction as the address it announces, so the
+	// old address is never told about a change that did not commit — and never
+	// left untold about one that did.
+	if err := enqueueReaderEmailChangedNoticeEmail(ctx, txq, tenant.ID, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email changed notice email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")
+	return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+}
+
+func (s *apiServer) RequestPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirav1.RequestPasswordResetRequest],
+) (*connect.Response[publirav1.RequestPasswordResetResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	email := strings.TrimSpace(req.Msg.Email)
+	if email == "" {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
+
+	// Recorded for the worker whether or not the address has an account, so an
+	// unknown address takes as long to answer as a registered one.
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderPasswordResetRequest,
+		outbox.ReaderPasswordResetRequestPayload{TenantID: tenant.ID.String(), Email: email},
+	); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader password reset request", err, "tenant_id", tenant.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, "", "requested")
+	return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
+}
+
+func (s *apiServer) ConfirmPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirav1.ConfirmPasswordResetRequest],
+) (*connect.Response[publirav1.ConfirmPasswordResetResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	token := strings.TrimSpace(req.Msg.Token)
+	newPassword := req.Msg.NewPassword
+	if token == "" || strings.TrimSpace(newPassword) == "" {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+	}
+
+	resetToken, err := s.queriesFor(ctx).GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
+		TenantID:  tenant.ID,
+		TokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("password reset token not found"))
+		}
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get password reset token", err, "tenant_id", tenant.ID.String())
+	}
+
+	if resetToken.CompletedAt.Valid {
+		return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+	}
+	if resetToken.ExpiresAt.Before(time.Now()) {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token expired"))
+	}
+
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, resetToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to get user for password reset confirm", err, "tenant_id", tenant.ID.String(), "user_id", resetToken.UserID.String())
+	}
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+		ID:           user.ID,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
+		return nil, s.internalDBError(ctx, "failed to complete password reset token", err, "tenant_id", tenant.ID.String(), "token_id", resetToken.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
+	return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+}
+
+// ChangePassword sets a new password for the reader whose session carries the
+// request. The reset flow exists for a reader who cannot sign in; this one is
+// for a reader who can, so the current password stands in for the mailed link
+// and the account is never touched without it.
+//
+// The new hash, the credentials_version that ends the sessions minted against
+// the old one, and the mail that reports the change are one write: a change
+// that took effect without telling the account's owner is the state this
+// transaction exists to rule out.
+//
+// The current password is checked against the locked row rather than the one
+// the session read, which is what puts two changes in order. Without the lock
+// both would verify the same old password, both would commit, and the second
+// would leave the account on a password the first caller was told it had moved
+// off — while that first caller holds a token the second bump has already
+// killed. The loser of the race sees the same "current password is wrong" it
+// would have seen had it arrived a moment later, because by then it is.
+func (s *apiServer) ChangePassword(
+	ctx context.Context,
+	req *connect.Request[publirav1.ChangePasswordRequest],
+) (*connect.Response[publirav1.ChangePasswordResponse], error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+
+	currentPassword := req.Msg.CurrentPassword
+	newPassword := req.Msg.NewPassword
+	if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
+	}
+	if newPassword == currentPassword {
+		// Refused rather than accepted as a no-op: the change would end every
+		// other session the reader holds and leave them with the password an
+		// attacker already knows, which is the opposite of what the form is for.
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "same_password")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("new password must be different from current password"), "new_password")
+	}
+
+	// Charged before the transaction, so a caller who is out of allowances is
+	// turned away without a bcrypt verification and without taking a row lock on
+	// the account they are guessing at.
+	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was closed while this request waited. There is nothing
+			// left to change, and the session it came with is over.
+			auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			return nil, invalidSessionError()
+		}
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for a password change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if !auth.VerifyUserPassword(currentPassword, locked.PasswordHash) {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		// Not Unauthenticated: the session is fine, the confirmation field is
+		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+		// log the reader out for a typo. The message names the field and nothing
+		// else — the account, its state, and the stored hash stay out of it.
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
+	}
+	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if _, err := txq.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+		ID:           user.ID,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	bumped, err := txq.BumpUserCredentialsVersion(ctx, user.ID)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := enqueueReaderPasswordChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, bumped.CredentialsVersion); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_changed_notice_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader password changed notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The replacement is minted before the commit so a caller is never left with
+	// a change that took effect and no session to see it through.
+	accessToken, err := s.mintAccessToken(tenant, bumped, role)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	auth.AuditEvent(req.Header(), "password_change", "success", tenant.PublicID, user.PublicID, "password_changed")
+	return connect.NewResponse(&publirav1.ChangePasswordResponse{AccessToken: accessToken}), nil
+}
+
+func (s *apiServer) Logout(
+	ctx context.Context,
+	req *connect.Request[publirav1.LogoutRequest],
+) (*connect.Response[publirav1.LogoutResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "logout", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+	// Stateless JWT: client clears cookie. Logout is for audit only.
+	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "client_logout")
+	} else {
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "no_token")
+	}
+	return connect.NewResponse(&publirav1.LogoutResponse{}), nil
+}
+
+func (s *apiServer) GetMe(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetMeRequest],
+) (*connect.Response[publirav1.GetMeResponse], error) {
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publirav1.GetMeResponse{User: ownAccount(user, role)}), nil
+}
+
+// ownAccount is the account the request authenticated as, in the shape the two
+// RPCs that answer with it speak. The birth date and the email address are on
+// it because these are the only places a User stands for the reader's own
+// account rather than for someone they are looking at.
+func ownAccount(user dbmodels.User, role string) *publirattypesv1.User {
+	account := &publirattypesv1.User{
+		PublicId: user.PublicID,
+		Name:     user.Name,
+		Role:     role,
+		Email:    user.Email,
+	}
+	if user.BirthDate.Valid {
+		account.BirthDate = ageverification.FormatBirthDate(user.BirthDate.Time)
+	}
+	return account
+}
+
+func (s *apiServer) UpdateMe(
+	ctx context.Context,
+	req *connect.Request[publirav1.UpdateMeRequest],
+) (*connect.Response[publirav1.UpdateMeResponse], error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+	name := strings.TrimSpace(req.Msg.Name)
+	if name == "" {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_name")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	if len([]rune(name)) > 100 {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "name_too_long")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
+	}
+
+	// An empty field leaves the stored date alone, so the form that is only
+	// renaming the account sends nothing here and the one collecting a birth
+	// date for the first time sends it alongside the name it already had.
+	var birthDate sql.NullTime
+	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+		if user.BirthDate.Valid {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+			// Not InvalidArgument: the date is well formed and the session is
+			// fine. What refuses it is the state of the account, which is what
+			// the reader has to be told to take to support.
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
+		}
+		today, todayErr := s.tenantToday(ctx, tenant)
+		if todayErr != nil {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "tenant_today_failed")
+			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		}
+		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
+		if parseErr != nil {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_birth_date")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
+		}
+		birthDate = sql.NullTime{Time: parsed, Valid: true}
+	}
+
+	// One transaction because the birth date is written once: a name that saved
+	// while the date beside it failed would be recoverable, and the reverse
+	// would leave the account carrying a date nobody can rewrite.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin profile update transaction", err, "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	updated, err := txq.UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
+		ID:   user.ID,
+		Name: name,
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "update_failed")
+		return nil, s.internalDBError(ctx, "failed to update user name", err, "user_id", user.ID.String())
+	}
+	if birthDate.Valid {
+		stored, birthDateErr := txq.SetUserBirthDateByID(ctx, dbmodels.SetUserBirthDateByIDParams{
+			ID:        user.ID,
+			BirthDate: birthDate,
+		})
+		if birthDateErr != nil {
+			if errors.Is(birthDateErr, sql.ErrNoRows) {
+				// The query matches no row when the account already has a date,
+				// which is the same refusal as above reached by a second
+				// request that raced this one past the read.
+				auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
+			}
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_update_failed")
+			return nil, s.internalDBError(ctx, "failed to set user birth date", birthDateErr, "user_id", user.ID.String())
+		}
+		updated = stored
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit profile update", err, "user_id", user.ID.String())
+	}
+
+	outcome := "name_updated"
+	if birthDate.Valid {
+		outcome = "name_and_birth_date_updated"
+	}
+	auth.AuditEvent(req.Header(), "update_me", "success", tenant.PublicID, user.PublicID, outcome)
+	return connect.NewResponse(&publirav1.UpdateMeResponse{User: ownAccount(updated, role)}), nil
+}
+
+func (s *apiServer) DeleteMe(
+	ctx context.Context,
+	req *connect.Request[publirav1.DeleteMeRequest],
+) (*connect.Response[publirav1.DeleteMeResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+	password := req.Msg.Password
+	withPassword := strings.TrimSpace(password) != ""
+	withIdentity := strings.TrimSpace(req.Msg.IdToken) != ""
+	if withPassword == withIdentity {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either password or id_token is required"))
+	}
+	if withPassword {
+		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+			return nil, err
+		}
+		if !auth.VerifyUserPassword(password, user.PasswordHash) {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+			// Not Unauthenticated: the session is fine, the confirmation field is
+			// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+			// log the reader out for a typo.
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
+		}
+		s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin account deletion transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if withIdentity {
+		if err := s.confirmWithIdentity(ctx, txq, tenant.ID, user.ID, req.Msg.Provider, req.Msg.IdToken, req.Msg.Nonce); err != nil {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
+	}
+	if _, err := txq.BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	// Queued before the delete takes the links, and the tokens they hold, with
+	// the account.
+	if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "revocation_enqueue_failed")
+		return nil, s.internalError(ctx, "failed to queue the apple token revocations", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
+		return nil, s.internalDBError(ctx, "failed to delete user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit account deletion", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
+	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil
+}
+
+// scopeReaderStateUser applies the member half of the policies that guard what
+// a reader keeps for themselves — announcement_reads, notifications,
+// notification_reads, and user_notification_settings — to the request
+// connection. Direct handler tests use sqlmock and therefore borrow no request
+// connection.
+func (s *apiServer) scopeReaderStateUser(ctx context.Context, userID uuid.UUID) error {
+	conn, ok := rpcmiddleware.TenantConnFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if err := tenantconn.SetUser(ctx, conn, userID); err != nil {
+		return s.internalDBError(ctx, "failed to set reader state member context", err, "user_id", userID.String())
+	}
+	return nil
+}
+
+func (s *apiServer) GetNotificationSettings(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetNotificationSettingsRequest],
+) (*connect.Response[publirav1.GetNotificationSettingsResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	settings, err := s.queriesFor(ctx).GetUserNotificationSettings(ctx, dbmodels.GetUserNotificationSettingsParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to get notification settings", err, "user_id", user.ID.String())
+	}
+	return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: settings.EmailNotificationsEnabled}), nil
+}
+
+func (s *apiServer) UpdateNotificationSettings(
+	ctx context.Context,
+	req *connect.Request[publirav1.UpdateNotificationSettingsRequest],
+) (*connect.Response[publirav1.UpdateNotificationSettingsResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	updated, err := s.queriesFor(ctx).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
+		TenantID:                  tenant.ID,
+		UserID:                    user.ID,
+		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to update notification settings", err, "user_id", user.ID.String())
+	}
+	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
+}
+
+type announcementPageRow struct {
+	id               uuid.UUID
+	announcementType string
+	title            string
+	body             string
+	linkURL          sql.NullString
+	isRead           bool
+	readAt           sql.NullTime
+	createdAt        time.Time
+	pinned           bool
+	pinnedUntil      sql.NullTime
+}
+
+// is_read comes back as an untyped SQL boolean expression, so it lands in an
+// interface{} column that has to be asserted before it can be sent.
+func announcementIsRead(value any) bool {
+	read, ok := value.(bool)
+	return ok && read
+}
+
+func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForUserDescRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           announcementIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
+		})
+	}
+	return mapped
+}
+
+func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           announcementIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
+		})
+	}
+	return mapped
+}
+
+func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
+	readAt := ""
+	if row.readAt.Valid {
+		readAt = row.readAt.Time.UTC().Format(time.RFC3339)
+	}
+	pinnedUntil := ""
+	if row.pinnedUntil.Valid {
+		pinnedUntil = row.pinnedUntil.Time.UTC().Format(time.RFC3339)
+	}
+	return &publirav1.AnnouncementItem{
+		Id:               row.id.String(),
+		AnnouncementType: row.announcementType,
+		Title:            row.title,
+		Body:             row.body,
+		LinkUrl:          row.linkURL.String,
+		IsRead:           row.isRead,
+		ReadAt:           readAt,
+		CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
+		Pinned:           row.pinned,
+		PinnedUntil:      pinnedUntil,
+	}
+}
+
+func (s *apiServer) announcementPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	userID uuid.NullUUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]announcementPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
+			TenantID:        tenantID,
+			UserID:          userID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapAnnouncementAscRows(rows), nil
+	}
+
+	rows, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
+		TenantID:        tenantID,
+		UserID:          userID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapAnnouncementDescRows(rows), nil
+}
+
+func (s *apiServer) ListAnnouncements(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListAnnouncementsRequest],
+) (*connect.Response[publirav1.ListAnnouncementsResponse], error) {
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAnnouncementPageSize, maxAnnouncementPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	if reader.Valid {
+		if err := s.scopeReaderStateUser(ctx, reader.UUID); err != nil {
+			return nil, err
+		}
+	}
+
+	rows, err := s.announcementPage(ctx, tenant.ID, reader, keys, cursor.Direction, limit+1)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
+	items := make([]*publirav1.AnnouncementItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toAnnouncementItem(row))
+	}
+
+	res := &publirav1.ListAnnouncementsResponse{Announcements: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+func (s *apiServer) GetAnnouncement(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetAnnouncementRequest],
+) (*connect.Response[publirav1.GetAnnouncementResponse], error) {
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+	}
+
+	if reader.Valid {
+		if err := s.scopeReaderStateUser(ctx, reader.UUID); err != nil {
+			return nil, err
+		}
+	}
+
+	row, err := s.queriesFor(ctx).GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+		ID:       announcementID,
+		TenantID: tenant.ID,
+		UserID:   reader,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+		}
+		return nil, s.internalDBError(ctx,
+			"failed to get announcement",
+			err,
+			"tenant_id", tenant.ID.String(),
+			"announcement_id", announcementID.String(),
+		)
+	}
+
+	return connect.NewResponse(&publirav1.GetAnnouncementResponse{
+		Announcement: toAnnouncementItem(announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           announcementIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
+		}),
+	}), nil
+}
+
+// GetPinnedAnnouncement answers the banner the site draws above every page.
+//
+// It takes no session on purpose: the answer is the same for every reader of a
+// tenant, which is what lets a site cache it once instead of per reader.
+func (s *apiServer) GetPinnedAnnouncement(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetPinnedAnnouncementRequest],
+) (*connect.Response[publirav1.GetPinnedAnnouncementResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.queriesFor(ctx).GetPinnedAnnouncementForTenant(ctx, tenant.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to get pinned announcement", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{
+		Announcement: toAnnouncementItem(announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
+		}),
+	}), nil
+}
+
+func (s *apiServer) MarkAnnouncementAsRead(
+	ctx context.Context,
+	req *connect.Request[publirav1.MarkAnnouncementAsReadRequest],
+) (*connect.Response[publirav1.MarkAnnouncementAsReadResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+	}
+
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+
+	_, err = s.queriesFor(ctx).MarkAnnouncementAsRead(ctx, dbmodels.MarkAnnouncementAsReadParams{
+		ID:       announcementID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to mark announcement as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String(), "announcement_id", announcementID.String())
+	}
+
+	return connect.NewResponse(&publirav1.MarkAnnouncementAsReadResponse{Marked: true}), nil
+}
+
+func (s *apiServer) MarkAllAnnouncementsAsRead(
+	ctx context.Context,
+	req *connect.Request[publirav1.MarkAllAnnouncementsAsReadRequest],
+) (*connect.Response[publirav1.MarkAllAnnouncementsAsReadResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+
+	marked, err := s.queriesFor(ctx).MarkAllAnnouncementsAsRead(ctx, dbmodels.MarkAllAnnouncementsAsReadParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to mark all announcements as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	return connect.NewResponse(&publirav1.MarkAllAnnouncementsAsReadResponse{MarkedCount: int32(marked)}), nil
+}

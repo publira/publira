@@ -1,0 +1,88 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  mockAssertSameOrigin,
+  mockRedirect,
+  mockRequestPublicPasswordReset,
+  mockSetEmailFlashCookie,
+} = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
+  mockRedirect: vi.fn(),
+  mockRequestPublicPasswordReset: vi.fn(),
+  mockSetEmailFlashCookie: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
+}));
+
+vi.mock("#lib/auth", () => ({
+  requestPublicPasswordReset: mockRequestPublicPasswordReset,
+}));
+
+vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
+
+vi.mock("#lib/email-flash-cookie", () => ({
+  RESET_PASSWORD_REQUESTED_EMAIL_COOKIE:
+    "publira_web_host_reset_password_email",
+  setEmailFlashCookie: mockSetEmailFlashCookie,
+}));
+
+vi.mock("#lib/tenant", () => ({
+  getTenantDefaultLocale: () => "en",
+}));
+
+const formData = (values: Record<string, string>): FormData => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    data.set(name, value);
+  }
+  return data;
+};
+
+const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const email = "user@example.com";
+
+describe("requestPasswordResetAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("stores the destination email in a flash cookie and redirects without a query", async () => {
+    mockRequestPublicPasswordReset.mockResolvedValueOnce(true);
+
+    const { requestPasswordResetAction } = await import("./actions");
+    await requestPasswordResetAction(
+      { message: "", ok: false },
+      formData({ email, locale: "en", tenantId })
+    );
+
+    expect(mockRequestPublicPasswordReset).toHaveBeenCalledWith(
+      email,
+      tenantId
+    );
+    expect(mockSetEmailFlashCookie).toHaveBeenCalledWith(
+      "publira_web_host_reset_password_email",
+      email
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/reset-password/requested");
+  });
+
+  it("does not set a flash cookie when the request fails", async () => {
+    mockRequestPublicPasswordReset.mockResolvedValueOnce(false);
+
+    const { requestPasswordResetAction } = await import("./actions");
+    const result = await requestPasswordResetAction(
+      { message: "", ok: false },
+      formData({ email, locale: "en", tenantId })
+    );
+
+    expect(result).toEqual({
+      message: "Could not send the reset email. Please check what you entered.",
+      ok: false,
+    });
+    expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});

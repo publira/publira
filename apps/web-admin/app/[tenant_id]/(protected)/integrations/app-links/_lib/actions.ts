@@ -1,0 +1,54 @@
+"use server";
+
+import type { FormActionState } from "@publira/ui-components/action-form";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
+
+import { getActionLocale } from "#lib/action-messages";
+import { withAdminSessionReauth } from "#lib/auth-session";
+import { assertSameOrigin } from "#lib/csrf";
+import { getMessagesFor } from "#lib/messages";
+import { tenantStorePaymentSettingsCacheTag } from "#lib/store-payment-settings";
+import {
+  tenantMobileAppAssociationCacheTag,
+  updateTenantMobileAppAssociation,
+} from "#lib/tenant-mobile-app-association";
+
+import {
+  appLinksFormFields,
+  appLinksFormSchema,
+} from "./app-links-form-schemas";
+
+export const updateAppLinksAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    appLinksFormSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, appLinksFormFields)
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { association, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateTenantMobileAppAssociation({ association, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(tenantMobileAppAssociationCacheTag(tenantId));
+  // The payment settings show the app each store sells in, and whether it is
+  // ready depends on it.
+  updateTag(tenantStorePaymentSettingsCacheTag(tenantId));
+
+  return { message: t("admin.settings.app_links.saved"), ok: true };
+};

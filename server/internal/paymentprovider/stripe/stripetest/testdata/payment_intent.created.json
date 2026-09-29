@@ -1,0 +1,24 @@
+{
+  "id": "evt_3QfJq1Lk4f8bA7xY0pInTcRt",
+  "object": "event",
+  "api_version": "",
+  "created": 1767225545,
+  "data": {
+    "object": {
+      "id": "pi_3QfJq1Lk4f8bA7xY0aBcDeFg",
+      "object": "payment_intent",
+      "amount": 500,
+      "currency": "jpy",
+      "livemode": false,
+      "metadata": {},
+      "status": "requires_payment_method"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "payment_intent.created"
+}

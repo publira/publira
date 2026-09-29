@@ -1,0 +1,174 @@
+import { expect, test } from "@playwright/test";
+
+import { signInAsSeedAdmin } from "../src/admin";
+import { applyScenarioSql } from "../src/db";
+import {
+  expectDocumentLocale,
+  storedLocaleCookie,
+  switchConsoleLocale,
+} from "../src/locale";
+import { LOCALE_SWITCHING_SCENARIO } from "../src/scenarios/locale-switching";
+import {
+  WEB_ADMIN_BASE_URL,
+  WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL,
+} from "../src/urls";
+
+const adminUrl = (pathname: string, baseUrl = WEB_ADMIN_BASE_URL): string =>
+  `${baseUrl}${pathname}`;
+
+/**
+ * The console keeps no locale in its URLs: the operator's choice lives in the
+ * `publira_locale` cookie, and a request without one renders in the language
+ * the tenant saved. `proxy.test.ts` covers the cookie parsing; what a running
+ * stack adds is that the choice survives a reload, that the saved default
+ * answers a screen with no session at all, and that the two resolve in that
+ * order.
+ */
+test.describe("web-admin display language", () => {
+  test("the header switcher stores the choice and re-renders the console in it", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+    expect(await storedLocaleCookie(page)).toBeUndefined();
+
+    await switchConsoleLocale(page, "English", "日本語");
+
+    // Same round trip: the Server Action answers with the re-rendered screen,
+    // and the control sets `<html lang>` itself because the shell is static.
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+    expect(await storedLocaleCookie(page)).toBe("ja");
+
+    // A reload proves the cookie is what carries it, not the action's answer.
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+
+    await switchConsoleLocale(page, "日本語", "English");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+    expect(await storedLocaleCookie(page)).toBe("en");
+  });
+
+  // Every locale of `locales/index.json` reaches the console the same way, so
+  // one of them being switched to here is what proves a catalog added to the
+  // registry is actually served rather than only present in the repository.
+  test("the switcher serves Korean as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "한국어");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "설정" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "한국어");
+    expect(await storedLocaleCookie(page)).toBe("ko");
+  });
+
+  // The two Chinese codes are the ones carrying a subtag, so they are also
+  // what proves the cookie and `<html lang>` carry such a code unchanged.
+  test("the switcher serves Simplified Chinese as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "简体中文");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "设置" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "简体中文");
+    expect(await storedLocaleCookie(page)).toBe("zh-Hans");
+  });
+
+  // The two Chinese catalogs share a language and differ only in script, so
+  // switching to this one is what proves the choice is carried at the whole
+  // code rather than at `zh`.
+  test("the switcher serves Traditional Chinese as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "繁體中文");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "繁體中文");
+    expect(await storedLocaleCookie(page)).toBe("zh-Hant");
+  });
+});
+
+/**
+ * The login screen has no session, so it has no operator to have made a
+ * choice. It renders in what the tenant saved, which is read from the public
+ * `GetTenant` — and the two seeded tenants save different languages, so the
+ * same screen answers in two of them.
+ *
+ * Two tenants rather than one tenant edited mid-run: that read is a shared
+ * `"use cache"` entry with `cacheLife("hours")`, dropped by the tag the admin
+ * API revalidates, and the E2E stack runs the APIs without the revalidation
+ * settings — https://github.com/publira/publira/issues/1509.
+ */
+test.describe("web-admin default language", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("a console with no stored choice opens in the tenant's saved default", async ({
+    page,
+  }) => {
+    const english = await page.goto(adminUrl("/login"));
+
+    expect(english?.status(), await page.content()).toBe(200);
+    await expect(page.getByText("Admin console sign-in")).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: "Sign in" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+
+    const japanese = await page.goto(
+      adminUrl("/login", WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL)
+    );
+
+    expect(japanese?.status(), await page.content()).toBe(200);
+    await expect(page.getByText("管理画面ログイン")).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: "ログイン" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+  });
+
+  test("a stored choice wins over the tenant default on a screen with no session", async ({
+    page,
+  }) => {
+    await page.context().addCookies([
+      {
+        name: "publira_locale",
+        url: WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL,
+        value: "en",
+      },
+    ]);
+
+    await page.goto(adminUrl("/login", WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL));
+
+    await expect(page.getByText("Admin console sign-in")).toBeVisible();
+    await expectDocumentLocale(page, "English");
+  });
+});

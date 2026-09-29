@@ -1,0 +1,391 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message LoginRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message LoginResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+}
+
+// A provider a reader signs in with instead of a password.
+enum IdentityProvider {
+  IDENTITY_PROVIDER_UNSPECIFIED = 0;
+  IDENTITY_PROVIDER_APPLE = 1;
+  IDENTITY_PROVIDER_GOOGLE = 2;
+}
+
+message LoginWithIdTokenRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  IdentityProvider provider = 2;
+  // The ID token the provider issued to one of the client IDs GetTenant
+  // answers for it.
+  string id_token = 3;
+  // The nonce the client generated for this sign-in, as generated: the token
+  // carries it either as it is or as its SHA-256 in hex, which is what the
+  // iOS app hands Apple. A nonce is accepted once.
+  string nonce = 4;
+  // Apple only, and optional: the authorization code issued with the token.
+  // The server exchanges it for a refresh token, which it revokes when the
+  // link or the account is deleted, as Apple requires of an app that creates
+  // accounts with it.
+  string authorization_code = 5;
+  // The redirect_uri of the authorization request the storefront made, which
+  // Apple requires to exchange a code issued to the web. Empty from the app.
+  string redirect_uri = 6;
+  // Read only when no account matches the token and this sign-in creates one.
+  // The name falls back to the one the token carries, and then to the local
+  // part of the address. agreed_page_version_ids and birth_date mean what they
+  // mean in CreateUserRequest, and a missing consent is invalid_argument
+  // without spending the nonce, so the client can ask and send the same token
+  // again.
+  string name = 7;
+  repeated string agreed_page_version_ids = 8;
+  string birth_date = 9;
+}
+
+message LoginWithIdTokenResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  // True when this sign-in created the account.
+  bool account_created = 3;
+}
+
+// A provider account linked to the signed-in reader.
+message LinkedIdentity {
+  IdentityProvider provider = 1;
+  // The address the provider's token carried when the account was linked.
+  string email = 2;
+  // RFC 3339.
+  string linked_at = 3;
+}
+
+message ListMyIdentitiesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListMyIdentitiesResponse {
+  repeated LinkedIdentity identities = 1;
+}
+
+message UnlinkIdentityRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // not_found where the reader has no account of this provider linked, and
+  // failed_precondition where it is the last way the reader signs in: an
+  // account without a password keeps one linked provider.
+  IdentityProvider provider = 2;
+}
+
+message UnlinkIdentityResponse {}
+
+message CreateUserRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+  // The reader's birth date as YYYY-MM-DD, and empty from a form that did not
+  // ask. It is accepted here rather than only after the first sign-in because
+  // a tenant that verifies ages asks for it on the sign-up form: collecting it
+  // later would leave the account that just agreed to give it unable to open
+  // the work it signed up for until it has verified an address and signed in.
+  string birth_date = 5;
+  // The version of each page the reader agreed to, as TenantLegalPage.version_id
+  // reported it. Required for every page GetTenantLegalPages reports as the
+  // tenant's terms or privacy policy, and refused when one names any other
+  // page. A published version of any translation of the page is accepted, and
+  // so is one the page has since superseded, since it is the text the reader
+  // was shown.
+  repeated string agreed_page_version_ids = 6;
+}
+
+message CreateUserResponse {
+  reserved 1, 2;
+  reserved "user", "access_token";
+  // Every accepted sign-up answers the same way, whether it created an account
+  // or found the address taken. Naming the account here would tell a stranger
+  // which of the two happened.
+  bool accepted = 3;
+}
+
+message VerifyUserEmailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message VerifyUserEmailResponse {
+  bool verified = 1;
+}
+
+message RequestEmailVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message RequestEmailVerificationResponse {
+  // Every request answers the same way, whether the address has an unverified
+  // account, a verified one, or no account at all. Reporting which of the three
+  // it was would tell a stranger who is registered.
+  bool requested = 1;
+}
+
+message RequestEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string current_email = 2;
+  string new_email = 3;
+  string current_password = 4;
+}
+
+message RequestEmailChangeResponse {
+  bool requested = 1;
+}
+
+message ConfirmEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message ConfirmEmailChangeResponse {
+  bool confirmed = 1;
+  bool changed = 2;
+  string pending_confirmation_for = 3;
+}
+
+message RequestPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message RequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message ConfirmPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message ConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
+message ChangePasswordRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordResponse {
+  // A change bumps credentials_version, which ends every token minted before
+  // it — including the one that carried this request. The replacement is handed
+  // back here so the reader who made the change keeps the session they made it
+  // from, while every other device has to sign in again.
+  publira.types.v1.AccessToken access_token = 1;
+}
+
+message LogoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message LogoutResponse {}
+
+message GetMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetMeResponse {
+  publira.types.v1.User user = 1;
+}
+
+message UpdateMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+  // The reader's birth date as YYYY-MM-DD. Empty leaves the stored one alone,
+  // which is what the profile form sends when it is only renaming the account.
+  //
+  // It is written once. A reader who gives a date and then wants it changed
+  // goes through support, because a date a reader can rewrite at will proves
+  // nothing about their age: the second write is refused rather than applied.
+  string birth_date = 3;
+}
+
+message UpdateMeResponse {
+  publira.types.v1.User user = 1;
+}
+
+message DeleteMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The account's password. An account without one confirms with a fresh
+  // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
+  // takes them, from a provider linked to the account.
+  string password = 2;
+  IdentityProvider provider = 3;
+  string id_token = 4;
+  string nonce = 5;
+}
+
+message DeleteMeResponse {}
+
+message GetNotificationSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetNotificationSettingsResponse {
+  bool email_notifications_enabled = 1;
+}
+
+message UpdateNotificationSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bool email_notifications_enabled = 2;
+}
+
+message UpdateNotificationSettingsResponse {
+  bool email_notifications_enabled = 1;
+}
+
+// A reader's own choices about how the viewer is laid out, stored against the
+// account so the choice follows them to the next device. Every field carries a
+// value: a reader who has saved nothing reads the defaults rather than an
+// absent message, so a client never has to tell "unset" from "off".
+//
+// The next viewer setting is a field here and a column behind it, not a second
+// pair of RPCs.
+message ViewerPreferences {
+  // The viewer takes the full window width.
+  bool wide_viewer_enabled = 1;
+}
+
+message GetViewerPreferencesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetViewerPreferencesResponse {
+  ViewerPreferences preferences = 1;
+}
+
+message UpdateViewerPreferencesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Omitted preferences keep the stored value, so a viewer writing the one
+  // control the reader pressed does not reset the ones it knows nothing about
+  // (proto3 non-optional bool maps an omitted field to false).
+  optional bool wide_viewer_enabled = 2;
+}
+
+message UpdateViewerPreferencesResponse {
+  ViewerPreferences preferences = 1;
+}
+
+message AnnouncementItem {
+  string id = 1;
+  string announcement_type = 2;
+  string title = 3;
+  string body = 4;
+  string link_url = 5;
+  bool is_read = 6;
+  string read_at = 7;
+  string created_at = 8;
+  // Whether the site shows this announcement as a banner above every page.
+  bool pinned = 9;
+  // RFC 3339 instant the banner stops at. Empty leaves it up until the console
+  // takes it down.
+  string pinned_until = 10;
+}
+
+// What the site shows as a banner above every page: the newest tenant-wide
+// announcement still inside its pinned window. It carries no session, because
+// an announcement is the tenant's word to everyone who opens the site.
+message GetPinnedAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetPinnedAnnouncementResponse {
+  // Unset when the tenant has nothing pinned right now.
+  AnnouncementItem announcement = 1;
+}
+
+// Get-by-id. A signed-in reader gets their own row with its read state; a
+// caller with no session gets the tenant-wide row with none. Missing,
+// other-user, and other-tenant rows are the same not_found.
+message GetAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message GetAnnouncementResponse {
+  AnnouncementItem announcement = 1;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListAnnouncementsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListAnnouncementsResponse {
+  repeated AnnouncementItem announcements = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message MarkAnnouncementAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message MarkAnnouncementAsReadResponse {
+  bool marked = 1;
+}
+
+message MarkAllAnnouncementsAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message MarkAllAnnouncementsAsReadResponse {
+  int32 marked_count = 1;
+}
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc LoginWithIdToken(LoginWithIdTokenRequest) returns (LoginWithIdTokenResponse) {}
+  rpc ListMyIdentities(ListMyIdentitiesRequest) returns (ListMyIdentitiesResponse) {}
+  rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse) {}
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
+  rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}
+  rpc RequestEmailChange(RequestEmailChangeRequest) returns (RequestEmailChangeResponse) {}
+  rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {}
+  rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse) {}
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {}
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
+  rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
+  rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
+  rpc GetViewerPreferences(GetViewerPreferencesRequest) returns (GetViewerPreferencesResponse) {}
+  rpc UpdateViewerPreferences(UpdateViewerPreferencesRequest) returns (UpdateViewerPreferencesResponse) {}
+  rpc GetAnnouncement(GetAnnouncementRequest) returns (GetAnnouncementResponse) {}
+  rpc GetPinnedAnnouncement(GetPinnedAnnouncementRequest) returns (GetPinnedAnnouncementResponse) {}
+  rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
+  rpc MarkAnnouncementAsRead(MarkAnnouncementAsReadRequest) returns (MarkAnnouncementAsReadResponse) {}
+  rpc MarkAllAnnouncementsAsRead(MarkAllAnnouncementsAsReadRequest) returns (MarkAllAnnouncementsAsReadResponse) {}
+}

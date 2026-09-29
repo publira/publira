@@ -1,0 +1,618 @@
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
+
+import {
+  SEED_ADMIN,
+  SEED_CATALOG,
+  toSeedTenantDateTimeLocal,
+} from "./scenarios/admin-publish";
+import { ANNOUNCEMENT_BANNER_ADMIN } from "./scenarios/announcement-banner";
+import { ANNOUNCEMENT_DELIVERY_ADMIN } from "./scenarios/announcement-delivery";
+import { NOTIFICATION_INBOX_ADMIN } from "./scenarios/notification-inbox";
+import { fillLoginForm } from "./session";
+import {
+  WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL,
+  WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL,
+  WEB_ADMIN_BASE_URL,
+  WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL,
+} from "./urls";
+
+const adminUrl = (pathname: string, baseUrl = WEB_ADMIN_BASE_URL): string =>
+  `${baseUrl}${pathname}`;
+
+export const signInAsAdmin = async (
+  page: Page,
+  credentials: { email: string; password: string } = SEED_ADMIN,
+  nextPath = "/series",
+  baseUrl = WEB_ADMIN_BASE_URL
+): Promise<void> => {
+  const next = encodeURIComponent(nextPath);
+  await page.goto(adminUrl(`/login?next=${next}`, baseUrl));
+  await fillLoginForm(page, credentials);
+  await page.waitForURL((url) => !url.pathname.endsWith("/login"));
+};
+
+/** Sign in as the dev seed tenant admin (`admin@example.com`). */
+export const signInAsSeedAdmin = async (
+  page: Page,
+  nextPath = "/series"
+): Promise<void> => {
+  await signInAsAdmin(page, SEED_ADMIN, nextPath);
+};
+
+/** Sign in as the inbox tenant's admin, on that tenant's own console. */
+export const signInAsNotificationInboxAdmin = async (
+  page: Page,
+  nextPath = "/series"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    NOTIFICATION_INBOX_ADMIN,
+    nextPath,
+    WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL
+  );
+};
+
+/** Sign in as the banner tenant's admin, the one that pins announcements. */
+export const signInAsAnnouncementBannerAdmin = async (
+  page: Page,
+  nextPath = "/announcements"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    ANNOUNCEMENT_BANNER_ADMIN,
+    nextPath,
+    WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL
+  );
+};
+
+/** Sign in as the delivery tenant's admin, the one that posts announcements. */
+export const signInAsAnnouncementDeliveryAdmin = async (
+  page: Page,
+  nextPath = "/announcements"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    ANNOUNCEMENT_DELIVERY_ADMIN,
+    nextPath,
+    WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL
+  );
+};
+
+/** Open the console header's user menu (avatar). */
+export const openAdminUserMenu = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "Account menu" }).click();
+};
+
+export const signOutAdmin = async (page: Page): Promise<void> => {
+  await openAdminUserMenu(page);
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.waitForURL((url) => url.pathname.endsWith("/login"));
+};
+
+/**
+ * Move a row of a sortable list with the keyboard: the handle picks the row
+ * up, an arrow moves it, and the second press drops it.
+ *
+ * Every reorderable list in the console is a dnd-kit sortable list with such a
+ * handle, and the keyboard is the path asserted rather than a pointer drag
+ * because it lands the same way on every runner — and because it is the path a
+ * list of drag handles is most likely to lose.
+ */
+export const reorderWithKeyboard = async (
+  page: Page,
+  handleName: string,
+  arrowKey: "ArrowDown" | "ArrowLeft" | "ArrowRight" | "ArrowUp"
+): Promise<void> => {
+  await page.getByRole("button", { name: handleName }).focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press(arrowKey);
+  await page.keyboard.press("Space");
+};
+
+/** Select a Combobox or MultiCombobox option by label. */
+export const selectComboboxOption = async (
+  page: Page,
+  combobox: Locator,
+  optionLabel: string
+): Promise<void> => {
+  await combobox.click();
+  await combobox.fill(optionLabel);
+  await page.getByRole("option", { name: optionLabel }).click();
+};
+
+/**
+ * The two pickers of one credit row on the series form, by the position the
+ * row sits at. Neither carries a visible label — the value in the box is the
+ * answer — so each is named after its position, counting from 1.
+ */
+export const creditRowFields = (
+  page: Page,
+  position: number
+): { creatorCombobox: Locator; roleCombobox: Locator } => ({
+  creatorCombobox: page.getByRole("combobox", {
+    exact: true,
+    name: `Author ${position}`,
+  }),
+  roleCombobox: page.getByRole("combobox", {
+    exact: true,
+    name: `Role ${position}`,
+  }),
+});
+
+/**
+ * Open an empty credit row and fill it in. The row lands last, so `position`
+ * is the number of rows the form held before this one.
+ */
+export const creditAuthorViaUi = async (
+  page: Page,
+  position: number,
+  input: { creatorName: string; roleName?: string }
+): Promise<void> => {
+  await page.getByRole("button", { exact: true, name: "Add author" }).click();
+
+  const row = creditRowFields(page, position);
+  await selectComboboxOption(page, row.creatorCombobox, input.creatorName);
+  if (input.roleName) {
+    await selectComboboxOption(page, row.roleCombobox, input.roleName);
+  }
+};
+
+/** Pick an option of a `Select` trigger by label. */
+export const selectOption = async (
+  page: Page,
+  select: Locator,
+  optionLabel: string
+): Promise<void> => {
+  await select.click();
+  await page.getByRole("option", { exact: true, name: optionLabel }).click();
+};
+
+/**
+ * One weekday of the series form's update schedule, by the short name `Intl`
+ * writes it as in the console's locale ("Mon").
+ */
+export const weekdayCheckbox = (page: Page, weekdayLabel: string): Locator =>
+  page.getByRole("checkbox", { exact: true, name: weekdayLabel });
+
+export interface SeriesFormFields {
+  title: Locator;
+  commentModeSelect: Locator;
+  readingPeriodHours: Locator;
+  synopsis: Locator;
+  labelCombobox: Locator;
+  publishedAt: Locator;
+  statusSelect: Locator;
+  ageRatingSelect: Locator;
+  genreCombobox: Locator;
+  tagInput: Locator;
+}
+
+/**
+ * Fields of the series form on the page the router currently shows.
+ *
+ * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
+ * for its router bfcache, so the create form stays in the DOM while the edit
+ * page is on screen. Role locators skip elements that are hidden from the
+ * accessibility tree, which pins these to the page in front of the user.
+ */
+export const seriesFormFields = (page: Page): SeriesFormFields => ({
+  ageRatingSelect: page.getByRole("combobox", { name: /Age rating/u }),
+  commentModeSelect: page.getByRole("combobox", { name: /Comments/u }),
+  genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
+  labelCombobox: page.getByRole("combobox", { name: /Label/u }),
+  // `datetime-local` has no ARIA role, so this one filters on visibility.
+  publishedAt: page
+    .getByLabel(/Publication date and time/u)
+    .filter({ visible: true }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  statusSelect: page.getByRole("combobox", { name: /Serialization status/u }),
+  synopsis: page.getByRole("textbox", { name: /Synopsis/u }),
+  // A text input carrying a `list` is a combobox: the datalist of tags already
+  // in use is what the role names.
+  tagInput: page.getByRole("combobox", { name: /Tags/u }),
+  title: page.getByRole("textbox", { name: /Title/u }),
+});
+
+export interface CreateSeriesInput {
+  title: string;
+  synopsis: string;
+  /** Creator to attach. Defaults to the seeded author. */
+  creatorName?: string;
+  /** Role to credit that creator in. Defaults to the tenant's leading role. */
+  creatorRoleName?: string;
+  /** Label to attach. Defaults to the seeded label. */
+  labelName?: string;
+  /** When set, series is published at this absolute instant (seed tenant wall clock). */
+  publishedAt?: Temporal.Instant;
+  readingPeriodHours?: number;
+  /** Genre to assign, by the name the tenant's genre list shows. */
+  genreName?: string;
+  /** Tag to write, as an editor types it. */
+  tagName?: string;
+}
+
+/**
+ * Fill and submit the series create form. Resolves after redirect to the
+ * edit URL (`/series/<publicId>?created=1`).
+ */
+export const createSeriesViaUi = async (
+  page: Page,
+  input: CreateSeriesInput
+): Promise<string> => {
+  await page.goto(adminUrl("/series/new"));
+  await expect(
+    page.getByRole("heading", { name: "Create series" })
+  ).toBeVisible();
+
+  const fields = seriesFormFields(page);
+  await fields.title.fill(input.title);
+  await fields.synopsis.fill(input.synopsis);
+  if (input.readingPeriodHours !== undefined) {
+    await fields.readingPeriodHours.fill(String(input.readingPeriodHours));
+  }
+
+  await selectComboboxOption(
+    page,
+    fields.labelCombobox,
+    input.labelName ?? SEED_CATALOG.labelName
+  );
+  // The create form opens with no credits at all, so the first row is this
+  // one.
+  await creditAuthorViaUi(page, 1, {
+    creatorName: input.creatorName ?? SEED_CATALOG.creatorName,
+    roleName: input.creatorRoleName,
+  });
+
+  if (input.genreName) {
+    await selectComboboxOption(page, fields.genreCombobox, input.genreName);
+  }
+
+  if (input.tagName) {
+    await fields.tagInput.fill(input.tagName);
+    await page.getByRole("button", { exact: true, name: "Add" }).click();
+  }
+
+  if (input.publishedAt) {
+    await fields.publishedAt.fill(toSeedTenantDateTimeLocal(input.publishedAt));
+  }
+
+  await page.getByRole("button", { name: "Create series" }).click();
+  // Must not match the create path `/series/new` — that already looks like a
+  // series detail URL to a naive `/series/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/^\/series\/(?<publicId>[^/]+)(?:\/|$)/u);
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/series\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse series public id from ${page.url()}`);
+  }
+  return publicId;
+};
+
+export interface CreateEpisodeInput {
+  seriesPublicId: string;
+  title: string;
+  price?: number;
+  readingPeriodHours?: number;
+  /** When set, episode is scheduled for this absolute instant (seed tenant wall clock). */
+  publishAt?: Temporal.Instant;
+}
+
+export interface EpisodeFormFields {
+  title: Locator;
+  price: Locator;
+  readingPeriodHours: Locator;
+  publishAt: Locator;
+}
+
+/**
+ * Fields of the episode form on the page the router currently shows.
+ *
+ * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
+ * for its router bfcache, so the create form stays in the DOM while the edit
+ * page is on screen. Role locators skip elements that are hidden from the
+ * accessibility tree, which pins these to the page in front of the user.
+ */
+export const episodeFormFields = (page: Page): EpisodeFormFields => ({
+  price: page.getByRole("spinbutton", { name: /Price/u }),
+  publishAt: page
+    .getByLabel(/Publication date and time/u)
+    .filter({ visible: true }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  title: page.getByRole("textbox", { name: /Title/u }),
+});
+
+/**
+ * Fill and submit the episode create form. Resolves after redirect to the
+ * edit URL.
+ */
+export const createEpisodeViaUi = async (
+  page: Page,
+  input: CreateEpisodeInput
+): Promise<string> => {
+  await page.goto(adminUrl(`/series/${input.seriesPublicId}/episodes/new`));
+  await expect(
+    page.getByRole("heading", { name: /Create episode/u }).first()
+  ).toBeVisible();
+
+  const fields = episodeFormFields(page);
+  await fields.title.fill(input.title);
+  await fields.price.fill(String(input.price ?? 0));
+  await fields.readingPeriodHours.fill(String(input.readingPeriodHours ?? 0));
+
+  if (input.publishAt) {
+    await fields.publishAt.fill(toSeedTenantDateTimeLocal(input.publishAt));
+  }
+
+  await page.getByRole("button", { name: "Create episode" }).click();
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/\/episodes\/(?<publicId>[^/]+)(?:\/|$)/u);
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/episodes\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse episode public id from ${page.url()}`);
+  }
+  return publicId;
+};
+
+export interface LabelFormFields {
+  name: Locator;
+}
+
+/**
+ * Fields of the label form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const labelFormFields = (page: Page): LabelFormFields => ({
+  name: page.getByRole("textbox", { name: /Label name/u }),
+});
+
+/**
+ * Fill and submit the label create form. Resolves after redirect to the
+ * edit URL (`/labels/<publicId>?created=1`).
+ */
+export const createLabelViaUi = async (
+  page: Page,
+  name: string
+): Promise<string> => {
+  await page.goto(adminUrl("/labels/new"));
+  await expect(
+    page.getByRole("heading", { name: "Create label" })
+  ).toBeVisible();
+
+  await labelFormFields(page).name.fill(name);
+  await page.getByRole("button", { name: "Create label" }).click();
+  // Must not match the create path `/labels/new` — that already looks like a
+  // label detail URL to a naive `/labels/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/^\/labels\/(?<publicId>[^/]+)(?:\/|$)/u);
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/labels\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse label public id from ${page.url()}`);
+  }
+  return publicId;
+};
+
+/**
+ * Fill a text field and confirm the value that arrived is the whole value.
+ *
+ * The console's fields are controlled React inputs. `fill` selects what is
+ * there and replaces it, and a re-render landing between those two steps —
+ * hydration finishing on a loaded runner, say — collapses the selection, so
+ * the new text is inserted in front of the old one instead of replacing it.
+ * The result is a form that submits both, which fails much later and reads
+ * like a product defect. Asserting the value here turns that into a retry.
+ */
+export const fillField = async (
+  field: Locator,
+  value: string
+): Promise<void> => {
+  await expect(async () => {
+    await field.fill(value);
+    await expect(field).toHaveValue(value, { timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+export interface CreatorFormFields {
+  name: Locator;
+  profileText: Locator;
+}
+
+/**
+ * Fields of the creator form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const creatorFormFields = (page: Page): CreatorFormFields => ({
+  name: page.getByRole("textbox", { name: /Name/u }),
+  profileText: page.getByRole("textbox", { name: /Profile/u }),
+});
+
+export interface CreateCreatorInput {
+  name: string;
+  /** Optional on the form; omitted leaves the profile empty. */
+  profileText?: string;
+}
+
+/**
+ * Fill and submit the creator create form. Resolves after the redirect to the
+ * edit URL (`/creators/<publicId>?created=1`).
+ */
+export const createCreatorViaUi = async (
+  page: Page,
+  input: CreateCreatorInput
+): Promise<string> => {
+  await page.goto(adminUrl("/creators/new"));
+  await expect(
+    page.getByRole("heading", { name: "Create author" })
+  ).toBeVisible();
+
+  const fields = creatorFormFields(page);
+  await fillField(fields.name, input.name);
+  if (input.profileText !== undefined) {
+    await fillField(fields.profileText, input.profileText);
+  }
+
+  await page.getByRole("button", { name: "Create author" }).click();
+  // Must not match the create path `/creators/new` — that already looks like a
+  // creator detail URL to a naive `/creators/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(
+      /^\/creators\/(?<publicId>[^/]+)(?:\/|$)/u
+    );
+    const publicId = match?.groups?.publicId;
+    return Boolean(publicId && publicId !== "new");
+  });
+
+  const match = page.url().match(/\/creators\/(?<publicId>[^/?#]+)/u);
+  const publicId = match?.groups?.publicId?.trim() ?? "";
+  if (!publicId || publicId === "new") {
+    throw new Error(`could not parse creator public id from ${page.url()}`);
+  }
+  return publicId;
+};
+
+export interface CreatePageInput {
+  /** Admin form input; stored and displayed as `/slug`. */
+  slug: string;
+  title: string;
+  /** First version's body. Omitted leaves the page with no version at all. */
+  contentMarkdown?: string;
+  /** Footer link once published. Off by default, like the form itself. */
+  displayInFooter?: boolean;
+}
+
+export interface PageFormFields {
+  slug: Locator;
+  title: Locator;
+  body: Locator;
+  displayInFooter: Locator;
+}
+
+/**
+ * Fields of the page create form on the page the router currently shows.
+ *
+ * Role locators for the same reason as {@link seriesFormFields}: the router
+ * bfcache keeps a previously visited form mounted inside a hidden
+ * `<Activity>`, and only the one in front of the user is in the accessibility
+ * tree.
+ */
+export const pageFormFields = (page: Page): PageFormFields => ({
+  body: page.getByRole("textbox", { name: "Content" }),
+  displayInFooter: page.getByRole("checkbox", { name: "Show in footer" }),
+  slug: page.getByRole("textbox", { name: "slug" }),
+  title: page.getByRole("textbox", { name: "Title" }),
+});
+
+/**
+ * Fill and submit the page create form. Resolves after the redirect to the
+ * edit URL (`/pages/<pageId>?created=1`) and returns the page id, which is the
+ * row's uuid rather than a Base58 public_id.
+ */
+export const createPageViaUi = async (
+  page: Page,
+  input: CreatePageInput
+): Promise<string> => {
+  await page.goto(adminUrl("/pages/new"));
+  await expect(
+    page.getByRole("heading", { name: "Create page" })
+  ).toBeVisible();
+
+  const fields = pageFormFields(page);
+  await fillField(fields.slug, input.slug);
+  await fillField(fields.title, input.title);
+  if (input.contentMarkdown !== undefined) {
+    await fillField(fields.body, input.contentMarkdown);
+  }
+  if (input.displayInFooter === true) {
+    await fields.displayInFooter.check();
+  }
+
+  await page.getByRole("button", { name: "Create page" }).click();
+  // Must not match the create path `/pages/new` — that already looks like a
+  // page detail URL to a naive `/pages/[^/]+` pattern.
+  await page.waitForURL((url) => {
+    const match = url.pathname.match(/^\/pages\/(?<pageId>[^/]+)(?:\/|$)/u);
+    const pageId = match?.groups?.pageId;
+    return Boolean(pageId && pageId !== "new");
+  });
+
+  const match = page.url().match(/\/pages\/(?<pageId>[^/?#]+)/u);
+  const pageId = match?.groups?.pageId?.trim() ?? "";
+  if (!pageId || pageId === "new") {
+    throw new Error(`could not parse page id from ${page.url()}`);
+  }
+  return pageId;
+};
+
+export const formMessage = (page: Page): Locator =>
+  // FormMessage renders a <p role="status">, and so does the live region
+  // dnd-kit appends to <body> on every screen holding a sortable list. Scoping
+  // to the page body keeps that announcement out of the match.
+  page.getByRole("main").getByRole("status");
+
+/**
+ * The genre list on `/genres`, which is one `<ul>` named after the card it
+ * sits in. Scoping to it keeps the row fields apart from the create form's own
+ * "Genre name" field.
+ */
+export const genreList = (page: Page): Locator =>
+  page.getByRole("list", { name: "Genres" });
+
+/**
+ * The name field of the create card, which carries the required marker in its
+ * accessible name the way every other console form's label does.
+ */
+export const genreCreateField = (page: Page): Locator =>
+  page.getByRole("textbox", { name: /Genre name/u });
+
+/** The in-place name field of one genre row, addressed by its saved name. */
+export const genreNameField = (page: Page, name: string): Locator =>
+  page.getByRole("textbox", { exact: true, name: `Name of ${name}` });
+
+/** The row of one genre, so its own buttons are the ones that get pressed. */
+export const genreRow = (page: Page, name: string): Locator =>
+  genreList(page)
+    .getByRole("listitem")
+    .filter({ has: genreNameField(page, name) });
+
+/** The saved names of every genre, in the order the console lists them. */
+export const genreNamesInOrder = async (page: Page): Promise<string[]> => {
+  const fields = await genreList(page).getByRole("textbox").all();
+  return await Promise.all(fields.map((field) => field.inputValue()));
+};
+
+/**
+ * Add a genre from the `/genres` create form. Resolves once the new row is on
+ * screen, which is what says the list read the write back.
+ */
+export const createGenreViaUi = async (
+  page: Page,
+  name: string
+): Promise<void> => {
+  await page.goto(adminUrl("/genres"));
+  await fillField(genreCreateField(page), name);
+  await page.getByRole("button", { name: "Create genre" }).click();
+  await expect(genreNameField(page, name)).toBeVisible({ timeout: 15_000 });
+};
