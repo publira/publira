@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import { TEST_EMAIL_RECIPIENT_TYPE_CUSTOM } from "#lib/email-settings-shared";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
 
 import type {
@@ -110,7 +111,7 @@ const overrideCheckbox = () =>
 /**
  * Whether a control refuses input, whichever way it says so. A native control
  * its `<fieldset>` closes keeps `disabled` false and matches `:disabled`, and
- * the override checkbox is a Base UI one that says so with `aria-disabled`.
+ * the checkboxes are Base UI ones that say so with `aria-disabled`.
  */
 const isClosed = (element: HTMLElement) =>
   element.matches(":disabled") ||
@@ -222,6 +223,35 @@ describe("TenantEmailSettingsForm", () => {
     }
   });
 
+  it("sends the test to the typed address once it is not sent to the operator", async () => {
+    const testAction = vi.fn(
+      (_previousState: TenantSmtpTestFormState, _formData: FormData) =>
+        Promise.resolve<TenantSmtpTestFormState>({
+          message: "Test email sent.",
+          ok: true,
+          recipientEmail: "recipient@example.com",
+        })
+    );
+    await renderForm(storedSettings(), { testAction });
+
+    fireEvent.click(testButton());
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Send it to myself" })
+    );
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: /Recipient email address/u }),
+      { target: { value: "recipient@example.com" } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run the test" }));
+
+    await screen.findByText("Test email sent.");
+    const posted = testAction.mock.calls[0]?.[1];
+    expect(posted?.get("recipient_type")).toBe(
+      String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
+    );
+    expect(posted?.get("recipient_email")).toBe("recipient@example.com");
+  });
+
   // The test carries the recipient chosen when it was started, so a change
   // made while it is in flight would not be where the message went.
   it("closes the recipient while the connection test is in flight", async () => {
@@ -229,7 +259,7 @@ describe("TenantEmailSettingsForm", () => {
     await renderForm(storedSettings(), { testAction: () => test.promise });
 
     fireEvent.click(testButton());
-    const sendToSelf = await screen.findByRole<HTMLInputElement>("checkbox", {
+    const sendToSelf = await screen.findByRole("checkbox", {
       name: "Send it to myself",
     });
     fireEvent.click(sendToSelf);
@@ -240,13 +270,13 @@ describe("TenantEmailSettingsForm", () => {
       target: { value: "recipient@example.com" },
     });
 
-    expect(sendToSelf.disabled).toBe(false);
+    expect(isClosed(sendToSelf)).toBe(false);
     expect(recipient.disabled).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Run the test" }));
 
     await waitFor(() => {
-      expect(sendToSelf.disabled).toBe(true);
+      expect(isClosed(sendToSelf)).toBe(true);
       expect(recipient.disabled).toBe(true);
     });
 

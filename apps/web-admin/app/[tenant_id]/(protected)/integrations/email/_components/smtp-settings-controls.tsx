@@ -352,13 +352,10 @@ export const SmtpTestSendToSelf = ({ children }: { children: ReactNode }) => {
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
-      <input
+      <Checkbox
         checked={sendToSelf}
         disabled={isTesting}
-        onChange={(event) => {
-          setSendToSelf(event.target.checked);
-        }}
-        type="checkbox"
+        onCheckedChange={setSendToSelf}
       />
       {children}
     </label>

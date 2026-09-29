@@ -184,8 +184,13 @@ it("previews the framed square rather than the whole picked file", async () => {
   vi.unstubAllGlobals();
 });
 
-// A control its `<fieldset>` closes keeps `disabled` false and matches
-// `:disabled` instead.
+// A native control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead, and the removal checkbox is a Base UI one that says so
+// with `aria-disabled`.
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true";
+
 const submittedControls = () => [
   screen.getByRole("textbox", { name: /Name/u }),
   screen.getByRole("textbox", { name: "Profile" }),
@@ -209,14 +214,40 @@ it("closes every field while the save is in flight", async () => {
   });
 
   for (const control of submittedControls()) {
-    expect(control.matches(":disabled")).toBe(false);
+    expect(isClosed(control)).toBe(false);
   }
 
   fireEvent.click(screen.getByRole("button", { name: "Update author" }));
 
   await waitFor(() => {
     for (const control of submittedControls()) {
-      expect(control.matches(":disabled")).toBe(true);
+      expect(isClosed(control)).toBe(true);
     }
   });
+});
+
+it("posts the removal of the saved icon while its box is ticked", async () => {
+  await renderForm({
+    action,
+    initialCreator: {
+      ...creator,
+      iconImageUpdatedAt: "2030-01-01T00:00:00Z",
+      iconImageUrl: "https://cdn.example.com/creators/CREATOR001/icon.webp",
+    },
+    mode: "update",
+  });
+
+  const { form } = screen.getByRole<HTMLButtonElement>("button", {
+    name: "Update author",
+  });
+  if (!form) {
+    throw new Error("the update button belongs to no form");
+  }
+  expect(new FormData(form).get("clear_icon_image")).toBe("0");
+
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Remove the current icon image" })
+  );
+
+  expect(new FormData(form).get("clear_icon_image")).toBe("1");
 });

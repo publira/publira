@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import { FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -53,14 +54,7 @@ export const StoreEnabledCheckbox = ({
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
-      <input
-        checked={enabled}
-        name={name}
-        onChange={(event) => {
-          setEnabled(event.target.checked);
-        }}
-        type="checkbox"
-      />
+      <Checkbox checked={enabled} name={name} onCheckedChange={setEnabled} />
       {children}
     </label>
   );
