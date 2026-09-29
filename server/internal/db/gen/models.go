@@ -70,6 +70,8 @@ type ContactMessage struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	HandledAt    sql.NullTime   `json:"handled_at"`
 	HandledBy    uuid.NullUUID  `json:"handled_by"`
+	AssignedTo   uuid.NullUUID  `json:"assigned_to"`
+	StaffNote    sql.NullString `json:"staff_note"`
 }
 
 type ContentDailyStat struct {

@@ -12,14 +12,14 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/contact.proto.
  */
 export const file_publira_admin_v1_contact: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbnRhY3QucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEivQEKDkNvbnRhY3RNZXNzYWdlEhEKCXB1YmxpY19pZBgBIAEoCRIWCg5yZXBseV90b19lbWFpbBgCIAEoCRIPCgdzdWJqZWN0GAMgASgJEgwKBGJvZHkYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRISCgpoYW5kbGVkX2F0GAYgASgJEhgKEHNlbmRlcl9wdWJsaWNfaWQYByABKAkSEwoLc2VuZGVyX25hbWUYCCABKAkSCgoCaWQYCSABKAkiewoaTGlzdENvbnRhY3RNZXNzYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnN0YXR1cxgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSJ9ChtMaXN0Q29udGFjdE1lc3NhZ2VzUmVzcG9uc2USMgoIbWVzc2FnZXMYASADKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiXgoYR2V0Q29udGFjdE1lc3NhZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiTgoZR2V0Q29udGFjdE1lc3NhZ2VSZXNwb25zZRIxCgdtZXNzYWdlGAEgASgLMiAucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZSKRAQogTWFya0NvbnRhY3RNZXNzYWdlSGFuZGxlZFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB2hhbmRsZWQYAyABKAgSGgoSY29udGFjdF9tZXNzYWdlX2lkGAQgASgJSgQIAhADUglwdWJsaWNfaWQiVgohTWFya0NvbnRhY3RNZXNzYWdlSGFuZGxlZFJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlMoQDChNBZG1pbkNvbnRhY3RTZXJ2aWNlEnQKE0xpc3RDb250YWN0TWVzc2FnZXMSLC5wdWJsaXJhLmFkbWluLnYxLkxpc3RDb250YWN0TWVzc2FnZXNSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5MaXN0Q29udGFjdE1lc3NhZ2VzUmVzcG9uc2UiABJuChFHZXRDb250YWN0TWVzc2FnZRIqLnB1YmxpcmEuYWRtaW4udjEuR2V0Q29udGFjdE1lc3NhZ2VSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRDb250YWN0TWVzc2FnZVJlc3BvbnNlIgAShgEKGU1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWQSMi5wdWJsaXJhLmFkbWluLnYxLk1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5NYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbnRhY3QucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEingIKDkNvbnRhY3RNZXNzYWdlEhEKCXB1YmxpY19pZBgBIAEoCRIWCg5yZXBseV90b19lbWFpbBgCIAEoCRIPCgdzdWJqZWN0GAMgASgJEgwKBGJvZHkYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRISCgpoYW5kbGVkX2F0GAYgASgJEhgKEHNlbmRlcl9wdWJsaWNfaWQYByABKAkSEwoLc2VuZGVyX25hbWUYCCABKAkSCgoCaWQYCSABKAkSGAoQYXNzaWduZWVfdXNlcl9pZBgKIAEoCRIaChJhc3NpZ25lZV9wdWJsaWNfaWQYCyABKAkSFQoNYXNzaWduZWVfbmFtZRgMIAEoCRISCgpzdGFmZl9ub3RlGA0gASgJInsKGkxpc3RDb250YWN0TWVzc2FnZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZzdGF0dXMYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkifQobTGlzdENvbnRhY3RNZXNzYWdlc1Jlc3BvbnNlEjIKCG1lc3NhZ2VzGAEgAygLMiAucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIl4KGEdldENvbnRhY3RNZXNzYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIk4KGUdldENvbnRhY3RNZXNzYWdlUmVzcG9uc2USMQoHbWVzc2FnZRgBIAEoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2UikQEKIE1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdoYW5kbGVkGAMgASgIEhoKEmNvbnRhY3RfbWVzc2FnZV9pZBgEIAEoCUoECAIQA1IJcHVibGljX2lkIlYKIU1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXNwb25zZRIxCgdtZXNzYWdlGAEgASgLMiAucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZSKEAQobQXNzaWduQ29udGFjdE1lc3NhZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIaChJjb250YWN0X21lc3NhZ2VfaWQYAiABKAkSGAoQYXNzaWduZWVfdXNlcl9pZBgDIAEoCSJRChxBc3NpZ25Db250YWN0TWVzc2FnZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlIocBCiRVcGRhdGVDb250YWN0TWVzc2FnZVN0YWZmTm90ZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhoKEmNvbnRhY3RfbWVzc2FnZV9pZBgCIAEoCRISCgpzdGFmZl9ub3RlGAMgASgJIloKJVVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlUmVzcG9uc2USMQoHbWVzc2FnZRgBIAEoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2UykgUKE0FkbWluQ29udGFjdFNlcnZpY2USdAoTTGlzdENvbnRhY3RNZXNzYWdlcxIsLnB1YmxpcmEuYWRtaW4udjEuTGlzdENvbnRhY3RNZXNzYWdlc1JlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkxpc3RDb250YWN0TWVzc2FnZXNSZXNwb25zZSIAEm4KEUdldENvbnRhY3RNZXNzYWdlEioucHVibGlyYS5hZG1pbi52MS5HZXRDb250YWN0TWVzc2FnZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldENvbnRhY3RNZXNzYWdlUmVzcG9uc2UiABKGAQoZTWFya0NvbnRhY3RNZXNzYWdlSGFuZGxlZBIyLnB1YmxpcmEuYWRtaW4udjEuTWFya0NvbnRhY3RNZXNzYWdlSGFuZGxlZFJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLk1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXNwb25zZSIAEncKFEFzc2lnbkNvbnRhY3RNZXNzYWdlEi0ucHVibGlyYS5hZG1pbi52MS5Bc3NpZ25Db250YWN0TWVzc2FnZVJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLkFzc2lnbkNvbnRhY3RNZXNzYWdlUmVzcG9uc2UiABKSAQodVXBkYXRlQ29udGFjdE1lc3NhZ2VTdGFmZk5vdGUSNi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ29udGFjdE1lc3NhZ2VTdGFmZk5vdGVSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One message a reader sent the tenant, as staff read it.
  *
  * Publira carries no reply of its own, so the message is the whole record: what
- * the reader wrote, the address to answer at, and whether anyone has dealt with
- * it yet.
+ * the reader wrote, the address to answer at, who on the staff owns it, and
+ * whether anyone has dealt with it yet.
  *
  * @generated from message publira.admin.v1.ContactMessage
  */
@@ -78,11 +78,39 @@ export type ContactMessage = Message<"publira.admin.v1.ContactMessage"> & {
   senderName: string;
 
   /**
-   * The message's primary key, which MarkContactMessageHandled addresses it by.
+   * The message's primary key, which every action on it addresses it by.
    *
    * @generated from field: string id = 9;
    */
   id: string;
+
+  /**
+   * The member of staff the message is assigned to, which is not who marked it
+   * handled: a handled message keeps its assignee. All three are empty while
+   * nobody is assigned, including after the assignee's account was deleted.
+   * assignee_user_id is the TenantMember.user_id AssignContactMessage takes.
+   *
+   * @generated from field: string assignee_user_id = 10;
+   */
+  assigneeUserId: string;
+
+  /**
+   * @generated from field: string assignee_public_id = 11;
+   */
+  assigneePublicId: string;
+
+  /**
+   * @generated from field: string assignee_name = 12;
+   */
+  assigneeName: string;
+
+  /**
+   * The internal note staff keep on the message. Empty when there is none.
+   * Readers never see it: no public API carries it.
+   *
+   * @generated from field: string staff_note = 13;
+   */
+  staffNote: string;
 };
 
 /**
@@ -256,6 +284,105 @@ export const MarkContactMessageHandledResponseSchema: GenMessage<MarkContactMess
   messageDesc(file_publira_admin_v1_contact, 6);
 
 /**
+ * @generated from message publira.admin.v1.AssignContactMessageRequest
+ */
+export type AssignContactMessageRequest = Message<"publira.admin.v1.AssignContactMessageRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The message's primary key (ContactMessage.id).
+   *
+   * @generated from field: string contact_message_id = 2;
+   */
+  contactMessageId: string;
+
+  /**
+   * The TenantMember.user_id of an active tenant_admin of the tenant, who is
+   * the only kind of account that can work the inbox. Empty clears the
+   * assignment. Any other account is invalid_argument.
+   *
+   * @generated from field: string assignee_user_id = 3;
+   */
+  assigneeUserId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AssignContactMessageRequest.
+ * Use `create(AssignContactMessageRequestSchema)` to create a new message.
+ */
+export const AssignContactMessageRequestSchema: GenMessage<AssignContactMessageRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 7);
+
+/**
+ * @generated from message publira.admin.v1.AssignContactMessageResponse
+ */
+export type AssignContactMessageResponse = Message<"publira.admin.v1.AssignContactMessageResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.ContactMessage message = 1;
+   */
+  message?: ContactMessage | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.AssignContactMessageResponse.
+ * Use `create(AssignContactMessageResponseSchema)` to create a new message.
+ */
+export const AssignContactMessageResponseSchema: GenMessage<AssignContactMessageResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 8);
+
+/**
+ * @generated from message publira.admin.v1.UpdateContactMessageStaffNoteRequest
+ */
+export type UpdateContactMessageStaffNoteRequest = Message<"publira.admin.v1.UpdateContactMessageStaffNoteRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The message's primary key (ContactMessage.id).
+   *
+   * @generated from field: string contact_message_id = 2;
+   */
+  contactMessageId: string;
+
+  /**
+   * The whole note, replacing the one stored. Surrounding whitespace is
+   * trimmed; what is left is at most 4000 characters, and empty clears it.
+   *
+   * @generated from field: string staff_note = 3;
+   */
+  staffNote: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateContactMessageStaffNoteRequest.
+ * Use `create(UpdateContactMessageStaffNoteRequestSchema)` to create a new message.
+ */
+export const UpdateContactMessageStaffNoteRequestSchema: GenMessage<UpdateContactMessageStaffNoteRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 9);
+
+/**
+ * @generated from message publira.admin.v1.UpdateContactMessageStaffNoteResponse
+ */
+export type UpdateContactMessageStaffNoteResponse = Message<"publira.admin.v1.UpdateContactMessageStaffNoteResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.ContactMessage message = 1;
+   */
+  message?: ContactMessage | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateContactMessageStaffNoteResponse.
+ * Use `create(UpdateContactMessageStaffNoteResponseSchema)` to create a new message.
+ */
+export const UpdateContactMessageStaffNoteResponseSchema: GenMessage<UpdateContactMessageStaffNoteResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 10);
+
+/**
  * @generated from service publira.admin.v1.AdminContactService
  */
 export const AdminContactService: GenService<{
@@ -296,6 +423,30 @@ export const AdminContactService: GenService<{
     methodKind: "unary";
     input: typeof MarkContactMessageHandledRequestSchema;
     output: typeof MarkContactMessageHandledResponseSchema;
+  },
+  /**
+   * Assigns one message to a member of staff, moves it to another, or clears
+   * the assignment.
+   *
+   * The assignee is stated rather than toggled, and it is independent of the
+   * handled flag: marking the message handled or reopening it keeps it.
+   *
+   * @generated from rpc publira.admin.v1.AdminContactService.AssignContactMessage
+   */
+  assignContactMessage: {
+    methodKind: "unary";
+    input: typeof AssignContactMessageRequestSchema;
+    output: typeof AssignContactMessageResponseSchema;
+  },
+  /**
+   * Saves, replaces, or clears the internal note on one message.
+   *
+   * @generated from rpc publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote
+   */
+  updateContactMessageStaffNote: {
+    methodKind: "unary";
+    input: typeof UpdateContactMessageStaffNoteRequestSchema;
+    output: typeof UpdateContactMessageStaffNoteResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_contact, 0);

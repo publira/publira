@@ -42,6 +42,12 @@ const (
 	// AdminContactServiceMarkContactMessageHandledProcedure is the fully-qualified name of the
 	// AdminContactService's MarkContactMessageHandled RPC.
 	AdminContactServiceMarkContactMessageHandledProcedure = "/publira.admin.v1.AdminContactService/MarkContactMessageHandled"
+	// AdminContactServiceAssignContactMessageProcedure is the fully-qualified name of the
+	// AdminContactService's AssignContactMessage RPC.
+	AdminContactServiceAssignContactMessageProcedure = "/publira.admin.v1.AdminContactService/AssignContactMessage"
+	// AdminContactServiceUpdateContactMessageStaffNoteProcedure is the fully-qualified name of the
+	// AdminContactService's UpdateContactMessageStaffNote RPC.
+	AdminContactServiceUpdateContactMessageStaffNoteProcedure = "/publira.admin.v1.AdminContactService/UpdateContactMessageStaffNote"
 )
 
 // AdminContactServiceClient is a client for the publira.admin.v1.AdminContactService service.
@@ -60,6 +66,14 @@ type AdminContactServiceClient interface {
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
 	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
+	// Assigns one message to a member of staff, moves it to another, or clears
+	// the assignment.
+	//
+	// The assignee is stated rather than toggled, and it is independent of the
+	// handled flag: marking the message handled or reopening it keeps it.
+	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
+	// Saves, replaces, or clears the internal note on one message.
+	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
 }
 
 // NewAdminContactServiceClient constructs a client for the publira.admin.v1.AdminContactService
@@ -91,14 +105,28 @@ func NewAdminContactServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminContactServiceMethods.ByName("MarkContactMessageHandled")),
 			connect.WithClientOptions(opts...),
 		),
+		assignContactMessage: connect.NewClient[v1.AssignContactMessageRequest, v1.AssignContactMessageResponse](
+			httpClient,
+			baseURL+AdminContactServiceAssignContactMessageProcedure,
+			connect.WithSchema(adminContactServiceMethods.ByName("AssignContactMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		updateContactMessageStaffNote: connect.NewClient[v1.UpdateContactMessageStaffNoteRequest, v1.UpdateContactMessageStaffNoteResponse](
+			httpClient,
+			baseURL+AdminContactServiceUpdateContactMessageStaffNoteProcedure,
+			connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminContactServiceClient implements AdminContactServiceClient.
 type adminContactServiceClient struct {
-	listContactMessages       *connect.Client[v1.ListContactMessagesRequest, v1.ListContactMessagesResponse]
-	getContactMessage         *connect.Client[v1.GetContactMessageRequest, v1.GetContactMessageResponse]
-	markContactMessageHandled *connect.Client[v1.MarkContactMessageHandledRequest, v1.MarkContactMessageHandledResponse]
+	listContactMessages           *connect.Client[v1.ListContactMessagesRequest, v1.ListContactMessagesResponse]
+	getContactMessage             *connect.Client[v1.GetContactMessageRequest, v1.GetContactMessageResponse]
+	markContactMessageHandled     *connect.Client[v1.MarkContactMessageHandledRequest, v1.MarkContactMessageHandledResponse]
+	assignContactMessage          *connect.Client[v1.AssignContactMessageRequest, v1.AssignContactMessageResponse]
+	updateContactMessageStaffNote *connect.Client[v1.UpdateContactMessageStaffNoteRequest, v1.UpdateContactMessageStaffNoteResponse]
 }
 
 // ListContactMessages calls publira.admin.v1.AdminContactService.ListContactMessages.
@@ -114,6 +142,17 @@ func (c *adminContactServiceClient) GetContactMessage(ctx context.Context, req *
 // MarkContactMessageHandled calls publira.admin.v1.AdminContactService.MarkContactMessageHandled.
 func (c *adminContactServiceClient) MarkContactMessageHandled(ctx context.Context, req *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error) {
 	return c.markContactMessageHandled.CallUnary(ctx, req)
+}
+
+// AssignContactMessage calls publira.admin.v1.AdminContactService.AssignContactMessage.
+func (c *adminContactServiceClient) AssignContactMessage(ctx context.Context, req *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error) {
+	return c.assignContactMessage.CallUnary(ctx, req)
+}
+
+// UpdateContactMessageStaffNote calls
+// publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote.
+func (c *adminContactServiceClient) UpdateContactMessageStaffNote(ctx context.Context, req *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
+	return c.updateContactMessageStaffNote.CallUnary(ctx, req)
 }
 
 // AdminContactServiceHandler is an implementation of the publira.admin.v1.AdminContactService
@@ -133,6 +172,14 @@ type AdminContactServiceHandler interface {
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
 	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
+	// Assigns one message to a member of staff, moves it to another, or clears
+	// the assignment.
+	//
+	// The assignee is stated rather than toggled, and it is independent of the
+	// handled flag: marking the message handled or reopening it keeps it.
+	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
+	// Saves, replaces, or clears the internal note on one message.
+	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
 }
 
 // NewAdminContactServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -160,6 +207,18 @@ func NewAdminContactServiceHandler(svc AdminContactServiceHandler, opts ...conne
 		connect.WithSchema(adminContactServiceMethods.ByName("MarkContactMessageHandled")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminContactServiceAssignContactMessageHandler := connect.NewUnaryHandler(
+		AdminContactServiceAssignContactMessageProcedure,
+		svc.AssignContactMessage,
+		connect.WithSchema(adminContactServiceMethods.ByName("AssignContactMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminContactServiceUpdateContactMessageStaffNoteHandler := connect.NewUnaryHandler(
+		AdminContactServiceUpdateContactMessageStaffNoteProcedure,
+		svc.UpdateContactMessageStaffNote,
+		connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminContactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminContactServiceListContactMessagesProcedure:
@@ -168,6 +227,10 @@ func NewAdminContactServiceHandler(svc AdminContactServiceHandler, opts ...conne
 			adminContactServiceGetContactMessageHandler.ServeHTTP(w, r)
 		case AdminContactServiceMarkContactMessageHandledProcedure:
 			adminContactServiceMarkContactMessageHandledHandler.ServeHTTP(w, r)
+		case AdminContactServiceAssignContactMessageProcedure:
+			adminContactServiceAssignContactMessageHandler.ServeHTTP(w, r)
+		case AdminContactServiceUpdateContactMessageStaffNoteProcedure:
+			adminContactServiceUpdateContactMessageStaffNoteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -187,4 +250,12 @@ func (UnimplementedAdminContactServiceHandler) GetContactMessage(context.Context
 
 func (UnimplementedAdminContactServiceHandler) MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.MarkContactMessageHandled is not implemented"))
+}
+
+func (UnimplementedAdminContactServiceHandler) AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.AssignContactMessage is not implemented"))
+}
+
+func (UnimplementedAdminContactServiceHandler) UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote is not implemented"))
 }
