@@ -26,6 +26,7 @@ import {
   getTenantStorePaymentSettings,
   listTenantStoreProducts,
 } from "#lib/store-payment-settings";
+import { storefrontOrigin, tenantWebhookUrl } from "#lib/storefront-url";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
@@ -58,19 +59,6 @@ const SettingsPaymentFormSkeleton = () => (
     </div>
   </div>
 );
-
-const storefrontOrigin = (domain: string): string | undefined => {
-  const host = domain.trim();
-  return host ? `https://${host}` : undefined;
-};
-
-const tenantWebhookUrl = (
-  domain: string,
-  provider: string
-): string | undefined => {
-  const origin = storefrontOrigin(domain);
-  return origin && `${origin}/api/v1/webhook/payment/${provider}`;
-};
 
 const SettingsPaymentForm = async () => {
   const tenantId = await getTenantId();

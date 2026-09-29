@@ -43,6 +43,10 @@
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"
     },
+    "./tenant-origin": {
+      "types": "./dist/tenant-origin.d.mts",
+      "default": "./dist/tenant-origin.mjs"
+    },
     "./search-params": {
       "types": "./dist/search-params.d.mts",
       "default": "./dist/search-params.mjs"

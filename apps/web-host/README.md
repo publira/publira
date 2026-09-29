@@ -36,6 +36,12 @@ Series titles, synopses, episode bodies, and the contents of a published page ar
 
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
 
+### Absolute tenant URLs
+
+Canonical links, language alternates, the Open Graph URL, and the share URL come from the tenant's stored domain (`getTenantPublicOrigin` in `lib/tenant.ts`).
+
+- `PUBLIRA_TENANT_URL_SCHEME` — `http` or `https`. `https` when unset. Anything else is refused.
+
 ### Session cookie (JWE)
 
 Required environment variables:

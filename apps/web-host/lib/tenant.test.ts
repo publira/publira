@@ -64,6 +64,7 @@ const brandingVariant = (url: string) => ({
 
 describe("tenant", () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     mockCacheLife.mockReset();
     mockCacheTag.mockReset();
     mockGetTenant.mockReset();
@@ -218,10 +219,32 @@ describe("tenant", () => {
   });
 
   it("Write the tenant's public origin from its stored domain", async () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "");
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     await expect(getTenantPublicOrigin("TENANT_001")).resolves.toBe(
       "https://example.test"
+    );
+  });
+
+  it("Write the public origin on the deployment's scheme and the saved port", async () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "http");
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      tenantDomain: " https://example.test:3180/ ",
+    });
+
+    await expect(getTenantPublicOrigin("TENANT_001")).resolves.toBe(
+      "http://example.test:3180"
+    );
+  });
+
+  it("Refuse a scheme the origin cannot be built on", async () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "ftp");
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantPublicOrigin("TENANT_001")).rejects.toThrow(
+      "PUBLIRA_TENANT_URL_SCHEME"
     );
   });
 

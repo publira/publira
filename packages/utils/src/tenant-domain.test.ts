@@ -20,10 +20,20 @@ describe("getTenantDomainCandidates", () => {
 
     const result = getTenantDomainCandidates(headers);
 
-    expect(result).toContain("store.example.com:443");
-    expect(result).toContain("store.example.com");
-    expect(result).toContain("cdn.example.com");
-    expect(new Set(result).size).toBe(result.length);
+    expect(result).toEqual(["store.example.com:443", "cdn.example.com"]);
+  });
+
+  it("keeps a non-default port instead of also matching the bare hostname", () => {
+    const headers: HeadersLike = {
+      get(name: string) {
+        if (name === "host") {
+          return "shop.example:8443";
+        }
+        return null;
+      },
+    };
+
+    expect(getTenantDomainCandidates(headers)).toEqual(["shop.example:8443"]);
   });
 
   it("returns an empty array when no header is present", () => {

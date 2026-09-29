@@ -239,7 +239,7 @@ interface TenantPaymentSettingsFormProps {
   loadErrorMessage?: string;
   providers: PaymentProvider[];
   tenantId: string;
-  /** `https://` and the tenant's storefront domain, when it is known. */
+  /** The storefront origin, when the tenant's domain is known. */
   webhookOrigin?: string;
 }
 
