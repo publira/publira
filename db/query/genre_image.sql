@@ -37,7 +37,8 @@ WHERE giv.genre_image_id = $1
 LIMIT 1;
 
 -- name: ListGenreImageVariantsByImageIDs :many
-SELECT genre_image_id,
+SELECT id,
+    genre_image_id,
     variant_type,
     label,
     content_type,

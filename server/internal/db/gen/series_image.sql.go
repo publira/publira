@@ -165,7 +165,8 @@ func (q *Queries) GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Conte
 }
 
 const ListSeriesImageVariantsByImageIDs = `-- name: ListSeriesImageVariantsByImageIDs :many
-SELECT series_image_id,
+SELECT id,
+    series_image_id,
     variant_type,
     label,
     content_type,
@@ -180,6 +181,7 @@ ORDER BY series_image_id,
 `
 
 type ListSeriesImageVariantsByImageIDsRow struct {
+	ID            uuid.UUID `json:"id"`
 	SeriesImageID uuid.UUID `json:"series_image_id"`
 	VariantType   string    `json:"variant_type"`
 	Label         string    `json:"label"`
@@ -199,6 +201,7 @@ func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageId
 	for rows.Next() {
 		var i ListSeriesImageVariantsByImageIDsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.SeriesImageID,
 			&i.VariantType,
 			&i.Label,
@@ -227,7 +230,9 @@ WHERE id = $1
 `
 
 // Records that the eye-catch changed after one of its ratios was replaced.
-// `updated_at` is what the console reads back and what busts the cached URL.
+// The console compares this instant with the one it rendered. The delivered
+// URL is cache-busted from the variant row, so the ratios that were not
+// replaced keep the URLs they had.
 func (q *Queries) TouchSeriesImage(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, TouchSeriesImage, id)
 	return err

@@ -759,8 +759,8 @@ func TestCatalogSearchPublishedLabelsAttachesEyeCatchVariants(t *testing.T) {
 		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", imageID, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(imageID, "portrait", "portrait_1200w", "image/webp", int64(2048), int32(1200), int32(1600)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), imageID, "portrait", "portrait_1200w", "image/webp", int64(2048), int32(1200), int32(1600)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{

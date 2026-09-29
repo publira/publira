@@ -15,6 +15,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -751,10 +752,11 @@ func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+	variantID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(imageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(variantID, imageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
@@ -774,8 +776,8 @@ func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
 	variant := resp.Msg.Label.EyeCatchImageVariants[0]
-	if variant.Url == "" {
-		t.Fatalf("eye_catch_image_variants url is empty")
+	if variant.Url != protomapper.EyeCatchVariantURL("labels", imageID, "square", 512, variantID) {
+		t.Fatalf("eye_catch_image_variants url = %q, want the row's delivery url", variant.Url)
 	}
 	if variant.Label != "md" || variant.VariantType != "square" {
 		t.Fatalf("variant = %+v, want square/md", variant)

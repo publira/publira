@@ -363,7 +363,8 @@ func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublis
 }
 
 const ListLabelImageVariantsByImageIDs = `-- name: ListLabelImageVariantsByImageIDs :many
-SELECT label_image_id,
+SELECT id,
+    label_image_id,
     variant_type,
     label,
     content_type,
@@ -378,6 +379,7 @@ ORDER BY label_image_id,
 `
 
 type ListLabelImageVariantsByImageIDsRow struct {
+	ID            uuid.UUID `json:"id"`
 	LabelImageID  uuid.UUID `json:"label_image_id"`
 	VariantType   string    `json:"variant_type"`
 	Label         string    `json:"label"`
@@ -397,6 +399,7 @@ func (q *Queries) ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds
 	for rows.Next() {
 		var i ListLabelImageVariantsByImageIDsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.LabelImageID,
 			&i.VariantType,
 			&i.Label,

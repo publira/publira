@@ -16,6 +16,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -87,7 +88,7 @@ func labelRowColumns() []string {
 }
 
 func eyeCatchVariantColumns(imageIDColumn string) []string {
-	return []string{imageIDColumn, "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
+	return []string{"id", imageIDColumn, "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
 }
 
 // createdImageVariantRow stands in for the `RETURNING *` of an image variant
@@ -151,11 +152,13 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
+	landscapeID := uuid.Must(uuid.NewV7())
+	portraitID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
-			AddRow(imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)).
-			AddRow(imageID, "portrait", "portrait_1200w", "image/jpeg", int64(4096), int32(1200), int32(1600)))
+			AddRow(landscapeID, imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)).
+			AddRow(portraitID, imageID, "portrait", "portrait_1200w", "image/jpeg", int64(4096), int32(1200), int32(1600)))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
@@ -171,12 +174,13 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
 	}
-	ratios := map[string]bool{}
+	ratios := map[string]string{}
 	for _, variant := range resp.Msg.Series.GetEyeCatchImageVariants() {
-		ratios[variant.GetVariantType()] = true
+		ratios[variant.GetVariantType()] = variant.GetUrl()
 	}
-	if !ratios["landscape"] || !ratios["portrait"] {
-		t.Fatalf("variant types = %v, want both landscape and portrait", ratios)
+	if ratios["landscape"] != protomapper.EyeCatchVariantURL("series", imageID, "landscape", 1600, landscapeID) ||
+		ratios["portrait"] != protomapper.EyeCatchVariantURL("series", imageID, "portrait", 1200, portraitID) {
+		t.Fatalf("variant urls = %v, want landscape and portrait addressed by their own rows", ratios)
 	}
 	assertExpectations(t, mock)
 }
@@ -325,7 +329,7 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
-			AddRow(imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
+			AddRow(uuid.Must(uuid.NewV7()), imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	// The red left half of the upload, which is exactly the landscape
@@ -487,10 +491,11 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+	squareID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("label_image_id")).
-			AddRow(imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
+			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
@@ -507,8 +512,8 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		t.Fatalf("UploadLabelEyeCatchAspectImage: %v", err)
 	}
 	variants := resp.Msg.Label.GetEyeCatchImageVariants()
-	if len(variants) != 1 || variants[0].GetVariantType() != "square" {
-		t.Fatalf("variants = %v, want a single square variant", variants)
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("labels", imageID, "square", 1200, squareID) {
+		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}
 	assertExpectations(t, mock)
 }
@@ -594,10 +599,11 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
 		WithArgs(tenantID, genreID).
 		WillReturnRows(genreRow())
+	squareID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("genre_image_id")).
-			AddRow(imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
+			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
 
 	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
@@ -614,8 +620,8 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
 	}
 	variants := resp.Msg.Genre.GetEyeCatchImageVariants()
-	if len(variants) != 1 || variants[0].GetUrl() != "/images/genres/"+imageID.String()+"/square/1200" {
-		t.Fatalf("variants = %v, want the square variant under the genre image route", variants)
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("genres", imageID, "square", 1200, squareID) {
+		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}
 	assertExpectations(t, mock)
 }

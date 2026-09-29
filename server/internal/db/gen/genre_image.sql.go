@@ -163,7 +163,8 @@ func (q *Queries) GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Contex
 }
 
 const ListGenreImageVariantsByImageIDs = `-- name: ListGenreImageVariantsByImageIDs :many
-SELECT genre_image_id,
+SELECT id,
+    genre_image_id,
     variant_type,
     label,
     content_type,
@@ -178,6 +179,7 @@ ORDER BY genre_image_id,
 `
 
 type ListGenreImageVariantsByImageIDsRow struct {
+	ID            uuid.UUID `json:"id"`
 	GenreImageID  uuid.UUID `json:"genre_image_id"`
 	VariantType   string    `json:"variant_type"`
 	Label         string    `json:"label"`
@@ -197,6 +199,7 @@ func (q *Queries) ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds
 	for rows.Next() {
 		var i ListGenreImageVariantsByImageIDsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.GenreImageID,
 			&i.VariantType,
 			&i.Label,

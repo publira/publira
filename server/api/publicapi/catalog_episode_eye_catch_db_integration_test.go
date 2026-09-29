@@ -31,13 +31,14 @@ func TestDBGetEpisodeDetailCarriesTheSeriesEyeCatch(t *testing.T) {
 	); err != nil {
 		t.Fatalf("insert series image: %v", err)
 	}
+	variantID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(ctx, `
 		INSERT INTO series_image_variants (
 			id, tenant_id, series_image_id, label, variant_type,
 			storage_provider, object_key, content_type, file_size_bytes, width, height
 		)
 		VALUES ($1, $2, $3, 'md', 'portrait', 'local', 'tenants/TENANTA/series/portrait/768', 'image/webp', 3072, 768, 1024)
-	`, uuid.Must(uuid.NewV7()), tenant.ID, imageID); err != nil {
+	`, variantID, tenant.ID, imageID); err != nil {
 		t.Fatalf("insert series image variant: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(ctx,
@@ -64,7 +65,7 @@ func TestDBGetEpisodeDetailCarriesTheSeriesEyeCatch(t *testing.T) {
 		if len(variants) != 1 {
 			t.Fatalf("eye_catch_image_variants = %+v, want one", variants)
 		}
-		if want := "/images/series/" + imageID.String() + "/portrait/768"; variants[0].Url != want {
+		if want := "/images/series/" + imageID.String() + "/portrait/768?v=" + variantID.String(); variants[0].Url != want {
 			t.Fatalf("variant url = %q, want %q", variants[0].Url, want)
 		}
 		if _, err := time.Parse(time.RFC3339, series.EyeCatchImageUpdatedAt); err != nil {

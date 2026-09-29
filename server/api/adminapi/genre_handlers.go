@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogslug"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -214,7 +215,7 @@ func (s *adminServer) genreEyeCatchVariantsByImageIDs(
 		mapped[row.GenreImageID] = append(mapped[row.GenreImageID], &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           fmt.Sprintf("/images/genres/%s/%s/%d", row.GenreImageID.String(), row.VariantType, row.Width),
+			Url:           protomapper.EyeCatchVariantURL("genres", row.GenreImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

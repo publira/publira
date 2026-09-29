@@ -347,7 +347,7 @@ func mapLabelEyeCatchVariants(labelImageID uuid.UUID, rows []dbmodels.ListLabelI
 		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           fmt.Sprintf("/images/labels/%s/%s/%d", labelImageID.String(), row.VariantType, row.Width),
+			Url:           protomapper.EyeCatchVariantURL("labels", labelImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

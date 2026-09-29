@@ -37,7 +37,8 @@ WHERE siv.series_image_id = $1
 LIMIT 1;
 
 -- name: ListSeriesImageVariantsByImageIDs :many
-SELECT series_image_id,
+SELECT id,
+    series_image_id,
     variant_type,
     label,
     content_type,
@@ -52,7 +53,9 @@ ORDER BY series_image_id,
 
 -- name: TouchSeriesImage :exec
 -- Records that the eye-catch changed after one of its ratios was replaced.
--- `updated_at` is what the console reads back and what busts the cached URL.
+-- The console compares this instant with the one it rendered. The delivered
+-- URL is cache-busted from the variant row, so the ratios that were not
+-- replaced keep the URLs they had.
 UPDATE series_images
 SET updated_at = NOW()
 WHERE id = $1;

@@ -1180,6 +1180,9 @@ func TestGenreImageServesTheStoredVariant(t *testing.T) {
 		want int
 	}{
 		{path: "/images/genres/" + mediaID.String() + "/portrait/600", want: http.StatusOK},
+		// The version query only keeps a cached response from being reused. The
+		// route still answers the ratio it names, whatever version is asked for.
+		{path: "/images/genres/" + mediaID.String() + "/portrait/600?v=11111111-1111-4111-8111-111111111111", want: http.StatusOK},
 		{path: "/images/genres/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
 		{path: "/images/genres/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
 		{path: "/images/genres/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},

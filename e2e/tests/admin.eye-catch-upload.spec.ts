@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
@@ -47,8 +47,18 @@ const edgeUrl = (pathname: string): string =>
 /** The delivery path each ratio's slot currently shows. */
 type AspectSources = Record<EyeCatchAspect, string>;
 
-/** sha256 of the image each of those paths delivers. */
+/** sha256 of the pixels each ratio's slot is showing. */
 type AspectDigests = Record<EyeCatchAspect, string>;
+
+/**
+ * One delivered size: the image route, the ratio, the width, and that row's
+ * version. `next/image` appends the loader's `w` and `fit` after the version.
+ */
+const eyeCatchDeliveryURL = (entityPath: string, aspect: string): RegExp =>
+  new RegExp(
+    String.raw`^/images/${entityPath}/[^/]+/${aspect}/\d+\?v=[0-9a-f-]{36}(?:&w=\d+&fit=[\w-]+)?$`,
+    "u"
+  );
 
 /**
  * The card for one ratio. The slot's picker button carries the ratio in its
@@ -135,34 +145,48 @@ const aspectSources = async (page: Page): Promise<AspectSources> => {
   return sources as AspectSources;
 };
 
-const aspectDigests = async (
-  request: APIRequestContext,
-  sources: AspectSources
-): Promise<AspectDigests> => {
-  const responses = await Promise.all(
-    EYE_CATCH_ASPECTS.map((aspect) => request.get(edgeUrl(sources[aspect])))
-  );
-  const bodies = await Promise.all(
-    responses.map((response) => response.body())
-  );
-
-  const digests: Partial<AspectDigests> = {};
-  for (const [index, aspect] of EYE_CATCH_ASPECTS.entries()) {
-    const response = responses[index];
-    expect(response.status(), `${aspect}: ${sources[aspect]}`).toBe(200);
-    expect(response.headers()["content-type"]).toMatch(/^image\//u);
-    digests[aspect] = createHash("sha256").update(bodies[index]).digest("hex");
-  }
-  return digests as AspectDigests;
+/**
+ * sha256 of the pixels an `<img>` is showing.
+ *
+ * `decode` waits for the current `src`, so a slot whose URL just changed is
+ * hashed after the browser has fetched that URL. A fetch from outside the
+ * page would miss the HTTP cache the element itself uses. The hash is taken
+ * here rather than in the page: the console is served on `admin.localhost`,
+ * which is not a secure context, so `crypto.subtle` is not there.
+ */
+const displayedDigest = async (image: Locator): Promise<string> => {
+  const encoded = await image.evaluate(async (element: HTMLImageElement) => {
+    await element.decode();
+    if (element.naturalWidth === 0) {
+      throw new Error("the image did not decode");
+    }
+    // A full-size copy of every ratio is enough to crash the page. A small
+    // draw still changes when the picture does and stays put when it does not.
+    const longest = Math.max(element.naturalWidth, element.naturalHeight);
+    const scale = Math.min(1, 64 / longest);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(element.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(element.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("the image did not decode");
+    }
+    context.drawImage(element, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  });
+  return createHash("sha256").update(encoded).digest("hex");
 };
 
-/** What every ratio delivers right now, through the paths the console shows. */
-const deliveredEyeCatch = async (
-  page: Page,
-  request: APIRequestContext
-): Promise<AspectDigests> => {
-  const sources = await aspectSources(page);
-  return await aspectDigests(request, sources);
+/** The image each ratio's slot is showing. The four slots are read together. */
+const displayedEyeCatch = async (page: Page): Promise<AspectDigests> => {
+  const entries = await Promise.all(
+    EYE_CATCH_ASPECTS.map(async (aspect) => {
+      const image = aspectSlot(page, aspect).getByRole("img");
+      await expect(image).toBeVisible();
+      return [aspect, await displayedDigest(image)] as const;
+    })
+  );
+  return Object.fromEntries(entries) as AspectDigests;
 };
 
 const expectAspectPaths = (
@@ -171,8 +195,24 @@ const expectAspectPaths = (
 ): void => {
   for (const aspect of EYE_CATCH_ASPECTS) {
     expect(sources[aspect], aspect).toMatch(
-      new RegExp(String.raw`^/images/${entityPath}/[^/]+/${aspect}/\d+$`, "u")
+      eyeCatchDeliveryURL(entityPath, aspect)
     );
+  }
+};
+
+/** A replacement changes that ratio's URL and leaves the other three alone. */
+const expectOnlyTheReplacedURLChanged = (
+  before: AspectSources,
+  after: AspectSources,
+  replaced: EyeCatchAspect
+): void => {
+  expect(after[replaced], replaced).not.toBe(before[replaced]);
+  for (const aspect of EYE_CATCH_ASPECTS) {
+    if (aspect !== replaced) {
+      expect(after[aspect], `${aspect} after replacing ${replaced}`).toBe(
+        before[aspect]
+      );
+    }
   }
 };
 
@@ -207,7 +247,6 @@ const expectNoEyeCatchYet = (page: Page): Promise<void> =>
  */
 const replaceEachAspectInTurn = async (
   page: Page,
-  request: APIRequestContext,
   delivered: AspectDigests,
   remaining: readonly EyeCatchAspect[]
 ): Promise<void> => {
@@ -216,29 +255,32 @@ const replaceEachAspectInTurn = async (
     return;
   }
 
+  const before = await aspectSources(page);
   await uploadAspectImage(page, aspect, EYE_CATCH_ASPECT_FIXTURES[aspect]);
   await expectMessage(
     aspectSlot(page, aspect),
     "The image for this ratio was replaced."
   );
 
-  const next = await deliveredEyeCatch(page, request);
+  const after = await aspectSources(page);
+  expectOnlyTheReplacedURLChanged(before, after, aspect);
+  const next = await displayedEyeCatch(page);
   expect(next[aspect], aspect).not.toBe(delivered[aspect]);
   expectOtherAspectsUnchanged(delivered, next, aspect);
 
-  await replaceEachAspectInTurn(page, request, next, rest);
+  await replaceEachAspectInTurn(page, next, rest);
 };
 
 /**
  * The console's eye-catch upload, from the file picker through the admin API
- * and image processing to the bytes the reader's origin serves.
+ * and image processing to the image the page shows.
  *
  * `server/internal/imageproc`, the admin API handlers, and the console
  * component each have their own tests; what only this suite can see is that
  * the three agree on one image. The ratios are independent — nothing records
  * where an image was derived from, and no ratio falls back to another — so
- * "the other three did not move" is compared byte for byte rather than by
- * presence.
+ * "the other three did not move" is the pixels on screen and the URL each
+ * slot names, rather than whether a slot is present.
  *
  * Each test creates the series, label, or genre it uploads to and drops it in
  * `afterEach`, so a run against a long-lived stack leaves nothing behind.
@@ -293,7 +335,6 @@ test.describe("admin eye-catch upload", () => {
 
   test("one upload fills every delivered ratio of a series", async ({
     page,
-    request,
   }) => {
     await openSeriesEyeCatchTab(page);
     // No eye-catch yet: the ratios are not offered at all.
@@ -303,20 +344,7 @@ test.describe("admin eye-catch upload", () => {
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "series");
-    // The console draws each preview from its own origin, not only names it.
-    await Promise.all(
-      EYE_CATCH_ASPECTS.map((aspect) =>
-        expect
-          .poll(() =>
-            aspectSlot(page, aspect)
-              .getByRole("img")
-              .evaluate((image: HTMLImageElement) => image.naturalWidth)
-          )
-          .toBeGreaterThan(0)
-      )
-    );
-
-    const digests = await aspectDigests(request, sources);
+    const digests = await displayedEyeCatch(page);
     // Four crops of one source, so four different images — a ratio serving
     // another ratio's bytes would have passed everything above.
     expect(new Set(Object.values(digests)).size).toBe(EYE_CATCH_ASPECTS.length);
@@ -324,23 +352,22 @@ test.describe("admin eye-catch upload", () => {
 
   test("replacing one ratio leaves the other three exactly as they were", async ({
     page,
-    request,
   }) => {
     await openSeriesEyeCatchTab(page);
     await uploadEyeCatchSource(page);
 
-    const delivered = await deliveredEyeCatch(page, request);
-    await replaceEachAspectInTurn(page, request, delivered, EYE_CATCH_ASPECTS);
+    const delivered = await displayedEyeCatch(page);
+    await replaceEachAspectInTurn(page, delivered, EYE_CATCH_ASPECTS);
   });
 
   test("a source below the ratio's minimum is refused and changes nothing", async ({
     page,
-    request,
   }) => {
     await openSeriesEyeCatchTab(page);
     await uploadEyeCatchSource(page);
 
-    const before = await deliveredEyeCatch(page, request);
+    const beforeSources = await aspectSources(page);
+    const before = await displayedEyeCatch(page);
 
     await uploadAspectImage(
       page,
@@ -354,17 +381,18 @@ test.describe("admin eye-catch upload", () => {
       "For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1200x1600px"
     );
 
-    expect(await deliveredEyeCatch(page, request)).toEqual(before);
+    expect(await aspectSources(page)).toEqual(beforeSources);
+    expect(await displayedEyeCatch(page)).toEqual(before);
   });
 
   test("a frame nobody touched cuts where the cover image already did", async ({
     page,
-    request,
   }) => {
     await openSeriesEyeCatchTab(page);
     await uploadEyeCatchSource(page);
 
-    const before = await deliveredEyeCatch(page, request);
+    const beforeSources = await aspectSources(page);
+    const before = await displayedEyeCatch(page);
 
     // The very file the cover image was cut from, offered again through one
     // ratio's own slot with the frame left where the dialog opened it. The
@@ -376,19 +404,21 @@ test.describe("admin eye-catch upload", () => {
       "The image for this ratio was replaced."
     );
 
-    const after = await deliveredEyeCatch(page, request);
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(beforeSources, afterSources, "landscape");
+    const after = await displayedEyeCatch(page);
     expect(after.landscape).toBe(before.landscape);
     expectOtherAspectsUnchanged(before, after, "landscape");
   });
 
   test("the frame decides which part of the upload survives", async ({
     page,
-    request,
   }) => {
     await openSeriesEyeCatchTab(page);
     await uploadEyeCatchSource(page);
 
-    const centred = await deliveredEyeCatch(page, request);
+    const beforeSources = await aspectSources(page);
+    const centred = await displayedEyeCatch(page);
 
     await uploadAspectImage(
       page,
@@ -403,7 +433,9 @@ test.describe("admin eye-catch upload", () => {
 
     // Same file, same ratio, same sizes: only the rectangle the editor framed
     // separates these bytes from the ones above.
-    const framed = await deliveredEyeCatch(page, request);
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(beforeSources, afterSources, "landscape");
+    const framed = await displayedEyeCatch(page);
     expect(framed.landscape).not.toBe(centred.landscape);
     expectOtherAspectsUnchanged(centred, framed, "landscape");
   });
@@ -423,7 +455,7 @@ test.describe("admin eye-catch upload", () => {
     const cover = page.getByRole("img", { name: title });
     await expect(cover).toHaveAttribute(
       "src",
-      /^\/images\/series\/[^/]+\/portrait\/\d+$/u
+      eyeCatchDeliveryURL("series", "portrait")
     );
     // The browser fetched it and got an image back, not a 404 page.
     await expect
@@ -433,9 +465,56 @@ test.describe("admin eye-catch upload", () => {
       .toBeGreaterThan(0);
   });
 
+  /**
+   * The browser keeps a public image for an hour. Replacing a ratio has to
+   * hand the page a URL it has not fetched, on the console and on the
+   * storefront, or the slot keeps painting the image it replaced.
+   */
+  test("replacing one ratio shows the new image on the console and the storefront", async ({
+    page,
+  }) => {
+    const { publicId, title } = await openSeriesEyeCatchTab(page);
+    await uploadEyeCatchSource(page);
+
+    const beforeSources = await aspectSources(page);
+    const beforeShown = await displayedEyeCatch(page);
+
+    await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
+    const cover = page.getByRole("img", { name: title });
+    await expect(cover).toHaveAttribute("src", beforeSources.portrait);
+    const storefrontBefore = await displayedDigest(cover);
+
+    await page.goto(adminUrl(`/series/${publicId}?tab=eye-catch`));
+    await uploadAspectImage(
+      page,
+      "portrait",
+      EYE_CATCH_ASPECT_FIXTURES.portrait
+    );
+    await expectMessage(
+      aspectSlot(page, "portrait"),
+      "The image for this ratio was replaced."
+    );
+
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(beforeSources, afterSources, "portrait");
+    const afterShown = await displayedEyeCatch(page);
+    expect(afterShown.portrait).not.toBe(beforeShown.portrait);
+    expectOtherAspectsUnchanged(beforeShown, afterShown, "portrait");
+
+    // A navigation, so an image URL the browser already fetched may be served
+    // from its cache. The storefront's cache tags are dropped out of band, so
+    // the new URL is polled for rather than read once.
+    await expect(async () => {
+      await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
+      await expect(cover).toHaveAttribute("src", afterSources.portrait, {
+        timeout: 5000,
+      });
+    }).toPass({ timeout: 60_000 });
+    expect(await displayedDigest(cover)).not.toBe(storefrontBefore);
+  });
+
   test("a label's eye-catch fills every ratio and replaces one at a time", async ({
     page,
-    request,
   }) => {
     await openLabelEyeCatchTab(page);
     await expectNoEyeCatchYet(page);
@@ -445,7 +524,7 @@ test.describe("admin eye-catch upload", () => {
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "labels");
 
-    const before = await aspectDigests(request, sources);
+    const before = await displayedEyeCatch(page);
     expect(new Set(Object.values(before)).size).toBe(EYE_CATCH_ASPECTS.length);
 
     await uploadAspectImage(
@@ -458,7 +537,9 @@ test.describe("admin eye-catch upload", () => {
       "The image for this ratio was replaced."
     );
 
-    const after = await deliveredEyeCatch(page, request);
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(sources, afterSources, "landscape");
+    const after = await displayedEyeCatch(page);
     expect(after.landscape).not.toBe(before.landscape);
     expectOtherAspectsUnchanged(before, after, "landscape");
   });
@@ -470,7 +551,6 @@ test.describe("admin eye-catch upload", () => {
    */
   test("a genre's eye-catch is uploaded, replaced one ratio at a time, and cleared from its row", async ({
     page,
-    request,
   }) => {
     const name = `E2E Eye-catch Genre ${uniqueSuffix()}`;
     createdGenreNames.push(name);
@@ -493,7 +573,7 @@ test.describe("admin eye-catch upload", () => {
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "genres");
 
-    const before = await aspectDigests(request, sources);
+    const before = await displayedEyeCatch(page);
     expect(new Set(Object.values(before)).size).toBe(EYE_CATCH_ASPECTS.length);
 
     await uploadAspectImage(
@@ -506,14 +586,16 @@ test.describe("admin eye-catch upload", () => {
       "The image for this ratio was replaced."
     );
 
-    const after = await deliveredEyeCatch(page, request);
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(sources, afterSources, "landscape");
+    const after = await displayedEyeCatch(page);
     expect(after.landscape).not.toBe(before.landscape);
     expectOtherAspectsUnchanged(before, after, "landscape");
 
     await page.getByRole("link", { name: "Back to list" }).click();
     await expect(thumbnail).toHaveAttribute(
       "src",
-      /^\/images\/genres\/[^/]+\/square\/\d+/u
+      eyeCatchDeliveryURL("genres", "square")
     );
 
     await openEyeCatchTab();
@@ -568,7 +650,7 @@ test.describe("admin eye-catch upload", () => {
       await page.goto(edgeUrl(hostPath("/genres")));
       await expect(tileImages).toHaveAttribute(
         "src",
-        /^\/images\/genres\/[^/]+\/portrait\/\d+/u,
+        eyeCatchDeliveryURL("genres", "portrait"),
         { timeout: 5000 }
       );
     }).toPass({ timeout: 60_000 });
@@ -577,7 +659,7 @@ test.describe("admin eye-catch upload", () => {
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(
       page.getByRole("main").locator('img[src^="/images/genres/"]')
-    ).toHaveAttribute("src", /^\/images\/genres\/[^/]+\/landscape\/\d+/u);
+    ).toHaveAttribute("src", eyeCatchDeliveryURL("genres", "landscape"));
 
     await openEyeCatchTab();
     await page
