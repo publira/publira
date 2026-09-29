@@ -147,7 +147,11 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 	}
 	var cfg paymentsettings.PublicConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
-		saved, err := s.paymentStore(txCtx).Upsert(txCtx, tenant.ID, paymentsettings.UpdateInput{
+		// The audit row is written on the transaction so it commits with the
+		// save; the process's recorder writes on a connection of its own.
+		txQueries := s.queriesFor(txCtx)
+		store := paymentsettings.New(txQueries, s.encryptor, s.paymentProviders, auditlog.New(txQueries, s.logger), s.logger)
+		saved, err := store.Upsert(txCtx, tenant.ID, paymentsettings.UpdateInput{
 			Provider: req.Msg.Provider,
 			Enabled:  req.Msg.Enabled,
 			Fields:   fields,
