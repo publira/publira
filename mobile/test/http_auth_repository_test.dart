@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/connect_client.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
@@ -120,6 +122,51 @@ void main() {
     expect(age.hasBirthDate, isFalse);
     expect(age.verification, AgeVerification.none);
   });
+
+  test(
+    'readReaderAge reports a tenant read that fails before GetMe answers',
+    () async {
+      final tenantFirst = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: _TenantFirstClient(baseUrl: server.baseUrl),
+      );
+      // Resolved once while the API answers, so only the read fails.
+      await tenantFirst.readReaderAge(stored);
+      server.tenantStatus = HttpStatus.serviceUnavailable;
+
+      await expectLater(
+        tenantFirst.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.network,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'readReaderAge reports a rejected session over a failed tenant',
+    () async {
+      await auth.readReaderAge(stored);
+      server
+        ..tenantStatus = HttpStatus.serviceUnavailable
+        ..activeAccessToken = 'another-token';
+
+      await expectLater(
+        auth.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.sessionExpired,
+          ),
+        ),
+      );
+    },
+  );
 
   test('recordBirthDate writes the date beside the name it holds', () async {
     final written = await auth.recordBirthDate(
@@ -667,4 +714,36 @@ void main() {
     );
     expect(server.memberDeleted, isFalse);
   });
+}
+
+/// Answers `GetMe` only once the `GetTenant` read beside it has settled, so a
+/// failed tenant read reaches the repository before the user does.
+class _TenantFirstClient extends ConnectClient {
+  _TenantFirstClient({required super.baseUrl});
+
+  final _tenantSettled = StreamController<void>.broadcast();
+
+  @override
+  Future<Map<String, Object?>> unary(
+    String procedure,
+    Map<String, Object?> body, {
+    String? tenantId,
+    String? accessToken,
+  }) async {
+    if (procedure.endsWith('/GetMe')) {
+      await _tenantSettled.stream.first;
+    }
+    try {
+      return await super.unary(
+        procedure,
+        body,
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+    } finally {
+      if (procedure.endsWith('/GetTenant')) {
+        _tenantSettled.add(null);
+      }
+    }
+  }
 }

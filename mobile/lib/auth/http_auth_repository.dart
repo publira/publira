@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -200,15 +202,19 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<ReaderAge> readReaderAge(AuthSession session) async {
-    final tenantRead = _getTenant();
     final Map<String, Object?> user;
+    final Map<String, Object?> tenant;
     try {
-      user = await _getMe(session);
-    } catch (_) {
-      tenantRead.ignore();
-      rethrow;
+      (user, tenant) = await (_getMe(session), _getTenant()).wait;
+    } on ParallelWaitError<
+      (Map<String, Object?>?, Map<String, Object?>?),
+      (AsyncError?, AsyncError?)
+    > catch (error) {
+      // A rejected session outweighs an unreadable tenant, whichever failed
+      // first, so the caller can still tell the reader to sign in again.
+      final failed = error.errors.$1 ?? error.errors.$2!;
+      Error.throwWithStackTrace(failed.error, failed.stackTrace);
     }
-    final tenant = await tenantRead;
     return ReaderAge(
       birthDate: _readString(user, 'birthDate'),
       timeZone: _readString(tenant, 'timezone'),
