@@ -50,6 +50,21 @@ test.describe("web-admin notification bell", () => {
     await bell.click();
     const more = menu.getByRole("link", { name: "View all" });
     await expect(more).toHaveAttribute("href", "/notifications");
+    // The trigger sits in the sticky header, so the menu has to hold still in
+    // the frame the page scrolls in: a click's press and release are otherwise
+    // split across two elements.
+    const { drift, scrolled } = await more.evaluate((link) => {
+      const before = link.getBoundingClientRect().y;
+      window.scrollBy(0, 200);
+      const result = {
+        drift: link.getBoundingClientRect().y - before,
+        scrolled: window.scrollY,
+      };
+      window.scrollTo(0, 0);
+      return result;
+    });
+    expect(scrolled).toBeGreaterThan(0);
+    expect(drift).toBe(0);
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
     await expect(page).toHaveURL(/\/notifications\/?$/u);
     // The menu transitions out, so it is still in the document for a frame

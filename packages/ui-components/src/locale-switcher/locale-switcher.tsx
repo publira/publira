@@ -113,12 +113,21 @@ export const LocaleSwitcherTrigger = ({
   </PopoverTrigger>
 );
 
+/**
+ * Fixed, like the sticky header the switcher is placed in, so the popover does
+ * not trail its trigger by a frame while the page scrolls.
+ */
 export const LocaleSwitcherContent = ({
   children,
 }: {
   children: ReactNode;
 }) => (
-  <PopoverContent align="end" className="w-48" sideOffset={8}>
+  <PopoverContent
+    align="end"
+    className="w-48"
+    positionMethod="fixed"
+    sideOffset={8}
+  >
     {children}
   </PopoverContent>
 );
