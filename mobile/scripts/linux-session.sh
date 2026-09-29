@@ -11,7 +11,7 @@ linux_die() {
   exit 1
 }
 
-for command in xvfb-run dbus-run-session gnome-keyring-daemon pkg-config; do
+for command in xvfb-run xauth dbus-run-session gnome-keyring-daemon pkg-config; do
   command -v "${command}" > /dev/null ||
     linux_die "${command} is missing; run: task mobile:linux-install"
 done

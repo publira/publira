@@ -6,7 +6,8 @@
 set -euo pipefail
 
 packages=()
-command -v xvfb-run > /dev/null || packages+=(xvfb xauth)
+command -v xvfb-run > /dev/null || packages+=(xvfb)
+command -v xauth > /dev/null || packages+=(xauth)
 command -v dbus-run-session > /dev/null || packages+=(dbus-daemon)
 command -v gnome-keyring-daemon > /dev/null || packages+=(gnome-keyring)
 pkg-config --exists libsecret-1 2> /dev/null || packages+=(libsecret-1-dev)

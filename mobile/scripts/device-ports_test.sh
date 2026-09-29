@@ -54,6 +54,9 @@ printf 'xvfb-run\n' >> "${STUB_LOG}"
 while [[ "$1" == --* ]]; do shift; done
 exec "$@"
 EOF
+cat > "${stub_bin}/xauth" << 'EOF'
+#!/usr/bin/env bash
+EOF
 cat > "${stub_bin}/gnome-keyring-daemon" << 'EOF'
 #!/usr/bin/env bash
 cat > /dev/null
