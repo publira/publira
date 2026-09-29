@@ -28,6 +28,12 @@ import {
 } from "#lib/payment-settings";
 import type { PaymentCredentialFieldUpdate } from "#lib/payment-settings";
 import {
+  hasSecretKey,
+  secretKeyFormInput,
+  secretKeySchema,
+  toSecretKeyUpdate,
+} from "#lib/secret-key-form";
+import {
   tenantStorePaymentSettingsCacheTag,
   updateTenantStorePaymentSettings,
 } from "#lib/store-payment-settings";
@@ -38,12 +44,6 @@ import {
   updateTenantPurchaseSettings,
 } from "#lib/tenant-purchase-settings";
 
-import {
-  hasSecretKey,
-  secretKeyFormInput,
-  secretKeySchema,
-  toSecretKeyUpdate,
-} from "../../_lib/secret-key-form";
 import type {
   TenantPaymentSettingsFieldErrors,
   TenantPaymentSettingsFormState,

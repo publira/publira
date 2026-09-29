@@ -5,8 +5,8 @@ import {
   SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
-} from "#lib/email-settings-shared";
-import { flagOneFormSchema, optionalFileFormSchema } from "#lib/form-schemas";
+} from "./email-settings-shared";
+import { flagOneFormSchema, optionalFileFormSchema } from "./form-schemas";
 
 /** A key file is a few kilobytes; anything far larger is not one. */
 const MAX_SECRET_KEY_FILE_BYTES = 64 * 1024;

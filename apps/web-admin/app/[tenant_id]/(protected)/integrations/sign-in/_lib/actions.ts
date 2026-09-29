@@ -13,16 +13,15 @@ import { assertSameOrigin } from "#lib/csrf";
 import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
-  tenantSignInSettingsCacheTag,
-  updateTenantSignInSettings,
-} from "#lib/tenant-sign-in-settings";
-
-import {
   hasSecretKey,
   secretKeyFormInput,
   secretKeySchema,
   toSecretKeyUpdate,
-} from "../../_lib/secret-key-form";
+} from "#lib/secret-key-form";
+import {
+  tenantSignInSettingsCacheTag,
+  updateTenantSignInSettings,
+} from "#lib/tenant-sign-in-settings";
 
 // The API's patterns (server/internal/signin), which it applies after trimming
 // and, for the two Apple IDs, capitalizing.

@@ -28,13 +28,6 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { Message } from "#components/message";
-import { storeStatus } from "#lib/store-payment-settings-shared";
-import type {
-  StoreStatus,
-  TenantStorePaymentSettings,
-} from "#lib/store-payment-settings-shared";
-
 import {
   CredentialsEnabled,
   CredentialsEnabledCheckbox,
@@ -44,7 +37,14 @@ import {
   SecretKeyModeButton,
   SecretKeyText,
   SecretKeyWhile,
-} from "../../_components/credential-controls";
+} from "#components/credential-controls";
+import { Message } from "#components/message";
+import { storeStatus } from "#lib/store-payment-settings-shared";
+import type {
+  StoreStatus,
+  TenantStorePaymentSettings,
+} from "#lib/store-payment-settings-shared";
+
 import { updateTenantStorePaymentSettingsAction } from "../_lib/actions";
 
 const statusTone: Record<StoreStatus, BadgeTone> = {
