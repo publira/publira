@@ -293,6 +293,31 @@ export const WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL = envUrl(
 );
 
 /**
+ * Public sites of the tenants from `db/seeds/scenarios/350_social_sign_in.sql`.
+ * Which providers a tenant offers changes its sign-in screen, so neither is a
+ * tenant another suite signs in on.
+ */
+export const WEB_HOST_SOCIAL_SIGN_IN_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_SOCIAL_SIGN_IN_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "social.localhost")
+);
+
+export const WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "social-consent.localhost")
+);
+
+/**
+ * The stand-in for Apple's and Google's signing keys
+ * (`scripts/sign-in-provider.ts`), which signs the ID tokens a spec hands the
+ * site as if a provider had issued them.
+ */
+export const SIGN_IN_PROVIDER_BASE_URL = envUrl(
+  "PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL",
+  "http://127.0.0.1:8400"
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

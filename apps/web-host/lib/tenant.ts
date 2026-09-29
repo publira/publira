@@ -14,6 +14,7 @@ import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
+import type { SignInProvider } from "./sign-in-provider";
 
 /**
  * The locale code the API answered with, or a throw when this build has no
@@ -125,6 +126,11 @@ export interface TenantSiteInfo {
   /** Which ratings this tenant makes a reader prove an age for. */
   ageVerification: TenantAgeVerification;
   /**
+   * The Services ID the site signs a reader in with Apple through. Absent
+   * where the tenant does not offer Apple on the site.
+   */
+  appleServicesId?: string;
+  /**
    * The store listings of the tenant's app, where an episode sold in the app
    * alone sends the reader. Absent where the app is not listed in that store.
    */
@@ -136,6 +142,11 @@ export interface TenantSiteInfo {
   defaultLocale: Locale;
   domain: string;
   googlePlayUrl?: string;
+  /**
+   * The web client ID the site signs a reader in with Google through. Absent
+   * where the tenant does not offer Google.
+   */
+  googleWebClientId?: string;
   /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
@@ -263,6 +274,7 @@ export const getTenantSiteInfo = async (
       acceptsPayments: response.acceptsPayments === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
       appStoreUrl: nonEmpty(response.appStoreUrl),
+      appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
       // The server resolves the tenant value against the platform default
@@ -272,6 +284,7 @@ export const getTenantSiteInfo = async (
       defaultLocale: requireSupportedLocale(response.defaultLocale),
       domain: trimmed(response.tenantDomain) ?? "",
       googlePlayUrl: nonEmpty(response.googlePlayUrl),
+      googleWebClientId: nonEmpty(response.googleSignIn?.webClientId),
       iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),
       iconImageVariants: toTenantImageVariants(
         response.theme?.iconImageVariants
@@ -437,6 +450,20 @@ export const getTenantAgeVerification = async (
 ): Promise<TenantAgeVerification> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.ageVerification ?? "none";
+};
+
+/**
+ * The client ID the site signs a reader in with, per provider the tenant
+ * offers. An unavailable read offers none, and the email form stays.
+ */
+export const getTenantSignInClients = async (
+  tenantId: string
+): Promise<Partial<Record<SignInProvider, string>>> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return {
+    ...(tenant?.appleServicesId ? { apple: tenant.appleServicesId } : {}),
+    ...(tenant?.googleWebClientId ? { google: tenant.googleWebClientId } : {}),
+  };
 };
 
 /**

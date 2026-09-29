@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -5,6 +6,7 @@ const {
   mockChangePublicPassword,
   mockRedirect,
   mockRequirePublicSession,
+  mockUnlinkMyIdentity,
   mockWritePublicSessionCookie,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -13,6 +15,7 @@ const {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
   mockRequirePublicSession: vi.fn(),
+  mockUnlinkMyIdentity: vi.fn(),
   mockWritePublicSessionCookie: vi.fn(),
 }));
 
@@ -23,6 +26,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("#lib/auth", () => ({
   changePublicPassword: mockChangePublicPassword,
   requestPublicEmailChange: vi.fn(),
+  unlinkMyIdentity: mockUnlinkMyIdentity,
 }));
 
 vi.mock("#lib/auth-session", () => ({
@@ -179,6 +183,69 @@ describe("changePasswordAction", () => {
 
     expect(mockRequirePublicSession).not.toHaveBeenCalled();
     expect(mockChangePublicPassword).not.toHaveBeenCalled();
+    expect(lastFlash().status).toBe("error");
+  });
+});
+
+const unlinkForm = (provider = "google"): FormData => {
+  const data = new FormData();
+  data.set("locale", "en");
+  data.set("provider", provider);
+  data.set("tenantId", tenantId);
+  return data;
+};
+
+describe("unlinkIdentityAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("unlinks the provider and says so", async () => {
+    mockUnlinkMyIdentity.mockResolvedValueOnce({ ok: true });
+    const { unlinkIdentityAction } = await import("./actions");
+
+    await expect(unlinkIdentityAction(unlinkForm())).rejects.toThrow(
+      "NEXT_REDIRECT"
+    );
+
+    expect(mockUnlinkMyIdentity).toHaveBeenCalledWith(
+      tenantId,
+      "google",
+      accessToken
+    );
+    expect(lastFlash()).toEqual({
+      message: "The account was unlinked.",
+      status: "success",
+    });
+  });
+
+  it("explains why the last way in stays linked", async () => {
+    mockUnlinkMyIdentity.mockResolvedValueOnce({
+      error: new ConnectError("last", Code.FailedPrecondition),
+      ok: false,
+    });
+    const { unlinkIdentityAction } = await import("./actions");
+
+    await expect(unlinkIdentityAction(unlinkForm())).rejects.toThrow(
+      "NEXT_REDIRECT"
+    );
+
+    expect(lastFlash()).toEqual({
+      message:
+        "Your account has no password, so the last linked account stays linked.",
+      status: "error",
+    });
+  });
+
+  it("refuses a provider the site does not know", async () => {
+    const { unlinkIdentityAction } = await import("./actions");
+
+    await expect(unlinkIdentityAction(unlinkForm("github"))).rejects.toThrow(
+      "NEXT_REDIRECT"
+    );
+
+    expect(mockUnlinkMyIdentity).not.toHaveBeenCalled();
     expect(lastFlash().status).toBe("error");
   });
 });

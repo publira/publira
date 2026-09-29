@@ -73,6 +73,8 @@ export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http:
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.
 export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT}}"
+# The sign-in-provider stand-in, which a spec signs the ID tokens it posts with.
+export PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL="${PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}}"
 # Built from the port like the rest, so a second stack's screenshot projects
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"

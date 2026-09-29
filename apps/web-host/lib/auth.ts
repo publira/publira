@@ -3,7 +3,11 @@ import {
   isRejectedRequestRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { IdentityProvider } from "@publira/api-client/public/auth";
+import type { LinkedIdentity } from "@publira/api-client/public/auth";
 import pRetry, { AbortError } from "p-retry";
 
 import {
@@ -12,6 +16,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import type { SignInProvider } from "./sign-in-provider";
 
 export {
   PUBLIC_SESSION_COOKIE_NAME,
@@ -93,6 +98,184 @@ export const loginPublic = async (
       return null;
     }
     throw error;
+  }
+};
+
+const IDENTITY_PROVIDERS: Record<SignInProvider, IdentityProvider> = {
+  apple: IdentityProvider.APPLE,
+  google: IdentityProvider.GOOGLE,
+};
+
+const toSignInProvider = (
+  provider: IdentityProvider
+): SignInProvider | null => {
+  switch (provider) {
+    case IdentityProvider.APPLE: {
+      return "apple";
+    }
+    case IdentityProvider.GOOGLE: {
+      return "google";
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An ID token a provider issued, and what the API needs beside it. */
+export interface IdTokenSignIn {
+  /** Apple's authorization code, and empty from Google. */
+  authorizationCode: string;
+  idToken: string;
+  nonce: string;
+  provider: SignInProvider;
+  /** The `redirect_uri` the authorization request was sent with. */
+  redirectUri: string;
+}
+
+/** Read only when the sign-in creates the account. */
+export interface IdTokenSignUp {
+  agreedPageVersionIds: string[];
+  birthDate: string;
+  name: string;
+}
+
+export type IdTokenSignInOutcome =
+  | { kind: "signed_in"; session: PublicSession }
+  /** No account matched, and the tenant asks for consent before one is made. */
+  | { kind: "consent_required" }
+  | { error: unknown; kind: "refused" };
+
+/**
+ * Sign a reader in with an ID token, creating the account on the first sign-in.
+ *
+ * A consent the tenant asks for and did not get is `invalid_argument` on
+ * `agreed_page_version_ids`, and the API leaves the nonce unspent then, so the
+ * caller asks for it and sends the same token again.
+ */
+export const loginWithIdToken = async (
+  tenantId: string,
+  signIn: IdTokenSignIn,
+  signUp?: IdTokenSignUp
+): Promise<IdTokenSignInOutcome> => {
+  try {
+    const response = await apiClient.auth.loginWithIdToken(
+      {
+        agreedPageVersionIds: signUp?.agreedPageVersionIds ?? [],
+        authorizationCode: signIn.authorizationCode,
+        birthDate: signUp?.birthDate ?? "",
+        idToken: signIn.idToken,
+        name: signUp?.name ?? "",
+        nonce: signIn.nonce,
+        provider: IDENTITY_PROVIDERS[signIn.provider],
+        redirectUri: signIn.redirectUri,
+        tenant: { tenantId },
+      },
+      await buildClientAddressHeaders()
+    );
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+    if (!accessToken || !expiresAt) {
+      throw new Error("LoginWithIdToken answered without an access token");
+    }
+    return {
+      kind: "signed_in",
+      session: { accessToken, expiresAt: new Date(expiresAt) },
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    if (
+      rpcErrorDisposition(error) === "invalid-argument" &&
+      rpcErrorHasFieldViolation(error, "agreed_page_version_ids")
+    ) {
+      return { kind: "consent_required" };
+    }
+    return { error, kind: "refused" };
+  }
+};
+
+/** The generated `LinkedIdentity` fields {@link listMyIdentities} reads. */
+type RawLinkedIdentity = Pick<
+  LinkedIdentity,
+  "email" | "linkedAt" | "provider"
+>;
+
+export interface MyIdentity {
+  /** The address the provider's account carried when it was linked. */
+  email: string;
+  /** RFC 3339. */
+  linkedAt: string;
+  provider: SignInProvider;
+}
+
+export interface MyIdentities {
+  /**
+   * False for an account a provider sign-in created: it confirms a deletion
+   * with a fresh sign-in, and keeps its last linked provider.
+   */
+  hasPassword: boolean;
+  identities: MyIdentity[];
+}
+
+const toMyIdentities = (identities: RawLinkedIdentity[]): MyIdentity[] =>
+  identities.flatMap((identity) => {
+    const provider = toSignInProvider(identity.provider);
+    return provider
+      ? [{ email: identity.email, linkedAt: identity.linkedAt, provider }]
+      : [];
+  });
+
+export const listMyIdentities = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<MyIdentities | null> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.auth.listMyIdentities(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return {
+      hasPassword: response.hasPassword,
+      identities: toMyIdentities(response.identities),
+    };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    if (isExpectedNullableRpcError(error)) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+/**
+ * Unlink a provider from the signed-in reader's account. The API refuses to
+ * take the last one from an account without a password, which comes back as
+ * the error for the form to word.
+ */
+export const unlinkMyIdentity = async (
+  tenantId: string,
+  provider: SignInProvider,
+  accessToken?: string
+): Promise<{ ok: true } | { error: unknown; ok: false }> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    await apiClient.auth.unlinkIdentity(
+      { provider: IDENTITY_PROVIDERS[provider], tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return { ok: true };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    return { error, ok: false };
   }
 };
 
@@ -479,9 +662,15 @@ export const updateMe = async (
   }
 };
 
+/**
+ * Delete the signed-in reader's account, confirmed with its password or, for
+ * an account without one, with a fresh sign-in to a linked provider.
+ */
 export const deleteMe = async (
   tenantId: string,
-  password: string,
+  confirmation:
+    | { password: string }
+    | { idToken: string; nonce: string; provider: SignInProvider },
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
@@ -491,10 +680,14 @@ export const deleteMe = async (
 
   try {
     await apiClient.auth.deleteMe(
-      {
-        password,
-        tenant: { tenantId },
-      },
+      "password" in confirmation
+        ? { password: confirmation.password, tenant: { tenantId } }
+        : {
+            idToken: confirmation.idToken,
+            nonce: confirmation.nonce,
+            provider: IDENTITY_PROVIDERS[confirmation.provider],
+            tenant: { tenantId },
+          },
       buildSessionHeaders(sid)
     );
 

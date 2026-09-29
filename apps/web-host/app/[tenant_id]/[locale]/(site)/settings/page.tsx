@@ -8,7 +8,7 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { deleteMe, getMe } from "#lib/auth";
+import { deleteMe, getMe, listMyIdentities } from "#lib/auth";
 import {
   clearPublicSessionCookie,
   requirePublicSession,
@@ -18,7 +18,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantAgeVerification } from "#lib/tenant";
+import { getTenantAgeVerification, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -63,7 +63,7 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   const deleted = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
-    () => deleteMe(tenantId, password, accessToken),
+    () => deleteMe(tenantId, { password }, accessToken),
     tenantId
   );
   if (!deleted) {
@@ -217,6 +217,33 @@ const ProfileSectionFallback = () => (
   </section>
 );
 
+/**
+ * The deletion control with the confirmation the account can give. A failed
+ * read leaves the password form.
+ */
+const DeleteAccountControl = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [mine, clients] = await Promise.all([
+    withPublicSessionReauth(
+      locale,
+      SETTINGS_RETURN_TO,
+      () => listMyIdentities(tenantId),
+      tenantId
+    ),
+    getTenantSignInClients(tenantId),
+  ]);
+  const linked = new Set(mine?.identities.map((identity) => identity.provider));
+
+  return (
+    <DeleteAccountModal
+      canConfirmWithApple={linked.has("apple") && Boolean(clients.apple)}
+      canConfirmWithGoogle={linked.has("google") && Boolean(clients.google)}
+      deleteAction={deleteAccountAction}
+      hasPassword={mine?.hasPassword ?? true}
+    />
+  );
+};
+
 const DeleteSection = () => (
   <section className="border border-destructive/40 bg-destructive/5 p-6">
     <h2 className="mb-2 text-lg font-semibold text-destructive">
@@ -231,7 +258,7 @@ const DeleteSection = () => (
     </p>
     <div className="flex justify-end">
       <Suspense fallback={<SkeletonLine className="h-9 w-36" />}>
-        <DeleteAccountModal deleteAction={deleteAccountAction} />
+        <DeleteAccountControl />
       </Suspense>
     </div>
   </section>

@@ -2952,6 +2952,22 @@
         "title": "메일 확인",
         "to_resend_verification": "메일이 도착하지 않았나요?"
       },
+      "social": {
+        "continue": {
+          "description": "아래 페이지에 동의하면 계정이 만들어집니다.",
+          "submit": "계정 만들기",
+          "title": "회원가입 완료"
+        },
+        "continue_with_apple": "Apple로 계속하기",
+        "continue_with_google": "Google로 계속하기",
+        "divider": "또는",
+        "errors": {
+          "expired": "로그인 시간이 초과되었습니다. 처음부터 다시 시도해 주세요.",
+          "failed": "로그인하지 못했습니다. 다시 시도해 주세요.",
+          "refused": "이 계정으로는 로그인할 수 없습니다. 이메일 주소로 로그인해 주세요.",
+          "unavailable": "지금은 이 로그인 방법을 사용할 수 없습니다."
+        }
+      },
       "verify": {
         "failed": "이메일 주소를 확인하지 못했습니다. 링크가 만료되었거나 유효하지 않을 수 있습니다.",
         "title": "이메일 확인",
@@ -3462,11 +3478,15 @@
       "current_password_label": "현재 비밀번호",
       "delete_confirm_description": "계정을 삭제하려면 현재 비밀번호를 입력해 주세요.",
       "delete_confirm_title": "계정 삭제 확인",
+      "delete_confirm_with_provider": "이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인해 주세요.",
       "delete_description": "계정을 삭제하면 계정에 다시 접근할 수 없습니다. 이 작업은 되돌릴 수 없습니다.",
       "delete_failed": "계정을 삭제하지 못했습니다. 입력한 내용을 확인해 주세요.",
       "delete_heading": "계정 삭제",
+      "delete_no_provider": "연결된 계정 중 지금 이 사이트에서 로그인할 수 있는 계정이 없습니다. 계정을 삭제하려면 사이트에 문의해 주세요.",
       "delete_open": "계정 삭제",
       "delete_submit": "내 계정 삭제하기",
+      "delete_with_apple": "Apple로 확인",
+      "delete_with_google": "Google로 확인",
       "deleted": "계정을 삭제했습니다. 그동안 이용해 주셔서 감사합니다.",
       "description": "프로필, 팔로우, 알림, 보안, 계정 정보를 관리할 수 있습니다.",
       "email_change_failed": "이메일 변경을 요청하지 못했습니다. 입력한 내용을 확인해 주세요.",
@@ -3496,6 +3516,14 @@
       "follows_unavailable": "공개가 중단된 대상은 이 목록에서 빠집니다.",
       "follows_unpublished_title": "현재 공개되지 않음",
       "heading": "계정 설정",
+      "linked_account_last": "이 계정에는 비밀번호가 없어 마지막으로 연결된 계정은 해제할 수 없습니다.",
+      "linked_account_linked_at": "{$date}에 연결됨",
+      "linked_account_unlink": "연결 해제",
+      "linked_account_unlink_aria": "{$provider} 연결 해제",
+      "linked_account_unlink_failed": "연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "linked_account_unlinked": "연결을 해제했습니다.",
+      "linked_accounts_description": "로그인에 사용할 수 있는 Apple 및 Google 계정입니다.",
+      "linked_accounts_heading": "연결된 계정",
       "name_help": "이 이름은 프로필에 표시됩니다.",
       "name_label": "표시 이름",
       "name_placeholder": "표시 이름 입력",

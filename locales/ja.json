@@ -2952,6 +2952,22 @@
         "title": "メールの確認",
         "to_resend_verification": "メールが届きませんか?"
       },
+      "social": {
+        "continue": {
+          "description": "下記のページに同意すると、アカウントが作成されます。",
+          "submit": "アカウントを作成",
+          "title": "新規登録を完了"
+        },
+        "continue_with_apple": "Appleで続ける",
+        "continue_with_google": "Googleで続ける",
+        "divider": "または",
+        "errors": {
+          "expired": "ログインの有効期限が切れました。もう一度やり直してください。",
+          "failed": "ログインできませんでした。もう一度お試しください。",
+          "refused": "このアカウントではログインできません。メールアドレスでログインしてください。",
+          "unavailable": "このログイン方法は現在利用できません。"
+        }
+      },
       "verify": {
         "failed": "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
         "title": "メール確認",
@@ -3462,11 +3478,15 @@
       "current_password_label": "現在のパスワード",
       "delete_confirm_description": "退会を実行するには、現在のパスワードを入力してください。",
       "delete_confirm_title": "退会の確認",
+      "delete_confirm_with_provider": "このアカウントにはパスワードがありません。連携しているアカウントでもう一度ログインして確認してください。",
       "delete_description": "退会するとアカウント情報にアクセスできなくなります。この操作は取り消せません。実行前にご注意ください。",
       "delete_failed": "退会処理に失敗しました。入力内容をご確認ください。",
       "delete_heading": "退会",
+      "delete_no_provider": "連携しているアカウントは、いまこのサイトでログインに使えません。退会するにはサイトにお問い合わせください。",
       "delete_open": "アカウントを削除",
       "delete_submit": "退会する",
+      "delete_with_apple": "Appleで確認",
+      "delete_with_google": "Googleで確認",
       "deleted": "アカウントを削除しました。ご利用ありがとうございました。",
       "description": "プロフィール・フォロー・通知・セキュリティ・アカウント情報を管理できます。",
       "email_change_failed": "メール変更リクエストに失敗しました。入力内容をご確認ください。",
@@ -3496,6 +3516,14 @@
       "follows_unavailable": "非公開になった対象は一覧から外れます。",
       "follows_unpublished_title": "現在公開されていません",
       "heading": "アカウント設定",
+      "linked_account_last": "このアカウントにはパスワードがないため、最後の連携アカウントは解除できません。",
+      "linked_account_linked_at": "{$date}に連携",
+      "linked_account_unlink": "連携を解除",
+      "linked_account_unlink_aria": "{$provider}の連携を解除",
+      "linked_account_unlink_failed": "連携を解除できませんでした。しばらくしてからもう一度お試しください。",
+      "linked_account_unlinked": "連携を解除しました。",
+      "linked_accounts_description": "ログインに使えるAppleとGoogleのアカウントです。",
+      "linked_accounts_heading": "連携アカウント",
       "name_help": "この名前はプロフィールに表示されます。",
       "name_label": "表示名",
       "name_placeholder": "表示名を入力",

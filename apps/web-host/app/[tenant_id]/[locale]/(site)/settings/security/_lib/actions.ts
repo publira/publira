@@ -1,5 +1,6 @@
 "use server";
 
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
 import {
   toFormErrorMessage,
@@ -9,7 +10,11 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { changePublicPassword, requestPublicEmailChange } from "#lib/auth";
+import {
+  changePublicPassword,
+  requestPublicEmailChange,
+  unlinkMyIdentity,
+} from "#lib/auth";
 import {
   emailFormSchema,
   passwordFormSchema,
@@ -23,6 +28,7 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
@@ -236,6 +242,80 @@ export const changePasswordAction = async (
     tenantId,
     "success",
     t("host.settings.password_changed")
+  );
+  redirect(successPath);
+};
+
+const unlinkIdentityFormSchema = async (locale: Locale) => {
+  const tenantId = await tenantIdFormSchema(locale);
+
+  return z.object({
+    locale: localeFormSchema,
+    provider: z.enum(SIGN_IN_PROVIDERS),
+    tenantId,
+  });
+};
+
+export const unlinkIdentityAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    unlinkIdentityFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      locale: "value",
+      provider: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      t("host.settings.linked_account_unlink_failed")
+    );
+    redirect(errorPath);
+  }
+
+  const { locale, provider, tenantId } = parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
+  );
+  const result = await withPublicSessionReauth(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    () => unlinkMyIdentity(tenantId, provider, accessToken),
+    tenantId
+  );
+  if (!result.ok) {
+    const errorPath = await buildSettingsPath(
+      locale,
+      tenantId,
+      "error",
+      rpcErrorMessage(
+        result.error,
+        t("host.settings.linked_account_unlink_failed"),
+        {
+          locale,
+          overrides: { precondition: t("host.settings.linked_account_last") },
+        }
+      )
+    );
+    redirect(errorPath);
+  }
+
+  const successPath = await buildSettingsPath(
+    locale,
+    tenantId,
+    "success",
+    t("host.settings.linked_account_unlinked")
   );
   redirect(successPath);
 };
