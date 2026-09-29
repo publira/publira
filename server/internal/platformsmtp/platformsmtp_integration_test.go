@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/platformsmtp"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
@@ -151,5 +152,96 @@ func TestSendSavedWithNothingSaved(t *testing.T) {
 
 	if err := tester.SendSaved(context.Background(), q, auditlog.SystemPlatformActor, "operator@example.com"); !errors.Is(err, platformsmtp.ErrNotSaved) {
 		t.Fatalf("SendSaved = %v, want ErrNotSaved", err)
+	}
+}
+
+// A relay that takes no credentials is saved with no username and no password,
+// and both test sends go through it without authenticating.
+func TestSettingsWithoutAUsernameSendThroughARelay(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	encryptor := newEncryptor(t)
+	relay := testutil.StartSMTPRelay(t)
+	ctx := context.Background()
+
+	settings := settingsFor(relay)
+	settings.Username = ""
+	saved, err := platformsmtp.Save(ctx, db, slog.Default(), encryptor, auditlog.SystemPlatformActor, platformsmtp.SaveParams{Settings: settings})
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if saved.Username != "" || platformsmtp.HasPassword(saved) {
+		t.Fatalf("saved username %q with a password %v, want neither", saved.Username, platformsmtp.HasPassword(saved))
+	}
+
+	q := dbmodels.New(db)
+	tester := platformsmtp.Tester{SMTP: internalsmtp.NewClient(), Recorder: auditlog.New(q, slog.Default())}
+	if _, err := tester.Send(ctx, q, auditlog.SystemPlatformActor, platformsmtp.TestParams{
+		Settings:       settings,
+		RecipientType:  emailsettings.TestRecipientTypeCustom,
+		RecipientEmail: "operator@example.com",
+	}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if err := tester.SendSaved(ctx, q, auditlog.SystemPlatformActor, "operator@example.com"); err != nil {
+		t.Fatalf("SendSaved: %v", err)
+	}
+	if got := len(relay.Messages()); got != 2 {
+		t.Fatalf("messages = %d, want 2", got)
+	}
+}
+
+// A password is refused without a username whether it is given with the save
+// or kept from the stored row, and clearing it lets the username go.
+func TestAPasswordWithoutAUsernameIsRefusedOnTheUsername(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	encryptor := newEncryptor(t)
+	server := testutil.StartSMTPServer(t)
+	ctx := context.Background()
+
+	save := func(p platformsmtp.SaveParams) (dbmodels.PlatformSmtpConfig, error) {
+		return platformsmtp.Save(ctx, db, slog.Default(), encryptor, auditlog.SystemPlatformActor, p)
+	}
+	refusedOnUsername := func(name string, err error) {
+		t.Helper()
+		if !errors.Is(err, emailsettings.ErrPasswordWithoutUsername) || fielderr.Field(err) != emailsettings.FieldUsername {
+			t.Fatalf("%s: %v on %q, want ErrPasswordWithoutUsername on username", name, err, fielderr.Field(err))
+		}
+	}
+	anonymous := settingsFor(server)
+	anonymous.Username = ""
+
+	_, err := save(platformsmtp.SaveParams{Settings: anonymous, PasswordMode: secretupdate.Replace, Password: "smtp-password"})
+	refusedOnUsername("a password given with no username", err)
+
+	if _, err := save(platformsmtp.SaveParams{Settings: settingsFor(server), PasswordMode: secretupdate.Replace, Password: "smtp-password"}); err != nil {
+		t.Fatalf("Save with a username: %v", err)
+	}
+	_, err = save(platformsmtp.SaveParams{Settings: anonymous})
+	refusedOnUsername("the stored password kept with no username", err)
+
+	saved, err := save(platformsmtp.SaveParams{Settings: anonymous, PasswordMode: secretupdate.Clear})
+	if err != nil {
+		t.Fatalf("Save clearing the password: %v", err)
+	}
+	if saved.Username != "" || platformsmtp.HasPassword(saved) {
+		t.Fatalf("saved username %q with a password %v, want neither", saved.Username, platformsmtp.HasPassword(saved))
+	}
+
+	q := dbmodels.New(db)
+	tester := platformsmtp.Tester{Encryptor: encryptor, SMTP: internalsmtp.NewClient(), Recorder: auditlog.New(q, slog.Default())}
+	_, err = tester.Send(ctx, q, auditlog.SystemPlatformActor, platformsmtp.TestParams{
+		Settings:       anonymous,
+		PasswordMode:   secretupdate.Replace,
+		Password:       "smtp-password",
+		RecipientType:  emailsettings.TestRecipientTypeCustom,
+		RecipientEmail: "operator@example.com",
+	})
+	refusedOnUsername("a test with a password and no username", err)
+	if got := len(server.Messages()); got != 0 {
+		t.Fatalf("messages = %d, want none", got)
 	}
 }

@@ -215,11 +215,11 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 | --- | --- |
 | `--host`, `--port` | The SMTP server. Required |
 | `--encryption` | `tls` for a connection encrypted from the start, `starttls` for one upgraded after connecting, or `none`. Required |
-| `--username` | The user the server is signed in to as. Required |
+| `--username` | The user the server is signed in to as. Left out for a relay that takes no credentials, which the worker then sends through without authenticating |
 | `--from-address` | The address the mail is sent from. Required |
 | `--reply-to` | The address replies go to, when it is not the sender's |
 
-The password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save needs one. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
+The password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save with a `--username` needs one, and a password without a `--username` is refused. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
 
 `smtp set` files `platform_email_settings_updated` and every `smtp test` files `platform_smtp_test_email_sent` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 

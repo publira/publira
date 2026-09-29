@@ -40,6 +40,10 @@ message GetPlatformEmailSettingsResponse {
 message UpdatePlatformEmailSettingsRequest {
   string host = 1;
   int32 port = 2;
+  // Optional: empty names a relay that takes no credentials, which the worker
+  // sends through without authenticating. A password is refused without one
+  // with INVALID_ARGUMENT naming this field, and a username is refused without
+  // a password, stored or given here.
   string username = 3;
   SecretUpdateMode password_update_mode = 4;
   string password = 5;
@@ -63,6 +67,8 @@ message SendPlatformSmtpTestEmailRequest {
   string recipient_email = 2;
   string host = 3;
   int32 port = 4;
+  // Optional, as UpdatePlatformEmailSettingsRequest.username is. With one, the
+  // test fails when the server offers no AUTH rather than sending without it.
   string username = 5;
   SecretUpdateMode password_update_mode = 6;
   string password = 7;

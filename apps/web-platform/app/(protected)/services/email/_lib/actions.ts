@@ -16,6 +16,7 @@ import {
 } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings-shared";
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
@@ -48,8 +49,11 @@ const loadActionCatalog = async () => {
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value.trim() : "";
-  return raw === String(SECRET_UPDATE_MODE_REPLACE)
-    ? SECRET_UPDATE_MODE_REPLACE
+  if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
+    return SECRET_UPDATE_MODE_REPLACE;
+  }
+  return raw === String(SECRET_UPDATE_MODE_CLEAR)
+    ? SECRET_UPDATE_MODE_CLEAR
     : SECRET_UPDATE_MODE_UNCHANGED;
 }, z.number());
 

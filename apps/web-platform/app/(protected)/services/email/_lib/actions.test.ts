@@ -91,6 +91,23 @@ describe("SMTP settings actions", () => {
     );
   });
 
+  it("passes a request to clear the stored password on to the API", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {},
+    });
+    const formData = smtpFormData();
+    formData.set("password_update_mode", "3");
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await updatePlatformEmailSettingsAction(null, formData);
+
+    expect(mockUpdatePlatformEmailSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ passwordUpdateMode: 3 })
+    );
+  });
+
   it("refuses a save that does not state a revision without calling the API", async () => {
     const formData = smtpFormData();
     formData.delete("revision");

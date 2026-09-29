@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MessageProps } from "#components/message";
 import type { PlatformSmtpSettings } from "#lib/email-settings-shared";
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
@@ -52,9 +53,11 @@ const idleSaveAction = () =>
 const idleTestAction = () => Promise.resolve<PlatformSmtpTestFormState>(null);
 
 const renderForm = ({
+  initialSettings = storedSettings,
   saveAction = idleSaveAction,
   testAction = idleTestAction,
 }: {
+  initialSettings?: PlatformSmtpSettings;
   saveAction?: (
     previousState: PlatformEmailSettingsFormState,
     formData: FormData
@@ -66,7 +69,7 @@ const renderForm = ({
 }) =>
   render(
     <EmailSettingsForm
-      initialSettings={storedSettings}
+      initialSettings={initialSettings}
       saveAction={saveAction}
       testAction={testAction}
     />
@@ -167,6 +170,73 @@ describe("EmailSettingsForm", () => {
     );
     expect(formData?.has("password")).toBe(false);
     expect(formData?.get("revision")).toBe("1");
+  });
+
+  it("saves without a username or a password for a relay that takes no credentials", async () => {
+    const saveAction = vi.fn(
+      (_previousState: PlatformEmailSettingsFormState, _formData: FormData) =>
+        Promise.resolve<PlatformEmailSettingsFormState>({
+          message: "Could not save.",
+          ok: false,
+        })
+    );
+    const { container } = renderForm({
+      initialSettings: { ...storedSettings, hasPassword: false, username: "" },
+      saveAction,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const blank = saveAction.mock.calls[0]?.[1];
+    expect(blank?.get("username")).toBe("");
+    expect(blank?.get("password")).toBe("");
+    expect(blank?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
+
+    const password = container.querySelector<HTMLInputElement>(
+      'input[name="password"]'
+    );
+    if (!password) {
+      throw new Error("The form has no password box with nothing stored.");
+    }
+    fireEvent.change(password, { target: { value: "new-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(saveAction).toHaveBeenCalledTimes(2);
+    });
+    expect(saveAction.mock.calls[1]?.[1].get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_REPLACE)
+    );
+  });
+
+  // Moving saved credentials to a relay that takes none has to be able to drop
+  // the stored password, which a blank username would otherwise be refused beside.
+  it("removes the stored password when its box is opened and left empty", async () => {
+    const saveAction = vi.fn(
+      (_previousState: PlatformEmailSettingsFormState, _formData: FormData) =>
+        Promise.resolve<PlatformEmailSettingsFormState>({
+          message: "Could not save.",
+          ok: false,
+        })
+    );
+    renderForm({ saveAction });
+
+    fireEvent.change(screen.getByLabelText(/Username/u), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const formData = saveAction.mock.calls[0]?.[1];
+    expect(formData?.get("username")).toBe("");
+    expect(formData?.get("password")).toBe("");
+    expect(formData?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
   });
 
   it("masks a saved password again and sends the revision the save wrote next", async () => {

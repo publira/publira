@@ -176,6 +176,9 @@ func (s *adminServer) UpdateTenantEmailSettings(
 		if err := emailsettings.Validate(settings, false); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+		if err := emailsettings.RequireUsername(settings); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	} else {
 		settings = mergeTenantSettingsWithExisting(settings, existing, found)
 		if emailsettings.HasAnyValue(settings, hasPassword) {
@@ -319,6 +322,9 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	settings := tenantEmailSettingsFromTestRequest(req, password)
+	if err := emailsettings.RequireUsername(settings); err != nil {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	if err := emailsettings.Validate(settings, true); err != nil {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}

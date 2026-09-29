@@ -188,12 +188,12 @@ dev_env_random_secret() {
   openssl rand -base64 48 | tr -d '\n'
 }
 
-# Secret decryption for the SMTP password a profile's worker reads. A worker
-# started without keys reports an unusable secret manager, and every mail
-# handler stops there before it reaches Mailpit, so the mailbox stays empty while
-# the event retries until it is dead. The seeded password is not an encrypted
-# envelope and the manager hands such a value back unchanged, so the key itself
-# is never used — one only has to exist. 32 bytes, base64url, as the parser
+# Secret decryption for an SMTP password a profile's worker reads. A worker
+# started without keys reports an unusable secret manager, and a mail handler
+# with a password to open stops there before it reaches Mailpit, so the mailbox
+# stays empty while the event retries until it is dead. The seeded platform
+# settings name no password, since Mailpit takes none, so the key only matters
+# once one is saved through a console. 32 bytes, base64url, as the parser
 # requires.
 #
 # Development-only, and deliberately the same for every profile rather than a

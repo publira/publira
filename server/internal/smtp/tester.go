@@ -86,7 +86,12 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 	defer client.Close() //nolint:errcheck
 	defer client.Quit()  //nolint:errcheck
 
-	if ok, _ := client.Extension("AUTH"); ok {
+	// A saved username the server offers no AUTH for is refused rather than
+	// dropped, so a misconfigured relay does not silently take mail unauthenticated.
+	if settings.Username != "" {
+		if ok, _ := client.Extension("AUTH"); !ok {
+			return errors.New("authentication is not supported by smtp server")
+		}
 		if err := client.Auth(smtp.PlainAuth("", settings.Username, settings.Password, settings.Host)); err != nil {
 			return err
 		}

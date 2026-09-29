@@ -19,12 +19,15 @@ export type ConfigurationState =
 
 /**
  * A save validates every SMTP field but the password, and the outbox refuses
- * every message while none is stored.
+ * every message while a username has none beside it. No username is a relay
+ * that takes no credentials, which needs no password.
  */
 export const emailConfigurationState = (
-  settings: Pick<PlatformSmtpSettings, "hasPassword" | "host">
+  settings: Pick<PlatformSmtpSettings, "hasPassword" | "host" | "username">
 ): ConfigurationState =>
-  settings.host.trim() && settings.hasPassword ? "configured" : "needs_setup";
+  settings.host.trim() && (settings.hasPassword || !settings.username.trim())
+    ? "configured"
+    : "needs_setup";
 
 /** Revision `"0"` is the row a fresh installation has not saved yet. */
 export const storageConfigurationState = (
