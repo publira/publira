@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
 
+import { setImmediate } from "node:timers/promises";
+
 import { bindMessages } from "@publira/i18n";
 import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
 import { getLocale } from "../lib/locale";
+import { renderServerComponent } from "../lib/render-server-component";
 import { getTenantForSession } from "../lib/tenant-detail";
 import { getTenantThemeLogo } from "../lib/theme-settings";
 import {
@@ -42,7 +45,8 @@ vi.mock("./message", () => ({
   }) => bindMessages(sharedCatalog("ja"))(message, values),
 }));
 
-vi.mock("../lib/admin-auth", () => ({
+vi.mock("../lib/admin-auth", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getAdminCurrentUser: vi.fn(),
 }));
 
@@ -128,22 +132,76 @@ const renderTenantChrome = async () =>
   );
 
 describe("AdminLayout", () => {
-  it("renders the screen before the tenant and the session are read", () => {
+  beforeEach(() => {
+    vi.mocked(getLocale).mockResolvedValue("en");
+    vi.mocked(getAdminCurrentUser).mockResolvedValue({
+      ok: true,
+      user: {
+        name: "Avery Quinn",
+        publicId: "user_admin_001",
+        role: "tenant_owner",
+      },
+    });
+  });
+
+  it("renders the screen before the tenant and the session are read", async () => {
     vi.mocked(getTenantForSession).mockReturnValue(
       Promise.withResolvers<never>().promise
     );
+    vi.mocked(getAdminCurrentUser).mockReturnValue(
+      Promise.withResolvers<never>().promise
+    );
+    const controller = new AbortController();
 
-    render(
+    const rendering = renderServerComponent(
+      <AdminLayout>
+        <p>Body</p>
+      </AdminLayout>,
+      { signal: controller.signal }
+    );
+    // The shell renders in a microtask, so it is complete once a macrotask
+    // has run; what still waits on the tenant or the session is cut off here.
+    await setImmediate();
+    controller.abort();
+    await rendering;
+
+    expect(screen.getByText("Body")).toBeDefined();
+    expect(screen.queryByText("Acme Publishing")).toBeNull();
+  });
+
+  it("puts the language and account controls in the header", async () => {
+    await renderServerComponent(
       <AdminLayout>
         <p>Body</p>
       </AdminLayout>
     );
 
-    expect(screen.getByText("Body")).toBeDefined();
+    const header = screen.getByRole("banner");
+    expect(
+      within(header).getByRole("button", { name: "Display language" })
+    ).toBeDefined();
+    expect(
+      within(header).getByRole("button", {
+        name: "Account menu for Avery Quinn",
+      })
+    ).toBeDefined();
+    expect(within(header).getByText("Acme Publishing")).toBeDefined();
   });
 
-  it("marks the navigation item for the screen the console is on", () => {
-    render(
+  it("labels the button that opens the navigation on a narrow screen", async () => {
+    await renderServerComponent(
+      <AdminLayout>
+        <p>Body</p>
+      </AdminLayout>
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Open navigation" })
+    ).toBeDefined();
+  });
+
+  it("marks the navigation item for the screen the console is on", async () => {
+    await renderServerComponent(
       <AdminLayout>
         <p>Body</p>
       </AdminLayout>

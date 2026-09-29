@@ -2,8 +2,14 @@
 
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
 import { getPlatformLocale } from "../lib/locale";
@@ -11,6 +17,7 @@ import {
   countUnreadNotifications,
   listNotifications,
 } from "../lib/notification";
+import { renderServerComponent } from "../lib/render-server-component";
 import { PlatformLocaleSwitcher } from "./locale-switcher";
 import {
   PlatformLayout,
@@ -63,8 +70,30 @@ afterEach(() => {
 });
 
 describe("PlatformLayout", () => {
-  it("names the operator console under the platform brand", () => {
-    render(
+  beforeEach(() => {
+    vi.mocked(getPlatformLocale).mockResolvedValue("en");
+    vi.mocked(getPlatformCurrentOperator).mockResolvedValue({
+      ok: true,
+      operator: {
+        name: "Avery Quinn",
+        publicId: "operator_001",
+        role: "super_admin",
+      },
+    });
+    vi.mocked(countUnreadNotifications).mockResolvedValue({
+      ok: true,
+      unreadCount: 0,
+    });
+    vi.mocked(listNotifications).mockResolvedValue({
+      nextToken: "",
+      notifications: [],
+      ok: true,
+      previousToken: "",
+    });
+  });
+
+  it("names the operator console under the platform brand", async () => {
+    await renderServerComponent(
       <PlatformLayout>
         <p>Body</p>
       </PlatformLayout>
@@ -74,8 +103,41 @@ describe("PlatformLayout", () => {
     expect(screen.getByText("platform.shell.name")).toBeTruthy();
   });
 
-  it("leaves the tenants list inactive while the console is on the form below it", () => {
-    render(
+  it("puts the language, notification, and account controls in the header", async () => {
+    await renderServerComponent(
+      <PlatformLayout>
+        <p>Body</p>
+      </PlatformLayout>
+    );
+
+    const header = screen.getByRole("banner");
+    expect(
+      within(header).getByRole("button", { name: "Display language" })
+    ).toBeDefined();
+    expect(
+      within(header).getByRole("button", { name: "Notifications, none unread" })
+    ).toBeDefined();
+    expect(
+      within(header).getByRole("button", {
+        name: "Account menu for Avery Quinn",
+      })
+    ).toBeDefined();
+  });
+
+  it("labels the button that opens the navigation on a narrow screen", async () => {
+    await renderServerComponent(
+      <PlatformLayout>
+        <p>Body</p>
+      </PlatformLayout>
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Open navigation" })
+    ).toBeDefined();
+  });
+
+  it("leaves the tenants list inactive while the console is on the form below it", async () => {
+    await renderServerComponent(
       <PlatformLayout>
         <p>Body</p>
       </PlatformLayout>
