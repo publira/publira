@@ -941,16 +941,22 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err != nil {
 		return nil, err
 	}
-	err = s.queriesFor(ctx).UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
-	}
-	ep, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+	var ep dbmodels.GetEpisodeByIDForTenantRow
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		row, err := s.queriesFor(txCtx).GetEpisodeByIDForTenant(txCtx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			}
+			return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
+		ep = row
+		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -964,7 +970,6 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(ep)
 	if err := setEpisodeAvailability(mapped, ep.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
@@ -1019,13 +1024,18 @@ func (s *adminServer) UpdateEpisodeLayout(
 		}
 	}
 
-	if err := s.queriesFor(ctx).UpdateEpisodeLayoutByIDForTenant(ctx, dbmodels.UpdateEpisodeLayoutByIDForTenantParams{
-		TenantID:         tenant.ID,
-		ID:               episode.ID,
-		ReadingDirection: storedReadingDirection,
-		SpreadStartIndex: storedSpreadStartIndex,
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).UpdateEpisodeLayoutByIDForTenant(txCtx, dbmodels.UpdateEpisodeLayoutByIDForTenantParams{
+			TenantID:         tenant.ID,
+			ID:               episode.ID,
+			ReadingDirection: storedReadingDirection,
+			SpreadStartIndex: storedSpreadStartIndex,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		return nil, err
 	}
 	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
@@ -1060,7 +1070,6 @@ func (s *adminServer) UpdateEpisodeLayout(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodeLayoutResponse{
 		Episode:          mapped,
 		ReadingDirection: readingDirection,
@@ -1092,12 +1101,17 @@ func (s *adminServer) UpdateEpisodeAvailability(
 		}
 		return nil, s.internalDBError(ctx, "failed to get episode for availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
-	if err := s.queriesFor(ctx).UpdateEpisodeAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodeAvailabilityByIDForTenantParams{
-		TenantID:     tenant.ID,
-		ID:           episode.ID,
-		Availability: availability,
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).UpdateEpisodeAvailabilityByIDForTenant(txCtx, dbmodels.UpdateEpisodeAvailabilityByIDForTenantParams{
+			TenantID:     tenant.ID,
+			ID:           episode.ID,
+			Availability: availability,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to update episode availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		return nil, err
 	}
 	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
@@ -1123,7 +1137,6 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}), nil
 }
 
@@ -1151,12 +1164,17 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 		}
 		return nil, s.internalDBError(ctx, "failed to get episode for purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
-	if err := s.queriesFor(ctx).UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodePurchaseAvailabilityByIDForTenantParams{
-		TenantID:             tenant.ID,
-		ID:                   episode.ID,
-		PurchaseAvailability: purchaseAvailability,
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).UpdateEpisodePurchaseAvailabilityByIDForTenant(txCtx, dbmodels.UpdateEpisodePurchaseAvailabilityByIDForTenantParams{
+			TenantID:             tenant.ID,
+			ID:                   episode.ID,
+			PurchaseAvailability: purchaseAvailability,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		return nil, err
 	}
 	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
@@ -1183,7 +1201,6 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse{
 		Episode:              mapped,
 		PurchaseAvailability: savedPurchaseAvailability,

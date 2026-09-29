@@ -704,18 +704,22 @@ func (s *adminServer) DeleteGenre(
 	if assigned > 0 {
 		return nil, genreInUseError(assigned)
 	}
-	if err := s.queriesFor(ctx).DeleteGenre(ctx, current.ID); err != nil {
-		// A series can take the genre between the count and the delete. The
-		// foreign key is what actually holds the line, so its refusal is
-		// reported as the same failed precondition rather than as a fault.
-		if dberr.IsForeignKeyViolation(err) {
-			return nil, genreInUseError(1)
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).DeleteGenre(txCtx, current.ID); err != nil {
+			// A series can take the genre between the count and the delete. The
+			// foreign key is what actually holds the line, so its refusal is
+			// reported as the same failed precondition rather than as a fault.
+			if dberr.IsForeignKeyViolation(err) {
+				return nil, genreInUseError(1)
+			}
+			return nil, s.internalDBError(ctx, "failed to delete genre", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to delete genre", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+		return genreRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_deleted", current.PublicID)
-	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.DeleteGenreResponse{}), nil
 }

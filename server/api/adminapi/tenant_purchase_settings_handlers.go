@@ -117,17 +117,22 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "settings.google_play_url")
 	}
 
-	updated, err := s.queriesFor(ctx).UpsertTenantPurchaseSettings(ctx, dbmodels.UpsertTenantPurchaseSettingsParams{
-		TenantID:             tenant.ID,
-		PurchaseAvailability: availability,
-		AppStoreUrl:          appStoreURL,
-		GooglePlayUrl:        googlePlayURL,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update tenant purchase settings", err, "tenant_id", tenant.ID.String())
+	var updated dbmodels.TenantConfig
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		row, err := s.queriesFor(txCtx).UpsertTenantPurchaseSettings(txCtx, dbmodels.UpsertTenantPurchaseSettingsParams{
+			TenantID:             tenant.ID,
+			PurchaseAvailability: availability,
+			AppStoreUrl:          appStoreURL,
+			GooglePlayUrl:        googlePlayURL,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to update tenant purchase settings", err, "tenant_id", tenant.ID.String())
+		}
+		updated = row
+		return tenantPurchaseSettingsRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
-
-	s.revalidateTags(ctx, tenant.ID, tenantPurchaseSettingsRevalidateTags(tenant.ID.String()))
 
 	settings, err := tenantPurchaseSettingsFromConfig(updated)
 	if err != nil {

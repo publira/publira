@@ -429,6 +429,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantTheme)).
 		WithArgs(
 			tenantID,
@@ -464,6 +465,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+	mock.ExpectCommit()
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)

@@ -145,23 +145,33 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 			Value: field.Value,
 		})
 	}
-	cfg, err := s.paymentStore(ctx).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Provider: req.Msg.Provider,
-		Enabled:  req.Msg.Enabled,
-		Fields:   fields,
-	}, paymentsettings.AuditMeta{
-		ActorUserID: sessionCtx.User.ID,
-		ActorRole:   sessionCtx.Role,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
-		TargetID:    tenant.PublicID,
-	})
-	if err != nil {
-		if mapped := mapPaymentSettingsUpdateError(err); mapped != nil {
-			return nil, mapped
+	var cfg paymentsettings.PublicConfig
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		// The audit row is written on the transaction so it commits with the
+		// save; the process's recorder writes on a connection of its own.
+		txQueries := s.queriesFor(txCtx)
+		store := paymentsettings.New(txQueries, s.encryptor, s.paymentProviders, auditlog.New(txQueries, s.logger), s.logger)
+		saved, err := store.Upsert(txCtx, tenant.ID, paymentsettings.UpdateInput{
+			Provider: req.Msg.Provider,
+			Enabled:  req.Msg.Enabled,
+			Fields:   fields,
+		}, paymentsettings.AuditMeta{
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			TargetID:    tenant.PublicID,
+		})
+		if err != nil {
+			if mapped := mapPaymentSettingsUpdateError(err); mapped != nil {
+				return nil, mapped
+			}
+			return nil, s.internalDBError(ctx, "failed to upsert tenant payment settings", err, "tenant_id", tenant.ID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to upsert tenant payment settings", err, "tenant_id", tenant.ID.String())
+		cfg = saved
+		return tenantPaymentRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
-	s.revalidateTags(ctx, tenant.ID, tenantPaymentRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantPaymentSettingsResponse{
 		Settings: tenantPaymentSettingsToProto(cfg),
@@ -286,17 +296,23 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 		return nil, s.internalDBError(ctx, "failed to begin store payment settings transaction", err, "tenant_id", tenant.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
 
-	cfg, err := paymentsettings.NewAppStores(dbmodels.New(tx), s.encryptor).Update(ctx, tenant.ID, input)
+	cfg, err := paymentsettings.NewAppStores(txq, s.encryptor).Update(ctx, tenant.ID, input)
 	if err != nil {
 		if mapped := mapStorePaymentSettingsUpdateError(err); mapped != nil {
 			return nil, mapped
 		}
 		return nil, s.internalDBError(ctx, "failed to update tenant store payment settings", err, "tenant_id", tenant.ID.String())
 	}
+	owed, err := s.reval.Record(ctx, txq, tenant.ID, tenantPaymentRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the tenant store payment settings", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant store payment settings", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	paymentsettings.RecordUpdate(ctx, s.recorderFor(ctx), tenant.ID, paymentsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
@@ -304,7 +320,6 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		TargetID:    tenant.PublicID,
 	}, auditlog.OutcomeSuccess, "")
-	s.revalidateTags(ctx, tenant.ID, tenantPaymentRevalidateTags(tenant.ID.String()))
 
 	settings, err := tenantStorePaymentSettingsToProto(cfg)
 	if err != nil {

@@ -121,9 +121,11 @@ func TestUnpinAnnouncementClearsTheFlag(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnpinAnnouncement)).
 		WithArgs(announcementID, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(announcementID))
+	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
 	req := connect.NewRequest(&publiraadminv1.UnpinAnnouncementRequest{
@@ -148,9 +150,11 @@ func TestUnpinAnnouncementReportsAMissingRow(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnpinAnnouncement)).
 		WithArgs(announcementID, tenantID).
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
 
 	req := connect.NewRequest(&publiraadminv1.UnpinAnnouncementRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},

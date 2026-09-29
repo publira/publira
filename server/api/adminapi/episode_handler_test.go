@@ -1075,6 +1075,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				scheduledAt, _ := time.Parse(time.RFC3339, "2030-01-01T10:00:00+09:00")
 				normalized := scheduledAt.UTC()
+				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
 					WithArgs(sql.NullTime{Time: normalized, Valid: true}, tenantID, testEpisodeID).
 					WillReturnResult(sqlmock.NewResult(0, 1))
@@ -1082,6 +1083,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 					WithArgs(tenantID, testEpisodeID).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 						AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil, nil, nil, nil, nil, nil, nil, "all"))
+				mock.ExpectCommit()
 				mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},

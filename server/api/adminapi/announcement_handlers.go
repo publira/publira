@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 )
 
 const (
@@ -52,14 +53,6 @@ func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
 		return sql.NullTime{}, errors.New("pinned_until must be in the future")
 	}
 	return sql.NullTime{Time: parsed, Valid: true}, nil
-}
-
-// revalidatePinnedAnnouncement drops the tag a tenant's site holds its banner
-// under. The console cannot reach web-host's cache itself, and the band would
-// otherwise stay as it was until the entry expired. Best-effort like the audit
-// row: failing an action the operator already performed would be worse.
-func (s *adminServer) revalidatePinnedAnnouncement(ctx context.Context, tenantID uuid.UUID) {
-	s.revalidateTags(ctx, tenantID, pinnedannouncements.RevalidateTags(tenantID))
 }
 
 func mapAdminAnnouncementFromRow(row dbmodels.Announcement) *publiraadminv1.AdminAnnouncement {
@@ -218,7 +211,7 @@ func (s *adminServer) CreateAnnouncement(
 		}
 	}
 
-	created, err := s.storeAnnouncement(ctx, tenant.ID, announcementContent{
+	created, owed, err := s.storeAnnouncement(ctx, tenant.ID, announcementContent{
 		title:       title,
 		body:        body,
 		linkURL:     linkURL,
@@ -228,9 +221,7 @@ func (s *adminServer) CreateAnnouncement(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
 	}
-	if pinned {
-		s.revalidatePinnedAnnouncement(ctx, tenant.ID)
-	}
+	s.reval.Send(ctx, owed)
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -259,27 +250,34 @@ type announcementContent struct {
 
 // storeAnnouncement writes the announcement row and, in the same transaction,
 // the event that puts it in its readers' notification inboxes, so a delivery
-// nobody is ever told about cannot outlive the request that made it.
+// nobody is ever told about cannot outlive the request that made it. A pinned
+// one also owes the banner's cache drop, which the caller sends.
 func (s *adminServer) storeAnnouncement(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	content announcementContent,
-) (*publiraadminv1.AdminAnnouncement, error) {
+) (*publiraadminv1.AdminAnnouncement, revalidate.Owed, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, revalidate.Owed{}, err
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
 	row, err := createAnnouncementRow(ctx, txq, tenantID, content)
 	if err != nil {
-		return nil, err
+		return nil, revalidate.Owed{}, err
+	}
+	var owed revalidate.Owed
+	if content.pinned {
+		if owed, err = s.reval.Record(ctx, txq, tenantID, pinnedannouncements.RevalidateTags(tenantID)); err != nil {
+			return nil, revalidate.Owed{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, revalidate.Owed{}, err
 	}
-	return mapAdminAnnouncementFromRow(row), nil
+	return mapAdminAnnouncementFromRow(row), owed, nil
 }
 
 // createAnnouncementRow writes one announcement and queues the notification
@@ -359,16 +357,20 @@ func (s *adminServer) UnpinAnnouncement(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
 	}
 
-	if _, err := s.queriesFor(ctx).UnpinAnnouncement(ctx, dbmodels.UnpinAnnouncementParams{
-		ID:       announcementID,
-		TenantID: tenant.ID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if _, err := s.queriesFor(txCtx).UnpinAnnouncement(txCtx, dbmodels.UnpinAnnouncementParams{
+			ID:       announcementID,
+			TenantID: tenant.ID,
+		}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+			}
+			return nil, s.internalDBError(ctx, "failed to unpin announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to unpin announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
+		return pinnedannouncements.RevalidateTags(tenant.ID), nil
+	}); err != nil {
+		return nil, err
 	}
-	s.revalidatePinnedAnnouncement(ctx, tenant.ID)
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,

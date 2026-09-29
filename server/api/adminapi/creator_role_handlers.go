@@ -230,12 +230,20 @@ func (s *adminServer) CreateCreatorRole(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	maxDisplayPriority, err := s.queriesFor(ctx).GetMaxCreatorRoleDisplayPriorityForTenant(ctx, tenant.ID)
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create creator role transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	maxDisplayPriority, err := s.queriesFor(txCtx).GetMaxCreatorRoleDisplayPriorityForTenant(txCtx, tenant.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to resolve the next creator role display priority", err, "tenant_id", tenant.ID.String())
 	}
-	created, err := publicid.Insert(func(publicID string) (dbmodels.CreatorRole, error) {
-		return s.queriesFor(ctx).CreateCreatorRole(ctx, dbmodels.CreateCreatorRoleParams{
+	created, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.CreatorRole, error) {
+		return s.queriesFor(txCtx).CreateCreatorRole(txCtx, dbmodels.CreateCreatorRoleParams{
 			ID:              creatorRoleID,
 			TenantID:        tenant.ID,
 			PublicID:        publicID,
@@ -249,9 +257,16 @@ func (s *adminServer) CreateCreatorRole(
 		}
 		return nil, s.internalDBError(ctx, "failed to create creator role", err, "tenant_id", tenant.ID.String())
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the created creator role", err, "tenant_id", tenant.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create creator role", err, "tenant_id", tenant.ID.String())
+	}
+	s.reval.Send(ctx, owed)
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_created", created.PublicID)
-	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.CreateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: created.ID.String(), PublicId: created.PublicID, Name: created.Name},
@@ -290,18 +305,22 @@ func (s *adminServer) UpdateCreatorRole(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.queriesFor(ctx).UpdateCreatorRole(ctx, dbmodels.UpdateCreatorRoleParams{
-		ID:   current.ID,
-		Name: name,
-	}); err != nil {
-		if dberr.IsUniqueViolation(err) {
-			return nil, existingCreatorRoleNameError()
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).UpdateCreatorRole(txCtx, dbmodels.UpdateCreatorRoleParams{
+			ID:   current.ID,
+			Name: name,
+		}); err != nil {
+			if dberr.IsUniqueViolation(err) {
+				return nil, existingCreatorRoleNameError()
+			}
+			return nil, s.internalDBError(ctx, "failed to update creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to update creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
+		return creatorRoleRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_updated", current.PublicID)
-	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: current.ID.String(), PublicId: current.PublicID, Name: name},
@@ -413,18 +432,22 @@ func (s *adminServer) DeleteCreatorRole(
 	if credited > 0 {
 		return nil, creatorRoleInUseError(credited)
 	}
-	if err := s.queriesFor(ctx).DeleteCreatorRole(ctx, current.ID); err != nil {
-		// A series can take the role between the count and the delete. The
-		// foreign key is what actually holds the line, so its refusal is
-		// reported as the same failed precondition rather than as a fault.
-		if dberr.IsForeignKeyViolation(err) {
-			return nil, creatorRoleInUseError(1)
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if err := s.queriesFor(txCtx).DeleteCreatorRole(txCtx, current.ID); err != nil {
+			// A series can take the role between the count and the delete. The
+			// foreign key is what actually holds the line, so its refusal is
+			// reported as the same failed precondition rather than as a fault.
+			if dberr.IsForeignKeyViolation(err) {
+				return nil, creatorRoleInUseError(1)
+			}
+			return nil, s.internalDBError(ctx, "failed to delete creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to delete creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
+		return creatorRoleRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_deleted", current.PublicID)
-	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.DeleteCreatorRoleResponse{}), nil
 }

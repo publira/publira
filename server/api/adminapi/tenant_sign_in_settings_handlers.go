@@ -141,10 +141,14 @@ func (s *adminServer) UpdateTenantSignInSettings(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}
+	owed, err := s.reval.Record(ctx, txq, tenant.ID, tenantSignInRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the tenant sign-in settings", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}
-	s.revalidateTags(ctx, tenant.ID, tenantSignInRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.UpdateTenantSignInSettingsResponse{Settings: tenantSignInSettingsToProto(cfg)}), nil
 }
 

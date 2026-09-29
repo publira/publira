@@ -20,6 +20,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/retention"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -448,18 +449,16 @@ func commentAuditEntry(
 	}
 }
 
-// revalidateCommentList drops the storefront's cached comment list for one
-// episode.
+// recordCommentListRevalidation records the drop of the storefront's cached
+// comment list for one episode, on the moderation action's own transaction.
 //
 // Every moderation action changes what that list answers — an approval adds a
 // comment to it, a removal or a purge takes one out — and the console cannot
-// reach web-host's cache itself, so the invalidation is made here, beside the
-// write. Best-effort like the audit row: a stale list catches up when the
-// entry expires, and failing the action the moderator already performed would
-// be worse.
-func (s *adminServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
+// reach web-host's cache itself, so the invalidation is owed here, beside the
+// write.
+func (s *adminServer) recordCommentListRevalidation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, episodePublicID string) (revalidate.Owed, error) {
 	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
-	s.revalidateTags(ctx, tenantID, []string{tag})
+	return s.reval.Record(ctx, q, tenantID, []string{tag})
 }
 
 // recordCommentAction writes that row the ordinary way: best-effort, so a
@@ -679,16 +678,20 @@ func (s *adminServer) ApproveComment(
 	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentApproved, "")); err != nil {
 		return nil, s.internalDBError(ctx, "failed to notify the author of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment approval", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Msg.Reason))
-	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
@@ -737,16 +740,20 @@ func (s *adminServer) HideComment(
 	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentHidden, commentHiddenReasonStaff)); err != nil {
 		return nil, s.internalDBError(ctx, "failed to notify the author of a hidden comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a hidden comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment hide", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Msg.Reason))
-	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
@@ -813,16 +820,20 @@ func (s *adminServer) RestoreComment(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to refresh the report count of a restored comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a restored comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment restore", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Msg.Reason))
-	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
 	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
@@ -875,10 +886,14 @@ func (s *adminServer) PurgeComment(
 	if err := auditlog.WriteTenant(ctx, qtx, s.logger, entry); err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the comment purge", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
+	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a purged comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment purge", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
-	s.revalidateCommentList(ctx, tenant.ID, current.EpisodePublicID)
+	s.reval.Send(ctx, owed)
 
 	return connect.NewResponse(&publiraadminv1.PurgeCommentResponse{}), nil
 }

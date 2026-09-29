@@ -130,32 +130,45 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
-// revalidateTags records what a committed write left stale and sends it. The
-// failure it can still have is the record, and that one is logged rather than
-// returned: the write is already committed, and a console save must not fail
-// because a cache entry outlived it.
-func (s *adminServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) {
-	owed, err := s.recordRevalidation(ctx, tenantID, tags)
+// writeAndRevalidate runs write in a transaction on the request's tenant-scoped
+// connection and records the tags it returns in that same transaction, sending
+// them once both have committed. An error from write rolls the transaction back
+// and is returned unchanged.
+func (s *adminServer) writeAndRevalidate(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	write func(txCtx context.Context) ([]string, error),
+) error {
+	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
-			"tenant_id", tenantID.String(),
-			"tags", tags,
-			"error", err,
-		)
-		return
+		return s.internalDBError(ctx, "failed to begin a write transaction", err, "tenant_id", tenantID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	tags, err := write(txCtx)
+	if err != nil {
+		return err
+	}
+	owed, err := s.recordRevalidation(txCtx, tenantID, tags)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to record a next cache invalidation", err, "tenant_id", tenantID.String(), "tags", tags)
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit a write transaction", err, "tenant_id", tenantID.String())
 	}
 	s.reval.Send(ctx, owed)
+	return nil
 }
 
 // recordRevalidation writes the invalidation down on the querier the context
 // carries, so a handler that passes its transaction's context owes the drop
 // only if that transaction commits. Send the result once it has.
 //
-// The error is the caller's to act on rather than this helper's to log, because
-// what it means depends on where the write is: a caller still holding the
-// transaction has to roll it back instead of committing a write whose drop
-// nothing owes. A deployment with revalidation turned off is not that case — it
-// owes nothing and answers a zero [revalidate.Owed] and no error.
+// The error is the caller's to act on rather than this helper's to log: the
+// caller has to roll its transaction back instead of committing a write whose
+// drop nothing owes. A deployment with revalidation turned off is not that
+// case — it owes nothing and answers a zero [revalidate.Owed] and no error.
 func (s *adminServer) recordRevalidation(
 	ctx context.Context,
 	tenantID uuid.UUID,
