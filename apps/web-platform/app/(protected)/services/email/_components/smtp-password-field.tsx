@@ -38,6 +38,7 @@ export const SmtpRevisionField = ({ revision }: { revision: string }) => {
 interface SmtpPasswordContextValue {
   hasStoredPassword: boolean;
   isEditing: boolean;
+  setHasEntry: (hasEntry: boolean) => void;
   setIsEditing: (isEditing: boolean) => void;
 }
 
@@ -56,7 +57,8 @@ const useSmtpPassword = () => {
 /**
  * The SMTP password, which never reaches the browser once stored: it is shown
  * masked until the operator asks to change it, and a save that stores one puts
- * it back behind that mask.
+ * it back behind that mask. With none stored the box may be left empty, for a
+ * relay that takes no credentials.
  *
  * ```tsx
  * <SmtpPassword hasStoredPassword={…}>
@@ -82,18 +84,20 @@ export const SmtpPassword = ({
     ? state.settings.hasPassword
     : initialHasStoredPassword;
   const [isEditing, setIsEditing] = useState(!initialHasStoredPassword);
+  const [hasEntry, setHasEntry] = useState(false);
   const context = useMemo(
-    () => ({ hasStoredPassword, isEditing, setIsEditing }),
+    () => ({ hasStoredPassword, isEditing, setHasEntry, setIsEditing }),
     [hasStoredPassword, isEditing]
   );
 
   useActionFormSettled<SavedSettingsState>((settled) => {
     if (settled?.ok) {
       setIsEditing(!settled.settings.hasPassword);
+      setHasEntry(false);
     }
   });
 
-  const keepsStoredPassword = hasStoredPassword && !isEditing;
+  const replacesPassword = isEditing && (hasStoredPassword || hasEntry);
 
   return (
     <SmtpPasswordContext value={context}>
@@ -102,20 +106,24 @@ export const SmtpPassword = ({
         name="password_update_mode"
         type="hidden"
         value={String(
-          keepsStoredPassword
-            ? SECRET_UPDATE_MODE_UNCHANGED
-            : SECRET_UPDATE_MODE_REPLACE
+          replacesPassword
+            ? SECRET_UPDATE_MODE_REPLACE
+            : SECRET_UPDATE_MODE_UNCHANGED
         )}
       />
     </SmtpPasswordContext>
   );
 };
 
-/** The field's label, required only while a new password is being entered. */
+/** The field's label, required only while a stored password is being replaced. */
 export const SmtpPasswordLabel = ({ children }: { children: ReactNode }) => {
-  const { isEditing } = useSmtpPassword();
+  const { hasStoredPassword, isEditing } = useSmtpPassword();
 
-  return <FieldLabel required={isEditing}>{children}</FieldLabel>;
+  return (
+    <FieldLabel required={hasStoredPassword && isEditing}>
+      {children}
+    </FieldLabel>
+  );
 };
 
 /**
@@ -151,7 +159,8 @@ export const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
  * is kept.
  */
 export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
-  const { hasStoredPassword, isEditing, setIsEditing } = useSmtpPassword();
+  const { hasStoredPassword, isEditing, setHasEntry, setIsEditing } =
+    useSmtpPassword();
 
   if (hasStoredPassword && !isEditing) {
     return null;
@@ -162,7 +171,10 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
       <Input
         autoComplete="new-password"
         name="password"
-        required={isEditing}
+        onChange={(event) => {
+          setHasEntry(event.currentTarget.value !== "");
+        }}
+        required={hasStoredPassword}
         type="password"
       />
       {hasStoredPassword ? (

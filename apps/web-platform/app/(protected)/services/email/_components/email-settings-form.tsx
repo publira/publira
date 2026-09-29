@@ -139,7 +139,7 @@ export const EmailSettingsForm = ({
         </Field>
 
         <Field>
-          <FieldLabel required>
+          <FieldLabel>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="platform.settings.username" />
             </Suspense>
@@ -148,7 +148,6 @@ export const EmailSettingsForm = ({
             <Input
               defaultValue={initialSettings.username}
               name="username"
-              required
               type="text"
             />
           </FieldContent>

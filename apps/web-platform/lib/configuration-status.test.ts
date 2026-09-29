@@ -24,7 +24,7 @@ vi.mock("./storage-settings", () => ({
 
 const savedEmail = {
   ok: true,
-  settings: { hasPassword: true, host: "smtp.example.com" },
+  settings: { hasPassword: true, host: "smtp.example.com", username: "mailer" },
 };
 const savedStorage = { ok: true, settings: { revision: "3" } };
 
@@ -37,22 +37,44 @@ beforeEach(() => {
 describe("emailConfigurationState", () => {
   it("is configured once a server and its password are saved", () => {
     expect(
-      emailConfigurationState({ hasPassword: true, host: "smtp.example.com" })
+      emailConfigurationState({
+        hasPassword: true,
+        host: "smtp.example.com",
+        username: "mailer",
+      })
+    ).toBe("configured");
+  });
+
+  it("is configured with no username and no password, for a relay that takes no credentials", () => {
+    expect(
+      emailConfigurationState({
+        hasPassword: false,
+        host: "smtp.example.com",
+        username: "",
+      })
     ).toBe("configured");
   });
 
   it("needs setup while no server is saved", () => {
-    expect(emailConfigurationState({ hasPassword: false, host: "" })).toBe(
-      "needs_setup"
-    );
-    expect(emailConfigurationState({ hasPassword: true, host: "  " })).toBe(
-      "needs_setup"
-    );
+    expect(
+      emailConfigurationState({ hasPassword: false, host: "", username: "" })
+    ).toBe("needs_setup");
+    expect(
+      emailConfigurationState({
+        hasPassword: true,
+        host: "  ",
+        username: "mailer",
+      })
+    ).toBe("needs_setup");
   });
 
-  it("needs setup while the password is missing, since no mail can be sent", () => {
+  it("needs setup while a username has no password, since no mail can be sent", () => {
     expect(
-      emailConfigurationState({ hasPassword: false, host: "smtp.example.com" })
+      emailConfigurationState({
+        hasPassword: false,
+        host: "smtp.example.com",
+        username: "mailer",
+      })
     ).toBe("needs_setup");
   });
 });
