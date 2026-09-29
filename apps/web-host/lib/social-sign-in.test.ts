@@ -155,8 +155,11 @@ describe("social sign-in", () => {
 
     await writePendingSignUp(pending);
 
+    // Apple's authorization code lives five minutes and is exchanged only
+    // once the account is created, so the wait for consent ends before it.
     expect(cookieJar.get(PENDING_SIGN_UP_COOKIE_NAME)?.options).toMatchObject({
       httpOnly: true,
+      maxAge: 240,
       sameSite: "lax",
     });
     await expect(readPendingSignUp()).resolves.toEqual(pending);

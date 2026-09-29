@@ -36,16 +36,23 @@ const continueSignUpFormSchema = async (locale: Locale) => {
 
   return z
     .object({
-      agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
+      agreedPageVersionIds: z
+        .array(z.string().trim().min(1))
+        .max(2)
+        .refine((ids) => new Set(ids).size === ids.length),
       birthDate,
       consent: z.string().optional(),
       locale: localeFormSchema,
       tenantId,
     })
-    .refine((value) => value.consent !== undefined, {
-      error: t("host.auth.errors.consent_required"),
-      path: ["consent"],
-    });
+    .refine(
+      (value) =>
+        value.agreedPageVersionIds.length === 0 || value.consent !== undefined,
+      {
+        error: t("host.auth.errors.consent_required"),
+        path: ["consent"],
+      }
+    );
 };
 
 /**

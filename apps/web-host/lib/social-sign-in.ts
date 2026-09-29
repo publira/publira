@@ -194,6 +194,12 @@ export interface PendingSignUp {
   tenantId: string;
 }
 
+/**
+ * Shorter than the five minutes Apple's authorization code lives, since the
+ * API exchanges the code only once the account is created.
+ */
+const PENDING_SIGN_UP_MAX_AGE_SECONDS = 240;
+
 /** Keep the sign-in waiting for consent; both ends of it are on this site. */
 export const writePendingSignUp = async (
   pending: PendingSignUp
@@ -202,7 +208,7 @@ export const writePendingSignUp = async (
   const cookieStore = await cookies();
   cookieStore.set({
     httpOnly: true,
-    maxAge: SIGN_IN_COOKIE_MAX_AGE_SECONDS,
+    maxAge: PENDING_SIGN_UP_MAX_AGE_SECONDS,
     name: PENDING_SIGN_UP_COOKIE_NAME,
     path: "/",
     sameSite: "lax",

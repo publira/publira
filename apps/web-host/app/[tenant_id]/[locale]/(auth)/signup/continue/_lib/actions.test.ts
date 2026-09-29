@@ -124,6 +124,37 @@ describe("continueSignUpAction", () => {
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
   });
 
+  it("continues without a checkbox once the tenant stops asking for consent", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce([]);
+    mockLoginWithIdToken.mockResolvedValueOnce({ kind: "signed_in", session });
+    const data = form();
+    data.delete("agreedPageVersionIds");
+    data.delete("consent");
+
+    await expect(submit(data)).rejects.toThrow("redirect to /en/series");
+
+    expect(mockLoginWithIdToken).toHaveBeenCalledWith(
+      tenantId,
+      pending,
+      expect.objectContaining({ agreedPageVersionIds: [] })
+    );
+  });
+
+  it("refuses a version sent twice in place of two pages", async () => {
+    const privacyVersionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    mockReadConsentPageVersionIds.mockResolvedValueOnce([
+      termsVersionId,
+      privacyVersionId,
+    ]);
+    const data = form();
+    data.append("agreedPageVersionIds", termsVersionId);
+
+    const state = await submit(data);
+
+    expect(state?.ok).toBe(false);
+    expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+  });
+
   it("starts over when the held sign-in is gone", async () => {
     mockReadPendingSignUp.mockResolvedValueOnce(null);
 
