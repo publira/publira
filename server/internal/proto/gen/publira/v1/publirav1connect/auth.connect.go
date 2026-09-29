@@ -35,6 +35,15 @@ const (
 const (
 	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
 	AuthServiceLoginProcedure = "/publira.v1.AuthService/Login"
+	// AuthServiceLoginWithIdTokenProcedure is the fully-qualified name of the AuthService's
+	// LoginWithIdToken RPC.
+	AuthServiceLoginWithIdTokenProcedure = "/publira.v1.AuthService/LoginWithIdToken"
+	// AuthServiceListMyIdentitiesProcedure is the fully-qualified name of the AuthService's
+	// ListMyIdentities RPC.
+	AuthServiceListMyIdentitiesProcedure = "/publira.v1.AuthService/ListMyIdentities"
+	// AuthServiceUnlinkIdentityProcedure is the fully-qualified name of the AuthService's
+	// UnlinkIdentity RPC.
+	AuthServiceUnlinkIdentityProcedure = "/publira.v1.AuthService/UnlinkIdentity"
 	// AuthServiceCreateUserProcedure is the fully-qualified name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
@@ -98,6 +107,9 @@ const (
 // AuthServiceClient is a client for the publira.v1.AuthService service.
 type AuthServiceClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error)
+	ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error)
+	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
@@ -136,6 +148,24 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceLoginProcedure,
 			connect.WithSchema(authServiceMethods.ByName("Login")),
+			connect.WithClientOptions(opts...),
+		),
+		loginWithIdToken: connect.NewClient[v1.LoginWithIdTokenRequest, v1.LoginWithIdTokenResponse](
+			httpClient,
+			baseURL+AuthServiceLoginWithIdTokenProcedure,
+			connect.WithSchema(authServiceMethods.ByName("LoginWithIdToken")),
+			connect.WithClientOptions(opts...),
+		),
+		listMyIdentities: connect.NewClient[v1.ListMyIdentitiesRequest, v1.ListMyIdentitiesResponse](
+			httpClient,
+			baseURL+AuthServiceListMyIdentitiesProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ListMyIdentities")),
+			connect.WithClientOptions(opts...),
+		),
+		unlinkIdentity: connect.NewClient[v1.UnlinkIdentityRequest, v1.UnlinkIdentityResponse](
+			httpClient,
+			baseURL+AuthServiceUnlinkIdentityProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UnlinkIdentity")),
 			connect.WithClientOptions(opts...),
 		),
 		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
@@ -270,6 +300,9 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
 	login                      *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	loginWithIdToken           *connect.Client[v1.LoginWithIdTokenRequest, v1.LoginWithIdTokenResponse]
+	listMyIdentities           *connect.Client[v1.ListMyIdentitiesRequest, v1.ListMyIdentitiesResponse]
+	unlinkIdentity             *connect.Client[v1.UnlinkIdentityRequest, v1.UnlinkIdentityResponse]
 	createUser                 *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	verifyUserEmail            *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
 	requestEmailVerification   *connect.Client[v1.RequestEmailVerificationRequest, v1.RequestEmailVerificationResponse]
@@ -296,6 +329,21 @@ type authServiceClient struct {
 // Login calls publira.v1.AuthService.Login.
 func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return c.login.CallUnary(ctx, req)
+}
+
+// LoginWithIdToken calls publira.v1.AuthService.LoginWithIdToken.
+func (c *authServiceClient) LoginWithIdToken(ctx context.Context, req *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error) {
+	return c.loginWithIdToken.CallUnary(ctx, req)
+}
+
+// ListMyIdentities calls publira.v1.AuthService.ListMyIdentities.
+func (c *authServiceClient) ListMyIdentities(ctx context.Context, req *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error) {
+	return c.listMyIdentities.CallUnary(ctx, req)
+}
+
+// UnlinkIdentity calls publira.v1.AuthService.UnlinkIdentity.
+func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error) {
+	return c.unlinkIdentity.CallUnary(ctx, req)
 }
 
 // CreateUser calls publira.v1.AuthService.CreateUser.
@@ -406,6 +454,9 @@ func (c *authServiceClient) MarkAllAnnouncementsAsRead(ctx context.Context, req 
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error)
+	ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error)
+	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
@@ -440,6 +491,24 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceLoginProcedure,
 		svc.Login,
 		connect.WithSchema(authServiceMethods.ByName("Login")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceLoginWithIdTokenHandler := connect.NewUnaryHandler(
+		AuthServiceLoginWithIdTokenProcedure,
+		svc.LoginWithIdToken,
+		connect.WithSchema(authServiceMethods.ByName("LoginWithIdToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceListMyIdentitiesHandler := connect.NewUnaryHandler(
+		AuthServiceListMyIdentitiesProcedure,
+		svc.ListMyIdentities,
+		connect.WithSchema(authServiceMethods.ByName("ListMyIdentities")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceUnlinkIdentityHandler := connect.NewUnaryHandler(
+		AuthServiceUnlinkIdentityProcedure,
+		svc.UnlinkIdentity,
+		connect.WithSchema(authServiceMethods.ByName("UnlinkIdentity")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceCreateUserHandler := connect.NewUnaryHandler(
@@ -572,6 +641,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case AuthServiceLoginProcedure:
 			authServiceLoginHandler.ServeHTTP(w, r)
+		case AuthServiceLoginWithIdTokenProcedure:
+			authServiceLoginWithIdTokenHandler.ServeHTTP(w, r)
+		case AuthServiceListMyIdentitiesProcedure:
+			authServiceListMyIdentitiesHandler.ServeHTTP(w, r)
+		case AuthServiceUnlinkIdentityProcedure:
+			authServiceUnlinkIdentityHandler.ServeHTTP(w, r)
 		case AuthServiceCreateUserProcedure:
 			authServiceCreateUserHandler.ServeHTTP(w, r)
 		case AuthServiceVerifyUserEmailProcedure:
@@ -625,6 +700,18 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.Login is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.LoginWithIdToken is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ListMyIdentities is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UnlinkIdentity is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {

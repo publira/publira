@@ -95,6 +95,28 @@ message GetTenantResponse {
   // accepts_payments, this exposes nothing of the credentials.
   bool accepts_app_store_payments = 19;
   bool accepts_google_play_payments = 20;
+  // The providers a reader can sign in with, with the public client IDs each
+  // one signs in through. A provider is absent where the tenant has not
+  // enabled it or it is not ready, and AuthService.LoginWithIdToken refuses it
+  // then.
+  TenantAppleSignIn apple_sign_in = 21;
+  TenantGoogleSignIn google_sign_in = 22;
+}
+
+// How a client signs a reader in with Apple. The iOS app signs in with its own
+// bundle identifier, which GetTenantMobileAppAssociation names.
+message TenantAppleSignIn {
+  // The Services ID the storefront signs in with. Empty where only the iOS app
+  // may.
+  string services_id = 1;
+}
+
+// How a client signs a reader in with Google. The Android app signs in with
+// web_client_id as its server client ID.
+message TenantGoogleSignIn {
+  // Empty where the tenant has no client of that kind.
+  string web_client_id = 1;
+  string ios_client_id = 2;
 }
 
 message GetTenantMobileAppAssociationRequest {

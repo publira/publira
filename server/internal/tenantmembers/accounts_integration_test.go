@@ -62,7 +62,7 @@ func TestCreateAccountWritesAnActiveVerifiedMember(t *testing.T) {
 	if user.ID != member.UserID || user.Name != "Owner" || user.Status != "active" || !user.EmailVerifiedAt.Valid {
 		t.Fatalf("user = %+v, want an active, verified Owner", user)
 	}
-	if !auth.VerifyPassword(" correct horse ", user.PasswordHash) {
+	if !auth.VerifyUserPassword(" correct horse ", user.PasswordHash) {
 		t.Fatal("the stored hash does not verify the password as given")
 	}
 	roles, err := dbmodels.New(pg.DB).ListTenantUserRoles(context.Background(), user.ID)

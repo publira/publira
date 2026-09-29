@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -461,9 +462,24 @@ func (s *platformServer) DeleteEndUser(
 	if err != nil {
 		return nil, err
 	}
-	// Delete the user row itself.
-	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin end user deletion", err, "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+	// Queued before the delete takes the account's links, and the Apple tokens
+	// they hold, with it.
+	if user.TenantID.Valid {
+		if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, user.TenantID.UUID, user.ID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the apple token revocations", err, "user_id", user.ID.String())
+		}
+	}
+	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit end user deletion", err, "user_id", user.ID.String())
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{

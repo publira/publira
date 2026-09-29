@@ -178,7 +178,7 @@ func processReaderSignup(ctx context.Context, db *sql.DB, event dbmodels.OutboxE
 			TenantID:     uuid.NullUUID{UUID: signup.tenantID, Valid: true},
 			PublicID:     publicID,
 			Email:        signup.email,
-			PasswordHash: signup.passwordHash,
+			PasswordHash: sql.NullString{String: signup.passwordHash, Valid: true},
 			Name:         signup.name,
 			BirthDate:    signup.birthDate,
 		})

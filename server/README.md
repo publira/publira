@@ -384,7 +384,7 @@ Notes:
 
 ## Authentication (JWT access tokens)
 
-The API issues **HS256 JWT access tokens** from an email address and a password (`Login` / `Logout`).  
+The API issues **HS256 JWT access tokens** from an email address and a password (`Login` / `Logout`), or from an Apple or Google ID token (`LoginWithIdToken`).  
 Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Authorization: Bearer <token>` is sent to the API.
 
 | Item | Value |
@@ -394,6 +394,14 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 | Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
 | Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_host_auth` |
+
+### Sign in with Apple and Google
+
+Each tenant enables the providers its readers may sign in with through the Admin API's `TenantSettingsService.UpdateTenantSignInSettings`: for Google, the OAuth client IDs of its web application and its iOS app; for Apple, the Services ID the storefront signs in with, and the team, key ID, and `.p8` key of a Sign in with Apple key. The iOS app signs in with the bundle identifier of the tenant's iOS app association. The key is sealed with `PUBLIRA_SECRET_ENCRYPTION_KEYS` before it is stored, and no RPC returns it. `TenantService.GetTenant` answers the providers that are ready and their public client IDs.
+
+`AuthService.LoginWithIdToken` verifies the token against the provider's published keys (`https://appleid.apple.com/auth/keys`, `https://www.googleapis.com/oauth2/v3/certs`), refuses a nonce it has accepted before, and finds the reader by the linked provider account, by the address the provider vouches for, or creates one. `ListMyIdentities` and `UnlinkIdentity` manage the links; an account without a password keeps its last one, and confirms `DeleteMe` with a fresh ID token instead of a password.
+
+An Apple sign-in may carry its authorization code. `publira worker` exchanges it at `https://appleid.apple.com/auth/token` for a refresh token the link keeps, sealed, and revokes that token at `https://appleid.apple.com/auth/revoke` when the link or the account is deleted (`apple_sign_in_code_exchange` / `apple_sign_in_token_revoke` outbox events).
 
 ### Media tokens (audience `media`)
 

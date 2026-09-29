@@ -17,6 +17,76 @@ message LoginResponse {
   publira.types.v1.AccessToken access_token = 2;
 }
 
+// A provider a reader signs in with instead of a password.
+enum IdentityProvider {
+  IDENTITY_PROVIDER_UNSPECIFIED = 0;
+  IDENTITY_PROVIDER_APPLE = 1;
+  IDENTITY_PROVIDER_GOOGLE = 2;
+}
+
+message LoginWithIdTokenRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  IdentityProvider provider = 2;
+  // The ID token the provider issued to one of the client IDs GetTenant
+  // answers for it.
+  string id_token = 3;
+  // The nonce the client generated for this sign-in, as generated: the token
+  // carries it either as it is or as its SHA-256 in hex, which is what the
+  // iOS app hands Apple. A nonce is accepted once.
+  string nonce = 4;
+  // Apple only, and optional: the authorization code issued with the token.
+  // The server exchanges it for a refresh token, which it revokes when the
+  // link or the account is deleted, as Apple requires of an app that creates
+  // accounts with it.
+  string authorization_code = 5;
+  // The redirect_uri of the authorization request the storefront made, which
+  // Apple requires to exchange a code issued to the web. Empty from the app.
+  string redirect_uri = 6;
+  // Read only when no account matches the token and this sign-in creates one.
+  // The name falls back to the one the token carries, and then to the local
+  // part of the address. agreed_page_version_ids and birth_date mean what they
+  // mean in CreateUserRequest, and a missing consent is invalid_argument
+  // without spending the nonce, so the client can ask and send the same token
+  // again.
+  string name = 7;
+  repeated string agreed_page_version_ids = 8;
+  string birth_date = 9;
+}
+
+message LoginWithIdTokenResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  // True when this sign-in created the account.
+  bool account_created = 3;
+}
+
+// A provider account linked to the signed-in reader.
+message LinkedIdentity {
+  IdentityProvider provider = 1;
+  // The address the provider's token carried when the account was linked.
+  string email = 2;
+  // RFC 3339.
+  string linked_at = 3;
+}
+
+message ListMyIdentitiesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListMyIdentitiesResponse {
+  repeated LinkedIdentity identities = 1;
+}
+
+message UnlinkIdentityRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // not_found where the reader has no account of this provider linked, and
+  // failed_precondition where it is the last way the reader signs in: an
+  // account without a password keeps one linked provider.
+  IdentityProvider provider = 2;
+}
+
+message UnlinkIdentityResponse {}
+
 message CreateUserRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
@@ -154,7 +224,13 @@ message UpdateMeResponse {
 
 message DeleteMeRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The account's password. An account without one confirms with a fresh
+  // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
+  // takes them, from a provider linked to the account.
   string password = 2;
+  IdentityProvider provider = 3;
+  string id_token = 4;
+  string nonce = 5;
 }
 
 message DeleteMeResponse {}
@@ -288,6 +364,9 @@ message MarkAllAnnouncementsAsReadResponse {
 
 service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc LoginWithIdToken(LoginWithIdTokenRequest) returns (LoginWithIdTokenResponse) {}
+  rpc ListMyIdentities(ListMyIdentitiesRequest) returns (ListMyIdentitiesResponse) {}
+  rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}

@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -503,6 +504,11 @@ func (s *adminServer) DeleteReader(
 
 	var deleted dbmodels.DeleteTenantReaderRow
 	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", readerID, func(queries *dbmodels.Queries) (string, error) {
+		// Queued before the delete takes the links with the account; a reader
+		// the delete does not find rolls the queue back with it.
+		if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, queries, tenant.ID, readerID); err != nil {
+			return "", err
+		}
 		deleted, err = queries.DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,

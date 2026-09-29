@@ -139,13 +139,13 @@ RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_
 `
 
 type CreateUserParams struct {
-	ID           uuid.UUID     `json:"id"`
-	TenantID     uuid.NullUUID `json:"tenant_id"`
-	PublicID     string        `json:"public_id"`
-	Email        string        `json:"email"`
-	PasswordHash string        `json:"password_hash"`
-	Name         string        `json:"name"`
-	BirthDate    sql.NullTime  `json:"birth_date"`
+	ID           uuid.UUID      `json:"id"`
+	TenantID     uuid.NullUUID  `json:"tenant_id"`
+	PublicID     string         `json:"public_id"`
+	Email        string         `json:"email"`
+	PasswordHash sql.NullString `json:"password_hash"`
+	Name         string         `json:"name"`
+	BirthDate    sql.NullTime   `json:"birth_date"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -1673,6 +1673,42 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 	return i, err
 }
 
+const TakeOverUnverifiedUserByID = `-- name: TakeOverUnverifiedUserByID :one
+UPDATE users
+SET password_hash = NULL,
+    email_verified_at = NOW(),
+    status = CASE
+        WHEN status = 'inactive' THEN 'active'
+        ELSE status
+    END,
+    credentials_version = credentials_version + 1
+WHERE id = $1
+    AND email_verified_at IS NULL
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
+`
+
+// Confirms an address nobody had confirmed on the strength of a provider's
+// verified claim to it. The password goes: whoever set it never proved the
+// address was theirs, and could otherwise sign in beside its owner.
+func (q *Queries) TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, TakeOverUnverifiedUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
+	)
+	return i, err
+}
+
 const UnsuspendTenantReader = `-- name: UnsuspendTenantReader :one
 UPDATE users
 SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
@@ -1857,8 +1893,8 @@ RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_
 `
 
 type UpdateUserPasswordHashByIDParams struct {
-	ID           uuid.UUID `json:"id"`
-	PasswordHash string    `json:"password_hash"`
+	ID           uuid.UUID      `json:"id"`
+	PasswordHash sql.NullString `json:"password_hash"`
 }
 
 func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"log"
 	"net/http"
@@ -29,6 +30,12 @@ func HashPassword(password string) (string, error) {
 
 func VerifyPassword(password, storedHash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil
+}
+
+// VerifyUserPassword checks password against a users row. An account that
+// signed up through a provider has no password, and no password matches it.
+func VerifyUserPassword(password string, storedHash sql.NullString) bool {
+	return storedHash.Valid && VerifyPassword(password, storedHash.String)
 }
 
 // BearerTokenFromHeader extracts the token from Authorization: Bearer <token>.

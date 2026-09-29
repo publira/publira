@@ -303,8 +303,14 @@ type GetTenantResponse struct {
 	// accepts_payments, this exposes nothing of the credentials.
 	AcceptsAppStorePayments   bool `protobuf:"varint,19,opt,name=accepts_app_store_payments,json=acceptsAppStorePayments,proto3" json:"accepts_app_store_payments,omitempty"`
 	AcceptsGooglePlayPayments bool `protobuf:"varint,20,opt,name=accepts_google_play_payments,json=acceptsGooglePlayPayments,proto3" json:"accepts_google_play_payments,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// The providers a reader can sign in with, with the public client IDs each
+	// one signs in through. A provider is absent where the tenant has not
+	// enabled it or it is not ready, and AuthService.LoginWithIdToken refuses it
+	// then.
+	AppleSignIn   *TenantAppleSignIn  `protobuf:"bytes,21,opt,name=apple_sign_in,json=appleSignIn,proto3" json:"apple_sign_in,omitempty"`
+	GoogleSignIn  *TenantGoogleSignIn `protobuf:"bytes,22,opt,name=google_sign_in,json=googleSignIn,proto3" json:"google_sign_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -463,6 +469,123 @@ func (x *GetTenantResponse) GetAcceptsGooglePlayPayments() bool {
 	return false
 }
 
+func (x *GetTenantResponse) GetAppleSignIn() *TenantAppleSignIn {
+	if x != nil {
+		return x.AppleSignIn
+	}
+	return nil
+}
+
+func (x *GetTenantResponse) GetGoogleSignIn() *TenantGoogleSignIn {
+	if x != nil {
+		return x.GoogleSignIn
+	}
+	return nil
+}
+
+// How a client signs a reader in with Apple. The iOS app signs in with its own
+// bundle identifier, which GetTenantMobileAppAssociation names.
+type TenantAppleSignIn struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Services ID the storefront signs in with. Empty where only the iOS app
+	// may.
+	ServicesId    string `protobuf:"bytes,1,opt,name=services_id,json=servicesId,proto3" json:"services_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantAppleSignIn) Reset() {
+	*x = TenantAppleSignIn{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantAppleSignIn) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantAppleSignIn) ProtoMessage() {}
+
+func (x *TenantAppleSignIn) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantAppleSignIn.ProtoReflect.Descriptor instead.
+func (*TenantAppleSignIn) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TenantAppleSignIn) GetServicesId() string {
+	if x != nil {
+		return x.ServicesId
+	}
+	return ""
+}
+
+// How a client signs a reader in with Google. The Android app signs in with
+// web_client_id as its server client ID.
+type TenantGoogleSignIn struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty where the tenant has no client of that kind.
+	WebClientId   string `protobuf:"bytes,1,opt,name=web_client_id,json=webClientId,proto3" json:"web_client_id,omitempty"`
+	IosClientId   string `protobuf:"bytes,2,opt,name=ios_client_id,json=iosClientId,proto3" json:"ios_client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantGoogleSignIn) Reset() {
+	*x = TenantGoogleSignIn{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantGoogleSignIn) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantGoogleSignIn) ProtoMessage() {}
+
+func (x *TenantGoogleSignIn) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantGoogleSignIn.ProtoReflect.Descriptor instead.
+func (*TenantGoogleSignIn) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TenantGoogleSignIn) GetWebClientId() string {
+	if x != nil {
+		return x.WebClientId
+	}
+	return ""
+}
+
+func (x *TenantGoogleSignIn) GetIosClientId() string {
+	if x != nil {
+		return x.IosClientId
+	}
+	return ""
+}
+
 type GetTenantMobileAppAssociationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -472,7 +595,7 @@ type GetTenantMobileAppAssociationRequest struct {
 
 func (x *GetTenantMobileAppAssociationRequest) Reset() {
 	*x = GetTenantMobileAppAssociationRequest{}
-	mi := &file_publira_v1_tenant_proto_msgTypes[5]
+	mi := &file_publira_v1_tenant_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -484,7 +607,7 @@ func (x *GetTenantMobileAppAssociationRequest) String() string {
 func (*GetTenantMobileAppAssociationRequest) ProtoMessage() {}
 
 func (x *GetTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_tenant_proto_msgTypes[5]
+	mi := &file_publira_v1_tenant_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -497,7 +620,7 @@ func (x *GetTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GetTenantMobileAppAssociationRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantMobileAppAssociationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{5}
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetTenantMobileAppAssociationRequest) GetTenant() *v1.TenantContext {
@@ -520,7 +643,7 @@ type TenantAndroidAppAssociation struct {
 
 func (x *TenantAndroidAppAssociation) Reset() {
 	*x = TenantAndroidAppAssociation{}
-	mi := &file_publira_v1_tenant_proto_msgTypes[6]
+	mi := &file_publira_v1_tenant_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -532,7 +655,7 @@ func (x *TenantAndroidAppAssociation) String() string {
 func (*TenantAndroidAppAssociation) ProtoMessage() {}
 
 func (x *TenantAndroidAppAssociation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_tenant_proto_msgTypes[6]
+	mi := &file_publira_v1_tenant_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +668,7 @@ func (x *TenantAndroidAppAssociation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantAndroidAppAssociation.ProtoReflect.Descriptor instead.
 func (*TenantAndroidAppAssociation) Descriptor() ([]byte, []int) {
-	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TenantAndroidAppAssociation) GetApplicationId() string {
@@ -574,7 +697,7 @@ type TenantIosAppAssociation struct {
 
 func (x *TenantIosAppAssociation) Reset() {
 	*x = TenantIosAppAssociation{}
-	mi := &file_publira_v1_tenant_proto_msgTypes[7]
+	mi := &file_publira_v1_tenant_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -586,7 +709,7 @@ func (x *TenantIosAppAssociation) String() string {
 func (*TenantIosAppAssociation) ProtoMessage() {}
 
 func (x *TenantIosAppAssociation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_tenant_proto_msgTypes[7]
+	mi := &file_publira_v1_tenant_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -599,7 +722,7 @@ func (x *TenantIosAppAssociation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantIosAppAssociation.ProtoReflect.Descriptor instead.
 func (*TenantIosAppAssociation) Descriptor() ([]byte, []int) {
-	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TenantIosAppAssociation) GetTeamId() string {
@@ -628,7 +751,7 @@ type GetTenantMobileAppAssociationResponse struct {
 
 func (x *GetTenantMobileAppAssociationResponse) Reset() {
 	*x = GetTenantMobileAppAssociationResponse{}
-	mi := &file_publira_v1_tenant_proto_msgTypes[8]
+	mi := &file_publira_v1_tenant_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +763,7 @@ func (x *GetTenantMobileAppAssociationResponse) String() string {
 func (*GetTenantMobileAppAssociationResponse) ProtoMessage() {}
 
 func (x *GetTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_tenant_proto_msgTypes[8]
+	mi := &file_publira_v1_tenant_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +776,7 @@ func (x *GetTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetTenantMobileAppAssociationResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantMobileAppAssociationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{8}
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetTenantMobileAppAssociationResponse) GetAndroid() *TenantAndroidAppAssociation {
@@ -690,7 +813,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xa7\a\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xb0\b\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -711,8 +834,16 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x0fgoogle_play_url\x18\x0f \x01(\tR\rgooglePlayUrl\x12P\n" +
 	"\x12app_purchase_route\x18\x12 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\x12;\n" +
 	"\x1aaccepts_app_store_payments\x18\x13 \x01(\bR\x17acceptsAppStorePayments\x12?\n" +
-	"\x1caccepts_google_play_payments\x18\x14 \x01(\bR\x19acceptsGooglePlayPaymentsJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
-	"terms_pageR\fprivacy_page\"_\n" +
+	"\x1caccepts_google_play_payments\x18\x14 \x01(\bR\x19acceptsGooglePlayPayments\x12A\n" +
+	"\rapple_sign_in\x18\x15 \x01(\v2\x1d.publira.v1.TenantAppleSignInR\vappleSignIn\x12D\n" +
+	"\x0egoogle_sign_in\x18\x16 \x01(\v2\x1e.publira.v1.TenantGoogleSignInR\fgoogleSignInJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"terms_pageR\fprivacy_page\"4\n" +
+	"\x11TenantAppleSignIn\x12\x1f\n" +
+	"\vservices_id\x18\x01 \x01(\tR\n" +
+	"servicesId\"\\\n" +
+	"\x12TenantGoogleSignIn\x12\"\n" +
+	"\rweb_client_id\x18\x01 \x01(\tR\vwebClientId\x12\"\n" +
+	"\rios_client_id\x18\x02 \x01(\tR\viosClientId\"_\n" +
 	"$GetTenantMobileAppAssociationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"~\n" +
 	"\x1bTenantAndroidAppAssociation\x12%\n" +
@@ -741,46 +872,50 @@ func file_publira_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_v1_tenant_proto_rawDescData
 }
 
-var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_publira_v1_tenant_proto_goTypes = []any{
 	(*GetTenantRequest)(nil),                      // 0: publira.v1.GetTenantRequest
 	(*GetTenantLegalPagesRequest)(nil),            // 1: publira.v1.GetTenantLegalPagesRequest
 	(*TenantLegalPage)(nil),                       // 2: publira.v1.TenantLegalPage
 	(*GetTenantLegalPagesResponse)(nil),           // 3: publira.v1.GetTenantLegalPagesResponse
 	(*GetTenantResponse)(nil),                     // 4: publira.v1.GetTenantResponse
-	(*GetTenantMobileAppAssociationRequest)(nil),  // 5: publira.v1.GetTenantMobileAppAssociationRequest
-	(*TenantAndroidAppAssociation)(nil),           // 6: publira.v1.TenantAndroidAppAssociation
-	(*TenantIosAppAssociation)(nil),               // 7: publira.v1.TenantIosAppAssociation
-	(*GetTenantMobileAppAssociationResponse)(nil), // 8: publira.v1.GetTenantMobileAppAssociationResponse
-	(*v1.TenantContext)(nil),                      // 9: publira.types.v1.TenantContext
-	(*v1.TenantTheme)(nil),                        // 10: publira.types.v1.TenantTheme
-	(v1.CommentMode)(0),                           // 11: publira.types.v1.CommentMode
-	(v1.AgeVerification)(0),                       // 12: publira.types.v1.AgeVerification
-	(v1.AppPurchaseRoute)(0),                      // 13: publira.types.v1.AppPurchaseRoute
+	(*TenantAppleSignIn)(nil),                     // 5: publira.v1.TenantAppleSignIn
+	(*TenantGoogleSignIn)(nil),                    // 6: publira.v1.TenantGoogleSignIn
+	(*GetTenantMobileAppAssociationRequest)(nil),  // 7: publira.v1.GetTenantMobileAppAssociationRequest
+	(*TenantAndroidAppAssociation)(nil),           // 8: publira.v1.TenantAndroidAppAssociation
+	(*TenantIosAppAssociation)(nil),               // 9: publira.v1.TenantIosAppAssociation
+	(*GetTenantMobileAppAssociationResponse)(nil), // 10: publira.v1.GetTenantMobileAppAssociationResponse
+	(*v1.TenantContext)(nil),                      // 11: publira.types.v1.TenantContext
+	(*v1.TenantTheme)(nil),                        // 12: publira.types.v1.TenantTheme
+	(v1.CommentMode)(0),                           // 13: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),                       // 14: publira.types.v1.AgeVerification
+	(v1.AppPurchaseRoute)(0),                      // 15: publira.types.v1.AppPurchaseRoute
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
-	9,  // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 1: publira.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 1: publira.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 2: publira.v1.GetTenantLegalPagesResponse.terms_page:type_name -> publira.v1.TenantLegalPage
 	2,  // 3: publira.v1.GetTenantLegalPagesResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
-	10, // 4: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
-	11, // 5: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	12, // 6: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	13, // 7: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
-	9,  // 8: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	6,  // 9: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
-	7,  // 10: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
-	0,  // 11: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1,  // 12: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
-	5,  // 13: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
-	4,  // 14: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	3,  // 15: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
-	8,  // 16: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
-	14, // [14:17] is the sub-list for method output_type
-	11, // [11:14] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	12, // 4: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
+	13, // 5: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	14, // 6: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	15, // 7: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
+	5,  // 8: publira.v1.GetTenantResponse.apple_sign_in:type_name -> publira.v1.TenantAppleSignIn
+	6,  // 9: publira.v1.GetTenantResponse.google_sign_in:type_name -> publira.v1.TenantGoogleSignIn
+	11, // 10: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,  // 11: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
+	9,  // 12: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
+	0,  // 13: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1,  // 14: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
+	7,  // 15: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
+	4,  // 16: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	3,  // 17: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
+	10, // 18: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
+	16, // [16:19] is the sub-list for method output_type
+	13, // [13:16] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }
@@ -794,7 +929,7 @@ func file_publira_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_tenant_proto_rawDesc), len(file_publira_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

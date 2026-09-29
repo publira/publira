@@ -212,7 +212,7 @@ func (s *apiServer) Login(
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get user for login", err, "tenant_id", tenant.ID.String())
 	}
-	if !auth.VerifyPassword(req.Msg.Password, user.PasswordHash) {
+	if !auth.VerifyUserPassword(req.Msg.Password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
@@ -660,7 +660,7 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 		return nil, err
 	}
-	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
+	if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
@@ -996,7 +996,7 @@ func (s *apiServer) ConfirmPasswordReset(
 
 	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
-		PasswordHash: passwordHash,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -1082,7 +1082,7 @@ func (s *apiServer) ChangePassword(
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
 		return nil, s.internalDBError(ctx, "failed to lock the account for a password change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	if !auth.VerifyPassword(currentPassword, locked.PasswordHash) {
+	if !auth.VerifyUserPassword(currentPassword, locked.PasswordHash) {
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		// Not Unauthenticated: the session is fine, the confirmation field is
 		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
@@ -1100,7 +1100,7 @@ func (s *apiServer) ChangePassword(
 
 	if _, err := txq.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
-		PasswordHash: passwordHash,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -1281,29 +1281,58 @@ func (s *apiServer) DeleteMe(
 		return nil, err
 	}
 	password := req.Msg.Password
-	if strings.TrimSpace(password) == "" {
+	withPassword := strings.TrimSpace(password) != ""
+	withIdentity := strings.TrimSpace(req.Msg.IdToken) != ""
+	if withPassword == withIdentity {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either password or id_token is required"))
 	}
-	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
-		return nil, err
+	if withPassword {
+		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+			return nil, err
+		}
+		if !auth.VerifyUserPassword(password, user.PasswordHash) {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+			// Not Unauthenticated: the session is fine, the confirmation field is
+			// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+			// log the reader out for a typo.
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
+		}
+		s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 	}
-	if !auth.VerifyPassword(password, user.PasswordHash) {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
-		// Not Unauthenticated: the session is fine, the confirmation field is
-		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
-		// log the reader out for a typo.
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin account deletion transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
-	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	if withIdentity {
+		if err := s.confirmWithIdentity(ctx, txq, tenant.ID, user.ID, req.Msg.Provider, req.Msg.IdToken, req.Msg.Nonce); err != nil {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
+	}
+	if _, err := txq.BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
+	// Queued before the delete takes the links, and the tokens they hold, with
+	// the account.
+	if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "revocation_enqueue_failed")
+		return nil, s.internalError(ctx, "failed to queue the apple token revocations", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit account deletion", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
 	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil

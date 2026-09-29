@@ -2,8 +2,8 @@
 // @generated from file publira/v1/auth.proto (package publira.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { AccessToken, TenantContext, User } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/auth.proto.
  */
 export const file_publira_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiYAoMTG9naW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJqCg1Mb2dpblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISMwoMYWNjZXNzX3Rva2VuGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5BY2Nlc3NUb2tlbiKoAQoRQ3JlYXRlVXNlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkSEgoKYmlydGhfZGF0ZRgFIAEoCRIfChdhZ3JlZWRfcGFnZV92ZXJzaW9uX2lkcxgGIAMoCSJGChJDcmVhdGVVc2VyUmVzcG9uc2USEAoIYWNjZXB0ZWQYAyABKAhKBAgBEAJKBAgCEANSBHVzZXJSDGFjY2Vzc190b2tlbiJYChZWZXJpZnlVc2VyRW1haWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSIrChdWZXJpZnlVc2VyRW1haWxSZXNwb25zZRIQCgh2ZXJpZmllZBgBIAEoCCJhCh9SZXF1ZXN0RW1haWxWZXJpZmljYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCSI1CiBSZXF1ZXN0RW1haWxWZXJpZmljYXRpb25SZXNwb25zZRIRCglyZXF1ZXN0ZWQYASABKAgikAEKGVJlcXVlc3RFbWFpbENoYW5nZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhUKDWN1cnJlbnRfZW1haWwYAiABKAkSEQoJbmV3X2VtYWlsGAMgASgJEhgKEGN1cnJlbnRfcGFzc3dvcmQYBCABKAkiLwoaUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2USEQoJcmVxdWVzdGVkGAEgASgIIlsKGUNvbmZpcm1FbWFpbENoYW5nZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJImIKGkNvbmZpcm1FbWFpbENoYW5nZVJlc3BvbnNlEhEKCWNvbmZpcm1lZBgBIAEoCBIPCgdjaGFuZ2VkGAIgASgIEiAKGHBlbmRpbmdfY29uZmlybWF0aW9uX2ZvchgDIAEoCSJdChtSZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJIjEKHFJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2USEQoJcmVxdWVzdGVkGAEgASgIInMKG0NvbmZpcm1QYXNzd29yZFJlc2V0UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdG9rZW4YAiABKAkSFAoMbmV3X3Bhc3N3b3JkGAMgASgJIjEKHENvbmZpcm1QYXNzd29yZFJlc2V0UmVzcG9uc2USEQoJY29uZmlybWVkGAEgASgIIngKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGAoQY3VycmVudF9wYXNzd29yZBgCIAEoCRIUCgxuZXdfcGFzc3dvcmQYAyABKAkiTQoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRIzCgxhY2Nlc3NfdG9rZW4YASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkFjY2Vzc1Rva2VuIkAKDUxvZ291dFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IhAKDkxvZ291dFJlc3BvbnNlIj8KDEdldE1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiNQoNR2V0TWVSZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyImQKD1VwZGF0ZU1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRISCgpiaXJ0aF9kYXRlGAMgASgJIjgKEFVwZGF0ZU1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlciJUCg9EZWxldGVNZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCHBhc3N3b3JkGAIgASgJIhIKEERlbGV0ZU1lUmVzcG9uc2UiUQoeR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJGCh9HZXROb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEiMKG2VtYWlsX25vdGlmaWNhdGlvbnNfZW5hYmxlZBgBIAEoCCJ5CiFVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EiMKG2VtYWlsX25vdGlmaWNhdGlvbnNfZW5hYmxlZBgCIAEoCCJJCiJVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEiMKG2VtYWlsX25vdGlmaWNhdGlvbnNfZW5hYmxlZBgBIAEoCCIwChFWaWV3ZXJQcmVmZXJlbmNlcxIbChN3aWRlX3ZpZXdlcl9lbmFibGVkGAEgASgIIk4KG0dldFZpZXdlclByZWZlcmVuY2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiUgocR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXNwb25zZRIyCgtwcmVmZXJlbmNlcxgBIAEoCzIdLnB1YmxpcmEudjEuVmlld2VyUHJlZmVyZW5jZXMiiwEKHlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSIAoTd2lkZV92aWV3ZXJfZW5hYmxlZBgCIAEoCEgAiAEBQhYKFF93aWRlX3ZpZXdlcl9lbmFibGVkIlUKH1VwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2USMgoLcHJlZmVyZW5jZXMYASABKAsyHS5wdWJsaXJhLnYxLlZpZXdlclByZWZlcmVuY2VzIsQBChBBbm5vdW5jZW1lbnRJdGVtEgoKAmlkGAEgASgJEhkKEWFubm91bmNlbWVudF90eXBlGAIgASgJEg0KBXRpdGxlGAMgASgJEgwKBGJvZHkYBCABKAkSEAoIbGlua191cmwYBSABKAkSDwoHaXNfcmVhZBgGIAEoCBIPCgdyZWFkX2F0GAcgASgJEhIKCmNyZWF0ZWRfYXQYCCABKAkSDgoGcGlubmVkGAkgASgIEhQKDHBpbm5lZF91bnRpbBgKIAEoCSJPChxHZXRQaW5uZWRBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJTCh1HZXRQaW5uZWRBbm5vdW5jZW1lbnRSZXNwb25zZRIyCgxhbm5vdW5jZW1lbnQYASABKAsyHC5wdWJsaXJhLnYxLkFubm91bmNlbWVudEl0ZW0iYgoWR2V0QW5ub3VuY2VtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFwoPYW5ub3VuY2VtZW50X2lkGAIgASgJIk0KF0dldEFubm91bmNlbWVudFJlc3BvbnNlEjIKDGFubm91bmNlbWVudBgBIAEoCzIcLnB1YmxpcmEudjEuQW5ub3VuY2VtZW50SXRlbSJ3ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQifAoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRIzCg1hbm5vdW5jZW1lbnRzGAEgAygLMhwucHVibGlyYS52MS5Bbm5vdW5jZW1lbnRJdGVtEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiaQodTWFya0Fubm91bmNlbWVudEFzUmVhZFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2Fubm91bmNlbWVudF9pZBgCIAEoCSIwCh5NYXJrQW5ub3VuY2VtZW50QXNSZWFkUmVzcG9uc2USDgoGbWFya2VkGAEgASgIIlQKIU1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiOgoiTWFya0FsbEFubm91bmNlbWVudHNBc1JlYWRSZXNwb25zZRIUCgxtYXJrZWRfY291bnQYASABKAUyhxEKC0F1dGhTZXJ2aWNlEj4KBUxvZ2luEhgucHVibGlyYS52MS5Mb2dpblJlcXVlc3QaGS5wdWJsaXJhLnYxLkxvZ2luUmVzcG9uc2UiABJNCgpDcmVhdGVVc2VyEh0ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVxdWVzdBoeLnB1YmxpcmEudjEuQ3JlYXRlVXNlclJlc3BvbnNlIgASXAoPVmVyaWZ5VXNlckVtYWlsEiIucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXF1ZXN0GiMucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXNwb25zZSIAEncKGFJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvbhIrLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uUmVxdWVzdBosLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uUmVzcG9uc2UiABJlChJSZXF1ZXN0RW1haWxDaGFuZ2USJS5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbENoYW5nZVJlcXVlc3QaJi5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbENoYW5nZVJlc3BvbnNlIgASZQoSQ29uZmlybUVtYWlsQ2hhbmdlEiUucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0GiYucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXNwb25zZSIAEmsKFFJlcXVlc3RQYXNzd29yZFJlc2V0EicucHVibGlyYS52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJsaXJhLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UiABJrChRDb25maXJtUGFzc3dvcmRSZXNldBInLnB1YmxpcmEudjEuQ29uZmlybVBhc3N3b3JkUmVzZXRSZXF1ZXN0GigucHVibGlyYS52MS5Db25maXJtUGFzc3dvcmRSZXNldFJlc3BvbnNlIgASWQoOQ2hhbmdlUGFzc3dvcmQSIS5wdWJsaXJhLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoiLnB1YmxpcmEudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIAEkEKBkxvZ291dBIZLnB1YmxpcmEudjEuTG9nb3V0UmVxdWVzdBoaLnB1YmxpcmEudjEuTG9nb3V0UmVzcG9uc2UiABI+CgVHZXRNZRIYLnB1YmxpcmEudjEuR2V0TWVSZXF1ZXN0GhkucHVibGlyYS52MS5HZXRNZVJlc3BvbnNlIgASRwoIVXBkYXRlTWUSGy5wdWJsaXJhLnYxLlVwZGF0ZU1lUmVxdWVzdBocLnB1YmxpcmEudjEuVXBkYXRlTWVSZXNwb25zZSIAEkcKCERlbGV0ZU1lEhsucHVibGlyYS52MS5EZWxldGVNZVJlcXVlc3QaHC5wdWJsaXJhLnYxLkRlbGV0ZU1lUmVzcG9uc2UiABJ0ChdHZXROb3RpZmljYXRpb25TZXR0aW5ncxIqLnB1YmxpcmEudjEuR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3NSZXF1ZXN0GisucHVibGlyYS52MS5HZXROb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlIgASfQoaVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3MSLS5wdWJsaXJhLnYxLlVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBouLnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZSIAEmsKFEdldFZpZXdlclByZWZlcmVuY2VzEicucHVibGlyYS52MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3QaKC5wdWJsaXJhLnYxLkdldFZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2UiABJ0ChdVcGRhdGVWaWV3ZXJQcmVmZXJlbmNlcxIqLnB1YmxpcmEudjEuVXBkYXRlVmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0GisucHVibGlyYS52MS5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1Jlc3BvbnNlIgASXAoPR2V0QW5ub3VuY2VtZW50EiIucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXNwb25zZSIAEm4KFUdldFBpbm5lZEFubm91bmNlbWVudBIoLnB1YmxpcmEudjEuR2V0UGlubmVkQW5ub3VuY2VtZW50UmVxdWVzdBopLnB1YmxpcmEudjEuR2V0UGlubmVkQW5ub3VuY2VtZW50UmVzcG9uc2UiABJiChFMaXN0QW5ub3VuY2VtZW50cxIkLnB1YmxpcmEudjEuTGlzdEFubm91bmNlbWVudHNSZXF1ZXN0GiUucHVibGlyYS52MS5MaXN0QW5ub3VuY2VtZW50c1Jlc3BvbnNlIgAScQoWTWFya0Fubm91bmNlbWVudEFzUmVhZBIpLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbWVudEFzUmVhZFJlcXVlc3QaKi5wdWJsaXJhLnYxLk1hcmtBbm5vdW5jZW1lbnRBc1JlYWRSZXNwb25zZSIAEn0KGk1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkEi0ucHVibGlyYS52MS5NYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlcXVlc3QaLi5wdWJsaXJhLnYxLk1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiYAoMTG9naW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJqCg1Mb2dpblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISMwoMYWNjZXNzX3Rva2VuGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5BY2Nlc3NUb2tlbiKQAgoXTG9naW5XaXRoSWRUb2tlblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ei4KCHByb3ZpZGVyGAIgASgOMhwucHVibGlyYS52MS5JZGVudGl0eVByb3ZpZGVyEhAKCGlkX3Rva2VuGAMgASgJEg0KBW5vbmNlGAQgASgJEhoKEmF1dGhvcml6YXRpb25fY29kZRgFIAEoCRIUCgxyZWRpcmVjdF91cmkYBiABKAkSDAoEbmFtZRgHIAEoCRIfChdhZ3JlZWRfcGFnZV92ZXJzaW9uX2lkcxgIIAMoCRISCgpiaXJ0aF9kYXRlGAkgASgJIo4BChhMb2dpbldpdGhJZFRva2VuUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlchIzCgxhY2Nlc3NfdG9rZW4YAiABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkFjY2Vzc1Rva2VuEhcKD2FjY291bnRfY3JlYXRlZBgDIAEoCCJiCg5MaW5rZWRJZGVudGl0eRIuCghwcm92aWRlchgBIAEoDjIcLnB1YmxpcmEudjEuSWRlbnRpdHlQcm92aWRlchINCgVlbWFpbBgCIAEoCRIRCglsaW5rZWRfYXQYAyABKAkiSgoXTGlzdE15SWRlbnRpdGllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IkoKGExpc3RNeUlkZW50aXRpZXNSZXNwb25zZRIuCgppZGVudGl0aWVzGAEgAygLMhoucHVibGlyYS52MS5MaW5rZWRJZGVudGl0eSJ4ChVVbmxpbmtJZGVudGl0eVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ei4KCHByb3ZpZGVyGAIgASgOMhwucHVibGlyYS52MS5JZGVudGl0eVByb3ZpZGVyIhgKFlVubGlua0lkZW50aXR5UmVzcG9uc2UiqAEKEUNyZWF0ZVVzZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAIgASgJEg0KBWVtYWlsGAMgASgJEhAKCHBhc3N3b3JkGAQgASgJEhIKCmJpcnRoX2RhdGUYBSABKAkSHwoXYWdyZWVkX3BhZ2VfdmVyc2lvbl9pZHMYBiADKAkiRgoSQ3JlYXRlVXNlclJlc3BvbnNlEhAKCGFjY2VwdGVkGAMgASgISgQIARACSgQIAhADUgR1c2VyUgxhY2Nlc3NfdG9rZW4iWAoWVmVyaWZ5VXNlckVtYWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdG9rZW4YAiABKAkiKwoXVmVyaWZ5VXNlckVtYWlsUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgiYQofUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFZW1haWwYAiABKAkiNQogUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uUmVzcG9uc2USEQoJcmVxdWVzdGVkGAEgASgIIpABChlSZXF1ZXN0RW1haWxDaGFuZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIVCg1jdXJyZW50X2VtYWlsGAIgASgJEhEKCW5ld19lbWFpbBgDIAEoCRIYChBjdXJyZW50X3Bhc3N3b3JkGAQgASgJIi8KGlJlcXVlc3RFbWFpbENoYW5nZVJlc3BvbnNlEhEKCXJlcXVlc3RlZBgBIAEoCCJbChlDb25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSJiChpDb25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRIRCgljb25maXJtZWQYASABKAgSDwoHY2hhbmdlZBgCIAEoCBIgChhwZW5kaW5nX2NvbmZpcm1hdGlvbl9mb3IYAyABKAkiXQobUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCSIxChxSZXF1ZXN0UGFzc3dvcmRSZXNldFJlc3BvbnNlEhEKCXJlcXVlc3RlZBgBIAEoCCJzChtDb25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEhQKDG5ld19wYXNzd29yZBgDIAEoCSIxChxDb25maXJtUGFzc3dvcmRSZXNldFJlc3BvbnNlEhEKCWNvbmZpcm1lZBgBIAEoCCJ4ChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhgKEGN1cnJlbnRfcGFzc3dvcmQYAiABKAkSFAoMbmV3X3Bhc3N3b3JkGAMgASgJIk0KFkNoYW5nZVBhc3N3b3JkUmVzcG9uc2USMwoMYWNjZXNzX3Rva2VuGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5BY2Nlc3NUb2tlbiJACg1Mb2dvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCIQCg5Mb2dvdXRSZXNwb25zZSI/CgxHZXRNZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjUKDUdldE1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlciJkCg9VcGRhdGVNZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSEgoKYmlydGhfZGF0ZRgDIAEoCSI4ChBVcGRhdGVNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIipQEKD0RlbGV0ZU1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIcGFzc3dvcmQYAiABKAkSLgoIcHJvdmlkZXIYAyABKA4yHC5wdWJsaXJhLnYxLklkZW50aXR5UHJvdmlkZXISEAoIaWRfdG9rZW4YBCABKAkSDQoFbm9uY2UYBSABKAkiEgoQRGVsZXRlTWVSZXNwb25zZSJRCh5HZXROb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IkYKH0dldE5vdGlmaWNhdGlvblNldHRpbmdzUmVzcG9uc2USIwobZW1haWxfbm90aWZpY2F0aW9uc19lbmFibGVkGAEgASgIInkKIVVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSIwobZW1haWxfbm90aWZpY2F0aW9uc19lbmFibGVkGAIgASgIIkkKIlVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVzcG9uc2USIwobZW1haWxfbm90aWZpY2F0aW9uc19lbmFibGVkGAEgASgIIjAKEVZpZXdlclByZWZlcmVuY2VzEhsKE3dpZGVfdmlld2VyX2VuYWJsZWQYASABKAgiTgobR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJSChxHZXRWaWV3ZXJQcmVmZXJlbmNlc1Jlc3BvbnNlEjIKC3ByZWZlcmVuY2VzGAEgASgLMh0ucHVibGlyYS52MS5WaWV3ZXJQcmVmZXJlbmNlcyKLAQoeVXBkYXRlVmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIgChN3aWRlX3ZpZXdlcl9lbmFibGVkGAIgASgISACIAQFCFgoUX3dpZGVfdmlld2VyX2VuYWJsZWQiVQofVXBkYXRlVmlld2VyUHJlZmVyZW5jZXNSZXNwb25zZRIyCgtwcmVmZXJlbmNlcxgBIAEoCzIdLnB1YmxpcmEudjEuVmlld2VyUHJlZmVyZW5jZXMixAEKEEFubm91bmNlbWVudEl0ZW0SCgoCaWQYASABKAkSGQoRYW5ub3VuY2VtZW50X3R5cGUYAiABKAkSDQoFdGl0bGUYAyABKAkSDAoEYm9keRgEIAEoCRIQCghsaW5rX3VybBgFIAEoCRIPCgdpc19yZWFkGAYgASgIEg8KB3JlYWRfYXQYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJIk8KHEdldFBpbm5lZEFubm91bmNlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IlMKHUdldFBpbm5lZEFubm91bmNlbWVudFJlc3BvbnNlEjIKDGFubm91bmNlbWVudBgBIAEoCzIcLnB1YmxpcmEudjEuQW5ub3VuY2VtZW50SXRlbSJiChZHZXRBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiTQoXR2V0QW5ub3VuY2VtZW50UmVzcG9uc2USMgoMYW5ub3VuY2VtZW50GAEgASgLMhwucHVibGlyYS52MS5Bbm5vdW5jZW1lbnRJdGVtIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJ8ChlMaXN0QW5ub3VuY2VtZW50c1Jlc3BvbnNlEjMKDWFubm91bmNlbWVudHMYASADKAsyHC5wdWJsaXJhLnYxLkFubm91bmNlbWVudEl0ZW0SFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJpCh1NYXJrQW5ub3VuY2VtZW50QXNSZWFkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFwoPYW5ub3VuY2VtZW50X2lkGAIgASgJIjAKHk1hcmtBbm5vdW5jZW1lbnRBc1JlYWRSZXNwb25zZRIOCgZtYXJrZWQYASABKAgiVAohTWFya0FsbEFubm91bmNlbWVudHNBc1JlYWRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI6CiJNYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlc3BvbnNlEhQKDG1hcmtlZF9jb3VudBgBIAEoBSpwChBJZGVudGl0eVByb3ZpZGVyEiEKHUlERU5USVRZX1BST1ZJREVSX1VOU1BFQ0lGSUVEEAASGwoXSURFTlRJVFlfUFJPVklERVJfQVBQTEUQARIcChhJREVOVElUWV9QUk9WSURFUl9HT09HTEUQAjKkEwoLQXV0aFNlcnZpY2USPgoFTG9naW4SGC5wdWJsaXJhLnYxLkxvZ2luUmVxdWVzdBoZLnB1YmxpcmEudjEuTG9naW5SZXNwb25zZSIAEl8KEExvZ2luV2l0aElkVG9rZW4SIy5wdWJsaXJhLnYxLkxvZ2luV2l0aElkVG9rZW5SZXF1ZXN0GiQucHVibGlyYS52MS5Mb2dpbldpdGhJZFRva2VuUmVzcG9uc2UiABJfChBMaXN0TXlJZGVudGl0aWVzEiMucHVibGlyYS52MS5MaXN0TXlJZGVudGl0aWVzUmVxdWVzdBokLnB1YmxpcmEudjEuTGlzdE15SWRlbnRpdGllc1Jlc3BvbnNlIgASWQoOVW5saW5rSWRlbnRpdHkSIS5wdWJsaXJhLnYxLlVubGlua0lkZW50aXR5UmVxdWVzdBoiLnB1YmxpcmEudjEuVW5saW5rSWRlbnRpdHlSZXNwb25zZSIAEk0KCkNyZWF0ZVVzZXISHS5wdWJsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9uc2UiABJcCg9WZXJpZnlVc2VyRW1haWwSIi5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlc3BvbnNlIgASdwoYUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uEisucHVibGlyYS52MS5SZXF1ZXN0RW1haWxWZXJpZmljYXRpb25SZXF1ZXN0GiwucHVibGlyYS52MS5SZXF1ZXN0RW1haWxWZXJpZmljYXRpb25SZXNwb25zZSIAEmUKElJlcXVlc3RFbWFpbENoYW5nZRIlLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVxdWVzdBomLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2UiABJlChJDb25maXJtRW1haWxDaGFuZ2USJS5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlcXVlc3QaJi5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlc3BvbnNlIgASawoUUmVxdWVzdFBhc3N3b3JkUmVzZXQSJy5wdWJsaXJhLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBooLnB1YmxpcmEudjEuUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXNwb25zZSIAEmsKFENvbmZpcm1QYXNzd29yZFJlc2V0EicucHVibGlyYS52MS5Db25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1QYXNzd29yZFJlc2V0UmVzcG9uc2UiABJZCg5DaGFuZ2VQYXNzd29yZBIhLnB1YmxpcmEudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiIucHVibGlyYS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlIgASQQoGTG9nb3V0EhkucHVibGlyYS52MS5Mb2dvdXRSZXF1ZXN0GhoucHVibGlyYS52MS5Mb2dvdXRSZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiABJHCghVcGRhdGVNZRIbLnB1YmxpcmEudjEuVXBkYXRlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5VcGRhdGVNZVJlc3BvbnNlIgASRwoIRGVsZXRlTWUSGy5wdWJsaXJhLnYxLkRlbGV0ZU1lUmVxdWVzdBocLnB1YmxpcmEudjEuRGVsZXRlTWVSZXNwb25zZSIAEnQKF0dldE5vdGlmaWNhdGlvblNldHRpbmdzEioucHVibGlyYS52MS5HZXROb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QaKy5wdWJsaXJhLnYxLkdldE5vdGlmaWNhdGlvblNldHRpbmdzUmVzcG9uc2UiABJ9ChpVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5ncxItLnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXF1ZXN0Gi4ucHVibGlyYS52MS5VcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlIgASawoUR2V0Vmlld2VyUHJlZmVyZW5jZXMSJy5wdWJsaXJhLnYxLkdldFZpZXdlclByZWZlcmVuY2VzUmVxdWVzdBooLnB1YmxpcmEudjEuR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXNwb25zZSIAEnQKF1VwZGF0ZVZpZXdlclByZWZlcmVuY2VzEioucHVibGlyYS52MS5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3QaKy5wdWJsaXJhLnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2UiABJcCg9HZXRBbm5vdW5jZW1lbnQSIi5wdWJsaXJhLnYxLkdldEFubm91bmNlbWVudFJlcXVlc3QaIy5wdWJsaXJhLnYxLkdldEFubm91bmNlbWVudFJlc3BvbnNlIgASbgoVR2V0UGlubmVkQW5ub3VuY2VtZW50EigucHVibGlyYS52MS5HZXRQaW5uZWRBbm5vdW5jZW1lbnRSZXF1ZXN0GikucHVibGlyYS52MS5HZXRQaW5uZWRBbm5vdW5jZW1lbnRSZXNwb25zZSIAEmIKEUxpc3RBbm5vdW5jZW1lbnRzEiQucHVibGlyYS52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChZNYXJrQW5ub3VuY2VtZW50QXNSZWFkEikucHVibGlyYS52MS5NYXJrQW5ub3VuY2VtZW50QXNSZWFkUmVxdWVzdBoqLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbWVudEFzUmVhZFJlc3BvbnNlIgASfQoaTWFya0FsbEFubm91bmNlbWVudHNBc1JlYWQSLS5wdWJsaXJhLnYxLk1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkUmVxdWVzdBouLnB1YmxpcmEudjEuTWFya0FsbEFubm91bmNlbWVudHNBc1JlYWRSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.LoginRequest
@@ -62,6 +62,220 @@ export type LoginResponse = Message<"publira.v1.LoginResponse"> & {
  */
 export const LoginResponseSchema: GenMessage<LoginResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_auth, 1);
+
+/**
+ * @generated from message publira.v1.LoginWithIdTokenRequest
+ */
+export type LoginWithIdTokenRequest = Message<"publira.v1.LoginWithIdTokenRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: publira.v1.IdentityProvider provider = 2;
+   */
+  provider: IdentityProvider;
+
+  /**
+   * The ID token the provider issued to one of the client IDs GetTenant
+   * answers for it.
+   *
+   * @generated from field: string id_token = 3;
+   */
+  idToken: string;
+
+  /**
+   * The nonce the client generated for this sign-in, as generated: the token
+   * carries it either as it is or as its SHA-256 in hex, which is what the
+   * iOS app hands Apple. A nonce is accepted once.
+   *
+   * @generated from field: string nonce = 4;
+   */
+  nonce: string;
+
+  /**
+   * Apple only, and optional: the authorization code issued with the token.
+   * The server exchanges it for a refresh token, which it revokes when the
+   * link or the account is deleted, as Apple requires of an app that creates
+   * accounts with it.
+   *
+   * @generated from field: string authorization_code = 5;
+   */
+  authorizationCode: string;
+
+  /**
+   * The redirect_uri of the authorization request the storefront made, which
+   * Apple requires to exchange a code issued to the web. Empty from the app.
+   *
+   * @generated from field: string redirect_uri = 6;
+   */
+  redirectUri: string;
+
+  /**
+   * Read only when no account matches the token and this sign-in creates one.
+   * The name falls back to the one the token carries, and then to the local
+   * part of the address. agreed_page_version_ids and birth_date mean what they
+   * mean in CreateUserRequest, and a missing consent is invalid_argument
+   * without spending the nonce, so the client can ask and send the same token
+   * again.
+   *
+   * @generated from field: string name = 7;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string agreed_page_version_ids = 8;
+   */
+  agreedPageVersionIds: string[];
+
+  /**
+   * @generated from field: string birth_date = 9;
+   */
+  birthDate: string;
+};
+
+/**
+ * Describes the message publira.v1.LoginWithIdTokenRequest.
+ * Use `create(LoginWithIdTokenRequestSchema)` to create a new message.
+ */
+export const LoginWithIdTokenRequestSchema: GenMessage<LoginWithIdTokenRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 2);
+
+/**
+ * @generated from message publira.v1.LoginWithIdTokenResponse
+ */
+export type LoginWithIdTokenResponse = Message<"publira.v1.LoginWithIdTokenResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.User user = 1;
+   */
+  user?: User | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.AccessToken access_token = 2;
+   */
+  accessToken?: AccessToken | undefined;
+
+  /**
+   * True when this sign-in created the account.
+   *
+   * @generated from field: bool account_created = 3;
+   */
+  accountCreated: boolean;
+};
+
+/**
+ * Describes the message publira.v1.LoginWithIdTokenResponse.
+ * Use `create(LoginWithIdTokenResponseSchema)` to create a new message.
+ */
+export const LoginWithIdTokenResponseSchema: GenMessage<LoginWithIdTokenResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 3);
+
+/**
+ * A provider account linked to the signed-in reader.
+ *
+ * @generated from message publira.v1.LinkedIdentity
+ */
+export type LinkedIdentity = Message<"publira.v1.LinkedIdentity"> & {
+  /**
+   * @generated from field: publira.v1.IdentityProvider provider = 1;
+   */
+  provider: IdentityProvider;
+
+  /**
+   * The address the provider's token carried when the account was linked.
+   *
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * RFC 3339.
+   *
+   * @generated from field: string linked_at = 3;
+   */
+  linkedAt: string;
+};
+
+/**
+ * Describes the message publira.v1.LinkedIdentity.
+ * Use `create(LinkedIdentitySchema)` to create a new message.
+ */
+export const LinkedIdentitySchema: GenMessage<LinkedIdentity> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 4);
+
+/**
+ * @generated from message publira.v1.ListMyIdentitiesRequest
+ */
+export type ListMyIdentitiesRequest = Message<"publira.v1.ListMyIdentitiesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.v1.ListMyIdentitiesRequest.
+ * Use `create(ListMyIdentitiesRequestSchema)` to create a new message.
+ */
+export const ListMyIdentitiesRequestSchema: GenMessage<ListMyIdentitiesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 5);
+
+/**
+ * @generated from message publira.v1.ListMyIdentitiesResponse
+ */
+export type ListMyIdentitiesResponse = Message<"publira.v1.ListMyIdentitiesResponse"> & {
+  /**
+   * @generated from field: repeated publira.v1.LinkedIdentity identities = 1;
+   */
+  identities: LinkedIdentity[];
+};
+
+/**
+ * Describes the message publira.v1.ListMyIdentitiesResponse.
+ * Use `create(ListMyIdentitiesResponseSchema)` to create a new message.
+ */
+export const ListMyIdentitiesResponseSchema: GenMessage<ListMyIdentitiesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 6);
+
+/**
+ * @generated from message publira.v1.UnlinkIdentityRequest
+ */
+export type UnlinkIdentityRequest = Message<"publira.v1.UnlinkIdentityRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * not_found where the reader has no account of this provider linked, and
+   * failed_precondition where it is the last way the reader signs in: an
+   * account without a password keeps one linked provider.
+   *
+   * @generated from field: publira.v1.IdentityProvider provider = 2;
+   */
+  provider: IdentityProvider;
+};
+
+/**
+ * Describes the message publira.v1.UnlinkIdentityRequest.
+ * Use `create(UnlinkIdentityRequestSchema)` to create a new message.
+ */
+export const UnlinkIdentityRequestSchema: GenMessage<UnlinkIdentityRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 7);
+
+/**
+ * @generated from message publira.v1.UnlinkIdentityResponse
+ */
+export type UnlinkIdentityResponse = Message<"publira.v1.UnlinkIdentityResponse"> & {
+};
+
+/**
+ * Describes the message publira.v1.UnlinkIdentityResponse.
+ * Use `create(UnlinkIdentityResponseSchema)` to create a new message.
+ */
+export const UnlinkIdentityResponseSchema: GenMessage<UnlinkIdentityResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 8);
 
 /**
  * @generated from message publira.v1.CreateUserRequest
@@ -116,7 +330,7 @@ export type CreateUserRequest = Message<"publira.v1.CreateUserRequest"> & {
  * Use `create(CreateUserRequestSchema)` to create a new message.
  */
 export const CreateUserRequestSchema: GenMessage<CreateUserRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 2);
+  messageDesc(file_publira_v1_auth, 9);
 
 /**
  * @generated from message publira.v1.CreateUserResponse
@@ -137,7 +351,7 @@ export type CreateUserResponse = Message<"publira.v1.CreateUserResponse"> & {
  * Use `create(CreateUserResponseSchema)` to create a new message.
  */
 export const CreateUserResponseSchema: GenMessage<CreateUserResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 3);
+  messageDesc(file_publira_v1_auth, 10);
 
 /**
  * @generated from message publira.v1.VerifyUserEmailRequest
@@ -159,7 +373,7 @@ export type VerifyUserEmailRequest = Message<"publira.v1.VerifyUserEmailRequest"
  * Use `create(VerifyUserEmailRequestSchema)` to create a new message.
  */
 export const VerifyUserEmailRequestSchema: GenMessage<VerifyUserEmailRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 4);
+  messageDesc(file_publira_v1_auth, 11);
 
 /**
  * @generated from message publira.v1.VerifyUserEmailResponse
@@ -176,7 +390,7 @@ export type VerifyUserEmailResponse = Message<"publira.v1.VerifyUserEmailRespons
  * Use `create(VerifyUserEmailResponseSchema)` to create a new message.
  */
 export const VerifyUserEmailResponseSchema: GenMessage<VerifyUserEmailResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 5);
+  messageDesc(file_publira_v1_auth, 12);
 
 /**
  * @generated from message publira.v1.RequestEmailVerificationRequest
@@ -198,7 +412,7 @@ export type RequestEmailVerificationRequest = Message<"publira.v1.RequestEmailVe
  * Use `create(RequestEmailVerificationRequestSchema)` to create a new message.
  */
 export const RequestEmailVerificationRequestSchema: GenMessage<RequestEmailVerificationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 6);
+  messageDesc(file_publira_v1_auth, 13);
 
 /**
  * @generated from message publira.v1.RequestEmailVerificationResponse
@@ -219,7 +433,7 @@ export type RequestEmailVerificationResponse = Message<"publira.v1.RequestEmailV
  * Use `create(RequestEmailVerificationResponseSchema)` to create a new message.
  */
 export const RequestEmailVerificationResponseSchema: GenMessage<RequestEmailVerificationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 7);
+  messageDesc(file_publira_v1_auth, 14);
 
 /**
  * @generated from message publira.v1.RequestEmailChangeRequest
@@ -251,7 +465,7 @@ export type RequestEmailChangeRequest = Message<"publira.v1.RequestEmailChangeRe
  * Use `create(RequestEmailChangeRequestSchema)` to create a new message.
  */
 export const RequestEmailChangeRequestSchema: GenMessage<RequestEmailChangeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 8);
+  messageDesc(file_publira_v1_auth, 15);
 
 /**
  * @generated from message publira.v1.RequestEmailChangeResponse
@@ -268,7 +482,7 @@ export type RequestEmailChangeResponse = Message<"publira.v1.RequestEmailChangeR
  * Use `create(RequestEmailChangeResponseSchema)` to create a new message.
  */
 export const RequestEmailChangeResponseSchema: GenMessage<RequestEmailChangeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 9);
+  messageDesc(file_publira_v1_auth, 16);
 
 /**
  * @generated from message publira.v1.ConfirmEmailChangeRequest
@@ -290,7 +504,7 @@ export type ConfirmEmailChangeRequest = Message<"publira.v1.ConfirmEmailChangeRe
  * Use `create(ConfirmEmailChangeRequestSchema)` to create a new message.
  */
 export const ConfirmEmailChangeRequestSchema: GenMessage<ConfirmEmailChangeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 10);
+  messageDesc(file_publira_v1_auth, 17);
 
 /**
  * @generated from message publira.v1.ConfirmEmailChangeResponse
@@ -317,7 +531,7 @@ export type ConfirmEmailChangeResponse = Message<"publira.v1.ConfirmEmailChangeR
  * Use `create(ConfirmEmailChangeResponseSchema)` to create a new message.
  */
 export const ConfirmEmailChangeResponseSchema: GenMessage<ConfirmEmailChangeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 11);
+  messageDesc(file_publira_v1_auth, 18);
 
 /**
  * @generated from message publira.v1.RequestPasswordResetRequest
@@ -339,7 +553,7 @@ export type RequestPasswordResetRequest = Message<"publira.v1.RequestPasswordRes
  * Use `create(RequestPasswordResetRequestSchema)` to create a new message.
  */
 export const RequestPasswordResetRequestSchema: GenMessage<RequestPasswordResetRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 12);
+  messageDesc(file_publira_v1_auth, 19);
 
 /**
  * @generated from message publira.v1.RequestPasswordResetResponse
@@ -356,7 +570,7 @@ export type RequestPasswordResetResponse = Message<"publira.v1.RequestPasswordRe
  * Use `create(RequestPasswordResetResponseSchema)` to create a new message.
  */
 export const RequestPasswordResetResponseSchema: GenMessage<RequestPasswordResetResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 13);
+  messageDesc(file_publira_v1_auth, 20);
 
 /**
  * @generated from message publira.v1.ConfirmPasswordResetRequest
@@ -383,7 +597,7 @@ export type ConfirmPasswordResetRequest = Message<"publira.v1.ConfirmPasswordRes
  * Use `create(ConfirmPasswordResetRequestSchema)` to create a new message.
  */
 export const ConfirmPasswordResetRequestSchema: GenMessage<ConfirmPasswordResetRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 14);
+  messageDesc(file_publira_v1_auth, 21);
 
 /**
  * @generated from message publira.v1.ConfirmPasswordResetResponse
@@ -400,7 +614,7 @@ export type ConfirmPasswordResetResponse = Message<"publira.v1.ConfirmPasswordRe
  * Use `create(ConfirmPasswordResetResponseSchema)` to create a new message.
  */
 export const ConfirmPasswordResetResponseSchema: GenMessage<ConfirmPasswordResetResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 15);
+  messageDesc(file_publira_v1_auth, 22);
 
 /**
  * @generated from message publira.v1.ChangePasswordRequest
@@ -427,7 +641,7 @@ export type ChangePasswordRequest = Message<"publira.v1.ChangePasswordRequest"> 
  * Use `create(ChangePasswordRequestSchema)` to create a new message.
  */
 export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 16);
+  messageDesc(file_publira_v1_auth, 23);
 
 /**
  * @generated from message publira.v1.ChangePasswordResponse
@@ -449,7 +663,7 @@ export type ChangePasswordResponse = Message<"publira.v1.ChangePasswordResponse"
  * Use `create(ChangePasswordResponseSchema)` to create a new message.
  */
 export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 17);
+  messageDesc(file_publira_v1_auth, 24);
 
 /**
  * @generated from message publira.v1.LogoutRequest
@@ -466,7 +680,7 @@ export type LogoutRequest = Message<"publira.v1.LogoutRequest"> & {
  * Use `create(LogoutRequestSchema)` to create a new message.
  */
 export const LogoutRequestSchema: GenMessage<LogoutRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 18);
+  messageDesc(file_publira_v1_auth, 25);
 
 /**
  * @generated from message publira.v1.LogoutResponse
@@ -479,7 +693,7 @@ export type LogoutResponse = Message<"publira.v1.LogoutResponse"> & {
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
 export const LogoutResponseSchema: GenMessage<LogoutResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 19);
+  messageDesc(file_publira_v1_auth, 26);
 
 /**
  * @generated from message publira.v1.GetMeRequest
@@ -496,7 +710,7 @@ export type GetMeRequest = Message<"publira.v1.GetMeRequest"> & {
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
 export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 20);
+  messageDesc(file_publira_v1_auth, 27);
 
 /**
  * @generated from message publira.v1.GetMeResponse
@@ -513,7 +727,7 @@ export type GetMeResponse = Message<"publira.v1.GetMeResponse"> & {
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
 export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 21);
+  messageDesc(file_publira_v1_auth, 28);
 
 /**
  * @generated from message publira.v1.UpdateMeRequest
@@ -547,7 +761,7 @@ export type UpdateMeRequest = Message<"publira.v1.UpdateMeRequest"> & {
  * Use `create(UpdateMeRequestSchema)` to create a new message.
  */
 export const UpdateMeRequestSchema: GenMessage<UpdateMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 22);
+  messageDesc(file_publira_v1_auth, 29);
 
 /**
  * @generated from message publira.v1.UpdateMeResponse
@@ -564,7 +778,7 @@ export type UpdateMeResponse = Message<"publira.v1.UpdateMeResponse"> & {
  * Use `create(UpdateMeResponseSchema)` to create a new message.
  */
 export const UpdateMeResponseSchema: GenMessage<UpdateMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 23);
+  messageDesc(file_publira_v1_auth, 30);
 
 /**
  * @generated from message publira.v1.DeleteMeRequest
@@ -576,9 +790,28 @@ export type DeleteMeRequest = Message<"publira.v1.DeleteMeRequest"> & {
   tenant?: TenantContext | undefined;
 
   /**
+   * The account's password. An account without one confirms with a fresh
+   * sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
+   * takes them, from a provider linked to the account.
+   *
    * @generated from field: string password = 2;
    */
   password: string;
+
+  /**
+   * @generated from field: publira.v1.IdentityProvider provider = 3;
+   */
+  provider: IdentityProvider;
+
+  /**
+   * @generated from field: string id_token = 4;
+   */
+  idToken: string;
+
+  /**
+   * @generated from field: string nonce = 5;
+   */
+  nonce: string;
 };
 
 /**
@@ -586,7 +819,7 @@ export type DeleteMeRequest = Message<"publira.v1.DeleteMeRequest"> & {
  * Use `create(DeleteMeRequestSchema)` to create a new message.
  */
 export const DeleteMeRequestSchema: GenMessage<DeleteMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 24);
+  messageDesc(file_publira_v1_auth, 31);
 
 /**
  * @generated from message publira.v1.DeleteMeResponse
@@ -599,7 +832,7 @@ export type DeleteMeResponse = Message<"publira.v1.DeleteMeResponse"> & {
  * Use `create(DeleteMeResponseSchema)` to create a new message.
  */
 export const DeleteMeResponseSchema: GenMessage<DeleteMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 25);
+  messageDesc(file_publira_v1_auth, 32);
 
 /**
  * @generated from message publira.v1.GetNotificationSettingsRequest
@@ -616,7 +849,7 @@ export type GetNotificationSettingsRequest = Message<"publira.v1.GetNotification
  * Use `create(GetNotificationSettingsRequestSchema)` to create a new message.
  */
 export const GetNotificationSettingsRequestSchema: GenMessage<GetNotificationSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 26);
+  messageDesc(file_publira_v1_auth, 33);
 
 /**
  * @generated from message publira.v1.GetNotificationSettingsResponse
@@ -633,7 +866,7 @@ export type GetNotificationSettingsResponse = Message<"publira.v1.GetNotificatio
  * Use `create(GetNotificationSettingsResponseSchema)` to create a new message.
  */
 export const GetNotificationSettingsResponseSchema: GenMessage<GetNotificationSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 27);
+  messageDesc(file_publira_v1_auth, 34);
 
 /**
  * @generated from message publira.v1.UpdateNotificationSettingsRequest
@@ -655,7 +888,7 @@ export type UpdateNotificationSettingsRequest = Message<"publira.v1.UpdateNotifi
  * Use `create(UpdateNotificationSettingsRequestSchema)` to create a new message.
  */
 export const UpdateNotificationSettingsRequestSchema: GenMessage<UpdateNotificationSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 28);
+  messageDesc(file_publira_v1_auth, 35);
 
 /**
  * @generated from message publira.v1.UpdateNotificationSettingsResponse
@@ -672,7 +905,7 @@ export type UpdateNotificationSettingsResponse = Message<"publira.v1.UpdateNotif
  * Use `create(UpdateNotificationSettingsResponseSchema)` to create a new message.
  */
 export const UpdateNotificationSettingsResponseSchema: GenMessage<UpdateNotificationSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 29);
+  messageDesc(file_publira_v1_auth, 36);
 
 /**
  * A reader's own choices about how the viewer is laid out, stored against the
@@ -699,7 +932,7 @@ export type ViewerPreferences = Message<"publira.v1.ViewerPreferences"> & {
  * Use `create(ViewerPreferencesSchema)` to create a new message.
  */
 export const ViewerPreferencesSchema: GenMessage<ViewerPreferences> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 30);
+  messageDesc(file_publira_v1_auth, 37);
 
 /**
  * @generated from message publira.v1.GetViewerPreferencesRequest
@@ -716,7 +949,7 @@ export type GetViewerPreferencesRequest = Message<"publira.v1.GetViewerPreferenc
  * Use `create(GetViewerPreferencesRequestSchema)` to create a new message.
  */
 export const GetViewerPreferencesRequestSchema: GenMessage<GetViewerPreferencesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 31);
+  messageDesc(file_publira_v1_auth, 38);
 
 /**
  * @generated from message publira.v1.GetViewerPreferencesResponse
@@ -733,7 +966,7 @@ export type GetViewerPreferencesResponse = Message<"publira.v1.GetViewerPreferen
  * Use `create(GetViewerPreferencesResponseSchema)` to create a new message.
  */
 export const GetViewerPreferencesResponseSchema: GenMessage<GetViewerPreferencesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 32);
+  messageDesc(file_publira_v1_auth, 39);
 
 /**
  * @generated from message publira.v1.UpdateViewerPreferencesRequest
@@ -759,7 +992,7 @@ export type UpdateViewerPreferencesRequest = Message<"publira.v1.UpdateViewerPre
  * Use `create(UpdateViewerPreferencesRequestSchema)` to create a new message.
  */
 export const UpdateViewerPreferencesRequestSchema: GenMessage<UpdateViewerPreferencesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 33);
+  messageDesc(file_publira_v1_auth, 40);
 
 /**
  * @generated from message publira.v1.UpdateViewerPreferencesResponse
@@ -776,7 +1009,7 @@ export type UpdateViewerPreferencesResponse = Message<"publira.v1.UpdateViewerPr
  * Use `create(UpdateViewerPreferencesResponseSchema)` to create a new message.
  */
 export const UpdateViewerPreferencesResponseSchema: GenMessage<UpdateViewerPreferencesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 34);
+  messageDesc(file_publira_v1_auth, 41);
 
 /**
  * @generated from message publira.v1.AnnouncementItem
@@ -843,7 +1076,7 @@ export type AnnouncementItem = Message<"publira.v1.AnnouncementItem"> & {
  * Use `create(AnnouncementItemSchema)` to create a new message.
  */
 export const AnnouncementItemSchema: GenMessage<AnnouncementItem> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 35);
+  messageDesc(file_publira_v1_auth, 42);
 
 /**
  * What the site shows as a banner above every page: the newest tenant-wide
@@ -864,7 +1097,7 @@ export type GetPinnedAnnouncementRequest = Message<"publira.v1.GetPinnedAnnounce
  * Use `create(GetPinnedAnnouncementRequestSchema)` to create a new message.
  */
 export const GetPinnedAnnouncementRequestSchema: GenMessage<GetPinnedAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 36);
+  messageDesc(file_publira_v1_auth, 43);
 
 /**
  * @generated from message publira.v1.GetPinnedAnnouncementResponse
@@ -883,7 +1116,7 @@ export type GetPinnedAnnouncementResponse = Message<"publira.v1.GetPinnedAnnounc
  * Use `create(GetPinnedAnnouncementResponseSchema)` to create a new message.
  */
 export const GetPinnedAnnouncementResponseSchema: GenMessage<GetPinnedAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 37);
+  messageDesc(file_publira_v1_auth, 44);
 
 /**
  * Get-by-id. A signed-in reader gets their own row with its read state; a
@@ -909,7 +1142,7 @@ export type GetAnnouncementRequest = Message<"publira.v1.GetAnnouncementRequest"
  * Use `create(GetAnnouncementRequestSchema)` to create a new message.
  */
 export const GetAnnouncementRequestSchema: GenMessage<GetAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 38);
+  messageDesc(file_publira_v1_auth, 45);
 
 /**
  * @generated from message publira.v1.GetAnnouncementResponse
@@ -926,7 +1159,7 @@ export type GetAnnouncementResponse = Message<"publira.v1.GetAnnouncementRespons
  * Use `create(GetAnnouncementResponseSchema)` to create a new message.
  */
 export const GetAnnouncementResponseSchema: GenMessage<GetAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 39);
+  messageDesc(file_publira_v1_auth, 46);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -959,7 +1192,7 @@ export type ListAnnouncementsRequest = Message<"publira.v1.ListAnnouncementsRequ
  * Use `create(ListAnnouncementsRequestSchema)` to create a new message.
  */
 export const ListAnnouncementsRequestSchema: GenMessage<ListAnnouncementsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 40);
+  messageDesc(file_publira_v1_auth, 47);
 
 /**
  * @generated from message publira.v1.ListAnnouncementsResponse
@@ -990,7 +1223,7 @@ export type ListAnnouncementsResponse = Message<"publira.v1.ListAnnouncementsRes
  * Use `create(ListAnnouncementsResponseSchema)` to create a new message.
  */
 export const ListAnnouncementsResponseSchema: GenMessage<ListAnnouncementsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 41);
+  messageDesc(file_publira_v1_auth, 48);
 
 /**
  * @generated from message publira.v1.MarkAnnouncementAsReadRequest
@@ -1012,7 +1245,7 @@ export type MarkAnnouncementAsReadRequest = Message<"publira.v1.MarkAnnouncement
  * Use `create(MarkAnnouncementAsReadRequestSchema)` to create a new message.
  */
 export const MarkAnnouncementAsReadRequestSchema: GenMessage<MarkAnnouncementAsReadRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 42);
+  messageDesc(file_publira_v1_auth, 49);
 
 /**
  * @generated from message publira.v1.MarkAnnouncementAsReadResponse
@@ -1029,7 +1262,7 @@ export type MarkAnnouncementAsReadResponse = Message<"publira.v1.MarkAnnouncemen
  * Use `create(MarkAnnouncementAsReadResponseSchema)` to create a new message.
  */
 export const MarkAnnouncementAsReadResponseSchema: GenMessage<MarkAnnouncementAsReadResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 43);
+  messageDesc(file_publira_v1_auth, 50);
 
 /**
  * @generated from message publira.v1.MarkAllAnnouncementsAsReadRequest
@@ -1046,7 +1279,7 @@ export type MarkAllAnnouncementsAsReadRequest = Message<"publira.v1.MarkAllAnnou
  * Use `create(MarkAllAnnouncementsAsReadRequestSchema)` to create a new message.
  */
 export const MarkAllAnnouncementsAsReadRequestSchema: GenMessage<MarkAllAnnouncementsAsReadRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 44);
+  messageDesc(file_publira_v1_auth, 51);
 
 /**
  * @generated from message publira.v1.MarkAllAnnouncementsAsReadResponse
@@ -1063,7 +1296,35 @@ export type MarkAllAnnouncementsAsReadResponse = Message<"publira.v1.MarkAllAnno
  * Use `create(MarkAllAnnouncementsAsReadResponseSchema)` to create a new message.
  */
 export const MarkAllAnnouncementsAsReadResponseSchema: GenMessage<MarkAllAnnouncementsAsReadResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 45);
+  messageDesc(file_publira_v1_auth, 52);
+
+/**
+ * A provider a reader signs in with instead of a password.
+ *
+ * @generated from enum publira.v1.IdentityProvider
+ */
+export enum IdentityProvider {
+  /**
+   * @generated from enum value: IDENTITY_PROVIDER_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: IDENTITY_PROVIDER_APPLE = 1;
+   */
+  APPLE = 1,
+
+  /**
+   * @generated from enum value: IDENTITY_PROVIDER_GOOGLE = 2;
+   */
+  GOOGLE = 2,
+}
+
+/**
+ * Describes the enum publira.v1.IdentityProvider.
+ */
+export const IdentityProviderSchema: GenEnum<IdentityProvider> = /*@__PURE__*/
+  enumDesc(file_publira_v1_auth, 0);
 
 /**
  * @generated from service publira.v1.AuthService
@@ -1076,6 +1337,30 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof LoginRequestSchema;
     output: typeof LoginResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.LoginWithIdToken
+   */
+  loginWithIdToken: {
+    methodKind: "unary";
+    input: typeof LoginWithIdTokenRequestSchema;
+    output: typeof LoginWithIdTokenResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.ListMyIdentities
+   */
+  listMyIdentities: {
+    methodKind: "unary";
+    input: typeof ListMyIdentitiesRequestSchema;
+    output: typeof ListMyIdentitiesResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.UnlinkIdentity
+   */
+  unlinkIdentity: {
+    methodKind: "unary";
+    input: typeof UnlinkIdentityRequestSchema;
+    output: typeof UnlinkIdentityResponseSchema;
   },
   /**
    * @generated from rpc publira.v1.AuthService.CreateUser
