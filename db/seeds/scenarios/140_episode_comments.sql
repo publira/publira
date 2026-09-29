@@ -26,8 +26,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_
 SELECT
     ts.id,
     'CmntTNNTAAA1',
-    'comment.localhost',
-    'admin.comment.localhost',
+    'comment.localhost:' || :'tenant_port',
+    'admin.comment.localhost:' || :'tenant_port',
     'Comment Tenant',
     'active',
     'en'
@@ -45,7 +45,7 @@ SET domain = EXCLUDED.domain,
 INSERT INTO tenant_config (tenant_id, comment_mode)
 SELECT t.id, 'immediate'
 FROM tenants t
-WHERE t.domain = 'comment.localhost'
+WHERE t.public_id = 'CmntTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     updated_at = NOW();
@@ -53,7 +53,7 @@ SET comment_mode = EXCLUDED.comment_mode,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'comment.localhost'
+    WHERE t.public_id = 'CmntTNNTAAA1'
 ),
 label_seed AS (
     SELECT '018f0f61-0001-7000-8000-000000000001'::uuid AS id
@@ -73,7 +73,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'comment.localhost'
+    WHERE t.public_id = 'CmntTNNTAAA1'
 ),
 creator_seed AS (
     SELECT '018f0f62-0001-7000-8000-000000000001'::uuid AS id
@@ -95,7 +95,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'comment.localhost'
+    WHERE t.public_id = 'CmntTNNTAAA1'
 )
 INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
 SELECT
@@ -290,7 +290,7 @@ SELECT
     'active',
     NOW()
 FROM member_seed ms
-JOIN tenants t ON t.domain = 'comment.localhost'
+JOIN tenants t ON t.public_id = 'CmntTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,

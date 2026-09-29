@@ -6,7 +6,7 @@
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 admin_user AS (
     SELECT u.id AS user_id

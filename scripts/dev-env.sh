@@ -64,7 +64,7 @@ init_profile() {
   if ! psql "${admin_url}" -tAc "SELECT 1 FROM pg_database WHERE datname = '${db_name}'" | grep -qx '1'; then
     psql "${admin_url}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${db_name}\""
   fi
-  PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" task -d "${REPO_ROOT}" db:setup
+  PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" PUBLIRA_EDGE_PORT="${PUBLIRA_EDGE_PORT}" task -d "${REPO_ROOT}" db:setup
   PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
     PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" \
     PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \

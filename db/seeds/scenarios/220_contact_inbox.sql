@@ -14,7 +14,7 @@
 
 DELETE FROM contact_messages
 WHERE public_id IN ('CtctMSGAAAA1', 'CtctMSGAAAA2', 'CtctMSGAAAA3')
-    AND tenant_id = (SELECT id FROM tenants WHERE domain = 'localhost');
+    AND tenant_id = (SELECT id FROM tenants WHERE public_id = 'SeedTNNTAAA1');
 
 WITH contact_message_seed (
     id,
@@ -80,5 +80,5 @@ SELECT
     cms.created_at,
     cms.handled_at
 FROM contact_message_seed cms
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 LEFT JOIN users u ON u.tenant_id = t.id AND u.email = cms.sender_email;

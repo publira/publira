@@ -29,19 +29,8 @@ import {
   viewerPageImageId,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
-import { hostPath, WEB_HOST_EDGE_BASE_URL } from "../src/urls";
+import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
 import { turnToEndPage } from "../src/viewer";
-
-/**
- * A body image is `/images/episodes/{id}` on the reader's own origin, so the
- * Traefik edge is the only origin that serves a whole episode. The project
- * that already takes the edge as its `baseURL` is `viewer-performance`, and
- * this suite must not join it: that project runs alone so nothing competes
- * with what it times. It stays in the ordinary `web-host` project instead,
- * whose base is web-host on its own port, and names the edge in full here.
- */
-const edgeUrl = (pathname: string): string =>
-  `${WEB_HOST_EDGE_BASE_URL}${hostPath(pathname)}`;
 
 const seriesPath = `/series/${SEED_TENANT.series.publicId}`;
 
@@ -178,7 +167,7 @@ const pollEndPageControl = (
   expect
     .poll(
       async () => {
-        await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+        await page.goto(hostPath(VIEWER_EPISODE_PATH));
         return await turnToEndPage(page, control);
       },
       { message, timeout: 60_000 }
@@ -284,8 +273,8 @@ const isStrictlyAscending = (values: readonly number[]): boolean =>
   );
 
 /**
- * Reading one episode from its first page to its last, through the edge that
- * serves the reader and its body images under a single origin.
+ * Reading one episode from its first page to its last, on the origin that
+ * serves the reader and its body images alike.
  *
  * What a finished read leaves behind is asserted through the reader's own
  * screens: `/my` lists it in the reading history, and the series page marks
@@ -313,7 +302,7 @@ test.describe("web-host episode reading", () => {
   test("turning pages moves the reading progress to the last page of the episode", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
     await expect(readingProgress(page)).toHaveAttribute(
@@ -342,25 +331,25 @@ test.describe("web-host episode reading", () => {
   }) => {
     clearEpisodeReadState();
     clearReadingPosition();
-    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_EDGE_BASE_URL);
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_BASE_URL);
     await expect(
       readingHistory(page).getByText("No reading history yet"),
       "the reader has finished nothing yet"
     ).toBeVisible();
 
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
     const readReported = episodeReadReported(page);
     await turnToLastPage(page);
     await readReported;
 
-    await page.goto(edgeUrl("/my"));
+    await page.goto(hostPath("/my"));
     await expect(historyEntry(page)).toHaveAttribute(
       "href",
       hostPath(VIEWER_EPISODE_PATH)
     );
 
-    await page.goto(edgeUrl(seriesPath));
+    await page.goto(hostPath(seriesPath));
     await expect(
       page
         .getByRole("listitem")
@@ -385,7 +374,7 @@ test.describe("web-host episode reading", () => {
       .poll(savedPageIndex, { message: "the last page was saved" })
       .toBe(String(VIEWER_PAGE_COUNT - 1));
 
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expect(readingProgress(page)).toHaveAttribute(
       "value",
       String(VIEWER_PAGE_COUNT)
@@ -406,7 +395,7 @@ test.describe("web-host episode reading", () => {
     // A later session renders the history from the stored read rather than
     // from anything this browser was still holding.
     await page.context().clearCookies();
-    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_EDGE_BASE_URL);
+    await signInAsMember(page, SEED_MEMBER, "/my", WEB_HOST_BASE_URL);
     await expect(
       historyEntry(page),
       "the history is still there in a new session"
@@ -424,7 +413,7 @@ test.describe("web-host episode reading", () => {
       page,
       SEED_MEMBER,
       VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
     await expectFirstPageDrawn(page);
@@ -460,7 +449,7 @@ test.describe("web-host episode reading", () => {
       page,
       SEED_MEMBER,
       VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
     await expectFirstPageDrawn(page);
@@ -506,7 +495,7 @@ test.describe("web-host episode reading", () => {
       page,
       SEED_MEMBER,
       VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
     await expectFirstPageDrawn(page);
@@ -518,7 +507,7 @@ test.describe("web-host episode reading", () => {
       })
       .toBeGreaterThan(0);
 
-    await page.goto(edgeUrl(seriesPath));
+    await page.goto(hostPath(seriesPath));
     await expect(
       page.getByRole("link", { name: "Continue reading" })
     ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
@@ -532,7 +521,7 @@ test.describe("web-host episode reading", () => {
         .getByText("Next to read")
     ).toBeAttached();
 
-    await page.goto(edgeUrl("/"));
+    await page.goto(hostPath("/"));
     await expect(
       page
         .getByRole("region", { name: "Continue reading" })
@@ -550,7 +539,7 @@ test.describe("web-host episode reading", () => {
       { times: 1 }
     );
 
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
     const firstPage = pageCanvas(page, 1);
     await expect(firstPage).toHaveAttribute("data-page-status", "error");
@@ -590,7 +579,7 @@ test.describe("web-host episode reading", () => {
       { times: 1 }
     );
 
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
     await turnPages(page, 1);
 
@@ -618,7 +607,7 @@ test.describe("web-host episode reading", () => {
   test("the end of an episode opens the next one in a single click", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
     await expect(
@@ -648,7 +637,7 @@ test.describe("web-host episode reading", () => {
   test("the next episode opened while offline arrives once the connection returns", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
     const nextEpisode = endPage(page).getByRole("link", {
       name: NEXT_EPISODE_TITLE,
@@ -703,7 +692,7 @@ test.describe("web-host episode reading", () => {
   test("a paid next episode says what it costs before the reader opens it", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(PENULTIMATE_EPISODE_PATH));
+    await page.goto(hostPath(PENULTIMATE_EPISODE_PATH));
 
     await expect(
       page.getByRole("heading", { name: "More episodes" })
@@ -726,7 +715,7 @@ test.describe("web-host episode reading", () => {
   test("the last episode of a series says so and offers to follow it", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(LAST_EPISODE_PATH));
+    await page.goto(hostPath(LAST_EPISODE_PATH));
 
     await expect(
       page.getByRole("heading", { name: "You are up to date" })
@@ -742,7 +731,7 @@ test.describe("web-host episode reading", () => {
     ).toHaveCount(0);
 
     // The paid last episode is gated, so its pages are read on a free one.
-    await page.goto(edgeUrl(FREE_LAST_EPISODE_PATH));
+    await page.goto(hostPath(FREE_LAST_EPISODE_PATH));
     await expect(
       page.locator(
         `canvas[aria-label="${episodePageLabel(FREE_LAST_EPISODE_TITLE, 1)}"]`
@@ -775,13 +764,13 @@ test.describe("web-host episode reading", () => {
   test("only the end of a series suggests other works to read", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(LAST_EPISODE_PATH));
+    await page.goto(hostPath(LAST_EPISODE_PATH));
 
     await expect(
       page.getByRole("heading", { name: "You may also like" })
     ).toBeVisible();
 
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
     await expect(
       page.getByRole("heading", { name: "You may also like" }),
@@ -792,7 +781,7 @@ test.describe("web-host episode reading", () => {
   test("the running head below the viewer names the instalment and leads back to the work", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
     const heading = page.getByRole("heading", { level: 1 });
     await expect(heading).toContainText(VIEWER_EPISODE_TITLE);
@@ -812,7 +801,7 @@ test.describe("web-host episode reading", () => {
   test("the running head names who the episode is credited to, in what role", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
     // An episode carries its own credits, baked from the series when it was
     // created, so the role is one of the tenant's own vocabulary and the page
@@ -826,7 +815,7 @@ test.describe("web-host episode reading", () => {
     page,
   }) => {
     await clearEpisodeReaction();
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
     const loginLink = page.getByRole("link", {
@@ -851,7 +840,7 @@ test.describe("web-host episode reading", () => {
       page,
       SEED_MEMBER,
       VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
 

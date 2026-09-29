@@ -39,12 +39,7 @@ import {
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
 import { serverActionAnswered } from "../src/server-action";
-import {
-  hostPath,
-  WEB_ADMIN_BASE_URL,
-  WEB_HOST_BASE_URL,
-  WEB_HOST_EDGE_BASE_URL,
-} from "../src/urls";
+import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
 
 const hostUrl = (pathname: string): string =>
   `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
@@ -143,9 +138,9 @@ const uploadIcon = async (
   // next visit.
   await page.goto(adminUrl(`/creators/${creatorPublicId}`));
   const path = await savedIconPath(page);
-  // Only the Traefik edge joins web-host and the image routes under one host and
-  // port, so the console names the path and the bytes are read from the edge.
-  const response = await request.get(`${WEB_HOST_EDGE_BASE_URL}${path}`);
+  // The console names the path, and the bytes are read on the public site's
+  // host, which the runner can resolve.
+  const response = await request.get(`${WEB_HOST_BASE_URL}${path}`);
   expect(response.status(), path).toBe(200);
   return createHash("sha256")
     .update(await response.body())

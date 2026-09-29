@@ -38,8 +38,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'CnstTNNTAAA1',
-    'consent.localhost',
-    'admin.consent.localhost',
+    'consent.localhost:' || :'tenant_port',
+    'admin.consent.localhost:' || :'tenant_port',
     'Consent Tenant',
     'active',
     'en'
@@ -155,8 +155,8 @@ INSERT INTO tenants (
 VALUES (
     '018f0ff0-0001-7000-8000-000000000002'::uuid,
     'CnstTNNTAAA2',
-    'shared-consent.localhost',
-    'admin.shared-consent.localhost',
+    'shared-consent.localhost:' || :'tenant_port',
+    'admin.shared-consent.localhost:' || :'tenant_port',
     'Shared Consent Tenant',
     'active',
     'en'

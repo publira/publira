@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
+import { WEB_HOST_BASE_URL } from "./urls";
+
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
 // Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
@@ -18,7 +20,8 @@ const resolveDbUrl = (): string => {
 };
 
 /**
- * Apply a scenario seed under `db/seeds/scenarios/<name>.sql`.
+ * Apply a scenario seed under `db/seeds/scenarios/<name>.sql`, storing its
+ * tenants' hosts on the edge port the suite reaches them on.
  * Scenarios are optional and independent of the baseline/dev seed.
  */
 export const applyScenarioSql = (name: string): void => {
@@ -37,7 +40,15 @@ export const applyScenarioSql = (name: string): void => {
 
   execFileSync(
     psqlBin(),
-    [resolveDbUrl(), "-v", "ON_ERROR_STOP=1", "-f", sqlPath],
+    [
+      resolveDbUrl(),
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-v",
+      `tenant_port=${new URL(WEB_HOST_BASE_URL).port}`,
+      "-f",
+      sqlPath,
+    ],
     {
       stdio: "inherit",
     }

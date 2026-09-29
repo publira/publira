@@ -3,12 +3,9 @@ import { randomUUID } from "node:crypto";
 /**
  * Host-based URL helpers for E2E.
  *
- * Dev seed domains (db/seeds/dev/001_tenant_users.sql):
- * - public: localhost
- * - admin:  admin.localhost
- *
- * Port-bearing Host headers still resolve because getTenantDomainCandidates
- * also yields the hostname without the port.
+ * Every tenant host is reached on the edge, and each is stored with that port
+ * (`tenantHost`): the development seed's `localhost:<edge>` and
+ * `admin.localhost:<edge>`, and every scenario tenant the same way.
  */
 
 const envUrl = (name: string, fallback: string): string => {
@@ -31,28 +28,23 @@ export const hostPath = (pathname: string): string => pathname;
 export const localeHostPath = (locale: string, pathname: string): string =>
   pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
 
-/** Public catalog site (web-host). Matches seed domain `localhost`. */
+/**
+ * Public catalog site (web-host), through the E2E Traefik edge, the way a
+ * deployment serves it: an episode body image is `/images/episodes/{id}` on the
+ * reader's own origin, and only the edge joins web-host and the image routes
+ * under one host and port. Matches the seed domain `localhost:<edge>`.
+ */
 export const WEB_HOST_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_HOST_BASE_URL",
-  "http://localhost:3000"
+  "http://localhost:3080"
 );
 
 /**
- * The same web-host, reached through the E2E Traefik edge.
- *
- * An episode body image is `/images/episodes/{id}` on the reader's own origin,
- * and only the edge joins web-host and the image routes under one host and port.
- * Suites that never open an episode body keep using WEB_HOST_BASE_URL, so one
- * more hop does not sit in front of every navigation they time out on.
- *
- * It is the `viewer-performance` project's `baseURL`. A suite that reads a body
- * without being timed takes it as an absolute base instead, so it stays in the
- * ordinary chain rather than on that project's deliberately empty machine.
+ * A tenant's stored host for `hostname`: the name on the edge's port, the one
+ * port the suite reaches every tenant on.
  */
-export const WEB_HOST_EDGE_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL",
-  "http://localhost:3080"
-);
+export const tenantHost = (hostname: string): string =>
+  `${hostname}:${new URL(WEB_HOST_BASE_URL).port}`;
 
 /**
  * The browser the screenshot projects render in (`e2e/browser/Dockerfile`).
@@ -110,20 +102,16 @@ const withHostname = (baseUrl: string, hostname: string): string => {
   return url.toString().replace(/\/$/u, "");
 };
 
-/**
- * Tenant admin console (web-admin), through the edge: the images it renders are
- * `/images/...` on its own origin, which only the edge answers. Matches seed
- * domain `admin.localhost`.
- */
+/** Tenant admin console (web-admin). Matches the seed admin domain. */
 export const WEB_ADMIN_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
-  withHostname(WEB_HOST_EDGE_BASE_URL, "admin.localhost")
+  withHostname(WEB_HOST_BASE_URL, "admin.localhost")
 );
 
-/** Platform console (web-platform), through the edge for the same reason. */
+/** Platform console (web-platform). */
 export const WEB_PLATFORM_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_PLATFORM_BASE_URL",
-  withHostname(WEB_HOST_EDGE_BASE_URL, "platform.localhost")
+  withHostname(WEB_HOST_BASE_URL, "platform.localhost")
 );
 
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */
@@ -293,14 +281,10 @@ export const WEB_ADMIN_TENANT_MEMBERS_BASE_URL = envUrl(
  *
  * `tenant_config.comment_mode` is tenant-wide, so the one tenant that takes
  * comments is not a tenant any other suite reads episode pages on.
- *
- * Through the edge, because the comment section is the page after the last one
- * of the episode: reaching it means turning pages, and a body image resolves on
- * the reader's own origin alone.
  */
 export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
-  withHostname(WEB_HOST_EDGE_BASE_URL, "comment.localhost")
+  withHostname(WEB_HOST_BASE_URL, "comment.localhost")
 );
 
 /**
@@ -309,12 +293,10 @@ export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
  *
  * `tenant_config.comment_mode` is tenant-wide, so the tenant that holds
  * comments for approval cannot be the one whose comments publish immediately.
- *
- * Through the edge, for the reason the commenting tenant above is.
  */
 export const WEB_HOST_COMMENT_MODERATION_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
-  withHostname(WEB_HOST_EDGE_BASE_URL, "moderate.localhost")
+  withHostname(WEB_HOST_BASE_URL, "moderate.localhost")
 );
 
 /** Admin console of the same moderation tenant. */
@@ -329,13 +311,10 @@ export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
  *
  * `tenant_config.age_verification` is tenant-wide, so the tenant that checks
  * ages is not one whose rated series another suite opens by confirming.
- *
- * Through the edge, because the suite reads a body that opened: a page image
- * resolves on the reader's own origin alone.
  */
 export const WEB_HOST_AGE_VERIFICATION_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_HOST_AGE_VERIFICATION_BASE_URL",
-  withHostname(WEB_HOST_EDGE_BASE_URL, "age.localhost")
+  withHostname(WEB_HOST_BASE_URL, "age.localhost")
 );
 
 /** Admin console of the same age-verification tenant. */

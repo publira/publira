@@ -6,7 +6,7 @@
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 label_seed AS (
     SELECT
@@ -34,7 +34,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 creator_seed AS (
     SELECT
@@ -64,7 +64,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id, t.timezone
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 label_pool AS (
     SELECT
@@ -130,7 +130,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -189,7 +189,7 @@ SET synopsis = EXCLUDED.synopsis,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -225,7 +225,7 @@ SET display_order = EXCLUDED.display_order,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -273,7 +273,7 @@ SET series_id = EXCLUDED.series_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO episode_listings (
     episode_id,
@@ -309,7 +309,7 @@ SET is_published = (s.published_at IS NOT NULL),
         updated_at = NOW()
 FROM tenants t
 WHERE t.id = s.tenant_id
-    AND t.domain = 'localhost'
+    AND t.public_id = 'SeedTNNTAAA1'
     AND s.title LIKE 'Seed Series %'
     AND s.is_published IS DISTINCT FROM (s.published_at IS NOT NULL);
 
@@ -321,7 +321,7 @@ FROM episodes e
 JOIN series s ON s.id = e.series_id
 JOIN tenants t ON t.id = s.tenant_id
 WHERE el.episode_id = e.id
-    AND t.domain = 'localhost'
+    AND t.public_id = 'SeedTNNTAAA1'
     AND e.title = 'Seed Episode 001-10';
 
 -- The two ways into the catalogue other than the alphabet. Genres are the
@@ -331,7 +331,7 @@ WHERE el.episode_id = e.id
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 genre_seed (n, name, slug) AS (
     VALUES
@@ -366,7 +366,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 tag_seed (n, name, slug) AS (
     VALUES
@@ -397,7 +397,7 @@ SET name = EXCLUDED.name;
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -431,7 +431,7 @@ ON CONFLICT (series_id, genre_id) DO NOTHING;
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT

@@ -30,9 +30,9 @@ mobile_load_app_config() {
 
   MOBILE_PROFILE_NAME="${selected}"
   PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL:-http://${host}:${PUBLIRA_PUBLIC_API_PORT}}"
-  # Every profile is seeded from `db/seeds/dev`, whose tenant answers to this
-  # one domain whichever ports the profile listens on.
-  PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
+  # Every profile is seeded from `db/seeds/dev`, whose tenant is stored on the
+  # profile's edge port.
+  PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost:${PUBLIRA_EDGE_PORT}}"
   export MOBILE_PROFILE_NAME PUBLIRA_BASE_URL PUBLIRA_TENANT_HOST
 }
 

@@ -21,7 +21,7 @@
 WITH target AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO announcements (
     id,
@@ -80,4 +80,4 @@ SELECT
     NOW()
 FROM tenants t
 JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
-WHERE t.domain = 'localhost';
+WHERE t.public_id = 'SeedTNNTAAA1';

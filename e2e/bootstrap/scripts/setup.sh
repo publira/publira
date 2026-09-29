@@ -34,9 +34,11 @@ expected_version="$((10#${expected_version}))"
 
 assert_equals "schema_migrations" "${expected_version} false" "$(migration_state)"
 
-# The seed tenant every E2E scenario resolves by Host header.
-assert_equals "seed tenant domain=localhost" "Seed Tenant" \
-  "$(psql_value "SELECT name FROM tenants WHERE domain = 'localhost'")"
+# The seed tenant every E2E scenario resolves by Host header, stored on the
+# edge port `task db:seed` was given.
+seed_domain="localhost:${PUBLIRA_EDGE_PORT:-3080}"
+assert_equals "seed tenant domain=${seed_domain}" "Seed Tenant" \
+  "$(psql_value "SELECT name FROM tenants WHERE domain = '${seed_domain}'")"
 
 snapshot="$(seed_snapshot)"
 bootstrap_log "seed row counts:"

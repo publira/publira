@@ -25,8 +25,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'PlcyTNNTAAA1',
-    'policy.localhost',
-    'admin.policy.localhost',
+    'policy.localhost:' || :'tenant_port',
+    'admin.policy.localhost:' || :'tenant_port',
     'Policy Tenant',
     'active',
     'en'

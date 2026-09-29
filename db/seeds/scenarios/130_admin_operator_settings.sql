@@ -29,8 +29,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'AsetTNNTAAA1',
-    'aset.localhost',
-    'admin.aset.localhost',
+    'aset.localhost:' || :'tenant_port',
+    'admin.aset.localhost:' || :'tenant_port',
     'Operator Settings Tenant',
     'active',
     'en'

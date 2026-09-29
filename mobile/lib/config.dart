@@ -30,8 +30,9 @@ class AppConfig {
   /// which serves the public API under `/api` and the images under `/images`.
   static const defaultBaseUrl = 'http://127.0.0.1:8000';
 
-  /// Dev-seed tenant host (`db/seeds/dev/001_tenant_users.sql`).
-  static const defaultTenantHost = 'localhost';
+  /// Dev-seed tenant host (`db/seeds/dev/001_tenant_users.sql`), on the Dev
+  /// Container's edge port.
+  static const defaultTenantHost = 'localhost:3080';
 
   /// Android emulator loopback to the host machine.
   static const androidEmulatorBaseUrl = 'http://10.0.2.2:8000';

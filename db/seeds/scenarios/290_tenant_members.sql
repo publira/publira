@@ -31,8 +31,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'TmbrTNNTAAA1',
-    'team.localhost',
-    'admin.team.localhost',
+    'team.localhost:' || :'tenant_port',
+    'admin.team.localhost:' || :'tenant_port',
     'Team Tenant',
     'active',
     'en'

@@ -56,7 +56,7 @@ SELECT
     'no-reply@tenant.local',
     'help@tenant.local'
 FROM tenants t
-WHERE t.domain = 'localhost'
+WHERE t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET smtp_override_enabled = EXCLUDED.smtp_override_enabled,
     host = EXCLUDED.host,

@@ -22,8 +22,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_
 SELECT
     ts.id,
     'NtfyTNNTAAA1',
-    'notify.localhost',
-    'admin.notify.localhost',
+    'notify.localhost:' || :'tenant_port',
+    'admin.notify.localhost:' || :'tenant_port',
     'Notify Tenant',
     'active',
     'en'
@@ -61,7 +61,7 @@ SELECT
     'active',
     NOW()
 FROM admin_user_seed aus
-JOIN tenants t ON t.domain = 'notify.localhost'
+JOIN tenants t ON t.public_id = 'NtfyTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -102,7 +102,7 @@ SELECT
     'active',
     NOW()
 FROM member_user_seed mus
-JOIN tenants t ON t.domain = 'notify.localhost'
+JOIN tenants t ON t.public_id = 'NtfyTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,

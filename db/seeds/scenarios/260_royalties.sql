@@ -46,8 +46,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'RoyaTNNTAAA1',
-    'royalty.localhost',
-    'admin.royalty.localhost',
+    'royalty.localhost:' || :'tenant_port',
+    'admin.royalty.localhost:' || :'tenant_port',
     'Royalty Tenant',
     'active',
     'en'

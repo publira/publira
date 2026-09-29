@@ -29,7 +29,7 @@ WITH numbered AS (
         RIGHT(s.title, 3)::int AS number
     FROM series s
         JOIN tenants t ON t.id = s.tenant_id
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
         AND s.title LIKE 'Seed Series %'
 )
 UPDATE series s
@@ -48,7 +48,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenants t ON t.id = s.tenant_id
 WHERE el.episode_id = e.id
-    AND t.domain = 'localhost'
+    AND t.public_id = 'SeedTNNTAAA1'
     AND s.title LIKE 'Seed Series %'
     AND el.published_at IS NOT NULL;
 

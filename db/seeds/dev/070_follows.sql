@@ -9,7 +9,7 @@ WITH scope AS (
         u.id AS user_id
     FROM tenants t
     JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO series_follows (tenant_id, user_id, series_id)
 SELECT
@@ -26,7 +26,7 @@ WITH scope AS (
         u.id AS user_id
     FROM tenants t
     JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO creator_follows (tenant_id, user_id, creator_id)
 SELECT

@@ -110,7 +110,7 @@ A store's refund takes the purchase back as a provider's refund does, for the wh
 In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the three events above. `/api/v1/webhook/stripe` still answers as a deprecated alias for the endpoints registered before, and will be removed in a later release. For local development, forward with the Stripe CLI:
 
 ```bash
-stripe listen --forward-to localhost:3000/api/v1/webhook/payment/stripe
+stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe
 ```
 
 Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works.

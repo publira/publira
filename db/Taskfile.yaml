@@ -5,6 +5,9 @@ vars:
   # these tasks at an ephemeral database instead (e2e / bootstrap check), where
   # the `db` hostname does not resolve.
   DB_URL: '{{.PUBLIRA_DB_URL | default "postgres://postgres:password@db:5432/publira?sslmode=disable"}}'
+  # The port of the edge browsers reach the seeded tenants on, which their
+  # stored hosts carry. Defaults to the Dev Container's.
+  TENANT_PORT: '{{.PUBLIRA_EDGE_PORT | default "3080"}}'
 
 tasks:
   # Public tasks are alphabetized; internal tasks are at the bottom.
@@ -50,7 +53,7 @@ tasks:
         - name: ENV
           enum: [dev, prod]
     cmds:
-      - psql {{.DB_URL | q}} -f seeds/{{.ENV | q}}.sql
+      - psql {{.DB_URL | q}} -v tenant_port={{.TENANT_PORT | q}} -f seeds/{{.ENV | q}}.sql
 
   setup:
     desc: Initialize database schema and seed data

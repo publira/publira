@@ -10,8 +10,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone
 SELECT
     ts.id,
     'SeedTNNTAAA1',
-    'localhost',
-    'admin.localhost',
+    'localhost:' || :'tenant_port',
+    'admin.localhost:' || :'tenant_port',
     'Seed Tenant',
     'active',
     'UTC',
@@ -37,7 +37,7 @@ SELECT
     'Public description text for Seed Tenant.',
     'Every read opens a world.'
 FROM tenants t
-WHERE t.domain = 'localhost'
+WHERE t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET copyright_text = EXCLUDED.copyright_text,
     site_description = EXCLUDED.site_description,
@@ -97,7 +97,7 @@ SELECT
     'active',
     NOW()
 FROM admin_user_seed aus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -130,7 +130,7 @@ SELECT
     'active',
     NOW()
 FROM member_user_seed mus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,

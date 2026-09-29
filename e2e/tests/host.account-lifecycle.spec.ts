@@ -175,10 +175,6 @@ const submitResetRequest = async (page: Page, email: string): Promise<void> => {
 
 /**
  * Open a mailed link on the origin the browser reaches web-host on.
- *
- * The mailed URL names the tenant's seeded domain on this stack's edge
- * (`http://localhost:3080/…`), while this suite reaches web-host on its own
- * port, so the token is carried over rather than the whole link followed.
  */
 const openWithToken = (
   page: Page,

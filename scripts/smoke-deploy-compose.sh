@@ -17,6 +17,8 @@ cd "${repo_root}"
 
 edge_port="${PUBLIRA_DEPLOY_SMOKE_EDGE_PORT:-18090}"
 timeout="${PUBLIRA_DEPLOY_SMOKE_TIMEOUT:-120}"
+# The tenant is stored with the edge port it is reached on; the mail addresses
+# take the host name alone.
 domain=comics.localhost
 
 # The Dev Container exports PUBLIRA_* for `task dev`, and Compose would let
@@ -98,7 +100,7 @@ printf 'smoke' | compose run --rm -T publiractl setup --non-interactive \
   --bucket publira --region us-east-1 --endpoint http://rustfs:9000 --force-path-style \
   --access-key-id "${rustfs_access_key}" --secret-access-key-file /run/secrets/rustfs-secret-key \
   --host smtp.invalid --port 587 --encryption starttls --username smoke --smtp-password-stdin --from-address "no-reply@${domain}" \
-  --tenant-name "Smoke Comics" --domain "${domain}" \
+  --tenant-name "Smoke Comics" --domain "${domain}:${edge_port}" \
   --admin-email "owner@${domain}" --admin-name Owner --generate-admin-password > /dev/null
 
 # Waits until the edge answers the host with a 200, following redirects, and

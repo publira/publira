@@ -10,7 +10,6 @@ import {
   hostPath,
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
-  WEB_HOST_EDGE_BASE_URL,
   WEB_HOST_OTHER_TENANT_BASE_URL,
 } from "../src/urls";
 
@@ -22,15 +21,6 @@ const hostUrl = (pathname: string): string =>
 
 const otherHostUrl = (pathname: string): string =>
   `${WEB_HOST_OTHER_TENANT_BASE_URL}${hostPath(pathname)}`;
-
-/**
- * A delivered logo or icon is `/images/tenants/{id}/{logo,icon}` on the
- * reader's origin, and only the Traefik edge joins web-host and the image routes
- * under one host and port. The header's brand mark falls back to the site-name
- * text when that request fails, so those assertions run against the edge.
- */
-const edgeUrl = (pathname: string): string =>
-  `${WEB_HOST_EDGE_BASE_URL}${hostPath(pathname)}`;
 
 /**
  * Default `--publira-color-primary`. Keep in sync with
@@ -260,14 +250,14 @@ const fetchOtherTenantThemeCss = async (page: Page): Promise<string> => {
   });
 };
 
-const toEdgeAssetUrl = (src: string): string =>
-  new URL(src, WEB_HOST_EDGE_BASE_URL).toString();
+const toHostAssetUrl = (src: string): string =>
+  new URL(src, WEB_HOST_BASE_URL).toString();
 
 const expectDeliveredImage = async (
   request: APIRequestContext,
   src: string
 ): Promise<void> => {
-  const response = await request.get(toEdgeAssetUrl(src));
+  const response = await request.get(toHostAssetUrl(src));
   expect(response.status(), src).toBe(200);
   expect(response.headers()["content-type"]).toMatch(/^image\//u);
 };
@@ -463,7 +453,7 @@ test.describe("admin brand settings", () => {
     restoreLogo = true;
     await uploadBranding(page, "logo", "Save the logo", "The logo was saved.");
 
-    await pollHostPage(page, edgeUrl("/"), () => headerBrandMark(page)).toMatch(
+    await pollHostPage(page, hostUrl("/"), () => headerBrandMark(page)).toMatch(
       /^\/images\/tenants\/[^/]+\/logo$/u
     );
 
@@ -482,7 +472,7 @@ test.describe("admin brand settings", () => {
     await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     restoreLogo = false;
 
-    await pollHostPage(page, edgeUrl("/"), () => headerBrandMark(page)).toBe(
+    await pollHostPage(page, hostUrl("/"), () => headerBrandMark(page)).toBe(
       SEED_TENANT_NAME
     );
     await expect(headerLogo(page)).toHaveCount(0);

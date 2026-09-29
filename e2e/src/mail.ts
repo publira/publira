@@ -165,8 +165,7 @@ export const linkFrom = (message: Message, pathname: string): string => {
  * `pathname`.
  *
  * Matching the path rather than the whole URL keeps this independent of the
- * origin the API builds the link on: that is the stack's edge, not the port a
- * suite may reach the app on directly.
+ * origin the API builds the link on.
  */
 export const tokenFromLink = (message: Message, pathname: string): string => {
   for (const [link] of message.text.matchAll(LINK_PATTERN)) {

@@ -48,7 +48,7 @@ FROM (
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_label AS (
     SELECT
@@ -85,7 +85,7 @@ WHERE li.label_id = l.id
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -125,7 +125,7 @@ WHERE si.series_id = s.id
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_creator AS (
     SELECT
@@ -162,7 +162,7 @@ WHERE ci.creator_id = c.id
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_label AS (
     SELECT
@@ -241,7 +241,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_series AS (
     SELECT
@@ -322,7 +322,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_creator AS (
     SELECT
@@ -387,7 +387,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_episode AS (
     SELECT
@@ -420,7 +420,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 seed_episode AS (
     SELECT

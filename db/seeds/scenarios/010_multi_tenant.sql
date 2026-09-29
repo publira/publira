@@ -33,8 +33,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone
 SELECT
     ts.id,
     'BndrTNNTAAA1',
-    'other.localhost',
-    'admin.other.localhost',
+    'other.localhost:' || :'tenant_port',
+    'admin.other.localhost:' || :'tenant_port',
     'Boundary Tenant',
     'active',
     'Asia/Tokyo',
@@ -60,7 +60,7 @@ SELECT
     'Public description text for Boundary Tenant.',
     'Nothing crosses the boundary.'
 FROM tenants t
-WHERE t.domain = 'other.localhost'
+WHERE t.public_id = 'BndrTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET copyright_text = EXCLUDED.copyright_text,
     site_description = EXCLUDED.site_description,
@@ -70,7 +70,7 @@ SET copyright_text = EXCLUDED.copyright_text,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'other.localhost'
+    WHERE t.public_id = 'BndrTNNTAAA1'
 ),
 label_seed AS (
     SELECT '018f0f01-0001-7000-8000-000000000001'::uuid AS id
@@ -90,7 +90,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'other.localhost'
+    WHERE t.public_id = 'BndrTNNTAAA1'
 ),
 creator_seed AS (
     SELECT '018f0f02-0001-7000-8000-000000000001'::uuid AS id
@@ -113,7 +113,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
-    WHERE t.domain = 'other.localhost'
+    WHERE t.public_id = 'BndrTNNTAAA1'
 ),
 series_seed (id, public_id, title, is_published, published_at) AS (
     VALUES
@@ -273,7 +273,7 @@ SET price = EXCLUDED.price,
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.domain = 'other.localhost'
+    WHERE t.public_id = 'BndrTNNTAAA1'
     LIMIT 1
 )
 INSERT INTO pages (id, tenant_id, slug)
@@ -293,7 +293,7 @@ SELECT
     'Boundary Page 001'
 FROM pages p
     JOIN tenants t ON t.id = p.tenant_id
-WHERE t.domain = 'other.localhost'
+WHERE t.public_id = 'BndrTNNTAAA1'
   AND p.slug = '/boundary-page'
 ON CONFLICT (page_id, locale) DO UPDATE
 SET title = EXCLUDED.title,
