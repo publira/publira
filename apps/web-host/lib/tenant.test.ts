@@ -124,7 +124,7 @@ describe("tenant", () => {
     );
   });
 
-  it("Carry the pages the tenant names as its terms and privacy policy", async () => {
+  it("Carry the pages the tenant names as its terms and privacy policy in the reader's locale", async () => {
     mockGetTenantLegalPages.mockResolvedValueOnce({
       privacyPage: {
         slug: "/privacy",
@@ -138,7 +138,7 @@ describe("tenant", () => {
       },
     });
 
-    await expect(getTenantLegalPages("TENANT_001")).resolves.toEqual({
+    await expect(getTenantLegalPages("TENANT_001", "ja")).resolves.toEqual({
       privacyPage: {
         href: "/privacy",
         title: "Privacy policy",
@@ -150,6 +150,10 @@ describe("tenant", () => {
         versionId: "terms-v1",
       },
     });
+    expect(mockGetTenantLegalPages).toHaveBeenCalledWith({
+      locale: "ja",
+      tenant: { tenantId: "TENANT_001" },
+    });
   });
 
   it("Treat a role the tenant names no page for as absent", async () => {
@@ -157,7 +161,7 @@ describe("tenant", () => {
       termsPage: { slug: "/terms", title: "Terms", versionId: "" },
     });
 
-    await expect(getTenantLegalPages("TENANT_001")).resolves.toEqual({
+    await expect(getTenantLegalPages("TENANT_001", "en")).resolves.toEqual({
       privacyPage: undefined,
       termsPage: undefined,
     });
@@ -177,10 +181,13 @@ describe("tenant", () => {
       termsPage: { slug: "/terms", title: "Terms", versionId: "t-v1" },
     });
 
-    await expect(readConsentPageVersionIds("TENANT_001")).resolves.toEqual([
-      "t-v1",
-      "p-v2",
-    ]);
+    await expect(
+      readConsentPageVersionIds("TENANT_001", "ja")
+    ).resolves.toEqual(["t-v1", "p-v2"]);
+    expect(mockGetTenantLegalPages).toHaveBeenCalledWith({
+      locale: "ja",
+      tenant: { tenantId: "TENANT_001" },
+    });
     expect(mockCacheTag).not.toHaveBeenCalled();
   });
 

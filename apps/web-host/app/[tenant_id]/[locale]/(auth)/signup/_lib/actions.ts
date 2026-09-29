@@ -125,7 +125,7 @@ export const signupAction = async (
   // versions would record consent to text they were never shown.
   let publishedVersionIds: string[];
   try {
-    publishedVersionIds = await readConsentPageVersionIds(tenantId);
+    publishedVersionIds = await readConsentPageVersionIds(tenantId, locale);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {

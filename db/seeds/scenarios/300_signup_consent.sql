@@ -6,7 +6,8 @@
 -- sign-up `host.account-lifecycle.spec.ts` drives without a consent control.
 --
 -- The terms page has a superseded version before the published one, so the
--- version the suite reads back is not simply the page's only one.
+-- version the suite reads back is not simply the page's only one. Only the
+-- terms page has a Japanese translation, so `/ja/signup` also meets a fallback.
 --
 -- A second tenant names one page as both its terms of service and its privacy
 -- policy, which the sign-up form has to send as one version.
@@ -134,6 +135,42 @@ FROM (
         )
 ) AS seed (translation_id, version_id)
 WHERE pt.id = seed.translation_id;
+
+INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+SELECT
+    '018f0ff0-0004-7000-8000-000000000004'::uuid,
+    '018f0ff0-0002-7000-8000-000000000001'::uuid,
+    t.id,
+    'ja',
+    '利用規約'
+FROM tenants t
+WHERE t.public_id = 'CnstTNNTAAA1';
+
+INSERT INTO page_versions (
+    id,
+    page_id,
+    translation_id,
+    tenant_id,
+    version_number,
+    content_markdown,
+    status,
+    published_at
+)
+SELECT
+    '018f0ff0-0003-7000-8000-000000000006'::uuid,
+    pt.page_id,
+    pt.id,
+    pt.tenant_id,
+    1,
+    E'## 利用規約\n\n日本語の利用規約です。',
+    'published',
+    NOW()
+FROM page_translations pt
+WHERE pt.id = '018f0ff0-0004-7000-8000-000000000004'::uuid;
+
+UPDATE page_translations
+SET published_version_id = '018f0ff0-0003-7000-8000-000000000006'::uuid
+WHERE id = '018f0ff0-0004-7000-8000-000000000004'::uuid;
 
 INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
 SELECT

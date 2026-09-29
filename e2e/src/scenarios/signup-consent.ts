@@ -20,6 +20,12 @@ export const SIGNUP_CONSENT_TERMS_PAGE = {
   versionId: "018f0ff0-0003-7000-8000-000000000002",
 } as const;
 
+/** The terms page's Japanese translation; the privacy page has none. */
+export const SIGNUP_CONSENT_JA_TERMS_PAGE = {
+  title: "利用規約",
+  versionId: "018f0ff0-0003-7000-8000-000000000006",
+} as const;
+
 export const SIGNUP_CONSENT_PRIVACY_PAGE = {
   path: "/privacy",
   title: "Privacy policy",

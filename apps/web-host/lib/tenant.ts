@@ -449,7 +449,8 @@ export const getTenantAgeVerification = async (
  * nomination or a named page changes.
  */
 export const getTenantLegalPages = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<TenantLegalPages> => {
   "use cache";
   cacheLife({ stale: 30 });
@@ -463,6 +464,7 @@ export const getTenantLegalPages = async (
 
   try {
     const response = await apiClient.tenant.getTenantLegalPages({
+      locale,
       tenant: { tenantId: normalizedTenantId },
     });
 
@@ -499,9 +501,11 @@ export const consentPages = ({
  * sign-up must record only text the reader could have been shown.
  */
 export const readConsentPageVersionIds = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<string[]> => {
   const response = await apiClient.tenant.getTenantLegalPages({
+    locale,
     tenant: { tenantId: tenantId.trim() },
   });
 
