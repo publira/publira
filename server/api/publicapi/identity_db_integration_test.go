@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
@@ -39,12 +41,18 @@ type identityDBEnv struct {
 func newIdentityDBEnv(t *testing.T) *identityDBEnv {
 	t.Helper()
 
+	return newIdentityDBEnvWithMailGuard(t, openMailGuard())
+}
+
+func newIdentityDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *identityDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
 	encryptor := newPublicTestEncryptor(t)
 	apple, google := signintest.NewProvider(t), signintest.NewProvider(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), mail, nil)
 	server.idTokens = signintest.Verifier(apple, google)
 	httpServer := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(httpServer.Close)
@@ -470,9 +478,10 @@ func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.
 
 // An account a sign-in created has no password, so a fresh sign-in to a
 // provider linked to it confirms an email change, and that sign-in confirms one
-// change only.
+// change only. The new address may be mailed once an hour, so the change that
+// goes through after the refusals shows none of them spent its allowance.
 func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
-	env := newIdentityDBEnv(t)
+	env := newIdentityDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
 		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")

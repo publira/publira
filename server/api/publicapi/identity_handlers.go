@@ -568,7 +568,23 @@ func (s *apiServer) verifyIdentityConfirmation(
 	if claims.Subject != identity.Subject {
 		return signin.Claims{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the ID token is not of the linked account"), "id_token")
 	}
+	// spendConfirmationNonce stays the check that closes the race; this one
+	// refuses a replay before the caller charges anything for it.
+	spent, err := queries.SignInNonceIsSpent(ctx, dbmodels.SignInNonceIsSpentParams{
+		TenantID:  tenantID,
+		NonceHash: signin.HashNonce(nonce),
+	})
+	if err != nil {
+		return signin.Claims{}, s.internalDBError(ctx, "failed to read the sign-in nonce", err, "tenant_id", tenantID.String())
+	}
+	if spent {
+		return signin.Claims{}, confirmationNonceReplayedError()
+	}
 	return claims, nil
+}
+
+func confirmationNonceReplayedError() error {
+	return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the nonce was used already"), "nonce")
 }
 
 // spendConfirmationNonce spends the nonce of a sign-in
@@ -576,7 +592,7 @@ func (s *apiServer) verifyIdentityConfirmation(
 func (s *apiServer) spendConfirmationNonce(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUID, nonce string, claims signin.Claims) error {
 	if err := spendNonce(ctx, queries, tenantID, nonce, claims); err != nil {
 		if errors.Is(err, errNonceReplayed) {
-			return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the nonce was used already"), "nonce")
+			return confirmationNonceReplayedError()
 		}
 		return s.internalDBError(ctx, "failed to spend the sign-in nonce", err, "tenant_id", tenantID.String())
 	}

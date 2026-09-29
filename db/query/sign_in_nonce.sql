@@ -15,3 +15,13 @@ VALUES (
         sqlc.arg('nonce_hash'),
         sqlc.arg('expires_at')
     ) ON CONFLICT (tenant_id, nonce_hash) DO NOTHING;
+
+-- name: SignInNonceIsSpent :one
+-- Answers whether a nonce was spent already, without spending it, so a replay
+-- can be refused before anything is charged for the request.
+SELECT EXISTS (
+    SELECT 1
+    FROM sign_in_nonces
+    WHERE sign_in_nonces.tenant_id = sqlc.arg('tenant_id')
+        AND sign_in_nonces.nonce_hash = sqlc.arg('nonce_hash')
+);
