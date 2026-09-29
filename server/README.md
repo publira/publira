@@ -225,6 +225,19 @@ With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves st
 
 These are URLs reachable inside the private network, not the public ones meant for browsers. The URL a payment provider returns the browser to is built from the tenant's `domain` on the scheme in `PUBLIRA_TENANT_URL_SCHEME`, not from any of them.
 
+## Web service credential
+
+`PUBLIRA_WEB_SERVICE_TOKEN` is a secret `publira server` shares with the web apps, sent as `Authorization: Bearer <token>`, so that a console can read data every operator of a tenant sees alike without an operator's session and cache the answer per tenant. It is served on the internal listener only, like the rest of `publira.admin.v1`. Unset, the bearer is not recognized and the admin API accepts operator sessions alone.
+
+The call runs as a service principal of the tenant the request names, with no user and no role, and only on these RPCs; any other answers `permission_denied`:
+
+- `AdminGenreService/ListGenres`
+- `AdminCreatorRoleService/ListCreatorRoles`
+- `AdminCreatorService/ListCreators`, `GetCreator`
+- `AdminLabelService/ListLabels`, `GetLabel`
+- `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `GetEpisode`, `ListEpisodeCredits`
+- `AdminDashboardService/GetDashboard`
+
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`

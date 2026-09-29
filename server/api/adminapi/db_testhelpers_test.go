@@ -44,7 +44,7 @@ func newAdminDBEnv(t *testing.T) *adminDBEnv {
 func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv {
 	t.Helper()
 
-	return newAdminDBEnvWith(t, &testStorageProvider{}, mail)
+	return newAdminDBEnvWith(t, &testStorageProvider{}, mail, nil)
 }
 
 // newAdminDBEnvWithStorage is newAdminDBEnv for the cases that are about what
@@ -52,10 +52,18 @@ func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv
 func newAdminDBEnvWithStorage(t *testing.T, provider storage.Provider) *adminDBEnv {
 	t.Helper()
 
-	return newAdminDBEnvWith(t, provider, openMailGuard())
+	return newAdminDBEnvWith(t, provider, openMailGuard(), nil)
 }
 
-func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard) *adminDBEnv {
+// newAdminDBEnvWithServiceToken is newAdminDBEnv for the cases that are about
+// a web app calling in with its own credential.
+func newAdminDBEnvWithServiceToken(t *testing.T, serviceToken *auth.ServiceToken) *adminDBEnv {
+	t.Helper()
+
+	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), serviceToken)
+}
+
+func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken) *adminDBEnv {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -66,6 +74,7 @@ func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
+	api.server.serviceToken = serviceToken
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return &adminDBEnv{Server: server, PG: pg}

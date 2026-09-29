@@ -8,6 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
+
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -43,6 +48,73 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	// read; the internal listener names every login it serves.
 	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
 	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+}
+
+// The web apps' credential reaches the tenant console's tenant-level reads on
+// the internal listener, never its writes, and nothing at all once the
+// variable is unset.
+func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pg.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Fantasy", Slug: "fantasy"})
+	token := testutil.DeploymentSecrets()["PUBLIRA_WEB_SERVICE_TOKEN"]
+	tenantCtx := &publirattypesv1.TenantContext{TenantId: tenant.ID.String()}
+
+	t.Run("set", func(t *testing.T) {
+		url := startInternalListener(t, pg, nil)
+		genres := publiraadminv1connect.NewAdminGenreServiceClient(http.DefaultClient, url)
+		settings := publiraadminv1connect.NewTenantSettingsServiceClient(http.DefaultClient, url)
+
+		listed, err := genres.ListGenres(t.Context(), bearerRequest(token, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
+		if err != nil {
+			t.Fatalf("ListGenres: %v", err)
+		}
+		if len(listed.Msg.Genres) != 1 || listed.Msg.Genres[0].Name != "Fantasy" {
+			t.Fatalf("genres = %v, want the tenant's one genre", listed.Msg.Genres)
+		}
+		_, err = genres.CreateGenre(t.Context(), bearerRequest(token, &publiraadminv1.CreateGenreRequest{Tenant: tenantCtx, Name: "Mystery"}))
+		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
+			t.Fatalf("CreateGenre code = %v, want %v", code, connect.CodePermissionDenied)
+		}
+		_, err = settings.GetTenantTimezone(t.Context(), bearerRequest(token, &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx}))
+		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
+			t.Fatalf("GetTenantTimezone code = %v, want %v", code, connect.CodePermissionDenied)
+		}
+	})
+	t.Run("unset", func(t *testing.T) {
+		url := startInternalListener(t, pg, map[string]string{"PUBLIRA_WEB_SERVICE_TOKEN": ""})
+		genres := publiraadminv1connect.NewAdminGenreServiceClient(http.DefaultClient, url)
+
+		_, err := genres.ListGenres(t.Context(), bearerRequest(token, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
+		if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
+			t.Fatalf("ListGenres code = %v, want %v", code, connect.CodeUnauthenticated)
+		}
+	})
+}
+
+// startInternalListener starts `publira server` on pg with the deployment
+// secrets, overridden by env, and answers the base URL of its internal
+// listener.
+func startInternalListener(t *testing.T, pg *testutil.PostgresEnv, env map[string]string) string {
+	t.Helper()
+
+	internalAddr := testutil.FreeAddr(t)
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      testutil.FreeAddr(t),
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+	}, revalidationWithoutPlatformConsole(), env), "server")
+	p.WaitReady(t, "http://"+internalAddr+"/readyz")
+	return "http://" + internalAddr
+}
+
+func bearerRequest[T any](token string, msg *T) *connect.Request[T] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("Authorization", "Bearer "+token)
+	return req
 }
 
 // A password in a redis:// URL would cross the network in cleartext, so the

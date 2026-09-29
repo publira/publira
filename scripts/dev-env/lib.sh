@@ -15,7 +15,7 @@ DEV_ENV_SLOT_MAX=15
 # profile is local state nothing in the repository reads and recreating one
 # costs less than keeping every superseded shape loadable. Raise it in the same
 # commit as a change to what a profile holds.
-DEV_ENV_PROFILE_VERSION=2
+DEV_ENV_PROFILE_VERSION=3
 
 dev_env_error() {
   printf 'dev-env: %s\n' "$*" >&2
@@ -338,6 +338,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_AUTH_SECRET=%s\n' "$(dev_env_random_secret)"
     printf 'PUBLIRA_AUTH_JWT_SECRET=%s\n' "$(dev_env_random_secret)"
     printf 'PUBLIRA_REVALIDATE_TOKEN=%s\n' "$(dev_env_random_secret)"
+    printf 'PUBLIRA_WEB_SERVICE_TOKEN=%s\n' "$(dev_env_random_secret)"
     printf 'PUBLIRA_WEB_HOST_PORT=%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_PORT=%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_PORT=%s\n' "$((port_base + 2))"
@@ -404,7 +405,8 @@ dev_env_load_profile() {
     PUBLIRA_PUBLIC_DB_URL PUBLIRA_ADMIN_DB_URL PUBLIRA_PLATFORM_DB_URL \
     PUBLIRA_WORKER_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_TICKER_DB_URL \
     PUBLIRA_S3_FORCE_PATH_STYLE PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
-    PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_HOST_PORT \
+    PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_SERVICE_TOKEN \
+    PUBLIRA_WEB_HOST_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
     PUBLIRA_PUBLIC_API_GRPC_PORT \
     PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT PUBLIRA_EDGE_PORT \

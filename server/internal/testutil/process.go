@@ -150,6 +150,7 @@ func DeploymentSecrets() map[string]string {
 		"PUBLIRA_SECRET_ENCRYPTION_KEYS":           "k1:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)),
 		"PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID": "k1",
 		"PUBLIRA_REVALIDATE_TOKEN":                 "startup-test-revalidate-token",
+		"PUBLIRA_WEB_SERVICE_TOKEN":                "startup-test-web-service-token",
 	}
 }
 
