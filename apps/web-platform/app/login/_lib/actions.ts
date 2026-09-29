@@ -9,6 +9,7 @@ import {
   resolveAuthSecret,
   sessionCookieOptions,
 } from "@publira/web-session";
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import {
   nextPathFormSchema,
   passwordFormSchema,
 } from "#lib/auth-input";
+import { PLATFORM_SESSION_CACHE_TAG } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -77,6 +79,7 @@ export const loginAction = async (
     name: PLATFORM_SESSION_COOKIE_NAME,
     value: sealed,
   });
+  updateTag(PLATFORM_SESSION_CACHE_TAG);
 
   redirect(nextPath);
 };

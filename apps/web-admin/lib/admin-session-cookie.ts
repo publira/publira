@@ -3,9 +3,13 @@ import {
   resolveAuthSecret,
   sessionCookieOptions,
 } from "@publira/web-session";
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 
-import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
+import {
+  ADMIN_SESSION_CACHE_TAG,
+  ADMIN_SESSION_COOKIE_NAME,
+} from "./admin-auth-shared";
 import { toCookieExpires } from "./cookie-expiry";
 
 export interface AdminSession {
@@ -17,7 +21,7 @@ export interface AdminSession {
  * Seal the API session the console just earned into its own cookie.
  *
  * **Server Actions only** — writing a cookie needs a response whose headers are
- * still open. Both places a session can begin write it through here: the
+ * still open, and `updateTag()` is rejected outside an Action. Both places a session can begin write it through here: the
  * password alone, and the second factor that finished the login afterwards.
  */
 export const writeAdminSessionCookie = async (
@@ -38,4 +42,5 @@ export const writeAdminSessionCookie = async (
     name: ADMIN_SESSION_COOKIE_NAME,
     value: sealed,
   });
+  updateTag(ADMIN_SESSION_CACHE_TAG);
 };
