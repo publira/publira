@@ -2,6 +2,7 @@ package payjp_test
 
 import (
 	"errors"
+	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
@@ -34,7 +35,7 @@ func testPurchase() paymentprovider.Purchase {
 func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 	api := payjptest.NewAPI(t)
 	purchase := testPurchase()
-	url, err := payjp.New(payjp.WithBaseURL(api.URL())).StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
+	checkoutURL, err := payjp.New(payjp.WithBaseURL(api.URL())).StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
 		Purchase:       purchase,
 		EpisodeTitle:   "Episode 1",
 		SuccessURL:     "https://store.example/series/SR01/episodes/EP01?checkout=success",
@@ -44,8 +45,8 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartCheckout: %v", err)
 	}
-	if url != "https://checkout.pay.jp/c/cs_fake0001" {
-		t.Fatalf("url = %q, want the Checkout Session's", url)
+	if checkoutURL != "https://checkout.pay.jp/c/cs_fake0001" {
+		t.Fatalf("url = %q, want the Checkout Session's", checkoutURL)
 	}
 
 	sessions := api.CheckoutSessions()
@@ -57,8 +58,15 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 		t.Fatalf("request key = %q, idempotency key = %q", session.SecretKey, session.IdempotencyKey)
 	}
 	body := session.Body
-	if body["mode"] != "payment" || body["success_url"] != "https://store.example/series/SR01/episodes/EP01?checkout=success" || body["cancel_url"] != "https://store.example/series/SR01/episodes/EP01?checkout=cancelled" {
+	if body["mode"] != "payment" || body["cancel_url"] != "https://store.example/series/SR01/episodes/EP01?checkout=cancelled" {
 		t.Fatalf("session = %v, want a payment returning to the episode", body)
+	}
+	successURL, err := url.Parse(body["success_url"].(string))
+	if err != nil {
+		t.Fatalf("success_url: %v", err)
+	}
+	if successURL.Path != "/series/SR01/episodes/EP01" || successURL.Query().Get("checkout") != "success" || successURL.Query().Get("session_id") == "" {
+		t.Fatalf("success_url = %s, want the episode with checkout=success and a session_id", successURL)
 	}
 	if methods, _ := body["payment_method_types"].([]any); len(methods) != 1 || methods[0] != "card" {
 		t.Fatalf("payment_method_types = %v, want card alone", body["payment_method_types"])
@@ -83,6 +91,32 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 		if metadata[key] != want {
 			t.Fatalf("metadata[%s] = %v, want %v", key, metadata[key], want)
 		}
+	}
+}
+
+func TestStartCheckoutReturnsTheSameURLForARetry(t *testing.T) {
+	api := payjptest.NewAPI(t)
+	provider := payjp.New(payjp.WithBaseURL(api.URL()))
+	start := func(key string) {
+		t.Helper()
+		if _, err := provider.StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
+			Purchase:       testPurchase(),
+			SuccessURL:     "https://store.example/series/SR01/episodes/EP01?checkout=success",
+			IdempotencyKey: key,
+		}); err != nil {
+			t.Fatalf("StartCheckout: %v", err)
+		}
+	}
+	start("episode-checkout:first")
+	start("episode-checkout:first")
+	start("episode-checkout:second")
+
+	sessions := api.CheckoutSessions()
+	if sessions[0].Body["success_url"] != sessions[1].Body["success_url"] {
+		t.Fatalf("a retry returned to %v, then %v", sessions[0].Body["success_url"], sessions[1].Body["success_url"])
+	}
+	if sessions[0].Body["success_url"] == sessions[2].Body["success_url"] {
+		t.Fatalf("two checkouts return to the same %v", sessions[0].Body["success_url"])
 	}
 }
 

@@ -5,11 +5,14 @@ package payjp
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -109,10 +112,14 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	if err != nil {
 		return "", err
 	}
+	successURL, err := withReturnKey(req.SuccessURL, req.IdempotencyKey)
+	if err != nil {
+		return "", err
+	}
 	threeDSecure := payjpv2.CheckoutSessionPaymentMethodOptionsCardRequestRequestThreeDSecureAny
 	body := payjpv2.CheckoutSessionCreateRequest{
 		Mode:       payjpv2.CheckoutSessionModePayment,
-		SuccessUrl: &req.SuccessURL,
+		SuccessUrl: &successURL,
 		CancelUrl:  &req.CancelURL,
 		LineItems: &[]payjpv2.LineItemRequest{{
 			PriceData: &payjpv2.PriceDataRequest{
@@ -138,6 +145,23 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 		return "", errors.New("payjp returned an empty Checkout URL")
 	}
 	return res.Result.Url, nil
+}
+
+// withReturnKey names the checkout in the URL the reader returns to, which the
+// storefront reads as `session_id` to key its first read after payment apart
+// from the locked one cached before checkout. PAY.JP has no placeholder for the
+// session's id, so the value comes from the idempotency key, which keeps a
+// retried request identical.
+func withReturnKey(successURL, idempotencyKey string) (string, error) {
+	parsed, err := url.Parse(successURL)
+	if err != nil {
+		return "", fmt.Errorf("parse success URL: %w", err)
+	}
+	sum := sha256.Sum256([]byte(idempotencyKey))
+	query := parsed.Query()
+	query.Set("session_id", hex.EncodeToString(sum[:16]))
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
 }
 
 func sessionMetadata(purchase paymentprovider.Purchase) (map[string]payjpv2.CheckoutSessionCreateRequest_Metadata_AdditionalProperties, error) {
