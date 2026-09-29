@@ -935,9 +935,11 @@ ORDER BY s.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedSeriesIDsBySearchTitleAsc :many
--- SearchPublishedSeries. Takes the published series whose title or synopsis
--- ILIKE-matches query_pattern, by a keyset on title + id.
+-- name: ListPublishedSeriesBySearchTitleAsc :many
+-- The SQL catalog search backend's series search. Takes the published series
+-- whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
+-- id, and returns the title with each id because the next token is built from
+-- it.
 -- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 -- with ESCAPE '!'.
 -- Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
@@ -945,7 +947,8 @@ LIMIT sqlc.arg('limit');
 -- bites after narrowing by tenant and is_published. Once the row count makes
 -- the latency visible, add a pg_trgm GIN index on title and
 -- series_listings.synopsis.
-SELECT s.id
+SELECT s.id,
+    s.title
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
@@ -983,9 +986,10 @@ ORDER BY s.title ASC,
     s.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedSeriesIDsBySearchTitleDesc :many
--- The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
-SELECT s.id
+-- name: ListPublishedSeriesBySearchTitleDesc :many
+-- The backward direction of ListPublishedSeriesBySearchTitleAsc.
+SELECT s.id,
+    s.title
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')

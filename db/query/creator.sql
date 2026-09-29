@@ -103,11 +103,12 @@ ORDER BY c.name DESC,
     c.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedCreatorIDsBySearchNameAsc :many
--- SearchPublishedCreators. Stage one of the same two-stage shape
--- ListPublishedCreatorIDsByNameAsc uses, narrowed to the creators whose name
--- ILIKE-matches query_pattern. Stage two is ListPublishedCreatorsByIDs again:
--- the search shows a creator exactly as the list does.
+-- name: ListPublishedCreatorsBySearchNameAsc :many
+-- The SQL catalog search backend's creator search. Stage one of the same
+-- two-stage shape ListPublishedCreatorIDsByNameAsc uses, narrowed to the
+-- creators whose name ILIKE-matches query_pattern, with the name the next token
+-- is built from. Stage two is ListPublishedCreatorsByIDs again: the search
+-- shows a creator exactly as the list does.
 -- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 -- with ESCAPE '!'.
 -- Only name is matched. profile_text would answer a creator-name search with
@@ -115,7 +116,8 @@ LIMIT sqlc.arg('limit');
 -- Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
 -- cannot ride a btree, so a sequential scan is enough while the LIMIT still
 -- bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
-SELECT c.id
+SELECT c.id,
+    c.name
 FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
@@ -156,9 +158,10 @@ ORDER BY c.name ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedCreatorIDsBySearchNameDesc :many
--- The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
-SELECT c.id
+-- name: ListPublishedCreatorsBySearchNameDesc :many
+-- The backward direction of ListPublishedCreatorsBySearchNameAsc.
+SELECT c.id,
+    c.name
 FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.name ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'

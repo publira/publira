@@ -826,8 +826,8 @@ func TestListPublishedCreatorQueriesHavePublicationGuards(t *testing.T) {
 	queries := map[string]string{
 		"listPublishedCreatorIDsByNameAsc":         dbmodels.ListPublishedCreatorIDsByNameAsc,
 		"listPublishedCreatorIDsByNameDesc":        dbmodels.ListPublishedCreatorIDsByNameDesc,
-		"listPublishedCreatorIDsBySearchNameAsc":   dbmodels.ListPublishedCreatorIDsBySearchNameAsc,
-		"listPublishedCreatorIDsBySearchNameDesc":  dbmodels.ListPublishedCreatorIDsBySearchNameDesc,
+		"listPublishedCreatorsBySearchNameAsc":     dbmodels.ListPublishedCreatorsBySearchNameAsc,
+		"listPublishedCreatorsBySearchNameDesc":    dbmodels.ListPublishedCreatorsBySearchNameDesc,
 		"listPublishedCreatorsByIDs":               dbmodels.ListPublishedCreatorsByIDs,
 		"getPublishedCreatorByPublicID":            dbmodels.GetPublishedCreatorForTenant,
 		"listPublishedSeriesIDsByCreatorTitleAsc":  dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc,
@@ -859,8 +859,8 @@ func TestListPublishedCreatorQueriesHavePublicationGuards(t *testing.T) {
 	for _, name := range []string{
 		"listPublishedCreatorIDsByNameAsc",
 		"listPublishedCreatorIDsByNameDesc",
-		"listPublishedCreatorIDsBySearchNameAsc",
-		"listPublishedCreatorIDsBySearchNameDesc",
+		"listPublishedCreatorsBySearchNameAsc",
+		"listPublishedCreatorsBySearchNameDesc",
 		"listPublishedCreatorsByIDs",
 		"getPublishedCreatorByPublicID",
 	} {

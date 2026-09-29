@@ -59,6 +59,20 @@ func TestServerRefusesAPasswordOverPlaintextRedis(t *testing.T) {
 	}
 }
 
+// A search backend the process does not have is refused at startup rather
+// than answered with the SQL one, which would hide the misconfiguration.
+func TestServerRefusesAnUnknownSearchBackend(t *testing.T) {
+	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_SEARCH_BACKEND": "elasticsearch",
+	}), "server")
+	if code == 0 {
+		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
+	}
+	if !strings.Contains(output, "PUBLIRA_SEARCH_BACKEND") {
+		t.Fatalf("output does not name PUBLIRA_SEARCH_BACKEND:\n%s", output)
+	}
+}
+
 // The worker starts on the same footing. Object storage is not among what it
 // needs either: the orphan image sweep is the only job that needs a bucket,
 // and it resolves one from the platform's settings when a run starts.
