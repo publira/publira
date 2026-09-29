@@ -1,16 +1,12 @@
 // Package tenantorigin turns a tenant's configured host into the origin a link
-// to it is built on. The scheme and the port are properties of the deployment
-// rather than of the tenant, so they come from the environment of the process
-// building the link: `https` and no port unless an operator sets them.
+// to it is built on. The scheme comes from the environment, `https` when unset.
 package tenantorigin
 
 import (
 	"errors"
 	"fmt"
-	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -20,9 +16,6 @@ const (
 	// SchemeEnv names the scheme every tenant host is served on: `https` or
 	// `http`.
 	SchemeEnv = "PUBLIRA_TENANT_URL_SCHEME"
-	// PortEnv names the port every tenant host is served on, when it is not
-	// the scheme's own.
-	PortEnv = "PUBLIRA_TENANT_URL_PORT"
 )
 
 var (
@@ -68,45 +61,28 @@ func normalizeHost(domain string) string {
 	return strings.TrimSuffix(domain, "/")
 }
 
-// CheckEnv reports a scheme or port the environment names that no origin can
-// be built on, for a caller that must refuse before it writes anything.
+// CheckEnv reports a scheme no origin can be built on.
 func CheckEnv() error {
-	_, _, err := deployment()
+	_, err := deploymentScheme()
 	return err
 }
 
 func origin(host string) (*url.URL, error) {
-	scheme, port, err := deployment()
+	scheme, err := deploymentScheme()
 	if err != nil {
 		return nil, err
-	}
-	if port != "" {
-		host = net.JoinHostPort(host, port)
 	}
 	return &url.URL{Scheme: scheme, Host: host}, nil
 }
 
-// deployment reads the scheme and the port, leaving the port empty when it is
-// the scheme's own.
-func deployment() (scheme, port string, err error) {
-	scheme = strings.ToLower(strings.TrimSpace(os.Getenv(SchemeEnv)))
+func deploymentScheme() (string, error) {
+	scheme := strings.ToLower(strings.TrimSpace(os.Getenv(SchemeEnv)))
 	switch scheme {
 	case "":
-		scheme = "https"
+		return "https", nil
 	case "http", "https":
+		return scheme, nil
 	default:
-		return "", "", fmt.Errorf("%s must be http or https, not %q", SchemeEnv, scheme)
+		return "", fmt.Errorf("%s must be http or https, not %q", SchemeEnv, scheme)
 	}
-	port = strings.TrimSpace(os.Getenv(PortEnv))
-	if port == "" {
-		return scheme, "", nil
-	}
-	number, err := strconv.Atoi(port)
-	if err != nil || number < 1 || number > 65535 {
-		return "", "", fmt.Errorf("%s must be a port number, not %q", PortEnv, port)
-	}
-	if (scheme == "https" && number == 443) || (scheme == "http" && number == 80) {
-		return scheme, "", nil
-	}
-	return scheme, strconv.Itoa(number), nil
 }

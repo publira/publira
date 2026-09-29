@@ -127,11 +127,8 @@ export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
 
-# Where the tenant links in the mail and the checkout return URL point: each
-# tenant host on this run's edge, which serves plain HTTP. Always set, for the
-# same reason as PUBLIRA_PLATFORM_APP_URL above.
+# This edge serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME=http
-export PUBLIRA_TENANT_URL_PORT="${PUBLIRA_E2E_EDGE_PORT}"
 
 # Secret decryption. The worker reports an unusable manager when it is started
 # without keys, and every auth mail it renders stops at that before it reaches

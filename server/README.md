@@ -210,7 +210,7 @@ With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves st
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
 - `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (for example `http://web-platform:4100`)
 
-These are URLs reachable inside the private network, not the public ones meant for browsers. The URL a payment provider returns the browser to is built from the tenant's `domain`, on the scheme and port in `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT`, not from any of them.
+These are URLs reachable inside the private network, not the public ones meant for browsers. The URL a payment provider returns the browser to is built from the tenant's `domain` on the scheme in `PUBLIRA_TENANT_URL_SCHEME`, not from any of them.
 
 ## Email renderer
 
