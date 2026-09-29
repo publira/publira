@@ -42,7 +42,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  var _started = false;
+  /// The locale the requirements were last read in, which a change of the
+  /// device's language moves, reading them again.
+  Locale? _locale;
   var _submitting = false;
 
   /// What the tenant asks of a sign-up — a birth date where it checks ages,
@@ -71,28 +73,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final locale = Localizations.localeOf(context);
+    if (locale == _locale) {
       return;
     }
-    _started = true;
+    _locale = locale;
     unawaited(_readRequirements());
   }
-
-  /// The app's locale, which the pages to agree to are read in.
-  String get _locale => Localizations.localeOf(context).toLanguageTag();
 
   /// A read that fails leaves the form as a tenant that asks nothing gets it:
   /// the API still refuses a sign-up without the consent it requires.
   Future<void> _readRequirements() async {
+    final locale = Localizations.localeOf(context);
     final SignUpRequirements requirements;
     try {
       requirements = await AuthScope.of(
         context,
-      ).readSignUpRequirements(locale: _locale);
+      ).readSignUpRequirements(locale: locale.toLanguageTag());
     } on Exception {
       return;
     }
-    if (!mounted) {
+    if (!mounted || locale != _locale) {
       return;
     }
     setState(() {
@@ -114,6 +115,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
     final auth = AuthScope.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final email = _emailController.text.trim();
     final birthDate = _birthDate;
     final shown = _requirements;
@@ -127,7 +129,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Read again, so a page republished since the form was read — whose
       // new text a reader may have opened from it — is agreed to anew rather
       // than recorded as the version the form happened to hold.
-      final current = await auth.readSignUpRequirements(locale: _locale);
+      final current = await auth.readSignUpRequirements(locale: locale);
       if (current.legalPages.isNotEmpty &&
           (shown == null || !current.asksSameConsentAs(shown))) {
         if (!mounted) {
