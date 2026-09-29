@@ -7,6 +7,7 @@ import {
   getTenantAgeVerification,
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
+  getTenantLegalPages,
   getTenantPublicOrigin,
   getTenantSiteInfo,
   getTenantTheme,
@@ -14,11 +15,13 @@ import {
   readConsentPageVersionIds,
 } from "./tenant";
 
-const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
-  mockCacheLife: vi.fn(),
-  mockCacheTag: vi.fn(),
-  mockGetTenant: vi.fn(),
-}));
+const { mockCacheLife, mockCacheTag, mockGetTenant, mockGetTenantLegalPages } =
+  vi.hoisted(() => ({
+    mockCacheLife: vi.fn(),
+    mockCacheTag: vi.fn(),
+    mockGetTenant: vi.fn(),
+    mockGetTenantLegalPages: vi.fn(),
+  }));
 
 // The reads run without the Next.js cache runtime here, so the `"use cache"`
 // helpers are stubbed rather than exercised.
@@ -31,6 +34,7 @@ vi.mock("./api-client", () => ({
   apiClient: {
     tenant: {
       getTenant: mockGetTenant,
+      getTenantLegalPages: mockGetTenantLegalPages,
     },
   },
 }));
@@ -63,6 +67,7 @@ describe("tenant", () => {
     mockCacheLife.mockReset();
     mockCacheTag.mockReset();
     mockGetTenant.mockReset();
+    mockGetTenantLegalPages.mockReset();
   });
 
   it("Add a dedicated tag to theme reading for theme.css", async () => {
@@ -120,8 +125,7 @@ describe("tenant", () => {
   });
 
   it("Carry the pages the tenant names as its terms and privacy policy", async () => {
-    mockGetTenant.mockResolvedValueOnce({
-      ...tenantResponse,
+    mockGetTenantLegalPages.mockResolvedValueOnce({
       privacyPage: {
         slug: "/privacy",
         title: "Privacy policy",
@@ -134,9 +138,7 @@ describe("tenant", () => {
       },
     });
 
-    const info = await getTenantSiteInfo("TENANT_001");
-
-    expect(info?.legalPages).toEqual({
+    await expect(getTenantLegalPages("TENANT_001")).resolves.toEqual({
       privacyPage: {
         href: "/privacy",
         title: "Privacy policy",
@@ -151,14 +153,11 @@ describe("tenant", () => {
   });
 
   it("Treat a role the tenant names no page for as absent", async () => {
-    mockGetTenant.mockResolvedValueOnce({
-      ...tenantResponse,
+    mockGetTenantLegalPages.mockResolvedValueOnce({
       termsPage: { slug: "/terms", title: "Terms", versionId: "" },
     });
 
-    const info = await getTenantSiteInfo("TENANT_001");
-
-    expect(info?.legalPages).toEqual({
+    await expect(getTenantLegalPages("TENANT_001")).resolves.toEqual({
       privacyPage: undefined,
       termsPage: undefined,
     });
@@ -173,8 +172,7 @@ describe("tenant", () => {
   });
 
   it("Read the versions a sign-up asks consent to past the cache", async () => {
-    mockGetTenant.mockResolvedValueOnce({
-      ...tenantResponse,
+    mockGetTenantLegalPages.mockResolvedValueOnce({
       privacyPage: { slug: "/privacy", title: "Privacy", versionId: "p-v2" },
       termsPage: { slug: "/terms", title: "Terms", versionId: "t-v1" },
     });

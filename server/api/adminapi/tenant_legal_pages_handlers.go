@@ -41,9 +41,13 @@ func tenantLegalPagesFromRow(row dbmodels.GetTenantLegalPagesRow) *publiraadminv
 }
 
 // readTenantLegalPages answers a tenant with no config row as one that has
-// named no page, which is what the columns' NULL says too.
-func (s *adminServer) readTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (dbmodels.GetTenantLegalPagesRow, error) {
-	row, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, tenantID)
+// named no page, which is what the columns' NULL says too. Each page is read in
+// the tenant's default locale.
+func (s *adminServer) readTenantLegalPages(ctx context.Context, tenant dbmodels.Tenant) (dbmodels.GetTenantLegalPagesRow, error) {
+	row, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, dbmodels.GetTenantLegalPagesParams{
+		TenantID: tenant.ID,
+		Locale:   tenant.DefaultLocale,
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.GetTenantLegalPagesRow{}, nil
 	}
@@ -59,7 +63,7 @@ func (s *adminServer) GetTenantLegalPages(
 		return nil, err
 	}
 
-	row, err := s.readTenantLegalPages(ctx, tenant.ID)
+	row, err := s.readTenantLegalPages(ctx, tenant)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
@@ -113,7 +117,7 @@ func (s *adminServer) UpdateTenantLegalPages(
 		return nil, err
 	}
 
-	current, err := s.readTenantLegalPages(ctx, tenant.ID)
+	current, err := s.readTenantLegalPages(ctx, tenant)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
@@ -136,7 +140,7 @@ func (s *adminServer) UpdateTenantLegalPages(
 
 	s.revalidateTags(ctx, tenant.ID, tenantLegalPagesRevalidateTags(tenant.ID.String()))
 
-	updated, err := s.readTenantLegalPages(ctx, tenant.ID)
+	updated, err := s.readTenantLegalPages(ctx, tenant)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}

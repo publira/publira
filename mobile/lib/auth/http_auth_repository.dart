@@ -47,6 +47,8 @@ class HttpAuthRepository implements AuthRepository {
       '/publira.v1.AuthService/ConfirmEmailChange';
   static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
+  static const _tenantLegalPagesProcedure =
+      '/publira.v1.TenantService/GetTenantLegalPages';
 
   final ConnectClient _client;
   final TenantResolver _tenants;
@@ -176,11 +178,19 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<SignUpRequirements> readSignUpRequirements() async {
-    final tenant = await _getTenant();
+    final tenantRead = _getTenant();
+    final Map<String, Object?> legalPages;
+    try {
+      legalPages = await _readTenant(_tenantLegalPagesProcedure);
+    } catch (_) {
+      tenantRead.ignore();
+      rethrow;
+    }
+    final tenant = await tenantRead;
     return SignUpRequirements(
       ageVerification: AgeVerification.fromWire(tenant['ageVerification']),
-      termsPage: LegalPage.fromWire(tenant['termsPage']),
-      privacyPage: LegalPage.fromWire(tenant['privacyPage']),
+      termsPage: LegalPage.fromWire(legalPages['termsPage']),
+      privacyPage: LegalPage.fromWire(legalPages['privacyPage']),
     );
   }
 
@@ -403,10 +413,13 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
-  Future<Map<String, Object?>> _getTenant() async {
+  Future<Map<String, Object?>> _getTenant() => _readTenant(_tenantProcedure);
+
+  /// A `TenantService` read that takes nothing but the tenant.
+  Future<Map<String, Object?>> _readTenant(String procedure) async {
     try {
       final tenantId = await _tenants.resolve();
-      return await _client.unary(_tenantProcedure, {
+      return await _client.unary(procedure, {
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
     } on ConnectException catch (error) {

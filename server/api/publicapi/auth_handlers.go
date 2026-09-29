@@ -398,7 +398,7 @@ func (s *apiServer) CreateUser(
 		birthDate = sql.NullTime{Time: parsed, Valid: true}
 	}
 
-	agreedVersionIDs, err := s.signupConsents(ctx, tenant.ID, req.Msg.AgreedPageVersionIds)
+	agreedVersionIDs, err := s.signupConsents(ctx, tenant, req.Msg.AgreedPageVersionIds)
 	if err != nil {
 		reason := "consent_lookup_failed"
 		if connect.CodeOf(err) == connect.CodeInvalidArgument {
@@ -452,10 +452,16 @@ func (s *apiServer) CreateUser(
 // signupConsents checks the page versions a sign-up agreed to against the
 // pages the tenant names as its terms and privacy policy, and answers the
 // versions to record. Every named page that is published needs exactly one
-// published version of its own; a tenant that names none needs nothing.
-func (s *apiServer) signupConsents(ctx context.Context, tenantID uuid.UUID, rawIDs []string) ([]uuid.UUID, error) {
+// published version of its own; a tenant that names none needs nothing. The
+// version may belong to any translation, so the locale the pages are read in
+// does not matter here.
+func (s *apiServer) signupConsents(ctx context.Context, tenant dbmodels.Tenant, rawIDs []string) ([]uuid.UUID, error) {
+	tenantID := tenant.ID
 	required := map[uuid.UUID]bool{}
-	legal, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, tenantID)
+	legal, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, dbmodels.GetTenantLegalPagesParams{
+		TenantID: tenantID,
+		Locale:   tenant.DefaultLocale,
+	})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenantID.String())
 	}

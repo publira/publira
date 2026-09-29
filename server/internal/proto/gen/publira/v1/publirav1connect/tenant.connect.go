@@ -35,6 +35,9 @@ const (
 const (
 	// TenantServiceGetTenantProcedure is the fully-qualified name of the TenantService's GetTenant RPC.
 	TenantServiceGetTenantProcedure = "/publira.v1.TenantService/GetTenant"
+	// TenantServiceGetTenantLegalPagesProcedure is the fully-qualified name of the TenantService's
+	// GetTenantLegalPages RPC.
+	TenantServiceGetTenantLegalPagesProcedure = "/publira.v1.TenantService/GetTenantLegalPages"
 	// TenantServiceGetTenantMobileAppAssociationProcedure is the fully-qualified name of the
 	// TenantService's GetTenantMobileAppAssociation RPC.
 	TenantServiceGetTenantMobileAppAssociationProcedure = "/publira.v1.TenantService/GetTenantMobileAppAssociation"
@@ -43,6 +46,7 @@ const (
 // TenantServiceClient is a client for the publira.v1.TenantService service.
 type TenantServiceClient interface {
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
+	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
 }
 
@@ -63,6 +67,12 @@ func NewTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(tenantServiceMethods.ByName("GetTenant")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantLegalPages: connect.NewClient[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse](
+			httpClient,
+			baseURL+TenantServiceGetTenantLegalPagesProcedure,
+			connect.WithSchema(tenantServiceMethods.ByName("GetTenantLegalPages")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantMobileAppAssociation: connect.NewClient[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse](
 			httpClient,
 			baseURL+TenantServiceGetTenantMobileAppAssociationProcedure,
@@ -75,12 +85,18 @@ func NewTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 // tenantServiceClient implements TenantServiceClient.
 type tenantServiceClient struct {
 	getTenant                     *connect.Client[v1.GetTenantRequest, v1.GetTenantResponse]
+	getTenantLegalPages           *connect.Client[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse]
 	getTenantMobileAppAssociation *connect.Client[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse]
 }
 
 // GetTenant calls publira.v1.TenantService.GetTenant.
 func (c *tenantServiceClient) GetTenant(ctx context.Context, req *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error) {
 	return c.getTenant.CallUnary(ctx, req)
+}
+
+// GetTenantLegalPages calls publira.v1.TenantService.GetTenantLegalPages.
+func (c *tenantServiceClient) GetTenantLegalPages(ctx context.Context, req *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
+	return c.getTenantLegalPages.CallUnary(ctx, req)
 }
 
 // GetTenantMobileAppAssociation calls publira.v1.TenantService.GetTenantMobileAppAssociation.
@@ -91,6 +107,7 @@ func (c *tenantServiceClient) GetTenantMobileAppAssociation(ctx context.Context,
 // TenantServiceHandler is an implementation of the publira.v1.TenantService service.
 type TenantServiceHandler interface {
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
+	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
 }
 
@@ -107,6 +124,12 @@ func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(tenantServiceMethods.ByName("GetTenant")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantServiceGetTenantLegalPagesHandler := connect.NewUnaryHandler(
+		TenantServiceGetTenantLegalPagesProcedure,
+		svc.GetTenantLegalPages,
+		connect.WithSchema(tenantServiceMethods.ByName("GetTenantLegalPages")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantServiceGetTenantMobileAppAssociationHandler := connect.NewUnaryHandler(
 		TenantServiceGetTenantMobileAppAssociationProcedure,
 		svc.GetTenantMobileAppAssociation,
@@ -117,6 +140,8 @@ func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOp
 		switch r.URL.Path {
 		case TenantServiceGetTenantProcedure:
 			tenantServiceGetTenantHandler.ServeHTTP(w, r)
+		case TenantServiceGetTenantLegalPagesProcedure:
+			tenantServiceGetTenantLegalPagesHandler.ServeHTTP(w, r)
 		case TenantServiceGetTenantMobileAppAssociationProcedure:
 			tenantServiceGetTenantMobileAppAssociationHandler.ServeHTTP(w, r)
 		default:
@@ -130,6 +155,10 @@ type UnimplementedTenantServiceHandler struct{}
 
 func (UnimplementedTenantServiceHandler) GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.TenantService.GetTenant is not implemented"))
+}
+
+func (UnimplementedTenantServiceHandler) GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.TenantService.GetTenantLegalPages is not implemented"))
 }
 
 func (UnimplementedTenantServiceHandler) GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error) {

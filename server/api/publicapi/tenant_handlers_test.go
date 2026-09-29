@@ -121,17 +121,6 @@ func tenantThemeSelectRowWithBrandingImages(
 	}
 }
 
-// expectNoTenantLegalPages stands in for the legal pages read of a tenant that
-// has a config row and has named no page.
-func expectNoTenantLegalPages(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
-		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"terms_page_id", "terms_slug", "terms_title", "terms_published", "terms_published_version_id",
-			"privacy_page_id", "privacy_slug", "privacy_title", "privacy_published", "privacy_published_version_id",
-		}).AddRow(nil, nil, nil, false, nil, nil, nil, nil, false, nil))
-}
-
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
@@ -173,7 +162,6 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			nil,
 			"external_checkout",
 		))
-	expectNoTenantLegalPages(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -591,7 +579,6 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 			now := time.Now()
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectTenantConfigWithCommentMode(mock, tenantID, now, tc.mode)
-			expectNoTenantLegalPages(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
@@ -714,7 +701,6 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 			now := time.Now()
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectTenantAgeVerification(mock, tenantID, now, tc.stored)
-			expectNoTenantLegalPages(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
@@ -781,7 +767,6 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 					WillReturnError(sql.ErrNoRows)
 			} else {
 				expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, tc.stored)
-				expectNoTenantLegalPages(mock, tenantID)
 			}
 			expectPaymentsUnavailable(mock, tenantID)
 			if tc.want == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {

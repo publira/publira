@@ -135,8 +135,6 @@ export interface TenantSiteInfo {
   defaultLocale: Locale;
   domain: string;
   googlePlayUrl?: string;
-  /** The terms of service and privacy policy a sign-up asks consent to. */
-  legalPages: TenantLegalPages;
   /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
@@ -277,10 +275,6 @@ export const getTenantSiteInfo = async (
       iconImageVariants: toTenantImageVariants(
         response.theme?.iconImageVariants
       ),
-      legalPages: {
-        privacyPage: toTenantLegalPage(response.privacyPage),
-        termsPage: toTenantLegalPage(response.termsPage),
-      },
       logoImageUpdatedAt: nonEmpty(response.theme?.logoImageUpdatedAt),
       logoImageVariants: toTenantImageVariants(
         response.theme?.logoImageVariants
@@ -457,8 +451,32 @@ export const getTenantAgeVerification = async (
 export const getTenantLegalPages = async (
   tenantId: string
 ): Promise<TenantLegalPages> => {
-  const tenant = await getTenantSiteInfo(tenantId);
-  return tenant?.legalPages ?? {};
+  "use cache";
+  cacheLife({ stale: 30 });
+
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
+    return {};
+  }
+
+  applyCacheTag(tenantSiteTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.tenant.getTenantLegalPages({
+      tenant: { tenantId: normalizedTenantId },
+    });
+
+    return {
+      privacyPage: toTenantLegalPage(response.privacyPage),
+      termsPage: toTenantLegalPage(response.termsPage),
+    };
+  } catch (error) {
+    if (!isExpectedNullableRpcError(error)) {
+      console.warn("[web-host] getTenantLegalPages failed", error);
+      dropFailedCacheEntry();
+    }
+    return {};
+  }
 };
 
 /**
@@ -483,7 +501,7 @@ export const consentPages = ({
 export const readConsentPageVersionIds = async (
   tenantId: string
 ): Promise<string[]> => {
-  const response = await apiClient.tenant.getTenant({
+  const response = await apiClient.tenant.getTenantLegalPages({
     tenant: { tenantId: tenantId.trim() },
   });
 
