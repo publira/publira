@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -63,6 +64,7 @@ const getTenantSiteSettingsForSession = async (
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -91,6 +93,7 @@ const getTenantSiteSettingsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,

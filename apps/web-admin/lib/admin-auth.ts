@@ -13,6 +13,7 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
@@ -256,6 +257,7 @@ const getAdminCurrentUserForSession = async (
   "use cache: private";
 
   if (!token) {
+    dropFailedCacheEntry();
     return { ok: false, requiresSignIn: true };
   }
 
@@ -269,6 +271,7 @@ const getAdminCurrentUserForSession = async (
 
     const publicId = response.user?.publicId?.trim() ?? "";
     if (!publicId) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
 
@@ -282,9 +285,11 @@ const getAdminCurrentUserForSession = async (
     };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
     if (isExpectedNullableRpcError(error)) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
     throw error;

@@ -17,6 +17,7 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
@@ -212,6 +213,7 @@ const getAdminMfaStatusForSession = async (
   cacheTag(adminMfaStatusCacheTag(tenantId));
 
   if (!token) {
+    dropFailedCacheEntry();
     return { ok: false, requiresSignIn: true };
   }
 
@@ -231,6 +233,7 @@ const getAdminMfaStatusForSession = async (
     };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
     throw error;

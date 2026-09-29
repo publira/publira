@@ -7,6 +7,7 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -256,6 +257,7 @@ const getTenantCommunityLimitSettingsForSession = async (
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -280,6 +282,7 @@ const getTenantCommunityLimitSettingsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,

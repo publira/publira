@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetCreator,
@@ -8,6 +9,7 @@ const {
   mockListCreators,
   mockUnlinkCreatorAccount,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetCreator: vi.fn(),
@@ -17,6 +19,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -78,6 +81,7 @@ describe("listCreators", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token", async () => {
@@ -137,6 +141,30 @@ describe("listCreators", () => {
       ok: false,
       previousToken: "",
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listCreators } = await import("./creator");
+    const result = await listCreators("TENANT001", "en", {});
+
+    expect(mockListCreators).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      creators: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 
@@ -185,6 +213,7 @@ describe("getCreator", () => {
       },
       ok: true,
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("carries the reader accounts linked to the creator", async () => {
@@ -248,6 +277,11 @@ describe("getCreator", () => {
       ok: false,
       requiresSignIn: true,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   // The server answers not_found both for a record that does not exist and
@@ -269,6 +303,8 @@ describe("getCreator", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+    // A missing creator is an answer, so the entry stays cacheable.
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns a message for a failure other than not_found", async () => {
@@ -288,6 +324,11 @@ describe("getCreator", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toMatchObject({ notFound: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("treats a response with no creator as an error", async () => {
@@ -305,6 +346,11 @@ describe("getCreator", () => {
     expect(result).toEqual({
       message: "Could not load the authors. Please try again later.",
       ok: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -361,6 +407,7 @@ describe("listAllCreators", () => {
     expect(
       result.creators.some((creator) => creator.publicId === "CREATOR101")
     ).toBe(true);
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("does not call the RPC when there is no session", async () => {
@@ -377,6 +424,11 @@ describe("listAllCreators", () => {
       ok: false,
       previousToken: "",
       requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -404,6 +456,32 @@ describe("listAllCreators", () => {
       ok: false,
       previousToken: "",
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns no partial result and drops the cache entry when the fetch fails", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockListCreators.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listAllCreators } = await import("./creator");
+    const result = await listAllCreators("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      creators: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });

@@ -4,6 +4,7 @@ import type { RpcErrorMessageOverrides } from "@publira/api-client/error-message
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -167,6 +168,7 @@ const listGenresForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       genres: [],
       message: t("errors.rpc.unauthenticated"),
@@ -200,6 +202,7 @@ const listGenresForSession = async (
     );
 
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         genres: [],
         message: t("admin.genres.list_failed"),
@@ -211,6 +214,7 @@ const listGenresForSession = async (
     return { genres, ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       genres: [],
       message: await mapErrorToMessage(

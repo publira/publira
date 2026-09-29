@@ -16,6 +16,7 @@ import {
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { parseLocale, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -315,6 +316,7 @@ const listPagesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -340,6 +342,7 @@ const listPagesForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorToMessage(
@@ -378,6 +381,7 @@ const listPublishedPagesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -409,6 +413,7 @@ const listPublishedPagesForSession = async (
     );
 
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         message: t("admin.pages.list_failed"),
         ok: false,
@@ -424,6 +429,7 @@ const listPublishedPagesForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,
@@ -464,6 +470,7 @@ const getPageForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -503,6 +510,7 @@ const getPageForSession = async (
     ) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,
@@ -539,6 +547,7 @@ const listPageVersionsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -565,6 +574,7 @@ const listPageVersionsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,
@@ -942,6 +952,7 @@ const listPageTranslationsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -972,6 +983,7 @@ const listPageTranslationsForSession = async (
     ) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,

@@ -8,6 +8,7 @@ import {
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -158,6 +159,7 @@ const getTenantEmailSettingsForSession = async (
   const normalizedTenantId = tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -178,6 +180,7 @@ const getTenantEmailSettingsForSession = async (
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: await parseErrorMessage(error, locale),
       ok: false,

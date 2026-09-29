@@ -19,6 +19,7 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -763,6 +764,7 @@ const getEpisodeForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -792,6 +794,7 @@ const getEpisodeForSession = async (
       purchaseAvailability === undefined ||
       toSurfaceAvailabilityValue(response.episode.availability) === undefined
     ) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.series.episodes.get_failed"),
         ok: false,
@@ -810,6 +813,7 @@ const getEpisodeForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,
@@ -1143,6 +1147,7 @@ const listEpisodeImagesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       images: [],
       message: t("errors.rpc.unauthenticated"),
@@ -1166,6 +1171,7 @@ const listEpisodeImagesForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       images: [],
       message: await mapErrorToMessage(

@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
@@ -60,6 +61,7 @@ const getDashboardForSession = async (
 
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -93,6 +95,7 @@ const getDashboardForSession = async (
     return { ok: true, queue, stats };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(error, locale),
       ok: false,

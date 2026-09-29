@@ -2,11 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantCommunityLimitSettingsApi,
   mockUpdateTenantCommunityLimitSettingsApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantCommunityLimitSettingsApi: vi.fn(),
@@ -14,6 +16,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -126,6 +129,7 @@ describe("tenant-community-limits", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:community-limits"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reports a failed read without naming a limit", async () => {
@@ -140,6 +144,32 @@ describe("tenant-community-limits", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("platformDefaults");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a missing session without naming a limit", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getTenantCommunityLimitSettings } =
+      await import("./tenant-community-limits");
+
+    const result = await getTenantCommunityLimitSettings("TENANT001", "en");
+
+    expect(result).toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockGetTenantCommunityLimitSettingsApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("refuses a limit looser than the platform value and names it", async () => {

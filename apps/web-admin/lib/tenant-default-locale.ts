@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -50,6 +51,7 @@ const getTenantDefaultLocaleForSession = async (
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -69,6 +71,7 @@ const getTenantDefaultLocaleForSession = async (
 
     const defaultLocale = resolveDefaultLocale(response.defaultLocale);
     if (defaultLocale === undefined) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.settings.default_locale.load_failed"),
         ok: false,
@@ -79,6 +82,7 @@ const getTenantDefaultLocaleForSession = async (
     return { defaultLocale, ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,

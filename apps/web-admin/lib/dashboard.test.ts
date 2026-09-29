@@ -1,15 +1,16 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetSessionId, mockGetDashboardApi } = vi.hoisted(
-  () => ({
+const { mockCacheLife, mockCacheTag, mockGetSessionId, mockGetDashboardApi } =
+  vi.hoisted(() => ({
+    mockCacheLife: vi.fn(),
     mockCacheTag: vi.fn(),
     mockGetDashboardApi: vi.fn(),
     mockGetSessionId: vi.fn(),
-  })
-);
+  }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -78,6 +79,7 @@ describe("dashboard", () => {
       { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("falls back to the default values when stats is undefined", async () => {
@@ -111,6 +113,11 @@ describe("dashboard", () => {
       requiresSignIn: true,
     });
     expect(mockGetDashboardApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns an error on an unauthenticated API error", async () => {
@@ -127,6 +134,11 @@ describe("dashboard", () => {
       ok: false,
       requiresSignIn: true,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the shared wording for an unreachable error", async () => {
@@ -142,6 +154,11 @@ describe("dashboard", () => {
       message: "Could not connect to the server. Please try again later.",
       ok: false,
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

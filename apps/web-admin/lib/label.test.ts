@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetLabel,
   mockListLabels,
   mockUploadAspectImage,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetLabel: vi.fn(),
@@ -15,6 +17,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -68,6 +71,7 @@ describe("listLabels", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token", async () => {
@@ -126,6 +130,30 @@ describe("listLabels", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listLabels } = await import("./label");
+    const result = await listLabels("TENANT001", "en", {});
+
+    expect(mockListLabels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      labels: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -193,6 +221,7 @@ describe("getLabel", () => {
       },
       ok: true,
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns notFound for invalid input without calling the RPC", async () => {
@@ -208,6 +237,7 @@ describe("getLabel", () => {
     expect(mockGetLabel).not.toHaveBeenCalled();
     expect(mockCacheTag).not.toHaveBeenCalled();
     expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns an error without calling the RPC when there is no session", async () => {
@@ -227,6 +257,11 @@ describe("getLabel", () => {
       message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -249,6 +284,7 @@ describe("getLabel", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns a message for a failure other than not_found", async () => {
@@ -268,6 +304,11 @@ describe("getLabel", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toMatchObject({ notFound: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("treats a response with no label as an error", async () => {
@@ -285,6 +326,11 @@ describe("getLabel", () => {
     expect(result).toEqual({
       message: "Could not load the labels. Please try again later.",
       ok: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -345,6 +391,7 @@ describe("listAllLabels", () => {
     expect(result.labels.some((label) => label.publicId === "LABEL101")).toBe(
       true
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("does not call the RPC when there is no session", async () => {
@@ -361,6 +408,11 @@ describe("listAllLabels", () => {
       ok: false,
       previousToken: "",
       requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -389,6 +441,32 @@ describe("listAllLabels", () => {
       ok: false,
       previousToken: "",
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns no list when a page fails to load", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockListLabels.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listAllLabels } = await import("./label");
+    const result = await listAllLabels("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      labels: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });

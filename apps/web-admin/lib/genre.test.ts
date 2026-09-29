@@ -6,6 +6,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockCreateGenre,
   mockDeleteGenre,
@@ -15,6 +16,7 @@ const {
   mockUpdateGenre,
   mockUploadGenreEyeCatchAspectImage,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateGenre: vi.fn(),
   mockDeleteGenre: vi.fn(),
@@ -26,6 +28,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -142,6 +145,7 @@ describe("listGenres", () => {
       tenant: { tenantId: "TENANT001" },
       token: "page-2",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reports a rejected session so the page can raise the login redirect", async () => {
@@ -156,6 +160,59 @@ describe("listGenres", () => {
       genres: [],
       ok: false,
       requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for sign-in without calling the API when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listGenres } = await import("./genre");
+    const result = await listGenres("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      genres: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockListGenres).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("refuses a list the walk could not finish rather than cache a partial one", async () => {
+    // The same cursor coming back stops the walk before the list ends.
+    mockListGenres.mockResolvedValue({
+      genres: [
+        {
+          id: "genre-1",
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "page-2",
+    });
+
+    const { listGenres } = await import("./genre");
+    const result = await listGenres("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      genres: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -342,6 +399,7 @@ describe("getGenre", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("passes on a failed read with the login redirect it needs", async () => {
@@ -356,6 +414,11 @@ describe("getGenre", () => {
     );
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

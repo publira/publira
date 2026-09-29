@@ -6,11 +6,13 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantMobileAppAssociationApi,
   mockUpdateTenantMobileAppAssociationApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantMobileAppAssociationApi: vi.fn(),
@@ -18,6 +20,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -84,6 +87,7 @@ describe("tenant-mobile-app-association", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:mobile-app-association"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reads a tenant with no app as having neither platform", async () => {
@@ -110,6 +114,11 @@ describe("tenant-mobile-app-association", () => {
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
     expect(mockGetTenantMobileAppAssociationApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("reports a read the API could not answer", async () => {
@@ -124,6 +133,11 @@ describe("tenant-mobile-app-association", () => {
     expect(result).toMatchObject({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

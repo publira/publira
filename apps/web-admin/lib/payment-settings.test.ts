@@ -7,12 +7,14 @@ import {
 } from "./email-settings-shared";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantPaymentSettingsApi,
   mockListPaymentProvidersApi,
   mockUpdateTenantPaymentSettingsApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantPaymentSettingsApi: vi.fn(),
@@ -21,6 +23,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -120,6 +123,7 @@ describe("payment-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("keeps a plaintext secret in the response out of the settings meant for the screen", async () => {
@@ -180,6 +184,11 @@ describe("payment-settings", () => {
       requiresSignIn: true,
     });
     expect(mockGetTenantPaymentSettingsApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the shared permission error message without the permission", async () => {
@@ -196,6 +205,11 @@ describe("payment-settings", () => {
         "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -349,6 +363,7 @@ describe("payment-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reports a provider list the API refuses as a message", async () => {
@@ -365,6 +380,31 @@ describe("payment-settings", () => {
         "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a sign-in before listing providers without a session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listPaymentProviders } = await import("./payment-settings");
+
+    const result = await listPaymentProviders("TENANT001", "en");
+
+    expect(result).toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockListPaymentProvidersApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

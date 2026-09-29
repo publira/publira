@@ -2,11 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantTimezoneApi,
   mockUpdateTenantTimezoneApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantTimezoneApi: vi.fn(),
@@ -14,6 +16,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -55,6 +58,7 @@ describe("tenant-timezone", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns the default time zone and an error when there is no session", async () => {
@@ -71,6 +75,11 @@ describe("tenant-timezone", () => {
       timezone: "UTC",
     });
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the default alongside the failure so the form stays usable", async () => {
@@ -84,6 +93,11 @@ describe("tenant-timezone", () => {
 
     expect(result.ok).toBe(false);
     expect(result.timezone).toBe("UTC");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the saved time zone on a successful update", async () => {
@@ -168,6 +182,7 @@ describe("tenant-timezone", () => {
     await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe(
       "America/Los_Angeles"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("still renders in the default time zone when the tenant cannot be fetched", async () => {
@@ -180,6 +195,11 @@ describe("tenant-timezone", () => {
     const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
 
     await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe("UTC");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("still renders in the default time zone when the tenant id is empty", async () => {
@@ -187,5 +207,6 @@ describe("tenant-timezone", () => {
 
     await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("UTC");
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 });

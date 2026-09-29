@@ -12,11 +12,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockBulkEditEpisodeCredits,
+  mockCacheLife,
   mockCacheTag,
   mockCreateEpisode,
   mockGetAccessToken,
   mockGetEpisode,
   mockListEpisodeCredits,
+  mockListEpisodeImages,
   mockListEpisodes,
   mockReorderEpisodes,
   mockUpdateEpisodeAvailability,
@@ -24,11 +26,13 @@ const {
   mockUpdateEpisodePurchaseAvailability,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodeCredits: vi.fn(),
+  mockListEpisodeImages: vi.fn(),
   mockListEpisodes: vi.fn(),
   mockReorderEpisodes: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
@@ -37,6 +41,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -51,6 +56,7 @@ vi.mock("./api", () => ({
       createEpisode: mockCreateEpisode,
       getEpisode: mockGetEpisode,
       listEpisodeCredits: mockListEpisodeCredits,
+      listEpisodeImages: mockListEpisodeImages,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
       updateEpisodeAvailability: mockUpdateEpisodeAvailability,
@@ -320,6 +326,7 @@ describe("getEpisode", () => {
       ok: true,
       purchaseAvailability: "",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   // The resolved layout rides on `episode`; the form reads the overrides beside
@@ -367,6 +374,11 @@ describe("getEpisode", () => {
     );
 
     expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the scheduledAt of a scheduled episode untouched", async () => {
@@ -410,6 +422,142 @@ describe("getEpisode", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+    // A missing episode is an answer, so the entry stays cacheable.
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockGetEpisode).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails and drops the cache entry when the fetch fails", async () => {
+    mockGetEpisode.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+});
+
+describe("listEpisodeImages", () => {
+  it("returns the body images of the episode", async () => {
+    mockListEpisodeImages.mockResolvedValue({
+      images: [
+        {
+          contentType: "image/webp",
+          displayOrder: 1,
+          fileSizeBytes: 2048n,
+          height: 1600,
+          id: "IMAGE001",
+          imageUrl: "https://cdn.example.com/image-001.webp",
+          width: 1200,
+        },
+      ],
+    });
+
+    const { listEpisodeImages } = await import("./episode");
+    const result = await listEpisodeImages(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListEpisodeImages).toHaveBeenCalledWith(
+      { episodeId: "EPISODE001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      images: [
+        {
+          contentType: "image/webp",
+          displayOrder: 1,
+          fileSizeBytes: "2048",
+          height: 1600,
+          id: "IMAGE001",
+          imageUrl: "https://cdn.example.com/image-001.webp",
+          width: 1200,
+        },
+      ],
+      ok: true,
+    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listEpisodeImages } = await import("./episode");
+    const result = await listEpisodeImages(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListEpisodeImages).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      images: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails and drops the cache entry when the fetch fails", async () => {
+    mockListEpisodeImages.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listEpisodeImages } = await import("./episode");
+    const result = await listEpisodeImages(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      images: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

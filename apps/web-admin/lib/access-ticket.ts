@@ -5,6 +5,7 @@ import {
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -152,6 +153,7 @@ const listAccessTicketsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -180,6 +182,7 @@ const listAccessTicketsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorMessage(

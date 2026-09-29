@@ -8,6 +8,7 @@ import type { Locale } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockCreateCreatorRole,
   mockDeleteCreatorRole,
@@ -16,6 +17,7 @@ const {
   mockReorderCreatorRoles,
   mockUpdateCreatorRole,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateCreatorRole: vi.fn(),
   mockDeleteCreatorRole: vi.fn(),
@@ -26,6 +28,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -95,6 +98,93 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.resetModules();
   mockGetAccessToken.mockResolvedValue("session-token");
+});
+
+describe("listCreatorRoles", () => {
+  it("returns every role of the tenant across pages", async () => {
+    mockListCreatorRoles
+      .mockResolvedValueOnce({
+        creatorRoles: [{ id: "ROLE0001", name: "Story", publicId: "R1" }],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creatorRoles: [{ id: "ROLE0002", name: "Art", publicId: "R2" }],
+        nextToken: "",
+      });
+
+    const { listCreatorRoles } = await import("./creator-roles");
+    const result = await listCreatorRoles("TENANT001", "en");
+
+    expect(result).toEqual({
+      creatorRoles: [
+        { id: "ROLE0001", name: "Story", publicId: "R1" },
+        { id: "ROLE0002", name: "Art", publicId: "R2" },
+      ],
+      ok: true,
+    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listCreatorRoles } = await import("./creator-roles");
+    const result = await listCreatorRoles("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      creatorRoles: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockListCreatorRoles).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails with an empty list and drops the cache entry when the walk does not complete", async () => {
+    // The same cursor coming back stops the walk before the list ends.
+    mockListCreatorRoles.mockResolvedValue({
+      creatorRoles: [{ id: "ROLE0001", name: "Story", publicId: "R1" }],
+      nextToken: "same-page",
+    });
+
+    const { listCreatorRoles } = await import("./creator-roles");
+    const result = await listCreatorRoles("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      creatorRoles: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails and drops the cache entry when the fetch fails", async () => {
+    mockListCreatorRoles.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listCreatorRoles } = await import("./creator-roles");
+    const result = await listCreatorRoles("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      creatorRoles: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
 });
 
 describe("deleteCreatorRole", () => {

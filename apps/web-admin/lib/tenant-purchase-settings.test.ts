@@ -7,11 +7,13 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantPurchaseSettingsApi,
   mockUpdateTenantPurchaseSettingsApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantPurchaseSettingsApi: vi.fn(),
@@ -19,6 +21,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -86,6 +89,7 @@ describe("tenant-purchase-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:purchase-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   // The API never answers unspecified for the tenant. Reading it as a choice
@@ -105,6 +109,11 @@ describe("tenant-purchase-settings", () => {
         "Could not load where episodes are sold. Please try again later.",
       ok: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("asks for a sign-in when there is no session", async () => {
@@ -116,6 +125,29 @@ describe("tenant-purchase-settings", () => {
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
     expect(mockGetTenantPurchaseSettingsApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a read the API could not answer", async () => {
+    mockGetTenantPurchaseSettingsApi.mockRejectedValueOnce(
+      new ConnectError("purchase settings unavailable", Code.Unavailable)
+    );
+
+    const { getTenantPurchaseSettings } =
+      await import("./tenant-purchase-settings");
+    const result = await getTenantPurchaseSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(result).not.toHaveProperty("settings");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("writes every field and reads back what was stored", async () => {

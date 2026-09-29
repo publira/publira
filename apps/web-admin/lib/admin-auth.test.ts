@@ -15,6 +15,7 @@ import {
 
 const {
   mockAcceptTenantAdminInvitation,
+  mockCacheLife,
   mockConfirmPasswordReset,
   mockGetMe,
   mockGetAccessToken,
@@ -23,12 +24,17 @@ const {
   mockRequestPasswordReset,
 } = vi.hoisted(() => ({
   mockAcceptTenantAdminInvitation: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockConfirmPasswordReset: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetTenantAdminInvitationState: vi.fn(),
   mockLogin: vi.fn(),
   mockRequestPasswordReset: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
 }));
 
 vi.mock("next/headers", () => ({
@@ -178,6 +184,11 @@ describe("getAdminCurrentUser", () => {
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: true });
     expect(mockGetMe).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("asks for a fresh login for a whitespace-only accessToken", async () => {
@@ -193,6 +204,11 @@ describe("getAdminCurrentUser", () => {
     mockGetMe.mockResolvedValueOnce({});
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("does not ask for a fresh login when the API returns a user with an empty publicId", async () => {
@@ -201,6 +217,11 @@ describe("getAdminCurrentUser", () => {
     });
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the user read from a valid response", async () => {
@@ -212,6 +233,7 @@ describe("getAdminCurrentUser", () => {
       ok: true,
       user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("passes the access token from getAccessToken straight to the API", async () => {
@@ -234,6 +256,11 @@ describe("getAdminCurrentUser", () => {
     );
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("asks for a fresh login when the session is rejected", async () => {
@@ -242,6 +269,11 @@ describe("getAdminCurrentUser", () => {
     );
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("rethrows an unexpected error", async () => {
@@ -268,6 +300,11 @@ describe("isAdminSessionValid", () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns true when a valid user comes back", async () => {
@@ -276,6 +313,7 @@ describe("isAdminSessionValid", () => {
     });
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(true);
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns false on an expected error", async () => {
@@ -284,6 +322,11 @@ describe("isAdminSessionValid", () => {
     );
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("rethrows an unexpected error", async () => {

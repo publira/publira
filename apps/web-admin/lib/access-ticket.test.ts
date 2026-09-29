@@ -5,12 +5,17 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockIssueAccessTicket, mockListAccessTickets } =
-  vi.hoisted(() => ({
-    mockGetAccessToken: vi.fn(),
-    mockIssueAccessTicket: vi.fn(),
-    mockListAccessTickets: vi.fn(),
-  }));
+const {
+  mockCacheLife,
+  mockGetAccessToken,
+  mockIssueAccessTicket,
+  mockListAccessTickets,
+} = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockIssueAccessTicket: vi.fn(),
+  mockListAccessTickets: vi.fn(),
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -29,6 +34,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: vi.fn(),
 }));
 
@@ -84,6 +90,7 @@ describe("listAccessTickets", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token", async () => {
@@ -168,6 +175,11 @@ describe("listAccessTickets", () => {
       previousToken: "",
       tickets: [],
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns a result with no token when the fetch fails", async () => {
@@ -185,6 +197,11 @@ describe("listAccessTickets", () => {
       ok: false,
       previousToken: "",
       tickets: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });

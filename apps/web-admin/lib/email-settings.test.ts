@@ -16,11 +16,13 @@ import {
 } from "./email-settings-shared";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantEmailSettings,
   mockSendTenantSmtpTestEmail,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantEmailSettings: vi.fn(),
@@ -28,6 +30,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -130,6 +133,36 @@ describe("getTenantEmailSettings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:email-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a sign-in and drops the cache entry without a session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const result = await getTenantEmailSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockGetTenantEmailSettings).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails and drops the cache entry when the fetch fails", async () => {
+    mockGetTenantEmailSettings.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const result = await getTenantEmailSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("tenantEmailSettingsCacheTag normalizes the tenant id", () => {

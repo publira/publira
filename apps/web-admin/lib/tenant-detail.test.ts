@@ -1,9 +1,14 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSessionId, mockGetTenant } = vi.hoisted(() => ({
+const { mockCacheLife, mockGetSessionId, mockGetTenant } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockGetTenant: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
 }));
 
 vi.mock("./session", () => ({
@@ -56,6 +61,7 @@ describe("tenant-detail", () => {
         headers: { Authorization: "Bearer session-token" },
       }
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fails without asking for a fresh login when the tenant name is empty", async () => {
@@ -73,6 +79,28 @@ describe("tenant-detail", () => {
       ok: false,
       requiresSignIn: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a fresh login without calling the API when there is no session", async () => {
+    mockGetSessionId.mockResolvedValue("");
+
+    const { getTenantForSession } = await import("./tenant-detail");
+
+    await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockGetTenant).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("asks for a fresh login when the session is rejected", async () => {
@@ -86,6 +114,11 @@ describe("tenant-detail", () => {
       ok: false,
       requiresSignIn: true,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("does not ask for a fresh login when the tenant is not visible", async () => {
@@ -98,6 +131,11 @@ describe("tenant-detail", () => {
     await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
       ok: false,
       requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

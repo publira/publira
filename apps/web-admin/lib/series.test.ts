@@ -11,12 +11,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { updateSeries as UpdateSeries } from "./series";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetSeries,
   mockListSeries,
   mockUpdateSeries,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetSeries: vi.fn(),
@@ -25,6 +27,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -80,6 +83,7 @@ describe("listSeries", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token", async () => {
@@ -159,6 +163,30 @@ describe("listSeries", () => {
       previousToken: "",
       series: [],
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listSeries } = await import("./series");
+    const result = await listSeries("TENANT001", "en", {});
+
+    expect(mockListSeries).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      requiresSignIn: true,
+      series: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("files the page under the tenant series list tag", async () => {
@@ -226,6 +254,7 @@ describe("listAllSeries", () => {
     );
     expect(aIndex).toBeGreaterThanOrEqual(0);
     expect(nuIndex).toBeGreaterThan(aIndex);
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("does not call the RPC when there is no session", async () => {
@@ -238,6 +267,11 @@ describe("listAllSeries", () => {
     expect(result).toMatchObject({
       ok: false,
       series: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -262,6 +296,31 @@ describe("listAllSeries", () => {
     expect(result).toMatchObject({
       ok: false,
       series: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns no list when a page fails to load", async () => {
+    mockListSeries.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listAllSeries } = await import("./series");
+    const result = await listAllSeries("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      ok: false,
+      requiresSignIn: false,
+      series: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
@@ -454,6 +513,7 @@ describe("the comment mode a series states", () => {
       commentMode: "approval_required",
       ok: true,
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   // The form offers "follow the tenant" as one of its options, so unspecified
@@ -489,6 +549,11 @@ describe("the comment mode a series states", () => {
     );
 
     expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("sends the mode the save states", async () => {
@@ -623,6 +688,11 @@ describe("the layout a series states", () => {
     );
 
     expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("sends the layout the save states", async () => {
@@ -757,6 +827,11 @@ describe("the surfaces a series is shown on", () => {
     );
 
     expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("sends the surfaces the form chose", async () => {
@@ -865,6 +940,11 @@ describe("where a series' episodes may be bought", () => {
     );
 
     expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("sends the value the form chose", async () => {
@@ -972,6 +1052,86 @@ describe("the shares a series' credits carry", () => {
           },
         ],
       },
+    });
+  });
+});
+
+describe("getSeries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("asks for a sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockGetSeries).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a response that names no series as a failure", async () => {
+    mockGetSeries.mockResolvedValue({});
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "Could not load the series. Please try again later.",
+      ok: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("keeps a missing series as a cacheable not found", async () => {
+    mockGetSeries.mockRejectedValue(
+      new ConnectError("series not found", Code.NotFound)
+    );
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES404", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure other than a missing series as a message", async () => {
+    mockGetSeries.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });

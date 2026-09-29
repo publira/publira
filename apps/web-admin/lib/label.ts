@@ -7,6 +7,7 @@ import {
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 import { z } from "zod";
 
@@ -161,6 +162,7 @@ const listLabelsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -186,6 +188,7 @@ const listLabelsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -224,6 +227,7 @@ const listAllLabelsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -260,6 +264,7 @@ const listAllLabelsForSession = async (
     // Match listAllCreators / episode reorder: never hand the form a partial
     // option list that looks complete.
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         ...emptyCursorPageTokens,
         labels: [],
@@ -278,6 +283,7 @@ const listAllLabelsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -452,6 +458,7 @@ const getLabelForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -469,6 +476,7 @@ const getLabelForSession = async (
     );
 
     if (!response.label?.publicId?.trim()) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.labels.list_failed"),
         ok: false,
@@ -484,6 +492,7 @@ const getLabelForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,

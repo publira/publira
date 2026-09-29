@@ -2,11 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantDefaultLocaleApi,
   mockUpdateTenantDefaultLocaleApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantDefaultLocaleApi: vi.fn(),
@@ -14,6 +16,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -57,6 +60,7 @@ describe("tenant-default-locale", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:default-locale"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reports a missing session without naming a saved locale", async () => {
@@ -72,6 +76,11 @@ describe("tenant-default-locale", () => {
       requiresSignIn: true,
     });
     expect(mockGetTenantDefaultLocaleApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("reports a failed read without naming a saved locale", async () => {
@@ -85,6 +94,11 @@ describe("tenant-default-locale", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the saved default locale on a successful update", async () => {
@@ -174,5 +188,10 @@ describe("tenant-default-locale", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });

@@ -2,12 +2,14 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCountUnreadNotificationsApi,
   mockGetSessionId,
   mockListNotificationsApi,
   mockMarkAllNotificationsAsReadApi,
   mockMarkNotificationAsReadApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCountUnreadNotificationsApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockListNotificationsApi: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: vi.fn(),
 }));
 
@@ -84,6 +87,7 @@ describe("notification lib", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token and the default limit", async () => {
@@ -190,6 +194,11 @@ describe("notification lib", () => {
       previousToken: "",
       requiresSignIn: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("does not throw an unclassifiable error out of the cached function and rethrows it at the caller", async () => {
@@ -217,6 +226,11 @@ describe("notification lib", () => {
       ok: false,
       previousToken: "",
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns the unread count", async () => {
@@ -230,6 +244,7 @@ describe("notification lib", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({ ok: true, unreadCount: 3 });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns an empty bell when the unread count cannot be fetched", async () => {
@@ -245,6 +260,30 @@ describe("notification lib", () => {
       ok: false,
       requiresSignIn: false,
       unreadCount: 0,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns an empty bell without calling the RPC when there is no session", async () => {
+    mockGetSessionId.mockResolvedValue("");
+
+    const { countUnreadNotifications } = await import("./notification");
+    const result = await countUnreadNotifications("TENANT001", "en");
+
+    expect(mockCountUnreadNotificationsApi).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      requiresSignIn: true,
+      unreadCount: 0,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 
