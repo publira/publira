@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -16,14 +17,21 @@ import (
 	"github.com/publira/publira/server/internal/sqldb"
 )
 
-// commandGroup is a group of the settings and provisioning commands, which
-// write the platform_* tables and the tenant rows in place of the Platform
-// Console. A group can hold groups of its own, dispatched by the next word.
+// commandGroup is a group of commands, dispatched by the word that names it. A
+// group can hold groups of its own, dispatched by the next word.
 type commandGroup struct {
 	name     string
 	summary  string
 	commands []command
 	groups   []commandGroup
+	// synopsis follows the group's words on its usage line, and is
+	// "<command> [flags]" when empty.
+	synopsis string
+	// heading titles the list of commands in the usage, and is "Commands" when
+	// empty.
+	heading string
+	// note closes the usage with what every command in the group shares.
+	note string
 }
 
 // command is one subcommand of a commandGroup. setup declares its flags and
@@ -35,18 +43,14 @@ type command struct {
 	setup   func(f *commandFlags) func(ctx context.Context, env *commandEnv) error
 }
 
-// groups are the settings and provisioning command groups, dispatched beside db
-// and job.
-var groups = []commandGroup{platformGroup, policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
-
-func lookupGroup(name string) *commandGroup {
-	for i := range groups {
-		if groups[i].name == name {
-			return &groups[i]
-		}
-	}
-	return nil
+// rootGroup is what the first argument is looked up in.
+var rootGroup = commandGroup{
+	synopsis: "<command>",
+	commands: []command{setupCommand},
+	groups:   groups,
 }
+
+var groups = []commandGroup{dbGroup, jobGroup, platformGroup, policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
 
 // commandFlags is the flag set of one command, with the secrets it declared.
 type commandFlags struct {
@@ -54,7 +58,9 @@ type commandFlags struct {
 	secrets []*secret
 }
 
-// commandEnv is what every settings and provisioning command runs with.
+// commandEnv is what every command runs with. Its logger writes to stderr; a
+// command whose log is its output, as db's and job's are, logs to stdout
+// instead.
 type commandEnv struct {
 	console console
 	stdout  io.Writer
@@ -97,45 +103,55 @@ func (e *commandEnv) secretManager() (*secretcrypto.Manager, error) {
 	return secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
 }
 
-// runGroup dispatches one settings or provisioning command. It exits 0 on
-// success, 1 on a failure the command reports on stderr, and 2 on a usage
-// error, with the usage text on stderr.
+// runGroup dispatches args through g. It exits 0 on success, 1 on a failure
+// the command reports, and 2 on a usage error, with the usage text on stderr.
 func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int {
 	stderr := con.stderr
 	if len(args) == 0 {
-		return usageError(stderr, g.name+" requires a command", g.usage())
+		return usageError(stderr, "a "+g.words("command")+" is required", g.usage())
 	}
 	for _, sub := range g.groups {
 		if sub.name == args[0] {
-			sub.name = g.name + " " + sub.name
+			sub.name = g.words(sub.name)
 			return runGroup(&sub, args[1:], con, stdout)
 		}
 	}
-	var c *command
 	for i := range g.commands {
 		if g.commands[i].name == args[0] {
-			c = &g.commands[i]
+			return runCommand(g, &g.commands[i], args[1:], con, stdout)
 		}
 	}
-	if c == nil {
-		return usageError(stderr, fmt.Sprintf("unknown %s command %q", g.name, args[0]), g.usage())
-	}
-	return runCommand(g.name+" "+c.name, c, args[1:], con, stdout)
+	return usageError(stderr, fmt.Sprintf("unknown %s %q", g.words("command"), args[0]), g.usage())
 }
 
-// runCommand runs c, which the words in name invoke, with its flags in args.
-// It exits as runGroup does.
-func runCommand(name string, c *command, args []string, con console, stdout io.Writer) int {
+// words prefixes word with the words that invoke g.
+func (g *commandGroup) words(word string) string {
+	if g.name == "" {
+		return word
+	}
+	return g.name + " " + word
+}
+
+// runCommand runs c, a command of g, with its flags in args. It exits as
+// runGroup does.
+func runCommand(g *commandGroup, c *command, args []string, con console, stdout io.Writer) int {
 	stderr := con.stderr
+	name := g.words(c.name)
 	f := &commandFlags{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError)}
 	f.SetOutput(io.Discard)
 	run := c.setup(f)
 	usage := commandUsage(name, c, f)
-	if err := f.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			_, _ = io.WriteString(stderr, usage)
-			return 0
-		}
+	err := f.Parse(args)
+	if errors.Is(err, flag.ErrHelp) {
+		_, _ = io.WriteString(stderr, usage)
+		return 0
+	}
+	// A command that declares no flags takes no arguments, and is refused with
+	// its group's usage, since its own is only its summary.
+	if !f.declared() && len(args) > 0 {
+		return usageError(stderr, name+" takes no arguments", g.usage())
+	}
+	if err != nil {
 		return usageError(stderr, flagError(err), usage)
 	}
 	// A positional argument is refused without being repeated: it may be a
@@ -153,6 +169,9 @@ func runCommand(name string, c *command, args []string, con console, stdout io.W
 		logger:  logging.New(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
 	}
 	if err := run(context.Background(), env); err != nil {
+		if errors.Is(err, errLogged) {
+			return 1
+		}
 		var missing *missingValueError
 		if errors.As(err, &missing) {
 			_, _ = io.WriteString(stderr, "publiractl: "+err.Error()+"\n")
@@ -174,6 +193,10 @@ func (e *missingValueError) Error() string {
 	return e.flags + " is required; give it as a flag, or run on a terminal without --non-interactive to be asked for it"
 }
 
+// errLogged is a failure the command has already logged, so it exits 1
+// without repeating it.
+var errLogged = errors.New("the failure is logged")
+
 // commandError reports a failure the command ran into and returns its exit
 // status.
 func commandError(w io.Writer, err error) int {
@@ -182,20 +205,36 @@ func commandError(w io.Writer, err error) int {
 }
 
 func (g *commandGroup) usage() string {
+	synopsis := cmp.Or(g.synopsis, "<command> [flags]")
+	heading := cmp.Or(g.heading, "Commands")
 	var b strings.Builder
-	fmt.Fprintf(&b, "\nUsage: publiractl %s <command> [flags]\n\nCommands:\n", g.name)
+	fmt.Fprintf(&b, "\nUsage: publiractl %s\n\n%s:\n", g.words(synopsis), heading)
 	for _, c := range g.commands {
 		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
 	}
 	for _, sub := range g.groups {
 		fmt.Fprintf(&b, "  %-25s %s\n", sub.name, sub.summary)
 	}
+	if g.note != "" {
+		b.WriteString("\n" + g.note + "\n")
+	}
 	return b.String()
+}
+
+// declared reports whether the command declared any flag.
+func (f *commandFlags) declared() bool {
+	declared := false
+	f.VisitAll(func(*flag.Flag) { declared = true })
+	return declared
 }
 
 func commandUsage(name string, c *command, f *commandFlags) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\nUsage: publiractl %s [flags]\n\n%s\n", name, c.summary)
+	fmt.Fprintf(&b, "\nUsage: publiractl %s", name)
+	if f.declared() {
+		b.WriteString(" [flags]")
+	}
+	fmt.Fprintf(&b, "\n\n%s\n", c.summary)
 	var flags strings.Builder
 	f.VisitAll(func(fl *flag.Flag) {
 		typeName, usage := flag.UnquoteUsage(fl)

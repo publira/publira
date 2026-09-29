@@ -39,7 +39,7 @@ import (
 // steps; every write goes through the package the step's own command uses.
 var setupCommand = command{
 	name:    "setup",
-	summary: "Set up an install: the platform defaults, the object store, SMTP, Web Push, a tenant, and its first administrator",
+	summary: "Set up an install from an empty database to a tenant an administrator signs in to",
 	setup:   setupSetup,
 }
 

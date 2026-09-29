@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -9,7 +9,7 @@ task server:build
 ./server/bin/publiractl tenant create --name "Example Comics" --domain comics.example.com --default-locale en
 ```
 
-Without a command, with a command that is not one of these, with a subcommand that is not one of the ones below, or with an argument after it, the binary prints its usage to stderr and exits non-zero.
+Every group dispatches the same way. Without a command, with one that is not listed, with a flag the command does not declare, or with any argument after a command that declares no flags, as `db migrate`, `db version`, and every job, the binary prints the usage of the level it stopped at to stderr and exits `2`. `--help` after a command prints that command's usage and exits `0`, and a command that runs and fails exits `1`. `db migrate`, `db version`, and every job log to stdout; every other command prints its result to stdout and logs to stderr.
 
 The container image carries the same binary, with the command passed as container arguments:
 

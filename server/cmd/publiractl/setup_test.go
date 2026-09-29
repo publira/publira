@@ -37,7 +37,7 @@ func startSetupEnv(t *testing.T) *setupEnv {
 func runSetup(t *testing.T, con console, args ...string) (code int, stdout string) {
 	t.Helper()
 	var out bytes.Buffer
-	code = runCommand("setup", &setupCommand, args, con, &out)
+	code = runGroup(&rootGroup, append([]string{"setup"}, args...), con, &out)
 	return code, out.String()
 }
 
