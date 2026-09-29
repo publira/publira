@@ -893,10 +893,15 @@ func (s *adminServer) attachAdminMediaToken(
 	episodeID uuid.UUID,
 	images []*publirattypesv1.EpisodeImage,
 ) error {
+	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	// A media token names the operator it is issued to, and the service
+	// principal is none, so it is refused even when there is nothing to sign.
+	if ok && session.Service {
+		return serviceProcedureDeniedError()
+	}
 	if len(images) == 0 {
 		return nil
 	}
-	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok || s.tokens == nil {
 		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}

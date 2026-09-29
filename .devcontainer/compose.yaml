@@ -100,6 +100,9 @@ services:
       # public browser URLs and Traefik are deliberately not part of this path.
       PUBLIRA_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
       PNCH_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
+      # The credential the consoles read tenant-level data with, which the
+      # server admits to those reads alone.
+      PUBLIRA_WEB_SERVICE_TOKEN: publira-dev-only-web-service-token
       PUBLIRA_WEB_HOST_INTERNAL_URL: http://127.0.0.1:3000
       PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://127.0.0.1:4000
       PUBLIRA_WEB_PLATFORM_INTERNAL_URL: http://127.0.0.1:4100

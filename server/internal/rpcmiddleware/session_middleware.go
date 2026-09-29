@@ -28,6 +28,9 @@ type SessionContext struct {
 	Tenant dbmodels.Tenant
 	User   dbmodels.User
 	Role   string
+	// Service marks a call a web app made with its own credential rather than
+	// on a person's behalf. User and Role are zero for it.
+	Service bool
 }
 
 // SessionAuthenticator resolves an authenticated user from request metadata (Bearer JWT).

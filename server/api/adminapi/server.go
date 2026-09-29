@@ -51,6 +51,8 @@ type adminServer struct {
 	logger                *slog.Logger
 	reval                 *revalidate.Requester
 	tokens                *auth.TokenManager
+	// serviceToken admits a web app to the reads in [serviceProcedures].
+	serviceToken *auth.ServiceToken
 	// policy answers whether a tenant admin must enroll a second factor. It is
 	// the platform's decision, so a tenant cannot lock itself out of its own
 	// console.
@@ -280,10 +282,17 @@ func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *
 	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, nil, nil)
 }
 
-// NewWithAsyncRecorder is New with an AsyncRecorder. The asynchronous writer
-// acquires a fresh tenant-scoped connection for every tenant audit entry.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder) (*API, error) {
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, nil)
+// NewWithAsyncRecorder is New with an AsyncRecorder, and with the service
+// token the web apps read tenant-level data with; a nil one admits no web app.
+// The asynchronous writer acquires a fresh tenant-scoped connection for every
+// tenant audit entry.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken) (*API, error) {
+	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, nil)
+	if err != nil {
+		return nil, err
+	}
+	api.server.serviceToken = serviceToken
+	return api, nil
 }
 
 // Register mounts the publira.admin.v1 services on mux. What a mux carries is
@@ -350,9 +359,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(adminPath, adminHandler)
@@ -361,9 +368,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(creatorPath, creatorHandler)
@@ -372,9 +377,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(labelPath, labelHandler)
@@ -383,9 +386,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(genrePath, genreHandler)
@@ -394,9 +395,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(creatorRolePath, creatorRoleHandler)
@@ -405,9 +404,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(auditPath, auditHandler)
@@ -416,9 +413,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(userPath, userHandler)
@@ -427,9 +422,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(tenantThemePath, tenantThemeHandler)
@@ -438,9 +431,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(tenantSettingsPath, tenantSettingsHandler)
@@ -449,9 +440,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(emailPath, emailHandler)
@@ -460,9 +449,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(paymentPath, paymentHandler)
@@ -471,9 +458,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(fcmPath, fcmHandler)
@@ -490,9 +475,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(dashboardPath, dashboardHandler)
@@ -501,9 +484,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(engagementPath, engagementHandler)
@@ -512,9 +493,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(pagesPath, pagesHandler)
@@ -523,9 +502,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(announcementPath, announcementHandler)
@@ -534,9 +511,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(notificationPath, notificationHandler)
@@ -545,9 +520,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(accessTicketPath, accessTicketHandler)
@@ -556,9 +529,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(commentPath, commentHandler)
@@ -567,9 +538,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(contactPath, contactHandler)
@@ -578,9 +547,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(royaltyPath, royaltyHandler)
@@ -589,9 +556,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		traced,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
 		),
 	)
 	mux.Handle(tenantMemberPath, tenantMemberHandler)

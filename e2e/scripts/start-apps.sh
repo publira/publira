@@ -52,6 +52,9 @@ start_web_app() {
     run_dir="${standalone_app_dir}"
     command=(node server.js)
   fi
+  # Only the consoles call the server with the web apps' own credential.
+  local service_token=""
+  [[ "${app_name}" == "web-host" ]] || service_token="${PUBLIRA_WEB_SERVICE_TOKEN}"
   : > "${LOG_DIR}/${app_name}.log"
   start_process_group "${app_name}" "${run_dir}" "${LOG_DIR}/${app_name}.log" \
     env \
@@ -60,6 +63,7 @@ start_web_app() {
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PUBLIRA_WEB_SERVICE_TOKEN="${service_token}" \
     PNCH_REDIS_URL="${PNCH_REDIS_URL}" \
     PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
     PNCH_CACHE_APP="${cache_app}" \

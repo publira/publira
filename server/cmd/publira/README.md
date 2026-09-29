@@ -59,6 +59,7 @@ Manael uses libvips, so building and running require `libvips-dev` (`libvips42` 
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
+- `PUBLIRA_WEB_SERVICE_TOKEN` (optional, the bearer the web apps call the tenant console's tenant-level reads with as themselves rather than as an operator. Unset, the admin API accepts operator sessions alone. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
 - `PUBLIRA_SEARCH_BACKEND` (optional, `sql` when unset. The engine behind the catalog search RPCs. `sql` is a substring match in PostgreSQL and needs nothing else; any other value stops the process at startup)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
