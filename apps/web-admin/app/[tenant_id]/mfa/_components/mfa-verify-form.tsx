@@ -1,23 +1,28 @@
-"use client";
-
 import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button, LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
 
 import { verifyMfaAction } from "../_lib/actions";
+import {
+  MfaRecoveryCodeSpent,
+  MfaRemainingRecoveryCodes,
+  MfaVerifySteps,
+} from "./mfa-verify-steps";
 
 interface MfaVerifyFormProps {
   /** Where the login was heading before the second factor interrupted it. */
@@ -25,75 +30,73 @@ interface MfaVerifyFormProps {
   tenantId: string;
 }
 
-export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
-  const [state, formAction, isPending] = useActionState(verifyMfaAction, null);
-
-  // Only a recovery code answers here: a code from the authenticator finishes
-  // the login and the Action redirects, so this branch means one of the ten is
-  // now spent and the operator should know how many are left.
-  if (state?.ok) {
-    return (
+export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => (
+  <MfaVerifySteps
+    spent={
       <AuthScreenBody>
         <h2 className="font-medium text-foreground">
-          <ClientMessage message="admin.auth.mfa.recovery_used_title" />
+          <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+            <Message message="admin.auth.mfa.recovery_used_title" />
+          </Suspense>
         </h2>
         <AuthScreenNote>
-          <ClientMessage
-            message="admin.auth.mfa.recovery_used_description"
-            values={{ count: String(state.remainingRecoveryCodes) }}
-          />
+          <MfaRemainingRecoveryCodes />
         </AuthScreenNote>
         <LinkButton
           className="justify-self-start"
           render={<Link href={nextPath} />}
         >
-          <ClientMessage message="admin.auth.mfa.continue_to_console" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.auth.mfa.continue_to_console" />
+          </Suspense>
         </LinkButton>
       </AuthScreenBody>
-    );
-  }
+    }
+    verify={
+      <>
+        <AuthScreenBody>
+          <AuthScreenNote>
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="admin.auth.mfa.verify_description" />
+            </Suspense>
+          </AuthScreenNote>
 
-  return (
-    <>
-      <AuthScreenBody>
-        <AuthScreenNote>
-          <ClientMessage message="admin.auth.mfa.verify_description" />
-        </AuthScreenNote>
-
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-
-          <MfaCodeField allowRecoveryCode disabled={isPending} />
-
-          {state && !state.ok ? (
-            <FormMessage variant="destructive">{state.message}</FormMessage>
-          ) : null}
-
-          <Button
-            className="justify-self-start"
-            disabled={isPending}
-            type="submit"
+          <ActionForm
+            action={verifyMfaAction}
+            className="grid gap-4"
+            showSuccess={false}
           >
-            <ActionFormIdle>
-              <ClientMessage message="admin.auth.mfa.verify_submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.auth.mfa.verify_submitting" />
-            </ActionFormPending>
-          </Button>
-        </form>
-      </AuthScreenBody>
+            <input name="tenant_id" type="hidden" value={tenantId} />
+            <MfaRecoveryCodeSpent />
 
-      <AuthScreenFooter>
-        <p>
-          <Link
-            className="text-primary underline underline-offset-4"
-            href="/login"
-          >
-            <ClientMessage message="admin.auth.mfa.back_to_login" />
-          </Link>
-        </p>
-      </AuthScreenFooter>
-    </>
-  );
-};
+            <MfaCodeField allowRecoveryCode />
+
+            <ActionFormSubmit className="justify-self-start">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <ActionFormIdle>
+                  <Message message="admin.auth.mfa.verify_submit" />
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <Message message="admin.auth.mfa.verify_submitting" />
+                </ActionFormPending>
+              </Suspense>
+            </ActionFormSubmit>
+          </ActionForm>
+        </AuthScreenBody>
+
+        <AuthScreenFooter>
+          <p>
+            <Link
+              className="text-primary underline underline-offset-4"
+              href="/login"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+                <Message message="admin.auth.mfa.back_to_login" />
+              </Suspense>
+            </Link>
+          </p>
+        </AuthScreenFooter>
+      </>
+    }
+  />
+);

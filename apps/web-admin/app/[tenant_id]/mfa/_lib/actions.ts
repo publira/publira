@@ -124,7 +124,12 @@ export const verifyMfaAction = async (
   // A recovery code is one the account can never use again, so the screen says
   // so and offers the way back to a full set before moving on.
   if (result.recoveryCodeUsed) {
-    return { ok: true, remainingRecoveryCodes: result.remainingRecoveryCodes };
+    return {
+      message: t("admin.auth.mfa.recovery_used_description", {
+        count: String(result.remainingRecoveryCodes),
+      }),
+      ok: true,
+    };
   }
 
   redirect(challenge.nextPath);
@@ -151,6 +156,7 @@ export const startMfaEnrollmentAction = async (
   }
 
   return {
+    message: "",
     ok: true,
     qr: toQrCodePath(result.otpauthUri),
     secret: result.secret,
@@ -187,5 +193,10 @@ export const confirmMfaEnrollmentAction = async (
     : false;
   await clearMfaChallenge();
 
-  return { ok: true, recoveryCodes: result.recoveryCodes, signedIn };
+  return {
+    message: "",
+    ok: true,
+    recoveryCodes: result.recoveryCodes,
+    signedIn,
+  };
 };

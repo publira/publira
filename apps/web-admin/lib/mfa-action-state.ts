@@ -12,6 +12,8 @@ import type { QrCodePath } from "@publira/ui-components/qr-code";
 export type MfaEnrollmentStartState =
   | {
       ok: true;
+      /** Empty: the confirm step takes the form's place. */
+      message: string;
       /** Shown for an authenticator that is typed into rather than scanned. */
       secret: string;
       qr: QrCodePath;
@@ -22,6 +24,7 @@ export type MfaEnrollmentStartState =
 export type MfaEnrollmentConfirmState =
   | {
       ok: true;
+      message: string;
       /** Plaintext exactly once; the API keeps only hashes. */
       recoveryCodes: string[];
       /**
@@ -37,11 +40,10 @@ export type MfaEnrollmentConfirmState =
 export type MfaVerifyState =
   /**
    * Only a recovery code lands here. A code from the authenticator finishes
-   * the login outright, and the Action redirects instead of answering.
+   * the login outright, and the Action redirects instead of answering. The
+   * message says how many recovery codes are left.
    */
-  | { ok: true; remainingRecoveryCodes: number }
-  | { ok: false; message: string }
-  | null;
+  { ok: true; message: string } | { ok: false; message: string } | null;
 
 export type MfaRecoveryCodesState =
   | { ok: true; message: string; recoveryCodes: string[] }

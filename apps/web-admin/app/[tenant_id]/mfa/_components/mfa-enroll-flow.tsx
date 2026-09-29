@@ -1,21 +1,24 @@
-"use client";
-
 import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button, LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
+import {
+  MfaEnrollment,
+  MfaEnrollmentStarted,
+} from "#components/mfa-enrollment";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
 
@@ -23,6 +26,11 @@ import {
   confirmMfaEnrollmentAction,
   startMfaEnrollmentAction,
 } from "../_lib/actions";
+import {
+  MfaEnrollDoneLink,
+  MfaEnrollmentConfirmed,
+  MfaEnrollSteps,
+} from "./mfa-enroll-steps";
 
 interface MfaEnrollFlowProps {
   /** Where the login was heading before the tenant held it for an enrollment. */
@@ -31,124 +39,116 @@ interface MfaEnrollFlowProps {
 }
 
 /**
- * An enrollment that signed the operator in goes on to the console; one that
- * did not sends them back to the password step. Each ending names itself.
+ * Starting is a submission rather than something the page does while it
+ * renders, because it mints and stores a secret.
  */
-const MfaEnrollDoneLabel = ({ signedIn }: { signedIn: boolean }) =>
-  signedIn ? (
-    <ClientMessage message="admin.auth.mfa.continue_to_console" />
-  ) : (
-    <ClientMessage message="admin.auth.mfa.back_to_login" />
-  );
+const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
+  <>
+    <AuthScreenBody>
+      <h2 className="font-medium text-foreground">
+        <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+          <Message message="admin.auth.mfa.enroll_required_title" />
+        </Suspense>
+      </h2>
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="admin.auth.mfa.enroll_required_description" />
+        </Suspense>
+      </AuthScreenNote>
+
+      <ActionForm
+        action={startMfaEnrollmentAction}
+        className="grid gap-4"
+        showSuccess={false}
+      >
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <MfaEnrollmentStarted />
+
+        <ActionFormSubmit className="justify-self-start">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ActionFormIdle>
+              <Message message="admin.auth.mfa.enroll_start" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Message message="admin.auth.mfa.enroll_starting" />
+            </ActionFormPending>
+          </Suspense>
+        </ActionFormSubmit>
+      </ActionForm>
+    </AuthScreenBody>
+
+    <AuthScreenFooter>
+      <p>
+        <Link
+          className="text-primary underline underline-offset-4"
+          href="/login"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+            <Message message="admin.auth.mfa.back_to_login" />
+          </Suspense>
+        </Link>
+      </p>
+    </AuthScreenFooter>
+  </>
+);
+
+const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
+  <AuthScreenBody>
+    <MfaEnrollmentSecret />
+
+    <ActionForm
+      action={confirmMfaEnrollmentAction}
+      className="grid gap-4"
+      showSuccess={false}
+    >
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <MfaEnrollmentConfirmed />
+
+      <MfaCodeField allowRecoveryCode={false} />
+
+      <ActionFormSubmit className="justify-self-start">
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ActionFormIdle>
+            <Message message="admin.auth.mfa.enroll_confirm_submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Message message="admin.auth.mfa.enroll_confirm_submitting" />
+          </ActionFormPending>
+        </Suspense>
+      </ActionFormSubmit>
+    </ActionForm>
+  </AuthScreenBody>
+);
 
 /**
  * The enrollment a tenant requires of an administrator before it will finish
  * their login: start, scan, confirm, and keep the recovery codes.
- *
- * Starting is a submission rather than something the page does while it
- * renders, because it mints and stores a secret.
  */
-export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
-  const [startState, startAction, isStarting] = useActionState(
-    startMfaEnrollmentAction,
-    null
-  );
-  const [confirmState, confirmAction, isConfirming] = useActionState(
-    confirmMfaEnrollmentAction,
-    null
-  );
-
-  if (confirmState?.ok) {
-    return (
+export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => (
+  <MfaEnrollSteps
+    done={
       <AuthScreenBody>
-        <MfaRecoveryCodes codes={confirmState.recoveryCodes} />
-        <LinkButton
-          className="justify-self-start"
-          render={<Link href={confirmState.signedIn ? nextPath : "/login"} />}
-        >
-          <MfaEnrollDoneLabel signedIn={confirmState.signedIn} />
-        </LinkButton>
+        <MfaRecoveryCodes />
+        <MfaEnrollDoneLink
+          nextPath={nextPath}
+          signedIn={
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.auth.mfa.continue_to_console" />
+            </Suspense>
+          }
+          signedOut={
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.auth.mfa.back_to_login" />
+            </Suspense>
+          }
+        />
       </AuthScreenBody>
-    );
-  }
-
-  if (startState?.ok) {
-    return (
-      <AuthScreenBody>
-        <MfaEnrollmentSecret qr={startState.qr} secret={startState.secret} />
-
-        <form action={confirmAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-
-          <MfaCodeField allowRecoveryCode={false} disabled={isConfirming} />
-
-          {confirmState && !confirmState.ok ? (
-            <FormMessage variant="destructive">
-              {confirmState.message}
-            </FormMessage>
-          ) : null}
-
-          <Button
-            className="justify-self-start"
-            disabled={isConfirming}
-            type="submit"
-          >
-            <ActionFormIdle>
-              <ClientMessage message="admin.auth.mfa.enroll_confirm_submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.auth.mfa.enroll_confirm_submitting" />
-            </ActionFormPending>
-          </Button>
-        </form>
-      </AuthScreenBody>
-    );
-  }
-
-  return (
-    <>
-      <AuthScreenBody>
-        <h2 className="font-medium text-foreground">
-          <ClientMessage message="admin.auth.mfa.enroll_required_title" />
-        </h2>
-        <AuthScreenNote>
-          <ClientMessage message="admin.auth.mfa.enroll_required_description" />
-        </AuthScreenNote>
-
-        <form action={startAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-
-          {startState && !startState.ok ? (
-            <FormMessage variant="destructive">
-              {startState.message}
-            </FormMessage>
-          ) : null}
-
-          <Button
-            className="justify-self-start"
-            disabled={isStarting}
-            type="submit"
-          >
-            <ActionFormIdle>
-              <ClientMessage message="admin.auth.mfa.enroll_start" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.auth.mfa.enroll_starting" />
-            </ActionFormPending>
-          </Button>
-        </form>
-      </AuthScreenBody>
-
-      <AuthScreenFooter>
-        <p>
-          <Link
-            className="text-primary underline underline-offset-4"
-            href="/login"
-          >
-            <ClientMessage message="admin.auth.mfa.back_to_login" />
-          </Link>
-        </p>
-      </AuthScreenFooter>
-    </>
-  );
-};
+    }
+    enroll={
+      <MfaEnrollment
+        confirm={<MfaEnrollConfirm tenantId={tenantId} />}
+        start={<MfaEnrollStart tenantId={tenantId} />}
+      />
+    }
+  />
+);
