@@ -3,20 +3,27 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { PlugIcon } from "./plug-icon";
+import { CreditCardIcon } from "./credit-card-icon";
 
-describe("PlugIcon", () => {
+describe("CreditCardIcon", () => {
   it("renders as an SVG with the given aria-label", () => {
-    const { container } = render(<PlugIcon aria-label="Plug icon" />);
+    const { container } = render(
+      <CreditCardIcon aria-label="CreditCard icon" />
+    );
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("Plug icon");
+    expect(svg?.getAttribute("aria-label")).toBe("CreditCard icon");
   });
 
   it("reflects size, className, and strokeWidth", () => {
     const { container } = render(
-      <PlugIcon className="test-icon" height={18} strokeWidth={3} width={18} />
+      <CreditCardIcon
+        className="test-icon"
+        height={18}
+        strokeWidth={3}
+        width={18}
+      />
     );
 
     const svg = container.querySelector("svg");

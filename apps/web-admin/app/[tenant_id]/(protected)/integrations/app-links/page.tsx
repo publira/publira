@@ -20,7 +20,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
-import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { AppLinksForm } from "./_components/app-links-form";
 import { updateAppLinksAction } from "./_lib/actions";
 
@@ -73,7 +72,7 @@ const IntegrationsAppLinksPage = () => (
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.title" />
+            <Message message="admin.integrations.app_links_title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
@@ -84,20 +83,17 @@ const IntegrationsAppLinksPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <IntegrationsTabNav current="app-links" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.integrations.app_links_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<AppLinksSkeleton />}>
-            <AppLinksSection />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.integrations.app_links_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<AppLinksSkeleton />}>
+          <AppLinksSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

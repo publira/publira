@@ -1088,6 +1088,7 @@
       "access_tickets_label": "Access tickets",
       "administration": "Administration",
       "announcements_label": "Announcements",
+      "app_links_label": "App links",
       "audit_label": "Audit logs",
       "branding_label": "Branding",
       "catalog": "Catalog",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "Author roles",
       "creators_label": "Authors",
       "dashboard_label": "Dashboard",
+      "email_label": "Email",
       "engagement_label": "Read-through",
       "genres_label": "Genres",
-      "integrations_label": "Integrations",
+      "integrations": "Integrations",
       "labels_label": "Labels",
       "members_label": "Members",
+      "mobile_push_label": "Mobile push",
       "pages_label": "Pages",
+      "payment_label": "Payments",
       "readers": "Readers",
       "readers_label": "Readers",
       "reports": "Reports",
       "royalties_label": "Royalties",
       "series_label": "Series",
       "settings_label": "Settings",
+      "sign_in_label": "Sign-in",
       "site": "Site"
     },
     "not_found": {
@@ -2102,7 +2107,6 @@
         "delete_failed": "Could not delete the logo. Please try again later."
       },
       "email": {
-        "title": "Email settings",
         "description": "Left unset or disabled, mail is sent from the platform's own sender.",
         "override": "Use this tenant's own SMTP server",
         "override_checkbox": "Enable the override",
@@ -2331,7 +2335,6 @@
         "empty": "No paid episode is sold in the app yet."
       },
       "mobile_push": {
-        "title": "Firebase Cloud Messaging",
         "description": "Push notifications reach this tenant's mobile app through the Firebase project the app is built with, so the credentials must be a service account key from that same project. The key file is write-only: once saved, it is never shown again.",
         "configured": "Mobile push is on. Notifications to the app are sent with the credentials below.",
         "unconfigured": "Mobile push is off. Until credentials are saved, the mobile app receives no push notifications; email and in-app notifications are still delivered.",
@@ -2365,7 +2368,6 @@
         }
       },
       "app_links": {
-        "title": "App links",
         "description": "Links to this site open in the tenant's own apps when the site names them here. Enter the identifiers of the app actually published in each store: a value that differs from the published app by a single character leaves its links opening in the browser.",
         "android_legend": "Android",
         "android_enabled": "Links open in the tenant's Android app",
@@ -2394,7 +2396,6 @@
         }
       },
       "sign_in": {
-        "title": "Sign-in providers",
         "description": "Let readers sign in to the site and the app with Apple or Google as well as with an email address. The site offers a provider moments after it is saved on and complete. The Apple key is write-only: coming back, you see its state and a mask, never the value.",
         "not_set": "Not set",
         "status": {
@@ -2552,27 +2553,19 @@
       "section_error": "Could not display the branding settings"
     },
     "integrations": {
-      "title": "Integrations",
-      "tabs": {
-        "email": "Email",
-        "payment": "Payments",
-        "mobile_push": "Mobile push",
-        "app_links": "App links",
-        "sign_in": "Sign-in"
-      },
-      "email_title": "Integrations — Email",
+      "email_title": "Email",
       "email_description": "Manage how this tenant sends email.",
       "email_error": "Could not display the email settings",
-      "payment_title": "Integrations — Payments",
+      "payment_title": "Payments",
       "payment_description": "Manage how this tenant charges readers: the payment provider it chooses for the web checkout, and the App Store and Google Play for in-app purchase.",
       "payment_error": "Could not display the payment settings",
-      "mobile_push_title": "Integrations — Mobile push",
+      "mobile_push_title": "Mobile push",
       "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
       "mobile_push_error": "Could not display the mobile push settings",
-      "app_links_title": "Integrations — App links",
+      "app_links_title": "App links",
       "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
       "app_links_error": "Could not display the app link settings",
-      "sign_in_title": "Integrations — Sign-in",
+      "sign_in_title": "Sign-in",
       "sign_in_description": "Manage the Apple and Google accounts readers of this tenant can sign in with.",
       "sign_in_error": "Could not display the sign-in providers"
     },

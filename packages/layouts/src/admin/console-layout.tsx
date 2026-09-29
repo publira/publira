@@ -65,8 +65,9 @@ export const ConsoleHeaderActions = ({ children }: { children: ReactNode }) => (
   <div className="flex items-center gap-2">{children}</div>
 );
 
+/** Held to the viewport, so a navigation taller than the screen scrolls on its own. */
 export const ConsoleSidebar = ({ children }: { children: ReactNode }) => (
-  <aside className="hidden w-60 flex-col border-r border-border bg-surface px-3 py-4 lg:flex">
+  <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-4 lg:flex">
     {children}
   </aside>
 );

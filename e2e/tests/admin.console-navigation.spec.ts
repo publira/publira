@@ -7,6 +7,29 @@ const sidebarLink = (page: Page, name: string) =>
   page.getByRole("navigation").getByRole("link", { exact: true, name });
 
 /**
+ * Opens an integration from its sidebar entry and checks that the entry is
+ * the current page and that the page offers no tab row to the others.
+ */
+const expectIntegrationOpens = async (
+  page: Page,
+  label: string,
+  path: string
+) => {
+  await sidebarLink(page, label).click();
+  await expect(page).toHaveURL(new RegExp(`/integrations/${path}$`, "u"));
+  await expect(
+    page.getByRole("heading", { exact: true, level: 1, name: label })
+  ).toBeVisible();
+  await expect(sidebarLink(page, label)).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(
+    page.getByRole("main").getByRole("link", { exact: true, name: label })
+  ).toHaveCount(0);
+};
+
+/**
  * Where each console screen sits: the sidebar groups its entries by kind of
  * work, a list managed like Genres, the tenant's branding, and the outside
  * services it connects to each have an entry, the royalty close settings are
@@ -25,6 +48,7 @@ test.describe("web-admin console navigation", () => {
       "Site",
       "Readers",
       "Reports",
+      "Integrations",
       "Administration",
     ]);
     await expect(navigation.getByRole("link")).toHaveText([
@@ -43,17 +67,38 @@ test.describe("web-admin console navigation", () => {
       "Access tickets",
       "Read-through",
       "Royalties",
+      "Email",
+      "Payments",
+      "Mobile push",
+      "App links",
+      "Sign-in",
       "Members",
       "Branding",
-      "Integrations",
       "Audit logs",
       "Settings",
     ]);
   });
 
-  test("Author roles, Branding, and Integrations open from the sidebar", async ({
+  test("a sidebar taller than the screen scrolls on its own", async ({
     page,
   }) => {
+    await page.setViewportSize({ height: 600, width: 1280 });
+    await signInAsSeedAdmin(page, "/integrations/payment");
+
+    const settings = sidebarLink(page, "Settings");
+    await settings.scrollIntoViewIfNeeded();
+    await expect(settings).toBeInViewport();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+    // A long page scrolls under the sidebar without taking it along.
+    await page.mouse.wheel(0, 2000);
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeGreaterThan(0);
+    await expect(settings).toBeInViewport();
+  });
+
+  test("Author roles and Branding open from the sidebar", async ({ page }) => {
     await signInAsSeedAdmin(page, "/");
 
     await sidebarLink(page, "Author roles").click();
@@ -67,23 +112,28 @@ test.describe("web-admin console navigation", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Branding" })
     ).toBeVisible();
+  });
 
-    await sidebarLink(page, "Integrations").click();
-    await expect(page).toHaveURL(/\/integrations\/email$/u);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Integrations" })
-    ).toBeVisible();
-    await expect(sidebarLink(page, "Integrations")).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
+  test("every integration opens from its own sidebar entry, with no tab row", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/");
 
-    await page.getByRole("link", { exact: true, name: "App links" }).click();
-    await expect(page).toHaveURL(/\/integrations\/app-links$/u);
-    await expect(sidebarLink(page, "Integrations")).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
+    await expectIntegrationOpens(page, "Email", "email");
+    await expectIntegrationOpens(page, "Payments", "payment");
+    await expectIntegrationOpens(page, "Mobile push", "mobile-push");
+    await expectIntegrationOpens(page, "App links", "app-links");
+    await expectIntegrationOpens(page, "Sign-in", "sign-in");
+  });
+
+  test("the retired integrations landing path answers not found", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/");
+
+    const response = await page.goto("/integrations");
+
+    expect(response?.status()).toBe(404);
   });
 
   test("on a phone, the drawer lists the sidebar and closes on the entry followed", async ({

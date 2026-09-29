@@ -20,7 +20,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantSignInSettings } from "#lib/tenant-sign-in-settings";
 
-import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { TenantSignInSettingsForm } from "./_components/tenant-sign-in-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -71,7 +70,7 @@ const IntegrationsSignInPage = () => (
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.title" />
+            <Message message="admin.integrations.sign_in_title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
@@ -82,20 +81,17 @@ const IntegrationsSignInPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <IntegrationsTabNav current="sign-in" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.integrations.sign_in_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SignInSettingsSkeleton />}>
-            <SignInSettingsSection />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.integrations.sign_in_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<SignInSettingsSkeleton />}>
+          <SignInSettingsSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

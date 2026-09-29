@@ -31,7 +31,6 @@ import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
-import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { StoreProductList } from "./_components/store-product-list";
 import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
 import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
@@ -236,7 +235,7 @@ const IntegrationsPaymentPage = () => (
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.title" />
+            <Message message="admin.integrations.payment_title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
@@ -248,7 +247,6 @@ const IntegrationsPaymentPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <IntegrationsTabNav current="payment" />
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

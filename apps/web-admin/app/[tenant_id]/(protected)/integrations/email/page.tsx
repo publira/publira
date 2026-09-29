@@ -22,7 +22,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 
-import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { TenantEmailSettingsForm } from "./_components/tenant-email-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -104,7 +103,7 @@ const IntegrationsEmailPage = () => (
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.title" />
+            <Message message="admin.integrations.email_title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
@@ -115,20 +114,17 @@ const IntegrationsEmailPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <IntegrationsTabNav current="email" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.integrations.email_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SettingsEmailFormSkeleton />}>
-            <SettingsEmailForm />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.integrations.email_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<SettingsEmailFormSkeleton />}>
+          <SettingsEmailForm />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

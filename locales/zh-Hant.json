@@ -1088,6 +1088,7 @@
       "access_tickets_label": "閱讀券",
       "administration": "管理",
       "announcements_label": "公告",
+      "app_links_label": "應用程式連結",
       "audit_label": "稽核記錄",
       "branding_label": "品牌",
       "catalog": "作品",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "儀表板",
+      "email_label": "郵件",
       "engagement_label": "讀完率",
       "genres_label": "類型",
-      "integrations_label": "整合",
+      "integrations": "整合",
       "labels_label": "品牌",
       "members_label": "成員",
+      "mobile_push_label": "行動推播",
       "pages_label": "頁面",
+      "payment_label": "付款",
       "readers": "讀者",
       "readers_label": "讀者",
       "reports": "報表",
       "royalties_label": "版稅",
       "series_label": "系列",
       "settings_label": "設定",
+      "sign_in_label": "登入",
       "site": "網站"
     },
     "not_found": {
@@ -2102,7 +2107,6 @@
         "delete_failed": "無法刪除標誌。請稍後再試。"
       },
       "email": {
-        "title": "郵件設定",
         "description": "未設定或未啟用時，郵件會由平台自己的寄件人寄出。",
         "override": "使用該租戶自己的SMTP伺服器",
         "override_checkbox": "啟用覆寫設定",
@@ -2331,7 +2335,6 @@
         "empty": "應用程式中尚未販售付費章節。"
       },
       "mobile_push": {
-        "title": "Firebase Cloud Messaging",
         "description": "推播通知透過建置該租戶行動應用程式所用的Firebase專案送達，因此憑證必須是同一專案的服務帳戶金鑰。金鑰檔案僅供寫入，儲存後不會再次顯示。",
         "configured": "行動推播已開啟。傳給應用程式的通知會使用下方的憑證傳送。",
         "unconfigured": "行動推播已關閉。在儲存憑證之前，行動應用程式不會收到推播通知；電子郵件和應用程式內通知仍會照常送達。",
@@ -2365,7 +2368,6 @@
         }
       },
       "app_links": {
-        "title": "應用程式連結",
         "description": "在此指定應用程式後，指向本站的連結會在租戶自己的應用程式中開啟。請輸入各商店中實際發布的應用程式的識別碼；只要與已發布的應用程式有一個字元不同，連結就會在瀏覽器中開啟。",
         "android_legend": "Android",
         "android_enabled": "在租戶的Android應用程式中開啟連結",
@@ -2394,7 +2396,6 @@
         }
       },
       "sign_in": {
-        "title": "登入方式",
         "description": "讓讀者除電子郵件地址外，也能用Apple或Google帳戶登入網站與應用程式。已啟用且資訊齊全的方式會在儲存後不久顯示於網站上。Apple金鑰為唯寫：再次開啟時只顯示狀態與遮罩，不會顯示值本身。",
         "not_set": "未設定",
         "status": {
@@ -2552,27 +2553,19 @@
       "section_error": "無法顯示品牌設定"
     },
     "integrations": {
-      "title": "整合",
-      "tabs": {
-        "email": "郵件",
-        "payment": "付款",
-        "mobile_push": "行動推播",
-        "app_links": "應用程式連結",
-        "sign_in": "登入"
-      },
-      "email_title": "整合 — 郵件",
+      "email_title": "郵件",
       "email_description": "管理該租戶寄送郵件的方式。",
       "email_error": "無法顯示郵件設定",
-      "payment_title": "整合 — 付款",
+      "payment_title": "付款",
       "payment_description": "管理此租戶向讀者收費的方式：網頁結帳使用所選的付款服務商，應用程式內購買使用App Store與Google Play。",
       "payment_error": "無法顯示付款設定",
-      "mobile_push_title": "整合 — 行動推播",
+      "mobile_push_title": "行動推播",
       "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的Firebase憑證。",
       "mobile_push_error": "無法顯示行動推播設定",
-      "app_links_title": "整合 — 應用程式連結",
+      "app_links_title": "應用程式連結",
       "app_links_description": "管理該租戶的連結所開啟的Android與iOS應用程式。",
       "app_links_error": "無法顯示應用程式連結設定",
-      "sign_in_title": "整合 — 登入",
+      "sign_in_title": "登入",
       "sign_in_description": "管理該租戶的讀者可用於登入的Apple與Google帳戶。",
       "sign_in_error": "無法顯示登入方式設定"
     },

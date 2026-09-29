@@ -182,7 +182,7 @@ test.describe("web-admin auth", () => {
 
     await expect(page).toHaveURL(/\/integrations\/email/u);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Integrations" })
+      page.getByRole("heading", { exact: true, name: "Email" })
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -204,9 +204,11 @@ test.describe("web-admin auth", () => {
 
     await expect(page).toHaveURL(/\/integrations\/payment/u);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Integrations" })
+      page.getByRole("heading", {
+        exact: true,
+        name: "Payments",
+      })
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Payments" })).toBeVisible();
     // The payment settings, where episodes are sold, and in-app purchase are
     // three forms, and each says it is read-only.
     await expect(

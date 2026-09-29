@@ -67,6 +67,10 @@
       "types": "./dist/copy-icon.d.mts",
       "default": "./dist/copy-icon.mjs"
     },
+    "./credit-card-icon": {
+      "types": "./dist/credit-card-icon.d.mts",
+      "default": "./dist/credit-card-icon.mjs"
+    },
     "./dashboard-icon": {
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
@@ -95,9 +99,17 @@
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
     },
+    "./key-round-icon": {
+      "types": "./dist/key-round-icon.d.mts",
+      "default": "./dist/key-round-icon.mjs"
+    },
     "./language-icon": {
       "types": "./dist/language-icon.d.mts",
       "default": "./dist/language-icon.mjs"
+    },
+    "./link-icon": {
+      "types": "./dist/link-icon.d.mts",
+      "default": "./dist/link-icon.mjs"
     },
     "./lock-icon": {
       "types": "./dist/lock-icon.d.mts",
@@ -135,10 +147,6 @@
       "types": "./dist/pen-line-icon.d.mts",
       "default": "./dist/pen-line-icon.mjs"
     },
-    "./plug-icon": {
-      "types": "./dist/plug-icon.d.mts",
-      "default": "./dist/plug-icon.mjs"
-    },
     "./plus-icon": {
       "types": "./dist/plus-icon.d.mts",
       "default": "./dist/plus-icon.mjs"
@@ -146,6 +154,10 @@
     "./scroll-text-icon": {
       "types": "./dist/scroll-text-icon.d.mts",
       "default": "./dist/scroll-text-icon.mjs"
+    },
+    "./send-icon": {
+      "types": "./dist/send-icon.d.mts",
+      "default": "./dist/send-icon.mjs"
     },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",

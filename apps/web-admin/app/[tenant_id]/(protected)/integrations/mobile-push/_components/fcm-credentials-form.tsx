@@ -24,7 +24,6 @@ import {
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
-  AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantFcmSettings } from "#lib/fcm-settings";
@@ -57,11 +56,6 @@ export const FcmCredentialsForm = ({
   <AdminSection>
     <AdminSectionHeader>
       <AdminSectionHeading>
-        <AdminSectionTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
-            <Message message="admin.settings.mobile_push.title" />
-          </Suspense>
-        </AdminSectionTitle>
         <AdminSectionDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.mobile_push.description" />

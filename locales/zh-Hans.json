@@ -1088,6 +1088,7 @@
       "access_tickets_label": "阅读券",
       "administration": "管理",
       "announcements_label": "公告",
+      "app_links_label": "应用链接",
       "audit_label": "审计日志",
       "branding_label": "品牌",
       "catalog": "作品",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "仪表盘",
+      "email_label": "邮件",
       "engagement_label": "读完率",
       "genres_label": "题材",
-      "integrations_label": "集成",
+      "integrations": "集成",
       "labels_label": "品牌",
       "members_label": "成员",
+      "mobile_push_label": "移动推送",
       "pages_label": "页面",
+      "payment_label": "支付",
       "readers": "读者",
       "readers_label": "读者",
       "reports": "报表",
       "royalties_label": "版税",
       "series_label": "系列",
       "settings_label": "设置",
+      "sign_in_label": "登录",
       "site": "网站"
     },
     "not_found": {
@@ -2102,7 +2107,6 @@
         "delete_failed": "无法删除标志。请稍后再试。"
       },
       "email": {
-        "title": "邮件设置",
         "description": "未设置或未启用时，邮件将由平台自身的发件人发送。",
         "override": "使用该租户自己的SMTP服务器",
         "override_checkbox": "启用覆盖设置",
@@ -2331,7 +2335,6 @@
         "empty": "应用中还没有销售的付费章节。"
       },
       "mobile_push": {
-        "title": "Firebase Cloud Messaging",
         "description": "推送通知通过构建该租户移动应用所用的Firebase项目送达，因此凭据必须是同一项目的服务账号密钥。密钥文件只能写入，保存后不会再次显示。",
         "configured": "移动推送已开启。发往应用的通知使用下方的凭据发送。",
         "unconfigured": "移动推送已关闭。在保存凭据之前，移动应用不会收到推送通知；电子邮件和应用内通知仍会照常送达。",
@@ -2365,7 +2368,6 @@
         }
       },
       "app_links": {
-        "title": "应用链接",
         "description": "在此指定应用后，指向本站的链接会在租户自己的应用中打开。请输入各商店中实际发布的应用的标识符；只要与已发布的应用有一个字符不同，链接就会在浏览器中打开。",
         "android_legend": "Android",
         "android_enabled": "在租户的Android应用中打开链接",
@@ -2394,7 +2396,6 @@
         }
       },
       "sign_in": {
-        "title": "登录方式",
         "description": "让读者除电子邮件地址外，也能用Apple或Google账号登录网站和应用。已启用且信息齐全的方式会在保存后不久显示在网站上。Apple密钥为只写：再次打开时只显示状态和掩码，不会显示值本身。",
         "not_set": "未设置",
         "status": {
@@ -2552,27 +2553,19 @@
       "section_error": "无法显示品牌设置"
     },
     "integrations": {
-      "title": "集成",
-      "tabs": {
-        "email": "邮件",
-        "payment": "支付",
-        "mobile_push": "移动推送",
-        "app_links": "应用链接",
-        "sign_in": "登录"
-      },
-      "email_title": "集成 — 邮件",
+      "email_title": "邮件",
       "email_description": "管理该租户发送邮件的方式。",
       "email_error": "无法显示邮件设置",
-      "payment_title": "集成 — 支付",
+      "payment_title": "支付",
       "payment_description": "管理此租户向读者收费的方式：网页结账使用所选的支付服务商，应用内购买使用App Store和Google Play。",
       "payment_error": "无法显示支付设置",
-      "mobile_push_title": "集成 — 移动推送",
+      "mobile_push_title": "移动推送",
       "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的Firebase凭据。",
       "mobile_push_error": "无法显示移动推送设置",
-      "app_links_title": "集成 — 应用链接",
+      "app_links_title": "应用链接",
       "app_links_description": "管理该租户的链接所打开的Android和iOS应用。",
       "app_links_error": "无法显示应用链接设置",
-      "sign_in_title": "集成 — 登录",
+      "sign_in_title": "登录",
       "sign_in_description": "管理该租户的读者可用于登录的Apple和Google账号。",
       "sign_in_error": "无法显示登录方式设置"
     },
