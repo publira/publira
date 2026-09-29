@@ -25,7 +25,9 @@ const publishedPage: PublishedPage = {
     "- [ ] Left",
   ].join("\n"),
   id: "page_1",
+  locale: "en",
   publishedAt: "2026-01-15T00:00:00Z",
+  publishedLocales: ["en"],
   slug: "/guide",
   title: "House guide",
   versionId: "version_1",
@@ -36,7 +38,9 @@ afterEach(cleanup);
 
 describe("PublishedPageContent", () => {
   it("renders a table, a strikethrough, a task list, and a bare URL", () => {
-    render(<PublishedPageContent page={publishedPage} />);
+    render(
+      <PublishedPageContent fallbackLanguage={null} page={publishedPage} />
+    );
 
     expect(
       screen.getByRole("heading", { level: 1, name: "House guide" })
