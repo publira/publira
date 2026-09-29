@@ -179,7 +179,7 @@ func TestRunGroupUsageErrors(t *testing.T) {
 		want  string
 		usage string
 	}{
-		{name: "no command", args: nil, want: "example requires a command", usage: "Usage: publiractl example <command>"},
+		{name: "no command", args: nil, want: "a example command is required", usage: "Usage: publiractl example <command>"},
 		{name: "unknown command", args: []string{"delete"}, want: `unknown example command "delete"`, usage: "Usage: publiractl example <command>"},
 		{name: "unknown flag", args: []string{"save", "--port", "25"}, want: "flag provided but not defined: --port", usage: "Usage: publiractl example save [flags]"},
 		// The flag package spells every flag with one dash, whichever it was given.

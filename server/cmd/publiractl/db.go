@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,78 +16,63 @@ import (
 	"github.com/publira/publira/server/internal/logging"
 )
 
-// dbCommand is one subcommand of the db group.
-type dbCommand struct {
-	name    string
-	summary string
-	run     func(logger *slog.Logger, stdout io.Writer, m *migrate.Migrate) error
+var dbGroup = commandGroup{
+	name:    "db",
+	summary: "Apply the database migrations, create the login roles, and report the schema version",
+	note:    "The db commands connect with PUBLIRA_DB_URL and nothing else.",
+	commands: []command{
+		{
+			name:    "migrate",
+			summary: "Apply every pending migration in db/migrations",
+			setup:   migrationSetup(runDBMigrate),
+		},
+		{
+			name:    "version",
+			summary: "Print the schema version and whether the database is dirty",
+			setup:   migrationSetup(runDBVersion),
+		},
+		dbRolesCommand,
+	},
 }
 
-var dbCommands = []dbCommand{
-	{
-		name:    "migrate",
-		summary: "Apply every pending migration in db/migrations",
-		run:     runDBMigrate,
-	},
-	{
-		name:    "version",
-		summary: "Print the schema version and whether the database is dirty",
-		run:     runDBVersion,
-	},
-}
+// migrationSetup is the setup of a db command that works on the migrations,
+// logging to stdout. run logs its own failure, so the returned error only
+// decides the exit status.
+func migrationSetup(run func(logger *slog.Logger, stdout io.Writer, m *migrate.Migrate) error) func(*commandFlags) func(context.Context, *commandEnv) error {
+	return func(*commandFlags) func(context.Context, *commandEnv) error {
+		return func(_ context.Context, env *commandEnv) error {
+			logger := logging.New(env.stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 
-func runDB(args []string, stderr io.Writer) int {
-	if len(args) == 0 {
-		return usageError(stderr, "a db command is required", dbUsage())
-	}
-	if args[0] == dbRolesCommand.name {
-		con := osConsole()
-		con.stderr = stderr
-		return runCommand("db "+dbRolesCommand.name, &dbRolesCommand, args[1:], con, os.Stdout)
-	}
-	var c *dbCommand
-	for i := range dbCommands {
-		if dbCommands[i].name == args[0] {
-			c = &dbCommands[i]
+			// Unlike the job group, this never falls back to the development URL: a
+			// migration aimed at db:5432 because the variable was forgotten is not a
+			// failure anyone should have to discover afterwards.
+			dbURL := strings.TrimSpace(os.Getenv("PUBLIRA_DB_URL"))
+			if dbURL == "" {
+				logger.Error("PUBLIRA_DB_URL is not set; set it to the connection that owns the schema")
+				return errLogged
+			}
+			dir, err := resolveMigrationsDir()
+			if err != nil {
+				logger.Error("failed to find the migrations", "error", err)
+				return errLogged
+			}
+			m, err := dbmigrate.New(dir, dbURL)
+			if err != nil {
+				logger.Error("failed to open the migrations", "error", err)
+				return errLogged
+			}
+			defer func() {
+				if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+					logger.Error("failed to close the migrations", "source_error", srcErr, "database_error", dbErr)
+				}
+			}()
+
+			if err := run(logger, env.stdout, m); err != nil {
+				return errLogged
+			}
+			return nil
 		}
 	}
-	if c == nil {
-		return usageError(stderr, fmt.Sprintf("unknown db command %q", args[0]), dbUsage())
-	}
-	if len(args) > 1 {
-		return usageError(stderr, fmt.Sprintf("db %s takes no arguments, got %q", c.name, strings.Join(args[1:], " ")), dbUsage())
-	}
-
-	logger := logging.New(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-
-	// Unlike the job group, this never falls back to the development URL: a
-	// migration aimed at db:5432 because the variable was forgotten is not a
-	// failure anyone should have to discover afterwards.
-	dbURL := strings.TrimSpace(os.Getenv("PUBLIRA_DB_URL"))
-	if dbURL == "" {
-		logger.Error("PUBLIRA_DB_URL is not set; set it to the connection that owns the schema")
-		return 1
-	}
-	dir, err := resolveMigrationsDir()
-	if err != nil {
-		logger.Error("failed to find the migrations", "error", err)
-		return 1
-	}
-	m, err := dbmigrate.New(dir, dbURL)
-	if err != nil {
-		logger.Error("failed to open the migrations", "error", err)
-		return 1
-	}
-	defer func() {
-		if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
-			logger.Error("failed to close the migrations", "source_error", srcErr, "database_error", dbErr)
-		}
-	}()
-
-	if err := c.run(logger, os.Stdout, m); err != nil {
-		return 1
-	}
-	return 0
 }
 
 func runDBMigrate(logger *slog.Logger, _ io.Writer, m *migrate.Migrate) error {
@@ -154,15 +140,4 @@ func resolveMigrationsDir() (string, error) {
 		}
 	}
 	return dbmigrate.RepoDir()
-}
-
-func dbUsage() string {
-	var b strings.Builder
-	b.WriteString("\nUsage: publiractl db <command> [flags]\n\nCommands:\n")
-	for _, c := range dbCommands {
-		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
-	}
-	fmt.Fprintf(&b, "  %-25s %s\n", dbRolesCommand.name, dbRolesCommand.summary)
-	b.WriteString("\nThe db commands connect with PUBLIRA_DB_URL and nothing else.\n")
-	return b.String()
 }

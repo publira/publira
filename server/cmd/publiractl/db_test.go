@@ -12,18 +12,18 @@ import (
 
 func TestRunDBWithoutCommand(t *testing.T) {
 	var stderr strings.Builder
-	if code := run([]string{"db"}, &stderr); code == 0 {
-		t.Fatal("exit code = 0, want non-zero")
+	if code := run([]string{"db"}, &stderr); code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
 	}
-	if !strings.Contains(stderr.String(), "Usage: publiractl db <command>") {
+	if !strings.Contains(stderr.String(), "Usage: publiractl db <command> [flags]") {
 		t.Fatalf("stderr = %q, want the db usage text", stderr.String())
 	}
 }
 
 func TestRunUnknownDBCommand(t *testing.T) {
 	var stderr strings.Builder
-	if code := run([]string{"db", "rollback"}, &stderr); code == 0 {
-		t.Fatal("exit code = 0, want non-zero")
+	if code := run([]string{"db", "rollback"}, &stderr); code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
 	}
 	out := stderr.String()
 	if !strings.Contains(out, `unknown db command "rollback"`) {
@@ -36,11 +36,11 @@ func TestRunUnknownDBCommand(t *testing.T) {
 
 func TestRunDBRejectsExtraArguments(t *testing.T) {
 	var stderr strings.Builder
-	if code := run([]string{"db", "migrate", "20260101000000"}, &stderr); code == 0 {
-		t.Fatal("exit code = 0, want non-zero")
+	if code := run([]string{"db", "migrate", "20260101000000"}, &stderr); code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
 	}
 	out := stderr.String()
-	if !strings.Contains(out, "takes no arguments") {
+	if !strings.HasPrefix(out, "publiractl: db migrate takes no arguments\n") {
 		t.Fatalf("stderr = %q, want the extra argument rejection", out)
 	}
 	if !strings.Contains(out, "Usage: publiractl db <command>") {
@@ -49,14 +49,14 @@ func TestRunDBRejectsExtraArguments(t *testing.T) {
 }
 
 func TestDBUsageListsEveryCommand(t *testing.T) {
-	out := dbUsage()
-	for _, c := range dbCommands {
-		if !strings.Contains(out, c.name) {
-			t.Fatalf("usage text is missing %q", c.name)
+	out := dbGroup.usage()
+	for _, name := range []string{"migrate", "version", "roles"} {
+		if !strings.Contains(out, "\n  "+name+" ") {
+			t.Fatalf("usage text is missing %q", name)
 		}
 	}
-	if !strings.Contains(out, dbRolesCommand.name) {
-		t.Fatalf("usage text is missing %q", dbRolesCommand.name)
+	if !strings.HasSuffix(out, "\nThe db commands connect with PUBLIRA_DB_URL and nothing else.\n") {
+		t.Fatalf("usage text = %q, want the note on the connection", out)
 	}
 }
 
@@ -64,8 +64,8 @@ func TestDBUsageListsEveryCommand(t *testing.T) {
 // development database the job group falls back to.
 func TestDBMigrateRefusesWithoutDBURL(t *testing.T) {
 	code, output := testutil.RunMain(t, []string{}, "db", "migrate")
-	if code == 0 {
-		t.Fatalf("exit code = 0, want a failure\n%s", output)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1\n%s", code, output)
 	}
 	if !strings.Contains(output, "PUBLIRA_DB_URL") {
 		t.Fatalf("output does not name the missing variable:\n%s", output)
