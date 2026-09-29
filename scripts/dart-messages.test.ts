@@ -9,8 +9,8 @@ import {
 } from "./dart-messages.ts";
 
 const locales = [
-  { code: "ja", intl: "ja-JP" },
-  { code: "en", intl: "en-US" },
+  { code: "ja", intl: "ja-JP", label: "日本語" },
+  { code: "en", intl: "en-US", label: "English" },
 ];
 
 const catalogs = (
@@ -160,7 +160,7 @@ describe("renderDartMessages", () => {
     );
     assert.ok(
       output.includes(
-        "class _AppMessagesJa extends AppMessages {\n  const _AppMessagesJa();\n\n  @override\n  String get intlLocale {\n    return 'ja-JP';\n  }"
+        "class _AppMessagesJa extends AppMessages {\n  const _AppMessagesJa();\n\n  @override\n  String get intlLocale {\n    return 'ja-JP';\n  }\n\n  @override\n  String get localeLabel {\n    return '日本語';\n  }"
       )
     );
     assert.ok(
@@ -178,9 +178,9 @@ describe("renderDartMessages", () => {
 
   it("derives the script a language, and each region, is written in", () => {
     const chinese = [
-      { code: "en", intl: "en-US" },
-      { code: "zh-Hans", intl: "zh-Hans-CN" },
-      { code: "zh-Hant", intl: "zh-Hant-TW" },
+      { code: "en", intl: "en-US", label: "English" },
+      { code: "zh-Hans", intl: "zh-Hans-CN", label: "简体中文" },
+      { code: "zh-Hant", intl: "zh-Hant-TW", label: "繁體中文" },
     ];
     const catalog = {
       errors: { validation: "Check your input." },
@@ -215,6 +215,7 @@ describe("renderDartMessages", () => {
 
     assert.deepEqual(members, [
       "intlLocale",
+      "localeLabel",
       "errorsValidation",
       "aY",
       "bA",

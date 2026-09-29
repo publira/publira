@@ -3789,6 +3789,7 @@
     },
     "pages": {
       "body_empty": "此頁面還沒有內容。",
+      "fallback_notice": "此頁面沒有以你所使用的語言發布的版本，因此以{$language}顯示。",
       "load_failed": "無法顯示該頁面。請重試。",
       "not_found": "該頁面已無法查看。"
     },

@@ -75,6 +75,9 @@ class FakeAuthRepository implements AuthRepository {
   LegalPage? termsPage;
   LegalPage? privacyPage;
 
+  /// The locales [readSignUpRequirements] has been asked for, in order.
+  final signUpRequirementsLocales = <String>[];
+
   /// Thrown by [readReaderAge], standing in for an account that cannot be
   /// read.
   AuthFailure? birthDateFailure;
@@ -270,7 +273,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<SignUpRequirements> readSignUpRequirements() async {
+  Future<SignUpRequirements> readSignUpRequirements({
+    required String locale,
+  }) async {
+    signUpRequirementsLocales.add(locale);
     final failure = birthDateFailure;
     if (failure != null) {
       throw failure;

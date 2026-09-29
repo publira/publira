@@ -1,4 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/locale_negotiation.dart';
 
 /// A page the tenant has published, as `PublicPagesService/GetPublishedPage`
 /// answers it.
@@ -8,12 +12,30 @@ class PublishedPage {
     required this.slug,
     required this.title,
     required this.contentMarkdown,
+    required this.locale,
   });
 
   /// In storage form (`/privacy`).
   final String slug;
   final String title;
   final String contentMarkdown;
+
+  /// The code of the translation served, which differs from the locale asked
+  /// for when the page has no published translation in it.
+  final String locale;
+
+  /// The name of the language the page is shown in, when that is not
+  /// [requested], or `null` when the page is in the language asked for.
+  ///
+  /// The name is the catalog's own label, the one `web-host` shows, so a
+  /// served locale no catalog carries has none and is reported as `null`.
+  String? fallbackLanguage(Locale requested) {
+    final served = supportedLocaleForCode(locale);
+    if (served == null || served.toLanguageTag() == requested.toLanguageTag()) {
+      return null;
+    }
+    return AppMessages.forLocale(served)?.localeLabel;
+  }
 }
 
 /// [path] in the storage form a slug is kept in: one leading slash, no

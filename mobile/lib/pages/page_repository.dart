@@ -3,10 +3,12 @@ import 'package:publira/pages/published_page.dart';
 
 /// The reader's half of `publira.v1.PublicPagesService`.
 abstract class PageRepository {
-  /// The page published at [slug], in storage form.
+  /// The page published at [slug], in storage form, in its translation in
+  /// [locale], else the tenant's default locale, else its oldest published
+  /// one.
   ///
   /// Throws [PageFailure].
-  Future<PublishedPage> get(String slug);
+  Future<PublishedPage> get(String slug, {required String locale});
 
   /// Every published page's slug, in storage form, which is how a link to a
   /// path on the tenant site is told to be one of its pages.

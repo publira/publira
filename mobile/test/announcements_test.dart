@@ -68,6 +68,7 @@ void main() {
           slug: '/privacy',
           title: 'Privacy policy',
           contentMarkdown: 'How we keep your data.',
+          locale: 'en',
         ),
       ],
     );

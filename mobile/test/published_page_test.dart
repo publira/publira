@@ -35,16 +35,19 @@ void main() {
             'Read the [privacy policy](/privacy) and the',
             '[series](/series/$seriesId) as often as you like.',
           ].join('\n'),
+          locale: 'en',
         ),
         const PublishedPage(
           slug: '/privacy',
           title: 'Privacy policy',
           contentMarkdown: 'How we keep your data.',
+          locale: 'en',
         ),
         const PublishedPage(
           slug: '/blank',
           title: 'Blank',
           contentMarkdown: '',
+          locale: 'en',
         ),
       ],
     );
@@ -92,6 +95,56 @@ void main() {
     expect(pages.reads, ['/legal/terms']);
     expect(find.text('Terms of service'), findsOneWidget);
     expect(find.text('Using the site'), findsOneWidget);
+  });
+
+  group('in the app\'s language', () {
+    testWidgets('reads the page in it', (tester) async {
+      await openPage(tester, '/legal/terms');
+      await pumpUntilFound(tester, find.byKey(const ValueKey('page-body')));
+
+      expect(pages.readLocales, ['en']);
+      expect(find.byKey(const ValueKey('page-fallback-notice')), findsNothing);
+    });
+
+    testWidgets('says which language a page without a translation in it '
+        'is shown in', (tester) async {
+      pages.pages = const [
+        PublishedPage(
+          slug: '/legal/terms',
+          title: 'Terms of service',
+          contentMarkdown: 'The terms you agree to.',
+          locale: 'ja',
+        ),
+      ];
+      await openPage(tester, '/legal/terms');
+      await pumpUntilFound(tester, find.byKey(const ValueKey('page-body')));
+
+      expect(
+        find.text(
+          'This page is not published in your language, so it is shown in '
+          '日本語.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('reads the page again when the device changes language', (
+      tester,
+    ) async {
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await openPage(tester, '/legal/terms');
+      await pumpUntilFound(tester, find.byKey(const ValueKey('page-body')));
+
+      tester.platformDispatcher.localesTestValue = const [Locale('ko')];
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(pages.readLocales, ['en', 'ko']);
+      expect(
+        find.byKey(const ValueKey('page-fallback-notice')),
+        findsOneWidget,
+      );
+    });
   });
 
   testWidgets('says the page has no text yet when its body is empty', (
@@ -184,6 +237,7 @@ void main() {
         title: 'Images',
         contentMarkdown:
             '![local](file:///etc/hosts)\n\n![asset](resource:icon.png)',
+        locale: 'en',
       ),
     ];
     await openPage(tester, '/images');
@@ -209,6 +263,7 @@ void main() {
           slug: '/legal/terms',
           title: '利用規約',
           contentMarkdown: markdown.replaceFirst('SERIES', seriesId),
+          locale: 'ja',
         ),
       ];
       await openPage(tester, '/legal/terms');

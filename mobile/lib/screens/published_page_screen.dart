@@ -13,7 +13,8 @@ import 'package:publira/typography/autospaced_markdown.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A page the tenant published — its terms of service, its privacy policy,
-/// or anything else it writes — set from the Markdown the API holds.
+/// or anything else it writes — set from the Markdown the API holds, in the
+/// app's language where the page is translated into it.
 ///
 /// A link in the body goes where an announcement's link goes: a screen of the
 /// app, another published page, or the browser for another site. Anything
@@ -30,22 +31,26 @@ class PublishedPageScreen extends StatefulWidget {
 }
 
 class _PublishedPageScreenState extends State<PublishedPageScreen> {
-  var _started = false;
+  /// The locale the page was last asked for, which a change of the device's
+  /// language moves, reading the page again.
+  Locale? _locale;
   PublishedPage? _page;
   PageFailure? _failure;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final locale = Localizations.localeOf(context);
+    if (locale == _locale) {
       return;
     }
-    _started = true;
+    _locale = locale;
     unawaited(_read());
   }
 
   Future<void> _read() async {
     final repository = PageScope.maybeOf(context);
+    final locale = Localizations.localeOf(context);
     setState(() {
       _failure = null;
     });
@@ -55,7 +60,7 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
       if (repository == null) {
         throw const PageFailure(PageFailureKind.unexpected);
       }
-      page = await repository.get(widget.slug);
+      page = await repository.get(widget.slug, locale: locale.toLanguageTag());
     } on PageFailure catch (error) {
       failure = error;
     } on Exception catch (error) {
@@ -64,7 +69,7 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
         message: error.toString(),
       );
     }
-    if (!mounted) {
+    if (!mounted || locale != _locale) {
       return;
     }
     setState(() {
@@ -115,10 +120,24 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
       );
     }
     final theme = Theme.of(context);
+    final fallbackLanguage = page.fallbackLanguage(
+      Localizations.localeOf(context),
+    );
     return ListView(
       key: ValueKey('page-${page.slug}'),
       padding: const EdgeInsets.all(16),
       children: [
+        if (fallbackLanguage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: AutospacedText(
+              messages.pagesFallbackNotice(language: fallbackLanguage),
+              key: const ValueKey('page-fallback-notice'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         if (page.contentMarkdown.trim().isEmpty)
           AutospacedText(
             messages.pagesBodyEmpty,

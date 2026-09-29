@@ -25,6 +25,7 @@ import { namespaceLeaves } from "./catalog-leaves.ts";
 export interface DartLocale {
   readonly code: string;
   readonly intl: string;
+  readonly label: string;
 }
 
 /**
@@ -49,6 +50,7 @@ const CLASS_MEMBERS = new Set([
   "forLocale",
   "intlLocale",
   "likelyScripts",
+  "localeLabel",
   "of",
   "supportedLocales",
 ]);
@@ -488,13 +490,17 @@ export const renderDartMessages = (
     "",
     `${INDENT}/// The BCP 47 tag \`intl\` formats numbers and dates with for this catalog.`,
     `${INDENT}String get intlLocale;`,
+    "",
+    `${INDENT}/// This catalog's language, named in itself as \`locales/index.json\``,
+    `${INDENT}/// labels it.`,
+    `${INDENT}String get localeLabel;`,
   ];
   for (const message of messages) {
     lines.push("", `${INDENT}/// \`${message.key}\``, signature(message, ";"));
   }
   lines.push("}");
 
-  for (const { code, intl } of locales) {
+  for (const { code, intl, label } of locales) {
     lines.push(
       "",
       `class ${subclassName(code)} extends ${CLASS_NAME} {`,
@@ -503,6 +509,11 @@ export const renderDartMessages = (
       `${INDENT}@override`,
       `${INDENT}String get intlLocale {`,
       `${INDENT}${INDENT}return '${intl}';`,
+      `${INDENT}}`,
+      "",
+      `${INDENT}@override`,
+      `${INDENT}String get localeLabel {`,
+      `${INDENT}${INDENT}return '${dartText(label)}';`,
       `${INDENT}}`
     );
     for (const message of messages) {

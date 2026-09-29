@@ -17,9 +17,13 @@ class FakePageRepository implements PageRepository {
   /// The slugs [get] has been asked for, in order.
   final reads = <String>[];
 
+  /// The locales [get] has been asked for, in order.
+  final readLocales = <String>[];
+
   @override
-  Future<PublishedPage> get(String slug) async {
+  Future<PublishedPage> get(String slug, {required String locale}) async {
     reads.add(slug);
+    readLocales.add(locale);
     final failure = getFailure;
     if (failure != null) {
       throw failure;

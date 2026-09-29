@@ -88,6 +88,10 @@ abstract class AppMessages {
   /// The BCP 47 tag `intl` formats numbers and dates with for this catalog.
   String get intlLocale;
 
+  /// This catalog's language, named in itself as `locales/index.json`
+  /// labels it.
+  String get localeLabel;
+
   /// `errors.disallowed_value`
   String get errorsDisallowedValue;
 
@@ -978,6 +982,9 @@ abstract class AppMessages {
   /// `mobile.pages.body_empty`
   String get pagesBodyEmpty;
 
+  /// `mobile.pages.fallback_notice`
+  String pagesFallbackNotice({required String language});
+
   /// `mobile.pages.load_failed`
   String get pagesLoadFailed;
 
@@ -1490,6 +1497,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get intlLocale {
     return 'ja-JP';
+  }
+
+  @override
+  String get localeLabel {
+    return '日本語';
   }
 
   @override
@@ -2973,6 +2985,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String pagesFallbackNotice({required String language}) {
+    return 'このページはお使いの言語では公開されていないため、$languageで表示しています。';
+  }
+
+  @override
   String get pagesLoadFailed {
     return 'このページを表示できませんでした。もう一度お試しください。';
   }
@@ -3818,6 +3835,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get intlLocale {
     return 'en-US';
+  }
+
+  @override
+  String get localeLabel {
+    return 'English';
   }
 
   @override
@@ -5301,6 +5323,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String pagesFallbackNotice({required String language}) {
+    return 'This page is not published in your language, so it is shown in $language.';
+  }
+
+  @override
   String get pagesLoadFailed {
     return 'Could not show this page. Try again.';
   }
@@ -6146,6 +6173,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get intlLocale {
     return 'ko-KR';
+  }
+
+  @override
+  String get localeLabel {
+    return '한국어';
   }
 
   @override
@@ -7629,6 +7661,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String pagesFallbackNotice({required String language}) {
+    return '이 페이지는 사용 중인 언어로 게시되어 있지 않아 $language로 표시합니다.';
+  }
+
+  @override
   String get pagesLoadFailed {
     return '이 페이지를 표시할 수 없습니다. 다시 시도해 주세요.';
   }
@@ -8474,6 +8511,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get intlLocale {
     return 'zh-Hans-CN';
+  }
+
+  @override
+  String get localeLabel {
+    return '简体中文';
   }
 
   @override
@@ -9957,6 +9999,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String pagesFallbackNotice({required String language}) {
+    return '此页面没有以你所用的语言发布的版本，因此以$language显示。';
+  }
+
+  @override
   String get pagesLoadFailed {
     return '无法显示该页面。请重试。';
   }
@@ -10802,6 +10849,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get intlLocale {
     return 'zh-Hant-TW';
+  }
+
+  @override
+  String get localeLabel {
+    return '繁體中文';
   }
 
   @override
@@ -12282,6 +12334,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get pagesBodyEmpty {
     return '此頁面還沒有內容。';
+  }
+
+  @override
+  String pagesFallbackNotice({required String language}) {
+    return '此頁面沒有以你所使用的語言發布的版本，因此以$language顯示。';
   }
 
   @override
