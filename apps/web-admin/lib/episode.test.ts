@@ -1136,21 +1136,26 @@ describe("reorderEpisodePage", () => {
 });
 
 describe("listEpisodeCredits", () => {
-  it("reads each credit's share from the records beside the creators", async () => {
+  it("opens each credit on the internal IDs of its record", async () => {
+    // The shape the RPC answers with: a Creator names the person and the role
+    // by public ID alone, and the records beside it carry the internal IDs.
     mockListEpisodeCredits.mockResolvedValue({
       creatorCredits: [
-        {
-          creatorId: "CREATOR_B",
-          roleId: "ROLE_ARTIST",
-          shareBps: 3333,
-        },
+        { creatorId: "CREATOR_A", roleId: "ROLE_WRITER", shareBps: 6667 },
+        { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST", shareBps: 3333 },
       ],
       creators: [
         {
-          id: "CREATOR_B",
-          publicId: "CREATOR_B_PUBLIC",
-          role: { id: "ROLE_ARTIST", publicId: "ROLE_ARTIST_PUBLIC" },
+          id: "",
+          publicId: "CREATOR_A_PUBLIC",
+          role: { id: "", publicId: "ROLE_WRITER_PUBLIC" },
           source: CreatorCreditSource.SERIES,
+        },
+        {
+          id: "",
+          publicId: "CREATOR_B_PUBLIC",
+          role: { id: "", publicId: "ROLE_ARTIST_PUBLIC" },
+          source: CreatorCreditSource.EPISODE,
         },
       ],
     });
@@ -1164,10 +1169,16 @@ describe("listEpisodeCredits", () => {
     expect(result).toEqual({
       credits: [
         {
+          creatorId: "CREATOR_A",
+          roleId: "ROLE_WRITER",
+          shareBps: 6667,
+          source: CreatorCreditSource.SERIES,
+        },
+        {
           creatorId: "CREATOR_B",
           roleId: "ROLE_ARTIST",
           shareBps: 3333,
-          source: CreatorCreditSource.SERIES,
+          source: CreatorCreditSource.EPISODE,
         },
       ],
       ok: true,

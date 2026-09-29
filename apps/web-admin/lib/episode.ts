@@ -3,9 +3,9 @@ import type {
   GetEpisodeResponse,
   UpdateEpisodeLayoutResponse,
 } from "@publira/api-client/admin/series";
+import { CreatorCreditSource } from "@publira/api-client/admin/types";
 import type {
   Creator,
-  CreatorCreditSource,
   Episode,
   EpisodeImage,
 } from "@publira/api-client/admin/types";
@@ -206,7 +206,7 @@ export type ListEpisodeCreditsResult =
   | { ok: false; message: string; requiresSignIn: boolean };
 
 export type ReplaceEpisodeCreditsResult =
-  | { ok: true; credits: EpisodeCreatorCreditItem[] }
+  | { ok: true }
   | { ok: false; message: string };
 
 /**
@@ -326,40 +326,26 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
   width: image.width,
 });
 
-type RawEpisodeCredit = Pick<Creator, "id" | "role" | "source">;
-
 type EpisodeCreditShareRecord = Pick<
   EpisodeCreatorCreditItem,
   "creatorId" | "roleId" | "shareBps"
 >;
 
-const creditKey = (creatorId: string, roleId: string): string =>
-  `${creatorId}\u0000${roleId}`;
-
 /**
- * `Creator` carries who and in what role, and the records carry the share:
- * the storefront reads `Creator` too, and a share is the publisher's business.
+ * The records name each credit by the IDs the form picks from, and a `Creator`
+ * by public IDs only, so it lends nothing but `source`. The server fills both
+ * lists from the same rows in the same order, which is what pairs them.
  */
 const mapEpisodeCredits = (
-  creators: readonly RawEpisodeCredit[],
+  creators: readonly Pick<Creator, "source">[],
   records: readonly EpisodeCreditShareRecord[]
-): EpisodeCreatorCreditItem[] => {
-  const shares = new Map(
-    records.map((record) => [
-      creditKey(record.creatorId, record.roleId),
-      record.shareBps,
-    ])
-  );
-  return creators.map((credit) => {
-    const roleId = credit.role?.id ?? "";
-    return {
-      creatorId: credit.id,
-      roleId,
-      shareBps: shares.get(creditKey(credit.id, roleId)) ?? 0,
-      source: credit.source,
-    };
-  });
-};
+): EpisodeCreatorCreditItem[] =>
+  records.map((record, index) => ({
+    creatorId: record.creatorId,
+    roleId: record.roleId,
+    shareBps: record.shareBps,
+    source: creators[index]?.source ?? CreatorCreditSource.UNSPECIFIED,
+  }));
 
 export const listEpisodeCredits = async (
   input: { tenantId: string; episodeId: string },
@@ -421,7 +407,7 @@ export const replaceEpisodeCredits = async (
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
   try {
-    const response = await apiClient.series.replaceEpisodeCredits(
+    await apiClient.series.replaceEpisodeCredits(
       {
         creatorCredits: input.creatorCredits,
         episodeId: input.episodeId,
@@ -429,12 +415,7 @@ export const replaceEpisodeCredits = async (
       },
       withSessionHeaders(sessionId)
     );
-    // The response names the credits alone; their shares are the ones just
-    // written.
-    return {
-      credits: mapEpisodeCredits(response.creators ?? [], input.creatorCredits),
-      ok: true,
-    };
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
