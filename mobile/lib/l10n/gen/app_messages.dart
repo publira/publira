@@ -1490,6 +1490,9 @@ abstract class AppMessages {
   /// `mobile.viewer.previous_page`
   String get viewerPreviousPage;
 
+  /// `mobile.viewer.progress`
+  String get viewerProgress;
+
   /// `mobile.viewer.reaction.count`
   String viewerReactionCount({required String count});
 
@@ -3856,6 +3859,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '前のページ';
+  }
+
+  @override
+  String get viewerProgress {
+    return '読み進み';
   }
 
   @override
@@ -6247,6 +6255,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerProgress {
+    return 'Reading progress';
+  }
+
+  @override
   String viewerReactionCount({required String count}) {
     return '$count readers reacted';
   }
@@ -8632,6 +8645,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '이전 페이지';
+  }
+
+  @override
+  String get viewerProgress {
+    return '읽은 분량';
   }
 
   @override
@@ -11023,6 +11041,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerProgress {
+    return '阅读进度';
+  }
+
+  @override
   String viewerReactionCount({required String count}) {
     return '$count位读者已反馈';
   }
@@ -13408,6 +13431,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '上一頁';
+  }
+
+  @override
+  String get viewerProgress {
+    return '閱讀進度';
   }
 
   @override

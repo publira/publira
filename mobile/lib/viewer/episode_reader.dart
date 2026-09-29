@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -120,6 +122,11 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   /// of the last build.
   var _finished = false;
 
+  /// Where the progress slider's thumb is while the reader drags it, in
+  /// [_positionOf] units and anywhere between two of them; null otherwise.
+  /// The pager follows it, and nothing is recorded until it is let go.
+  double? _scrub;
+
   @override
   void initState() {
     super.initState();
@@ -179,12 +186,61 @@ class _EpisodeReaderState extends State<EpisodeReader> {
       _moveTo(spreads.firstPageOf(screen));
       return;
     }
-    if (_atEnd) {
+    // The slider reaches the end panel from anywhere, and the reader who
+    // lands there has passed the last spread on the way.
+    final lastSpread = spreads.length - 1;
+    final passed = spreads.spreadOf(_index) != lastSpread;
+    if (_atEnd && !passed) {
       return;
     }
+    final lastPage = spreads.firstPageOf(lastSpread);
     setState(() {
+      _index = passed ? lastPage : _index;
       _atEnd = true;
     });
+    if (passed) {
+      widget.onPageChanged?.call(lastPage);
+    }
+  }
+
+  /// The pages the counter names for [screen]. The end panel is named by the
+  /// last spread, which is the one the reader has read by then.
+  List<int> _pagesNamed(PageSpreads spreads, int screen) =>
+      spreads.pagesAt(min(screen, spreads.length - 1));
+
+  /// Where the progress slider puts [screen]: the page it starts from, or the
+  /// page count for the end panel, so the track counts pages the way the
+  /// position does and a spread takes the length of its two pages.
+  int _positionOf(PageSpreads spreads, int screen) => screen < spreads.length
+      ? spreads.firstPageOf(screen)
+      : widget.images.length;
+
+  /// The screen [position] falls on, with how far it has gone towards the
+  /// next one as the fraction: the pager scrolls to it while a drag is held,
+  /// and rounding it gives the screen a release there lands on.
+  double _screenAt(PageSpreads spreads, double position) {
+    final screen = position >= widget.images.length
+        ? spreads.length
+        : spreads.spreadOf(position.floor());
+    if (screen + 1 >= _screenCount(spreads)) {
+      return screen.toDouble();
+    }
+    final start = _positionOf(spreads, screen);
+    final next = _positionOf(spreads, screen + 1);
+    return screen + (position - start) / (next - start);
+  }
+
+  void _scrubTo(double position) {
+    setState(() {
+      _scrub = position;
+    });
+  }
+
+  void _endScrub(PageSpreads spreads, double position) {
+    setState(() {
+      _scrub = null;
+    });
+    _showScreen(spreads, _screenAt(spreads, position).round());
   }
 
   /// Puts the reader on [index] and reports it once.
@@ -235,8 +291,11 @@ class _EpisodeReaderState extends State<EpisodeReader> {
           spreadStartIndex: widget.spreadStartIndex,
         );
         final screen = _screenOf(spreads);
-        final pages = spreads.pagesAt(spreads.spreadOf(_index));
+        final screenCount = _screenCount(spreads);
+        final pages = _pagesNamed(spreads, screen);
         _noteFinished(_atEnd || pages.last == widget.images.length - 1);
+        final scrub = _scrub;
+        final scrubScreen = scrub == null ? null : _screenAt(spreads, scrub);
         return Stack(
           children: [
             _ReaderPager(
@@ -254,9 +313,10 @@ class _EpisodeReaderState extends State<EpisodeReader> {
               client: _client,
               viewport: viewport,
               screen: screen,
-              screenCount: _screenCount(spreads),
+              screenCount: screenCount,
               endScreen: widget.endScreen,
               readingDirection: widget.readingDirection,
+              scrubScreen: scrubScreen,
               onScreenChanged: (screen) => _showScreen(spreads, screen),
               onTurn: (delta) => _turn(spreads, delta),
             ),
@@ -265,11 +325,23 @@ class _EpisodeReaderState extends State<EpisodeReader> {
               right: 0,
               bottom: 0,
               child: _ReaderControls(
-                firstPage: pages.first + 1,
-                lastPage: pages.last + 1,
+                // The counter names the spread a release would land on.
+                pages: scrubScreen == null
+                    ? pages
+                    : _pagesNamed(spreads, scrubScreen.round()),
+                nextPages: screen < screenCount - 1
+                    ? _pagesNamed(spreads, screen + 1)
+                    : null,
+                previousPages: screen > 0
+                    ? _pagesNamed(spreads, screen - 1)
+                    : null,
                 pageCount: widget.images.length,
+                progress: scrub ?? _positionOf(spreads, screen).toDouble(),
+                progressEnd: _positionOf(spreads, screenCount - 1),
+                onScrub: _scrubTo,
+                onScrubEnd: (position) => _endScrub(spreads, position),
                 readingDirection: widget.readingDirection,
-                onNext: screen < _screenCount(spreads) - 1
+                onNext: screen < screenCount - 1
                     ? () => _turn(spreads, 1)
                     : null,
                 onPrevious: screen > 0 ? () => _turn(spreads, -1) : null,
@@ -298,6 +370,7 @@ class _ReaderPager extends StatefulWidget {
     required this.screenCount,
     required this.endScreen,
     required this.readingDirection,
+    required this.scrubScreen,
     required this.onScreenChanged,
     required this.onTurn,
   });
@@ -320,6 +393,12 @@ class _ReaderPager extends StatefulWidget {
   final Widget? endScreen;
 
   final ReadingDirection readingDirection;
+
+  /// Where a drag of the progress slider holds the pager, part of the way to
+  /// the next screen between two of them, or null while nothing is held.
+  /// The screens it crosses are not reported: the reader has not stopped on
+  /// them, and the release reports the one they land on through [screen].
+  final double? scrubScreen;
 
   final ValueChanged<int> onScreenChanged;
   final ValueChanged<int> onTurn;
@@ -351,14 +430,28 @@ class _ReaderPagerState extends State<_ReaderPager> {
   @override
   void didUpdateWidget(covariant _ReaderPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.screen == oldWidget.screen) {
+    final scrub = widget.scrubScreen;
+    if (scrub != null) {
+      if (oldWidget.scrubScreen == null) {
+        _resetZoom();
+      }
+      if (scrub != oldWidget.scrubScreen) {
+        _scrollTo(scrub);
+      }
       return;
     }
-    // Assigning the flag first keeps the listener from calling `setState`
-    // while this element is rebuilding; the build that follows reads it.
-    _zoomed = false;
-    _zoom.value = Matrix4.identity();
-    if (!_controller.hasClients || _controller.page?.round() == widget.screen) {
+    // A released drag leaves the pager wherever the thumb was, part of the
+    // way from the screen it lands on even when that is the screen it
+    // started from, so the pager is moved the rest of the way. A swipe has
+    // already reported the screen it is settling on, and is left to finish.
+    final released = oldWidget.scrubScreen != null;
+    if (widget.screen == oldWidget.screen && !released) {
+      return;
+    }
+    _resetZoom();
+    final page = _controller.hasClients ? _controller.page : null;
+    if (page == null ||
+        (released ? page : page.round()) == widget.screen.toDouble()) {
       return;
     }
     _controller.animateToPage(
@@ -368,11 +461,24 @@ class _ReaderPagerState extends State<_ReaderPager> {
     );
   }
 
+  /// Assigning the flag first keeps the listener from calling `setState`
+  /// while this element is rebuilding; the build that follows reads it.
+  void _resetZoom() {
+    _zoomed = false;
+    _zoom.value = Matrix4.identity();
+  }
+
   @override
   void dispose() {
     _zoom.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _scrollTo(double screen) {
+    if (_controller.hasClients) {
+      _controller.jumpTo(screen * _controller.position.viewportDimension);
+    }
   }
 
   void _handleZoomChanged() {
@@ -462,7 +568,11 @@ class _ReaderPagerState extends State<_ReaderPager> {
         // to fight over it.
         physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
         itemCount: widget.screenCount,
-        onPageChanged: widget.onScreenChanged,
+        onPageChanged: (screen) {
+          if (widget.scrubScreen == null) {
+            widget.onScreenChanged(screen);
+          }
+        },
         // The end panel is read rather than looked at, so it is drawn outside
         // the zoom the pages share.
         itemBuilder: (context, screen) => screen >= widget.spreads.length
@@ -482,9 +592,14 @@ class _ReaderPagerState extends State<_ReaderPager> {
 
 class _ReaderControls extends StatelessWidget {
   const _ReaderControls({
-    required this.firstPage,
-    required this.lastPage,
+    required this.pages,
+    required this.nextPages,
+    required this.previousPages,
     required this.pageCount,
+    required this.progress,
+    required this.progressEnd,
+    required this.onScrub,
+    required this.onScrubEnd,
     required this.readingDirection,
     required this.onNext,
     required this.onPrevious,
@@ -492,11 +607,25 @@ class _ReaderControls extends StatelessWidget {
     required this.onPreviousEpisode,
   });
 
-  /// The pages on screen, one-based and equal outside a spread.
-  final int firstPage;
-  final int lastPage;
+  /// The pages the counter names, and those of the screens either side,
+  /// which a screen reader announces an adjustment of the slider with. Null
+  /// where there is no screen on that side.
+  final List<int> pages;
+  final List<int>? nextPages;
+  final List<int>? previousPages;
 
   final int pageCount;
+
+  /// Where the progress slider's thumb is, and where its track ends, in the
+  /// reader's positions: a page from the one it starts at, and the end panel
+  /// one past the last page.
+  final double progress;
+  final int progressEnd;
+
+  /// The thumb was dragged to a position, and let go at one.
+  final ValueChanged<double> onScrub;
+  final ValueChanged<double> onScrubEnd;
+
   final ReadingDirection readingDirection;
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
@@ -506,17 +635,15 @@ class _ReaderControls extends StatelessWidget {
   final VoidCallback? onNextEpisode;
   final VoidCallback? onPreviousEpisode;
 
-  String _status(AppMessages messages) {
+  String _status(AppMessages messages, List<int> pages) {
     final total = messages.formatInteger(pageCount);
-    if (firstPage == lastPage) {
-      return messages.viewerPageStatus(
-        page: messages.formatInteger(firstPage),
-        total: total,
-      );
+    final first = messages.formatInteger(pages.first + 1);
+    if (pages.length == 1) {
+      return messages.viewerPageStatus(page: first, total: total);
     }
     return messages.viewerPageStatusRange(
-      first: messages.formatInteger(firstPage),
-      last: messages.formatInteger(lastPage),
+      first: first,
+      last: messages.formatInteger(pages.last + 1),
       total: total,
     );
   }
@@ -580,32 +707,160 @@ class _ReaderControls extends StatelessWidget {
         ),
       ),
     ];
+    final status = _status(messages, pages);
+    final next = nextPages;
+    final previous = previousPages;
     return Container(
       color: Colors.black54,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: SafeArea(
         top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Next sits on the side the next page comes from, so a
-            // right-to-left reader finds it on the left. The doubled chevron
-            // is the longer move of the two: a whole episode rather than a
-            // page.
+            if (progressEnd > 0)
+              _ProgressSlider(
+                value: progress,
+                max: progressEnd,
+                label: messages.viewerProgress,
+                status: status,
+                nextStatus: next == null ? null : _status(messages, next),
+                previousStatus: previous == null
+                    ? null
+                    : _status(messages, previous),
+                readingDirection: readingDirection,
+                onScrub: onScrub,
+                onScrubEnd: onScrubEnd,
+                onNext: onNext,
+                onPrevious: onPrevious,
+              ),
             Row(
-              mainAxisSize: MainAxisSize.min,
-              children: rtl ? nextButtons : previousButtons.reversed.toList(),
-            ),
-            AutospacedText(
-              key: const ValueKey('episode-page-status'),
-              _status(messages),
-              style: const TextStyle(color: Colors.white),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: rtl ? previousButtons : nextButtons.reversed.toList(),
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Next sits on the side the next page comes from, so a
+                // right-to-left reader finds it on the left. The doubled
+                // chevron is the longer move of the two: a whole episode
+                // rather than a page.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: rtl
+                      ? nextButtons
+                      : previousButtons.reversed.toList(),
+                ),
+                AutospacedText(
+                  key: const ValueKey('episode-page-status'),
+                  status,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: rtl
+                      ? previousButtons
+                      : nextButtons.reversed.toList(),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Drags the reader to any screen of the episode, landing on the one nearest
+/// the thumb once it is let go. The track fills the way the pages are read.
+class _ProgressSlider extends StatefulWidget {
+  const _ProgressSlider({
+    required this.value,
+    required this.max,
+    required this.label,
+    required this.status,
+    required this.nextStatus,
+    required this.previousStatus,
+    required this.readingDirection,
+    required this.onScrub,
+    required this.onScrubEnd,
+    required this.onNext,
+    required this.onPrevious,
+  });
+
+  final double value;
+  final int max;
+  final String label;
+
+  /// The pages the thumb points at, which is what a screen reader hears as
+  /// the slider's value instead of a share of the track.
+  final String status;
+  final String? nextStatus;
+  final String? previousStatus;
+
+  final ReadingDirection readingDirection;
+  final ValueChanged<double> onScrub;
+  final ValueChanged<double> onScrubEnd;
+
+  /// What a screen reader's adjustment and an arrow key do: turn one screen,
+  /// where Material's share of the track may not reach the next one.
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
+
+  @override
+  State<_ProgressSlider> createState() => _ProgressSliderState();
+}
+
+class _ProgressSliderState extends State<_ProgressSlider> {
+  late final _focus = FocusNode(onKeyEvent: _handleKey);
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  /// The focused slider sees a key before Material's own shortcuts do.
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) {
+      return KeyEventResult.ignored;
+    }
+    final rtl = widget.readingDirection == ReadingDirection.rtl;
+    final turn = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowUp => widget.onNext,
+      LogicalKeyboardKey.arrowDown => widget.onPrevious,
+      LogicalKeyboardKey.arrowLeft => rtl ? widget.onNext : widget.onPrevious,
+      LogicalKeyboardKey.arrowRight => rtl ? widget.onPrevious : widget.onNext,
+      _ => null,
+    };
+    if (turn == null) {
+      return KeyEventResult.ignored;
+    }
+    turn();
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      slider: true,
+      label: widget.label,
+      value: widget.status,
+      increasedValue: widget.nextStatus,
+      decreasedValue: widget.previousStatus,
+      onIncrease: widget.onNext,
+      onDecrease: widget.onPrevious,
+      excludeSemantics: true,
+      child: Directionality(
+        textDirection: widget.readingDirection == ReadingDirection.rtl
+            ? TextDirection.rtl
+            : TextDirection.ltr,
+        child: Slider(
+          key: const ValueKey('episode-progress'),
+          focusNode: _focus,
+          value: widget.value,
+          max: widget.max.toDouble(),
+          activeColor: Colors.white,
+          inactiveColor: Colors.white30,
+          onChanged: widget.onScrub,
+          onChangeEnd: widget.onScrubEnd,
         ),
       ),
     );

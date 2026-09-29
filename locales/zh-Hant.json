@@ -4027,6 +4027,7 @@
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "上一章",
       "previous_page": "上一頁",
+      "progress": "閱讀進度",
       "reload": "重新載入",
       "save_expired": "本章儲存的副本已過期。請在連線狀態下重新開啟。",
       "title": "章節"

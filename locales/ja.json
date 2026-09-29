@@ -4027,6 +4027,7 @@
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "前のエピソード",
       "previous_page": "前のページ",
+      "progress": "読み進み",
       "reload": "再読み込み",
       "save_expired": "保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。",
       "title": "エピソード"
