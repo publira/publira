@@ -4,9 +4,11 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { renderServerComponent } from "#lib/render-server-component";
 
 import { SeriesManager } from "./series-manager";
 
@@ -48,7 +50,7 @@ afterEach(() => {
 
 describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", async () => {
-    render(
+    await renderServerComponent(
       await SeriesManager({
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
@@ -65,7 +67,7 @@ describe("SeriesManager", () => {
   });
 
   it("does not say the whole list is empty when a later page is empty", async () => {
-    render(
+    await renderServerComponent(
       await SeriesManager({
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
@@ -82,7 +84,7 @@ describe("SeriesManager", () => {
   });
 
   it("shows only the error and does not call the list empty when the fetch fails", async () => {
-    render(
+    await renderServerComponent(
       await SeriesManager({
         filters: { ageRating: "", status: "", token: "" },
         listErrorMessage: "Could not load the series.",
@@ -106,5 +108,25 @@ describe("SeriesManager", () => {
     ).toBeNull();
     expect(screen.queryByText("No Series to show on this page.")).toBeNull();
     expect(screen.queryByLabelText("Series list pagination")).toBeNull();
+  });
+
+  it("keeps the chosen status and age rating in the filters", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        filters: { ageRating: "r15", status: "completed", token: "" },
+        locale: "en",
+        pageSize: 20,
+        series: [],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.getByText("Serialization status")).toBeDefined();
+    expect(screen.getByText("Age rating")).toBeDefined();
+    const form = screen.getByRole("button", { name: "Apply" }).closest("form");
+    expect(Object.fromEntries(new FormData(form ?? undefined))).toMatchObject({
+      age_rating: "r15",
+      status: "completed",
+    });
   });
 });
