@@ -11,7 +11,8 @@ import type { MfaVerifyState } from "#lib/mfa-action-state";
 
 import { MfaVerifyForm } from "./mfa-verify-form";
 
-const { verify } = vi.hoisted(() => ({
+const { redirect, verify } = vi.hoisted(() => ({
+  redirect: vi.fn<(path: string) => never>(),
   verify:
     vi.fn<
       (
@@ -24,6 +25,8 @@ const { verify } = vi.hoisted(() => ({
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
 // here at all.
 vi.mock("../_lib/actions", () => ({ verifyMfaAction: verify }));
+
+vi.mock("next/navigation", () => ({ redirect }));
 
 vi.mock("#components/message", () => ({
   Message: ({
@@ -68,7 +71,9 @@ describe("MfaVerifyForm", () => {
       ok: true,
     });
 
-    render(<MfaVerifyForm nextPath="/series" tenantId="TENANT001" />);
+    render(
+      <MfaVerifyForm finished={false} nextPath="/series" tenantId="TENANT001" />
+    );
     submitCode("ABCDE-FGHJK");
 
     expect(
@@ -90,12 +95,24 @@ describe("MfaVerifyForm", () => {
   it("keeps the form and what was typed when the code is refused", async () => {
     verify.mockResolvedValue({ message: "The code is incorrect.", ok: false });
 
-    render(<MfaVerifyForm nextPath="/series" tenantId="TENANT001" />);
+    render(
+      <MfaVerifyForm finished={false} nextPath="/series" tenantId="TENANT001" />
+    );
     submitCode("000000");
 
     expect(await screen.findByText("The code is incorrect.")).toBeDefined();
     expect(
       screen.getByLabelText<HTMLInputElement>("Verification code").value
     ).toBe("000000");
+  });
+
+  it("goes on to where the login was heading when the challenge was spent before this visit", () => {
+    redirect.mockImplementation((path) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    });
+
+    expect(() =>
+      render(<MfaVerifyForm finished nextPath="/series" tenantId="TENANT001" />)
+    ).toThrow("NEXT_REDIRECT:/series");
   });
 });

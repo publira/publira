@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockClearMfaChallenge,
   mockConfirmAdminMfaEnrollment,
+  mockFinishMfaChallenge,
   mockReadMfaChallenge,
   mockRedirect,
   mockStartAdminMfaEnrollment,
@@ -14,6 +15,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockClearMfaChallenge: vi.fn(),
   mockConfirmAdminMfaEnrollment: vi.fn(),
+  mockFinishMfaChallenge: vi.fn(),
   mockReadMfaChallenge: vi.fn(),
   mockRedirect: vi.fn(),
   mockStartAdminMfaEnrollment: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock("#lib/admin-session-cookie", () => ({
 
 vi.mock("#lib/mfa-challenge", () => ({
   clearMfaChallenge: mockClearMfaChallenge,
+  finishMfaChallenge: mockFinishMfaChallenge,
   readMfaChallenge: mockReadMfaChallenge,
 }));
 
@@ -120,6 +123,7 @@ describe("verifyMfaAction", () => {
       session
     );
     expect(mockClearMfaChallenge).toHaveBeenCalledOnce();
+    expect(mockFinishMfaChallenge).not.toHaveBeenCalled();
     expect(mockRedirect).toHaveBeenCalledWith("/series");
   });
 
@@ -143,6 +147,15 @@ describe("verifyMfaAction", () => {
       ok: true,
     });
     expect(mockWriteAdminSessionCookie).toHaveBeenCalledOnce();
+    // Clearing the challenge would send the render that carries this answer to
+    // the sign-in screen.
+    expect(mockFinishMfaChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        challengeToken: "challenge-token",
+        kind: "verify",
+      })
+    );
+    expect(mockClearMfaChallenge).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
@@ -324,7 +337,13 @@ describe("enrollment actions", () => {
       TENANT_ID,
       session
     );
-    expect(mockClearMfaChallenge).toHaveBeenCalledOnce();
+    expect(mockFinishMfaChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        challengeToken: "challenge-token",
+        kind: "enroll",
+      })
+    );
+    expect(mockClearMfaChallenge).not.toHaveBeenCalled();
   });
 
   it("still shows the recovery codes when no session came back with them", async () => {

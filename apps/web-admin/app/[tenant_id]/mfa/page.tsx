@@ -17,7 +17,7 @@ import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { readMfaChallenge } from "#lib/mfa-challenge";
+import { readStoredMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
 import { MfaEnrollFlow } from "./_components/mfa-enroll-flow";
@@ -45,21 +45,32 @@ const MfaPageFallback = () => (
  * The challenge lives in a sealed cookie rather than the URL, so this screen
  * has nothing to read from the request but that cookie: no challenge means the
  * password step has not happened, or has run out, and the operator starts over
- * at `/login`.
+ * at `/login`. A finished challenge renders the same flow, which is what keeps
+ * the answer to the submission that finished it on screen.
  */
 const MfaPageContent = async () => {
   const [tenantId, challenge] = await Promise.all([
     getTenantId(),
-    readMfaChallenge(),
+    readStoredMfaChallenge(),
   ]);
   if (!challenge || challenge.tenantId !== tenantId) {
     redirect(buildLoginPath(challenge?.nextPath));
   }
 
+  const finished = "finished" in challenge;
+
   return challenge.kind === "enroll" ? (
-    <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
+    <MfaEnrollFlow
+      finished={finished}
+      nextPath={challenge.nextPath}
+      tenantId={tenantId}
+    />
   ) : (
-    <MfaVerifyForm nextPath={challenge.nextPath} tenantId={tenantId} />
+    <MfaVerifyForm
+      finished={finished}
+      nextPath={challenge.nextPath}
+      tenantId={tenantId}
+    />
   );
 };
 

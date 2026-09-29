@@ -3,6 +3,7 @@
 import { useActionFormSettled } from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createContext, use, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
 
@@ -22,18 +23,26 @@ const SignedInContext = createContext(false);
 /**
  * The enrollment until its confirm form succeeds, then `done`. That answer
  * replaces the confirm form along with everything around it, so it is held
- * here rather than in the form.
+ * here rather than in the form. A challenge spent with no answer held here
+ * belongs to an earlier visit, so the login goes on to `nextPath`.
  */
 export const MfaEnrollSteps = ({
   done,
   enroll,
+  finished,
+  nextPath,
 }: {
   done: ReactNode;
   enroll: ReactNode;
+  finished: boolean;
+  nextPath: string;
 }) => {
   const [confirmed, setConfirmed] = useState<ConfirmedMfaEnrollment | null>(
     null
   );
+  if (finished && !confirmed) {
+    redirect(nextPath);
+  }
 
   return confirmed ? (
     <SignedInContext value={confirmed.signedIn}>

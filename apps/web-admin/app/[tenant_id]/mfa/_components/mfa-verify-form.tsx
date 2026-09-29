@@ -25,13 +25,21 @@ import {
 } from "./mfa-verify-steps";
 
 interface MfaVerifyFormProps {
+  /** Whether the challenge has already been spent. */
+  finished: boolean;
   /** Where the login was heading before the second factor interrupted it. */
   nextPath: string;
   tenantId: string;
 }
 
-export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => (
+export const MfaVerifyForm = ({
+  finished,
+  nextPath,
+  tenantId,
+}: MfaVerifyFormProps) => (
   <MfaVerifySteps
+    finished={finished}
+    nextPath={nextPath}
     spent={
       <AuthScreenBody>
         <h2 className="font-medium text-foreground">

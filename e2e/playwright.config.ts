@@ -79,6 +79,13 @@ const commentModerationSpecs = /admin\.comment-moderation\./u;
 const ageVerificationSpecs = /admin\.age-verification\./u;
 
 /**
+ * The spec that makes the platform require MFA of tenant administrators, which
+ * every console sign-in reads. It runs after the parallel projects so no other
+ * suite's administrator is held for an enrollment.
+ */
+const adminMfaSignInSpecs = /admin\.mfa-sign-in\./u;
+
+/**
  * The spec that drives initial setup. `/setup` renders only while the platform
  * has no operator at all, so it empties `platform_users` — the table every
  * console sign-in in the suite reads — and runs last of everything.
@@ -193,6 +200,7 @@ export default defineConfig({
         processIsolatedSpecs,
         commentModerationSpecs,
         ageVerificationSpecs,
+        adminMfaSignInSpecs,
         performanceSpecs,
         screenshotSpecs,
       ],
@@ -398,6 +406,19 @@ export default defineConfig({
         baseURL: WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
       },
     },
+    // Requires MFA of every tenant administrator for as long as it runs, so it
+    // follows the last console round trip rather than running beside one.
+    {
+      dependencies: ["admin-age-verification"],
+      fullyParallel: false,
+      name: "admin-mfa-sign-in",
+      testMatch: [adminMfaSignInSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_ADMIN_BASE_URL,
+      },
+    },
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
     // empties the worker pool for it.
@@ -406,7 +427,7 @@ export default defineConfig({
         "catalog-error-boundary",
         "admin-error-boundary",
         "platform-configuration-status",
-        "admin-age-verification",
+        "admin-mfa-sign-in",
       ],
       fullyParallel: false,
       name: "viewer-performance",

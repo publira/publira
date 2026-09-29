@@ -21,7 +21,11 @@ import type {
   MfaEnrollmentStartState,
   MfaVerifyState,
 } from "#lib/mfa-action-state";
-import { clearMfaChallenge, readMfaChallenge } from "#lib/mfa-challenge";
+import {
+  clearMfaChallenge,
+  finishMfaChallenge,
+  readMfaChallenge,
+} from "#lib/mfa-challenge";
 import type { MfaChallenge, MfaChallengeKindName } from "#lib/mfa-challenge";
 
 /**
@@ -119,11 +123,10 @@ export const verifyMfaAction = async (
       ok: false,
     };
   }
-  await clearMfaChallenge();
-
   // A recovery code is one the account can never use again, so the screen says
   // so and offers the way back to a full set before moving on.
   if (result.recoveryCodeUsed) {
+    await finishMfaChallenge(challenge);
     return {
       message: t("admin.auth.mfa.recovery_used_description", {
         count: String(result.remainingRecoveryCodes),
@@ -132,6 +135,7 @@ export const verifyMfaAction = async (
     };
   }
 
+  await clearMfaChallenge();
   redirect(challenge.nextPath);
 };
 
@@ -191,7 +195,7 @@ export const confirmMfaEnrollmentAction = async (
   const signedIn = result.session
     ? await storeSession(challenge.tenantId, result.session)
     : false;
-  await clearMfaChallenge();
+  await finishMfaChallenge(challenge);
 
   return {
     message: "",
