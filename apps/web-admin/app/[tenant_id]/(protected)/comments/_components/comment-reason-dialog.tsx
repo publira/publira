@@ -20,7 +20,7 @@ import {
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
+import { Suspense, useId } from "react";
 
 import { Message } from "#components/message";
 import { SettledToast } from "#components/settled-toast";
@@ -49,9 +49,9 @@ export const CommentReasonDialog = ({
   commentId,
   tenantId,
 }: CommentReasonDialogProps) => {
-  // A public id is unique across the tenant, so it is enough to keep the two
-  // dialogs of one row — and every other row on the screen — apart.
-  const formId = `comment-${action}-${commentId}`;
+  // The comments screen shows a reported comment in the report queue and in
+  // the list, so the comment's id alone would name two forms.
+  const formId = useId();
 
   return (
     // The form wraps the dialog rather than sitting in its popup, and the

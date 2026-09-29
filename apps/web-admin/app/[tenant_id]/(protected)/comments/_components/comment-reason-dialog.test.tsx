@@ -57,24 +57,25 @@ vi.mock("./comment-reason-input", async () => {
 });
 
 /**
- * Two rows of the list, since every row submits to the same Action and the
- * answer belongs under the one that was pressed.
+ * Two rows, since every row submits to the same Action and the answer belongs
+ * under the one that was pressed. The comments screen can show the same
+ * comment twice, in the report queue and in the list.
  */
-const renderRows = () =>
+const renderRows = (secondCommentId = "COMMENT002") =>
   render(
     <ToastProvider>
       <ul>
-        <li data-testid="COMMENT001">
+        <li data-testid="first">
           <CommentReasonDialog
             action="hide"
             commentId="COMMENT001"
             tenantId="TENANT001"
           />
         </li>
-        <li data-testid="COMMENT002">
+        <li data-testid="second">
           <CommentReasonDialog
             action="hide"
-            commentId="COMMENT002"
+            commentId={secondCommentId}
             tenantId="TENANT001"
           />
         </li>
@@ -83,12 +84,10 @@ const renderRows = () =>
     </ToastProvider>
   );
 
-/** Opens the first row's dialog, writes `reason`, and confirms it. */
-const removeWithReason = async (reason: string) => {
+/** Opens the dialog of the row `rowId` names, writes `reason`, and confirms it. */
+const removeWithReason = async (rowId: string, reason: string) => {
   fireEvent.click(
-    within(screen.getByTestId("COMMENT001")).getByRole("button", {
-      name: "Remove",
-    })
+    within(screen.getByTestId(rowId)).getByRole("button", { name: "Remove" })
   );
   const dialog = within(await screen.findByRole("dialog"));
   fireEvent.change(
@@ -114,7 +113,7 @@ describe("CommentReasonDialog", () => {
     hide.mockResolvedValue({ message: "The comment was removed.", ok: true });
     renderRows();
 
-    await removeWithReason("Personal information in the text");
+    await removeWithReason("first", "Personal information in the text");
 
     const [[, formData]] = hide.mock.calls;
     expect(formData.get("comment_id")).toBe("COMMENT001");
@@ -128,11 +127,11 @@ describe("CommentReasonDialog", () => {
     hide.mockResolvedValue({ message: "The comment was removed.", ok: true });
     renderRows();
 
-    await removeWithReason("Spam");
+    await removeWithReason("first", "Spam");
 
     expect(await screen.findByText("The comment was removed.")).toBeDefined();
     expect(
-      within(screen.getByTestId("COMMENT001")).queryByText(
+      within(screen.getByTestId("first")).queryByText(
         "The comment was removed."
       )
     ).toBeNull();
@@ -145,15 +144,38 @@ describe("CommentReasonDialog", () => {
     });
     renderRows();
 
-    await removeWithReason("Spam");
+    await removeWithReason("first", "Spam");
 
     expect(
-      await within(screen.getByTestId("COMMENT001")).findByText(
+      await within(screen.getByTestId("first")).findByText(
         "This comment can no longer be removed."
       )
     ).toBeDefined();
     expect(
-      within(screen.getByTestId("COMMENT002")).queryByText(
+      within(screen.getByTestId("second")).queryByText(
+        "This comment can no longer be removed."
+      )
+    ).toBeNull();
+  });
+
+  it("keeps the same comment in the queue and the list apart", async () => {
+    hide.mockResolvedValue({
+      message: "This comment can no longer be removed.",
+      ok: false,
+    });
+    renderRows("COMMENT001");
+
+    await removeWithReason("second", "Spam");
+
+    const [[, formData]] = hide.mock.calls;
+    expect(formData.get("reason")).toBe("Spam");
+    expect(
+      await within(screen.getByTestId("second")).findByText(
+        "This comment can no longer be removed."
+      )
+    ).toBeDefined();
+    expect(
+      within(screen.getByTestId("first")).queryByText(
         "This comment can no longer be removed."
       )
     ).toBeNull();
