@@ -121,6 +121,20 @@ func tenantThemeSelectRowWithBrandingImages(
 	}
 }
 
+// expectSignInProvidersUnavailable answers the sign-in settings of a tenant
+// that has saved none.
+func expectSignInProvidersUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantAppleSignInConfig)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantGoogleSignInConfig)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
@@ -168,6 +182,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(mock, tenantID)
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
@@ -239,6 +254,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 		}).
 			AddRow(iconImageID, "icon", "original", "image/png", int64(2048), int32(512), int32(512)).
 			AddRow(logoImageID, "logo", "original", "image/png", int64(4096), int32(1024), int32(256)))
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -297,6 +313,7 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -395,6 +412,7 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -425,6 +443,7 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -455,6 +474,7 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -515,6 +535,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(env.mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -544,6 +565,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(env.mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -584,6 +606,7 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectSignInProvidersUnavailable(mock, tenantID)
 
 			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -615,6 +638,7 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectSignInProvidersUnavailable(mock, tenantID)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -706,6 +730,7 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectSignInProvidersUnavailable(mock, tenantID)
 
 			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
@@ -776,6 +801,7 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectSignInProvidersUnavailable(mock, tenantID)
 
 			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{

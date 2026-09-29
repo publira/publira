@@ -476,7 +476,7 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, p AccountParams) (Member, er
 			TenantID:     uuid.NullUUID{UUID: p.TenantID, Valid: true},
 			PublicID:     publicID,
 			Email:        email,
-			PasswordHash: passwordHash,
+			PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 			Name:         strings.TrimSpace(p.Name),
 		})
 	})

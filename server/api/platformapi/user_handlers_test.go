@@ -309,9 +309,11 @@ func TestDeleteEndUser(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserByID)).
 		WithArgs(endUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
 	expectOperatorAuditLogInsert(mock)
 

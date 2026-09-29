@@ -228,7 +228,7 @@ func seedEndUser(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, pub
 		TenantID:     uuid.NullUUID{UUID: tenantID, Valid: true},
 		PublicID:     publicID,
 		Email:        email,
-		PasswordHash: passwordHash,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 		Name:         name,
 	})
 	if err != nil {

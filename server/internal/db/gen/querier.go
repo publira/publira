@@ -268,6 +268,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
+	CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error)
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
@@ -328,6 +329,7 @@ type Querier interface {
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteUserIdentityForUser(ctx context.Context, arg DeleteUserIdentityForUserParams) (UserIdentity, error)
 	DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
@@ -654,6 +656,9 @@ type Querier interface {
 	// external checkout, which is what the column's default says.
 	GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error)
 	GetTenantAppStoreConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantAppStoreConfig, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as Apple
+	// sign-in disabled.
+	GetTenantAppleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantAppleSignInConfig, error)
 	// Return the first tenant that matches, keeping the order of the candidate
 	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -666,6 +671,9 @@ type Querier interface {
 	// whole "mobile push is disabled" state.
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
 	GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantGooglePlayConfig, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as Google
+	// sign-in disabled.
+	GetTenantGoogleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantGoogleSignInConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// The pages a tenant names as its terms of service and its privacy policy. A
 	// page is published when any translation of it is, as the storefront serves it
@@ -694,6 +702,8 @@ type Querier interface {
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
+	GetUserIdentityByProviderSubject(ctx context.Context, arg GetUserIdentityByProviderSubjectParams) (UserIdentity, error)
+	GetUserIdentityForUser(ctx context.Context, arg GetUserIdentityForUserParams) (UserIdentity, error)
 	// Admin MFA. Every statement is keyed by user_id alone: the row-level
 	// security policies on both tables already confine them to the tenant the
 	// connection is scoped to.
@@ -1727,6 +1737,7 @@ type Querier interface {
 	// longer visible, or that the calling surface may not show, disappear from
 	// this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
+	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow, error)
@@ -2160,9 +2171,22 @@ type Querier interface {
 	// comes back as no rows, which the caller reports as a refusal rather than as
 	// a missing account.
 	SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error)
+	// Stores the refresh token an authorization code was exchanged for. No row is
+	// updated when the link went away while the code was being exchanged, or holds
+	// a token already, and the caller revokes the one it got instead.
+	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
+	// Records a nonce as spent until the token it came with expires. No row is
+	// inserted when the nonce was spent already, which is a replay. The tenant's
+	// expired nonces are dropped in the same statement, so the table holds only
+	// what can still be replayed.
+	SpendSignInNonce(ctx context.Context, arg SpendSignInNonceParams) (int64, error)
 	// Suspends a reader and invalidates the sessions they hold. A reader who is
 	// already suspended is no rows, like a staff account and another tenant's.
 	SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error)
+	// Confirms an address nobody had confirmed on the strength of a provider's
+	// verified claim to it. The password goes: whoever set it never proved the
+	// address was theirs, and could otherwise sign in beside its owner.
+	TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -2279,6 +2303,7 @@ type Querier interface {
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)
+	UpsertTenantAppleSignInConfig(ctx context.Context, arg UpsertTenantAppleSignInConfigParams) (TenantAppleSignInConfig, error)
 	// The settings screen can save what the tenant has decided about commenting
 	// for a tenant whose config row does not exist yet, so both columns are
 	// written without disturbing the site copy columns UpdateTenantConfig owns.
@@ -2290,6 +2315,7 @@ type Querier interface {
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
+	UpsertTenantGoogleSignInConfig(ctx context.Context, arg UpsertTenantGoogleSignInConfigParams) (TenantGoogleSignInConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 	// written together because the console offers them as one card.
 	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)

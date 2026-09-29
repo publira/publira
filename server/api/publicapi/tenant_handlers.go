@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -105,6 +106,24 @@ func (s *apiServer) GetTenant(
 		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
+	// Failed rather than answered without providers, which web-host would cache
+	// as a tenant whose readers cannot sign in with them.
+	signIn, err := signin.NewSettings(queries, s.encryptor).Get(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to read the tenant sign-in settings", err, "tenant_id", tenant.ID.String())
+	}
+	var appleSignIn *publirav1.TenantAppleSignIn
+	if signIn.Apple.Ready {
+		appleSignIn = &publirav1.TenantAppleSignIn{ServicesId: signIn.Apple.ServicesID}
+	}
+	var googleSignIn *publirav1.TenantGoogleSignIn
+	if signIn.Google.Ready {
+		googleSignIn = &publirav1.TenantGoogleSignIn{
+			WebClientId: signIn.Google.WebClientID,
+			IosClientId: signIn.Google.IOSClientID,
+		}
+	}
+
 	return connect.NewResponse(&publirav1.GetTenantResponse{
 		TenantPublicId:            tenant.PublicID,
 		TenantName:                tenant.Name,
@@ -124,6 +143,8 @@ func (s *apiServer) GetTenant(
 		AppPurchaseRoute:          appPurchaseRoute,
 		AcceptsAppStorePayments:   acceptsAppStorePayments,
 		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
+		AppleSignIn:               appleSignIn,
+		GoogleSignIn:              googleSignIn,
 	}), nil
 }
 

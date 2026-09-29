@@ -647,6 +647,22 @@ SET password_hash = $2
 WHERE id = $1
 RETURNING *;
 
+-- name: TakeOverUnverifiedUserByID :one
+-- Confirms an address nobody had confirmed on the strength of a provider's
+-- verified claim to it. The password goes: whoever set it never proved the
+-- address was theirs, and could otherwise sign in beside its owner.
+UPDATE users
+SET password_hash = NULL,
+    email_verified_at = NOW(),
+    status = CASE
+        WHEN status = 'inactive' THEN 'active'
+        ELSE status
+    END,
+    credentials_version = credentials_version + 1
+WHERE id = sqlc.arg('id')
+    AND email_verified_at IS NULL
+RETURNING *;
+
 -- name: DeleteUserByID :exec
 -- Hard delete. Related rows go with the user wherever the foreign key cascades.
 DELETE FROM users

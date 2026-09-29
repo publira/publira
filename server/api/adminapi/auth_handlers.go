@@ -156,7 +156,7 @@ func (s *adminServer) Login(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get user for login", err, "tenant_id", tenant.ID.String())
 	}
-	if !auth.VerifyPassword(req.Msg.Password, user.PasswordHash) {
+	if !auth.VerifyUserPassword(req.Msg.Password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
@@ -311,7 +311,7 @@ func (s *adminServer) ConfirmPasswordReset(
 
 	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
-		PasswordHash: passwordHash,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -512,7 +512,7 @@ func (s *adminServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
 	}
-	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
+	if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}

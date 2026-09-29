@@ -180,6 +180,14 @@ var publicDataTables = []struct {
 	// The page versions a reader agreed to at sign-up, which the storefront's
 	// connection is what records.
 	{name: "user_page_consents", count: "SELECT count(*) FROM user_page_consents"},
+	// How a tenant's readers sign in with Apple and Google, the provider
+	// accounts linked to them, and the nonces their sign-ins spent, which the
+	// storefront's connection reads and writes. The Apple row carries the
+	// tenant's key and a link carries the reader's refresh token.
+	{name: "tenant_apple_sign_in_config", count: "SELECT count(*) FROM tenant_apple_sign_in_config"},
+	{name: "tenant_google_sign_in_config", count: "SELECT count(*) FROM tenant_google_sign_in_config"},
+	{name: "user_identities", count: "SELECT count(*) FROM user_identities"},
+	{name: "sign_in_nonces", count: "SELECT count(*) FROM sign_in_nonces"},
 	// The tenant's own notices and one reader's state over them. The inbox is
 	// answered on the storefront's connection, so a missing policy here would
 	// put one tenant's notices — and one reader's read state — in another's.
@@ -323,6 +331,10 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("comment report", "INSERT INTO episode_comment_reports (id, tenant_id, comment_id, reporter_user_id, reason) VALUES ($1, $2, $3, $4, 'spam')", uuid.Must(uuid.NewV7()), first.ID, commentID, member.ID)
 	privacy := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 	seed("page consent", "INSERT INTO user_page_consents (tenant_id, user_id, page_version_id) VALUES ($1, $2, $3)", first.ID, member.ID, privacy.VersionID)
+	seed("apple sign-in", "INSERT INTO tenant_apple_sign_in_config (tenant_id, services_id) VALUES ($1, 'com.example.tenant-a.web')", first.ID)
+	seed("google sign-in", "INSERT INTO tenant_google_sign_in_config (tenant_id, web_client_id) VALUES ($1, '123-abc.apps.googleusercontent.com')", first.ID)
+	seed("linked identity", "INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link, refresh_token_encrypted, refresh_token_client_id) VALUES ($1, $2, $3, 'apple', 'apple-subject', 'member@tenant-a.example.com', 'enc:probe', 'com.example.tenant-a.web')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
+	seed("sign-in nonce", "INSERT INTO sign_in_nonces (tenant_id, nonce_hash, expires_at) VALUES ($1, 'nonce-hash', NOW() + INTERVAL '1 hour')", first.ID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
 	announcementID := insertAnnouncement(t, env, first.ID, "/series/SERIESA00001", "Tenant A Announcement")
 	seed("announcement read", "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID)

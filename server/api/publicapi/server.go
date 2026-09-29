@@ -26,6 +26,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
 	"github.com/publira/publira/server/internal/webpushsettings"
@@ -54,6 +55,8 @@ type apiServer struct {
 	stores storeClients
 	// search finds the hits of the catalog searches.
 	search catalogsearch.Backend
+	// idTokens verifies the ID tokens readers sign in with Apple and Google.
+	idTokens idTokenVerifier
 }
 
 type webPushPublicKeySource interface {
@@ -231,6 +234,7 @@ func newAPIServer(
 		paymentProviders: providers.Registry(),
 		stores:           defaultStoreClients(),
 		search:           search,
+		idTokens:         signin.NewVerifier(signin.VerifierConfig{}),
 	}
 }
 

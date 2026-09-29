@@ -75,6 +75,12 @@ const (
 	// TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantMobileAppAssociation RPC.
 	TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantMobileAppAssociation"
+	// TenantSettingsServiceGetTenantSignInSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantSignInSettings RPC.
+	TenantSettingsServiceGetTenantSignInSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantSignInSettings"
+	// TenantSettingsServiceUpdateTenantSignInSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantSignInSettings RPC.
+	TenantSettingsServiceUpdateTenantSignInSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantSignInSettings"
 	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's GetTenantRetentionSettings RPC.
 	TenantSettingsServiceGetTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantRetentionSettings"
@@ -105,6 +111,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
 	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -206,6 +214,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantSignInSettings: connect.NewClient[v1.GetTenantSignInSettingsRequest, v1.GetTenantSignInSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantSignInSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantSignInSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantSignInSettings: connect.NewClient[v1.UpdateTenantSignInSettingsRequest, v1.UpdateTenantSignInSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantSignInSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantSignInSettings")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantRetentionSettings: connect.NewClient[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse](
 			httpClient,
 			baseURL+TenantSettingsServiceGetTenantRetentionSettingsProcedure,
@@ -249,6 +269,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantLegalPages             *connect.Client[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse]
 	getTenantMobileAppAssociation      *connect.Client[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse]
 	updateTenantMobileAppAssociation   *connect.Client[v1.UpdateTenantMobileAppAssociationRequest, v1.UpdateTenantMobileAppAssociationResponse]
+	getTenantSignInSettings            *connect.Client[v1.GetTenantSignInSettingsRequest, v1.GetTenantSignInSettingsResponse]
+	updateTenantSignInSettings         *connect.Client[v1.UpdateTenantSignInSettingsRequest, v1.UpdateTenantSignInSettingsResponse]
 	getTenantRetentionSettings         *connect.Client[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse]
 	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
 	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
@@ -330,6 +352,17 @@ func (c *tenantSettingsServiceClient) UpdateTenantMobileAppAssociation(ctx conte
 	return c.updateTenantMobileAppAssociation.CallUnary(ctx, req)
 }
 
+// GetTenantSignInSettings calls publira.admin.v1.TenantSettingsService.GetTenantSignInSettings.
+func (c *tenantSettingsServiceClient) GetTenantSignInSettings(ctx context.Context, req *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error) {
+	return c.getTenantSignInSettings.CallUnary(ctx, req)
+}
+
+// UpdateTenantSignInSettings calls
+// publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings.
+func (c *tenantSettingsServiceClient) UpdateTenantSignInSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error) {
+	return c.updateTenantSignInSettings.CallUnary(ctx, req)
+}
+
 // GetTenantRetentionSettings calls
 // publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings.
 func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
@@ -371,6 +404,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
 	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -468,6 +503,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantSignInSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantSignInSettingsProcedure,
+		svc.GetTenantSignInSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantSignInSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantSignInSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantSignInSettingsProcedure,
+		svc.UpdateTenantSignInSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantSignInSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantSettingsServiceGetTenantRetentionSettingsHandler := connect.NewUnaryHandler(
 		TenantSettingsServiceGetTenantRetentionSettingsProcedure,
 		svc.GetTenantRetentionSettings,
@@ -522,6 +569,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantMobileAppAssociationHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure:
 			tenantSettingsServiceUpdateTenantMobileAppAssociationHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantSignInSettingsProcedure:
+			tenantSettingsServiceGetTenantSignInSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantSignInSettingsProcedure:
+			tenantSettingsServiceUpdateTenantSignInSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceGetTenantRetentionSettingsProcedure:
 			tenantSettingsServiceGetTenantRetentionSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantRetentionSettingsProcedure:
@@ -593,6 +644,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantMobileAppAssociation(c
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantSignInSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings is not implemented"))
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {

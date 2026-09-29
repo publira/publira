@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/tickerjobs"
@@ -188,6 +189,7 @@ func runWorker() int {
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
+		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		invalidator))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
@@ -232,6 +234,7 @@ func workerConfig(
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
 	episodePublishedHandlers outbox.EpisodePublishedNotificationHandlerConfig,
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
+	appleSignInHandlers outbox.AppleSignInHandlerConfig,
 	invalidator outbox.CacheInvalidator,
 ) outbox.Config {
 	emailHandlers.Logger = logger
@@ -263,6 +266,9 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	googlePlayHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
+	appleSignInHandlers.Logger = logger
+	handlers.Register(outbox.EventTypeAppleSignInCodeExchange, outbox.NewAppleSignInCodeExchangeHandler(appleSignInHandlers))
+	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

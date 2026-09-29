@@ -803,6 +803,12 @@ type SeriesTag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SignInNonce struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	NonceHash string    `json:"nonce_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 type SitemapEntry struct {
 	TenantID       uuid.UUID    `json:"tenant_id"`
 	Surface        string       `json:"surface"`
@@ -870,6 +876,18 @@ type TenantAppStoreConfig struct {
 	UpdatedAt           time.Time      `json:"updated_at"`
 }
 
+type TenantAppleSignInConfig struct {
+	TenantID            uuid.UUID      `json:"tenant_id"`
+	Enabled             bool           `json:"enabled"`
+	ServicesID          sql.NullString `json:"services_id"`
+	TeamID              sql.NullString `json:"team_id"`
+	KeyID               sql.NullString `json:"key_id"`
+	PrivateKeyEncrypted sql.NullString `json:"private_key_encrypted"`
+	PrivateKeyHint      sql.NullString `json:"private_key_hint"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
 type TenantCommunityLimitOverride struct {
 	TenantID                             uuid.UUID     `json:"tenant_id"`
 	CommentPostLimitPerMinute            sql.NullInt32 `json:"comment_post_limit_per_minute"`
@@ -930,6 +948,15 @@ type TenantGooglePlayConfig struct {
 	ServiceAccountKeyHint      sql.NullString `json:"service_account_key_hint"`
 	CreatedAt                  time.Time      `json:"created_at"`
 	UpdatedAt                  time.Time      `json:"updated_at"`
+}
+
+type TenantGoogleSignInConfig struct {
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	Enabled     bool           `json:"enabled"`
+	WebClientID sql.NullString `json:"web_client_id"`
+	IosClientID sql.NullString `json:"ios_client_id"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
 type TenantImage struct {
@@ -1065,17 +1092,17 @@ type UnappliedStoreRefund struct {
 }
 
 type User struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Email              string        `json:"email"`
-	PasswordHash       string        `json:"password_hash"`
-	Name               string        `json:"name"`
-	CreatedAt          time.Time     `json:"created_at"`
-	Status             string        `json:"status"`
-	TenantID           uuid.NullUUID `json:"tenant_id"`
-	EmailVerifiedAt    sql.NullTime  `json:"email_verified_at"`
-	CredentialsVersion int32         `json:"credentials_version"`
-	BirthDate          sql.NullTime  `json:"birth_date"`
+	ID                 uuid.UUID      `json:"id"`
+	PublicID           string         `json:"public_id"`
+	Email              string         `json:"email"`
+	PasswordHash       sql.NullString `json:"password_hash"`
+	Name               string         `json:"name"`
+	CreatedAt          time.Time      `json:"created_at"`
+	Status             string         `json:"status"`
+	TenantID           uuid.NullUUID  `json:"tenant_id"`
+	EmailVerifiedAt    sql.NullTime   `json:"email_verified_at"`
+	CredentialsVersion int32          `json:"credentials_version"`
+	BirthDate          sql.NullTime   `json:"birth_date"`
 }
 
 type UserEmailChangeToken struct {
@@ -1101,6 +1128,18 @@ type UserEmailVerificationToken struct {
 	ExpiresAt time.Time    `json:"expires_at"`
 	UsedAt    sql.NullTime `json:"used_at"`
 	CreatedAt time.Time    `json:"created_at"`
+}
+
+type UserIdentity struct {
+	ID                    uuid.UUID      `json:"id"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	UserID                uuid.UUID      `json:"user_id"`
+	Provider              string         `json:"provider"`
+	Subject               string         `json:"subject"`
+	EmailAtLink           string         `json:"email_at_link"`
+	RefreshTokenEncrypted sql.NullString `json:"refresh_token_encrypted"`
+	RefreshTokenClientID  sql.NullString `json:"refresh_token_client_id"`
+	CreatedAt             time.Time      `json:"created_at"`
 }
 
 type UserMfaRecoveryCode struct {

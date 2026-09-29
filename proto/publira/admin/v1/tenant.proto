@@ -4,6 +4,7 @@ package publira.admin.v1;
 
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
 
+import "publira/admin/v1/email.proto";
 import "publira/types/v1/types.proto";
 import "publira/platform/v1/policy.proto";
 
@@ -217,6 +218,90 @@ message UpdateTenantMobileAppAssociationResponse {
   TenantMobileAppAssociation association = 1;
 }
 
+// Non-secret view of how readers sign in with Apple. The .p8 private key never
+// appears here.
+message TenantAppleSignInSettings {
+  bool enabled = 1;
+  // The Services ID the storefront signs in with. Empty where only the iOS
+  // app signs in with Apple.
+  string services_id = 2;
+  // The team and the ID of the Sign in with Apple key, which the server signs
+  // its client secret with. Not secret, and answered as stored.
+  string team_id = 3;
+  string key_id = 4;
+  bool private_key_configured = 5;
+  // Display hint derived at write time. Empty when no key is stored.
+  string private_key_hint = 6;
+  // The bundle identifier the iOS app signs in with, which the tenant's iOS
+  // app association names. Empty where it names none, and edited there, not
+  // here.
+  string bundle_identifier = 7;
+  // True when enabled, the key is stored, and services_id or
+  // bundle_identifier is not empty.
+  bool ready = 8;
+}
+
+// How readers sign in with Google. Every field is public: verifying an ID
+// token needs no secret.
+message TenantGoogleSignInSettings {
+  bool enabled = 1;
+  // The OAuth client ID of the web application, which the storefront and the
+  // Android app sign in with.
+  string web_client_id = 2;
+  // The OAuth client ID of the iOS app.
+  string ios_client_id = 3;
+  // True when enabled and a client ID is stored.
+  bool ready = 4;
+}
+
+message TenantSignInSettings {
+  TenantAppleSignInSettings apple = 1;
+  TenantGoogleSignInSettings google = 2;
+}
+
+message GetTenantSignInSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantSignInSettingsResponse {
+  TenantSignInSettings settings = 1;
+}
+
+message AppleSignInSettingsUpdate {
+  bool enabled = 1;
+  // A Services ID in reverse-domain form. An empty value clears it.
+  string services_id = 2;
+  // Ten capital letters and digits each. Both are required while enabled; an
+  // empty value clears one.
+  string team_id = 3;
+  string key_id = 4;
+  SecretUpdateMode private_key_update_mode = 5;
+  // The contents of the .p8 file the Apple Developer account issued for Sign
+  // in with Apple, a PKCS #8 EC private key in PEM form.
+  string private_key = 6;
+}
+
+message GoogleSignInSettingsUpdate {
+  bool enabled = 1;
+  // Client IDs ending in .apps.googleusercontent.com. One of them is required
+  // while enabled; an empty value clears one.
+  string web_client_id = 2;
+  string ios_client_id = 3;
+}
+
+message UpdateTenantSignInSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both providers are written, and an absent one is written disabled with its
+  // key left as it is. A malformed value, and an enabled provider missing what
+  // it needs, is invalid_argument.
+  AppleSignInSettingsUpdate apple = 2;
+  GoogleSignInSettingsUpdate google = 3;
+}
+
+message UpdateTenantSignInSettingsResponse {
+  TenantSignInSettings settings = 1;
+}
+
 // A tenant's own retention periods, in whole days. An absent field follows the
 // platform default; a present one is from 1 to 36500, and may be longer or
 // shorter than that default.
@@ -309,6 +394,8 @@ service TenantSettingsService {
   rpc UpdateTenantLegalPages(UpdateTenantLegalPagesRequest) returns (UpdateTenantLegalPagesResponse) {}
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
   rpc UpdateTenantMobileAppAssociation(UpdateTenantMobileAppAssociationRequest) returns (UpdateTenantMobileAppAssociationResponse) {}
+  rpc GetTenantSignInSettings(GetTenantSignInSettingsRequest) returns (GetTenantSignInSettingsResponse) {}
+  rpc UpdateTenantSignInSettings(UpdateTenantSignInSettingsRequest) returns (UpdateTenantSignInSettingsResponse) {}
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
