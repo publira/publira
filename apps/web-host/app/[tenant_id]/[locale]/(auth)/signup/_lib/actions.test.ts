@@ -112,6 +112,25 @@ describe("signupAction", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
   });
 
+  it("checks the versions against the pages in the locale the form was submitted in", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-ja-v1"]);
+    mockSignupPublic.mockResolvedValueOnce(true);
+    const data = formData({
+      ...validSignupFields,
+      consent: "on",
+      locale: "ja",
+    });
+    data.append("agreedPageVersionIds", "terms-ja-v1");
+
+    const { signupAction } = await import("./actions");
+    await signupAction({ message: "", ok: false }, data);
+
+    expect(mockReadConsentPageVersionIds).toHaveBeenCalledWith(tenantId, "ja");
+    expect(mockSignupPublic).toHaveBeenCalledWith(
+      expect.objectContaining({ agreedPageVersionIds: ["terms-ja-v1"] })
+    );
+  });
+
   it("asks for consent again when a page was republished after the form rendered", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce([
       "terms-v2",

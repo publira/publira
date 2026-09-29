@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
 import {
+  SIGNUP_CONSENT_JA_TERMS_PAGE,
   SIGNUP_CONSENT_PRIVACY_PAGE,
   SIGNUP_CONSENT_READER,
   SIGNUP_CONSENT_SCENARIO,
@@ -13,6 +14,7 @@ import {
 } from "../src/scenarios/signup-consent";
 import {
   hostPath,
+  localeHostPath,
   WEB_HOST_BASE_URL,
   WEB_HOST_SIGNUP_CONSENT_BASE_URL,
   WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL,
@@ -164,6 +166,49 @@ test.describe("web-host sign-up consent", () => {
     expect(agreedVersionIds()).toEqual([
       SIGNUP_CONSENT_TERMS_PAGE.versionId,
       SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+    ]);
+  });
+
+  test("a reader in another locale agrees to each page in the translation the form links to", async ({
+    page,
+  }) => {
+    // Starts from the scenario rather than the account an earlier test opened.
+    applyScenarioSql(SIGNUP_CONSENT_SCENARIO);
+    await page.goto(
+      `${WEB_HOST_SIGNUP_CONSENT_BASE_URL}${localeHostPath("ja", "/signup")}`
+    );
+
+    await expect(
+      page.getByRole("link", { name: SIGNUP_CONSENT_JA_TERMS_PAGE.title })
+    ).toHaveAttribute(
+      "href",
+      localeHostPath("ja", SIGNUP_CONSENT_TERMS_PAGE.path)
+    );
+    await expect(
+      page.getByRole("link", { name: SIGNUP_CONSENT_PRIVACY_PAGE.title })
+    ).toHaveAttribute(
+      "href",
+      localeHostPath("ja", SIGNUP_CONSENT_PRIVACY_PAGE.path)
+    );
+
+    await page.getByLabel("お名前").fill(SIGNUP_CONSENT_READER.name);
+    await page.getByLabel("メールアドレス").fill(SIGNUP_CONSENT_READER.email);
+    await page
+      .getByLabel("パスワード", { exact: true })
+      .fill(SIGNUP_CONSENT_READER.password);
+    await page
+      .getByLabel("パスワード（確認）")
+      .fill(SIGNUP_CONSENT_READER.password);
+    await page
+      .getByRole("checkbox", { name: "以下の内容を読み、同意します。" })
+      .check();
+    await page.getByRole("button", { name: "新規登録" }).click();
+
+    await expect(page).toHaveURL(/\/ja\/signup\/pending$/u);
+    await expect.poll(() => accountCount()).toBe("1");
+    expect(agreedVersionIds()).toEqual([
+      SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+      SIGNUP_CONSENT_JA_TERMS_PAGE.versionId,
     ]);
   });
 

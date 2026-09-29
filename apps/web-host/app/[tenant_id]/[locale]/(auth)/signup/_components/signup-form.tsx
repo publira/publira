@@ -21,6 +21,7 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import {
   consentPages,
   getTenantAgeVerification,
@@ -100,8 +101,8 @@ const LegalPageLink = ({ page }: { page: TenantLegalPage }) => (
  * while the form was open is agreed to anew rather than carried over.
  */
 const ConsentField = async () => {
-  const tenantId = await getTenantId();
-  const pages = consentPages(await getTenantLegalPages(tenantId));
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const pages = consentPages(await getTenantLegalPages(tenantId, locale));
   if (pages.length === 0) {
     return null;
   }
