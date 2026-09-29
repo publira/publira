@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 
 import {
   VIEWER_EPISODE_PATH,
-  VIEWER_PAGE_COUNT,
   VIEWER_PROGRESS_LABEL,
+  showsLastPage,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
 import { hostPath } from "../src/urls";
@@ -137,7 +137,7 @@ const installViewerMetrics = (progressLabel: string) => {
   const readProgress = (): string =>
     document
       .querySelector(`[aria-label="${progressLabel}"]`)
-      ?.getAttribute("value") ?? "";
+      ?.getAttribute("aria-valuetext") ?? "";
 
   const isDrawn = (label: string): boolean =>
     [...document.querySelectorAll(DRAWN_SELECTOR)].some(
@@ -295,8 +295,8 @@ test.describe("web-host viewer rendering performance", () => {
     }
 
     await expect(page.getByLabel(VIEWER_PROGRESS_LABEL)).toHaveAttribute(
-      "max",
-      String(VIEWER_PAGE_COUNT)
+      "aria-valuetext",
+      showsLastPage(3)
     );
     expect(measured.layoutShiftSupported, "layout-shift is observable").toBe(
       true

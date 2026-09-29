@@ -2,12 +2,24 @@
 
 import { useViewerContext } from "@publira/comic-viewer";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { act } from "react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { EpisodeDetail } from "#lib/catalog";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
+import { READING_POSITION_SAVE_DELAY_MS } from "../_lib/reading-position";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
+import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
+import { EpisodeReadRecorder } from "./episode-read-recorder";
+import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+
+const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 
 vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
@@ -25,6 +37,9 @@ vi.mock("next/link", () => ({
 afterEach(() => {
   cleanup();
   window.sessionStorage.clear();
+  mockPush.mockReset();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const pages = [
@@ -80,7 +95,7 @@ const wideViewerMarker = (container: HTMLElement) =>
 
 /** Press the viewer the way a keyboard does, which shows or hides its controls. */
 const pressViewer = () => {
-  fireEvent.keyDown(screen.getByRole("button", { name: /Page 1/u }), {
+  fireEvent.keyDown(screen.getByRole("button", { name: /^Page \d/u }), {
     key: "Enter",
   });
 };
@@ -198,5 +213,227 @@ describe("EpisodeComicViewer wide viewer", () => {
     );
 
     expect(wideViewerMarker(container)).not.toBeNull();
+  });
+});
+
+const episode: EpisodeDetail = {
+  credits: [],
+  id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  orderIndex: 1,
+  price: 0,
+  publicId: "EPISODE_001",
+  publishedAt: "2026-08-01T00:00:00Z",
+  purchaseSurface: "all",
+  ratingCount: 0,
+  readingDirection: "rtl",
+  readingPeriodHours: 0,
+  scheduledAt: "",
+  spreadStartIndex: 1,
+  status: "published",
+  title: "First light",
+};
+
+const CurrentIndexProbe = () => {
+  const { currentIndex } = useViewerContext();
+
+  return <p>{`current:${currentIndex}`}</p>;
+};
+
+const progressSlider = () =>
+  screen.getByRole("slider", { name: "Reading progress" });
+
+/** The page status under the slider, which names the spread it points at. */
+const pageStatus = () => screen.getByText(/^Pages? /u);
+
+/** The reader rests where they are for longer than the save delay. */
+const settle = () =>
+  act(() => vi.advanceTimersByTimeAsync(READING_POSITION_SAVE_DELAY_MS));
+
+/** Grab the thumb and move it to `positions` in turn, without letting go. */
+const dragThumb = (...positions: number[]) => {
+  const slider = progressSlider();
+  fireEvent.pointerDown(slider);
+  for (const position of positions) {
+    fireEvent.change(slider, { target: { value: String(position) } });
+  }
+};
+
+const releaseThumb = () => {
+  fireEvent.pointerUp(window);
+};
+
+describe("EpisodeComicViewer progress slider", () => {
+  it("counts every page of the episode and the end page after it", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        endPage={<p>Leave a comment</p>}
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+    pressViewer();
+
+    const slider = progressSlider();
+    expect(slider.getAttribute("min")).toBe("0");
+    expect(slider.getAttribute("max")).toBe(String(pages.length));
+    expect(pageStatus().textContent).toBe("Page 1 of 4");
+  });
+
+  it("shows the page under the thumb while dragging and turns to it on release", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <CurrentIndexProbe />
+      </EpisodeComicViewer>
+    );
+    pressViewer();
+
+    dragThumb(1.4, 2.6);
+
+    expect(pageStatus().textContent).toBe("Page 4 of 4");
+    expect(
+      screen.getByText("current:0"),
+      "the reader has not left the page they were on mid-drag"
+    ).toBeDefined();
+
+    releaseThumb();
+
+    expect(screen.getByText("current:3")).toBeDefined();
+    expect(pageStatus().textContent).toBe("Page 4 of 4");
+  });
+
+  it("saves the page the reader lets go on, once, and nothing the thumb passed over", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 204 }))
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    // The viewer fetches the page images through the same global.
+    const savedPageIndices = () =>
+      fetchMock.mock.calls
+        .filter(([url]) => String(url).endsWith("/reading-position"))
+        .map(([, init]) => {
+          const payload: unknown = JSON.parse(String(init?.body));
+          return (payload as { pageIndex: number }).pageIndex;
+        });
+
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <EpisodeReadingPositionRecorder episode={episode} />
+      </EpisodeComicViewer>
+    );
+    await settle();
+    expect(
+      savedPageIndices(),
+      "opening the episode saves its first page"
+    ).toEqual([0]);
+
+    pressViewer();
+    dragThumb(1);
+    // Holding the thumb over a page for longer than the save delay is not
+    // settling on it.
+    await settle();
+    dragThumb(2.6);
+    await settle();
+    releaseThumb();
+    await settle();
+
+    expect(savedPageIndices()).toEqual([0, 3]);
+  });
+
+  it("finishes the episode when the reader lets go on its last page, and not before", async () => {
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 204 }))
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const readReports = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/read"));
+
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <EpisodeReadRecorder episode={episode} />
+      </EpisodeComicViewer>
+    );
+    pressViewer();
+
+    dragThumb(3);
+    expect(
+      readReports(),
+      "the last page under the thumb is not yet read"
+    ).toHaveLength(0);
+
+    releaseThumb();
+    expect(readReports()).toHaveLength(1);
+  });
+
+  it("turns one spread for a keyboard step on the focused slider", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <CurrentIndexProbe />
+      </EpisodeComicViewer>
+    );
+    pressViewer();
+
+    // jsdom has no native range behaviour, so the step an arrow key makes is
+    // delivered as the change event the browser would fire for it: one index
+    // on from where the thumb rests.
+    fireEvent.change(progressSlider(), { target: { value: "1" } });
+
+    expect(screen.getByText("current:1")).toBeDefined();
+    expect(pageStatus().textContent).toBe("Pages 2–3 of 4");
+
+    fireEvent.change(progressSlider(), { target: { value: "2" } });
+
+    expect(
+      screen.getByText("current:3"),
+      "a step onto the facing page of a spread goes on to the next spread"
+    ).toBeDefined();
+    expect(pageStatus().textContent).toBe("Page 4 of 4");
+  });
+
+  it("leaves an arrow key on the focused slider to the slider at the end of the episode", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        initialPageIndex={pages.length - 1}
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <EpisodeNeighborKeyNavigation nextHref="/series/SERIES_001/episodes/EPISODE_002" />
+      </EpisodeComicViewer>
+    );
+    pressViewer();
+
+    const slider = progressSlider();
+    slider.focus();
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+
+    expect(
+      screen.queryByText("Press the key again to open the next episode.")
+    ).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

@@ -66,12 +66,19 @@ export const viewerPageLabel = (page: number): string =>
   episodePageLabel(VIEWER_EPISODE_TITLE, page);
 
 /**
- * The accessible name of the reader's `<progress>`, from
- * `host.episode.viewer.progress`. Its `value` is the last page of the spread on
- * screen and its `max` is the page count, so the reader's own report of where
- * it is can be read without depending on the wording of the status text.
+ * The accessible name of the reader's progress slider, from
+ * `host.episode.viewer.progress`. Its `aria-valuetext` names the pages on
+ * screen and the page count, as "Pages 2-3 of 8".
  */
 export const VIEWER_PROGRESS_LABEL = "Reading progress";
+
+/** Matches a slider value text whose last page on screen is `page`. */
+export const showsLastPage = (page: number, pageCount = VIEWER_PAGE_COUNT) =>
+  new RegExp(`\\b${page} of ${pageCount}$`, "u");
+
+/** The last page a slider value text names, or `0` when it names none. */
+export const lastPageNamed = (valueText: string | null): number =>
+  Number(/(?<page>\d+) of \d+$/u.exec(valueText ?? "")?.groups?.page ?? 0);
 
 /**
  * The `episode_images` id the development seed gives one page, derived the way
