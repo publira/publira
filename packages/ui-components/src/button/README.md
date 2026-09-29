@@ -45,6 +45,8 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 
 `size` is `sm`, `md` (the default), `lg`, or `icon`.
 
+An icon-only button is `ghost`, and `outline` only when it floats over artwork or sits on a dark surface, where it needs a backing to be seen.
+
 ## Props
 
 Follows the props of Base UI Button. See the [Base UI Button documentation](https://base-ui.com/r/components/button) for details.

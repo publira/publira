@@ -250,7 +250,7 @@ const CreatorCreditRow = ({
         onClick={onRemove}
         size="icon"
         type="button"
-        variant="outline"
+        variant="ghost"
       >
         <CloseIcon aria-hidden="true" className="size-4" />
         <span className="sr-only">
