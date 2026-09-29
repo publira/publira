@@ -233,7 +233,7 @@ The call runs as a service principal of the tenant the request names, with no us
 
 - `AdminGenreService/ListGenres`
 - `AdminCreatorRoleService/ListCreatorRoles`
-- `AdminCreatorService/ListCreators`, `GetCreator`
+- `AdminCreatorService/ListCreators`
 - `AdminLabelService/ListLabels`, `GetLabel`
 - `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `GetEpisode`, `ListEpisodeCredits`
 - `AdminDashboardService/GetDashboard`

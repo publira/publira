@@ -52,7 +52,7 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	label := env.PG.SeedLabel(t, tenant.Tenant.ID, testutil.LabelSeed{Name: "Label"})
-	creator := env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Creator"})
+	env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Creator"})
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{Title: "Series", LabelID: label.ID})
 	episode := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{Title: "Episode"})
 	tenantCtx := tenant.tenantContext()
@@ -74,10 +74,6 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 		},
 		publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure: func(ctx context.Context) error {
 			_, err := creatorClient.ListCreators(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListCreatorsRequest{Tenant: tenantCtx}))
-			return err
-		},
-		publiraadminv1connect.AdminCreatorServiceGetCreatorProcedure: func(ctx context.Context) error {
-			_, err := creatorClient.GetCreator(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetCreatorRequest{Tenant: tenantCtx, PublicId: creator.PublicID}))
 			return err
 		},
 		publiraadminv1connect.AdminLabelServiceListLabelsProcedure: func(ctx context.Context) error {
@@ -130,6 +126,7 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	creator := env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Creator"})
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{Title: "Series"})
 	episode := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{Title: "Episode"})
 	tenantCtx := tenant.tenantContext()
@@ -141,6 +138,10 @@ func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 		},
 		"a read that requires the tenant admin role": func(ctx context.Context) error {
 			_, err := env.tenantSettingsClient().GetTenantTimezone(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx}))
+			return err
+		},
+		"a read whose answer depends on the caller's role": func(ctx context.Context) error {
+			_, err := publiraadminv1connect.NewAdminCreatorServiceClient(env.Server.Client(), env.Server.URL).GetCreator(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetCreatorRequest{Tenant: tenantCtx, PublicId: creator.PublicID}))
 			return err
 		},
 		"a read that signs per-user media tokens": func(ctx context.Context) error {
