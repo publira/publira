@@ -5,12 +5,12 @@ import {
   useActionFormState,
 } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import { FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
 } from "#lib/email-settings-shared";
@@ -57,13 +57,13 @@ const useSmtpPassword = () => {
 /**
  * The SMTP password, which never reaches the browser once stored: it is shown
  * masked until the operator asks to change it, and a save that stores one puts
- * it back behind that mask. With none stored the box may be left empty, for a
+ * it back behind that mask. An open box left empty stores no password, for a
  * relay that takes no credentials.
  *
  * ```tsx
  * <SmtpPassword hasStoredPassword={…}>
  *   <Field>
- *     <SmtpPasswordLabel>…</SmtpPasswordLabel>
+ *     <FieldLabel>…</FieldLabel>
  *     <FieldContent>
  *       <SmtpPasswordStored>{change}</SmtpPasswordStored>
  *       <SmtpPasswordEditor>{undo}</SmtpPasswordEditor>
@@ -97,32 +97,16 @@ export const SmtpPassword = ({
     }
   });
 
-  const replacesPassword = isEditing && (hasStoredPassword || hasEntry);
+  let mode = SECRET_UPDATE_MODE_UNCHANGED;
+  if (isEditing) {
+    mode = hasEntry ? SECRET_UPDATE_MODE_REPLACE : SECRET_UPDATE_MODE_CLEAR;
+  }
 
   return (
     <SmtpPasswordContext value={context}>
       {children}
-      <input
-        name="password_update_mode"
-        type="hidden"
-        value={String(
-          replacesPassword
-            ? SECRET_UPDATE_MODE_REPLACE
-            : SECRET_UPDATE_MODE_UNCHANGED
-        )}
-      />
+      <input name="password_update_mode" type="hidden" value={String(mode)} />
     </SmtpPasswordContext>
-  );
-};
-
-/** The field's label, required only while a stored password is being replaced. */
-export const SmtpPasswordLabel = ({ children }: { children: ReactNode }) => {
-  const { hasStoredPassword, isEditing } = useSmtpPassword();
-
-  return (
-    <FieldLabel required={hasStoredPassword && isEditing}>
-      {children}
-    </FieldLabel>
   );
 };
 
@@ -174,7 +158,6 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
         onChange={(event) => {
           setHasEntry(event.currentTarget.value !== "");
         }}
-        required={hasStoredPassword}
         type="password"
       />
       {hasStoredPassword ? (

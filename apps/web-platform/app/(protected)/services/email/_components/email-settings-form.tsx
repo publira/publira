@@ -42,7 +42,6 @@ import type {
 import {
   SmtpPassword,
   SmtpPasswordEditor,
-  SmtpPasswordLabel,
   SmtpPasswordStored,
   SmtpRevisionField,
 } from "./smtp-password-field";
@@ -155,11 +154,11 @@ export const EmailSettingsForm = ({
 
         <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
           <Field>
-            <SmtpPasswordLabel>
+            <FieldLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.settings.password" />
               </Suspense>
-            </SmtpPasswordLabel>
+            </FieldLabel>
             <FieldContent>
               <SmtpPasswordStored>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
