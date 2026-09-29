@@ -42,8 +42,8 @@ class ScreenCaptureNotices {
   bool claim(String episodeId) => _noticed.add(episodeId);
 }
 
-/// Looks up the [ScreenCaptureNotices] of this run, absent on the web and in a
-/// widget test not exercising it.
+/// Looks up the [ScreenCaptureNotices] of this run, absent off Android and
+/// iOS and in a widget test not exercising it.
 class ScreenCaptureScope extends InheritedWidget {
   const ScreenCaptureScope({
     super.key,

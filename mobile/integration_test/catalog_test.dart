@@ -259,10 +259,9 @@ void main() {
           ),
         );
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
-        await scrollSeriesTo(
-          tester,
-          find.text(ConnectFixtureServer.seedEpisodeTitle),
-        );
+        // The paid episode's row, below the free one: how far the list has to
+        // move to build it depends on how tall the screen is.
+        await scrollSeriesTo(tester, find.text('¥500'));
 
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
         expect(
@@ -270,6 +269,10 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('2 episodes'), findsOneWidget);
+        expect(
+          find.text(ConnectFixtureServer.seedEpisodeTitle),
+          findsOneWidget,
+        );
         expect(find.text('¥500'), findsOneWidget);
       });
     });
