@@ -1694,9 +1694,9 @@ export const getEpisodeViewer = async (
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   const sessionId = accessToken.trim();
-  // The return URL carries Stripe's opaque session ID. Including it in this
-  // private cache key makes the first post-payment reader check fresh rather
-  // than reusing the locked body cached before Checkout.
+  // The return URL carries an opaque value naming the provider's checkout.
+  // Including it in this private cache key makes the first post-payment reader
+  // check fresh rather than reusing the locked body cached before Checkout.
   void checkoutSessionId.trim();
   if (!sessionId) {
     return { ok: true, value: { access: "locked", images: [] } };

@@ -2179,6 +2179,16 @@
           "stripe": {
             "secret_key": "シークレットキー",
             "webhook_secret": "Webhook署名シークレット"
+          },
+          "payjp": {
+            "secret_key": "シークレットキー",
+            "webhook_token": "Webhookトークン"
+          }
+        },
+        "field_sources": {
+          "payjp": {
+            "secret_key": "PAY.JP管理画面のAPI設定ページにあるシークレットキー（sk_live_…またはsk_test_…）です。テスト用のキーではテスト決済だけを受け付けます。",
+            "webhook_token": "PAY.JP管理画面のアカウント設定に表示されるWebhookトークン（whook_…）です。"
           }
         },
         "secret_change": "変更する",
@@ -2191,6 +2201,7 @@
         "webhook_url": "Webhook URL",
         "webhook_url_description": "{$provider}に、決済の通知の送信先としてこのURLを登録してください。",
         "webhook_url_legacy_description": "以前に登録した /api/v1/webhook/stripeのエンドポイントも引き続き動きますが、このURLは非推奨で、今後のリリースで削除されます。上のURLに置き換えてください。",
+        "webhook_url_payjp_description": "PAY.JPはすべての通知に上で保存したWebhookトークンを付けて送ります。トークンが付いていない通知は受け付けません。",
         "saved": "決済設定を保存しました。",
         "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",
         "save_failed": "決済設定の保存に失敗しました。時間をおいて再試行してください。",

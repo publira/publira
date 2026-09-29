@@ -2179,6 +2179,16 @@
           "stripe": {
             "secret_key": "密钥",
             "webhook_secret": "Webhook签名密钥"
+          },
+          "payjp": {
+            "secret_key": "密钥",
+            "webhook_token": "Webhook令牌"
+          }
+        },
+        "field_sources": {
+          "payjp": {
+            "secret_key": "PAY.JP管理后台API设置页面中的密钥（sk_live_…或sk_test_…）。测试密钥只能接受测试付款。",
+            "webhook_token": "PAY.JP管理后台账户设置中显示的Webhook令牌（whook_…）。"
           }
         },
         "secret_change": "变更",
@@ -2191,6 +2201,7 @@
         "webhook_url": "Webhook URL",
         "webhook_url_description": "请在{$provider}中将此URL登记为支付通知的接收地址。",
         "webhook_url_legacy_description": "之前登记的 /api/v1/webhook/stripe端点仍可使用，但该URL已弃用，将在后续版本中删除。请替换为上方的URL。",
+        "webhook_url_payjp_description": "PAY.JP发送的每条通知都会附带上方保存的Webhook令牌，未附带该令牌的通知将被拒绝。",
         "saved": "支付设置已保存。",
         "load_failed": "无法加载支付设置。请稍后再试。",
         "save_failed": "无法保存支付设置。请稍后再试。",

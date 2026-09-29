@@ -2179,6 +2179,16 @@
           "stripe": {
             "secret_key": "Secret key",
             "webhook_secret": "Webhook signing secret"
+          },
+          "payjp": {
+            "secret_key": "Secret key",
+            "webhook_token": "Webhook token"
+          }
+        },
+        "field_sources": {
+          "payjp": {
+            "secret_key": "The secret key (sk_live_… or sk_test_…) on the API settings page of the PAY.JP dashboard. A test key takes test payments only.",
+            "webhook_token": "The webhook token (whook_…) shown in the account settings of the PAY.JP dashboard."
           }
         },
         "secret_change": "Change",
@@ -2191,6 +2201,7 @@
         "webhook_url": "Webhook URL",
         "webhook_url_description": "Register this URL with {$provider} as where it sends payment notifications.",
         "webhook_url_legacy_description": "An endpoint registered earlier at /api/v1/webhook/stripe still works, but that URL is deprecated and will be removed in a later release. Replace it with the URL above.",
+        "webhook_url_payjp_description": "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused.",
         "saved": "The payment settings were saved.",
         "load_failed": "Could not load the payment settings. Please try again later.",
         "save_failed": "Could not save the payment settings. Please try again later.",

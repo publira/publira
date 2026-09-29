@@ -2179,6 +2179,16 @@
           "stripe": {
             "secret_key": "시크릿 키",
             "webhook_secret": "웹훅 서명 시크릿"
+          },
+          "payjp": {
+            "secret_key": "시크릿 키",
+            "webhook_token": "웹훅 토큰"
+          }
+        },
+        "field_sources": {
+          "payjp": {
+            "secret_key": "PAY.JP 관리 화면의 API 설정 페이지에 있는 시크릿 키(sk_live_… 또는 sk_test_…)입니다. 테스트 키로는 테스트 결제만 받을 수 있습니다.",
+            "webhook_token": "PAY.JP 관리 화면의 계정 설정에 표시되는 웹훅 토큰(whook_…)입니다."
           }
         },
         "secret_change": "변경",
@@ -2191,6 +2201,7 @@
         "webhook_url": "웹훅 URL",
         "webhook_url_description": "{$provider}에 결제 알림을 보낼 곳으로 이 URL을 등록해 주세요.",
         "webhook_url_legacy_description": "이전에 등록한 /api/v1/webhook/stripe 엔드포인트도 계속 작동하지만, 이 URL은 더 이상 권장되지 않으며 이후 릴리스에서 삭제됩니다. 위의 URL로 바꿔 주세요.",
+        "webhook_url_payjp_description": "PAY.JP는 모든 알림에 위에 저장한 웹훅 토큰을 붙여 보냅니다. 토큰이 붙어 있지 않은 알림은 받지 않습니다.",
         "saved": "결제 설정을 저장했습니다.",
         "load_failed": "결제 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "save_failed": "결제 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",

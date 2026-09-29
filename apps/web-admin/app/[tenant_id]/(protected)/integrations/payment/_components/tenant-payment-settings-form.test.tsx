@@ -60,6 +60,16 @@ const stripe: PaymentProvider = {
   webhookPath: "/api/v1/webhook/payment/stripe",
 };
 
+const payjp: PaymentProvider = {
+  displayName: "PAY.JP",
+  fields: [
+    { name: "secret_key", public: false, required: true, secret: true },
+    { name: "webhook_token", public: false, required: true, secret: true },
+  ],
+  id: "payjp",
+  webhookPath: "/api/v1/webhook/payment/payjp",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const examplePay: PaymentProvider = {
   displayName: "Example Pay",
@@ -192,6 +202,48 @@ describe("TenantPaymentSettingsForm", () => {
       "password"
     );
     expect(screen.queryByLabelText("Webhook signing secret")).toBeNull();
+  });
+
+  it("names PAY.JP's fields and tells where each comes from and where the webhook goes", () => {
+    render(
+      <TenantPaymentSettingsForm
+        providers={[payjp, stripe]}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{
+          ...emptyTenantPaymentSettings,
+          fields: [
+            { configured: false, hint: "", name: "secret_key" },
+            { configured: false, hint: "", name: "webhook_token" },
+          ],
+          provider: "payjp",
+        }}
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    expect(screen.getByLabelText("Secret key")).toBeDefined();
+    expect(screen.getByLabelText("Webhook token")).toBeDefined();
+    expect(
+      screen.getByText(
+        "The secret key (sk_live_… or sk_test_…) on the API settings page of the PAY.JP dashboard. A test key takes test payments only."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "The webhook token (whook_…) shown in the account settings of the PAY.JP dashboard."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByDisplayValue(
+        "https://comics.example/api/v1/webhook/payment/payjp"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused."
+      )
+    ).toBeDefined();
   });
 
   it("shows the chosen provider's fields and webhook URL, and warns that the stored credentials go", async () => {
