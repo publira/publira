@@ -2175,6 +2175,9 @@ type Querier interface {
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
+	// Answers whether a nonce was spent already, without spending it, so a replay
+	// can be refused before anything is charged for the request.
+	SignInNonceIsSpent(ctx context.Context, arg SignInNonceIsSpentParams) (bool, error)
 	// Records a nonce as spent until the verifier stops accepting the token it
 	// came with. No row is
 	// inserted when the nonce was spent already, which is a replay. The tenant's

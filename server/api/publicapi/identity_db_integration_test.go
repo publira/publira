@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
@@ -39,12 +41,18 @@ type identityDBEnv struct {
 func newIdentityDBEnv(t *testing.T) *identityDBEnv {
 	t.Helper()
 
+	return newIdentityDBEnvWithMailGuard(t, openMailGuard())
+}
+
+func newIdentityDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *identityDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
 	encryptor := newPublicTestEncryptor(t)
 	apple, google := signintest.NewProvider(t), signintest.NewProvider(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), mail, nil)
 	server.idTokens = signintest.Verifier(apple, google)
 	httpServer := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(httpServer.Close)
@@ -465,6 +473,61 @@ func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.
 	revocations := env.appleTokens.Revocations()
 	if len(revocations) != 1 || revocations[0].RefreshToken != "apple-refresh-token" || revocations[0].ClientID != identityServicesID {
 		t.Fatalf("revocations = %+v, want the stored refresh token", revocations)
+	}
+}
+
+// An account a sign-in created has no password, so a fresh sign-in to a
+// provider linked to it confirms an email change, and that sign-in confirms one
+// change only. The new address may be mailed once an hour, so the change that
+// goes through after the refusals shows none of them spent its allowance.
+func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
+	env := newIdentityDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
+	env.enableProviders(t)
+	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
+	reader := env.userByEmail(t, "reader@example.com")
+	requestChange := func(provider publirav1.IdentityProvider, idToken, nonce string) error {
+		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(&publirav1.RequestEmailChangeRequest{
+			Tenant:       tenantContext(env.tenant),
+			CurrentEmail: "reader@example.com",
+			NewEmail:     "moved@example.com",
+			Provider:     provider,
+			IdToken:      idToken,
+			Nonce:        nonce,
+		}, signedIn.AccessToken.Token))
+		return err
+	}
+	liveRequests := func() int {
+		return countRows(t, env.publicDBEnv, `
+			SELECT count(*) FROM user_email_change_tokens
+			WHERE user_id = $1 AND completed_at IS NULL
+		`, reader.ID)
+	}
+
+	err := requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
+		env.appleToken(t, "apple-subject", "reader@example.com", "nonce-2"), "nonce-2")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("confirmed by a provider not linked code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	err = requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("confirmed by the sign-in that opened the session code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if live := liveRequests(); live != 0 {
+		t.Fatalf("live email change requests after the refusals = %d, want 0", live)
+	}
+
+	fresh := env.googleToken(t, "google-subject", "reader@example.com", "nonce-3")
+	if err := requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, fresh, "nonce-3"); err != nil {
+		t.Fatalf("RequestEmailChange confirmed by a fresh sign-in: %v", err)
+	}
+	if live := liveRequests(); live != 1 {
+		t.Fatalf("live email change requests = %d, want 1", live)
+	}
+	err = requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, fresh, "nonce-3")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("the same sign-in replayed code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 }
 

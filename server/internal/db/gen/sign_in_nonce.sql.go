@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+const SignInNonceIsSpent = `-- name: SignInNonceIsSpent :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sign_in_nonces
+    WHERE sign_in_nonces.tenant_id = $1
+        AND sign_in_nonces.nonce_hash = $2
+)
+`
+
+type SignInNonceIsSpentParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	NonceHash string    `json:"nonce_hash"`
+}
+
+// Answers whether a nonce was spent already, without spending it, so a replay
+// can be refused before anything is charged for the request.
+func (q *Queries) SignInNonceIsSpent(ctx context.Context, arg SignInNonceIsSpentParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, SignInNonceIsSpent, arg.TenantID, arg.NonceHash)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const SpendSignInNonce = `-- name: SpendSignInNonce :execrows
 WITH expired AS (
     DELETE FROM sign_in_nonces
