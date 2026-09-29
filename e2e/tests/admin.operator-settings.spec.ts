@@ -319,7 +319,7 @@ test.describe("web-admin operator settings", () => {
     );
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Integrations" })
+      page.getByRole("heading", { level: 1, name: "Integrations — Email" })
     ).toBeVisible();
     await expect(page.getByText("Email settings")).toBeVisible();
 

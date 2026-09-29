@@ -1088,6 +1088,7 @@
       "access_tickets_label": "閱讀券",
       "administration": "管理",
       "announcements_label": "公告",
+      "app_links_label": "應用程式連結",
       "audit_label": "稽核記錄",
       "branding_label": "品牌",
       "catalog": "作品",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "儀表板",
+      "email_label": "郵件",
       "engagement_label": "讀完率",
       "genres_label": "類型",
-      "integrations_label": "整合",
+      "integrations": "整合",
       "labels_label": "品牌",
       "members_label": "成員",
+      "mobile_push_label": "行動推播",
       "pages_label": "頁面",
+      "payment_label": "付款",
       "readers": "讀者",
       "readers_label": "讀者",
       "reports": "報表",
       "royalties_label": "版稅",
       "series_label": "系列",
       "settings_label": "設定",
+      "sign_in_label": "登入",
       "site": "網站"
     },
     "not_found": {
@@ -2552,14 +2557,6 @@
       "section_error": "無法顯示品牌設定"
     },
     "integrations": {
-      "title": "整合",
-      "tabs": {
-        "email": "郵件",
-        "payment": "付款",
-        "mobile_push": "行動推播",
-        "app_links": "應用程式連結",
-        "sign_in": "登入"
-      },
       "email_title": "整合 — 郵件",
       "email_description": "管理該租戶寄送郵件的方式。",
       "email_error": "無法顯示郵件設定",

@@ -1088,6 +1088,7 @@
       "access_tickets_label": "アクセスチケット",
       "administration": "管理",
       "announcements_label": "お知らせ",
+      "app_links_label": "アプリリンク",
       "audit_label": "監査ログ",
       "branding_label": "ブランディング",
       "catalog": "作品",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "著者の役割",
       "creators_label": "著者",
       "dashboard_label": "ダッシュボード",
+      "email_label": "メール情報",
       "engagement_label": "読了率",
       "genres_label": "ジャンル",
-      "integrations_label": "外部連携",
+      "integrations": "外部連携",
       "labels_label": "レーベル",
       "members_label": "メンバー",
+      "mobile_push_label": "モバイルプッシュ",
       "pages_label": "ページ",
+      "payment_label": "決済",
       "readers": "読者",
       "readers_label": "読者",
       "reports": "レポート",
       "royalties_label": "印税",
       "series_label": "シリーズ",
       "settings_label": "設定",
+      "sign_in_label": "ログイン",
       "site": "サイト"
     },
     "not_found": {
@@ -2552,14 +2557,6 @@
       "section_error": "ブランディングの設定を表示できませんでした"
     },
     "integrations": {
-      "title": "外部連携",
-      "tabs": {
-        "email": "メール情報",
-        "payment": "決済",
-        "mobile_push": "モバイルプッシュ",
-        "app_links": "アプリリンク",
-        "sign_in": "ログイン"
-      },
       "email_title": "外部連携 - メール情報",
       "email_description": "テナントごとのメール送信設定を管理します。",
       "email_error": "メール設定を表示できませんでした",

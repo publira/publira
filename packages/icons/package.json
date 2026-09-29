@@ -147,10 +147,6 @@
       "types": "./dist/pen-line-icon.d.mts",
       "default": "./dist/pen-line-icon.mjs"
     },
-    "./plug-icon": {
-      "types": "./dist/plug-icon.d.mts",
-      "default": "./dist/plug-icon.mjs"
-    },
     "./plus-icon": {
       "types": "./dist/plus-icon.d.mts",
       "default": "./dist/plus-icon.mjs"

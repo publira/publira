@@ -32,7 +32,6 @@ export { MenuIcon } from "./menu-icon";
 export { MinimizeIcon } from "./minimize-icon";
 export { PaletteIcon } from "./palette-icon";
 export { PenLineIcon } from "./pen-line-icon";
-export { PlugIcon } from "./plug-icon";
 export { PlusIcon } from "./plus-icon";
 export { ScrollTextIcon } from "./scroll-text-icon";
 export { SendIcon } from "./send-icon";

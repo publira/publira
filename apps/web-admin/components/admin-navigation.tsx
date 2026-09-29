@@ -1,17 +1,21 @@
 import {
+  BellIcon,
   ChartIcon,
   CoinsIcon,
   CollectionIcon,
   CommentIcon,
+  CreditCardIcon,
   DashboardIcon,
   FileTextIcon,
   IdCardIcon,
+  KeyRoundIcon,
+  LinkIcon,
   MailIcon,
   MegaphoneIcon,
   PaletteIcon,
   PenLineIcon,
-  PlugIcon,
   ScrollTextIcon,
+  SendIcon,
   SettingsIcon,
   ShapesIcon,
   TagIcon,
@@ -59,9 +63,13 @@ const hrefs = [
   "/access-tickets",
   "/engagement",
   "/royalties",
+  "/integrations/email",
+  "/integrations/payment",
+  "/integrations/mobile-push",
+  "/integrations/app-links",
+  "/integrations/sign-in",
   "/members",
   "/branding",
-  "/integrations",
   "/audit-logs",
   "/settings",
 ];
@@ -285,6 +293,75 @@ export const AdminNavigation = () => (
     </ConsoleSidebarNavigationSection>
     <ConsoleSidebarNavigationSection>
       <ConsoleSidebarNavigationTitle>
+        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+          <Message message="admin.nav.integrations" />
+        </Suspense>
+      </ConsoleSidebarNavigationTitle>
+      <ConsoleSidebarNavigationItems>
+        <ConsoleSidebarNavigationItem href="/integrations/email">
+          <ConsoleSidebarNavigationItemIcon>
+            <SendIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.email_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/integrations/payment">
+          <ConsoleSidebarNavigationItemIcon>
+            <CreditCardIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.payment_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/integrations/mobile-push">
+          <ConsoleSidebarNavigationItemIcon>
+            <BellIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.nav.mobile_push_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/integrations/app-links">
+          <ConsoleSidebarNavigationItemIcon>
+            <LinkIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.nav.app_links_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/integrations/sign-in">
+          <ConsoleSidebarNavigationItemIcon>
+            <KeyRoundIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.sign_in_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+      </ConsoleSidebarNavigationItems>
+    </ConsoleSidebarNavigationSection>
+    <ConsoleSidebarNavigationSection>
+      <ConsoleSidebarNavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
           <Message message="admin.nav.administration" />
         </Suspense>
@@ -301,18 +378,6 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.nav.branding_label" />
-              </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/integrations">
-          <ConsoleSidebarNavigationItemIcon>
-            <PlugIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.nav.integrations_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>

@@ -1088,6 +1088,7 @@
       "access_tickets_label": "Access tickets",
       "administration": "Administration",
       "announcements_label": "Announcements",
+      "app_links_label": "App links",
       "audit_label": "Audit logs",
       "branding_label": "Branding",
       "catalog": "Catalog",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "Author roles",
       "creators_label": "Authors",
       "dashboard_label": "Dashboard",
+      "email_label": "Email",
       "engagement_label": "Read-through",
       "genres_label": "Genres",
-      "integrations_label": "Integrations",
+      "integrations": "Integrations",
       "labels_label": "Labels",
       "members_label": "Members",
+      "mobile_push_label": "Mobile push",
       "pages_label": "Pages",
+      "payment_label": "Payments",
       "readers": "Readers",
       "readers_label": "Readers",
       "reports": "Reports",
       "royalties_label": "Royalties",
       "series_label": "Series",
       "settings_label": "Settings",
+      "sign_in_label": "Sign-in",
       "site": "Site"
     },
     "not_found": {
@@ -2552,14 +2557,6 @@
       "section_error": "Could not display the branding settings"
     },
     "integrations": {
-      "title": "Integrations",
-      "tabs": {
-        "email": "Email",
-        "payment": "Payments",
-        "mobile_push": "Mobile push",
-        "app_links": "App links",
-        "sign_in": "Sign-in"
-      },
       "email_title": "Integrations — Email",
       "email_description": "Manage how this tenant sends email.",
       "email_error": "Could not display the email settings",

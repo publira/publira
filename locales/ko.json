@@ -1088,6 +1088,7 @@
       "access_tickets_label": "이용권",
       "administration": "관리",
       "announcements_label": "공지사항",
+      "app_links_label": "앱 링크",
       "audit_label": "감사 로그",
       "branding_label": "브랜딩",
       "catalog": "작품",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "작가 역할",
       "creators_label": "작가",
       "dashboard_label": "대시보드",
+      "email_label": "메일",
       "engagement_label": "완독률",
       "genres_label": "장르",
-      "integrations_label": "연동",
+      "integrations": "연동",
       "labels_label": "레이블",
       "members_label": "멤버",
+      "mobile_push_label": "모바일 푸시",
       "pages_label": "페이지",
+      "payment_label": "결제",
       "readers": "독자",
       "readers_label": "독자",
       "reports": "리포트",
       "royalties_label": "인세",
       "series_label": "시리즈",
       "settings_label": "설정",
+      "sign_in_label": "로그인",
       "site": "사이트"
     },
     "not_found": {
@@ -2552,14 +2557,6 @@
       "section_error": "브랜딩 설정을 표시할 수 없습니다"
     },
     "integrations": {
-      "title": "연동",
-      "tabs": {
-        "email": "메일",
-        "payment": "결제",
-        "mobile_push": "모바일 푸시",
-        "app_links": "앱 링크",
-        "sign_in": "로그인"
-      },
       "email_title": "연동 — 메일",
       "email_description": "이 테넌트의 메일 발송 설정을 관리합니다.",
       "email_error": "메일 설정을 표시할 수 없습니다",

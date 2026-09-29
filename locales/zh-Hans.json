@@ -1088,6 +1088,7 @@
       "access_tickets_label": "阅读券",
       "administration": "管理",
       "announcements_label": "公告",
+      "app_links_label": "应用链接",
       "audit_label": "审计日志",
       "branding_label": "品牌",
       "catalog": "作品",
@@ -1097,18 +1098,22 @@
       "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "仪表盘",
+      "email_label": "邮件",
       "engagement_label": "读完率",
       "genres_label": "题材",
-      "integrations_label": "集成",
+      "integrations": "集成",
       "labels_label": "品牌",
       "members_label": "成员",
+      "mobile_push_label": "移动推送",
       "pages_label": "页面",
+      "payment_label": "支付",
       "readers": "读者",
       "readers_label": "读者",
       "reports": "报表",
       "royalties_label": "版税",
       "series_label": "系列",
       "settings_label": "设置",
+      "sign_in_label": "登录",
       "site": "网站"
     },
     "not_found": {
@@ -2552,14 +2557,6 @@
       "section_error": "无法显示品牌设置"
     },
     "integrations": {
-      "title": "集成",
-      "tabs": {
-        "email": "邮件",
-        "payment": "支付",
-        "mobile_push": "移动推送",
-        "app_links": "应用链接",
-        "sign_in": "登录"
-      },
       "email_title": "集成 — 邮件",
       "email_description": "管理该租户发送邮件的方式。",
       "email_error": "无法显示邮件设置",

@@ -38,7 +38,6 @@ export default defineConfig({
     "src/minimize-icon.tsx",
     "src/palette-icon.tsx",
     "src/pen-line-icon.tsx",
-    "src/plug-icon.tsx",
     "src/plus-icon.tsx",
     "src/scroll-text-icon.tsx",
     "src/send-icon.tsx",

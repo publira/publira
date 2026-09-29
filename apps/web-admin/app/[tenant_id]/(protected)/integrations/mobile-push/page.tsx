@@ -23,7 +23,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { FcmCredentialsForm } from "./_components/fcm-credentials-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -73,8 +72,8 @@ const IntegrationsMobilePushPage = () => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.integrations.mobile_push_title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
@@ -85,20 +84,17 @@ const IntegrationsMobilePushPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <IntegrationsTabNav current="mobile-push" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.integrations.mobile_push_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<FcmCredentialsSkeleton />}>
-            <FcmCredentialsSection />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.integrations.mobile_push_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<FcmCredentialsSkeleton />}>
+          <FcmCredentialsSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );
