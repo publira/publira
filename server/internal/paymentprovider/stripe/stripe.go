@@ -121,7 +121,7 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	return metadata
 }
 
-func (*Provider) ParseNotification(payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
+func (*Provider) ParseNotification(_ context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
 	event, err := webhook.ConstructEvent(payload, headers.Get(SignatureHeader), credentials[FieldWebhookSecret])
 	if err != nil {
 		return nil, paymentprovider.ErrInvalidSignature

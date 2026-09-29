@@ -406,7 +406,7 @@ func (s *apiServer) ProcessPaymentWebhook(
 	for name, value := range req.Msg.Headers {
 		headers.Set(name, value)
 	}
-	event, err := provider.ParseNotification(req.Msg.Payload, headers, credentials)
+	event, err := provider.ParseNotification(ctx, req.Msg.Payload, headers, credentials)
 	switch {
 	case errors.Is(err, paymentprovider.ErrInvalidSignature):
 		s.logger.WarnContext(ctx, "invalid payment webhook signature", "tenant_id", tenant.ID, "provider", providerID)

@@ -126,7 +126,7 @@ func (declaredProvider) StartCheckout(context.Context, paymentprovider.Credentia
 	return "", nil
 }
 
-func (declaredProvider) ParseNotification([]byte, http.Header, paymentprovider.Credentials) (paymentprovider.Event, error) {
+func (declaredProvider) ParseNotification(context.Context, []byte, http.Header, paymentprovider.Credentials) (paymentprovider.Event, error) {
 	return paymentprovider.Ignored{}, nil
 }
 

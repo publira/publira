@@ -3053,8 +3053,10 @@ export const RecordContentViewResponseSchema: GenMessage<RecordContentViewRespon
   messageDesc(file_publira_v1_catalog, 80);
 
 /**
- * A one-time paid-episode checkout. Purchases are created only by the Stripe
- * webhook after a successful payment, never by the browser's return URL.
+ * A one-time paid-episode checkout on the tenant's payment provider, answered
+ * as the URL of the provider's checkout page. Purchases are created only by the
+ * provider's webhook after a successful payment, never by the browser's return
+ * URL.
  *
  * `client` also names the surface the checkout is started from: CLIENT_MOBILE
  * is the app, and every other value the storefront. An episode that surface
@@ -3072,8 +3074,8 @@ export type StartEpisodeCheckoutRequest = Message<"publira.v1.StartEpisodeChecko
   tenant?: TenantContext | undefined;
 
   /**
-   * Where Stripe should return the reader after checkout, and the surface the
-   * episode has to be sold on. Unspecified is the storefront.
+   * Where the provider should return the reader after checkout, and the
+   * surface the episode has to be sold on. Unspecified is the storefront.
    *
    * @generated from field: publira.v1.StartEpisodeCheckoutRequest.Client client = 3;
    */
