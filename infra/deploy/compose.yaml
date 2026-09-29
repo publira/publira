@@ -101,6 +101,7 @@ services:
     environment:
       <<: [*secret-encryption, *tenant-url, *revalidate]
       PUBLIRA_AUTH_JWT_SECRET: ${PUBLIRA_AUTH_JWT_SECRET:?}
+      PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
       PUBLIRA_PUBLIC_DB_URL: postgres://publira_public:${PUBLIRA_PUBLIC_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_ADMIN_DB_URL: postgres://publira_admin:${PUBLIRA_ADMIN_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_PLATFORM_DB_URL: postgres://publira_platform:${PUBLIRA_PLATFORM_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
@@ -142,6 +143,7 @@ services:
     environment:
       <<: [*web-app, *tenant-url]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
+      PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
     depends_on:
       - server
       - valkey
@@ -156,6 +158,7 @@ services:
     environment:
       <<: *web-app
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_PLATFORM_AUTH_SECRET:-}
+      PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
     depends_on:
       - server
       - valkey
