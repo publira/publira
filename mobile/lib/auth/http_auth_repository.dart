@@ -202,19 +202,12 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<ReaderAge> readReaderAge(AuthSession session) async {
-    final Map<String, Object?> user;
-    final Map<String, Object?> tenant;
-    try {
-      (user, tenant) = await (_getMe(session), _getTenant()).wait;
-    } on ParallelWaitError<
-      (Map<String, Object?>?, Map<String, Object?>?),
-      (AsyncError?, AsyncError?)
-    > catch (error) {
-      // A rejected session outweighs an unreadable tenant, whichever failed
-      // first, so the caller can still tell the reader to sign in again.
-      final failed = error.errors.$1 ?? error.errors.$2!;
-      Error.throwWithStackTrace(failed.error, failed.stackTrace);
-    }
+    final tenantRead = _getTenant();
+    // Listened to from the start, so a tenant failure that lands before GetMe
+    // answers is not reported as uncaught; the await below still throws it.
+    unawaited(tenantRead.then<void>((_) {}, onError: (_) {}));
+    final user = await _getMe(session);
+    final tenant = await tenantRead;
     return ReaderAge(
       birthDate: _readString(user, 'birthDate'),
       timeZone: _readString(tenant, 'timezone'),

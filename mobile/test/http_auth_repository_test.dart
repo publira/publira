@@ -126,16 +126,20 @@ void main() {
   test(
     'readReaderAge reports a tenant read that fails before GetMe answers',
     () async {
-      final tenantFirst = HttpAuthRepository(
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetMe');
+      final holding = HttpAuthRepository(
         config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
-        client: _TenantFirstClient(baseUrl: server.baseUrl),
+        client: client,
       );
       // Resolved once while the API answers, so only the read fails.
-      await tenantFirst.readReaderAge(stored);
+      await holding.readReaderAge(stored);
       server.tenantStatus = HttpStatus.serviceUnavailable;
+      client.release = client.settled.firstWhere(
+        (procedure) => procedure.endsWith('/GetTenant'),
+      );
 
       await expectLater(
-        tenantFirst.readReaderAge(stored),
+        holding.readReaderAge(stored),
         throwsA(
           isA<AuthFailure>().having(
             (failure) => failure.kind,
@@ -148,15 +152,20 @@ void main() {
   );
 
   test(
-    'readReaderAge reports a rejected session over a failed tenant',
+    'readReaderAge reports a rejected session without waiting on the tenant',
     () async {
-      await auth.readReaderAge(stored);
-      server
-        ..tenantStatus = HttpStatus.serviceUnavailable
-        ..activeAccessToken = 'another-token';
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetTenant');
+      final holding = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: client,
+      );
+      final tenantAnswers = Completer<void>();
+      addTearDown(tenantAnswers.complete);
+      client.release = tenantAnswers.future;
+      server.activeAccessToken = 'another-token';
 
       await expectLater(
-        auth.readReaderAge(stored),
+        holding.readReaderAge(stored),
         throwsA(
           isA<AuthFailure>().having(
             (failure) => failure.kind,
@@ -716,12 +725,18 @@ void main() {
   });
 }
 
-/// Answers `GetMe` only once the `GetTenant` read beside it has settled, so a
-/// failed tenant read reaches the repository before the user does.
-class _TenantFirstClient extends ConnectClient {
-  _TenantFirstClient({required super.baseUrl});
+/// Sends [held] only once [release] completes, so a test can decide which of
+/// two reads settles first.
+class _HoldingClient extends ConnectClient {
+  _HoldingClient({required super.baseUrl, required this.held});
 
-  final _tenantSettled = StreamController<void>.broadcast();
+  final String held;
+  Future<void> release = Future.value();
+
+  final _settled = StreamController<String>.broadcast();
+
+  /// The procedure of each call as it settles, successfully or not.
+  Stream<String> get settled => _settled.stream;
 
   @override
   Future<Map<String, Object?>> unary(
@@ -730,8 +745,8 @@ class _TenantFirstClient extends ConnectClient {
     String? tenantId,
     String? accessToken,
   }) async {
-    if (procedure.endsWith('/GetMe')) {
-      await _tenantSettled.stream.first;
+    if (procedure.endsWith('/$held')) {
+      await release;
     }
     try {
       return await super.unary(
@@ -741,9 +756,7 @@ class _TenantFirstClient extends ConnectClient {
         accessToken: accessToken,
       );
     } finally {
-      if (procedure.endsWith('/GetTenant')) {
-        _tenantSettled.add(null);
-      }
+      _settled.add(procedure);
     }
   }
 }
