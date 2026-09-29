@@ -20,8 +20,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_
 SELECT
     ts.id,
     'BnnrTNNTAAA1',
-    'banner.localhost',
-    'admin.banner.localhost',
+    'banner.localhost:' || :'tenant_port',
+    'admin.banner.localhost:' || :'tenant_port',
     'Banner Tenant',
     'active',
     'en'
@@ -72,7 +72,7 @@ FROM (
             'Banner E2E Member'
         )
 ) AS seed (id, public_id, email, password_hash, name)
-JOIN tenants t ON t.domain = 'banner.localhost'
+JOIN tenants t ON t.public_id = 'BnnrTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -95,9 +95,9 @@ ON CONFLICT (user_id, role) DO NOTHING;
 DELETE FROM notifications n
 USING tenants t
 WHERE n.tenant_id = t.id
-    AND t.domain = 'banner.localhost';
+    AND t.public_id = 'BnnrTNNTAAA1';
 
 DELETE FROM announcements a
 USING tenants t
 WHERE a.tenant_id = t.id
-    AND t.domain = 'banner.localhost';
+    AND t.public_id = 'BnnrTNNTAAA1';

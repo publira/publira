@@ -72,12 +72,11 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 # Tenant links are built on the edge, which serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME="http"
-export PUBLIRA_TENANT_URL_PORT="3080"
 ```
 
 The role users come from `db/seeds/baseline` and their development passwords from `db/seeds/dev/000_role_passwords.sql`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection — `task db:*` and `publiractl db` connect with it — and the `publiractl job` subcommands are the only other readers, as a fallback. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
 
-Open the apps through the edge on `localhost:3080`, as in the Dev Container: `/images…` belongs to `publira server`, so only the edge serves an app and its images on one origin. The root `traefik` service reaches the host's processes as `host.docker.internal`, which Docker Desktop resolves itself and Docker Engine on Linux through the `host-gateway` mapping the service declares.
+Open the apps through the edge on `localhost:3080`, as in the Dev Container: `/images…` belongs to `publira server`, so only the edge serves an app and its images on one origin, and the development seed stores its tenant as `localhost:3080` and `admin.localhost:3080`, which an app on its own port does not answer to. The root `traefik` service reaches the host's processes as `host.docker.internal`, which Docker Desktop resolves itself and Docker Engine on Linux through the `host-gateway` mapping the service declares.
 
 One thing stays Dev Container only.
 

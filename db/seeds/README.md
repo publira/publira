@@ -52,6 +52,8 @@ task storage:seed        # The images the development seed's rows name
 
 `task db:setup` runs `db:migrate` and `db:seed` (dev). `task storage:seed` creates the bucket first, so it needs no separate `task storage:init`.
 
+A seeded tenant's host carries the port of the edge browsers reach it on: `PUBLIRA_EDGE_PORT`, or `3080`, the Dev Container's, when it is unset. `task db:seed` passes it to `psql` as `tenant_port`, and a scenario applied by hand takes the same `-v tenant_port=<port>`. A seed that needs a tenant finds it by `public_id`, never by its host.
+
 ## Principles
 
 - Add schema changes only to migrations
@@ -64,8 +66,8 @@ task storage:seed        # The images the development seed's rows name
   - email: `platform@example.com`
   - password: `platformpass`
 - Tenant admin:
-  - tenant domain: `localhost`
-  - tenant admin domain: `admin.localhost`
+  - tenant domain: `localhost:3080`
+  - tenant admin domain: `admin.localhost:3080`
   - email: `admin@example.com`
   - password: `adminpass`
 - Member user:

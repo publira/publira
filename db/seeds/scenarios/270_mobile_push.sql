@@ -26,8 +26,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'MpshTNNTAAA1',
-    'mobile-push.localhost',
-    'admin.mobile-push.localhost',
+    'mobile-push.localhost:' || :'tenant_port',
+    'admin.mobile-push.localhost:' || :'tenant_port',
     'Mobile Push Tenant',
     'active',
     'en'

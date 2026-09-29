@@ -10,13 +10,14 @@ import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   hostPath,
   localeHostPath,
+  tenantHost,
   WEB_HOST_JAPANESE_DEFAULT_BASE_URL,
 } from "../src/urls";
 
 /** The development seed tenant's stored domain, which it publishes under. */
-const SEED_ORIGIN = "https://localhost";
+const SEED_ORIGIN = `https://${tenantHost("localhost")}`;
 
-const JAPANESE_DEFAULT_ORIGIN = `https://${JAPANESE_DEFAULT_TENANT.domain}`;
+const JAPANESE_DEFAULT_ORIGIN = `https://${tenantHost(JAPANESE_DEFAULT_TENANT.domain)}`;
 
 /** A sort order names a view of the list, not another page. */
 const LIST_QUERY = "?order=title";

@@ -5,7 +5,6 @@ import {
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
-  WEB_HOST_EDGE_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "./src/urls";
 
@@ -145,17 +144,12 @@ export default defineConfig({
     // First, and in the pinned browser: what they record is the state
     // `task e2e:db` left, before a publishing suite has put another series in
     // the console's list or another episode on the public catalogue.
-    //
-    // The public site is reached through the edge rather than web-host
-    // directly, because a comic episode draws its pages from
-    // `/images/episodes/{id}` on the reader's own origin, and only the edge
-    // answers that.
     {
       name: "screenshots-host",
       testMatch: [/host\.screenshots\./u],
       use: {
         ...screenshotProjectUse,
-        baseURL: WEB_HOST_EDGE_BASE_URL,
+        baseURL: WEB_HOST_BASE_URL,
       },
     },
     {
@@ -406,8 +400,7 @@ export default defineConfig({
     },
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
-    // empties the worker pool for it. Its baseURL is the Traefik edge, the only
-    // origin where `/images/episodes/{id}` resolves to publira server.
+    // empties the worker pool for it.
     {
       dependencies: [
         "catalog-error-boundary",
@@ -420,7 +413,7 @@ export default defineConfig({
       testMatch: [performanceSpecs],
       use: {
         ...desktopChrome,
-        baseURL: WEB_HOST_EDGE_BASE_URL,
+        baseURL: WEB_HOST_BASE_URL,
       },
     },
     // After everything, including the timing suite: it leaves the platform with

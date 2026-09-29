@@ -26,8 +26,8 @@ INSERT INTO tenants (
 SELECT
     ts.id,
     'AplnTNNTAAA1',
-    'app-links.localhost',
-    'admin.app-links.localhost',
+    'app-links.localhost:' || :'tenant_port',
+    'admin.app-links.localhost:' || :'tenant_port',
     'App Links Tenant',
     'active',
     'en'

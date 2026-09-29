@@ -36,7 +36,7 @@ SELECT
     'active',
     NOW()
 FROM member_user_seed mus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -54,7 +54,7 @@ WHERE user_id IN (SELECT id FROM users WHERE public_id = 'AlifMMBRAAA1');
 -- flow under test rather than by this file, and that flow creates nothing when
 -- the address is already registered, so a run must start with neither present.
 DELETE FROM users
-WHERE tenant_id = (SELECT id FROM tenants WHERE domain = 'localhost')
+WHERE tenant_id = (SELECT id FROM tenants WHERE public_id = 'SeedTNNTAAA1')
   AND email IN (
       'account-lifecycle-new@example.com',
       'account-lifecycle-expired@example.com',

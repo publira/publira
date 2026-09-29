@@ -32,7 +32,7 @@ SELECT
     'active',
     NOW()
 FROM admin_user_seed aus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -73,7 +73,7 @@ SELECT
     'active',
     NOW()
 FROM member_user_seed mus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,

@@ -19,8 +19,8 @@ INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_
 SELECT
     ts.id,
     'LangTNNTAAA1',
-    'locale.localhost',
-    'admin.locale.localhost',
+    'locale.localhost:' || :'tenant_port',
+    'admin.locale.localhost:' || :'tenant_port',
     'Locale Tenant',
     'active',
     'ja'

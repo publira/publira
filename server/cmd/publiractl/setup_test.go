@@ -27,7 +27,6 @@ func startSetupEnv(t *testing.T) *setupEnv {
 	// The links asserted below are on the default origin, whatever the shell
 	// running the tests exports.
 	t.Setenv(tenantorigin.SchemeEnv, "")
-	t.Setenv(tenantorigin.PortEnv, "")
 	pg := startPlatformDB(t)
 	setEncryptionKeys(t)
 	s3 := testutil.StartRustFS(t)

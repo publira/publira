@@ -14,7 +14,7 @@ import {
   VIEWER_EPISODE_PATH,
   episodePageLabel,
 } from "../src/scenarios/viewer-pages";
-import { WEB_HOST_EDGE_BASE_URL } from "../src/urls";
+import { WEB_HOST_BASE_URL } from "../src/urls";
 import { turnToEndPage } from "../src/viewer";
 
 const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
@@ -34,10 +34,6 @@ const endPage = (page: Page) =>
  * What the storefront shows the author of `Seed Series 001` on their own
  * episodes. The account holds no purchase or ticket, so the credit is the only
  * thing that opens the priced episode to it.
- *
- * Every page is opened through the edge, the one origin that also serves the
- * body images, because the reaction control sits on the page after the last
- * one and a reader only gets there by turning drawn pages.
  */
 test.describe("web-host creator's own episode", () => {
   test.beforeAll(() => {
@@ -51,7 +47,7 @@ test.describe("web-host creator's own episode", () => {
       page,
       CREATOR_READER,
       paidEpisodePath,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
 
     await expect(paidFirstPage(page)).toBeVisible();
@@ -64,12 +60,7 @@ test.describe("web-host creator's own episode", () => {
   test("a reader holding a ticket is not told they are its author", async ({
     page,
   }) => {
-    await signInAsMember(
-      page,
-      SEED_MEMBER,
-      paidEpisodePath,
-      WEB_HOST_EDGE_BASE_URL
-    );
+    await signInAsMember(page, SEED_MEMBER, paidEpisodePath, WEB_HOST_BASE_URL);
 
     await expect(paidFirstPage(page)).toBeVisible();
     await expect(page.getByText(CREATOR_ACCESS)).toHaveCount(0);
@@ -82,7 +73,7 @@ test.describe("web-host creator's own episode", () => {
       page,
       CREATOR_READER,
       VIEWER_EPISODE_PATH,
-      WEB_HOST_EDGE_BASE_URL
+      WEB_HOST_BASE_URL
     );
 
     const nextEpisode = endPage(page).getByRole("link", {

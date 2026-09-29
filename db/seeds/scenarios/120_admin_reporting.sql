@@ -46,7 +46,7 @@
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 admin_user AS (
     SELECT u.id AS user_id
@@ -151,7 +151,7 @@ SELECT
     'active',
     NOW()
 FROM admin_user_seed aus
-JOIN tenants t ON t.domain = 'other.localhost'
+JOIN tenants t ON t.public_id = 'BndrTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -266,23 +266,23 @@ in_window AS (
         END AS member_view_count
     FROM seed_episode se
 ),
-stats_seed (n, tenant_domain, episode_id, day_offset, complete_count, member_view_count) AS (
-    SELECT iw.n, 'localhost', iw.episode_id, -2, iw.complete_count, iw.member_view_count
+stats_seed (n, tenant_public_id, episode_id, day_offset, complete_count, member_view_count) AS (
+    SELECT iw.n, 'SeedTNNTAAA1', iw.episode_id, -2, iw.complete_count, iw.member_view_count
     FROM in_window iw
     UNION ALL
-    SELECT 26, 'localhost', se.episode_id, -15, 30, 60
+    SELECT 26, 'SeedTNNTAAA1', se.episode_id, -15, 30, 60
     FROM seed_episode se
     WHERE se.n = 1
     UNION ALL
-    SELECT 27, 'localhost', se.episode_id, 1, 1000, 1000
+    SELECT 27, 'SeedTNNTAAA1', se.episode_id, 1, 1000, 1000
     FROM seed_episode se
     WHERE se.n = 1
     UNION ALL
-    SELECT 28, 'localhost', se.episode_id, -40, 1000, 1000
+    SELECT 28, 'SeedTNNTAAA1', se.episode_id, -40, 1000, 1000
     FROM seed_episode se
     WHERE se.n = 1
     UNION ALL
-    SELECT 29, 'other.localhost', e.id, -2, 777, 777
+    SELECT 29, 'BndrTNNTAAA1', e.id, -2, 777, 777
     FROM episodes e
     WHERE e.public_id = 'BndrEPSDAAA1'
 )
@@ -321,4 +321,4 @@ SELECT
     0,
     0
 FROM stats_seed ss
-JOIN tenants t ON t.domain = ss.tenant_domain;
+JOIN tenants t ON t.public_id = ss.tenant_public_id;

@@ -103,10 +103,8 @@ services:
       PUBLIRA_WEB_HOST_INTERNAL_URL: http://127.0.0.1:3000
       PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://127.0.0.1:4000
       PUBLIRA_WEB_PLATFORM_INTERNAL_URL: http://127.0.0.1:4100
-      # The tenant links the worker mails, and the URL Stripe Checkout returns
-      # to, name each tenant host on the Traefik edge, which serves plain HTTP.
+      # This edge serves plain HTTP.
       PUBLIRA_TENANT_URL_SCHEME: http
-      PUBLIRA_TENANT_URL_PORT: "3080"
       # S3 / RustFS local object storage
       PUBLIRA_S3_BUCKET: publira
       PUBLIRA_S3_ENDPOINT: http://rustfs:9000

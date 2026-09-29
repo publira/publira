@@ -43,7 +43,7 @@ BEGIN;
 WITH tenant_scope AS (
     SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 -- computed_at stays a literal because the site prints it, and the snapshot
 -- with the latest one is the one it reads.
@@ -178,7 +178,7 @@ SET items = EXCLUDED.items,
 WITH tenant_scope AS (
     SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 -- Each row is one position: the number in `SeedGENRNNNN`, the place, and the
 -- number in `Seed Series NNN` that holds it.
@@ -273,7 +273,7 @@ INSERT INTO daily_rebuild_progress (
 SELECT t.id, now(), d.yesterday, d.yesterday, d.yesterday
 FROM tenants t
 CROSS JOIN LATERAL (SELECT (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday) d
-WHERE t.domain = 'localhost'
+WHERE t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET episode_reads_projected_at = GREATEST(daily_rebuild_progress.episode_reads_projected_at, EXCLUDED.episode_reads_projected_at),
     content_stats_through = GREATEST(daily_rebuild_progress.content_stats_through, EXCLUDED.content_stats_through),

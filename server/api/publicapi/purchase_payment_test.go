@@ -140,7 +140,6 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 	// The links asserted below are on the default origin, whatever the shell
 	// running the tests exports.
 	t.Setenv(tenantorigin.SchemeEnv, "")
-	t.Setenv(tenantorigin.PortEnv, "")
 	if encryptor == nil {
 		encryptor = newPublicTestEncryptor(t)
 	}

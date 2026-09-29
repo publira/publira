@@ -37,7 +37,7 @@ SELECT
     NOW(),
     '1990-04-02'::date
 FROM member_user_seed mus
-JOIN tenants t ON t.domain = 'localhost'
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
@@ -52,4 +52,4 @@ WHERE reply_to_email IN (
         'contact-form-member@example.com',
         'contact-form-guest@example.com'
     )
-    AND tenant_id = (SELECT id FROM tenants WHERE domain = 'localhost');
+    AND tenant_id = (SELECT id FROM tenants WHERE public_id = 'SeedTNNTAAA1');

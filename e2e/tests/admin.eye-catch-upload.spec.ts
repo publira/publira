@@ -27,22 +27,13 @@ import {
   EYE_CATCH_UNDERSIZED_ASPECT,
   EYE_CATCH_UNDERSIZED_FIXTURE,
 } from "../src/scenarios/eye-catch";
-import {
-  hostPath,
-  WEB_ADMIN_BASE_URL,
-  WEB_HOST_EDGE_BASE_URL,
-} from "../src/urls";
+import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
-/**
- * The bytes behind a preview's `/images/...` path, read on the reader's origin.
- * The runner cannot resolve the console's `admin.localhost` itself, so the
- * request goes to the edge under the public site's host.
- */
-const edgeUrl = (pathname: string): string =>
-  `${WEB_HOST_EDGE_BASE_URL}${pathname}`;
+/** A page of the seed tenant's public site. */
+const hostUrl = (pathname: string): string => `${WEB_HOST_BASE_URL}${pathname}`;
 
 /** The delivery path each ratio's slot currently shows. */
 type AspectSources = Record<EyeCatchAspect, string>;
@@ -447,9 +438,8 @@ test.describe("admin eye-catch upload", () => {
     await uploadEyeCatchSource(page);
 
     // First host request for this public_id, so nothing was cached back when
-    // the series had no eye-catch. The edge, not web-host's own port:
-    // `/images` resolves to publira server only there.
-    const response = await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
+    // the series had no eye-catch.
+    const response = await page.goto(hostUrl(hostPath(`/series/${publicId}`)));
     expect(response?.status(), await page.content()).toBe(200);
 
     const cover = page.getByRole("img", { name: title });
@@ -479,7 +469,7 @@ test.describe("admin eye-catch upload", () => {
     const beforeSources = await aspectSources(page);
     const beforeShown = await displayedEyeCatch(page);
 
-    await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
+    await page.goto(hostUrl(hostPath(`/series/${publicId}`)));
     const cover = page.getByRole("img", { name: title });
     await expect(cover).toHaveAttribute("src", beforeSources.portrait);
     const storefrontBefore = await displayedDigest(cover);
@@ -505,7 +495,7 @@ test.describe("admin eye-catch upload", () => {
     // from its cache. The storefront's cache tags are dropped out of band, so
     // the new URL is polled for rather than read once.
     await expect(async () => {
-      await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
+      await page.goto(hostUrl(hostPath(`/series/${publicId}`)));
       await expect(cover).toHaveAttribute("src", afterSources.portrait, {
         timeout: 5000,
       });
@@ -647,7 +637,7 @@ test.describe("admin eye-catch upload", () => {
       .getByRole("link", { name })
       .locator('img[src^="/images/"]');
     await expect(async () => {
-      await page.goto(edgeUrl(hostPath("/genres")));
+      await page.goto(hostUrl(hostPath("/genres")));
       await expect(tileImages).toHaveAttribute(
         "src",
         eyeCatchDeliveryURL("genres", "portrait"),
@@ -655,7 +645,7 @@ test.describe("admin eye-catch upload", () => {
       );
     }).toPass({ timeout: 60_000 });
 
-    await page.goto(edgeUrl(hostPath(`/genres/${genreId}`)));
+    await page.goto(hostUrl(hostPath(`/genres/${genreId}`)));
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(
       page.getByRole("main").locator('img[src^="/images/genres/"]')
@@ -669,7 +659,7 @@ test.describe("admin eye-catch upload", () => {
     await expectMessage(page, "Cover image updated.");
 
     await expect(async () => {
-      await page.goto(edgeUrl(hostPath("/genres")));
+      await page.goto(hostUrl(hostPath("/genres")));
       await expect(page.getByRole("link", { name })).toBeVisible({
         timeout: 5000,
       });

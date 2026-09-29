@@ -17,7 +17,7 @@
 WITH tenant_seed AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO announcements (
     id,

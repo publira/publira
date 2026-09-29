@@ -8,15 +8,8 @@ import {
   goOfflineAndBack,
 } from "../src/offline";
 import { VIEWER_EPISODE_PATH } from "../src/scenarios/viewer-pages";
-import { hostPath, WEB_HOST_EDGE_BASE_URL } from "../src/urls";
+import { hostPath } from "../src/urls";
 import { revealViewerControls } from "../src/viewer";
-
-/**
- * Body images are served only through the edge, so the reader is opened there
- * rather than on this project's `baseURL`.
- */
-const edgeUrl = (pathname: string): string =>
-  `${WEB_HOST_EDGE_BASE_URL}${hostPath(pathname)}`;
 
 /** Whether the reader has any part of the page in full screen. */
 const isFullscreen = (page: Page): Promise<boolean> =>
@@ -37,7 +30,7 @@ test.describe("web-host connectivity notice", () => {
   test("floats over the reader without covering its controls or moving it", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     const firstPage = page.locator('canvas[data-page-status="loaded"]').first();
     await expect(firstPage).toBeVisible();
     const toolbar = page.locator(".pcv-toolbar");
@@ -58,7 +51,7 @@ test.describe("web-host connectivity notice", () => {
   test("is painted over the reader in full screen without ending it", async ({
     page,
   }) => {
-    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expect(
       page.locator('canvas[data-page-status="loaded"]').first()
     ).toBeVisible();

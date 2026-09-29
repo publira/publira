@@ -24,7 +24,6 @@ func newAdminEmailEnv(t *testing.T) (*testutil.PostgresEnv, testutil.Tenant, ema
 	// The links asserted below are on the default origin, whatever the shell
 	// running the tests exports.
 	t.Setenv(tenantorigin.SchemeEnv, "")
-	t.Setenv(tenantorigin.PortEnv, "")
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

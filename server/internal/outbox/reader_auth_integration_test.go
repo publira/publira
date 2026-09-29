@@ -52,10 +52,9 @@ func (r *recordingReaderRenderer) Render(_ context.Context, request emailrendere
 // reader auth mail needs before its own row is looked at.
 func newReaderEmailEnv(t *testing.T) (*testutil.PostgresEnv, testutil.Tenant, emailsettings.SecretManager) {
 	t.Helper()
-	// The links asserted below are on the default origin, whatever the shell
+	// The links asserted below are on the default scheme, whatever the shell
 	// running the tests exports.
 	t.Setenv(tenantorigin.SchemeEnv, "")
-	t.Setenv(tenantorigin.PortEnv, "")
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -201,13 +200,11 @@ func TestReaderEmailVerificationEmailRendersTheStoredSignup(t *testing.T) {
 	}
 }
 
-// A deployment serving its tenant sites over plain HTTP on another port names
-// both, so the link opens on that stack rather than on an https origin it does
-// not serve.
+// The link uses the configured scheme and the tenant's stored host.
 func TestReaderEmailVerificationEmailLinksTheDeploymentOrigin(t *testing.T) {
-	pg, tenant, encryptor := newReaderEmailEnv(t)
+	pg, _, encryptor := newReaderEmailEnv(t)
 	t.Setenv(tenantorigin.SchemeEnv, "http")
-	t.Setenv(tenantorigin.PortEnv, "3180")
+	tenant := pg.SeedTenant(t, "READEROUT016", "reader-outbox.example.com:3180", "Reader Outbox Tenant")
 	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB16", "reader@example.com", "Reader")
 	tokenID := seedReaderVerificationToken(t, pg, tenant.ID, reader.ID, "verify-token", time.Now().Add(time.Hour))
 
@@ -225,7 +222,7 @@ func TestReaderEmailVerificationEmailLinksTheDeploymentOrigin(t *testing.T) {
 	if len(renderer.requests) != 1 {
 		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
 	}
-	if url, _ := renderer.requests[0].Data["verify_url"].(string); url != "http://"+tenant.Domain+":3180/verify?token=verify-token" {
+	if url, _ := renderer.requests[0].Data["verify_url"].(string); url != "http://"+tenant.Domain+"/verify?token=verify-token" {
 		t.Fatalf("verify_url = %v", renderer.requests[0].Data["verify_url"])
 	}
 }

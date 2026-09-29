@@ -8,10 +8,10 @@ acquire_e2e_lock
 
 # `task db:setup` (migrate + dev seed) against the E2E Postgres: db/Taskfile.yaml
 # prefers PUBLIRA_DB_URL over the Dev Container `db` hostname, which does not
-# resolve here.
+# resolve here. The seeded tenants' hosts carry this run's edge port.
 
 e2e_log "running task db:setup against ${PUBLIRA_DB_URL}"
-(cd "${REPO_ROOT}" && task db:setup)
+(cd "${REPO_ROOT}" && PUBLIRA_EDGE_PORT="${PUBLIRA_E2E_EDGE_PORT}" task db:setup)
 
 # The dev seed names the Dev Container's `mailpit` service, a host that
 # resolves neither here nor on the CI runner: every server in this stack is a

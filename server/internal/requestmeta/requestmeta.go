@@ -1,7 +1,6 @@
 package requestmeta
 
 import (
-	"net"
 	"net/http"
 	"strings"
 
@@ -16,6 +15,8 @@ func AccessTokenFromRequest(r *http.Request) (string, bool) {
 	return auth.BearerTokenFromHeader(r.Header)
 }
 
+// HostCandidatesFromRequest returns the hosts the request names, port included,
+// since a port saved on a tenant's host is part of which tenant it is.
 func HostCandidatesFromRequest(r *http.Request) []string {
 	raw := strings.TrimSpace(r.Header.Get("X-Forwarded-Host"))
 	if raw == "" {
@@ -26,7 +27,7 @@ func HostCandidatesFromRequest(r *http.Request) []string {
 	candidates := make([]string, 0, len(parts))
 	seen := map[string]struct{}{}
 	for _, part := range parts {
-		host := normalizeHost(part)
+		host := strings.ToLower(strings.TrimSpace(part))
 		if host == "" {
 			continue
 		}
@@ -37,24 +38,4 @@ func HostCandidatesFromRequest(r *http.Request) []string {
 		candidates = append(candidates, host)
 	}
 	return candidates
-}
-
-func normalizeHost(raw string) string {
-	host := strings.ToLower(strings.TrimSpace(raw))
-	if host == "" {
-		return ""
-	}
-	if strings.HasPrefix(host, "[") && strings.Contains(host, "]") {
-		parsedHost, _, err := net.SplitHostPort(host)
-		if err == nil {
-			return strings.TrimSpace(parsedHost)
-		}
-	}
-	if strings.Count(host, ":") == 1 {
-		parsedHost, _, err := net.SplitHostPort(host)
-		if err == nil {
-			return strings.TrimSpace(parsedHost)
-		}
-	}
-	return host
 }

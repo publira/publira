@@ -62,15 +62,13 @@ export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 # publira server's internal listener, which every app dials: one process
 # carries all three Connect namespaces.
 export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
-export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}}"
-# The consoles are opened through the edge, like a deployment serves them: the
-# images they render are `/images` on their own origin.
+# Every app is opened through the edge, like a deployment serves them: the
+# images they render are `/images` on their own origin, and every tenant host is
+# stored with this port.
+export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
-# Same web-host, reached through the edge, by every suite that opens an
-# episode body: `/images` resolves on no other origin.
-export PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL="${PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.
 export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT}}"
@@ -127,11 +125,8 @@ export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
 
-# Where the tenant links in the mail and the checkout return URL point: each
-# tenant host on this run's edge, which serves plain HTTP. Always set, for the
-# same reason as PUBLIRA_PLATFORM_APP_URL above.
+# This edge serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME=http
-export PUBLIRA_TENANT_URL_PORT="${PUBLIRA_E2E_EDGE_PORT}"
 
 # Secret decryption. The worker reports an unusable manager when it is started
 # without keys, and every auth mail it renders stops at that before it reaches

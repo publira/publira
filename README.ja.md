@@ -72,12 +72,11 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 # テナントへのリンクは平文の HTTP のエッジの上に組み立てる
 export PUBLIRA_TENANT_URL_SCHEME="http"
-export PUBLIRA_TENANT_URL_PORT="3080"
 ```
 
 ロールユーザーは `db/seeds/baseline` に、開発用パスワードは `db/seeds/dev/000_role_passwords.sql` に由来します。各サーバーは自分が接続するロールに対応する変数だけを読むので、そのすべてを設定する必要があります。`PUBLIRA_DB_URL` はマイグレーションツールの接続であり、`task db:*` と `publiractl db` がこれで接続します。ほかに読むのはフォールバック先にする `publiractl job` のサブコマンドだけです。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
 
-アプリは Dev Container と同じく、エッジの `localhost:3080` から開いてください。`/images…` は `publira server` が答えるので、アプリと画像を 1 つのオリジンで配信できるのはエッジだけです。ルートの `traefik` サービスは、ホストのプロセスへ `host.docker.internal` で届きます。この名前は Docker Desktop なら自前で、Linux の Docker Engine ならサービスが宣言する `host-gateway` の対応付けで解決されます。
+アプリは Dev Container と同じく、エッジの `localhost:3080` から開いてください。`/images…` は `publira server` が答えるので、アプリと画像を 1 つのオリジンで配信できるのはエッジだけです。また開発用 seed はテナントを `localhost:3080` と `admin.localhost:3080` で保存しており、アプリ自身のポートで開いてもテナントは見つかりません。ルートの `traefik` サービスは、ホストのプロセスへ `host.docker.internal` で届きます。この名前は Docker Desktop なら自前で、Linux の Docker Engine ならサービスが宣言する `host-gateway` の対応付けで解決されます。
 
 Dev Container 専用のままになるものが 1 つあります。
 

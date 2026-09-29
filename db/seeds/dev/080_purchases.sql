@@ -11,7 +11,7 @@ WITH scope AS (
     JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
     JOIN series s ON s.tenant_id = t.id AND s.title = 'Seed Series 001'
     JOIN episodes e ON e.series_id = s.id AND e.title = 'Seed Episode 001-10'
-    WHERE t.domain = 'localhost'
+    WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 purchase_seed (id, purchased_at, expires_at) AS (
     VALUES

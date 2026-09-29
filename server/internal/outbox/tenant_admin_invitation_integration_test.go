@@ -260,14 +260,12 @@ func TestTenantAdminInvitationEmailUsesTheTenantDefaultLocale(t *testing.T) {
 	}
 }
 
-// The invitation links the admin console on the deployment's scheme and port,
-// so an invitee on a plain-HTTP stack can open it.
+// The invitation link uses the configured scheme and the console host.
 func TestTenantAdminInvitationEmailLinksTheDeploymentOrigin(t *testing.T) {
 	t.Setenv(tenantorigin.SchemeEnv, "http")
-	t.Setenv(tenantorigin.PortEnv, "3180")
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	tenant := pg.SeedTenant(t, "OUTBOXINV006", "outbox-origin.example.com", "Outbox Origin Tenant")
+	tenant := pg.SeedTenant(t, "OUTBOXINV006", "outbox-origin.example.com:3180", "Outbox Origin Tenant")
 	encryptor := newInvitationEncryptor(t)
 	seedPlatformSMTPConfig(t, pg, encryptor)
 	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-origin")
@@ -282,7 +280,7 @@ func TestTenantAdminInvitationEmailLinksTheDeploymentOrigin(t *testing.T) {
 	if len(renderer.requests) != 1 {
 		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
 	}
-	want := "http://" + tenant.AdminDomain + ":3180/accept-invite?token=invite-token"
+	want := "http://" + tenant.AdminDomain + "/accept-invite?token=invite-token"
 	if url, _ := renderer.requests[0].Data["invite_url"].(string); url != want {
 		t.Fatalf("invite_url = %v, want %s", renderer.requests[0].Data["invite_url"], want)
 	}

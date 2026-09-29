@@ -4,7 +4,7 @@ import { hostPath } from "../src/urls";
 
 /**
  * Minimal host-based routing sample:
- * Host `localhost:3000` resolves to the dev-seed tenant (`localhost` domain)
+ * Host `localhost:<edge>` resolves to the dev-seed tenant stored on that host
  * and renders the catalog top page under its prefix-less default locale.
  */
 test.describe("web-host catalog top", () => {

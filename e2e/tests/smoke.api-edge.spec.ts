@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   WEB_ADMIN_BASE_URL,
-  WEB_HOST_EDGE_BASE_URL,
+  WEB_HOST_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "../src/urls";
 
@@ -13,7 +13,7 @@ const PLATFORM_PROCEDURE =
   "/api/publira.platform.v1.PlatformTenantService/ListTenants";
 
 const edgeHosts = [
-  ["the tenant site", WEB_HOST_EDGE_BASE_URL],
+  ["the tenant site", WEB_HOST_BASE_URL],
   ["the tenant console", WEB_ADMIN_BASE_URL],
   ["the platform console", WEB_PLATFORM_BASE_URL],
 ] as const;

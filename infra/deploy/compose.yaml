@@ -18,7 +18,6 @@ x-secret-encryption: &secret-encryption
 
 x-tenant-url: &tenant-url
   PUBLIRA_TENANT_URL_SCHEME: ${PUBLIRA_TENANT_URL_SCHEME:-}
-  PUBLIRA_TENANT_URL_PORT: ${PUBLIRA_TENANT_URL_PORT:-}
 
 # Where `publira server` and the worker send cache revalidation. The Platform
 # Console's URL is left empty unless it runs, since a destination that never

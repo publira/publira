@@ -40,7 +40,7 @@ fi
 host_address="$(mobile_device_address "${device}")"
 mobile_bind_device_port "${device}" "${PUBLIRA_E2E_PUBLIC_API_PORT}"
 export PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
-export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
+export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 
 # Whether the device gets an HTTP answer from the API port on the host.
 device_reaches_api() {

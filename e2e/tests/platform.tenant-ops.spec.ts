@@ -19,6 +19,7 @@ import {
   uniqueSuffix,
 } from "../src/scenarios/platform-tenants";
 import {
+  tenantHost,
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
   WEB_PLATFORM_BASE_URL,
@@ -206,14 +207,16 @@ test.describe("platform tenant operations", () => {
   }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Domain Tenant ${suffix}`;
-    const domain = `e2e-dom-${suffix}.localhost`;
-    const adminDomain = `admin.e2e-dom-${suffix}.localhost`;
+    const hostname = `e2e-dom-${suffix}.localhost`;
+    const adminHostname = `admin.${hostname}`;
+    const domain = tenantHost(hostname);
+    const adminDomain = tenantHost(adminHostname);
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
     );
 
-    const hostBase = withHostname(WEB_HOST_BASE_URL, domain);
+    const hostBase = withHostname(WEB_HOST_BASE_URL, hostname);
     const hostResponse = await page.goto(`${hostBase}/`);
     expect(hostResponse?.status(), await page.content()).toBe(200);
     // A brand new tenant has no work for the top page to open with, so the
@@ -225,7 +228,7 @@ test.describe("platform tenant operations", () => {
     // shown on the header brand.
     await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
-    const adminBase = withHostname(WEB_ADMIN_BASE_URL, adminDomain);
+    const adminBase = withHostname(WEB_ADMIN_BASE_URL, adminHostname);
     const adminResponse = await page.goto(`${adminBase}/login`);
     expect(adminResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByLabel(/Email address/u)).toBeVisible();
@@ -240,8 +243,10 @@ test.describe("platform tenant operations", () => {
       await signInAsSeedPlatformSuperAdmin(page, `/tenants/${tenantId}`);
     }
 
-    const movedDomain = `e2e-dom2-${suffix}.localhost`;
-    const movedAdminDomain = `admin.e2e-dom2-${suffix}.localhost`;
+    const movedHostname = `e2e-dom2-${suffix}.localhost`;
+    const movedAdminHostname = `admin.${movedHostname}`;
+    const movedDomain = tenantHost(movedHostname);
+    const movedAdminDomain = tenantHost(movedAdminHostname);
     await tenantDomainInput(page).fill(movedDomain);
     await tenantAdminDomainInput(page).fill(movedAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
@@ -258,12 +263,12 @@ test.describe("platform tenant operations", () => {
       `)
     ).toBe(`${movedDomain}|${movedAdminDomain}`);
 
-    const movedHost = withHostname(WEB_HOST_BASE_URL, movedDomain);
+    const movedHost = withHostname(WEB_HOST_BASE_URL, movedHostname);
     const movedHostResponse = await page.goto(`${movedHost}/`);
     expect(movedHostResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
-    const movedAdmin = withHostname(WEB_ADMIN_BASE_URL, movedAdminDomain);
+    const movedAdmin = withHostname(WEB_ADMIN_BASE_URL, movedAdminHostname);
     const movedAdminResponse = await page.goto(`${movedAdmin}/login`);
     expect(movedAdminResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByLabel(/Email address/u)).toBeVisible();
