@@ -33,6 +33,8 @@ import {
 } from "./mfa-enroll-steps";
 
 interface MfaEnrollFlowProps {
+  /** Whether the challenge has already been spent. */
+  finished: boolean;
   /** Where the login was heading before the tenant held it for an enrollment. */
   nextPath: string;
   tenantId: string;
@@ -124,8 +126,14 @@ const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
  * The enrollment a tenant requires of an administrator before it will finish
  * their login: start, scan, confirm, and keep the recovery codes.
  */
-export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => (
+export const MfaEnrollFlow = ({
+  finished,
+  nextPath,
+  tenantId,
+}: MfaEnrollFlowProps) => (
   <MfaEnrollSteps
+    finished={finished}
+    nextPath={nextPath}
     done={
       <AuthScreenBody>
         <MfaRecoveryCodes />

@@ -14,7 +14,7 @@ import type {
 
 import { MfaEnrollFlow } from "./mfa-enroll-flow";
 
-const { confirm, start } = vi.hoisted(() => ({
+const { confirm, redirect, start } = vi.hoisted(() => ({
   confirm:
     vi.fn<
       (
@@ -22,6 +22,7 @@ const { confirm, start } = vi.hoisted(() => ({
         formData: FormData
       ) => Promise<MfaEnrollmentConfirmState>
     >(),
+  redirect: vi.fn<(path: string) => never>(),
   start:
     vi.fn<
       (
@@ -37,6 +38,8 @@ vi.mock("../_lib/actions", () => ({
   confirmMfaEnrollmentAction: confirm,
   startMfaEnrollmentAction: start,
 }));
+
+vi.mock("next/navigation", () => ({ redirect }));
 
 vi.mock("#components/message", () => ({
   Message: ({
@@ -67,7 +70,9 @@ vi.mock("#components/mfa-enrollment-secret", async () => {
 });
 
 const confirmEnrollment = async () => {
-  render(<MfaEnrollFlow nextPath="/series" tenantId="TENANT001" />);
+  render(
+    <MfaEnrollFlow finished={false} nextPath="/series" tenantId="TENANT001" />
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
   expect(await screen.findByText("JBSWY3DPEHPK3PXP")).toBeDefined();
@@ -138,7 +143,9 @@ describe("MfaEnrollFlow", () => {
       ok: false,
     });
 
-    render(<MfaEnrollFlow nextPath="/series" tenantId="TENANT001" />);
+    render(
+      <MfaEnrollFlow finished={false} nextPath="/series" tenantId="TENANT001" />
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
     fireEvent.change(await screen.findByLabelText("Verification code"), {
@@ -150,5 +157,15 @@ describe("MfaEnrollFlow", () => {
 
     expect(await screen.findByText("The code is incorrect.")).toBeDefined();
     expect(screen.getByText("JBSWY3DPEHPK3PXP")).toBeDefined();
+  });
+
+  it("goes on to where the login was heading when the challenge was spent before this visit", () => {
+    redirect.mockImplementation((path) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    });
+
+    expect(() =>
+      render(<MfaEnrollFlow finished nextPath="/series" tenantId="TENANT001" />)
+    ).toThrow("NEXT_REDIRECT:/series");
   });
 });

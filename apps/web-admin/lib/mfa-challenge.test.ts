@@ -145,3 +145,31 @@ describe("writeMfaChallenge", () => {
     await expect(readMfaChallenge()).resolves.toEqual(stored);
   });
 });
+
+describe("finishMfaChallenge", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  it("keeps where the login was heading and drops the spent token", async () => {
+    const { finishMfaChallenge, readMfaChallenge, readStoredMfaChallenge } =
+      await import("./mfa-challenge");
+    const stored = challenge();
+
+    await finishMfaChallenge(stored);
+
+    const written = mockSetCookie.mock.calls[0]?.[0];
+    mockGetCookie.mockReturnValue({ value: written.value });
+    await expect(readStoredMfaChallenge()).resolves.toEqual({
+      expiresAt: stored.expiresAt,
+      finished: true,
+      kind: stored.kind,
+      nextPath: stored.nextPath,
+      tenantId: stored.tenantId,
+    });
+    // Nothing is left for an Action to spend.
+    await expect(readMfaChallenge()).resolves.toBeNull();
+  });
+});

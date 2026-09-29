@@ -58,28 +58,54 @@ const mfaChallengeSchema = z.object({
 export type MfaChallenge = z.infer<typeof mfaChallengeSchema>;
 
 /**
- * The pending challenge this request carries, or `null` when there is none to
- * act on.
+ * A challenge the operator has spent, kept without its token until it expires.
+ *
+ * Writing the session cookie makes Next.js render `/mfa` again in the Action's
+ * own response, and that render needs the challenge's kind and destination to
+ * keep showing the answer the Action returned: the recovery codes an
+ * enrollment issued, or how many codes a recovery sign-in left.
+ */
+const finishedMfaChallengeSchema = mfaChallengeSchema
+  .omit({ challengeToken: true })
+  .extend({ finished: z.literal(true) });
+
+const storedMfaChallengeSchema = z.union([
+  mfaChallengeSchema,
+  finishedMfaChallengeSchema,
+]);
+
+export type StoredMfaChallenge = z.infer<typeof storedMfaChallengeSchema>;
+
+/**
+ * The challenge this request carries, pending or finished, or `null` when there
+ * is none.
  *
  * A cookie that no longer decrypts, one shaped like something else, and one
  * whose challenge has run out are all the same answer: the operator has to
  * sign in again. Reads `cookies()`, so callers sit inside a `<Suspense>`
  * boundary and never inside a `"use cache"` scope.
  */
+export const readStoredMfaChallenge =
+  async (): Promise<StoredMfaChallenge | null> => {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(MFA_CHALLENGE_COOKIE_NAME)?.value?.trim();
+    if (!raw) {
+      return null;
+    }
+
+    const payload = await decryptPayload(raw, resolveAuthSecret());
+    const parsed = storedMfaChallengeSchema.safeParse(payload);
+    if (!parsed.success || isSessionExpired(parsed.data.expiresAt)) {
+      return null;
+    }
+
+    return parsed.data;
+  };
+
+/** The pending challenge this request carries, or `null` when there is none to act on. */
 export const readMfaChallenge = async (): Promise<MfaChallenge | null> => {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get(MFA_CHALLENGE_COOKIE_NAME)?.value?.trim();
-  if (!raw) {
-    return null;
-  }
-
-  const payload = await decryptPayload(raw, resolveAuthSecret());
-  const parsed = mfaChallengeSchema.safeParse(payload);
-  if (!parsed.success || isSessionExpired(parsed.data.expiresAt)) {
-    return null;
-  }
-
-  return parsed.data;
+  const stored = await readStoredMfaChallenge();
+  return stored && "challengeToken" in stored ? stored : null;
 };
 
 /**
@@ -90,7 +116,7 @@ export const readMfaChallenge = async (): Promise<MfaChallenge | null> => {
  * on the code entry screen stops carrying a token the API would refuse anyway.
  */
 export const writeMfaChallenge = async (
-  challenge: MfaChallenge
+  challenge: StoredMfaChallenge
 ): Promise<void> => {
   const expiresAt = parseInstant(challenge.expiresAt);
   if (!expiresAt) {
@@ -110,7 +136,21 @@ export const writeMfaChallenge = async (
 };
 
 /**
- * Drop the challenge once it has been spent or abandoned.
+ * Mark the challenge spent by a submission whose answer `/mfa` still has to
+ * show, dropping the token the API will not accept again.
+ *
+ * **Server Actions only**, for the same reason as {@link writeMfaChallenge}.
+ */
+export const finishMfaChallenge = async ({
+  challengeToken: _spent,
+  ...challenge
+}: MfaChallenge): Promise<void> => {
+  await writeMfaChallenge({ ...challenge, finished: true });
+};
+
+/**
+ * Drop the challenge once it has been abandoned, or spent by a submission that
+ * leaves `/mfa`.
  *
  * **Server Actions only**, for the same reason as {@link writeMfaChallenge}.
  */
