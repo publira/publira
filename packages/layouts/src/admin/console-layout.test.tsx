@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -153,11 +154,14 @@ describe("Console layout slots", () => {
     expect(dialog.dataset.swipeDirection).toBe("left");
   });
 
-  it("closes the drawer when an entry in it is followed", async () => {
+  it("shows the sidebar's navigation in the open drawer and closes it on the entry followed", async () => {
     render(
       <ConsoleLayout>
         <ConsoleMobileNavigation>
           <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleMobileNavigation>
+        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+        <ConsoleSidebar>
           <ConsoleSidebarNavigation hrefs={hrefs}>
             <ConsoleSidebarNavigationSection>
               <ConsoleSidebarNavigationItems>
@@ -171,14 +175,15 @@ describe("Console layout slots", () => {
               </ConsoleSidebarNavigationItems>
             </ConsoleSidebarNavigationSection>
           </ConsoleSidebarNavigation>
-        </ConsoleMobileNavigation>
-        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
-        <div />
+        </ConsoleSidebar>
       </ConsoleLayout>
     );
 
+    expect(screen.getAllByRole("link", { name: "Tenants" })).toHaveLength(1);
+
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
-    fireEvent.click(screen.getByRole("link", { name: "Tenants" }));
+    const drawer = screen.getByRole("dialog");
+    fireEvent.click(within(drawer).getByRole("link", { name: "Tenants" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();

@@ -151,7 +151,6 @@ const AdminMobileNavigation = async () => {
         <ConsoleMobileNavigationCloseButton
           aria-label={t("admin.shell.navigation_close")}
         />
-        <AdminNavigation />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
         aria-label={t("admin.shell.navigation_open")}
