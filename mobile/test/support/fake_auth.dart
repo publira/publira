@@ -547,7 +547,8 @@ class FakeProviderSignIn implements ProviderSignIn {
   final requested = <IdentityProvider>[];
 
   @override
-  List<IdentityProvider> offered(SignInProviders providers) => this.providers;
+  Future<List<IdentityProvider>> offered(SignInProviders providers) async =>
+      this.providers;
 
   @override
   Future<ProviderCredential> signIn(

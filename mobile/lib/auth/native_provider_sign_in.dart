@@ -5,24 +5,32 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// [ProviderSignIn] through Sign in with Apple and Google Sign-In.
 class NativeProviderSignIn implements ProviderSignIn {
-  const NativeProviderSignIn({required this.googleIosClientId});
+  NativeProviderSignIn({required this.googleIosClientId});
 
   /// The iOS client whose URL scheme this build registered, empty for a build
   /// that registered none.
   final String googleIosClientId;
 
-  @override
-  List<IdentityProvider> offered(SignInProviders providers) => offeredProviders(
-    providers,
-    platform: defaultTargetPlatform,
-    googleIosClientId: googleIosClientId,
+  /// This app's bundle identifier or application ID, read once.
+  late final Future<String> _bundleIdentifier = PackageInfo.fromPlatform().then(
+    (info) => info.packageName,
   );
+
+  @override
+  Future<List<IdentityProvider>> offered(SignInProviders providers) async =>
+      offeredProviders(
+        providers,
+        platform: defaultTargetPlatform,
+        bundleIdentifier: await _bundleIdentifier,
+        googleIosClientId: googleIosClientId,
+      );
 
   @override
   Future<ProviderCredential> signIn(

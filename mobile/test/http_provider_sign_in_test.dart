@@ -46,6 +46,7 @@ void main() {
   setUp(() async {
     server = ConnectFixtureServer()
       ..appleSignIn = const {}
+      ..iosAppBundleIdentifier = 'com.example.reader'
       ..googleSignIn = const {
         'webClientId': '1-web.apps.googleusercontent.com',
         'iosClientId': '1-ios.apps.googleusercontent.com',
@@ -87,6 +88,7 @@ void main() {
       await auth.readSignInProviders(),
       const SignInProviders(
         apple: true,
+        appleBundleIdentifier: 'com.example.reader',
         google: GoogleSignInClients(
           webClientId: '1-web.apps.googleusercontent.com',
           iosClientId: '1-ios.apps.googleusercontent.com',
@@ -96,7 +98,8 @@ void main() {
 
     server
       ..appleSignIn = null
-      ..googleSignIn = null;
+      ..googleSignIn = null
+      ..iosAppBundleIdentifier = null;
     expect(await auth.readSignInProviders(), SignInProviders.none);
   });
 

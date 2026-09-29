@@ -676,6 +676,10 @@ class ConnectFixtureServer {
   Map<String, Object?>? appleSignIn;
   Map<String, Object?>? googleSignIn;
 
+  /// The bundle identifier `GetTenantMobileAppAssociation` names for the
+  /// tenant's iOS app. `null` is a tenant with no iOS app, which it omits.
+  String? iosAppBundleIdentifier;
+
   /// The ID tokens a provider has issued, keyed by the token itself, which
   /// `LoginWithIdToken` and `DeleteMe` accept for the nonce they carry.
   final idTokens = <String, FixtureIdToken>{};
@@ -1247,6 +1251,19 @@ class ConnectFixtureServer {
           'appleSignIn': appleSignIn,
         if (tenantStatus == HttpStatus.ok && googleSignIn != null)
           'googleSignIn': googleSignIn,
+        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.endsWith('/GetTenantMobileAppAssociation')) {
+      await _write(request, tenantStatus, {
+        if (tenantStatus == HttpStatus.ok && iosAppBundleIdentifier != null)
+          'ios': {
+            'teamId': 'ABCDE12345',
+            'bundleIdentifier': iosAppBundleIdentifier,
+          },
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });

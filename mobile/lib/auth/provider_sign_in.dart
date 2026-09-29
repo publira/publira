@@ -48,7 +48,7 @@ class ProviderSignInFailure implements Exception {
 abstract class ProviderSignIn {
   /// The providers this device offers for the tenant's [providers], in the
   /// order the buttons are shown.
-  List<IdentityProvider> offered(SignInProviders providers);
+  Future<List<IdentityProvider>> offered(SignInProviders providers);
 
   /// Runs [provider]'s sign-in with a fresh nonce.
   ///
@@ -59,22 +59,29 @@ abstract class ProviderSignIn {
   );
 }
 
-/// The providers a build for [platform] offers for [providers], in the order
-/// the buttons are shown.
+/// The providers an app with [bundleIdentifier] offers on [platform] for the
+/// tenant's [providers], in the order the buttons are shown.
 ///
-/// Apple is offered on iOS alone: elsewhere it is a web flow that needs a
-/// redirect back into the app (#3390). Google on iOS needs the URL scheme of
-/// the client this build registered, [googleIosClientId], and is offered only
-/// beside Apple, as the App Store requires. Android signs in to Google with
-/// the web client as its server client ID.
+/// Apple is offered on iOS alone, and only to the app the tenant's iOS app
+/// association names, whose bundle identifier its tokens are accepted for;
+/// elsewhere it is a web flow that needs a redirect back into the app
+/// (#3390). Google on iOS needs the URL scheme of the client this build
+/// registered, [googleIosClientId], and is offered only beside Apple, as the
+/// App Store requires. Android signs in to Google with the web client as its
+/// server client ID.
 List<IdentityProvider> offeredProviders(
   SignInProviders providers, {
   required TargetPlatform platform,
+  required String bundleIdentifier,
   required String googleIosClientId,
 }) {
   final google = providers.google;
+  final apple =
+      providers.apple &&
+      providers.appleBundleIdentifier.isNotEmpty &&
+      providers.appleBundleIdentifier == bundleIdentifier;
   return switch (platform) {
-    TargetPlatform.iOS when providers.apple => [
+    TargetPlatform.iOS when apple => [
       IdentityProvider.apple,
       if (google != null &&
           google.iosClientId.isNotEmpty &&

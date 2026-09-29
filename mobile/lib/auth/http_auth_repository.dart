@@ -58,6 +58,8 @@ class HttpAuthRepository implements AuthRepository {
   static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
   static const _logoutProcedure = '/publira.v1.AuthService/Logout';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
+  static const _tenantMobileAppAssociationProcedure =
+      '/publira.v1.TenantService/GetTenantMobileAppAssociation';
   static const _tenantLegalPagesProcedure =
       '/publira.v1.TenantService/GetTenantLegalPages';
 
@@ -84,7 +86,25 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<SignInProviders> readSignInProviders() async {
-    return SignInProviders.fromTenant(await _getTenant());
+    final association = _readTenant(_tenantMobileAppAssociationProcedure);
+    // Listened to from the start, so its failure is not reported as uncaught
+    // while GetTenant is still in flight.
+    unawaited(association.then<void>((_) {}, onError: (_) {}));
+    final tenant = await _getTenant();
+    String appleBundleIdentifier;
+    try {
+      final ios = (await association)['ios'];
+      appleBundleIdentifier = ios is Map<String, Object?>
+          ? _readString(ios, 'bundleIdentifier')
+          : '';
+    } on AuthFailure {
+      // Without it no app is known to take Apple's token; Google still is.
+      appleBundleIdentifier = '';
+    }
+    return SignInProviders.fromTenant(
+      tenant,
+      appleBundleIdentifier: appleBundleIdentifier,
+    );
   }
 
   @override

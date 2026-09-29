@@ -551,7 +551,7 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 
 | Platform | Apple | Google |
 | --- | --- | --- |
-| iOS | Sign in with Apple, audience the bundle identifier, handed the SHA-256 of the nonce; `LoginWithIdToken` gets the raw nonce and the authorization code | `google_sign_in_ios` with `google_sign_in.ios_client_id`, offered only when it is the client the build registered (`ios.googleSignInClientId`) and only beside Apple, as the App Store requires |
+| iOS | Sign in with Apple, offered only when the app's bundle identifier is the one `GetTenantMobileAppAssociation` names, since the token's audience is the app — never in the `dev` flavor. Apple is handed the SHA-256 of the nonce; `LoginWithIdToken` gets the raw nonce and the authorization code | `google_sign_in_ios` with `google_sign_in.ios_client_id`, offered only when it is the client the build registered (`ios.googleSignInClientId`) and only beside Apple, as the App Store requires |
 | Android | Not offered yet (#3390) | Credential Manager with `google_sign_in.web_client_id` as the server client ID |
 
 - The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client

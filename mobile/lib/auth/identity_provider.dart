@@ -30,14 +30,23 @@ enum IdentityProvider {
 /// is absent.
 @immutable
 class SignInProviders {
-  const SignInProviders({this.apple = false, this.google});
+  const SignInProviders({
+    this.apple = false,
+    this.appleBundleIdentifier = '',
+    this.google,
+  });
 
-  /// Read from the `GetTenant` body [tenant].
-  factory SignInProviders.fromTenant(Map<String, Object?> tenant) {
+  /// Read from the `GetTenant` body [tenant], with the iOS bundle identifier
+  /// [appleBundleIdentifier] Apple's tokens are accepted for.
+  factory SignInProviders.fromTenant(
+    Map<String, Object?> tenant, {
+    String appleBundleIdentifier = '',
+  }) {
     final google = tenant['googleSignIn'];
     return SignInProviders(
       // protojson sends an enabled provider with no field set as `{}`.
       apple: tenant['appleSignIn'] is Map,
+      appleBundleIdentifier: appleBundleIdentifier,
       google: google is Map
           ? GoogleSignInClients(
               webClientId: _trimmed(google['webClientId']),
@@ -53,6 +62,11 @@ class SignInProviders {
   /// with its own bundle identifier, so no client ID comes with it.
   final bool apple;
 
+  /// The bundle identifier of the tenant's iOS app, as
+  /// `GetTenantMobileAppAssociation` names it, which is the only app an Apple
+  /// token is accepted from. Empty where the tenant names none.
+  final String appleBundleIdentifier;
+
   final GoogleSignInClients? google;
 
   static String _trimmed(Object? value) => value is String ? value.trim() : '';
@@ -61,10 +75,11 @@ class SignInProviders {
   bool operator ==(Object other) =>
       other is SignInProviders &&
       other.apple == apple &&
+      other.appleBundleIdentifier == appleBundleIdentifier &&
       other.google == google;
 
   @override
-  int get hashCode => Object.hash(apple, google);
+  int get hashCode => Object.hash(apple, appleBundleIdentifier, google);
 }
 
 /// The Google OAuth clients the tenant signs readers in through. Each is

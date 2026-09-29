@@ -74,7 +74,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         confirmation = const _Confirmation.password();
       } else {
         final providers = await auth.readSignInProviders();
-        final offered = signIn?.offered(providers) ?? const [];
+        final offered = await signIn?.offered(providers) ?? const [];
         confirmation = _Confirmation.provider(providers, [
           for (final provider in offered)
             if (identities.links(provider)) provider,

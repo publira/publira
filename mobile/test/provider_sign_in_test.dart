@@ -20,6 +20,7 @@ void main() {
   group('offeredProviders', () {
     const both = SignInProviders(
       apple: true,
+      appleBundleIdentifier: 'com.example.reader',
       google: GoogleSignInClients(
         webClientId: 'web-client',
         iosClientId: 'ios-client',
@@ -29,10 +30,12 @@ void main() {
     List<IdentityProvider> offered(
       SignInProviders providers,
       TargetPlatform platform, {
+      String bundleIdentifier = 'com.example.reader',
       String googleIosClientId = 'ios-client',
     }) => offeredProviders(
       providers,
       platform: platform,
+      bundleIdentifier: bundleIdentifier,
       googleIosClientId: googleIosClientId,
     );
 
@@ -49,6 +52,28 @@ void main() {
       expect(offered(both, TargetPlatform.iOS, googleIosClientId: ''), [
         IdentityProvider.apple,
       ]);
+    });
+
+    test('iOS offers Apple only to the app the tenant names, never to the '
+        'dev flavor', () {
+      expect(
+        offered(
+          both,
+          TargetPlatform.iOS,
+          bundleIdentifier: 'com.example.reader.dev',
+        ),
+        isEmpty,
+      );
+      expect(
+        offered(
+          const SignInProviders(
+            apple: true,
+            google: GoogleSignInClients(iosClientId: 'ios-client'),
+          ),
+          TargetPlatform.iOS,
+        ),
+        isEmpty,
+      );
     });
 
     test('iOS offers no Google without Apple beside it', () {

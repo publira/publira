@@ -53,8 +53,10 @@ class _ProviderSignInButtonsState extends State<ProviderSignInButtons> {
   /// A tenant read that fails offers no button; the form above still works.
   Future<void> _load(ProviderSignIn signIn) async {
     final SignInProviders providers;
+    final List<IdentityProvider> offered;
     try {
       providers = await AuthScope.of(context).readSignInProviders();
+      offered = await signIn.offered(providers);
     } on Exception {
       return;
     }
@@ -63,7 +65,7 @@ class _ProviderSignInButtonsState extends State<ProviderSignInButtons> {
     }
     setState(() {
       _providers = providers;
-      _offered = signIn.offered(providers);
+      _offered = offered;
     });
   }
 
