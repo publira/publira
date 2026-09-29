@@ -1,5 +1,4 @@
-"use client";
-
+import { ActionFormFieldset } from "@publira/ui-components/action-form";
 import {
   Field,
   FieldContent,
@@ -7,8 +6,11 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 interface MfaCodeFieldProps {
   /**
@@ -18,44 +20,55 @@ interface MfaCodeFieldProps {
    * minting a new batch of codes.
    */
   allowRecoveryCode: boolean;
-  disabled?: boolean;
 }
 
+/** `placeholder` is an attribute rather than a node, so the input waits for the catalog alone. */
+const MfaCodeInput = async ({ allowRecoveryCode }: MfaCodeFieldProps) => {
+  const t = await getMessages();
+
+  return (
+    <Input
+      autoComplete="one-time-code"
+      // A recovery code carries letters and a separator, so the numeric
+      // keypad is only right where the authenticator is the only source.
+      inputMode={allowRecoveryCode ? "text" : "numeric"}
+      name="code"
+      placeholder={t("admin.auth.mfa.code_placeholder")}
+      required
+      type="text"
+    />
+  );
+};
+
 /**
- * The one input every second-factor form has.
+ * The one input every second-factor form has, closed while its `ActionForm`
+ * is submitting.
  *
  * It reads the same on all of them, so it resolves its own copy rather than
  * making four call sites pass the same label and hint.
  */
-export const MfaCodeField = ({
-  allowRecoveryCode,
-  disabled,
-}: MfaCodeFieldProps) => {
-  const t = useClientMessages();
-
-  return (
+export const MfaCodeField = ({ allowRecoveryCode }: MfaCodeFieldProps) => (
+  <ActionFormFieldset>
     <Field>
       <FieldLabel required>
-        <ClientMessage message="admin.auth.mfa.code_label" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.auth.mfa.code_label" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
-        <Input
-          autoComplete="one-time-code"
-          disabled={disabled}
-          // A recovery code carries letters and a separator, so the numeric
-          // keypad is only right where the authenticator is the only source.
-          inputMode={allowRecoveryCode ? "text" : "numeric"}
-          name="code"
-          placeholder={t("admin.auth.mfa.code_placeholder")}
-          required
-          type="text"
-        />
+        <Suspense fallback={<Skeleton className="h-9 w-full" />}>
+          <MfaCodeInput allowRecoveryCode={allowRecoveryCode} />
+        </Suspense>
         <FieldDescription>
-          {allowRecoveryCode
-            ? t("admin.auth.mfa.code_help")
-            : t("admin.auth.mfa.code_help_totp_only")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            {allowRecoveryCode ? (
+              <Message message="admin.auth.mfa.code_help" />
+            ) : (
+              <Message message="admin.auth.mfa.code_help_totp_only" />
+            )}
+          </Suspense>
         </FieldDescription>
       </FieldContent>
     </Field>
-  );
-};
+  </ActionFormFieldset>
+);

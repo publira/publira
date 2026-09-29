@@ -85,6 +85,7 @@ export const startAccountMfaEnrollmentAction = async (
   }
 
   return {
+    message: "",
     ok: true,
     qr: toQrCodePath(result.otpauthUri),
     secret: result.secret,
@@ -97,8 +98,10 @@ export const confirmAccountMfaEnrollmentAction = async (
 ): Promise<MfaEnrollmentConfirmState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-
-  const input = await parseMfaForm(formData, locale);
+  const [t, input] = await Promise.all([
+    getMessagesFor(locale),
+    parseMfaForm(formData, locale),
+  ]);
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -114,7 +117,12 @@ export const confirmAccountMfaEnrollmentAction = async (
 
   // The session that authorized this call is the session it keeps; only a
   // challenge enrollment issues one, so nothing here changes who is signed in.
-  return { ok: true, recoveryCodes: result.recoveryCodes, signedIn: true };
+  return {
+    message: t("admin.settings.mfa.enabled_done"),
+    ok: true,
+    recoveryCodes: result.recoveryCodes,
+    signedIn: true,
+  };
 };
 
 export const regenerateAccountMfaRecoveryCodesAction = async (

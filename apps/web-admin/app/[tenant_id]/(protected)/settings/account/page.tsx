@@ -86,7 +86,7 @@ const MfaSection = async () => {
     );
   }
 
-  return <MfaSettingsCard status={result.status} />;
+  return <MfaSettingsCard status={result.status} tenantId={tenantId} />;
 };
 
 const AccountSettingsPage = () => (

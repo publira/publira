@@ -13,7 +13,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
@@ -47,10 +46,6 @@ const MfaPageFallback = () => (
  * has nothing to read from the request but that cookie: no challenge means the
  * password step has not happened, or has run out, and the operator starts over
  * at `/login`.
- *
- * The locale provider is here because the console's own layout is behind the
- * session this screen exists to issue, and the forms below resolve their copy
- * through it.
  */
 const MfaPageContent = async () => {
   const [tenantId, challenge] = await Promise.all([
@@ -61,14 +56,10 @@ const MfaPageContent = async () => {
     redirect(buildLoginPath(challenge?.nextPath));
   }
 
-  return (
-    <AdminLocaleProvider>
-      {challenge.kind === "enroll" ? (
-        <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
-      ) : (
-        <MfaVerifyForm nextPath={challenge.nextPath} tenantId={tenantId} />
-      )}
-    </AdminLocaleProvider>
+  return challenge.kind === "enroll" ? (
+    <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
+  ) : (
+    <MfaVerifyForm nextPath={challenge.nextPath} tenantId={tenantId} />
   );
 };
 

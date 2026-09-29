@@ -137,7 +137,11 @@ describe("verifyMfaAction", () => {
       formData({ code: "ABCDE-FGHJK", tenant_id: TENANT_ID })
     );
 
-    expect(result).toEqual({ ok: true, remainingRecoveryCodes: 9 });
+    expect(result).toEqual({
+      message:
+        "9 recovery codes are left. Regenerate them from your account settings once your authenticator is back.",
+      ok: true,
+    });
     expect(mockWriteAdminSessionCookie).toHaveBeenCalledOnce();
     expect(mockRedirect).not.toHaveBeenCalled();
   });
@@ -276,6 +280,7 @@ describe("enrollment actions", () => {
       "otpauth://totp/Publira:admin@example.com?secret=ABC"
     );
     expect(result).toEqual({
+      message: "",
       ok: true,
       qr: { path: "M4 4h1v1h-1z", size: 49 },
       secret: "ABC",
@@ -310,6 +315,7 @@ describe("enrollment actions", () => {
 
     expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
     expect(result).toEqual({
+      message: "",
       ok: true,
       recoveryCodes: ["ABCDE-FGHJK"],
       signedIn: true,
@@ -335,6 +341,7 @@ describe("enrollment actions", () => {
     );
 
     expect(result).toEqual({
+      message: "",
       ok: true,
       recoveryCodes: ["ABCDE-FGHJK"],
       signedIn: false,
