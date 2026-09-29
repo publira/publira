@@ -175,8 +175,8 @@ class AuthController extends ChangeNotifier {
   /// the sign-up form reads before it decides what to offer.
   ///
   /// Throws [AuthFailure].
-  Future<SignUpRequirements> readSignUpRequirements() =>
-      _repository.readSignUpRequirements();
+  Future<SignUpRequirements> readSignUpRequirements({required String locale}) =>
+      _repository.readSignUpRequirements(locale: locale);
 
   /// The signed-in reader's birth date and the tenant rule it is read
   /// against, or `null` when nobody is signed in.

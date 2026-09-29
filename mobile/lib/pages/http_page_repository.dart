@@ -18,13 +18,14 @@ class HttpPageRepository implements PageRepository {
   final TenantResolver _tenants;
 
   @override
-  Future<PublishedPage> get(String slug) async {
+  Future<PublishedPage> get(String slug, {required String locale}) async {
     final Map<String, Object?> body;
     try {
       final tenantId = await _tenants.resolve();
       body = await _client.unary(_getProcedure, {
         'tenant': {'tenantId': tenantId},
         'slug': slug,
+        'locale': locale,
       }, tenantId: tenantId);
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -45,6 +46,7 @@ class HttpPageRepository implements PageRepository {
       contentMarkdown: version is Map<String, Object?>
           ? _string(version['contentMarkdown'])
           : '',
+      locale: _string(page['locale']),
     );
   }
 

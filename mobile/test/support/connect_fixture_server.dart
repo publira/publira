@@ -51,7 +51,8 @@ class ConnectFixtureServer {
     this.contactStatus = HttpStatus.ok,
     this.contactErrorCode = 'unavailable',
     this.pageStatus = HttpStatus.ok,
-    Map<String, ({String title, String contentMarkdown})>? publishedPages,
+    Map<String, ({String title, String contentMarkdown, String locale})>?
+    publishedPages,
     this.signupStatus = HttpStatus.ok,
     this.signupErrorCode = 'unavailable',
     this.verificationRequestStatus = HttpStatus.ok,
@@ -635,8 +636,10 @@ class ConnectFixtureServer {
   /// an API that cannot be reached.
   int pageStatus;
 
-  /// The tenant's published pages, keyed by slug in storage form.
-  Map<String, ({String title, String contentMarkdown})> publishedPages;
+  /// The tenant's published pages, keyed by slug in storage form, each in the
+  /// one translation `GetPublishedPage` serves whatever locale is asked for.
+  Map<String, ({String title, String contentMarkdown, String locale})>
+  publishedPages;
 
   /// What `CreateUser` answers with, and the Connect code of the error body
   /// when that is not 200, so a test can act out an API that refuses a
@@ -1017,7 +1020,7 @@ class ConnectFixtureServer {
         });
       } else {
         await _write(request, HttpStatus.ok, {
-          'page': {'slug': slug, 'title': page.title},
+          'page': {'slug': slug, 'title': page.title, 'locale': page.locale},
           // protojson omits an empty body.
           'version': {
             if (page.contentMarkdown.isNotEmpty)

@@ -473,14 +473,14 @@ void main() {
     'readSignUpRequirements reports the tenant rule without a session',
     () async {
       expect(
-        (await auth.readSignUpRequirements()).ageVerification,
+        (await auth.readSignUpRequirements(locale: 'en')).ageVerification,
         AgeVerification.checked,
       );
 
       server.ageVerification = 'AGE_VERIFICATION_NONE';
 
       expect(
-        (await auth.readSignUpRequirements()).ageVerification,
+        (await auth.readSignUpRequirements(locale: 'en')).ageVerification,
         AgeVerification.none,
       );
       expect(server.requestsTo('GetTenant'), hasLength(2));
@@ -496,7 +496,7 @@ void main() {
       }
       ..privacyPage = {'slug': '/privacy', 'title': 'Privacy policy'};
 
-    final requirements = await auth.readSignUpRequirements();
+    final requirements = await auth.readSignUpRequirements(locale: 'en');
 
     expect(
       requirements.termsPage,
@@ -511,15 +511,32 @@ void main() {
     expect(requirements.legalPages, [requirements.termsPage]);
   });
 
+  test('readSignUpRequirements reads the pages in a locale', () async {
+    server.termsPage = {
+      'slug': '/legal/terms',
+      'title': 'Terms of service',
+      'versionId': 'terms-ja-v1',
+      'locale': 'ja',
+    };
+
+    final requirements = await auth.readSignUpRequirements(locale: 'ja');
+
+    expect(requirements.termsPage?.versionId, 'terms-ja-v1');
+    expect(server.requestsTo('GetTenantLegalPages').single.body, {
+      'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
+      'locale': 'ja',
+    });
+  });
+
   test(
     'readSignUpRequirements reports an unreachable tenant as a network failure',
     () async {
       // Resolved once while the API answers, so only the reads fail.
-      await auth.readSignUpRequirements();
+      await auth.readSignUpRequirements(locale: 'en');
       server.tenantStatus = HttpStatus.serviceUnavailable;
 
       await expectLater(
-        auth.readSignUpRequirements(),
+        auth.readSignUpRequirements(locale: 'en'),
         throwsA(
           isA<AuthFailure>().having(
             (failure) => failure.kind,

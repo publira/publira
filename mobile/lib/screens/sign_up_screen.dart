@@ -78,12 +78,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     unawaited(_readRequirements());
   }
 
+  /// The app's locale, which the pages to agree to are read in.
+  String get _locale => Localizations.localeOf(context).toLanguageTag();
+
   /// A read that fails leaves the form as a tenant that asks nothing gets it:
   /// the API still refuses a sign-up without the consent it requires.
   Future<void> _readRequirements() async {
     final SignUpRequirements requirements;
     try {
-      requirements = await AuthScope.of(context).readSignUpRequirements();
+      requirements = await AuthScope.of(
+        context,
+      ).readSignUpRequirements(locale: _locale);
     } on Exception {
       return;
     }
@@ -122,7 +127,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Read again, so a page republished since the form was read — whose
       // new text a reader may have opened from it — is agreed to anew rather
       // than recorded as the version the form happened to hold.
-      final current = await auth.readSignUpRequirements();
+      final current = await auth.readSignUpRequirements(locale: _locale);
       if (current.legalPages.isNotEmpty &&
           (shown == null || !current.asksSameConsentAs(shown))) {
         if (!mounted) {

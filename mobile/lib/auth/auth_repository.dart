@@ -72,8 +72,12 @@ abstract class AuthRepository {
   /// without a session and in one tenant read, so the sign-up form knows
   /// whether to ask for a birth date and for consent.
   ///
+  /// Each page is read in its translation in [locale], else the tenant's
+  /// default locale, else its oldest published one, so the version agreed to
+  /// is the text the reader was offered.
+  ///
   /// Throws [AuthFailure].
-  Future<SignUpRequirements> readSignUpRequirements();
+  Future<SignUpRequirements> readSignUpRequirements({required String locale});
 
   /// Re-reads the reader behind [session], so a token restored from storage is
   /// confirmed before the app presents it as signed in.

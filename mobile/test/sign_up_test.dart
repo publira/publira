@@ -46,6 +46,7 @@ void main() {
               slug: '/legal/terms',
               title: 'Terms of service',
               contentMarkdown: 'The terms you agree to.',
+              locale: 'en',
             ),
           ],
         ),
@@ -120,6 +121,18 @@ void main() {
         );
     });
 
+    testWidgets('the pages are read in the app\'s language', (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('ja')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+
+      expect(repository.signUpRequirementsLocales, ['ja']);
+    });
+
     testWidgets('a sign-up without the consent is refused', (tester) async {
       await pumpApp(tester);
       await pumpUntilFound(
@@ -161,6 +174,8 @@ void main() {
         'terms-v2',
         'privacy-v1',
       ]);
+      // Read again on sending, in the language the form was read in.
+      expect(repository.signUpRequirementsLocales, ['en', 'en']);
     });
 
     testWidgets('a page named for both roles is agreed to once', (

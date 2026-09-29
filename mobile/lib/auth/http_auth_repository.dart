@@ -180,10 +180,12 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<SignUpRequirements> readSignUpRequirements() async {
+  Future<SignUpRequirements> readSignUpRequirements({
+    required String locale,
+  }) async {
     final [tenant, legalPages] = await Future.wait([
       _getTenant(),
-      _readTenant(_tenantLegalPagesProcedure),
+      _readTenant(_tenantLegalPagesProcedure, {'locale': locale}),
     ]);
     return SignUpRequirements(
       ageVerification: AgeVerification.fromWire(tenant['ageVerification']),
@@ -427,12 +429,16 @@ class HttpAuthRepository implements AuthRepository {
 
   Future<Map<String, Object?>> _getTenant() => _readTenant(_tenantProcedure);
 
-  /// A `TenantService` read that takes nothing but the tenant.
-  Future<Map<String, Object?>> _readTenant(String procedure) async {
+  /// A `TenantService` read of the tenant, with [fields] beside it.
+  Future<Map<String, Object?>> _readTenant(
+    String procedure, [
+    Map<String, Object?> fields = const {},
+  ]) async {
     try {
       final tenantId = await _tenants.resolve();
       return await _client.unary(procedure, {
         'tenant': {'tenantId': tenantId},
+        ...fields,
       }, tenantId: tenantId);
     } on ConnectException catch (error) {
       throw _toFailure(error);

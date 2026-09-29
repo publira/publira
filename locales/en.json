@@ -3724,6 +3724,7 @@
     },
     "pages": {
       "body_empty": "This page has no content yet.",
+      "fallback_notice": "This page is not published in your language, so it is shown in {$language}.",
       "load_failed": "Could not show this page. Try again.",
       "not_found": "This page is no longer available."
     },
