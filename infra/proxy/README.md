@@ -4,7 +4,7 @@ Every Publira deployment puts one reverse proxy in front of four backends. This 
 
 | Proxy | Files | Where it runs |
 | --- | --- | --- |
-| Traefik | [`traefik/`](./traefik/) | The Dev Container edge on `localhost:3080`, the E2E edge, and the edge of each `dev-env` profile, all through the file provider; a sample for a deployment as well |
+| Traefik | [`traefik/`](./traefik/) | The Dev Container edge on `localhost:3080`, the same edge in front of a host-side `task dev` (`PUBLIRA_EDGE_BACKEND_HOST` pointing `services.yaml` at the host), the E2E edge, and the edge of each `dev-env` profile, all through the file provider; a sample for a deployment as well |
 | nginx | [`nginx/`](./nginx/) | Sample for a deployment |
 | Caddy | [`caddy/`](./caddy/) | Sample for a deployment |
 

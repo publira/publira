@@ -1,14 +1,15 @@
 # Dependency services for local development: PostgreSQL, Valkey (Redis
-# protocol), RustFS (S3), Mailpit, and Jaeger.
+# protocol), RustFS (S3), Mailpit, and Jaeger, and the Traefik edge in front of
+# a host-side `task dev`.
 #
 # `docker compose up -d` from the repository root brings the whole stack up and
 # publishes every port on 127.0.0.1, so `task dev` also works for a developer
 # who does not use the Dev Container.
 #
 # The Dev Container layers `.devcontainer/compose.yaml` on top of this file
-# (`dockerComposeFile` in devcontainer.json). That overlay adds `app` and
-# `traefik` and resets the published ports below, because a container reaches
-# these services by service name.
+# (`dockerComposeFile` in devcontainer.json). That overlay adds `app`, points
+# `traefik` at it, and resets the published ports below, because a container
+# reaches these services by service name.
 #
 # Loopback only, like `e2e/compose.yaml`: none of these services authenticates
 # a caller, so a bare `<port>:<port>` would hand the whole dev stack to anyone
@@ -90,6 +91,29 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # The edge in front of a host-side `task dev`: the three apps and the images
+  # under one origin on `localhost:3080`, as in the Dev Container, routed by the
+  # committed infra/proxy/traefik/dynamic with the host's backend addresses.
+  traefik:
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    restart: unless-stopped
+    command:
+      - "--entrypoints.web.address=:3080"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+    environment:
+      # Where services.yaml sends every backend: the host's processes.
+      PUBLIRA_EDGE_BACKEND_HOST: host.docker.internal
+    # Docker Desktop resolves host.docker.internal itself; Docker Engine on
+    # Linux resolves it through this mapping.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3080:3080"
+    volumes:
+      - ./infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
 
 volumes:
   mailpit-data:
