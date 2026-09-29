@@ -517,8 +517,7 @@ func (s *apiServer) UnlinkIdentity(
 }
 
 // confirmWithIdentity checks the fresh sign-in an account without a password
-// confirms a step with: a token from a provider linked to the account, whose
-// nonce is spent on queries.
+// confirms a step with, and spends its nonce on queries.
 func (s *apiServer) confirmWithIdentity(
 	ctx context.Context,
 	queries dbmodels.Querier,
@@ -526,12 +525,28 @@ func (s *apiServer) confirmWithIdentity(
 	providerValue publirav1.IdentityProvider,
 	rawToken, nonce string,
 ) error {
-	provider, err := identityProviderFromProto(providerValue)
+	claims, err := s.verifyIdentityConfirmation(ctx, queries, tenantID, userID, providerValue, rawToken, nonce)
 	if err != nil {
 		return err
 	}
+	return s.spendConfirmationNonce(ctx, queries, tenantID, nonce, claims)
+}
+
+// verifyIdentityConfirmation checks that a fresh sign-in is of a provider
+// linked to the account, without writing anything.
+func (s *apiServer) verifyIdentityConfirmation(
+	ctx context.Context,
+	queries dbmodels.Querier,
+	tenantID, userID uuid.UUID,
+	providerValue publirav1.IdentityProvider,
+	rawToken, nonce string,
+) (signin.Claims, error) {
+	provider, err := identityProviderFromProto(providerValue)
+	if err != nil {
+		return signin.Claims{}, err
+	}
 	if strings.TrimSpace(rawToken) == "" || strings.TrimSpace(nonce) == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("id_token and nonce are required"))
+		return signin.Claims{}, connect.NewError(connect.CodeInvalidArgument, errors.New("id_token and nonce are required"))
 	}
 	identity, err := queries.GetUserIdentityForUser(ctx, dbmodels.GetUserIdentityForUserParams{
 		TenantID: tenantID,
@@ -539,20 +554,26 @@ func (s *apiServer) confirmWithIdentity(
 		Provider: provider,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("no account of this provider is linked"), "provider")
+		return signin.Claims{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("no account of this provider is linked"), "provider")
 	}
 	if err != nil {
-		return s.internalDBError(ctx, "failed to read the linked identity", err, "tenant_id", tenantID.String(), "user_id", userID.String())
+		return signin.Claims{}, s.internalDBError(ctx, "failed to read the linked identity", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
 	claims, err := s.verifyIDToken(ctx, tenantID, provider, rawToken, nonce, false)
 	if err != nil {
-		return err
+		return signin.Claims{}, err
 	}
 	// Not Unauthenticated: the session is fine, the confirmation is not the
 	// account's, as a wrong password is not.
 	if claims.Subject != identity.Subject {
-		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the ID token is not of the linked account"), "id_token")
+		return signin.Claims{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the ID token is not of the linked account"), "id_token")
 	}
+	return claims, nil
+}
+
+// spendConfirmationNonce spends the nonce of a sign-in
+// verifyIdentityConfirmation accepted, so the same sign-in confirms one step.
+func (s *apiServer) spendConfirmationNonce(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUID, nonce string, claims signin.Claims) error {
 	if err := spendNonce(ctx, queries, tenantID, nonce, claims); err != nil {
 		if errors.Is(err, errNonceReplayed) {
 			return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the nonce was used already"), "nonce")

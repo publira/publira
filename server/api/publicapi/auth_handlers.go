@@ -27,6 +27,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -633,9 +634,11 @@ func (s *apiServer) RequestEmailChange(
 	newEmail := strings.TrimSpace(req.Msg.NewEmail)
 	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
 	currentPassword := req.Msg.CurrentPassword
-	if currentEmail == "" || newEmail == "" || strings.TrimSpace(currentPassword) == "" {
+	withPassword := strings.TrimSpace(currentPassword) != ""
+	withIdentity := strings.TrimSpace(req.Msg.IdToken) != ""
+	if currentEmail == "" || newEmail == "" || withPassword == withIdentity {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and either current_password or id_token are required"))
 	}
 	if _, err := mail.ParseAddress(currentEmail); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
@@ -653,18 +656,29 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
 	}
-	// Charged here rather than at the top: every check above refuses on what the
-	// caller typed instead of on the account's password, so none of them is a
-	// guess and none of them should cost an allowance.
-	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
-		return nil, err
+	var identityClaims signin.Claims
+	if withPassword {
+		// Charged here rather than at the top: every check above refuses on what the
+		// caller typed instead of on the account's password, so none of them is a
+		// guess and none of them should cost an allowance.
+		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+			return nil, err
+		}
+		if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
+		}
+		s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
+	} else {
+		// Verified before the mail guard is charged and spent inside the
+		// transaction below, since spending the nonce is a write.
+		identityClaims, err = s.verifyIdentityConfirmation(ctx, s.queriesFor(ctx), tenant.ID, user.ID, req.Msg.Provider, req.Msg.IdToken, req.Msg.Nonce)
+		if err != nil {
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
 	}
-	if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
-	}
-	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 
 	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -745,6 +759,12 @@ func (s *apiServer) RequestEmailChange(
 	if !strings.EqualFold(currentEmail, locked.Email) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+	}
+	if withIdentity {
+		if err := s.spendConfirmationNonce(ctx, txq, tenant.ID, req.Msg.Nonce, identityClaims); err != nil {
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
 	}
 
 	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {

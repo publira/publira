@@ -468,6 +468,60 @@ func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.
 	}
 }
 
+// An account a sign-in created has no password, so a fresh sign-in to a
+// provider linked to it confirms an email change, and that sign-in confirms one
+// change only.
+func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
+	reader := env.userByEmail(t, "reader@example.com")
+	requestChange := func(provider publirav1.IdentityProvider, idToken, nonce string) error {
+		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(&publirav1.RequestEmailChangeRequest{
+			Tenant:       tenantContext(env.tenant),
+			CurrentEmail: "reader@example.com",
+			NewEmail:     "moved@example.com",
+			Provider:     provider,
+			IdToken:      idToken,
+			Nonce:        nonce,
+		}, signedIn.AccessToken.Token))
+		return err
+	}
+	liveRequests := func() int {
+		return countRows(t, env.publicDBEnv, `
+			SELECT count(*) FROM user_email_change_tokens
+			WHERE user_id = $1 AND completed_at IS NULL
+		`, reader.ID)
+	}
+
+	err := requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
+		env.appleToken(t, "apple-subject", "reader@example.com", "nonce-2"), "nonce-2")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("confirmed by a provider not linked code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	err = requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("confirmed by the sign-in that opened the session code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if live := liveRequests(); live != 0 {
+		t.Fatalf("live email change requests after the refusals = %d, want 0", live)
+	}
+
+	fresh := env.googleToken(t, "google-subject", "reader@example.com", "nonce-3")
+	if err := requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, fresh, "nonce-3"); err != nil {
+		t.Fatalf("RequestEmailChange confirmed by a fresh sign-in: %v", err)
+	}
+	if live := liveRequests(); live != 1 {
+		t.Fatalf("live email change requests = %d, want 1", live)
+	}
+	err = requestChange(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, fresh, "nonce-3")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("the same sign-in replayed code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
 // GetTenant answers the providers a client can offer, with the client IDs it
 // signs in through, and nothing of the key.
 func TestDBGetTenantAnswersTheProvidersReadersCanSignInWith(t *testing.T) {

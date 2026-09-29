@@ -144,7 +144,13 @@ message RequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string current_email = 2;
   string new_email = 3;
+  // The account's password. An account without one confirms with a fresh
+  // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
+  // takes them, from a provider linked to the account.
   string current_password = 4;
+  IdentityProvider provider = 5;
+  string id_token = 6;
+  string nonce = 7;
 }
 
 message RequestEmailChangeResponse {
