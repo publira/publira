@@ -2,7 +2,6 @@
 
 import { useActionFormSettled } from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createContext, use, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
@@ -74,7 +73,9 @@ export const MfaEnrollmentConfirmed = () => {
 
 /**
  * An enrollment that signed the operator in goes on to the console; one that
- * did not sends them back to the password step. Each ending names itself.
+ * did not sends them back to the password step. Each ending names itself, and
+ * leaves by a document navigation so the router does not keep this page, and
+ * the recovery codes in its state, to show again on Back.
  */
 export const MfaEnrollDoneLink = ({
   nextPath,
@@ -90,7 +91,7 @@ export const MfaEnrollDoneLink = ({
   return (
     <LinkButton
       className="justify-self-start"
-      render={<Link href={isSignedIn ? nextPath : "/login"} />}
+      href={isSignedIn ? nextPath : "/login"}
     >
       {isSignedIn ? signedIn : signedOut}
     </LinkButton>

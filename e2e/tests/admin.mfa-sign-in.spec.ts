@@ -102,6 +102,11 @@ test.describe("admin MFA sign-in", () => {
     await expect(
       page.getByRole("heading", { exact: true, name: "Series" }).first()
     ).toBeVisible();
+
+    // The codes are shown once: going back does not bring them up again.
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${NEXT_PATH}/?$`, "u"));
+    await expect(page.getByText(recoveryCode)).toHaveCount(0);
   });
 
   test("a recovery code sign-in says how many codes are left and goes on to where the login was heading", async ({
