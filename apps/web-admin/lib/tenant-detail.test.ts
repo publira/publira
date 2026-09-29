@@ -121,7 +121,7 @@ describe("tenant-detail", () => {
     });
   });
 
-  it("does not ask for a fresh login when the tenant is not visible", async () => {
+  it("does not ask for a fresh login when the tenant is not visible, and keeps that answer cached", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("tenant not found", Code.NotFound)
     );
@@ -132,11 +132,7 @@ describe("tenant-detail", () => {
       ok: false,
       requiresSignIn: false,
     });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("throws an error it cannot classify as it is", async () => {

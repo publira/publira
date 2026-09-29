@@ -289,7 +289,6 @@ const getAdminCurrentUserForSession = async (
       return { ok: false, requiresSignIn: true };
     }
     if (isExpectedNullableRpcError(error)) {
-      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
     throw error;

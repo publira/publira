@@ -250,17 +250,13 @@ describe("getAdminCurrentUser", () => {
     );
   });
 
-  it("fails without asking for a fresh login on a permission error", async () => {
+  it("fails without asking for a fresh login on a permission error, and keeps that answer cached", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("forbidden", Code.PermissionDenied)
     );
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("asks for a fresh login when the session is rejected", async () => {
@@ -322,11 +318,7 @@ describe("isAdminSessionValid", () => {
     );
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("rethrows an unexpected error", async () => {

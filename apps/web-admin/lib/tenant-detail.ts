@@ -68,7 +68,6 @@ const readTenantForSession = async (
       return { ok: false, requiresSignIn: true };
     }
     if (isMissingResourceRpcError(error)) {
-      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
     throw error;
