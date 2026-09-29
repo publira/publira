@@ -6,7 +6,11 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 
 interface IntegrationsTabNavProps {
+<<<<<<< HEAD
   current: "app-links" | "email" | "mobile-push" | "payment" | "sign-in";
+=======
+  current: "app-links" | "email" | "mobile-push" | "payment";
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 }
 
 export const IntegrationsTabNav = ({ current }: IntegrationsTabNavProps) => (
@@ -43,6 +47,7 @@ export const IntegrationsTabNav = ({ current }: IntegrationsTabNavProps) => (
         <Message message="admin.integrations.tabs.app_links" />
       </Suspense>
     </LinkButton>
+<<<<<<< HEAD
     <LinkButton
       render={<Link href="/integrations/sign-in" />}
       variant={current === "sign-in" ? "default" : "outline"}
@@ -51,5 +56,7 @@ export const IntegrationsTabNav = ({ current }: IntegrationsTabNavProps) => (
         <Message message="admin.integrations.tabs.sign_in" />
       </Suspense>
     </LinkButton>
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   </div>
 );

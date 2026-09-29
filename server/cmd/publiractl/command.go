@@ -1,7 +1,10 @@
 package main
 
 import (
+<<<<<<< HEAD
 	"cmp"
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	"context"
 	"database/sql"
 	"errors"
@@ -17,13 +20,20 @@ import (
 	"github.com/publira/publira/server/internal/sqldb"
 )
 
+<<<<<<< HEAD
 // commandGroup is a group of commands, dispatched by the word that names it. A
 // group can hold groups of its own, dispatched by the next word.
+=======
+// commandGroup is a group of the settings and provisioning commands, which
+// write the platform_* tables and the tenant rows in place of the Platform
+// Console. A group can hold groups of its own, dispatched by the next word.
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 type commandGroup struct {
 	name     string
 	summary  string
 	commands []command
 	groups   []commandGroup
+<<<<<<< HEAD
 	// synopsis follows the group's words on its usage line, and is
 	// "<command> [flags]" when empty.
 	synopsis string
@@ -32,6 +42,8 @@ type commandGroup struct {
 	heading string
 	// note closes the usage with what every command in the group shares.
 	note string
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 }
 
 // command is one subcommand of a commandGroup. setup declares its flags and
@@ -43,6 +55,7 @@ type command struct {
 	setup   func(f *commandFlags) func(ctx context.Context, env *commandEnv) error
 }
 
+<<<<<<< HEAD
 // rootGroup is what the first argument is looked up in.
 var rootGroup = commandGroup{
 	synopsis: "<command>",
@@ -51,6 +64,20 @@ var rootGroup = commandGroup{
 }
 
 var groups = []commandGroup{dbGroup, jobGroup, platformGroup, policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
+=======
+// groups are the settings and provisioning command groups, dispatched beside db
+// and job.
+var groups = []commandGroup{platformGroup, policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
+
+func lookupGroup(name string) *commandGroup {
+	for i := range groups {
+		if groups[i].name == name {
+			return &groups[i]
+		}
+	}
+	return nil
+}
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 
 // commandFlags is the flag set of one command, with the secrets it declared.
 type commandFlags struct {
@@ -58,9 +85,13 @@ type commandFlags struct {
 	secrets []*secret
 }
 
+<<<<<<< HEAD
 // commandEnv is what every command runs with. Its logger writes to stderr; a
 // command whose log is its output, as db's and job's are, logs to stdout
 // instead.
+=======
+// commandEnv is what every settings and provisioning command runs with.
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 type commandEnv struct {
 	console console
 	stdout  io.Writer
@@ -103,6 +134,7 @@ func (e *commandEnv) secretManager() (*secretcrypto.Manager, error) {
 	return secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
 }
 
+<<<<<<< HEAD
 // runGroup dispatches args through g. It exits 0 on success, 1 on a failure
 // the command reports, and 2 on a usage error, with the usage text on stderr.
 func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int {
@@ -137,10 +169,43 @@ func (g *commandGroup) words(word string) string {
 func runCommand(g *commandGroup, c *command, args []string, con console, stdout io.Writer) int {
 	stderr := con.stderr
 	name := g.words(c.name)
+=======
+// runGroup dispatches one settings or provisioning command. It exits 0 on
+// success, 1 on a failure the command reports on stderr, and 2 on a usage
+// error, with the usage text on stderr.
+func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int {
+	stderr := con.stderr
+	if len(args) == 0 {
+		return usageError(stderr, g.name+" requires a command", g.usage())
+	}
+	for _, sub := range g.groups {
+		if sub.name == args[0] {
+			sub.name = g.name + " " + sub.name
+			return runGroup(&sub, args[1:], con, stdout)
+		}
+	}
+	var c *command
+	for i := range g.commands {
+		if g.commands[i].name == args[0] {
+			c = &g.commands[i]
+		}
+	}
+	if c == nil {
+		return usageError(stderr, fmt.Sprintf("unknown %s command %q", g.name, args[0]), g.usage())
+	}
+	return runCommand(g.name+" "+c.name, c, args[1:], con, stdout)
+}
+
+// runCommand runs c, which the words in name invoke, with its flags in args.
+// It exits as runGroup does.
+func runCommand(name string, c *command, args []string, con console, stdout io.Writer) int {
+	stderr := con.stderr
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	f := &commandFlags{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError)}
 	f.SetOutput(io.Discard)
 	run := c.setup(f)
 	usage := commandUsage(name, c, f)
+<<<<<<< HEAD
 	err := f.Parse(args)
 	if errors.Is(err, flag.ErrHelp) {
 		_, _ = io.WriteString(stderr, usage)
@@ -152,6 +217,13 @@ func runCommand(g *commandGroup, c *command, args []string, con console, stdout 
 		return usageError(stderr, name+" takes no arguments", g.usage())
 	}
 	if err != nil {
+=======
+	if err := f.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			_, _ = io.WriteString(stderr, usage)
+			return 0
+		}
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		return usageError(stderr, flagError(err), usage)
 	}
 	// A positional argument is refused without being repeated: it may be a
@@ -169,9 +241,12 @@ func runCommand(g *commandGroup, c *command, args []string, con console, stdout 
 		logger:  logging.New(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
 	}
 	if err := run(context.Background(), env); err != nil {
+<<<<<<< HEAD
 		if errors.Is(err, errLogged) {
 			return 1
 		}
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		var missing *missingValueError
 		if errors.As(err, &missing) {
 			_, _ = io.WriteString(stderr, "publiractl: "+err.Error()+"\n")
@@ -193,10 +268,13 @@ func (e *missingValueError) Error() string {
 	return e.flags + " is required; give it as a flag, or run on a terminal without --non-interactive to be asked for it"
 }
 
+<<<<<<< HEAD
 // errLogged is a failure the command has already logged, so it exits 1
 // without repeating it.
 var errLogged = errors.New("the failure is logged")
 
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 // commandError reports a failure the command ran into and returns its exit
 // status.
 func commandError(w io.Writer, err error) int {
@@ -205,16 +283,22 @@ func commandError(w io.Writer, err error) int {
 }
 
 func (g *commandGroup) usage() string {
+<<<<<<< HEAD
 	synopsis := cmp.Or(g.synopsis, "<command> [flags]")
 	heading := cmp.Or(g.heading, "Commands")
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nUsage: publiractl %s\n\n%s:\n", g.words(synopsis), heading)
+=======
+	var b strings.Builder
+	fmt.Fprintf(&b, "\nUsage: publiractl %s <command> [flags]\n\nCommands:\n", g.name)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	for _, c := range g.commands {
 		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
 	}
 	for _, sub := range g.groups {
 		fmt.Fprintf(&b, "  %-25s %s\n", sub.name, sub.summary)
 	}
+<<<<<<< HEAD
 	if g.note != "" {
 		b.WriteString("\n" + g.note + "\n")
 	}
@@ -235,6 +319,14 @@ func commandUsage(name string, c *command, f *commandFlags) string {
 		b.WriteString(" [flags]")
 	}
 	fmt.Fprintf(&b, "\n\n%s\n", c.summary)
+=======
+	return b.String()
+}
+
+func commandUsage(name string, c *command, f *commandFlags) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\nUsage: publiractl %s [flags]\n\n%s\n", name, c.summary)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	var flags strings.Builder
 	f.VisitAll(func(fl *flag.Flag) {
 		typeName, usage := flag.UnquoteUsage(fl)

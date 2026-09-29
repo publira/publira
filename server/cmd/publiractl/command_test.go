@@ -179,7 +179,11 @@ func TestRunGroupUsageErrors(t *testing.T) {
 		want  string
 		usage string
 	}{
+<<<<<<< HEAD
 		{name: "no command", args: nil, want: "a example command is required", usage: "Usage: publiractl example <command>"},
+=======
+		{name: "no command", args: nil, want: "example requires a command", usage: "Usage: publiractl example <command>"},
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		{name: "unknown command", args: []string{"delete"}, want: `unknown example command "delete"`, usage: "Usage: publiractl example <command>"},
 		{name: "unknown flag", args: []string{"save", "--port", "25"}, want: "flag provided but not defined: --port", usage: "Usage: publiractl example save [flags]"},
 		// The flag package spells every flag with one dash, whichever it was given.

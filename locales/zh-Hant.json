@@ -227,7 +227,10 @@
         "tenant_admin_invitation": "管理員邀請",
         "tenant_community_limits": "社群限制",
         "tenant_retention": "保留期限",
+<<<<<<< HEAD
         "tenant_sign_in_settings": "登入方式",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "user": "使用者"
       },
       "list_failed": "無法載入稽核記錄。請稍後再試。",
@@ -317,7 +320,10 @@
         "tenant_payment_settings_updated": "更新了付款設定",
         "tenant_fcm_credentials_saved": "儲存了Firebase憑證",
         "tenant_fcm_credentials_deleted": "刪除了Firebase憑證",
+<<<<<<< HEAD
         "tenant_sign_in_settings_updated": "更新了登入方式設定",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "tenant_community_limits_updated": "更新了社群限制",
         "tenant_retention_updated": "更新了保留期限",
         "admin_mfa_enrolled": "設定了兩步驟驗證",
@@ -2393,6 +2399,7 @@
           "bundle_identifier_invalid": "請依com.example.reader的形式，以點分隔的兩個或更多由字母、數字與連字號組成的部分輸入Bundle ID。"
         }
       },
+<<<<<<< HEAD
       "sign_in": {
         "title": "登入方式",
         "description": "讓讀者除電子郵件地址外，也能用Apple或Google帳戶登入網站與應用程式。已啟用且資訊齊全的方式會在儲存後不久顯示於網站上。Apple金鑰為唯寫：再次開啟時只顯示狀態與遮罩，不會顯示值本身。",
@@ -2452,6 +2459,8 @@
           "client_id_required": "若要提供使用Google登入，請至少輸入一個用戶端ID。"
         }
       },
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       "royalties": {
         "title": "版稅月份結算",
         "description": "結算某月後，該月的版稅會成為此後不再變動的明細。可以每月自行結算，也可以在指定的日期自動結算。",
@@ -2557,8 +2566,12 @@
         "email": "郵件",
         "payment": "付款",
         "mobile_push": "行動推播",
+<<<<<<< HEAD
         "app_links": "應用程式連結",
         "sign_in": "登入"
+=======
+        "app_links": "應用程式連結"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       },
       "email_title": "整合 — 郵件",
       "email_description": "管理該租戶寄送郵件的方式。",
@@ -2571,10 +2584,14 @@
       "mobile_push_error": "無法顯示行動推播設定",
       "app_links_title": "整合 — 應用程式連結",
       "app_links_description": "管理該租戶的連結所開啟的Android與iOS應用程式。",
+<<<<<<< HEAD
       "app_links_error": "無法顯示應用程式連結設定",
       "sign_in_title": "整合 — 登入",
       "sign_in_description": "管理該租戶的讀者可用於登入的Apple與Google帳戶。",
       "sign_in_error": "無法顯示登入方式設定"
+=======
+      "app_links_error": "無法顯示應用程式連結設定"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     },
     "notifications": {
       "page_description": "查看寄給您的營運事件並標示為已讀。公告的發送在另一個頁面管理。",

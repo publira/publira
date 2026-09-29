@@ -12,18 +12,30 @@ import (
 
 func TestRunDBWithoutCommand(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"db"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
 	}
 	if !strings.Contains(stderr.String(), "Usage: publiractl db <command> [flags]") {
+=======
+	if code := run([]string{"db"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	if !strings.Contains(stderr.String(), "Usage: publiractl db <command>") {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		t.Fatalf("stderr = %q, want the db usage text", stderr.String())
 	}
 }
 
 func TestRunUnknownDBCommand(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"db", "rollback"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
+=======
+	if code := run([]string{"db", "rollback"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 	out := stderr.String()
 	if !strings.Contains(out, `unknown db command "rollback"`) {
@@ -36,11 +48,19 @@ func TestRunUnknownDBCommand(t *testing.T) {
 
 func TestRunDBRejectsExtraArguments(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"db", "migrate", "20260101000000"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
 	}
 	out := stderr.String()
 	if !strings.HasPrefix(out, "publiractl: db migrate takes no arguments\n") {
+=======
+	if code := run([]string{"db", "migrate", "20260101000000"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "takes no arguments") {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		t.Fatalf("stderr = %q, want the extra argument rejection", out)
 	}
 	if !strings.Contains(out, "Usage: publiractl db <command>") {
@@ -49,6 +69,7 @@ func TestRunDBRejectsExtraArguments(t *testing.T) {
 }
 
 func TestDBUsageListsEveryCommand(t *testing.T) {
+<<<<<<< HEAD
 	out := dbGroup.usage()
 	for _, name := range []string{"migrate", "version", "roles"} {
 		if !strings.Contains(out, "\n  "+name+" ") {
@@ -57,6 +78,16 @@ func TestDBUsageListsEveryCommand(t *testing.T) {
 	}
 	if !strings.HasSuffix(out, "\nThe db commands connect with PUBLIRA_DB_URL and nothing else.\n") {
 		t.Fatalf("usage text = %q, want the note on the connection", out)
+=======
+	out := dbUsage()
+	for _, c := range dbCommands {
+		if !strings.Contains(out, c.name) {
+			t.Fatalf("usage text is missing %q", c.name)
+		}
+	}
+	if !strings.Contains(out, dbRolesCommand.name) {
+		t.Fatalf("usage text is missing %q", dbRolesCommand.name)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 }
 
@@ -64,8 +95,13 @@ func TestDBUsageListsEveryCommand(t *testing.T) {
 // development database the job group falls back to.
 func TestDBMigrateRefusesWithoutDBURL(t *testing.T) {
 	code, output := testutil.RunMain(t, []string{}, "db", "migrate")
+<<<<<<< HEAD
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1\n%s", code, output)
+=======
+	if code == 0 {
+		t.Fatalf("exit code = 0, want a failure\n%s", output)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 	if !strings.Contains(output, "PUBLIRA_DB_URL") {
 		t.Fatalf("output does not name the missing variable:\n%s", output)

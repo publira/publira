@@ -287,10 +287,13 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_fcm_credentials_deleted",
             },
             {
+<<<<<<< HEAD
               label: t("admin.audit.actions.tenant_sign_in_settings_updated"),
               value: "tenant_sign_in_settings_updated",
             },
             {
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
               label: t("admin.audit.actions.tenant_community_limits_updated"),
               value: "tenant_community_limits_updated",
             },

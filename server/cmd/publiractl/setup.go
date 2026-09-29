@@ -39,7 +39,11 @@ import (
 // steps; every write goes through the package the step's own command uses.
 var setupCommand = command{
 	name:    "setup",
+<<<<<<< HEAD
 	summary: "Set up an install from an empty database to a tenant an administrator signs in to",
+=======
+	summary: "Set up an install: the platform defaults, the object store, SMTP, Web Push, a tenant, and its first administrator",
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	setup:   setupSetup,
 }
 

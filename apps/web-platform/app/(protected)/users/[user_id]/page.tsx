@@ -33,11 +33,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+<<<<<<< HEAD
 import {
   DangerConfirmButton,
   DangerConfirmButtonAction,
   DangerConfirmButtonTrigger,
 } from "#components/danger-confirm-button";
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 import { Message } from "#components/message";
 import {
   PlatformPage,
@@ -63,6 +66,14 @@ import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import { getPlatformEndUser } from "#lib/users";
 
 import {
+<<<<<<< HEAD
+=======
+  DangerConfirmButton,
+  DangerConfirmButtonAction,
+  DangerConfirmButtonTrigger,
+} from "./_components/danger-confirm-button";
+import {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   deleteEndUserAction,
   suspendEndUserAction,
   unsuspendEndUserAction,

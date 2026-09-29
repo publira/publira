@@ -282,11 +282,14 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_fcm_credentials_deleted" />
       );
     }
+<<<<<<< HEAD
     case "tenant_sign_in_settings_updated": {
       return (
         <Message message="admin.audit.actions.tenant_sign_in_settings_updated" />
       );
     }
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     case "tenant_community_limits_updated": {
       return (
         <Message message="admin.audit.actions.tenant_community_limits_updated" />
@@ -406,9 +409,12 @@ const tenantTargetName = (targetType: string) => {
     case "tenant_retention": {
       return <Message message="admin.audit.targets.tenant_retention" />;
     }
+<<<<<<< HEAD
     case "tenant_sign_in_settings": {
       return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
     }
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     case "user": {
       return <Message message="admin.audit.targets.user" />;
     }

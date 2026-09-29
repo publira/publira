@@ -17,6 +17,10 @@ import {
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
+<<<<<<< HEAD
+=======
+  optionalFileFormSchema,
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -28,6 +32,7 @@ import {
 } from "#lib/payment-settings";
 import type { PaymentCredentialFieldUpdate } from "#lib/payment-settings";
 import {
+<<<<<<< HEAD
   hasSecretKey,
   secretKeyFormInput,
   secretKeySchema,
@@ -37,6 +42,12 @@ import {
   tenantStorePaymentSettingsCacheTag,
   updateTenantStorePaymentSettings,
 } from "#lib/store-payment-settings";
+=======
+  tenantStorePaymentSettingsCacheTag,
+  updateTenantStorePaymentSettings,
+} from "#lib/store-payment-settings";
+import type { StoreKeyUpdate } from "#lib/store-payment-settings";
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 import { APP_PURCHASE_ROUTES } from "#lib/store-payment-settings-shared";
 import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import {
@@ -253,6 +264,47 @@ export const updateTenantPurchaseSettingsAction = async (
   };
 };
 
+<<<<<<< HEAD
+=======
+/** A store key file is a few kilobytes; anything far larger is not one. */
+const MAX_STORE_KEY_FILE_BYTES = 64 * 1024;
+
+/** What the form did with a stored key: kept its hint, replaced, or cleared it. */
+const STORE_KEY_MODES = ["keep", "replace", "clear"] as const;
+
+const storeKeySchema = (fileTooLarge: string) =>
+  z.object({
+    configured: flagOneFormSchema,
+    file: optionalFileFormSchema.refine(
+      (file) => file === undefined || file.size <= MAX_STORE_KEY_FILE_BYTES,
+      fileTooLarge
+    ),
+    mode: z.enum(STORE_KEY_MODES),
+    text: optionalSecretSchema,
+  });
+
+type StoreKeyInput = z.output<ReturnType<typeof storeKeySchema>>;
+
+/** A file chosen wins over pasted text, and neither leaves the key as it is. */
+const hasNewStoreKey = (key: StoreKeyInput): boolean =>
+  key.mode !== "clear" && (key.file !== undefined || key.text.trim() !== "");
+
+const hasStoreKey = (key: StoreKeyInput): boolean =>
+  hasNewStoreKey(key) || (key.configured && key.mode === "keep");
+
+const toStoreKeyUpdate = async (
+  key: StoreKeyInput
+): Promise<StoreKeyUpdate> => {
+  if (key.mode === "clear") {
+    return { mode: SECRET_UPDATE_MODE_CLEAR, value: "" };
+  }
+  const value = (key.file ? await key.file.text() : key.text).trim();
+  return value === ""
+    ? { mode: SECRET_UPDATE_MODE_UNCHANGED, value: "" }
+    : { mode: SECRET_UPDATE_MODE_REPLACE, value };
+};
+
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
   const fileTooLarge = t(
@@ -268,8 +320,13 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
       googlePlayEnabled: checkboxOnFormSchema,
       issuerId: optionalSecretSchema.transform((value) => value.trim()),
       keyId: optionalSecretSchema.transform((value) => value.trim()),
+<<<<<<< HEAD
       privateKey: secretKeySchema(fileTooLarge),
       serviceAccountKey: secretKeySchema(fileTooLarge),
+=======
+      privateKey: storeKeySchema(fileTooLarge),
+      serviceAccountKey: storeKeySchema(fileTooLarge),
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     })
     .superRefine((value, ctx) => {
@@ -292,7 +349,11 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
             path: ["keyId"],
           });
         }
+<<<<<<< HEAD
         if (!hasSecretKey(value.privateKey)) {
+=======
+        if (!hasStoreKey(value.privateKey)) {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
           ctx.addIssue({
             code: "custom",
             message: t(
@@ -302,7 +363,11 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
           });
         }
       }
+<<<<<<< HEAD
       if (value.googlePlayEnabled && !hasSecretKey(value.serviceAccountKey)) {
+=======
+      if (value.googlePlayEnabled && !hasStoreKey(value.serviceAccountKey)) {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         ctx.addIssue({
           code: "custom",
           message: t(
@@ -314,6 +379,17 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
     });
 };
 
+<<<<<<< HEAD
+=======
+const storeKeyFormInput = (formData: FormData, name: string) =>
+  toFormDataInput(formData, {
+    configured: { kind: "value", name: `${name}_configured` },
+    file: { kind: "file", name: `${name}_file` },
+    mode: { kind: "value", name: `${name}_mode` },
+    text: { kind: "value", name },
+  });
+
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 export const updateTenantStorePaymentSettingsAction = async (
   _prevState: TenantStorePaymentSettingsFormState,
   formData: FormData
@@ -333,8 +409,13 @@ export const updateTenantStorePaymentSettingsAction = async (
       keyId: { kind: "value", name: "key_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     }),
+<<<<<<< HEAD
     privateKey: secretKeyFormInput(formData, "private_key"),
     serviceAccountKey: secretKeyFormInput(formData, "service_account_key"),
+=======
+    privateKey: storeKeyFormInput(formData, "private_key"),
+    serviceAccountKey: storeKeyFormInput(formData, "service_account_key"),
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   });
   if (!parsed.success) {
     return {
@@ -345,8 +426,13 @@ export const updateTenantStorePaymentSettingsAction = async (
   }
 
   const [privateKey, serviceAccountKey] = await Promise.all([
+<<<<<<< HEAD
     toSecretKeyUpdate(parsed.data.privateKey),
     toSecretKeyUpdate(parsed.data.serviceAccountKey),
+=======
+    toStoreKeyUpdate(parsed.data.privateKey),
+    toStoreKeyUpdate(parsed.data.serviceAccountKey),
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   ]);
 
   const result = await withAdminSessionReauth(() =>

@@ -40,7 +40,11 @@ services:
 
   app:
     init: true
+<<<<<<< HEAD
     image: ghcr.io/publira/base-images/publira-dev:2026.09.29@sha256:52c770ddce4c755fd2735f79493192bdba2c0bb8d099807746c8942e0f21674f
+=======
+    image: ghcr.io/publira/base-images/publira-dev:2026.09.29@sha256:165e8a68fc0775a6cff6700a7523a74c3be4e2de7ee8c78d661d130e462f2daf
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     command: sleep infinity
     volumes:
       # Keep Claude Code login, configuration, and local state across rebuilds.

@@ -227,7 +227,10 @@
         "tenant_admin_invitation": "Admin invitation",
         "tenant_community_limits": "Community limits",
         "tenant_retention": "Retention periods",
+<<<<<<< HEAD
         "tenant_sign_in_settings": "Sign-in providers",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "user": "User"
       },
       "list_failed": "Could not load the audit log. Please try again later.",
@@ -317,7 +320,10 @@
         "tenant_payment_settings_updated": "Payment settings updated",
         "tenant_fcm_credentials_saved": "Firebase credentials saved",
         "tenant_fcm_credentials_deleted": "Firebase credentials removed",
+<<<<<<< HEAD
         "tenant_sign_in_settings_updated": "Sign-in providers updated",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "tenant_community_limits_updated": "Community limits updated",
         "tenant_retention_updated": "Retention periods updated",
         "admin_mfa_enrolled": "Two-step verification set up",
@@ -2393,6 +2399,7 @@
           "bundle_identifier_invalid": "Enter the bundle identifier as two or more dot-separated parts of letters, digits, and hyphens, such as com.example.reader."
         }
       },
+<<<<<<< HEAD
       "sign_in": {
         "title": "Sign-in providers",
         "description": "Let readers sign in to the site and the app with Apple or Google as well as with an email address. The site offers a provider moments after it is saved on and complete. The Apple key is write-only: coming back, you see its state and a mask, never the value.",
@@ -2452,6 +2459,8 @@
           "client_id_required": "Enter at least one client ID to offer Sign in with Google."
         }
       },
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       "royalties": {
         "title": "Closing royalty months",
         "description": "A month's royalties become a statement that never changes when the month is closed. Close each month yourself, or let it close on a day of your choice.",
@@ -2557,8 +2566,12 @@
         "email": "Email",
         "payment": "Payments",
         "mobile_push": "Mobile push",
+<<<<<<< HEAD
         "app_links": "App links",
         "sign_in": "Sign-in"
+=======
+        "app_links": "App links"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       },
       "email_title": "Integrations — Email",
       "email_description": "Manage how this tenant sends email.",
@@ -2571,10 +2584,14 @@
       "mobile_push_error": "Could not display the mobile push settings",
       "app_links_title": "Integrations — App links",
       "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
+<<<<<<< HEAD
       "app_links_error": "Could not display the app link settings",
       "sign_in_title": "Integrations — Sign-in",
       "sign_in_description": "Manage the Apple and Google accounts readers of this tenant can sign in with.",
       "sign_in_error": "Could not display the sign-in providers"
+=======
+      "app_links_error": "Could not display the app link settings"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     },
     "notifications": {
       "page_description": "Review operational events addressed to you and mark them as read. Announcement delivery is managed on a separate screen.",

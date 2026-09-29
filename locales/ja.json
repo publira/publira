@@ -227,7 +227,10 @@
         "tenant_admin_invitation": "管理者招待",
         "tenant_community_limits": "コミュニティの上限",
         "tenant_retention": "保持期間",
+<<<<<<< HEAD
         "tenant_sign_in_settings": "ログイン方法",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "user": "ユーザー"
       },
       "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
@@ -317,7 +320,10 @@
         "tenant_payment_settings_updated": "決済設定更新",
         "tenant_fcm_credentials_saved": "Firebaseの認証情報の保存",
         "tenant_fcm_credentials_deleted": "Firebaseの認証情報の削除",
+<<<<<<< HEAD
         "tenant_sign_in_settings_updated": "ログイン方法の設定更新",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "tenant_community_limits_updated": "コミュニティの上限更新",
         "tenant_retention_updated": "保持期間更新",
         "admin_mfa_enrolled": "2段階認証の設定",
@@ -2393,6 +2399,7 @@
           "bundle_identifier_invalid": "バンドルIDはcom.example.readerのように、英数字とハイフンからなる部分をドットで区切って2つ以上入力してください。"
         }
       },
+<<<<<<< HEAD
       "sign_in": {
         "title": "ログイン方法",
         "description": "読者がメールアドレスに加えて、AppleやGoogleのアカウントでサイトとアプリにログインできるようにします。有効で必要な情報がそろった方法は、保存後まもなくサイトに表示されます。Appleのキーは書き込み専用です。再表示時は状態とマスクだけが表示され、値そのものは表示されません。",
@@ -2452,6 +2459,8 @@
           "client_id_required": "Googleでログインを提供するには、クライアントIDを1つ以上入力してください。"
         }
       },
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       "royalties": {
         "title": "印税の月の締め",
         "description": "月を締めると、その月の印税は以後変わらない明細になります。毎月ご自身で締めるか、指定した日に自動で締めるかを選べます。",
@@ -2557,8 +2566,12 @@
         "email": "メール情報",
         "payment": "決済",
         "mobile_push": "モバイルプッシュ",
+<<<<<<< HEAD
         "app_links": "アプリリンク",
         "sign_in": "ログイン"
+=======
+        "app_links": "アプリリンク"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       },
       "email_title": "外部連携 - メール情報",
       "email_description": "テナントごとのメール送信設定を管理します。",
@@ -2571,10 +2584,14 @@
       "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
       "app_links_title": "外部連携 - アプリリンク",
       "app_links_description": "このテナントのリンクを開くAndroid / iOSアプリを管理します。",
+<<<<<<< HEAD
       "app_links_error": "アプリリンクの設定を表示できませんでした",
       "sign_in_title": "外部連携 - ログイン",
       "sign_in_description": "このテナントの読者がログインに使えるAppleとGoogleのアカウントを管理します。",
       "sign_in_error": "ログイン方法の設定を表示できませんでした"
+=======
+      "app_links_error": "アプリリンクの設定を表示できませんでした"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     },
     "notifications": {
       "page_description": "自分宛の業務イベントを確認し、既読にできます。お知らせの配信管理は別画面です。",

@@ -1,7 +1,10 @@
 package main
 
 import (
+<<<<<<< HEAD
 	"bytes"
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	"errors"
 	"slices"
 	"strings"
@@ -13,8 +16,13 @@ import (
 
 func TestRunWithoutCommand(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run(nil, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
+=======
+	if code := run(nil, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 	if !strings.Contains(stderr.String(), "Usage: publiractl <command>") {
 		t.Fatalf("stderr = %q, want the usage text", stderr.String())
@@ -24,8 +32,13 @@ func TestRunWithoutCommand(t *testing.T) {
 // A job named without its group is an unknown command, not a job run.
 func TestRunUnknownCommand(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"purge-content-events"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
+=======
+	if code := run([]string{"purge-content-events"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 	out := stderr.String()
 	if !strings.Contains(out, `unknown command "purge-content-events"`) {
@@ -38,21 +51,36 @@ func TestRunUnknownCommand(t *testing.T) {
 
 func TestRunJobWithoutKind(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"job"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
 	}
 	if !strings.Contains(stderr.String(), "Usage: publiractl job <kind>\n\nJobs:\n") {
+=======
+	if code := run([]string{"job"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	if !strings.Contains(stderr.String(), "Usage: publiractl job <kind>") {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		t.Fatalf("stderr = %q, want the job usage text", stderr.String())
 	}
 }
 
 func TestRunUnknownJob(t *testing.T) {
 	var stderr strings.Builder
+<<<<<<< HEAD
 	if code := run([]string{"job", "publish-episode"}, &stderr); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
 	}
 	out := stderr.String()
 	if !strings.Contains(out, `unknown job command "publish-episode"`) {
+=======
+	if code := run([]string{"job", "publish-episode"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	out := stderr.String()
+	if !strings.Contains(out, `unknown job "publish-episode"`) {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		t.Fatalf("stderr = %q, want the rejected name", out)
 	}
 	if !strings.Contains(out, "Usage: publiractl job <kind>") {
@@ -60,6 +88,7 @@ func TestRunUnknownJob(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 // A job takes its settings from the environment, so anything after its kind
 // is refused with the job usage, flags included.
 func TestRunJobRejectsExtraArguments(t *testing.T) {
@@ -103,10 +132,20 @@ func TestRunJobLogsItsFailureToStdout(t *testing.T) {
 	}
 	if stderr.Len() > 0 {
 		t.Fatalf("stderr = %q, want nothing", stderr.String())
+=======
+func TestRunJobRejectsExtraArguments(t *testing.T) {
+	var stderr strings.Builder
+	if code := run([]string{"job", "purge-content-events", "--dry-run"}, &stderr); code == 0 {
+		t.Fatal("exit code = 0, want non-zero")
+	}
+	if !strings.Contains(stderr.String(), "takes no arguments") {
+		t.Fatalf("stderr = %q, want the extra argument rejection", stderr.String())
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 }
 
 func TestJobUsageListsEveryJob(t *testing.T) {
+<<<<<<< HEAD
 	out := jobGroup.usage()
 	for _, j := range jobGroup.commands {
 		if !strings.Contains(out, "\n  "+j.name+" ") {
@@ -135,11 +174,32 @@ func TestJobsAreWiredAndUnique(t *testing.T) {
 	for _, j := range jobGroup.commands {
 		if j.setup == nil {
 			t.Fatalf("job %q has no setup function", j.name)
+=======
+	out := jobUsage()
+	for _, j := range jobs {
+		if !strings.Contains(out, j.name) {
+			t.Fatalf("usage text is missing %q", j.name)
+		}
+	}
+}
+
+func TestJobsAreWiredAndUnique(t *testing.T) {
+	seen := make(map[string]bool, len(jobs))
+	for _, j := range jobs {
+		if j.run == nil {
+			t.Fatalf("job %q has no run function", j.name)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		}
 		if seen[j.name] {
 			t.Fatalf("job %q is registered twice", j.name)
 		}
 		seen[j.name] = true
+<<<<<<< HEAD
+=======
+		if lookup(j.name) == nil {
+			t.Fatalf("lookup(%q) = nil, want the registered job", j.name)
+		}
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	}
 }
 
@@ -147,7 +207,11 @@ func TestJobsAreWiredAndUnique(t *testing.T) {
 // shares its service.name with.
 func TestJobsMatchTheWorkerMaintenanceKinds(t *testing.T) {
 	var got []string
+<<<<<<< HEAD
 	for _, j := range jobGroup.commands {
+=======
+	for _, j := range jobs {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		got = append(got, "publira-"+j.name)
 	}
 	want := maintenancejobs.ServiceNames()

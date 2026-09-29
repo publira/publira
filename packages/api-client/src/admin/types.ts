@@ -35,9 +35,13 @@ export type {
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
   TenantAndroidAppAssociation,
+<<<<<<< HEAD
   TenantAppleSignInSettings,
   TenantCommunityLimitOverrides,
   TenantGoogleSignInSettings,
+=======
+  TenantCommunityLimitOverrides,
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
   TenantIosAppAssociation,
   TenantLegalPage,
   TenantMobileAppAssociation,

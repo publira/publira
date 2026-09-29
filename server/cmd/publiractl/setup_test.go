@@ -37,7 +37,11 @@ func startSetupEnv(t *testing.T) *setupEnv {
 func runSetup(t *testing.T, con console, args ...string) (code int, stdout string) {
 	t.Helper()
 	var out bytes.Buffer
+<<<<<<< HEAD
 	code = runGroup(&rootGroup, append([]string{"setup"}, args...), con, &out)
+=======
+	code = runCommand("setup", &setupCommand, args, con, &out)
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 	return code, out.String()
 }
 

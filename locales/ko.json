@@ -227,7 +227,10 @@
         "tenant_admin_invitation": "관리자 초대",
         "tenant_community_limits": "커뮤니티 제한",
         "tenant_retention": "보존 기간",
+<<<<<<< HEAD
         "tenant_sign_in_settings": "로그인 방법",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "user": "사용자"
       },
       "list_failed": "감사 로그를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -317,7 +320,10 @@
         "tenant_payment_settings_updated": "결제 설정 변경",
         "tenant_fcm_credentials_saved": "Firebase 인증 정보 저장",
         "tenant_fcm_credentials_deleted": "Firebase 인증 정보 삭제",
+<<<<<<< HEAD
         "tenant_sign_in_settings_updated": "로그인 방법 설정 변경",
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
         "tenant_community_limits_updated": "커뮤니티 제한 변경",
         "tenant_retention_updated": "보존 기간 변경",
         "admin_mfa_enrolled": "2단계 인증 설정",
@@ -2393,6 +2399,7 @@
           "bundle_identifier_invalid": "번들 ID는 com.example.reader처럼 영문자, 숫자, 하이픈으로 된 부분을 점으로 구분해 두 개 이상 입력하세요."
         }
       },
+<<<<<<< HEAD
       "sign_in": {
         "title": "로그인 방법",
         "description": "독자가 이메일 주소뿐 아니라 Apple이나 Google 계정으로도 사이트와 앱에 로그인할 수 있게 합니다. 켜져 있고 필요한 정보가 모두 있는 방법은 저장 직후 사이트에 표시됩니다. Apple 키는 쓰기 전용입니다. 다시 열면 상태와 마스크만 보이며 값 자체는 표시되지 않습니다.",
@@ -2452,6 +2459,8 @@
           "client_id_required": "Google로 로그인을 제공하려면 클라이언트 ID를 하나 이상 입력하세요."
         }
       },
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       "royalties": {
         "title": "인세 월 마감",
         "description": "월을 마감하면 그 달의 인세는 이후 바뀌지 않는 명세서가 됩니다. 매달 직접 마감하거나, 지정한 날에 자동으로 마감되게 할 수 있습니다.",
@@ -2557,8 +2566,12 @@
         "email": "메일",
         "payment": "결제",
         "mobile_push": "모바일 푸시",
+<<<<<<< HEAD
         "app_links": "앱 링크",
         "sign_in": "로그인"
+=======
+        "app_links": "앱 링크"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
       },
       "email_title": "연동 — 메일",
       "email_description": "이 테넌트의 메일 발송 설정을 관리합니다.",
@@ -2571,10 +2584,14 @@
       "mobile_push_error": "모바일 푸시 설정을 표시할 수 없습니다",
       "app_links_title": "연동 — 앱 링크",
       "app_links_description": "이 테넌트의 링크가 열리는 Android 및 iOS 앱을 관리합니다.",
+<<<<<<< HEAD
       "app_links_error": "앱 링크 설정을 표시할 수 없습니다",
       "sign_in_title": "연동 — 로그인",
       "sign_in_description": "이 테넌트의 독자가 로그인에 사용할 수 있는 Apple 및 Google 계정을 관리합니다.",
       "sign_in_error": "로그인 방법 설정을 표시할 수 없습니다"
+=======
+      "app_links_error": "앱 링크 설정을 표시할 수 없습니다"
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     },
     "notifications": {
       "page_description": "나에게 온 업무 이벤트를 확인하고 읽음으로 표시합니다. 공지사항 발송 관리는 별도 화면입니다.",

@@ -29,7 +29,11 @@ func TestEveryJobRunsWithOnlySecretsAndInfrastructure(t *testing.T) {
 		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
 	})
 
+<<<<<<< HEAD
 	for _, j := range jobGroup.commands {
+=======
+	for _, j := range jobs {
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 		t.Run(j.name, func(t *testing.T) {
 			if code, output := testutil.RunMain(t, env, "job", j.name); code != 0 {
 				t.Fatalf("exit code = %d, want 0\n%s", code, output)

@@ -28,6 +28,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+<<<<<<< HEAD
 import {
   CredentialsEnabled,
   CredentialsEnabledCheckbox,
@@ -38,6 +39,8 @@ import {
   SecretKeyText,
   SecretKeyWhile,
 } from "#components/credential-controls";
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 import { Message } from "#components/message";
 import { storeStatus } from "#lib/store-payment-settings-shared";
 import type {
@@ -46,6 +49,19 @@ import type {
 } from "#lib/store-payment-settings-shared";
 
 import { updateTenantStorePaymentSettingsAction } from "../_lib/actions";
+<<<<<<< HEAD
+=======
+import {
+  StoreEnabled,
+  StoreEnabledCheckbox,
+  StoreEnabledLabel,
+  StoreKey,
+  StoreKeyFile,
+  StoreKeyModeButton,
+  StoreKeyText,
+  StoreKeyWhile,
+} from "./store-payment-controls";
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
 
 const statusTone: Record<StoreStatus, BadgeTone> = {
   disabled: "muted",
@@ -264,7 +280,11 @@ export const TenantStorePaymentSettingsForm = ({
               </FieldContent>
             </Field>
 
+<<<<<<< HEAD
             <CredentialsEnabled initialEnabled={settings.appStore.enabled}>
+=======
+            <StoreEnabled initialEnabled={settings.appStore.enabled}>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
@@ -278,6 +298,7 @@ export const TenantStorePaymentSettingsForm = ({
                     ready: settings.appStore.ready,
                   })}
                 />
+<<<<<<< HEAD
                 <CredentialsEnabledCheckbox name="app_store_enabled">
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.store_payment.app_store.enabled" />
@@ -289,6 +310,19 @@ export const TenantStorePaymentSettingsForm = ({
                       <Message message="admin.settings.store_payment.app_store.issuer_id" />
                     </Suspense>
                   </CredentialsEnabledLabel>
+=======
+                <StoreEnabledCheckbox name="app_store_enabled">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message message="admin.settings.store_payment.app_store.enabled" />
+                  </Suspense>
+                </StoreEnabledCheckbox>
+                <Field>
+                  <StoreEnabledLabel>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                      <Message message="admin.settings.store_payment.app_store.issuer_id" />
+                    </Suspense>
+                  </StoreEnabledLabel>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                   <FieldContent>
                     <Input
                       autoComplete="off"
@@ -309,11 +343,19 @@ export const TenantStorePaymentSettingsForm = ({
                   </FieldContent>
                 </Field>
                 <Field>
+<<<<<<< HEAD
                   <CredentialsEnabledLabel>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.store_payment.app_store.key_id" />
                     </Suspense>
                   </CredentialsEnabledLabel>
+=======
+                  <StoreEnabledLabel>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                      <Message message="admin.settings.store_payment.app_store.key_id" />
+                    </Suspense>
+                  </StoreEnabledLabel>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                   <FieldContent>
                     <Input
                       autoComplete="off"
@@ -326,12 +368,20 @@ export const TenantStorePaymentSettingsForm = ({
                     <ActionFormFieldError name="keyId" />
                   </FieldContent>
                 </Field>
+<<<<<<< HEAD
                 <SecretKey
+=======
+                <StoreKey
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                   accept=".p8"
                   configured={settings.appStore.privateKeyConfigured}
                   name="private_key"
                 >
+<<<<<<< HEAD
                   <SecretKeyWhile mode="keep">
+=======
+                  <StoreKeyWhile mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                     <Field>
                       <FieldLabel>
                         <Suspense
@@ -348,20 +398,33 @@ export const TenantStorePaymentSettingsForm = ({
                             type="text"
                             value={settings.appStore.privateKeyHint}
                           />
+<<<<<<< HEAD
                           <SecretKeyModeButton mode="replace">
+=======
+                          <StoreKeyModeButton mode="replace">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_change" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
                           <SecretKeyModeButton mode="clear">
+=======
+                          </StoreKeyModeButton>
+                          <StoreKeyModeButton mode="clear">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
+=======
+                          </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         </div>
                         <ActionFormFieldError name="privateKey" />
                         <FieldDescription>
@@ -373,18 +436,31 @@ export const TenantStorePaymentSettingsForm = ({
                         </FieldDescription>
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                   <SecretKeyWhile mode="replace">
                     <Field>
                       <CredentialsEnabledLabel>
+=======
+                  </StoreKeyWhile>
+                  <StoreKeyWhile mode="replace">
+                    <Field>
+                      <StoreEnabledLabel>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.store_payment.app_store.private_key" />
                         </Suspense>
+<<<<<<< HEAD
                       </CredentialsEnabledLabel>
                       <FieldContent>
                         <SecretKeyFile />
+=======
+                      </StoreEnabledLabel>
+                      <FieldContent>
+                        <StoreKeyFile />
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         <FieldDescription>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
@@ -403,23 +479,40 @@ export const TenantStorePaymentSettingsForm = ({
                         </Suspense>
                       </FieldLabel>
                       <FieldContent>
+<<<<<<< HEAD
                         <SecretKeyText />
                         <ActionFormFieldError name="privateKey" />
                         {settings.appStore.privateKeyConfigured ? (
                           <div>
                             <SecretKeyModeButton mode="keep">
+=======
+                        <StoreKeyText />
+                        <ActionFormFieldError name="privateKey" />
+                        {settings.appStore.privateKeyConfigured ? (
+                          <div>
+                            <StoreKeyModeButton mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-24" />}
                               >
                                 <Message message="admin.settings.store_payment.key_change_cancel" />
                               </Suspense>
+<<<<<<< HEAD
                             </SecretKeyModeButton>
+=======
+                            </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                           </div>
                         ) : null}
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                   <SecretKeyWhile mode="clear">
+=======
+                  </StoreKeyWhile>
+                  <StoreKeyWhile mode="clear">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                     <Field>
                       <FieldLabel>
                         <Suspense
@@ -437,19 +530,32 @@ export const TenantStorePaymentSettingsForm = ({
                               <Message message="admin.settings.store_payment.key_cleared" />
                             </Suspense>
                           </p>
+<<<<<<< HEAD
                           <SecretKeyModeButton mode="keep">
+=======
+                          <StoreKeyModeButton mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-24" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear_cancel" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
+=======
+                          </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         </div>
                         <ActionFormFieldError name="privateKey" />
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                 </SecretKey>
+=======
+                  </StoreKeyWhile>
+                </StoreKey>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                 <ReadOnlyField
                   description={
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
@@ -483,9 +589,15 @@ export const TenantStorePaymentSettingsForm = ({
                   />
                 ) : null}
               </fieldset>
+<<<<<<< HEAD
             </CredentialsEnabled>
 
             <CredentialsEnabled initialEnabled={settings.googlePlay.enabled}>
+=======
+            </StoreEnabled>
+
+            <StoreEnabled initialEnabled={settings.googlePlay.enabled}>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
@@ -500,17 +612,30 @@ export const TenantStorePaymentSettingsForm = ({
                     ready: settings.googlePlay.ready,
                   })}
                 />
+<<<<<<< HEAD
                 <CredentialsEnabledCheckbox name="google_play_enabled">
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.store_payment.google_play.enabled" />
                   </Suspense>
                 </CredentialsEnabledCheckbox>
                 <SecretKey
+=======
+                <StoreEnabledCheckbox name="google_play_enabled">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message message="admin.settings.store_payment.google_play.enabled" />
+                  </Suspense>
+                </StoreEnabledCheckbox>
+                <StoreKey
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                   accept=".json,application/json"
                   configured={settings.googlePlay.serviceAccountKeyConfigured}
                   name="service_account_key"
                 >
+<<<<<<< HEAD
                   <SecretKeyWhile mode="keep">
+=======
+                  <StoreKeyWhile mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                     <Field>
                       <FieldLabel>
                         <Suspense
@@ -527,20 +652,33 @@ export const TenantStorePaymentSettingsForm = ({
                             type="text"
                             value={settings.googlePlay.serviceAccountKeyHint}
                           />
+<<<<<<< HEAD
                           <SecretKeyModeButton mode="replace">
+=======
+                          <StoreKeyModeButton mode="replace">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_change" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
                           <SecretKeyModeButton mode="clear">
+=======
+                          </StoreKeyModeButton>
+                          <StoreKeyModeButton mode="clear">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
+=======
+                          </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         </div>
                         <ActionFormFieldError name="serviceAccountKey" />
                         <FieldDescription>
@@ -552,18 +690,31 @@ export const TenantStorePaymentSettingsForm = ({
                         </FieldDescription>
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                   <SecretKeyWhile mode="replace">
                     <Field>
                       <CredentialsEnabledLabel>
+=======
+                  </StoreKeyWhile>
+                  <StoreKeyWhile mode="replace">
+                    <Field>
+                      <StoreEnabledLabel>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-40" />}
                         >
                           <Message message="admin.settings.store_payment.google_play.service_account_key" />
                         </Suspense>
+<<<<<<< HEAD
                       </CredentialsEnabledLabel>
                       <FieldContent>
                         <SecretKeyFile />
+=======
+                      </StoreEnabledLabel>
+                      <FieldContent>
+                        <StoreKeyFile />
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         <FieldDescription>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
@@ -582,23 +733,40 @@ export const TenantStorePaymentSettingsForm = ({
                         </Suspense>
                       </FieldLabel>
                       <FieldContent>
+<<<<<<< HEAD
                         <SecretKeyText />
                         <ActionFormFieldError name="serviceAccountKey" />
                         {settings.googlePlay.serviceAccountKeyConfigured ? (
                           <div>
                             <SecretKeyModeButton mode="keep">
+=======
+                        <StoreKeyText />
+                        <ActionFormFieldError name="serviceAccountKey" />
+                        {settings.googlePlay.serviceAccountKeyConfigured ? (
+                          <div>
+                            <StoreKeyModeButton mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-24" />}
                               >
                                 <Message message="admin.settings.store_payment.key_change_cancel" />
                               </Suspense>
+<<<<<<< HEAD
                             </SecretKeyModeButton>
+=======
+                            </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                           </div>
                         ) : null}
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                   <SecretKeyWhile mode="clear">
+=======
+                  </StoreKeyWhile>
+                  <StoreKeyWhile mode="clear">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                     <Field>
                       <FieldLabel>
                         <Suspense
@@ -616,19 +784,32 @@ export const TenantStorePaymentSettingsForm = ({
                               <Message message="admin.settings.store_payment.key_cleared" />
                             </Suspense>
                           </p>
+<<<<<<< HEAD
                           <SecretKeyModeButton mode="keep">
+=======
+                          <StoreKeyModeButton mode="keep">
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-24" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear_cancel" />
                             </Suspense>
+<<<<<<< HEAD
                           </SecretKeyModeButton>
+=======
+                          </StoreKeyModeButton>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                         </div>
                         <ActionFormFieldError name="serviceAccountKey" />
                       </FieldContent>
                     </Field>
+<<<<<<< HEAD
                   </SecretKeyWhile>
                 </SecretKey>
+=======
+                  </StoreKeyWhile>
+                </StoreKey>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
                 {settings.googlePlay.serviceAccountEmail ? (
                   <ReadOnlyField
                     description={
@@ -662,7 +843,11 @@ export const TenantStorePaymentSettingsForm = ({
                   value={settings.googlePlay.packageName}
                 />
               </fieldset>
+<<<<<<< HEAD
             </CredentialsEnabled>
+=======
+            </StoreEnabled>
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
           </ActionFormFieldset>
         )}
 

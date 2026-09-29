@@ -40,7 +40,10 @@ describe("IntegrationsTabNav", () => {
       ["Payments", "/integrations/payment"],
       ["Mobile push", "/integrations/mobile-push"],
       ["App links", "/integrations/app-links"],
+<<<<<<< HEAD
       ["Sign-in", "/integrations/sign-in"],
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
     ]);
   });
 });

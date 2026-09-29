@@ -247,6 +247,7 @@ export const WEB_HOST_APP_LINKS_BASE_URL = envUrl(
 );
 
 /**
+<<<<<<< HEAD
  * Admin console of the sign-in providers tenant from
  * `db/seeds/scenarios/340_sign_in_providers.sql`. Its suite switches the
  * tenant's Apple and Google sign-in on and off, so it needs a console of its
@@ -264,6 +265,8 @@ export const WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
 );
 
 /**
+=======
+>>>>>>> 39ad4d89 (chore(deps): update ghcr.io/devcontainers/features/docker-in-docker docker tag to v4.1.2)
  * Admin console of the royalties tenant from
  * `db/seeds/scenarios/260_royalties.sql`. Its suite closes a month, which is
  * tenant-wide and never undone, so it needs a console of its own.
