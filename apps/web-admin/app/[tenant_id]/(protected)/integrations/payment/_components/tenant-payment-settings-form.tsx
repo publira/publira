@@ -128,8 +128,51 @@ const PaymentCredentialName = ({
         <Message message="admin.settings.payment.fields.stripe.webhook_secret" />
       );
     }
+    case "payjp.secret_key": {
+      return (
+        <Message message="admin.settings.payment.fields.payjp.secret_key" />
+      );
+    }
+    case "payjp.webhook_token": {
+      return (
+        <Message message="admin.settings.payment.fields.payjp.webhook_token" />
+      );
+    }
     default: {
       return field;
+    }
+  }
+};
+
+/** Where in the provider's own dashboard a credential is found. */
+const PaymentCredentialSource = ({
+  field,
+  provider,
+}: {
+  field: string;
+  provider: string;
+}) => {
+  switch (`${provider}.${field}`) {
+    case "payjp.secret_key": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.payjp.secret_key" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "payjp.webhook_token": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.field_sources.payjp.webhook_token" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    default: {
+      return null;
     }
   }
 };
@@ -142,6 +185,15 @@ const PaymentWebhookNote = ({ provider }: { provider: string }) => {
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.payment.webhook_url_legacy_description" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "payjp": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.webhook_url_payjp_description" />
           </Suspense>
         </FieldDescription>
       );
@@ -407,6 +459,10 @@ export const TenantPaymentSettingsForm = ({
                               name={`credential_${field.name}`}
                             />
                           </FieldContent>
+                          <PaymentCredentialSource
+                            field={field.name}
+                            provider={provider.id}
+                          />
                           <PaymentCredentialDescription field={field} />
                         </Field>
                       </PaymentCredential>

@@ -77,7 +77,7 @@ Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernet
 
 ## Episode purchases
 
-A paid episode is sold as a one-time payment through the web payment provider the tenant chose. A provider is a package under `internal/paymentprovider` that implements `paymentprovider.Provider`, and `providers.Registry()` lists the ones a tenant may choose from. The purchase flow in `api/publicapi/purchase_handlers.go` reaches a provider only through that interface. This build ships [Stripe](#stripe), the worked example below, and PAY.JP (`internal/paymentprovider/payjp`).
+A paid episode is sold as a one-time payment through the web payment provider the tenant chose. A provider is a package under `internal/paymentprovider` that implements `paymentprovider.Provider`, and `providers.Registry()` lists the ones a tenant may choose from. The purchase flow in `api/publicapi/purchase_handlers.go` reaches a provider only through that interface. This build ships [Stripe](#stripe), the worked example below, and [PAY.JP](#payjp).
 
 - **Start.** `StartEpisodeCheckout` loads the tenant's enabled provider and credentials from `tenant_payment_config` and calls `StartCheckout` with the purchase (tenant, reader, episode, price, reading period), the episode title, the URLs the reader returns to, and an idempotency key that is the same for every attempt of one reader at one episode. It answers the URL the provider gives back, which the storefront and the app send the reader to. An episode that already has a valid purchase does not start a checkout, and can be bought again once that purchase has expired.
 - **Return.** After paying or cancelling, the reader comes back to the episode URL on the tenant's `domain` with `checkout=success` or `checkout=cancelled`. The return confirms nothing; only a notification does.
@@ -114,6 +114,27 @@ stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe
 ```
 
 Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works.
+
+### PAY.JP
+
+`internal/paymentprovider/payjp` starts a hosted Checkout Session per purchase on PAY.JP's API v2, through `payjp/payjpv2-go`. The session offers cards alone and requires 3-D Secure on them (`request_three_d_secure: any`), carries the purchase in its metadata, and passes the checkout's idempotency key as `Idempotency-Key`. Its id and its payment flow's id become the checkout id and the payment id. Its fields are the secret key (`secret_key`) and the webhook token (`webhook_token`), both secret and required.
+
+PAY.JP sends the account's webhook token in `X-Payjp-Webhook-Token` rather than signing the payload, so the provider reads what a notification reports back from the API with the tenant's secret key: a notification whose objects the key cannot see is refused as not the tenant's.
+
+| Event | Answered as |
+| --- | --- |
+| `checkout.session.completed` | `PurchaseCompleted` once the payment flow has succeeded in JPY for the recorded price; a failure PAY.JP retries while it is still processing, and `Ignored` once it is canceled |
+| `refund.created`, `refund.updated` | `Refunded` with the sum of the payment flow's succeeded refunds, or `Ignored` while none has gone through |
+| Any other | `Ignored` |
+
+In the PAY.JP dashboard, register `https://<tenant-domain>/api/v1/webhook/payment/payjp` as the webhook endpoint, and store the secret key from the API settings page and the webhook token from the account settings. For local development, log in with the [PAY.JP CLI](https://docs.pay.jp/v2/guide/developers/payjp-cli) and forward test-mode events, which it delivers with the headers PAY.JP sends them with:
+
+```bash
+payjp-cli login
+payjp-cli listen --forward-to localhost:3080/api/v1/webhook/payment/payjp
+```
+
+For test cards, `4242 4242 4242 4242` with any future date and any three-digit CVC works; in test mode, 3-D Secure shows PAY.JP's test authentication screen, where the outcome is chosen.
 
 ### Adding a payment provider
 
