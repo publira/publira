@@ -16,7 +16,7 @@ func (declaredProvider) StartCheckout(context.Context, Credentials, CheckoutRequ
 	return "", nil
 }
 
-func (declaredProvider) ParseNotification([]byte, http.Header, Credentials) (Event, error) {
+func (declaredProvider) ParseNotification(context.Context, []byte, http.Header, Credentials) (Event, error) {
 	return Ignored{}, nil
 }
 

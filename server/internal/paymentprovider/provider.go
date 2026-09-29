@@ -40,8 +40,8 @@ type Declaration struct {
 	ID          string
 	DisplayName string
 	Fields      []Field
-	// SignatureHeader is the request header the provider signs its
-	// notifications with.
+	// SignatureHeader is the request header the provider signs or
+	// authenticates its notifications with.
 	SignatureHeader string
 }
 
@@ -163,8 +163,9 @@ type Provider interface {
 	// StartCheckout answers the URL the reader is sent to in order to pay.
 	StartCheckout(ctx context.Context, credentials Credentials, req CheckoutRequest) (string, error)
 	// ParseNotification verifies a notification against the tenant's
-	// credentials and reads it. It answers [ErrInvalidSignature] for a
-	// notification that does not verify and [ErrMalformedNotification] for
-	// one that verifies but cannot be read.
-	ParseNotification(payload []byte, headers http.Header, credentials Credentials) (Event, error)
+	// credentials and reads it, consulting the provider's API when the
+	// notification alone does not say what the purchase flow needs. It
+	// answers [ErrInvalidSignature] for a notification that does not verify
+	// and [ErrMalformedNotification] for one that verifies but cannot be read.
+	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
 }

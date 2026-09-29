@@ -1,6 +1,7 @@
 package stripe_test
 
 import (
+	"context"
 	"maps"
 	"testing"
 
@@ -30,7 +31,7 @@ func checkoutSession(purchase paymentprovider.Purchase, fields map[string]any) m
 func parse(t *testing.T, eventType string, session map[string]any) (paymentprovider.Event, error) {
 	t.Helper()
 	payload, headers := stripetest.SignedEvent(t, testWebhookSecret, eventType, session)
-	return stripe.New().ParseNotification(payload, headers, paymentprovider.Credentials{
+	return stripe.New().ParseNotification(context.Background(), payload, headers, paymentprovider.Credentials{
 		stripe.FieldWebhookSecret: testWebhookSecret,
 	})
 }

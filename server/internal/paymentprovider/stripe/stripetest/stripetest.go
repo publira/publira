@@ -66,6 +66,11 @@ type Fixture struct{}
 
 var _ paymentprovidertest.Fixture = Fixture{}
 
+// Provider answers Stripe, which reads nothing but the notification.
+func (Fixture) Provider() paymentprovider.Provider {
+	return stripe.New()
+}
+
 func (Fixture) Credentials() paymentprovider.Credentials {
 	return paymentprovider.Credentials{
 		stripe.FieldSecretKey:     "sk_test_51ContractFixtureAAAA",

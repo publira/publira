@@ -38,11 +38,13 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	for _, provider := range providers.Registry().Providers() {
 		id := provider.Declaration().ID
 		t.Run(id, func(t *testing.T) {
-			fixture, ok := providerstest.Fixture(id)
+			fixture, ok := providerstest.Fixture(t, id)
 			if !ok {
 				t.Fatalf("provider %q has no contract fixture in providerstest", id)
 			}
-			paymentprovidertest.Run(t, harness, provider, fixture)
+			// The server has to read the fixture's fake of the provider's API.
+			server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
+			paymentprovidertest.Run(t, harness, fixture)
 		})
 	}
 }

@@ -8,15 +8,15 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/providers/providerstest"
 )
 
-func TestEveryRegisteredProviderReadsItsRecordedNotifications(t *testing.T) {
+func TestEveryRegisteredProviderReadsItsNotifications(t *testing.T) {
 	for _, provider := range providers.Registry().Providers() {
 		id := provider.Declaration().ID
 		t.Run(id, func(t *testing.T) {
-			fixture, ok := providerstest.Fixture(id)
+			fixture, ok := providerstest.Fixture(t, id)
 			if !ok {
 				t.Fatalf("provider %q has no contract fixture in providerstest", id)
 			}
-			paymentprovidertest.RunParse(t, provider, fixture)
+			paymentprovidertest.RunParse(t, fixture)
 		})
 	}
 }
