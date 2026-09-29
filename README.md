@@ -28,13 +28,13 @@ The Dev Container bundles the `migrate` CLI (golang-migrate) and `wait4x` (HTTP 
 
 ## Dependency services
 
-The repository-root `compose.yaml` defines every dependency service — PostgreSQL, Valkey (Redis protocol), RustFS (S3-compatible storage), Mailpit, and Jaeger — and publishes each of them on `127.0.0.1`.
+The repository-root `compose.yaml` defines every dependency service — PostgreSQL, Valkey (Redis protocol), RustFS (S3-compatible storage), Mailpit, and Jaeger — and the Traefik edge in front of a host-side `task dev`, and publishes each of them on `127.0.0.1`.
 
 ```bash
 docker compose up -d
 ```
 
-The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container and Traefik and resets the published ports, because everything inside the container reaches these services by service name. That Traefik reads its routing from [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md), the same contract every other environment runs.
+The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container, points Traefik at it, and resets the published ports, because everything inside the container reaches these services by service name. That Traefik reads its routing from [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md), the same contract every other environment runs.
 
 | Service   | Host port        | Purpose                                |
 | --------- | ---------------- | -------------------------------------- |
@@ -43,6 +43,7 @@ The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/de
 | `rustfs`  | `9000` / `9001`  | S3 endpoint / console UI               |
 | `mailpit` | `1025` / `8025`  | SMTP intake / web UI                   |
 | `jaeger`  | `4318` / `16686` | OTLP intake (http/protobuf) / query UI |
+| `traefik` | `3080`           | The edge in front of `task dev`        |
 
 Loopback only: none of these services authenticates a caller, so they are never published on every interface.
 
@@ -69,13 +70,17 @@ export PUBLIRA_TRACING_ENABLED="true"
 # Required, no fallback. See the two key sections below.
 export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
+# Tenant links are built on the edge, which serves plain HTTP.
+export PUBLIRA_TENANT_URL_SCHEME="http"
+export PUBLIRA_TENANT_URL_PORT="3080"
 ```
 
 The role users come from `db/seeds/baseline` and their development passwords from `db/seeds/dev/000_role_passwords.sql`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection — `task db:*` and `publiractl db` connect with it — and the `publiractl job` subcommands are the only other readers, as a fallback. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
 
-Two things stay Dev Container only.
+Open the apps through the edge on `localhost:3080`, as in the Dev Container: `/images…` belongs to `publira server`, so only the edge serves an app and its images on one origin. The root `traefik` service reaches the host's processes as `host.docker.internal`, which Docker Desktop resolves itself and Docker Engine on Linux through the `host-gateway` mapping the service declares.
 
-- **Traefik.** The backend addresses it is given name the `app` container, so they do not reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API and the images), or point `infra/proxy/traefik/dynamic/services.yaml` at loopback.
+One thing stays Dev Container only.
+
 - **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
 The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) take their PostgreSQL, Valkey, and RustFS hosts from `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` when a profile is created, so export the values above before `task dev-env:create` as well.

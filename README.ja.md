@@ -28,13 +28,13 @@ Dev Container では `migrate` CLI (golang-migrate) と `wait4x`（E2E / bootstr
 
 ## 依存サービス
 
-リポジトリルートの `compose.yaml` が依存サービス一式（PostgreSQL / Valkey (Redis プロトコル) / RustFS (S3 互換ストレージ) / Mailpit / Jaeger）を定義し、それぞれを `127.0.0.1` に公開します。
+リポジトリルートの `compose.yaml` が依存サービス一式（PostgreSQL / Valkey (Redis プロトコル) / RustFS (S3 互換ストレージ) / Mailpit / Jaeger）と、ホストで動かす `task dev` の前に立つ Traefik のエッジを定義し、それぞれを `127.0.0.1` に公開します。
 
 ```bash
 docker compose up -d
 ```
 
-Dev Container も同じファイルを起動します。`.devcontainer/devcontainer.json` の `dockerComposeFile` は `["../compose.yaml", "compose.yaml"]` で、2 つめは `app` コンテナと Traefik を足し、公開ポートを打ち消す overlay です。コンテナ内からはサービス名で届くため、ホストへの公開は不要だからです。この Traefik は [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md) からルーティングを読み込みます。ほかの環境が動かすのと同じ契約です。
+Dev Container も同じファイルを起動します。`.devcontainer/devcontainer.json` の `dockerComposeFile` は `["../compose.yaml", "compose.yaml"]` で、2 つめは `app` コンテナを足し、Traefik をそのコンテナへ向け、公開ポートを打ち消す overlay です。コンテナ内からはサービス名で届くため、ホストへの公開は不要だからです。この Traefik は [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md) からルーティングを読み込みます。ほかの環境が動かすのと同じ契約です。
 
 | サービス  | ホストポート     | 用途                                  |
 | --------- | ---------------- | ------------------------------------- |
@@ -43,6 +43,7 @@ Dev Container も同じファイルを起動します。`.devcontainer/devcontai
 | `rustfs`  | `9000` / `9001`  | S3 エンドポイント / コンソール UI     |
 | `mailpit` | `1025` / `8025`  | SMTP 受信 / Web UI                    |
 | `jaeger`  | `4318` / `16686` | OTLP 受信 (http/protobuf) / クエリ UI |
+| `traefik` | `3080`           | `task dev` の前に立つエッジ           |
 
 公開はループバック限定です。いずれのサービスも呼び出し元を認証しないため、全インターフェースには公開しません。
 
@@ -69,13 +70,17 @@ export PUBLIRA_TRACING_ENABLED="true"
 # 必須・フォールバックなし。詳細は後述の 2 つの鍵の節を参照
 export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
+# テナントへのリンクは平文の HTTP のエッジの上に組み立てる
+export PUBLIRA_TENANT_URL_SCHEME="http"
+export PUBLIRA_TENANT_URL_PORT="3080"
 ```
 
 ロールユーザーは `db/seeds/baseline` に、開発用パスワードは `db/seeds/dev/000_role_passwords.sql` に由来します。各サーバーは自分が接続するロールに対応する変数だけを読むので、そのすべてを設定する必要があります。`PUBLIRA_DB_URL` はマイグレーションツールの接続であり、`task db:*` と `publiractl db` がこれで接続します。ほかに読むのはフォールバック先にする `publiractl job` のサブコマンドだけです。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
 
-Dev Container 専用のままになるものが 2 つあります。
+アプリは Dev Container と同じく、エッジの `localhost:3080` から開いてください。`/images…` は `publira server` が答えるので、アプリと画像を 1 つのオリジンで配信できるのはエッジだけです。ルートの `traefik` サービスは、ホストのプロセスへ `host.docker.internal` で届きます。この名前は Docker Desktop なら自前で、Linux の Docker Engine ならサービスが宣言する `host-gateway` の対応付けで解決されます。
 
-- **Traefik**。渡してあるバックエンドのアドレスが `app` コンテナを指すので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API と画像が `8000`）へ直接アクセスするか、`infra/proxy/traefik/dynamic/services.yaml` をループバックへ向けてください。
+Dev Container 専用のままになるものが 1 つあります。
+
 - **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
 
 [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルは、作成時点の `PUBLIRA_DB_URL`・`PUBLIRA_REDIS_URL`・`PUBLIRA_S3_ENDPOINT` から PostgreSQL・Valkey・RustFS のホストを取るので、`task dev-env:create` の前にも上の値を export してください。

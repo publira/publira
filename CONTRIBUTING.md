@@ -73,7 +73,7 @@ With the tools installed:
 1. Start the dependency services with `docker compose up -d` from the repository root.
 2. Export the environment variables listed under [Running `task setup` / `task dev` on the host](README.md#running-task-setup--task-dev-on-the-host) in the README. The defaults name the Compose services, which resolve only inside the Dev Container.
 3. Run `task setup`. It installs the Node.js and Go dependencies, runs `flutter pub get`, applies the migrations and the seed, and fills the storage bucket with the images that seed's rows name. Without Flutter, run the pieces you need instead: `task deps`, `task db:setup`, and `task storage:seed`.
-4. Run `task dev` to start every server and web app, or the per-area tasks that `task --list` shows.
+4. Run `task dev` to start every server and web app, or the per-area tasks that `task --list` shows, and open them through the edge on `localhost:3080`.
 
 The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task deps` followed by the commands in the next section.
 
