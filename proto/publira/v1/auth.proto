@@ -75,6 +75,9 @@ message ListMyIdentitiesRequest {
 
 message ListMyIdentitiesResponse {
   repeated LinkedIdentity identities = 1;
+  // False for an account a provider sign-in created, which confirms DeleteMe
+  // with a fresh sign-in and keeps its last linked provider.
+  bool has_password = 2;
 }
 
 message UnlinkIdentityRequest {

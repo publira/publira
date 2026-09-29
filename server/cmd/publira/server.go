@@ -26,6 +26,7 @@ import (
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
@@ -76,6 +77,12 @@ func runServer() int {
 		return 1
 	}
 	newSearchBackend, err := searchBackendFromEnv()
+	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		return 1
+	}
+
+	idTokens, err := signin.VerifierConfigFromEnv()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
 		return 1
@@ -134,7 +141,7 @@ func runServer() int {
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, newSearchBackend(pools.public))
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, newSearchBackend(pools.public), idTokens)
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		return 1

@@ -439,7 +439,10 @@ func (s *apiServer) ListMyIdentities(
 			LinkedAt: row.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
-	return connect.NewResponse(&publirav1.ListMyIdentitiesResponse{Identities: identities}), nil
+	return connect.NewResponse(&publirav1.ListMyIdentitiesResponse{
+		Identities:  identities,
+		HasPassword: user.PasswordHash.Valid,
+	}), nil
 }
 
 func (s *apiServer) UnlinkIdentity(

@@ -28,6 +28,7 @@ export PUBLIRA_E2E_PUBLIC_API_PORT="${PUBLIRA_E2E_PUBLIC_API_PORT:-8000}"
 export PUBLIRA_E2E_PUBLIC_API_GRPC_PORT="${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT:-8100}"
 export PUBLIRA_E2E_WORKER_PORT="${PUBLIRA_E2E_WORKER_PORT:-8003}"
 export PUBLIRA_E2E_EMAIL_RENDERER_PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT:-8300}"
+export PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT="${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT:-8400}"
 # Traefik entrypoint. `/images` belongs to the server and everything else to
 # web-host, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
@@ -124,6 +125,12 @@ export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_PLA
 # have this stack's worker render through a process it neither starts nor stops.
 export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER_PORT}"
 
+# Where publira server reads Apple's and Google's signing keys. Both name the
+# stand-in scripts/sign-in-provider.ts serves, so a spec can sign the ID token a
+# provider would have issued.
+export PUBLIRA_SIGN_IN_APPLE_KEYS_URL="http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}/keys"
+export PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL="${PUBLIRA_SIGN_IN_APPLE_KEYS_URL}"
+
 # Where the platform console auth mail points. The worker builds those links, so
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
@@ -165,6 +172,7 @@ else
     [[ "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" != "8100" ]] ||
     [[ "${PUBLIRA_E2E_WORKER_PORT}" != "8003" ]] ||
     [[ "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
+    [[ "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" != "8400" ]] ||
     [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
@@ -173,7 +181,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

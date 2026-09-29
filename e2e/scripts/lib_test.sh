@@ -38,6 +38,7 @@ stack_env() {
     -u PUBLIRA_E2E_PUBLIC_API_GRPC_PORT \
     -u PUBLIRA_E2E_WORKER_PORT \
     -u PUBLIRA_E2E_EMAIL_RENDERER_PORT \
+    -u PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT \
     -u PUBLIRA_E2E_EDGE_PORT \
     -u PUBLIRA_E2E_LOCK_HELD \
     "$@"
@@ -104,6 +105,15 @@ elif [[ "${renderer_override_dir}" != *"-er8310-"* ]]; then
   fail "PUBLIRA_E2E_EMAIL_RENDERER_PORT override dir ${renderer_override_dir} does not encode er8310"
 else
   pass "PUBLIRA_E2E_EMAIL_RENDERER_PORT override isolates RUN_DIR"
+fi
+
+sign_in_provider_override_dir="$(compute_run_dir PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT=8410)"
+if [[ "${sign_in_provider_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override still uses ${sign_in_provider_override_dir}"
+elif [[ "${sign_in_provider_override_dir}" != *"-sp8410-"* ]]; then
+  fail "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override dir ${sign_in_provider_override_dir} does not encode sp8410"
+else
+  pass "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override isolates RUN_DIR"
 fi
 
 project_override_dir="$(compute_run_dir COMPOSE_PROJECT_NAME=publira-e2e-alt)"
