@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/config.dart';
 
 /// Where the app keeps the signed-in reader's session between launches.
 abstract class SessionStore {
@@ -12,6 +13,22 @@ abstract class SessionStore {
   Future<void> write(AuthSession session);
 
   Future<void> clear();
+}
+
+/// Where a build given [config] keeps its session: the credential store, or
+/// memory holding [AppConfig.sessionToken] when the build was given one.
+SessionStore sessionStoreFor(AppConfig config) {
+  if (config.sessionToken.isEmpty) {
+    return const SecureSessionStore();
+  }
+  return MemorySessionStore(
+    // GetMe names the reader when the session is restored.
+    session: AuthSession(
+      accessToken: config.sessionToken,
+      userPublicId: '',
+      userName: '',
+    ),
+  );
 }
 
 /// [SessionStore] backed by the OS keychain / Keystore.
@@ -58,4 +75,24 @@ class SecureSessionStore implements SessionStore {
 
   @override
   Future<void> clear() => storage.delete(key: _key);
+}
+
+/// [SessionStore] that holds the session in memory only, for a build given
+/// its session through `AppConfig.sessionToken`.
+///
+/// Nothing reaches the credential store, so the session the device kept is
+/// neither read nor replaced, and every launch starts from the given token.
+class MemorySessionStore implements SessionStore {
+  MemorySessionStore({this._session});
+
+  AuthSession? _session;
+
+  @override
+  Future<AuthSession?> read() async => _session;
+
+  @override
+  Future<void> write(AuthSession session) async => _session = session;
+
+  @override
+  Future<void> clear() async => _session = null;
 }

@@ -105,7 +105,8 @@ class PubliraApp extends StatefulWidget {
   /// request carries whichever token the reader is signed in with, and one
   /// [TenantResolver] means the tenant is looked up once per run. [store] is
   /// the session's home, which an on-device test replaces so it does not carry
-  /// a session from one test to the next.
+  /// a session from one test to the next, and is [sessionStoreFor] when left
+  /// out.
   ///
   /// [offline] is what the device keeps for reading without a network, which
   /// an on-device test replaces so it does not carry saved episodes from one
@@ -133,7 +134,7 @@ class PubliraApp extends StatefulWidget {
     Key? key,
     AppConfig? config,
     GoRouter? router,
-    SessionStore store = const SecureSessionStore(),
+    SessionStore? store,
     OfflineLibrary? offline,
     PushMessaging? messaging,
     InAppPurchasePlatform? inAppPurchase,
@@ -167,7 +168,7 @@ class PubliraApp extends StatefulWidget {
         client: client,
         tenants: tenants,
       ),
-      store: store,
+      store: store ?? sessionStoreFor(resolved),
     );
     final purchaseStore = inAppPurchase == null
         ? null

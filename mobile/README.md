@@ -645,11 +645,21 @@ Every route named on the command line becomes one PNG under `.run/screenshots/`;
 
 The screens are taken on an attached device or emulator, which the app is built and installed on; in the Dev Container that is the one [`task mobile:emulator-start`](#android-emulator-in-the-dev-container) boots. With none attached, the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
 
+Every screen is taken signed in as a development-seed reader, the seeded member unless another one is named, so the account settings, the library's lists, and the notification inbox show themselves rather than the signed-out notice. The command signs the reader in against the profile's public API and builds the token into the app as `--dart-define=PUBLIRA_SESSION_TOKEN`, which the app holds in memory rather than in the credential store; `task mobile:build` refuses the define.
+
+```bash
+task mobile:screenshot -- /account/delete
+PUBLIRA_MOBILE_SCREENSHOT_READER=admin@example.com task mobile:screenshot -- /account
+PUBLIRA_MOBILE_SCREENSHOT_READER= task mobile:screenshot -- /sign-in
+```
+
 | Variable | Meaning |
 | --- | --- |
 | `PUBLIRA_MOBILE_DEVICE` | The device to build, install, and photograph on. The first attached one when unset |
 | `PUBLIRA_MOBILE_SCREENSHOT_WAIT_MS` | How long a screen is given to finish arriving before the shutter. `8000` when unset |
 | `PUBLIRA_MOBILE_SCREENSHOT_DEVICE` | The Playwright device the browser fallback emulates. `Pixel 7` when unset |
+| `PUBLIRA_MOBILE_SCREENSHOT_READER` | The email address of the reader the screens are taken signed in as. `member@example.com` when unset; set to empty, the screens are taken signed out |
+| `PUBLIRA_MOBILE_SCREENSHOT_PASSWORD` | That reader's password. The address's local part followed by `pass`, the password of every account the development seed holds, when unset |
 
 ## Integration tests
 

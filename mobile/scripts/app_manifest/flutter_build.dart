@@ -22,6 +22,10 @@ const baseUrlDefine = 'PUBLIRA_BASE_URL';
 /// one the tenant answers before it offers Google sign-in on iOS.
 const googleIosClientIdDefine = 'PUBLIRA_GOOGLE_IOS_CLIENT_ID';
 
+/// The define a screenshot build starts signed in with, which would sign
+/// every reader of a tenant's app in as the account the token belongs to.
+const sessionTokenDefine = 'PUBLIRA_SESSION_TOKEN';
+
 /// What `scripts/build.dart` was asked to build.
 class BuildRequest {
   const BuildRequest({
@@ -100,6 +104,13 @@ List<String> flutterBuildArguments(
               'export $name instead',
       });
     }
+  }
+
+  if (given.contains(sessionTokenDefine)) {
+    problems.add(
+      '--dart-define=$sessionTokenDefine signs every reader in as one '
+      'account; leave it out',
+    );
   }
 
   final production = request.flavor == defaultBuildFlavor;

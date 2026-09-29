@@ -11,6 +11,7 @@ class AppConfig {
     required this.tenantHost,
     this.firebase,
     this.googleIosClientId = '',
+    this.sessionToken = '',
   });
 
   factory AppConfig.fromEnvironment() {
@@ -27,6 +28,7 @@ class AppConfig {
       googleIosClientId: const String.fromEnvironment(
         'PUBLIRA_GOOGLE_IOS_CLIENT_ID',
       ),
+      sessionToken: const String.fromEnvironment('PUBLIRA_SESSION_TOKEN'),
     );
   }
 
@@ -53,6 +55,12 @@ class AppConfig {
   /// The Google iOS client whose URL scheme the build registered from the app
   /// manifest, empty for a build that registered none.
   final String googleIosClientId;
+
+  /// A public-audience JWT the app starts signed in with instead of the
+  /// session in the credential store, or empty for none. `task
+  /// mobile:screenshot` gives it so a screen only a reader reaches can be
+  /// photographed from a fresh launch.
+  final String sessionToken;
 
   /// Resolves an `image_url` from the API against [baseUrl]. The API
   /// hands out a host-relative path, and keeps the media token it may carry in
