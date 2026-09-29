@@ -86,6 +86,26 @@ test.describe("web-platform console navigation", () => {
     });
   }
 
+  test("on a phone, the drawer lists the sidebar and closes on the entry followed", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 844, width: 390 });
+    await signInAsSeedPlatformSuperAdmin(page, "/");
+
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    const drawer = page.getByRole("dialog");
+    await expect(
+      drawer.getByRole("link", { exact: true, name: "Dashboard" })
+    ).toHaveAttribute("aria-current", "page");
+
+    await drawer.getByRole("link", { exact: true, name: "General" }).click();
+    await expect(page).toHaveURL(/\/general$/u);
+    await expect(drawer).toBeHidden();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "General settings" })
+    ).toBeVisible();
+  });
+
   test("the operator's own account page marks no sidebar entry", async ({
     page,
   }) => {

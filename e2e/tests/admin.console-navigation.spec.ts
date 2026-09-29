@@ -86,6 +86,26 @@ test.describe("web-admin console navigation", () => {
     );
   });
 
+  test("on a phone, the drawer lists the sidebar and closes on the entry followed", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 844, width: 390 });
+    await signInAsSeedAdmin(page, "/");
+
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    const drawer = page.getByRole("dialog");
+    await expect(
+      drawer.getByRole("link", { exact: true, name: "Dashboard" })
+    ).toHaveAttribute("aria-current", "page");
+
+    await drawer.getByRole("link", { exact: true, name: "Branding" }).click();
+    await expect(page).toHaveURL(/\/branding$/u);
+    await expect(drawer).toBeHidden();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Branding" })
+    ).toBeVisible();
+  });
+
   test("Settings holds the tenant-wide settings only", async ({ page }) => {
     await signInAsSeedAdmin(page, "/settings");
 

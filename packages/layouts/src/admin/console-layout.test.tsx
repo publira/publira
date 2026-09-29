@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import { DashboardIcon } from "@publira/icons";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -145,6 +152,42 @@ describe("Console layout slots", () => {
 
     expect(dialog.parentElement?.role).toBe("presentation");
     expect(dialog.dataset.swipeDirection).toBe("left");
+  });
+
+  it("shows the sidebar's navigation in the open drawer and closes it on the entry followed", async () => {
+    render(
+      <ConsoleLayout>
+        <ConsoleMobileNavigation>
+          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleMobileNavigation>
+        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+        <ConsoleSidebar>
+          <ConsoleSidebarNavigation hrefs={hrefs}>
+            <ConsoleSidebarNavigationSection>
+              <ConsoleSidebarNavigationItems>
+                <ConsoleSidebarNavigationItem href="/tenants">
+                  <ConsoleSidebarNavigationItemHeading>
+                    <ConsoleSidebarNavigationItemLabel>
+                      Tenants
+                    </ConsoleSidebarNavigationItemLabel>
+                  </ConsoleSidebarNavigationItemHeading>
+                </ConsoleSidebarNavigationItem>
+              </ConsoleSidebarNavigationItems>
+            </ConsoleSidebarNavigationSection>
+          </ConsoleSidebarNavigation>
+        </ConsoleSidebar>
+      </ConsoleLayout>
+    );
+
+    expect(screen.getAllByRole("link", { name: "Tenants" })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const drawer = screen.getByRole("dialog");
+    fireEvent.click(within(drawer).getByRole("link", { name: "Tenants" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 });
 

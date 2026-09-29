@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { isCurrentPath, toConsolePathname } from "../navigation";
 
@@ -24,6 +25,20 @@ interface ConsoleMobileNavigationContextValue {
 const ConsoleMobileNavigationContext =
   createContext<ConsoleMobileNavigationContextValue | null>(null);
 
+/**
+ * Where the open drawer takes the sidebar's navigation: the element its popup
+ * leaves for it, or `null` while the drawer is closed.
+ */
+const ConsoleDrawerNavigationContext = createContext<{
+  setTarget: (target: HTMLElement | null) => void;
+  target: HTMLElement | null;
+}>({
+  setTarget: () => {
+    // Outside a ConsoleLayout there is no drawer to show the navigation in.
+  },
+  target: null,
+});
+
 const useConsoleMobileNavigation = (): ConsoleMobileNavigationContextValue => {
   const value = useContext(ConsoleMobileNavigationContext);
   if (!value) {
@@ -32,6 +47,12 @@ const useConsoleMobileNavigation = (): ConsoleMobileNavigationContextValue => {
     );
   }
   return value;
+};
+
+const ConsoleDrawerNavigationTarget = () => {
+  const { setTarget } = useContext(ConsoleDrawerNavigationContext);
+
+  return <div className="flex min-h-0 flex-1 flex-col" ref={setTarget} />;
 };
 
 export const ConsoleMobileNavigation = ({
@@ -45,6 +66,7 @@ export const ConsoleMobileNavigation = ({
     <BaseDrawer.Viewport className="fixed inset-0 z-40 lg:hidden">
       <BaseDrawer.Popup className="fixed inset-y-0 left-0 z-40 flex w-60 max-w-[86vw] flex-col border-r border-border bg-surface px-3 py-4 shadow-floating lg:hidden">
         {children}
+        <ConsoleDrawerNavigationTarget />
       </BaseDrawer.Popup>
     </BaseDrawer.Viewport>
   </BaseDrawer.Portal>
@@ -99,6 +121,11 @@ export const ConsoleMobileNavigationOpenButton = ({
  */
 const ConsoleNavigationHrefsContext = createContext<readonly string[]>([]);
 
+/**
+ * The open drawer shows these same children through a portal rather than a
+ * second copy of the navigation, so the server renders each entry — and the
+ * reads behind its badges — once.
+ */
 export const ConsoleSidebarNavigation = ({
   children,
   hrefs,
@@ -106,13 +133,21 @@ export const ConsoleSidebarNavigation = ({
   children: ReactNode;
   /** Every href the sections below render, so the set is known up front. */
   hrefs: readonly string[];
-}) => (
-  <ConsoleNavigationHrefsContext value={hrefs}>
+}) => {
+  const { target } = useContext(ConsoleDrawerNavigationContext);
+  const navigation = (
     <nav className="mt-6 flex-1 overflow-y-auto">
       <div className="grid gap-6">{children}</div>
     </nav>
-  </ConsoleNavigationHrefsContext>
-);
+  );
+
+  return (
+    <ConsoleNavigationHrefsContext value={hrefs}>
+      {navigation}
+      {target ? createPortal(navigation, target) : null}
+    </ConsoleNavigationHrefsContext>
+  );
+};
 
 const ConsoleSidebarNavigationLink = ({
   children,
@@ -122,15 +157,22 @@ const ConsoleSidebarNavigationLink = ({
   children: ReactNode;
   current: boolean;
   href: string;
-}) => (
-  <Link
-    aria-current={current ? "page" : undefined}
-    className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
-    href={href}
-  >
-    {children}
-  </Link>
-);
+}) => {
+  // The layout outlives a navigation, so an entry followed from the drawer has
+  // to close it itself.
+  const mobileNavigation = useContext(ConsoleMobileNavigationContext);
+
+  return (
+    <Link
+      aria-current={current ? "page" : undefined}
+      className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+      href={href}
+      onClick={mobileNavigation?.close}
+    >
+      {children}
+    </Link>
+  );
+};
 
 /**
  * The console shell cannot read the URL it is serving, so which item is current
@@ -189,6 +231,8 @@ export const ConsoleSidebarNavigationItem = ({
 
 export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [drawerNavigationTarget, setDrawerNavigationTarget] =
+    useState<HTMLElement | null>(null);
 
   const onCloseMobileNav = useCallback(() => {
     setMobileNavOpen(false);
@@ -207,6 +251,14 @@ export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
     [onCloseMobileNav, onOpenMobileNav]
   );
 
+  const drawerNavigation = useMemo(
+    () => ({
+      setTarget: setDrawerNavigationTarget,
+      target: drawerNavigationTarget,
+    }),
+    [drawerNavigationTarget]
+  );
+
   return (
     <BaseDrawer.Root
       modal
@@ -215,9 +267,11 @@ export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
       swipeDirection="left"
     >
       <ConsoleMobileNavigationContext value={mobileNavigation}>
-        <div className="flex min-h-dvh bg-background text-foreground">
-          {children}
-        </div>
+        <ConsoleDrawerNavigationContext value={drawerNavigation}>
+          <div className="flex min-h-dvh bg-background text-foreground">
+            {children}
+          </div>
+        </ConsoleDrawerNavigationContext>
       </ConsoleMobileNavigationContext>
     </BaseDrawer.Root>
   );
