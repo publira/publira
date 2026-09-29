@@ -28,7 +28,9 @@ func TestSeedsNameSupportedDefaultLocales(t *testing.T) {
 	defer cancel()
 
 	for _, path := range seedSQLFiles(t) {
-		if _, err := pg.DB.ExecContext(ctx, readSeedSQL(t, path, map[string]string{})); err != nil {
+		// `task db:seed` passes the edge port the seeded tenant hosts carry.
+		vars := map[string]string{"tenant_port": "3080"}
+		if _, err := pg.DB.ExecContext(ctx, readSeedSQL(t, path, vars)); err != nil {
 			t.Fatalf("apply %s: %v", path, err)
 		}
 	}
