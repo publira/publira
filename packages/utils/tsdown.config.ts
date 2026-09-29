@@ -16,6 +16,7 @@ export default defineConfig({
     "src/route-params.ts",
     "src/search-params.ts",
     "src/static-param-placeholder.ts",
+    "src/tenant-origin.ts",
     "src/theme-css-variables.ts",
     "src/theme-contrast.ts",
   ],

@@ -64,6 +64,7 @@ start_web_app() {
     PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
     PNCH_CACHE_APP="${cache_app}" \
     PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
+    PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
     "${command[@]}"
 }
 

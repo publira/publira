@@ -47,6 +47,12 @@ pnpm dev --filter @publira/web-admin
 
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
 
+### Storefront URLs
+
+The payment webhook URL on Payment settings is the tenant's storefront (`storefrontOrigin` in `lib/storefront-url.ts`).
+
+- `PUBLIRA_TENANT_URL_SCHEME` — `http` or `https`. `https` when unset. Anything else is refused.
+
 ### Server cache (Redis)
 
 `next.config.ts` wires `@publira/next-cache-handlers`, as web-host does.

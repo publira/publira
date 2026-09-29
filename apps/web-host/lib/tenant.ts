@@ -5,6 +5,7 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { tenantOrigin } from "@publira/utils/tenant-origin";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
@@ -539,8 +540,8 @@ export const getTenantWebPushPublicKey = async (
  * It is the tenant's stored domain rather than the request's `Host`, which is
  * the same choice the Go server makes when it writes a link into mail
  * (`outbox`): a reader who reached the site through some other name still
- * shares the address the tenant publishes under. `https` because that is the
- * only scheme a tenant domain is served over.
+ * shares the address the tenant publishes under. The scheme is
+ * `PUBLIRA_TENANT_URL_SCHEME`, `https` when unset.
  *
  * `null` where the tenant read is unavailable or the domain is unset. Both
  * cases leave a caller with no address to write, and the controls that need one
@@ -551,7 +552,9 @@ export const getTenantPublicOrigin = async (
   tenantId: string
 ): Promise<string | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
-  const domain = tenant?.domain.trim();
+  if (!tenant) {
+    return null;
+  }
 
-  return domain ? `https://${domain}` : null;
+  return tenantOrigin(tenant.domain);
 };

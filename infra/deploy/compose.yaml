@@ -130,7 +130,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-host:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
-      <<: *web-app
+      <<: [*web-app, *tenant-url]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_HOST_AUTH_SECRET:?}
     depends_on:
       - server
@@ -140,7 +140,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-admin:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
-      <<: *web-app
+      <<: [*web-app, *tenant-url]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
     depends_on:
       - server

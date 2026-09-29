@@ -18,7 +18,7 @@ import {
 import { tenantHost, WEB_HOST_BASE_URL } from "../src/urls";
 
 /** The development seed tenant's stored domain, which it publishes under. */
-const SEED_ORIGIN = `https://${tenantHost("localhost")}`;
+const SEED_ORIGIN = `http://${tenantHost("localhost")}`;
 
 /**
  * What a crawler reads before anything else on a tenant site: which paths it

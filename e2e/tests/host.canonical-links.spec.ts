@@ -15,9 +15,13 @@ import {
 } from "../src/urls";
 
 /** The development seed tenant's stored domain, which it publishes under. */
-const SEED_ORIGIN = `https://${tenantHost("localhost")}`;
+/** The stack's edge serves plain HTTP, which `PUBLIRA_TENANT_URL_SCHEME` names. */
+const publishedOrigin = (hostname: string): string =>
+  `http://${tenantHost(hostname)}`;
 
-const JAPANESE_DEFAULT_ORIGIN = `https://${tenantHost(JAPANESE_DEFAULT_TENANT.domain)}`;
+const SEED_ORIGIN = publishedOrigin("localhost");
+
+const JAPANESE_DEFAULT_ORIGIN = publishedOrigin(JAPANESE_DEFAULT_TENANT.domain);
 
 /** A sort order names a view of the list, not another page. */
 const LIST_QUERY = "?order=title";

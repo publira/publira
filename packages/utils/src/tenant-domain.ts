@@ -12,38 +12,24 @@ const getHeaderValues = (headers: HeadersLike, name: string): string[] => {
     .filter((entry) => entry.length > 0);
 };
 
+const normalizeRequestHost = (value: string): string => {
+  let host = value.trim().toLowerCase();
+  const scheme = host.indexOf("://");
+  if (scheme !== -1) {
+    host = host.slice(scheme + 3);
+  }
+
+  const slash = host.indexOf("/");
+  if (slash !== -1) {
+    host = host.slice(0, slash);
+  }
+
+  return host;
+};
+
 const getHostVariants = (value: string): string[] => {
-  const trimmedValue = value.trim();
-  if (!trimmedValue) {
-    return [];
-  }
-
-  const normalizedValue = trimmedValue.replace(/\/.*/u, "").toLowerCase();
-
-  try {
-    const url = new URL(
-      normalizedValue.includes("://")
-        ? normalizedValue
-        : `http://${normalizedValue}`
-    );
-
-    return [
-      ...new Set(
-        [url.host, url.hostname].filter(
-          (candidate) => candidate.trim().length > 0
-        )
-      ),
-    ];
-  } catch {
-    const withoutPort = normalizedValue.replace(/:\d+$/u, "");
-    return [
-      ...new Set(
-        [normalizedValue, withoutPort].filter(
-          (candidate) => candidate.trim().length > 0
-        )
-      ),
-    ];
-  }
+  const host = normalizeRequestHost(value);
+  return host.length > 0 ? [host] : [];
 };
 
 export const getTenantDomainCandidates = (headers: HeadersLike): string[] => {
