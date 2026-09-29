@@ -157,7 +157,7 @@ const SeriesDetailSkeleton = () => (
           <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-4 w-1/2" />
         </div>
-        <Skeleton className="h-20 w-full max-w-(--measure-prose)" />
+        <Skeleton className="h-20 w-full max-w-measure-prose" />
         <Skeleton className="h-10 w-48" />
       </div>
     </div>

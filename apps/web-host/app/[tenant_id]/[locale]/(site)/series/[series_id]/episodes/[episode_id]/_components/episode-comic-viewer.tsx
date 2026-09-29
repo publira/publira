@@ -455,7 +455,7 @@ export const EpisodeComicViewer = ({
                 { "--end-page-aspect": endPageAspect(pages) } as CSSProperties
               }
             >
-              <div className="m-auto w-full max-w-(--measure-prose) px-6 py-8">
+              <div className="m-auto w-full max-w-measure-prose px-6 py-8">
                 {endPage}
               </div>
             </section>

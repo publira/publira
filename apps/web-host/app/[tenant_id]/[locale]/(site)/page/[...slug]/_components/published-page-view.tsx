@@ -16,7 +16,7 @@ export const PublishedPageContent = ({
   fallbackLanguage: string | null;
   page: PublishedPage;
 }) => (
-  <div className="mx-auto max-w-(--measure-prose) px-6 py-12">
+  <div className="mx-auto max-w-measure-prose px-6 py-12">
     {fallbackLanguage ? (
       <p className="mb-8 text-sm leading-6 text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-xl" />}>

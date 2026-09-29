@@ -94,7 +94,7 @@ export const MarkdownContent = ({
   }
 
   return (
-    <div className="grid max-w-(--measure-prose) gap-[1lh] font-serif text-base leading-(--leading-reading-cjk) text-foreground sm:text-lg">
+    <div className="grid max-w-measure-prose gap-[1lh] font-serif text-base leading-(--leading-reading-cjk) text-foreground sm:text-lg">
       <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
     </div>
   );

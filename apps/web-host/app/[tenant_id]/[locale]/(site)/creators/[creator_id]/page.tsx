@@ -127,7 +127,7 @@ const CreatorDetailSkeleton = () => (
           <SkeletonLine className="h-4 w-40" />
         </div>
       </div>
-      <Skeleton className="h-16 w-full max-w-(--measure-prose)" />
+      <Skeleton className="h-16 w-full max-w-measure-prose" />
     </div>
     <SeriesShelfSkeleton />
   </div>

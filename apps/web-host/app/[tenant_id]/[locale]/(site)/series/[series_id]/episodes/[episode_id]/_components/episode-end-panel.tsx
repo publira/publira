@@ -201,7 +201,7 @@ export const EpisodeEndPanel = async ({
               <Message message="host.episode.end.up_to_date_title" />
             </Suspense>
           </h2>
-          <p className="max-w-(--measure-prose) text-sm text-muted-foreground">
+          <p className="max-w-measure-prose text-sm text-muted-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <Message
                 message="host.episode.end.up_to_date_description"

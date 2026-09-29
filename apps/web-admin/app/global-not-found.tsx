@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 const GlobalNotFound = () => (
   <html lang={NOT_FOUND_LOCALE}>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-      <main className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+      <main className="mx-auto grid max-w-measure-prose gap-4 px-6 py-16">
         <h1 className="font-serif text-3xl leading-tight">
           {sharedMessage("admin.not_found.title", NOT_FOUND_LOCALE)}
         </h1>

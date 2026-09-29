@@ -24,7 +24,7 @@ export const Prose = ({
 }) => (
   <p
     className={cn(
-      "max-w-(--measure-prose) font-serif whitespace-pre-wrap",
+      "max-w-measure-prose font-serif whitespace-pre-wrap",
       locale === "en"
         ? "leading-(--leading-reading-latin)"
         : "leading-(--leading-reading-cjk)"
