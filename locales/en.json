@@ -4020,6 +4020,7 @@
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "Previous episode",
       "previous_page": "Previous page",
+      "progress": "Reading progress",
       "reload": "Reload",
       "save_expired": "The saved copy of this episode has expired. Open it again while connected.",
       "title": "Episode"

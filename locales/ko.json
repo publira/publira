@@ -4020,6 +4020,7 @@
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "이전 에피소드",
       "previous_page": "이전 페이지",
+      "progress": "읽은 분량",
       "reload": "새로고침",
       "save_expired": "저장된 에피소드의 열람 기한이 만료되었습니다. 통신이 가능한 상태에서 다시 열어 주세요.",
       "title": "에피소드"

@@ -4020,6 +4020,7 @@
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "上一章",
       "previous_page": "上一页",
+      "progress": "阅读进度",
       "reload": "重新加载",
       "save_expired": "本章保存的副本已过期。请在联网状态下重新打开。",
       "title": "章节"

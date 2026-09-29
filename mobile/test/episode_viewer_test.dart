@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1163,6 +1164,208 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(catalog.readingPositions[episodeKey(seriesId, episodeId)], 1);
+  });
+
+  group('progress slider', () {
+    final progress = find.byKey(const ValueKey('episode-progress'));
+
+    /// The point [share] of the way along the slider's track, from the end
+    /// reading starts at: the right for a right-to-left episode.
+    Offset alongTrack(WidgetTester tester, double share, {bool rtl = true}) {
+      final slider = tester.getRect(progress);
+      // Material insets the track from either end of the slider.
+      const inset = 24.0;
+      final offset = (slider.width - inset * 2) * share;
+      return Offset(
+        rtl ? slider.right - inset - offset : slider.left + inset + offset,
+        slider.center.dy,
+      );
+    }
+
+    /// Where the pager is, in screens, partway between two while it moves.
+    double pagerScreen(WidgetTester tester) =>
+        tester.widget<PageView>(pageView).controller!.page!;
+
+    double thumb(WidgetTester tester) => tester.widget<Slider>(progress).value;
+
+    /// Holds the thumb at [shares] of the track in turn without letting go.
+    Future<TestGesture> dragThumb(
+      WidgetTester tester,
+      List<double> shares, {
+      bool rtl = true,
+    }) async {
+      final gesture = await tester.startGesture(
+        alongTrack(
+          tester,
+          thumb(tester) / tester.widget<Slider>(progress).max,
+          rtl: rtl,
+        ),
+      );
+      for (final share in shares) {
+        await gesture.moveTo(alongTrack(tester, share, rtl: rtl));
+        await tester.pump();
+      }
+      return gesture;
+    }
+
+    testWidgets('the track counts every page and the end panel', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      final slider = tester.widget<Slider>(progress);
+      expect(slider.min, 0);
+      expect(slider.max, 3);
+      expect(slider.value, 0);
+    });
+
+    testWidgets('a drag shows the spread under the thumb and lands on it once '
+        'it is let go', (tester) async {
+      catalog.episodes = fixtureEpisodes(pageCount: 5);
+      await pumpApp(tester, session: fakeSession, screen: landscape);
+      await pumpUntilRouteSettled(tester, pageView);
+
+      // Five pages and the end panel make a track of five steps; 3.4 of them
+      // is a fifth of the way from the spread of pages 4–5 to the panel.
+      final gesture = await dragThumb(tester, [0.4, 0.68]);
+
+      expect(find.text('4–5 / 5'), findsOneWidget);
+      expect(pagerScreen(tester), closeTo(2.2, 0.05));
+
+      // Holding the thumb over a spread is not settling on it.
+      await tester.pump(readingPositionSaveDelay);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.readingPositions, isEmpty);
+      expect(catalog.markedRead, isEmpty);
+
+      await gesture.up();
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('4–5 / 5'), findsOneWidget);
+      expect(pagerScreen(tester), 2);
+      expect(thumb(tester), 3);
+      expect(catalog.markedRead, [episodeId]);
+
+      await tester.pump(readingPositionSaveDelay);
+      expect(catalog.readingPositions, {episodeKey(seriesId, episodeId): 3});
+    });
+
+    testWidgets('a release between two spreads lands on the nearer one, where '
+        'it starts', (tester) async {
+      catalog.episodes = fixtureEpisodes(pageCount: 5);
+      await pumpApp(tester, screen: landscape);
+      await pumpUntilFound(tester, pageView);
+
+      // 1.8 is two fifths of the way from page 2 to page 4.
+      final nearer = await dragThumb(tester, [0.36]);
+      expect(find.text('2–3 / 5'), findsOneWidget);
+      await nearer.up();
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('2–3 / 5'), findsOneWidget);
+      expect(thumb(tester), 1);
+
+      // 2.4 is seven tenths of the way.
+      final further = await dragThumb(tester, [0.48]);
+      expect(find.text('4–5 / 5'), findsOneWidget);
+      await further.up();
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('4–5 / 5'), findsOneWidget);
+      expect(thumb(tester), 3);
+    });
+
+    testWidgets('a release near the spread it started from goes back to it', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilRouteSettled(tester, pageView);
+
+      final gesture = await dragThumb(tester, [0.1]);
+      expect(pagerScreen(tester), closeTo(0.3, 0.05));
+      await gesture.up();
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('1 / 3'), findsOneWidget);
+      expect(pagerScreen(tester), 0);
+      await tester.pump(readingPositionSaveDelay);
+      expect(catalog.readingPositions, isEmpty);
+    });
+
+    testWidgets('the end of the track is the end panel, past the last page', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilRouteSettled(tester, pageView);
+
+      final gesture = await dragThumb(tester, [1]);
+      // The counter names the last page for the panel, as it does once the
+      // reader is there.
+      expect(find.text('3 / 3'), findsOneWidget);
+      await gesture.up();
+      await pumpUntilFound(tester, endPanel);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('3 / 3'), findsOneWidget);
+      expect(catalog.markedRead, [episodeId]);
+      await tester.pump(readingPositionSaveDelay);
+      expect(catalog.readingPositions, {episodeKey(seriesId, episodeId): 2});
+    });
+
+    testWidgets('a left-to-right episode fills the track from the left', (
+      tester,
+    ) async {
+      layoutEpisode(episodeId, readingDirection: ReadingDirection.ltr);
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      final gesture = await dragThumb(tester, [0.4], rtl: false);
+      expect(find.text('2 / 3'), findsOneWidget);
+      await gesture.up();
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(find.text('2 / 3'), findsOneWidget);
+    });
+
+    testWidgets('a screen reader hears the page and adjusts one screen', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      final slider = find.semantics.byLabel('Reading progress');
+      expect(slider.evaluate().single.value, '1 / 3');
+
+      tester.semantics.performAction(slider, SemanticsAction.increase);
+      await pumpUntilFound(tester, find.text('2 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(slider.evaluate().single.value, '2 / 3');
+
+      tester.semantics.performAction(slider, SemanticsAction.decrease);
+      await pumpUntilFound(tester, find.text('1 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      semantics.dispose();
+    });
+
+    testWidgets('an arrow key turns one screen the way the track fills', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      tester.widget<Slider>(progress).focusNode!.requestFocus();
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await pumpUntilFound(tester, find.text('2 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await pumpUntilFound(tester, find.text('1 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    });
   });
 
   group('screenshot notice', () {

@@ -1728,6 +1728,68 @@ void main() {
       });
     });
 
+    testApp('a member drags the progress slider to a page and reopens the '
+        'episode there', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-progress-slider', () async {
+        const lastPage = ConnectFixtureServer.seedEpisodePageCount - 1;
+        final status = find.text(
+          '${lastPage + 1} / ${ConnectFixtureServer.seedEpisodePageCount}',
+        );
+        final episode = find.text(ConnectFixtureServer.seedEpisodeTitle);
+        final pageView = find.byKey(const ValueKey('episode-page-view'));
+        await pumpApp(
+          tester,
+          session: memberSession(),
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+        await scrollSeriesTo(tester, episode);
+        await tapVisible(tester, episode);
+        await pumpUntilRouteSettled(tester, pageView);
+
+        // The episode reads right to left, so its track starts on the right
+        // and the thumb is there, inset from the slider's end the way
+        // Material draws the track.
+        final slider = tester.getRect(
+          find.byKey(const ValueKey('episode-progress')),
+        );
+        const inset = 24.0;
+        final gesture = await tester.startGesture(
+          Offset(slider.right - inset, slider.center.dy),
+        );
+        // The track runs on to the end panel past the last page, so a little
+        // short of the last page's place is nearer it than either neighbour.
+        const share = (lastPage - 0.2) / (lastPage + 1);
+        await gesture.moveTo(
+          Offset(
+            slider.right - inset - (slider.width - inset * 2) * share,
+            slider.center.dy,
+          ),
+        );
+        await tester.pump();
+        await gesture.up();
+        await pumpUntilFound(tester, status);
+        await pumpUntilTrue(
+          tester,
+          () =>
+              server.readingPositions[ConnectFixtureServer.seedEpisodeId] ==
+              lastPage,
+          description: 'the position to reach the API',
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+
+        await tapBack(tester);
+        await pumpUntilRouteSettled(tester, episode);
+        await tapVisible(tester, episode);
+        await pumpUntilRouteSettled(tester, pageView);
+
+        expect(status, findsOneWidget);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
     testApp('a notification no push delivered is found in the inbox', (
       tester,
     ) async {
