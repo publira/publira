@@ -455,6 +455,26 @@ void main() {
     expect(requirements.legalPages, [requirements.termsPage]);
   });
 
+  test(
+    'readSignUpRequirements reports an unreachable tenant as a network failure',
+    () async {
+      // Resolved once while the API answers, so only the reads fail.
+      await auth.readSignUpRequirements();
+      server.tenantStatus = HttpStatus.serviceUnavailable;
+
+      await expectLater(
+        auth.readSignUpRequirements(),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.network,
+          ),
+        ),
+      );
+    },
+  );
+
   test('refresh maps a token the API rejects to sessionExpired', () async {
     server.activeAccessToken = 'another-token';
     const stored = AuthSession(

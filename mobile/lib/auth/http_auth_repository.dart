@@ -178,15 +178,10 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<SignUpRequirements> readSignUpRequirements() async {
-    final tenantRead = _getTenant();
-    final Map<String, Object?> legalPages;
-    try {
-      legalPages = await _readTenant(_tenantLegalPagesProcedure);
-    } catch (_) {
-      tenantRead.ignore();
-      rethrow;
-    }
-    final tenant = await tenantRead;
+    final [tenant, legalPages] = await Future.wait([
+      _getTenant(),
+      _readTenant(_tenantLegalPagesProcedure),
+    ]);
     return SignUpRequirements(
       ageVerification: AgeVerification.fromWire(tenant['ageVerification']),
       termsPage: LegalPage.fromWire(legalPages['termsPage']),
