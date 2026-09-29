@@ -1658,7 +1658,9 @@ void main() {
           tester,
           config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
         );
-        await pumpUntilFound(
+        // Every shelf above the list offers its own retry, and they push the
+        // list's below the fold.
+        await pumpUntilCatalogShows(
           tester,
           find.byKey(const ValueKey('catalog-error')),
         );
