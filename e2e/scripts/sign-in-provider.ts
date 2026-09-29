@@ -4,11 +4,18 @@
  * publira server reads its key set from `GET /keys` through
  * `PUBLIRA_SIGN_IN_APPLE_KEYS_URL` and `PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL`, and a
  * spec signs the ID token a provider would have issued with `POST /id-tokens`.
- * The key pair lives only in this process, so nothing outside a run can sign a
- * token the run's server accepts.
+ * The key pair is written to `KEY_FILE` in the run directory and read back on
+ * a restart, since the server keeps the key set it fetched.
  */
 import "temporal-polyfill/global";
-import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  sign,
+} from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
@@ -20,10 +27,26 @@ if (!Number.isInteger(port) || port <= 0) {
   throw new Error("PORT must name the port to listen on");
 }
 
-const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-});
-const keyId = randomUUID();
+const keyFile = process.env.KEY_FILE;
+if (!keyFile) {
+  throw new Error("KEY_FILE must name where the key pair is kept");
+}
+
+if (!existsSync(keyFile)) {
+  const { privateKey: generated } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+  writeFileSync(
+    keyFile,
+    generated.export({ format: "pem", type: "pkcs8" }).toString(),
+    { mode: 0o600 }
+  );
+}
+const privateKey = createPrivateKey(readFileSync(keyFile, "utf-8"));
+const publicKey = createPublicKey(privateKey);
+const keyId = createHash("sha256")
+  .update(publicKey.export({ format: "der", type: "spki" }))
+  .digest("base64url");
 const keySet = JSON.stringify({
   keys: [
     {

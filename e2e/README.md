@@ -90,7 +90,7 @@ The `mailpit` service is the stack's SMTP sink: intake on `PUBLIRA_E2E_MAILPIT_S
 
 The `email-renderer` service turns a template into the HTML part of the mail the worker delivers; the subject and the plain-text body are the worker's own. It is a host process like the rest: `PUBLIRA_E2E_EMAIL_RENDERER_PORT` (default `8300`) is its port, and `PUBLIRA_EMAIL_RENDERER_URL` — built from that port, never inherited — is what points the worker at it. A run whose renderer is not up still delivers mail, as text alone, so a suite that asserts on the HTML part needs it running.
 
-The `sign-in-provider` process stands in for Apple's and Google's signing keys. It holds a key pair of its own on `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT` (default `8400`): publira server reads the public half from `/keys` through `PUBLIRA_SIGN_IN_APPLE_KEYS_URL` and `PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL`, which `lib.sh` builds from that port, and a spec signs the ID token a provider would have issued by posting its claims to `/id-tokens`.
+The `sign-in-provider` process stands in for Apple's and Google's signing keys. It listens on `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT` (default `8400`) with a key pair it keeps in the run directory, so a restart signs with the key the server already fetched: publira server reads the public half from `/keys` through `PUBLIRA_SIGN_IN_APPLE_KEYS_URL` and `PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL`, which `lib.sh` builds from that port, and a spec signs the ID token a provider would have issued by posting its claims to `/id-tokens`.
 
 ### The edge
 
