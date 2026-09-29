@@ -1171,6 +1171,192 @@ func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListAc
 	return items, nil
 }
 
+const ListPublishedSeriesBySearchTitleAsc = `-- name: ListPublishedSeriesBySearchTitleAsc :many
+SELECT s.id,
+    s.title
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
+    AND (
+        s.title ILIKE $3::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
+    )
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (s.title, s.id) >= (
+                $6::text,
+                $4::uuid
+            )
+        )
+        OR (
+            NOT $5::boolean
+            AND (s.title, s.id) > (
+                $6::text,
+                $4::uuid
+            )
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT $7
+`
+
+type ListPublishedSeriesBySearchTitleAscParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListPublishedSeriesBySearchTitleAscRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+}
+
+// The SQL catalog search backend's series search. Takes the published series
+// whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
+// id, and returns the title with each id because the next token is built from
+// it.
+// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+// with ESCAPE '!'.
+// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
+// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+// bites after narrowing by tenant and is_published. Once the row count makes
+// the latency visible, add a pg_trgm GIN index on title and
+// series_listings.synopsis.
+func (q *Queries) ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesBySearchTitleAscParams) ([]ListPublishedSeriesBySearchTitleAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesBySearchTitleAsc,
+		arg.TenantID,
+		arg.Surface,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedSeriesBySearchTitleAscRow
+	for rows.Next() {
+		var i ListPublishedSeriesBySearchTitleAscRow
+		if err := rows.Scan(&i.ID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPublishedSeriesBySearchTitleDesc = `-- name: ListPublishedSeriesBySearchTitleDesc :many
+SELECT s.id,
+    s.title
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
+    AND (
+        s.title ILIKE $3::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
+    )
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (s.title, s.id) <= (
+                $6::text,
+                $4::uuid
+            )
+        )
+        OR (
+            NOT $5::boolean
+            AND (s.title, s.id) < (
+                $6::text,
+                $4::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT $7
+`
+
+type ListPublishedSeriesBySearchTitleDescParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListPublishedSeriesBySearchTitleDescRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+}
+
+// The backward direction of ListPublishedSeriesBySearchTitleAsc.
+func (q *Queries) ListPublishedSeriesBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesBySearchTitleDescParams) ([]ListPublishedSeriesBySearchTitleDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesBySearchTitleDesc,
+		arg.TenantID,
+		arg.Surface,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedSeriesBySearchTitleDescRow
+	for rows.Next() {
+		var i ListPublishedSeriesBySearchTitleDescRow
+		if err := rows.Scan(&i.ID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
 SELECT s.id
 FROM series s
@@ -1468,178 +1654,6 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, ar
 		arg.LabelID,
 		arg.TenantID,
 		arg.Surface,
-		arg.CursorID,
-		arg.CursorInclusive,
-		arg.CursorTitle,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListPublishedSeriesIDsBySearchTitleAsc = `-- name: ListPublishedSeriesIDsBySearchTitleAsc :many
-SELECT s.id
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = $1
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
-    )
-    AND (
-        s.title ILIKE $3::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
-    )
-    AND (
-        $4::uuid IS NULL
-        OR (
-            $5::boolean
-            AND (s.title, s.id) >= (
-                $6::text,
-                $4::uuid
-            )
-        )
-        OR (
-            NOT $5::boolean
-            AND (s.title, s.id) > (
-                $6::text,
-                $4::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT $7
-`
-
-type ListPublishedSeriesIDsBySearchTitleAscParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	Surface         string         `json:"surface"`
-	QueryPattern    string         `json:"query_pattern"`
-	CursorID        uuid.NullUUID  `json:"cursor_id"`
-	CursorInclusive bool           `json:"cursor_inclusive"`
-	CursorTitle     sql.NullString `json:"cursor_title"`
-	Limit           int32          `json:"limit"`
-}
-
-// SearchPublishedSeries. Takes the published series whose title or synopsis
-// ILIKE-matches query_pattern, by a keyset on title + id.
-// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
-// with ESCAPE '!'.
-// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
-// cannot ride a btree, so a sequential scan is enough while the LIMIT still
-// bites after narrowing by tenant and is_published. Once the row count makes
-// the latency visible, add a pg_trgm GIN index on title and
-// series_listings.synopsis.
-func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsBySearchTitleAsc,
-		arg.TenantID,
-		arg.Surface,
-		arg.QueryPattern,
-		arg.CursorID,
-		arg.CursorInclusive,
-		arg.CursorTitle,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListPublishedSeriesIDsBySearchTitleDesc = `-- name: ListPublishedSeriesIDsBySearchTitleDesc :many
-SELECT s.id
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = $1
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
-    )
-    AND (
-        s.title ILIKE $3::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
-    )
-    AND (
-        $4::uuid IS NULL
-        OR (
-            $5::boolean
-            AND (s.title, s.id) <= (
-                $6::text,
-                $4::uuid
-            )
-        )
-        OR (
-            NOT $5::boolean
-            AND (s.title, s.id) < (
-                $6::text,
-                $4::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT $7
-`
-
-type ListPublishedSeriesIDsBySearchTitleDescParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	Surface         string         `json:"surface"`
-	QueryPattern    string         `json:"query_pattern"`
-	CursorID        uuid.NullUUID  `json:"cursor_id"`
-	CursorInclusive bool           `json:"cursor_inclusive"`
-	CursorTitle     sql.NullString `json:"cursor_title"`
-	Limit           int32          `json:"limit"`
-}
-
-// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
-func (q *Queries) ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsBySearchTitleDesc,
-		arg.TenantID,
-		arg.Surface,
-		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,

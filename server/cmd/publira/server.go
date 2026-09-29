@@ -75,6 +75,11 @@ func runServer() int {
 		logger.Error("failed to load config", "error", err)
 		return 1
 	}
+	newSearchBackend, err := searchBackendFromEnv()
+	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		return 1
+	}
 
 	tokens, err := auth.NewTokenManagerFromEnv()
 	if err != nil {
@@ -129,7 +134,7 @@ func runServer() int {
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient)
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, newSearchBackend(pools.public))
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		return 1

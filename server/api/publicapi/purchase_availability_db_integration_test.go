@@ -49,7 +49,7 @@ func newPurchaseSurfaceEnv(t *testing.T) purchaseSurfaceEnv {
 
 	db := pg.OpenPublicDB(t)
 	checkout := newCapturingCheckoutProvider()
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard())
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
 	server.paymentProviders = paymentprovider.NewRegistry(checkout)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)

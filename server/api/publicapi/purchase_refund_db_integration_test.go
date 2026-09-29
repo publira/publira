@@ -61,7 +61,7 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 

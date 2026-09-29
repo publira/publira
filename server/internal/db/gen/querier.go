@@ -1313,10 +1313,14 @@ type Querier interface {
 	// the published series count for the ids stage one settled on.
 	ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg ListPublishedCreatorIDsByNameAscParams) ([]uuid.UUID, error)
 	ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg ListPublishedCreatorIDsByNameDescParams) ([]uuid.UUID, error)
-	// SearchPublishedCreators. Stage one of the same two-stage shape
-	// ListPublishedCreatorIDsByNameAsc uses, narrowed to the creators whose name
-	// ILIKE-matches query_pattern. Stage two is ListPublishedCreatorsByIDs again:
-	// the search shows a creator exactly as the list does.
+	// No ORDER BY: the caller sorts the rows into the id order stage one settled
+	// on.
+	ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error)
+	// The SQL catalog search backend's creator search. Stage one of the same
+	// two-stage shape ListPublishedCreatorIDsByNameAsc uses, narrowed to the
+	// creators whose name ILIKE-matches query_pattern, with the name the next token
+	// is built from. Stage two is ListPublishedCreatorsByIDs again: the search
+	// shows a creator exactly as the list does.
 	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 	// with ESCAPE '!'.
 	// Only name is matched. profile_text would answer a creator-name search with
@@ -1324,12 +1328,9 @@ type Querier interface {
 	// Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
 	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
 	// bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
-	ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameAscParams) ([]uuid.UUID, error)
-	// The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
-	ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameDescParams) ([]uuid.UUID, error)
-	// No ORDER BY: the caller sorts the rows into the id order stage one settled
-	// on.
-	ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error)
+	ListPublishedCreatorsBySearchNameAsc(ctx context.Context, arg ListPublishedCreatorsBySearchNameAscParams) ([]ListPublishedCreatorsBySearchNameAscRow, error)
+	// The backward direction of ListPublishedCreatorsBySearchNameAsc.
+	ListPublishedCreatorsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorsBySearchNameDescParams) ([]ListPublishedCreatorsBySearchNameDescRow, error)
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
 	// right now, and whether episode_content_grants holds a grant for the reader.
@@ -1381,17 +1382,21 @@ type Querier interface {
 	ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error)
 	// The backward direction of ListPublishedLabelsDesc.
 	ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedLabelsAscParams) ([]ListPublishedLabelsAscRow, error)
-	// SearchPublishedLabels orders by name instead of creation, so it takes its
-	// own pair of queries rather than the ListPublishedLabels* pair above. It is
-	// one stage: a label row is a name and its eye catch, so there is nothing
-	// heavy to defer to a second query the way the creator search does.
+	// Stage two of the label search. It checks for a published series again
+	// because stage one may come from a search index that lags behind an
+	// unpublish. No ORDER BY: the caller sorts the rows into stage one's id order.
+	ListPublishedLabelsByIDs(ctx context.Context, arg ListPublishedLabelsByIDsParams) ([]ListPublishedLabelsByIDsRow, error)
+	// The SQL catalog search backend's label search orders by name instead of
+	// creation, so it takes its own pair of queries rather than the
+	// ListPublishedLabels* pair above. A search backend answers with ids, so this
+	// is stage one and ListPublishedLabelsByIDs is stage two; the name comes along
+	// because the next token is built from it.
 	// Unlike GetPublishedLabelDetail, which answers for a label whose last series
 	// was taken down so a shared URL stays valid, a search hit has to have
 	// something behind it, hence the EXISTS.
 	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 	// with ESCAPE '!'. ILIKE '%q%' cannot ride a btree, so the scan is sequential
-	// once the tenant has been narrowed, the same trade SearchPublishedSeries
-	// makes.
+	// once the tenant has been narrowed, the same trade the series search makes.
 	// cursor rules: proto/README.md.
 	ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error)
 	// The backward direction of ListPublishedLabelsBySearchNameAsc.
@@ -1412,6 +1417,20 @@ type Querier interface {
 	// reader navigates to them from. Each page is listed in the translation
 	// published_page_translation_for picks for the reader's locale.
 	ListPublishedPagesForTenant(ctx context.Context, arg ListPublishedPagesForTenantParams) ([]ListPublishedPagesForTenantRow, error)
+	// The SQL catalog search backend's series search. Takes the published series
+	// whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
+	// id, and returns the title with each id because the next token is built from
+	// it.
+	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
+	// with ESCAPE '!'.
+	// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
+	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
+	// bites after narrowing by tenant and is_published. Once the row count makes
+	// the latency visible, add a pg_trgm GIN index on title and
+	// series_listings.synopsis.
+	ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesBySearchTitleAscParams) ([]ListPublishedSeriesBySearchTitleAscRow, error)
+	// The backward direction of ListPublishedSeriesBySearchTitleAsc.
+	ListPublishedSeriesBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesBySearchTitleDescParams) ([]ListPublishedSeriesBySearchTitleDescRow, error)
 	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
 	// The related series of a creator detail page. A keyset scan on title + id.
 	// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
@@ -1430,18 +1449,6 @@ type Querier interface {
 	ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error)
 	// The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 	ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error)
-	// SearchPublishedSeries. Takes the published series whose title or synopsis
-	// ILIKE-matches query_pattern, by a keyset on title + id.
-	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
-	// with ESCAPE '!'.
-	// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
-	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
-	// bites after narrowing by tenant and is_published. Once the row count makes
-	// the latency visible, add a pg_trgm GIN index on title and
-	// series_listings.synopsis.
-	ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error)
-	// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
-	ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error)
 	// ListPublishedTagsByTenantDesc walked the other way. It exists only to build
 	// a previous page; the order it describes is the same one.
 	ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPublishedTagsByTenantAscParams) ([]ListPublishedTagsByTenantAscRow, error)

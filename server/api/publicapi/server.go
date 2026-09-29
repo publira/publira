@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/catalogsearch"
+	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -50,6 +52,8 @@ type apiServer struct {
 	// stores verify the transactions the app buys through the App Store and
 	// Google Play.
 	stores storeClients
+	// search finds the hits of the catalog searches.
+	search catalogsearch.Backend
 }
 
 type webPushPublicKeySource interface {
@@ -171,13 +175,14 @@ type API struct {
 // publira_public: the row-level security every handler here relies on is that
 // role's. Both flood controls read their limits from the platform policy
 // through that same pool. reval sends the cache tags its writes leave stale; a
-// nil one turns revalidation off.
-func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client) (*API, error) {
+// nil one turns revalidation off. search answers the catalog searches; a nil one
+// is the SQL backend over queries.
+func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
-	return &API{server: newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail)}, nil
+	return &API{server: newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail, search)}, nil
 }
 
 // Register mounts the publira.v1 services on mux. What a mux carries is what
@@ -196,12 +201,16 @@ func newAPIServer(
 	logger *slog.Logger,
 	guards readerGuards,
 	mail *mailguard.Guard,
+	search catalogsearch.Backend,
 ) *apiServer {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	if mail == nil {
 		mail = mailguard.NewDefault()
+	}
+	if search == nil {
+		search = sqlbackend.New(queries)
 	}
 	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
 		Client:  reval,
@@ -221,6 +230,7 @@ func newAPIServer(
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
 		paymentProviders: providers.Registry(),
 		stores:           defaultStoreClients(),
+		search:           search,
 	}
 }
 
