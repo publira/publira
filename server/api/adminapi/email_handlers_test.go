@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -155,6 +156,39 @@ func TestSendTenantSmtpTestEmailRefusesWhenOverrideDisabled(t *testing.T) {
 	}
 	if tester.recipient != "" {
 		t.Fatalf("tester.recipient = %q, want no test message sent", tester.recipient)
+	}
+	assertExpectations(t, mock)
+}
+
+// A tenant's own settings still name a username: the tenant row cannot store
+// an override without one.
+func TestUpdateTenantEmailSettingsOverrideRequiresAUsername(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantSMTPConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantSMTPColumns()).
+			AddRow(tenantID, true, "smtp.saved.example", 465, "saved-user", "enc:tenant:stored", "tls", "Saved Sender", "saved@example.com", "reply@example.com", now, now))
+
+	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateTenantEmailSettingsRequest{
+		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SmtpOverrideEnabled: true,
+		Host:                "smtp.saved.example",
+		Port:                465,
+		PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+		Encryption:          "tls",
+		FromAddress:         "saved@example.com",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	_, err := client.UpdateTenantEmailSettings(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), emailsettings.ErrUsernameRequired.Error()) {
+		t.Fatalf("UpdateTenantEmailSettings = %v, want invalid_argument naming the username", err)
 	}
 	assertExpectations(t, mock)
 }

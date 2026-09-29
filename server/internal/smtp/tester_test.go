@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestTestFailureReasonClassifiesSMTPFailures(t *testing.T) {
@@ -113,6 +114,72 @@ func TestSendEmailRejectsSubjectHeaderInjection(t *testing.T) {
 	if err == nil || err.Error() != "subject must not contain CR/LF" {
 		t.Fatalf("SendEmail error = %v", err)
 	}
+}
+
+func settingsFor(server *testutil.SMTPServer, username, password string) emailsettings.SMTPSettings {
+	return emailsettings.SMTPSettings{
+		Host:        server.Host,
+		Port:        server.Port,
+		Username:    username,
+		Password:    password,
+		Encryption:  "none",
+		FromAddress: "from@example.com",
+	}
+}
+
+func TestSendTestEmailAuthenticatesOnlyWithAUsername(t *testing.T) {
+	t.Run("a relay without AUTH takes the message from settings with no username", func(t *testing.T) {
+		relay := testutil.StartSMTPRelay(t)
+		if err := NewClient().SendTestEmail(t.Context(), settingsFor(relay, "", ""), "to@example.com"); err != nil {
+			t.Fatalf("SendTestEmail: %v", err)
+		}
+		if got := len(relay.Messages()); got != 1 {
+			t.Fatalf("messages = %d, want 1", got)
+		}
+	})
+
+	t.Run("a server offering AUTH is not asked to authenticate settings with no username", func(t *testing.T) {
+		server := testutil.StartSMTPServer(t)
+		if err := NewClient().SendTestEmail(t.Context(), settingsFor(server, "", ""), "to@example.com"); err != nil {
+			t.Fatalf("SendTestEmail: %v", err)
+		}
+		if logins := server.Logins(); len(logins) != 0 {
+			t.Fatalf("logins = %v, want none", logins)
+		}
+		if got := len(server.Messages()); got != 1 {
+			t.Fatalf("messages = %d, want 1", got)
+		}
+	})
+
+	t.Run("a saved username signs in", func(t *testing.T) {
+		server := testutil.StartSMTPServer(t)
+		if err := NewClient().SendTestEmail(t.Context(), settingsFor(server, "mailer", "password"), "to@example.com"); err != nil {
+			t.Fatalf("SendTestEmail: %v", err)
+		}
+		want := []testutil.SMTPLogin{{Username: "mailer", Password: "password"}}
+		if logins := server.Logins(); len(logins) != 1 || logins[0] != want[0] {
+			t.Fatalf("logins = %v, want %v", logins, want)
+		}
+	})
+
+	t.Run("a saved username is refused by a relay without AUTH rather than dropped", func(t *testing.T) {
+		relay := testutil.StartSMTPRelay(t)
+		err := NewClient().SendTestEmail(t.Context(), settingsFor(relay, "mailer", "password"), "to@example.com")
+		if TestFailureReason(err) != rpcerrors.ReasonSMTPTestAuthentication {
+			t.Fatalf("SendTestEmail error = %v, want an authentication failure", err)
+		}
+		if got := len(relay.Messages()); got != 0 {
+			t.Fatalf("messages = %d, want none", got)
+		}
+	})
+
+	t.Run("a password without a username is refused before connecting", func(t *testing.T) {
+		relay := testutil.StartSMTPRelay(t)
+		err := NewClient().SendTestEmail(t.Context(), settingsFor(relay, "", "password"), "to@example.com")
+		if !errors.Is(err, emailsettings.ErrPasswordWithoutUsername) {
+			t.Fatalf("SendTestEmail error = %v, want ErrPasswordWithoutUsername", err)
+		}
+	})
 }
 
 func decodeQuotedPrintablePart(t *testing.T, part string) string {

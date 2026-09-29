@@ -143,7 +143,6 @@ func TestSMTPSetNamesTheRefusedFlag(t *testing.T) {
 		{name: "missing host", args: args("--host", ""), want: "publiractl: --host: host is required\n"},
 		{name: "port out of range", args: args("--port", "70000"), want: "publiractl: --port: port must be between 1 and 65535\n"},
 		{name: "unknown encryption", args: args("--encryption", "ssl"), want: "publiractl: --encryption: encryption must be one of tls, starttls, none\n"},
-		{name: "missing username", args: args("--username", ""), want: "publiractl: --username: username is required\n"},
 		{name: "malformed sender", args: args("--from-address", "nobody"), want: "publiractl: --from-address: from_address must be a valid email address\n"},
 		{name: "malformed reply-to", args: args("--reply-to", "nobody"), want: "publiractl: --reply-to: reply_to must be a valid email address\n"},
 		{name: "no password to keep", args: args(), want: "publiractl: --password-stdin: password is required\n"},

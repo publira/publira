@@ -1,5 +1,5 @@
 -- SMTP settings
--- Platform defaults
+-- Platform defaults. Mailpit takes no credentials, so none are saved.
 INSERT INTO platform_smtp_config (
     singleton,
     host,
@@ -14,8 +14,8 @@ VALUES (
     TRUE,
     'mailpit',
     1025,
-    'mailpit',
-    'enc:seed:platform:dummy-ciphertext-v1',
+    '',
+    '',
     'none',
     'no-reply@platform.local',
     'support@platform.local'

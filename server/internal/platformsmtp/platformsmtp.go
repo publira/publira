@@ -92,9 +92,15 @@ type SaveParams struct {
 	ExpectedRevision *int64
 }
 
-// Validate refuses p without reading anything.
+// Validate refuses p without reading anything. A password kept from the stored
+// row is checked against the username only once that row is read.
 func (p SaveParams) Validate() error {
-	if err := emailsettings.Validate(p.Settings, false); err != nil {
+	settings := p.Settings
+	settings.Password = ""
+	if p.PasswordMode == secretupdate.Replace {
+		settings.Password = p.Password
+	}
+	if err := emailsettings.Validate(settings, false); err != nil {
 		return err
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision < 0 {
@@ -208,10 +214,13 @@ func configParams(p SaveParams, existingPassword string, encryptor emailsettings
 	if err != nil {
 		return dbmodels.UpdatePlatformSMTPConfigParams{}, passwordError(err)
 	}
-	if !hasPassword {
+	settings := emailsettings.Normalize(p.Settings)
+	switch {
+	case settings.Username == "" && hasPassword:
+		return dbmodels.UpdatePlatformSMTPConfigParams{}, &fielderr.Invalid{Field: emailsettings.FieldUsername, Err: emailsettings.ErrPasswordWithoutUsername}
+	case settings.Username != "" && !hasPassword:
 		return dbmodels.UpdatePlatformSMTPConfigParams{}, passwordError(emailsettings.ErrPasswordRequired)
 	}
-	settings := emailsettings.Normalize(p.Settings)
 	return dbmodels.UpdatePlatformSMTPConfigParams{
 		Host:              settings.Host,
 		Port:              settings.Port,

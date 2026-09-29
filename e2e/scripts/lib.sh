@@ -140,12 +140,9 @@ export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
 # This edge serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME=http
 
-# Secret decryption. The worker reports an unusable manager when it is started
-# without keys, and every auth mail it renders stops at that before it reaches
-# Mailpit. The seeded SMTP password is not an encrypted envelope, so the manager
-# hands it back verbatim; the VAPID private key 250_web_push.sql seeds is sealed
-# with this key, so changing it means sealing that key again. 32 bytes,
-# base64url, as the parser requires.
+# Secret decryption. The seeded platform SMTP settings name no password, but the
+# VAPID private key 250_web_push.sql seeds is sealed with this key, so changing
+# it means sealing that key again. 32 bytes, base64url, as the parser requires.
 export PUBLIRA_SECRET_ENCRYPTION_KEYS="${PUBLIRA_SECRET_ENCRYPTION_KEYS:-e2e:ZTJlLW9ubHktaW5zZWN1cmUtc2VjcmV0LWtleS0zMmI}"
 export PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID:-e2e}"
 

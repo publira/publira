@@ -113,6 +113,11 @@ export type UpdatePlatformEmailSettingsRequest = Message<"publira.platform.v1.Up
   port: number;
 
   /**
+   * Optional: empty names a relay that takes no credentials, which the worker
+   * sends through without authenticating. A password is refused without one
+   * with INVALID_ARGUMENT naming this field, and a username is refused without
+   * a password, stored or given here.
+   *
    * @generated from field: string username = 3;
    */
   username: string;
@@ -203,6 +208,9 @@ export type SendPlatformSmtpTestEmailRequest = Message<"publira.platform.v1.Send
   port: number;
 
   /**
+   * Optional, as UpdatePlatformEmailSettingsRequest.username is. With one, the
+   * test fails when the server offers no AUTH rather than sending without it.
+   *
    * @generated from field: string username = 5;
    */
   username: string;

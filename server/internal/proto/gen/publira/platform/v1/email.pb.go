@@ -306,15 +306,19 @@ func (x *GetPlatformEmailSettingsResponse) GetSettings() *PlatformEmailSettings 
 }
 
 type UpdatePlatformEmailSettingsRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Host               string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	Port               int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	Username           string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode SecretUpdateMode       `protobuf:"varint,4,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password           string                 `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption         string                 `protobuf:"bytes,6,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromAddress        string                 `protobuf:"bytes,7,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo            string                 `protobuf:"bytes,8,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Host  string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	Port  int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	// Optional: empty names a relay that takes no credentials, which the worker
+	// sends through without authenticating. A password is refused without one
+	// with INVALID_ARGUMENT naming this field, and a username is refused without
+	// a password, stored or given here.
+	Username           string           `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,4,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password           string           `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption         string           `protobuf:"bytes,6,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromAddress        string           `protobuf:"bytes,7,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo            string           `protobuf:"bytes,8,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	// Required: the revision the values in this request were derived from, as
 	// read from PlatformEmailSettings.revision. Zero states that no settings are
 	// expected to exist yet. The write is refused with FAILED_PRECONDITION when
@@ -463,17 +467,19 @@ func (x *UpdatePlatformEmailSettingsResponse) GetSettings() *PlatformEmailSettin
 }
 
 type SendPlatformSmtpTestEmailRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	RecipientType      TestEmailRecipientType `protobuf:"varint,1,opt,name=recipient_type,json=recipientType,proto3,enum=publira.platform.v1.TestEmailRecipientType" json:"recipient_type,omitempty"`
-	RecipientEmail     string                 `protobuf:"bytes,2,opt,name=recipient_email,json=recipientEmail,proto3" json:"recipient_email,omitempty"`
-	Host               string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
-	Port               int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
-	Username           string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode SecretUpdateMode       `protobuf:"varint,6,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password           string                 `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption         string                 `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromAddress        string                 `protobuf:"bytes,9,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo            string                 `protobuf:"bytes,10,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RecipientType  TestEmailRecipientType `protobuf:"varint,1,opt,name=recipient_type,json=recipientType,proto3,enum=publira.platform.v1.TestEmailRecipientType" json:"recipient_type,omitempty"`
+	RecipientEmail string                 `protobuf:"bytes,2,opt,name=recipient_email,json=recipientEmail,proto3" json:"recipient_email,omitempty"`
+	Host           string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
+	Port           int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
+	// Optional, as UpdatePlatformEmailSettingsRequest.username is. With one, the
+	// test fails when the server offers no AUTH rather than sending without it.
+	Username           string           `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,6,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password           string           `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption         string           `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromAddress        string           `protobuf:"bytes,9,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo            string           `protobuf:"bytes,10,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }

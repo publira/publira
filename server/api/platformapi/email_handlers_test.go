@@ -318,7 +318,11 @@ func TestPlatformEmailSettingsRPCsNameTheRefusedField(t *testing.T) {
 	}{
 		{name: "no host", field: "host", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Host = " " }},
 		{name: "port out of range", field: "port", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Port = 70000 }},
-		{name: "no username", field: "username", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Username = "" }},
+		{name: "a password with no username", field: "username", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) {
+			r.Username = ""
+			r.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
+			r.Password = "smtp-password"
+		}},
 		{name: "unknown encryption", field: "encryption", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Encryption = "ssl" }},
 		{name: "malformed sender", field: "from_address", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.FromAddress = "nobody" }},
 		{name: "malformed reply-to", field: "reply_to", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.ReplyTo = "nobody" }},

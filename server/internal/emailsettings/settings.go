@@ -30,7 +30,11 @@ const (
 var (
 	ErrSecretManagerUnavailable = errors.New("secret manager is not configured")
 	ErrPasswordRequired         = errors.New("password is required")
-	ErrInvalidRecipient         = errors.New("invalid recipient")
+	ErrUsernameRequired         = errors.New("username is required")
+	// ErrPasswordWithoutUsername refuses a password there is no username to
+	// send it with.
+	ErrPasswordWithoutUsername = errors.New("username is required with a password")
+	ErrInvalidRecipient        = errors.New("invalid recipient")
 )
 
 type SecretManager interface {
@@ -60,7 +64,8 @@ func Normalize(settings SMTPSettings) SMTPSettings {
 }
 
 // Validate refuses settings that cannot send with a [*fielderr.Invalid] naming
-// the field at fault.
+// the field at fault. An empty username is a relay that takes no credentials,
+// so requirePassword asks for a password only beside a username.
 func Validate(settings SMTPSettings, requirePassword bool) error {
 	settings = Normalize(settings)
 	if settings.Host == "" {
@@ -69,10 +74,10 @@ func Validate(settings SMTPSettings, requirePassword bool) error {
 	if settings.Port < 1 || settings.Port > 65535 {
 		return invalid(FieldPort, "port must be between 1 and 65535")
 	}
-	if settings.Username == "" {
-		return invalid(FieldUsername, "username is required")
+	if settings.Username == "" && settings.Password != "" {
+		return &fielderr.Invalid{Field: FieldUsername, Err: ErrPasswordWithoutUsername}
 	}
-	if requirePassword && settings.Password == "" {
+	if requirePassword && settings.Username != "" && settings.Password == "" {
 		return &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	}
 	if !isSupportedEncryption(settings.Encryption) {
@@ -85,6 +90,15 @@ func Validate(settings SMTPSettings, requirePassword bool) error {
 		if _, err := mail.ParseAddress(settings.ReplyTo); err != nil {
 			return invalid(FieldReplyTo, "reply_to must be a valid email address")
 		}
+	}
+	return nil
+}
+
+// RequireUsername refuses settings with no username, for the tenant consoles'
+// settings, which always authenticate.
+func RequireUsername(settings SMTPSettings) error {
+	if Normalize(settings).Username == "" {
+		return &fielderr.Invalid{Field: FieldUsername, Err: ErrUsernameRequired}
 	}
 	return nil
 }
@@ -162,15 +176,17 @@ func ResolvePasswordForTest(existingEncrypted string, mode secretupdate.Mode, ne
 	case secretupdate.Replace:
 		return newPassword, nil
 	case secretupdate.Clear:
-		return "", ErrPasswordRequired
+		return "", nil
 	default:
 		return DecryptPassword(existingEncrypted, mgr)
 	}
 }
 
+// DecryptPassword opens a stored password, answering an empty one for none:
+// whether the settings need one is [Validate]'s to say.
 func DecryptPassword(encrypted string, mgr SecretManager) (string, error) {
 	if strings.TrimSpace(encrypted) == "" {
-		return "", ErrPasswordRequired
+		return "", nil
 	}
 	if mgr == nil {
 		return "", ErrSecretManagerUnavailable

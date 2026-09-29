@@ -370,3 +370,31 @@ func TestTenantAdminInvitationEmailFailsPermanentlyOnAnUnusableLocaleWithoutSMTP
 		t.Fatalf("mails sent = %d, want none", mailer.sent)
 	}
 }
+
+// A relay that takes no credentials is saved with no username, and the worker
+// sends through it without authenticating or opening a password.
+func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXINV007", "outbox-relay.example.com", "Outbox Relay Tenant")
+	relay := testutil.StartSMTPRelay(t)
+	if _, err := dbmodels.New(pg.DB).InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams{
+		Host: relay.Host, Port: relay.Port, Encryption: "none", FromAddress: "no-reply@example.com",
+	}); err != nil {
+		t.Fatalf("InsertPlatformSMTPConfig: %v", err)
+	}
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-relay")
+
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+	})
+	if err := handler(ctx, event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if got := len(relay.Messages()); got != 1 {
+		t.Fatalf("messages the relay took = %d, want 1", got)
+	}
+}
