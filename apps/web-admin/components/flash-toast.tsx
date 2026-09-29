@@ -40,7 +40,11 @@ const FlashToastEffect = ({
       const next = new URLSearchParams(searchParams.toString());
       next.delete(keyName);
       const nextQuery = next.toString();
-      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+      // This lands a round trip after the reader may have scrolled on, even
+      // mid-drag, so it must not send the page back to the top.
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+        scroll: false,
+      });
     });
   });
 
