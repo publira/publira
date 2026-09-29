@@ -478,8 +478,11 @@ func (x *ListMyIdentitiesRequest) GetTenant() *v1.TenantContext {
 }
 
 type ListMyIdentitiesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Identities    []*LinkedIdentity      `protobuf:"bytes,1,rep,name=identities,proto3" json:"identities,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Identities []*LinkedIdentity      `protobuf:"bytes,1,rep,name=identities,proto3" json:"identities,omitempty"`
+	// False for an account a provider sign-in created, which confirms DeleteMe
+	// with a fresh sign-in and keeps its last linked provider.
+	HasPassword   bool `protobuf:"varint,2,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -519,6 +522,13 @@ func (x *ListMyIdentitiesResponse) GetIdentities() []*LinkedIdentity {
 		return x.Identities
 	}
 	return nil
+}
+
+func (x *ListMyIdentitiesResponse) GetHasPassword() bool {
+	if x != nil {
+		return x.HasPassword
+	}
+	return false
 }
 
 type UnlinkIdentityRequest struct {
@@ -2949,11 +2959,12 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
 	"\tlinked_at\x18\x03 \x01(\tR\blinkedAt\"R\n" +
 	"\x17ListMyIdentitiesRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"V\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"y\n" +
 	"\x18ListMyIdentitiesResponse\x12:\n" +
 	"\n" +
 	"identities\x18\x01 \x03(\v2\x1a.publira.v1.LinkedIdentityR\n" +
-	"identities\"\x8a\x01\n" +
+	"identities\x12!\n" +
+	"\fhas_password\x18\x02 \x01(\bR\vhasPassword\"\x8a\x01\n" +
 	"\x15UnlinkIdentityRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x128\n" +
 	"\bprovider\x18\x02 \x01(\x0e2\x1c.publira.v1.IdentityProviderR\bprovider\"\x18\n" +

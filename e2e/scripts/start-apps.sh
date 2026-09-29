@@ -77,6 +77,7 @@ for port in \
   "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" \
   "${PUBLIRA_E2E_WORKER_PORT}" \
   "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
+  "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" \
   "${PUBLIRA_E2E_WEB_HOST_PORT}" \
   "${PUBLIRA_E2E_WEB_ADMIN_PORT}" \
   "${PUBLIRA_E2E_WEB_PLATFORM_PORT}"; do
@@ -91,7 +92,9 @@ done
 : > "${LOG_DIR}/server.log"
 : > "${LOG_DIR}/email-renderer.log"
 : > "${LOG_DIR}/worker.log"
+: > "${LOG_DIR}/sign-in-provider.log"
 
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/sign-in-provider.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/email-renderer.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/worker.sh" start

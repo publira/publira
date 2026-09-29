@@ -11,6 +11,7 @@ import (
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/api/publicapi"
 	"github.com/publira/publira/server/internal/imageserver"
+	"github.com/publira/publira/server/internal/signin"
 )
 
 func TestRunWithoutCommand(t *testing.T) {
@@ -100,7 +101,7 @@ func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 
 func newTestPublicAPI(t *testing.T) *publicapi.API {
 	t.Helper()
-	api, err := publicapi.New(nil, nil, nil, nil, nil, nil)
+	api, err := publicapi.New(nil, nil, nil, nil, nil, nil, signin.VerifierConfig{})
 	if err != nil {
 		t.Fatalf("publicapi.New: %v", err)
 	}

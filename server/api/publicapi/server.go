@@ -162,13 +162,16 @@ type API struct {
 // role's. Both flood controls read their limits from the platform policy
 // through that same pool. reval sends the cache tags its writes leave stale; a
 // nil one turns revalidation off. search answers the catalog searches; a nil one
-// is the SQL backend over queries.
-func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend) (*API, error) {
+// is the SQL backend over queries. idTokens says where the ID tokens a reader
+// signs in with are checked against.
+func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
-	return &API{server: newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail, search)}, nil
+	server := newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail, search)
+	server.idTokens = signin.NewVerifier(idTokens)
+	return &API{server: server}, nil
 }
 
 // Register mounts the publira.v1 services on mux. What a mux carries is what

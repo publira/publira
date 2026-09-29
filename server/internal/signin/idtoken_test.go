@@ -165,3 +165,39 @@ func TestVerifyBoundsTheRefetchesAnUnknownKeyCauses(t *testing.T) {
 		t.Fatalf("key set fetches = %d, want 1", got)
 	}
 }
+
+func TestVerifierConfigFromEnvReadsTheKeySetURLs(t *testing.T) {
+	t.Run("unset keeps the providers' key sets", func(t *testing.T) {
+		t.Setenv("PUBLIRA_SIGN_IN_APPLE_KEYS_URL", "")
+		t.Setenv("PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL", "")
+		cfg, err := signin.VerifierConfigFromEnv()
+		if err != nil {
+			t.Fatalf("VerifierConfigFromEnv: %v", err)
+		}
+		if cfg.AppleKeysURL != "" || cfg.GoogleKeysURL != "" {
+			t.Fatalf("cfg = %+v", cfg)
+		}
+	})
+
+	t.Run("set replaces them", func(t *testing.T) {
+		t.Setenv("PUBLIRA_SIGN_IN_APPLE_KEYS_URL", "http://127.0.0.1:8400/keys")
+		t.Setenv("PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL", " https://keys.example/google ")
+		cfg, err := signin.VerifierConfigFromEnv()
+		if err != nil {
+			t.Fatalf("VerifierConfigFromEnv: %v", err)
+		}
+		if cfg.AppleKeysURL != "http://127.0.0.1:8400/keys" || cfg.GoogleKeysURL != "https://keys.example/google" {
+			t.Fatalf("cfg = %+v", cfg)
+		}
+	})
+
+	for _, value := range []string{"keys.example/google", "file:///tmp/keys.json", "http://"} {
+		t.Run("refuses "+value, func(t *testing.T) {
+			t.Setenv("PUBLIRA_SIGN_IN_APPLE_KEYS_URL", "")
+			t.Setenv("PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL", value)
+			if _, err := signin.VerifierConfigFromEnv(); err == nil {
+				t.Fatal("VerifierConfigFromEnv accepted the URL")
+			}
+		})
+	}
+}

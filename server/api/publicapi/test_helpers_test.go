@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -43,7 +44,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
 	t.Helper()
 
-	api, err := New(db, queries, encryptor, testutil.TokenManager(), nil, nil)
+	api, err := New(db, queries, encryptor, testutil.TokenManager(), nil, nil, signin.VerifierConfig{})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

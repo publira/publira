@@ -274,6 +274,13 @@ func TestDBLoginWithIdTokenLinksTheAccountHoldingTheVouchedAddress(t *testing.T)
 	})); err != nil {
 		t.Fatalf("Login with the password after linking: %v", err)
 	}
+	listed, err := env.authClient().ListMyIdentities(context.Background(), newBearerRequest(&publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)}, resp.AccessToken.Token))
+	if err != nil {
+		t.Fatalf("ListMyIdentities: %v", err)
+	}
+	if !listed.Msg.HasPassword || len(listed.Msg.Identities) != 1 {
+		t.Fatalf("ListMyIdentities = %+v, want the google link beside the password", listed.Msg)
+	}
 }
 
 // Whoever registered an address nobody confirmed may not own it, so the
@@ -380,6 +387,9 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	}
 	if len(listed.Msg.Identities) != 2 || listed.Msg.Identities[0].Provider != publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE || listed.Msg.Identities[1].Email != "reader@example.com" {
 		t.Fatalf("identities = %+v, want apple and google", listed.Msg.Identities)
+	}
+	if listed.Msg.HasPassword {
+		t.Fatal("has_password = true for an account a sign-in created, want false")
 	}
 	if _, err := client.UnlinkIdentity(context.Background(), newBearerRequest(&publirav1.UnlinkIdentityRequest{
 		Tenant:   tenantContext(env.tenant),

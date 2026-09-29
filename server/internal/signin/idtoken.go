@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -74,6 +76,33 @@ type VerifierConfig struct {
 	GoogleKeysURL string
 	HTTPClient    *http.Client
 	Now           func() time.Time
+}
+
+// VerifierConfigFromEnv reads PUBLIRA_SIGN_IN_APPLE_KEYS_URL and
+// PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL, which the E2E stack points at a key set it
+// signs its own tokens with. An unset variable keeps the provider's.
+func VerifierConfigFromEnv() (VerifierConfig, error) {
+	apple, err := keysURLFromEnv("PUBLIRA_SIGN_IN_APPLE_KEYS_URL")
+	if err != nil {
+		return VerifierConfig{}, err
+	}
+	google, err := keysURLFromEnv("PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL")
+	if err != nil {
+		return VerifierConfig{}, err
+	}
+	return VerifierConfig{AppleKeysURL: apple, GoogleKeysURL: google}, nil
+}
+
+func keysURLFromEnv(name string) (string, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return "", nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", fmt.Errorf("%s must be an absolute http or https URL", name)
+	}
+	return raw, nil
 }
 
 // Verifier checks ID tokens against the keys their provider publishes.
