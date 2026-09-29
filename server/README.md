@@ -117,15 +117,7 @@ Save the `whsec_...` it prints as that tenant's webhook signing secret through `
 
 ### PAY.JP
 
-`internal/paymentprovider/payjp` starts a hosted Checkout Session per purchase on PAY.JP's API v2, through `payjp/payjpv2-go`. The session offers cards alone and requires 3-D Secure on them (`request_three_d_secure: any`), carries the purchase in its metadata, and passes the checkout's idempotency key as `Idempotency-Key`. Its id and its payment flow's id become the checkout id and the payment id. Its fields are the secret key (`secret_key`) and the webhook token (`webhook_token`), both secret and required.
-
-PAY.JP sends the account's webhook token in `X-Payjp-Webhook-Token` rather than signing the payload, so the provider reads what a notification reports back from the API with the tenant's secret key: a notification whose objects the key cannot see is refused as not the tenant's.
-
-| Event | Answered as |
-| --- | --- |
-| `checkout.session.completed` | `PurchaseCompleted` once the payment flow has succeeded in JPY for the recorded price; a failure PAY.JP retries while it is still processing, and `Ignored` once it is canceled |
-| `refund.created`, `refund.updated` | `Refunded` with the sum of the payment flow's succeeded refunds, or `Ignored` while none has gone through |
-| Any other | `Ignored` |
+`internal/paymentprovider/payjp` starts a hosted Checkout Session per purchase on PAY.JP's API v2, cards only and with 3-D Secure required. Its fields are the secret key (`secret_key`) and the webhook token (`webhook_token`), both secret and required.
 
 In the PAY.JP dashboard, register `https://<tenant-domain>/api/v1/webhook/payment/payjp` as the webhook endpoint, and store the secret key from the API settings page and the webhook token from the account settings. For local development, log in with the [PAY.JP CLI](https://docs.pay.jp/v2/guide/developers/payjp-cli) and forward test-mode events, which it delivers with the headers PAY.JP sends them with:
 
