@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -14,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/dberr"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -104,28 +106,23 @@ func (s *adminServer) recordFreeWindowAudit(
 	})
 }
 
-// revalidateOpenFreeWindow drops the public caches that answer with an episode's
-// price, and records that the window's start no longer needs the batch to do it.
-// It is called only for a window that is open the moment it is written: a window
-// still ahead of its start changes nothing a cache holds yet, and
-// apply-free-windows is what drops them when it opens.
-func (s *adminServer) revalidateOpenFreeWindow(ctx context.Context, tenantID uuid.UUID, windowIDs []uuid.UUID) {
-	if len(windowIDs) == 0 {
-		return
-	}
-	// The boundary is written off only once the drop is recorded; otherwise it
-	// stays due and apply-free-windows comes back for it.
-	owed, err := s.recordRevalidation(ctx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
+// recordOpenFreeWindow records the drop of the public caches that answer with an
+// episode's price, and writes off each window's start so the batch does not do
+// it again, both on the transaction that wrote the windows. It is called only
+// for a window that is open the moment it is written: a window still ahead of
+// its start changes nothing a cache holds yet, and apply-free-windows is what
+// drops them when it opens.
+func (s *adminServer) recordOpenFreeWindow(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, windowIDs []uuid.UUID) (revalidate.Owed, error) {
+	owed, err := s.reval.Record(ctx, q, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
 	if err != nil {
-		s.logger.Warn("failed to record a next cache invalidation after a free window change", "tenant_id", tenantID.String(), "error", err)
-		return
+		return revalidate.Owed{}, fmt.Errorf("record cache invalidation: %w", err)
 	}
 	for _, windowID := range windowIDs {
-		if err := s.queriesFor(ctx).MarkEpisodeFreeWindowStartRevalidated(ctx, windowID); err != nil {
-			s.logger.Warn("failed to mark free window start revalidated", "tenant_id", tenantID.String(), "free_window_id", windowID.String(), "error", err)
+		if err := q.MarkEpisodeFreeWindowStartRevalidated(ctx, windowID); err != nil {
+			return revalidate.Owed{}, fmt.Errorf("mark free window %s start revalidated: %w", windowID, err)
 		}
 	}
-	s.reval.Send(ctx, owed)
+	return owed, nil
 }
 
 func (s *adminServer) CreateEpisodeFreeWindow(
@@ -159,8 +156,16 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	created, err := publicid.Insert(func(publicID string) (dbmodels.CreateEpisodeFreeWindowRow, error) {
-		return s.queriesFor(ctx).CreateEpisodeFreeWindow(ctx, dbmodels.CreateEpisodeFreeWindowParams{
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create episode free window transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	created, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.CreateEpisodeFreeWindowRow, error) {
+		return q.CreateEpisodeFreeWindow(ctx, dbmodels.CreateEpisodeFreeWindowParams{
 			ID:              windowID,
 			TenantID:        tenant.ID,
 			PublicID:        publicID,
@@ -176,6 +181,16 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		}
 		return nil, s.internalDBError(ctx, "failed to create episode free window", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
+	var owed revalidate.Owed
+	if period.openAt(time.Now()) {
+		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, []uuid.UUID{created.ID}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for an open free window", err, "tenant_id", tenant.ID.String(), "free_window_id", created.ID.String())
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", created.ID.String())
+	}
+	s.reval.Send(ctx, owed)
 
 	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByIDForTenantParams{
 		TenantID: tenant.ID,
@@ -193,9 +208,6 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		created.PublicID,
 		auditlog.ClientIPFromHeader(req.Header()),
 	)
-	if period.openAt(time.Now()) {
-		s.revalidateOpenFreeWindow(ctx, tenant.ID, []uuid.UUID{created.ID})
-	}
 
 	return connect.NewResponse(&publiraadminv1.CreateEpisodeFreeWindowResponse{
 		FreeWindow: freeWindowFromGetRow(row),
@@ -291,9 +303,16 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		})
 	}
 
+	var owed revalidate.Owed
+	if period.openAt(time.Now()) {
+		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, windowIDs); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for open free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create series free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	s.recordFreeWindowAudit(
 		ctx,
@@ -303,9 +322,6 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		series.PublicID,
 		auditlog.ClientIPFromHeader(req.Header()),
 	)
-	if period.openAt(time.Now()) {
-		s.revalidateOpenFreeWindow(ctx, tenant.ID, windowIDs)
-	}
 
 	return connect.NewResponse(&publiraadminv1.CreateSeriesFreeWindowsResponse{FreeWindows: windows}), nil
 }
@@ -323,15 +339,29 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		return nil, err
 	}
 
-	deleted, err := s.queriesFor(ctx).DeleteEpisodeFreeWindowByIDForTenant(ctx, dbmodels.DeleteEpisodeFreeWindowByIDForTenantParams{
-		TenantID: tenant.ID,
-		ID:       windowID,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
+	var deleted dbmodels.DeleteEpisodeFreeWindowByIDForTenantRow
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		row, err := s.queriesFor(txCtx).DeleteEpisodeFreeWindowByIDForTenant(txCtx, dbmodels.DeleteEpisodeFreeWindowByIDForTenantParams{
+			TenantID: tenant.ID,
+			ID:       windowID,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
+			}
+			return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
+		deleted = row
+		// Only a window that was open is holding a cached page open. One still
+		// ahead of its start never reached the public site, and one already over
+		// was closed by apply-free-windows when it ended.
+		window := freeWindowPeriod{startsAt: row.StartsAt, endsAt: row.EndsAt}
+		if !window.openAt(time.Now()) {
+			return nil, nil
+		}
+		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	s.recordFreeWindowAudit(
@@ -342,14 +372,6 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		deleted.PublicID,
 		auditlog.ClientIPFromHeader(req.Header()),
 	)
-
-	// Only a window that was open is holding a cached page open. One still
-	// ahead of its start never reached the public site, and one already over
-	// was closed by apply-free-windows when it ended.
-	window := freeWindowPeriod{startsAt: deleted.StartsAt, endsAt: deleted.EndsAt}
-	if window.openAt(time.Now()) {
-		s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
-	}
 
 	return connect.NewResponse(&publiraadminv1.DeleteEpisodeFreeWindowResponse{}), nil
 }

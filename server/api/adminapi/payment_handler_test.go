@@ -46,6 +46,7 @@ func tenantPaymentColumns() []string {
 
 func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
+	disableRevalidationUnlessRecorded(t)
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -301,9 +302,11 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
@@ -333,6 +336,8 @@ func TestUpdateTenantPaymentSettingsRejectsUnknownProvider(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectBegin()
+	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
@@ -358,6 +363,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	webhookHint := paymentsettings.MaskSecret(testPaymentWebhookSecret)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -381,6 +387,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 			now,
 		))
 	expectAdminAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{

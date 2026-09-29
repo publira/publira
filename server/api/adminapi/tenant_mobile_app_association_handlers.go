@@ -195,10 +195,14 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 		}
 		return nil, s.internalDBError(ctx, "failed to check the store route against the app association", err, "tenant_id", tenant.ID.String())
 	}
+	owed, err := s.reval.Record(ctx, qtx, tenant.ID, tenantMobileAppAssociationRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the tenant mobile app association", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
-	s.revalidateTags(ctx, tenant.ID, tenantMobileAppAssociationRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.UpdateTenantMobileAppAssociationResponse{
 		Association: tenantMobileAppAssociationFromConfig(updated),
 	}), nil

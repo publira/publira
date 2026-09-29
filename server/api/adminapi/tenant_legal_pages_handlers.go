@@ -130,15 +130,18 @@ func (s *adminServer) UpdateTenantLegalPages(
 		return nil, err
 	}
 
-	if _, err := s.queriesFor(ctx).UpsertTenantLegalPages(ctx, dbmodels.UpsertTenantLegalPagesParams{
-		TenantID:      tenant.ID,
-		TermsPageID:   termsPageID,
-		PrivacyPageID: privacyPageID,
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if _, err := s.queriesFor(txCtx).UpsertTenantLegalPages(txCtx, dbmodels.UpsertTenantLegalPagesParams{
+			TenantID:      tenant.ID,
+			TermsPageID:   termsPageID,
+			PrivacyPageID: privacyPageID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to update tenant legal pages", err, "tenant_id", tenant.ID.String())
+		}
+		return tenantLegalPagesRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to update tenant legal pages", err, "tenant_id", tenant.ID.String())
+		return nil, err
 	}
-
-	s.revalidateTags(ctx, tenant.ID, tenantLegalPagesRevalidateTags(tenant.ID.String()))
 
 	updated, err := s.readTenantLegalPages(ctx, tenant)
 	if err != nil {

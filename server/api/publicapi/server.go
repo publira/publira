@@ -124,23 +124,6 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
-// revalidateTags records what a committed write left stale and sends it. The
-// record is the only step that can still fail, and it is logged rather than
-// returned: the write is already committed, and a reader's action must not fail
-// because a cache entry outlived it.
-func (s *apiServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) {
-	owed, err := s.reval.Record(ctx, s.queriesFor(ctx), tenantID, tags)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
-			"tenant_id", tenantID.String(),
-			"tags", tags,
-			"error", err,
-		)
-		return
-	}
-	s.reval.Send(ctx, owed)
-}
-
 // beginTenantTx starts a transaction on the request's tenant-scoped connection.
 // Falling back to s.db.BeginTx would leave RLS: that path borrows a different
 // pool connection that has never set app.current_tenant_id. sqlmock tests skip

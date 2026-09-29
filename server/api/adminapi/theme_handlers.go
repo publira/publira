@@ -332,16 +332,19 @@ func (s *adminServer) UpsertTenantTheme(
 	}
 	params.TenantID = tenant.ID
 
-	if _, err := s.queriesFor(ctx).UpsertTenantTheme(ctx, params); err != nil {
-		return nil, s.internalDBError(ctx, "failed to upsert tenant theme", err, "tenant_id", tenant.ID.String())
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if _, err := s.queriesFor(txCtx).UpsertTenantTheme(txCtx, params); err != nil {
+			return nil, s.internalDBError(ctx, "failed to upsert tenant theme", err, "tenant_id", tenant.ID.String())
+		}
+		return themeRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	theme, err := s.tenantTheme(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	s.revalidateTags(ctx, tenant.ID, themeRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpsertTenantThemeResponse{Theme: theme}), nil
 }

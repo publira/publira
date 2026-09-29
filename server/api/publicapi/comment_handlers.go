@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -708,17 +709,14 @@ func (s *apiServer) autoHideReportedComment(
 	return true, nil
 }
 
-// revalidateCommentList drops the storefront's cached comment list for one
+// commentListRevalidateTags names the storefront's cached comment list for one
 // episode.
 //
 // A comment the report threshold removed is gone from every answer this API
 // gives, but the section a reader sees is served from a cached page, so the
-// removal only reaches them once that entry is dropped. Best-effort: the
-// report itself is already committed, and a list that kept the comment until
-// its entry expired would be worse than a warning in the log.
-func (s *apiServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
-	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
-	s.revalidateTags(ctx, tenantID, []string{tag})
+// removal only reaches them once that entry is dropped.
+func commentListRevalidateTags(tenantID uuid.UUID, episodePublicID string) []string {
+	return []string{fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)}
 }
 
 // ReportEpisodeComment flags one published comment as breaking the rules.
@@ -835,13 +833,17 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, s.internalDBError(ctx, "failed to enqueue comment report notification", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
 	}
 
+	var owed revalidate.Owed
+	if autoHidden {
+		if owed, err = s.reval.Record(ctx, txq, tenant.ID, commentListRevalidateTags(tenant.ID, comment.EpisodePublicID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for an automatically hidden comment", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit comment report", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-
-	if autoHidden {
-		s.revalidateCommentList(ctx, tenant.ID, comment.EpisodePublicID)
-	}
+	s.reval.Send(ctx, owed)
 
 	return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
 }

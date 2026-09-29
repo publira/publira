@@ -406,9 +406,15 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
+	// Title / display_in_footer can change the public footer link list.
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
+	s.reval.Send(ctx, owed)
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
@@ -419,8 +425,6 @@ func (s *adminServer) UpdatePage(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
-	// Title / display_in_footer can change the public footer link list.
-	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
 	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page, translation),
 	}), nil
@@ -619,22 +623,30 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
-	version, err := s.queriesFor(ctx).PublishPageVersion(ctx, dbmodels.PublishPageVersionParams{
-		ID:            versionID,
-		TranslationID: page.PageTranslation.ID,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
+	var version dbmodels.PageVersion
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		published, err := s.queriesFor(txCtx).PublishPageVersion(txCtx, dbmodels.PublishPageVersionParams{
+			ID:            versionID,
+			TranslationID: page.PageTranslation.ID,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
+			}
+			return nil, s.internalDBError(ctx, "failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
-	}
-	if _, err := s.queriesFor(ctx).SetPageTranslationPublishedVersion(ctx, dbmodels.SetPageTranslationPublishedVersionParams{
-		ID:                 page.PageTranslation.ID,
-		TenantID:           tenant.ID,
-		PublishedVersionID: uuid.NullUUID{UUID: version.ID, Valid: true},
+		if _, err := s.queriesFor(txCtx).SetPageTranslationPublishedVersion(txCtx, dbmodels.SetPageTranslationPublishedVersionParams{
+			ID:                 page.PageTranslation.ID,
+			TenantID:           tenant.ID,
+			PublishedVersionID: uuid.NullUUID{UUID: published.ID, Valid: true},
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to set published page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", published.ID.String())
+		}
+		version = published
+		// Tags must use tenant.ID (path / cache key), same as series revalidate.
+		return pageRevalidateTags(tenant.ID, published.PageID), nil
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to set published page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", version.ID.String())
+		return nil, err
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -646,9 +658,6 @@ func (s *adminServer) PublishVersion(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
-	// Trigger revalidation for the page on the public site.
-	// Tags must use tenant.ID (path / cache key), same as series revalidate.
-	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, version.PageID))
 	return connect.NewResponse(&publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
 	}), nil
@@ -679,16 +688,24 @@ func (s *adminServer) UnpublishPage(
 	if err != nil {
 		return nil, err
 	}
-	translation, err := s.queriesFor(ctx).SetPageTranslationPublishedVersion(ctx, dbmodels.SetPageTranslationPublishedVersionParams{
-		ID:                 page.PageTranslation.ID,
-		TenantID:           tenant.ID,
-		PublishedVersionID: uuid.NullUUID{},
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+	var translation dbmodels.PageTranslation
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		row, err := s.queriesFor(txCtx).SetPageTranslationPublishedVersion(txCtx, dbmodels.SetPageTranslationPublishedVersionParams{
+			ID:                 page.PageTranslation.ID,
+			TenantID:           tenant.ID,
+			PublishedVersionID: uuid.NullUUID{},
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+			}
+			return nil, s.internalDBError(ctx, "failed to unpublish page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 		}
-		return nil, s.internalDBError(ctx, "failed to unpublish page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		translation = row
+		// Both the page's own URL and the footer link list have to stop serving it.
+		return pageRevalidateTags(tenant.ID, page.Page.ID), nil
+	}); err != nil {
+		return nil, err
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -700,8 +717,6 @@ func (s *adminServer) UnpublishPage(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
-	// Both the page's own URL and the footer link list have to stop serving it.
-	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.Page.ID))
 	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
 		Page: pageFromModel(page.Page, translation),
 	}), nil

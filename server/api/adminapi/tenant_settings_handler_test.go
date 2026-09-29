@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -77,10 +78,12 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
@@ -92,6 +95,72 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	}
 	if resp.Msg.Timezone != "Europe/Berlin" {
 		t.Fatalf("timezone = %q, want Europe/Berlin", resp.Msg.Timezone)
+	}
+	assertExpectations(t, mock)
+}
+
+// The cache drop a single-statement save owes is recorded in the save's own
+// transaction, so the two commit together and nothing can lose the drop
+// between them.
+func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
+		WithArgs("Europe/Berlin", tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	if _, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Timezone: "Europe/Berlin",
+	}, sessionToken)); err != nil {
+		t.Fatalf("UpdateTenantTimezone: %v", err)
+	}
+	want := tenantTimezoneRevalidateTags(tenantID.String())
+	slices.Sort(want)
+	revalidations.waitForTags(t, want)
+	assertExpectations(t, mock)
+}
+
+// A save whose cache drop cannot be recorded is rolled back rather than
+// committed with nothing owing the drop.
+func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *testing.T) {
+	newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
+		WithArgs("Europe/Berlin", tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Timezone: "Europe/Berlin",
+	}, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdateTenantTimezone code = %v, want internal", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }
@@ -244,10 +313,12 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantDefaultLocale)).
 		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "UTC", "en"))
+	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
@@ -497,9 +568,11 @@ func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantCommentSettings)).
 				WithArgs(tenantID, tt.want, int32(tt.threshold)).
 				WillReturnRows(tenantConfigRow(tenantID, now, tt.want, int32(tt.threshold)))
+			mock.ExpectCommit()
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 			resp, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
@@ -732,9 +805,11 @@ func TestUpdateTenantAgeVerificationPersistsTheChosenRule(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantAgeVerification)).
 				WithArgs(tenantID, tt.want).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.want))
+			mock.ExpectCommit()
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 			resp, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{

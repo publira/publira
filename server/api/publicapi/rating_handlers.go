@@ -13,6 +13,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantconn"
 )
@@ -289,7 +290,7 @@ func (s *apiServer) RateEpisode(
 		return nil, s.internalDBError(ctx, "failed to record the episode rating", err,
 			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	s.revalidateSeriesRating(ctx, tenant.ID, row.SeriesPublicID)
+	s.reval.Send(ctx, rating.owed)
 
 	return noStorePrivateResponse(&publirav1.RateEpisodeResponse{
 		Score:       int32(rating.score),
@@ -298,13 +299,10 @@ func (s *apiServer) RateEpisode(
 	}), nil
 }
 
-// revalidateSeriesRating drops the public reads whose derived aggregate changes
-// after a reader reacts. Every client records ratings through RateEpisode, so
-// this shared boundary keeps mobile and web mutations consistent.
-func (s *apiServer) revalidateSeriesRating(ctx context.Context, tenantID uuid.UUID, seriesPublicID string) {
-	s.revalidateTags(ctx, tenantID, seriesRatingRevalidateTags(tenantID.String(), seriesPublicID))
-}
-
+// seriesRatingRevalidateTags names the public reads whose derived aggregate
+// changes after a reader reacts. Every client records ratings through
+// RateEpisode, so this shared boundary keeps mobile and web mutations
+// consistent.
 func seriesRatingRevalidateTags(tenantID, seriesPublicID string) []string {
 	return []string{
 		fmt.Sprintf("tenant:%s:series:detail", strings.TrimSpace(tenantID)),
@@ -312,11 +310,13 @@ func seriesRatingRevalidateTags(tenantID, seriesPublicID string) []string {
 	}
 }
 
-// storedRating is what a press leaves behind: the reader's own score and the
-// tally the episode now stands at.
+// storedRating is what a press leaves behind: the reader's own score, the
+// tally the episode now stands at, and the cache drop the series' aggregate
+// owes for it.
 type storedRating struct {
 	score int16
 	count int64
+	owed  revalidate.Owed
 }
 
 // storeEpisodeRating raises the reader's score and files the event for the
@@ -399,8 +399,12 @@ func (s *apiServer) storeEpisodeRating(
 	if err != nil {
 		return storedRating{}, err
 	}
+	owed, err := s.reval.Record(ctx, txq, tenantID, seriesRatingRevalidateTags(tenantID.String(), episode.SeriesPublicID))
+	if err != nil {
+		return storedRating{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return storedRating{}, err
 	}
-	return storedRating{score: rating.Score, count: count}, nil
+	return storedRating{score: rating.Score, count: count, owed: owed}, nil
 }
