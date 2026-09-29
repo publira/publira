@@ -60,7 +60,9 @@ type Claims struct {
 	Email         string
 	EmailVerified bool
 	Name          string
-	ExpiresAt     time.Time
+	// AcceptedUntil is when the verifier stops accepting the token: its expiry
+	// plus the clock leeway. A spent nonce is kept until then.
+	AcceptedUntil time.Time
 }
 
 // VerifierConfig builds a [Verifier]. The zero value reads Apple's and
@@ -161,7 +163,7 @@ func (v *Verifier) Verify(ctx context.Context, provider, rawToken string, audien
 		Email:         strings.TrimSpace(claims.Email),
 		EmailVerified: bool(claims.EmailVerified),
 		Name:          strings.TrimSpace(claims.Name),
-		ExpiresAt:     claims.ExpiresAt.Time,
+		AcceptedUntil: claims.ExpiresAt.Add(clockLeeway),
 	}, nil
 }
 

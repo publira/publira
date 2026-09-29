@@ -1,5 +1,6 @@
 -- name: SpendSignInNonce :execrows
--- Records a nonce as spent until the token it came with expires. No row is
+-- Records a nonce as spent until the verifier stops accepting the token it
+-- came with. No row is
 -- inserted when the nonce was spent already, which is a replay. The tenant's
 -- expired nonces are dropped in the same statement, so the table holds only
 -- what can still be replayed.

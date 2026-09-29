@@ -145,8 +145,11 @@ func NewAppleSignInCodeExchangeHandler(cfg AppleSignInHandlerConfig) Handler {
 		creds, err := settings.LoadAppleCredentials(ctx, tenantID)
 		if err != nil {
 			// The code expires within minutes, so a tenant that took its key
-			// away is not waited for.
-			return Permanent(fmt.Errorf("load the apple sign-in key: %w", err))
+			// away is not waited for; a database that did not answer is.
+			if isUnusableAppleKey(err) {
+				return Permanent(fmt.Errorf("load the apple sign-in key: %w", err))
+			}
+			return fmt.Errorf("load the apple sign-in key: %w", err)
 		}
 		refreshToken, err := cfg.Tokens.ExchangeCode(ctx, creds, payload.ClientID, code, payload.RedirectURI)
 		if errors.Is(err, signin.ErrInvalidGrant) || errors.Is(err, signin.ErrInvalidClient) {
@@ -155,9 +158,17 @@ func NewAppleSignInCodeExchangeHandler(cfg AppleSignInHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("exchange the apple authorization code: %w", err)
 		}
+		// The code is spent, so a retry cannot get the token back: one this
+		// handler does not keep is revoked here or by nobody.
+		revokeUnkept := func(cause error) error {
+			if err := cfg.Tokens.RevokeRefreshToken(ctx, creds, payload.ClientID, refreshToken); err != nil {
+				return errors.Join(cause, fmt.Errorf("revoke the refresh token that was not kept: %w", err))
+			}
+			return Permanent(cause)
+		}
 		sealed, err := signin.Seal(cfg.Encryptor, refreshToken)
 		if err != nil {
-			return fmt.Errorf("seal the apple refresh token: %w", err)
+			return revokeUnkept(fmt.Errorf("seal the apple refresh token: %w", err))
 		}
 		stored, err := queries.SetUserIdentityRefreshToken(ctx, dbmodels.SetUserIdentityRefreshTokenParams{
 			TenantID:              tenantID,
@@ -166,14 +177,13 @@ func NewAppleSignInCodeExchangeHandler(cfg AppleSignInHandlerConfig) Handler {
 			RefreshTokenClientID:  sql.NullString{String: payload.ClientID, Valid: true},
 		})
 		if err != nil {
-			return fmt.Errorf("store the apple refresh token: %w", err)
+			return revokeUnkept(fmt.Errorf("store the apple refresh token: %w", err))
 		}
 		if stored == 0 {
 			// The link went while the code was exchanged, or keeps a token from
-			// an earlier sign-in, and nothing will revoke what this exchange
-			// granted unless this does.
-			if err := cfg.Tokens.RevokeRefreshToken(ctx, creds, payload.ClientID, refreshToken); err != nil {
-				return fmt.Errorf("revoke the refresh token of a link that is gone: %w", err)
+			// an earlier sign-in.
+			if err := revokeUnkept(errors.New("the link keeps no new refresh token")); !IsPermanent(err) {
+				return err
 			}
 		}
 		cfg.log(ctx, "exchanged an apple authorization code", event, tenantID)
@@ -218,6 +228,14 @@ func NewAppleSignInTokenRevokeHandler(cfg AppleSignInHandlerConfig) Handler {
 		cfg.log(ctx, "revoked an apple refresh token", event, tenantID)
 		return nil
 	}
+}
+
+// isUnusableAppleKey reports a tenant whose key no retry can make usable:
+// none is stored, or it does not decrypt.
+func isUnusableAppleKey(err error) bool {
+	return errors.Is(err, signin.ErrAppleNotConfigured) ||
+		errors.Is(err, signin.ErrDecryptFailed) ||
+		errors.Is(err, signin.ErrSecretManagerUnavailable)
 }
 
 func (cfg AppleSignInHandlerConfig) log(ctx context.Context, message string, event dbmodels.OutboxEvent, tenantID uuid.UUID) {

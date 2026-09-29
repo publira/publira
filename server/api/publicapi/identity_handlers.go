@@ -98,7 +98,7 @@ func spendNonce(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUI
 	spent, err := queries.SpendSignInNonce(ctx, dbmodels.SpendSignInNonceParams{
 		TenantID:  tenantID,
 		NonceHash: signin.HashNonce(nonce),
-		ExpiresAt: claims.ExpiresAt,
+		ExpiresAt: claims.AcceptedUntil,
 	})
 	if err != nil {
 		return err

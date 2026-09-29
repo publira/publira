@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -202,6 +203,29 @@ func TestDBLoginWithIdTokenRefusesAReplayedNonce(t *testing.T) {
 		env.googleToken(t, "google-subject", "reader@example.com", "only-once"), "only-once")
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("sign-in with a spent nonce code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// A token past its expiry is still accepted for the verifier's clock leeway,
+// so its nonce has to outlive the prune another sign-in commits meanwhile.
+func TestDBLoginWithIdTokenRefusesAReplayWithinTheClockLeeway(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	token := env.google.Sign(t, signintest.Token{
+		Issuer:    signin.GoogleIssuer,
+		Subject:   "google-subject",
+		Audience:  identityWebClientID,
+		Email:     "reader@example.com",
+		Nonce:     "late-nonce",
+		ExpiresAt: time.Now().Add(-30 * time.Second),
+	})
+	env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, token, "late-nonce")
+	env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "another-subject", "another@example.com", "another-nonce"), "another-nonce")
+
+	_, err := env.signIn(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE, token, "late-nonce")
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("replay within the leeway code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 }
 

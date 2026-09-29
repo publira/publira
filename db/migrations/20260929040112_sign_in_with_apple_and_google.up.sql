@@ -127,8 +127,8 @@ CREATE POLICY user_identities_tenant_isolation ON user_identities USING ((tenant
 
 -- TABLE: sign_in_nonces
 -- The nonces of the ID tokens a sign-in has accepted, by SHA-256, until the
--- token they were spent on expires. A second sign-in with the same nonce is a
--- replay. The insert that spends one also drops the tenant's expired rows.
+-- verifier stops accepting the token they were spent on. A second sign-in with
+-- the same nonce is a replay. The insert that spends one also drops the tenant's expired rows.
 CREATE TABLE sign_in_nonces (
     tenant_id uuid NOT NULL,
     nonce_hash text NOT NULL,
