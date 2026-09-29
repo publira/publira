@@ -6,7 +6,7 @@ import {
   PageCanvas,
   PageNavigation,
   PageProgress,
-  PageProgressTrack,
+  PageProgressSlider,
   PageStatus,
   PreviousPageButton,
   Root as ComicViewerRoot,
@@ -274,16 +274,19 @@ const ViewerToolbar = ({
   const t = useClientMessages();
 
   return (
-    <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0">
+    // On a narrow screen a centred slider would run under the buttons on the
+    // right, so the toolbar keeps their width clear and the slider takes the rest.
+    <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0 max-sm:pr-26">
       <PageProgress
         aria-label={t("host.episode.viewer.progress")}
-        className="mx-auto min-w-0 shrink basis-3/5"
+        className="mx-auto min-w-0 shrink basis-3/5 max-sm:basis-full"
       >
-        <PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-control border-0 bg-muted-foreground [&::-moz-progress-bar]:bg-background [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-background" />
-        {/* The toolbar runs rtl so the progress fills the way pages turn; the
-            status text still reads left to right. */}
+        {/* The toolbar runs rtl so the thumb moves, and the fill grows, the
+            way pages turn; the status text still reads left to right. The
+            input is taller than its thumb so a finger can catch it. */}
+        <PageProgressSlider className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background" />
         <PageStatus
-          className="mt-1.5 block text-center text-sm text-background tabular-nums [direction:ltr]"
+          className="block text-center text-sm text-background tabular-nums [direction:ltr]"
           format={buildPageStatusFormatter(t)}
         />
       </PageProgress>

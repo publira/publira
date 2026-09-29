@@ -26,11 +26,13 @@ import {
   VIEWER_PAGE_COUNT,
   VIEWER_PROGRESS_LABEL,
   episodePageLabel,
+  lastPageNamed,
+  showsLastPage,
   viewerPageImageId,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
 import { hostPath, WEB_HOST_BASE_URL } from "../src/urls";
-import { turnToEndPage } from "../src/viewer";
+import { revealViewerControls, turnToEndPage } from "../src/viewer";
 
 const seriesPath = `/series/${SEED_TENANT.series.publicId}`;
 
@@ -176,6 +178,14 @@ const pollEndPageControl = (
 
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
+/** The slider's value text, which names the pages on screen. */
+const readingProgressText = (page: Page): Promise<string | null> =>
+  readingProgress(page).getAttribute("aria-valuetext");
+
+/** The last page the reader has on screen, as the slider names it. */
+const lastPageOnScreen = async (page: Page): Promise<number> =>
+  lastPageNamed(await readingProgressText(page));
+
 /**
  * The page after the last one, inside the viewer.
  *
@@ -217,13 +227,12 @@ const expectFirstPageDrawn = (page: Page): Promise<void> =>
   expect(pageCanvas(page, 1)).toHaveAttribute("data-page-status", "loaded");
 
 /**
- * Turn pages until the reader reports the last one, and hand back every
- * progress value it passed through.
+ * Turn pages until the reader reports the last one, and hand back the last
+ * page on screen at every stop.
  *
- * The reading direction is right to left, so ArrowLeft is the next page. The
- * `<progress>` reports the last page currently on screen, which is what makes
- * "the value went up" one statement whether the reader is showing a single
- * page or a spread.
+ * The reading direction is right to left, so ArrowLeft is the next page.
+ * Counting the last page on screen is what makes "the reader moved forward"
+ * one statement whether the reader is showing a single page or a spread.
  *
  * A turn shows at most two pages, so no episode needs more turns than it has
  * pages. That bound is what fails the test on a reader that has stopped
@@ -234,7 +243,8 @@ const turnToLastPage = async (
   passed: readonly number[] = []
 ): Promise<number[]> => {
   const progress = readingProgress(page);
-  const current = Number(await progress.getAttribute("value"));
+  const text = await readingProgressText(page);
+  const current = lastPageNamed(text);
   const visited = [...passed, current];
 
   if (current >= VIEWER_PAGE_COUNT || visited.length > VIEWER_PAGE_COUNT) {
@@ -242,7 +252,7 @@ const turnToLastPage = async (
   }
 
   await page.keyboard.press("ArrowLeft");
-  await expect(progress).not.toHaveAttribute("value", String(current));
+  await expect(progress).not.toHaveAttribute("aria-valuetext", text ?? "");
 
   return turnToLastPage(page, visited);
 };
@@ -260,11 +270,43 @@ const turnPages = async (page: Page, count: number): Promise<void> => {
   }
 
   const progress = readingProgress(page);
-  const current = await progress.getAttribute("value");
+  const current = await readingProgressText(page);
   await page.keyboard.press("ArrowLeft");
-  await expect(progress).not.toHaveAttribute("value", String(current));
+  await expect(progress).not.toHaveAttribute("aria-valuetext", current ?? "");
 
   return turnPages(page, count - 1);
+};
+
+/** The index the drag scenario holds the thumb at: the spread that page 6 opens. */
+const DRAG_TARGET_INDEX = 5;
+
+/** The width of the slider's thumb, `size-3.5`. */
+const SLIDER_THUMB_PX = 14;
+
+/**
+ * Grab the slider's thumb where it rests and drag it to `index`, still held.
+ *
+ * The toolbar runs right to left, so later pages lie toward the slider's left
+ * end, and a native range keeps its thumb inside the track by half the
+ * thumb's width at either end.
+ */
+const dragProgressTo = async (page: Page, index: number): Promise<void> => {
+  const slider = readingProgress(page);
+  const box = await slider.boundingBox();
+  if (box === null) {
+    throw new Error("the reading progress slider is not laid out");
+  }
+  const min = Number(await slider.getAttribute("min"));
+  const max = Number(await slider.getAttribute("max"));
+  const thumbX = (value: number) =>
+    box.x +
+    SLIDER_THUMB_PX / 2 +
+    (1 - (value - min) / (max - min)) * (box.width - SLIDER_THUMB_PX);
+  const y = box.y + box.height / 2;
+
+  await page.mouse.move(thumbX(Number(await slider.inputValue())), y);
+  await page.mouse.down();
+  await page.mouse.move(thumbX(index), y, { steps: 10 });
 };
 
 const isStrictlyAscending = (values: readonly number[]): boolean =>
@@ -306,8 +348,8 @@ test.describe("web-host episode reading", () => {
     await expectFirstPageDrawn(page);
 
     await expect(readingProgress(page)).toHaveAttribute(
-      "max",
-      String(VIEWER_PAGE_COUNT)
+      "aria-valuetext",
+      showsLastPage(1)
     );
 
     const visited = await turnToLastPage(page);
@@ -376,8 +418,8 @@ test.describe("web-host episode reading", () => {
 
     await page.goto(hostPath(VIEWER_EPISODE_PATH));
     await expect(readingProgress(page)).toHaveAttribute(
-      "value",
-      String(VIEWER_PAGE_COUNT)
+      "aria-valuetext",
+      showsLastPage(VIEWER_PAGE_COUNT)
     );
     await expect(pageCanvas(page, VIEWER_PAGE_COUNT)).toHaveAttribute(
       "data-page-status",
@@ -419,7 +461,7 @@ test.describe("web-host episode reading", () => {
     await expectFirstPageDrawn(page);
 
     await turnPages(page, 3);
-    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    const stoppedOn = await lastPageOnScreen(page);
     expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
 
     // `sendBeacon` hands the position to the browser, which delivers it on its
@@ -436,8 +478,8 @@ test.describe("web-host episode reading", () => {
     await page.reload();
 
     await expect(readingProgress(page)).toHaveAttribute(
-      "value",
-      String(stoppedOn)
+      "aria-valuetext",
+      showsLastPage(stoppedOn)
     );
   });
 
@@ -467,7 +509,7 @@ test.describe("web-host episode reading", () => {
         request.url().endsWith("/reading-position")
     );
     await turnPages(page, 3);
-    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    const stoppedOn = await lastPageOnScreen(page);
     expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
     await refused;
     expect(savedPageIndex(), "nothing reached the database offline").toBe("0");
@@ -481,9 +523,93 @@ test.describe("web-host episode reading", () => {
       .toBeGreaterThan(0);
     await page.reload();
     await expect(readingProgress(page)).toHaveAttribute(
-      "value",
-      String(stoppedOn)
+      "aria-valuetext",
+      showsLastPage(stoppedOn)
     );
+  });
+
+  test("dragging the reading progress shows the spread under the thumb, saves it once on release, and reopens there", async ({
+    page,
+  }) => {
+    clearReadingPosition();
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+    await expect
+      .poll(savedPageIndex, { message: "the first page was saved on opening" })
+      .toBe("0");
+
+    const saves: string[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        request.url().endsWith("/reading-position")
+      ) {
+        saves.push(request.url());
+      }
+    });
+
+    await revealViewerControls(page);
+    await dragProgressTo(page, DRAG_TARGET_INDEX);
+
+    const target = pageCanvas(page, DRAG_TARGET_INDEX + 1);
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      /^Pages? 6\b/u
+    );
+    await expect(target, "the pages follow the thumb").toBeInViewport();
+    expect(saves, "nothing is saved while the thumb is held").toHaveLength(0);
+
+    await page.mouse.up();
+
+    await expect(target).toHaveAttribute("data-page-status", "loaded");
+    await expect
+      .poll(savedPageIndex, { message: "the page let go on was saved" })
+      .toBe(String(DRAG_TARGET_INDEX));
+    expect(saves, "the release saved one page").toHaveLength(1);
+
+    const landedOn = await lastPageOnScreen(page);
+    await page.reload();
+
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(landedOn)
+    );
+    await expect(target).toHaveAttribute("data-page-status", "loaded");
+  });
+
+  test("the arrow keys on the focused reading progress turn one spread", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    await revealViewerControls(page);
+    await readingProgress(page).focus();
+
+    // The cover stands alone, so one step forward puts the spread of pages 2
+    // and 3 on screen, and the next one the spread after it.
+    await page.keyboard.press("ArrowLeft");
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(3)
+    );
+    await page.keyboard.press("ArrowLeft");
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(5)
+    );
+
+    await page.keyboard.press("ArrowRight");
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(3)
+    );
+    await expect(readingProgress(page)).toBeFocused();
   });
 
   test("the series page and the home page offer the episode the member stopped in", async ({
@@ -560,7 +686,10 @@ test.describe("web-host episode reading", () => {
     // The control is drawn over the page, where a click near the edge of the
     // viewport would otherwise turn it: asking for the page again must not
     // carry the reader past it.
-    await expect(readingProgress(page)).toHaveAttribute("value", "1");
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(1)
+    );
     const visited = await turnToLastPage(page);
     expect(visited.at(-1), "the rest of the episode is still readable").toBe(
       VIEWER_PAGE_COUNT
@@ -601,7 +730,10 @@ test.describe("web-host episode reading", () => {
 
     await expect(refusedPage).toHaveAttribute("data-page-status", "loaded");
     await expect(drawnPage).toHaveAttribute("data-page-status", "loaded");
-    await expect(readingProgress(page)).toHaveAttribute("value", "3");
+    await expect(readingProgress(page)).toHaveAttribute(
+      "aria-valuetext",
+      showsLastPage(3)
+    );
   });
 
   test("the end of an episode opens the next one in a single click", async ({
