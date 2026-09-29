@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/connect_client.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
@@ -120,6 +122,60 @@ void main() {
     expect(age.hasBirthDate, isFalse);
     expect(age.verification, AgeVerification.none);
   });
+
+  test(
+    'readReaderAge reports a tenant read that fails before GetMe answers',
+    () async {
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetMe');
+      final holding = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: client,
+      );
+      // Resolved once while the API answers, so only the read fails.
+      await holding.readReaderAge(stored);
+      server.tenantStatus = HttpStatus.serviceUnavailable;
+      client.release = client.settled.firstWhere(
+        (procedure) => procedure.endsWith('/GetTenant'),
+      );
+
+      await expectLater(
+        holding.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.network,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'readReaderAge reports a rejected session without waiting on the tenant',
+    () async {
+      final client = _HoldingClient(baseUrl: server.baseUrl, held: 'GetTenant');
+      final holding = HttpAuthRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: client,
+      );
+      final tenantAnswers = Completer<void>();
+      addTearDown(tenantAnswers.complete);
+      client.release = tenantAnswers.future;
+      server.activeAccessToken = 'another-token';
+
+      await expectLater(
+        holding.readReaderAge(stored),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.sessionExpired,
+          ),
+        ),
+      );
+    },
+  );
 
   test('recordBirthDate writes the date beside the name it holds', () async {
     final written = await auth.recordBirthDate(
@@ -667,4 +723,40 @@ void main() {
     );
     expect(server.memberDeleted, isFalse);
   });
+}
+
+/// Sends [held] only once [release] completes, so a test can decide which of
+/// two reads settles first.
+class _HoldingClient extends ConnectClient {
+  _HoldingClient({required super.baseUrl, required this.held});
+
+  final String held;
+  Future<void> release = Future.value();
+
+  final _settled = StreamController<String>.broadcast();
+
+  /// The procedure of each call as it settles, successfully or not.
+  Stream<String> get settled => _settled.stream;
+
+  @override
+  Future<Map<String, Object?>> unary(
+    String procedure,
+    Map<String, Object?> body, {
+    String? tenantId,
+    String? accessToken,
+  }) async {
+    if (procedure.endsWith('/$held')) {
+      await release;
+    }
+    try {
+      return await super.unary(
+        procedure,
+        body,
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+    } finally {
+      _settled.add(procedure);
+    }
+  }
 }
