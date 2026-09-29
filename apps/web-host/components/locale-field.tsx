@@ -2,7 +2,7 @@
 
 import { LOCALE_FIELD_NAME } from "#lib/locale-form";
 
-import { useLocale } from "./locale-provider";
+import { useLocale } from "./locale-context";
 
 /**
  * Hidden field that carries the reader's locale into a Server Action.

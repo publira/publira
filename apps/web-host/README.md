@@ -17,7 +17,7 @@ A public URL carries no locale prefix in the tenant's default locale (`/series/S
 | Where the locale is read | How |
 | --- | --- |
 | Server Component | `getLocale()` in `lib/locale.ts` |
-| Client Component | `useLocale()` in `components/locale-provider.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` |
+| Client Component | `useLocale()` in `components/locale-context.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` |
 | Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field in `components/locale-field.tsx` |
 | Server-side, the tenant's stored default | `getTenantDefaultLocale()` in `lib/tenant.ts` |
 | The document element (`<html lang>`) | `PATH_LOCALE_LANG_SCRIPT` from `@publira/i18n` on a document load, then `<DocumentLocale>` in `components/document-locale.tsx` across client-side navigations |

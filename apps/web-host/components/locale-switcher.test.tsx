@@ -42,7 +42,7 @@ vi.mock("./client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
-vi.mock("./locale-provider", () => ({
+vi.mock("./locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "ja",
 }));

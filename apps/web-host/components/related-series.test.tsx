@@ -38,7 +38,7 @@ vi.mock("#lib/locale", () => ({
   loadHostMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

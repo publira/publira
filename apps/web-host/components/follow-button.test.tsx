@@ -24,7 +24,7 @@ import {
   FollowButtonUnfollow,
 } from "./follow-button-state";
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

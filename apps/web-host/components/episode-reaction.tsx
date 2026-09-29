@@ -33,7 +33,7 @@ import {
 import type { HostClientMessageKey } from "#lib/messages";
 
 import { useClientMessages } from "./client-message";
-import { useLocale } from "./locale-provider";
+import { useLocale } from "./locale-context";
 
 /**
  * Compound face of the episode reaction control: an outline control that

@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 
 import { withLocalePrefix } from "#lib/locale-path";
 
-import { useLocale, useTenantDefaultLocale } from "./locale-provider";
+import { useLocale, useTenantDefaultLocale } from "./locale-context";
 
 type LocaleLinkProps = Omit<ComponentProps<typeof Link>, "href"> & {
   /** App-internal path without the locale prefix, e.g. `/series/SR01`. */

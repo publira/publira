@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
 
 // The tenant's default is `ja`, so an `en` reader's paths carry the prefix:
 // what this asserts is that the key press lands on the same URL a link would.
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "ja",
 }));

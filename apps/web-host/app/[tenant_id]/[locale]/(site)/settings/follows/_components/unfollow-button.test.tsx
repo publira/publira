@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UnfollowButton } from "./unfollow-button";
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));
