@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockDeleteTenantIconApi,
   mockDeleteTenantLogoApi,
@@ -11,6 +12,7 @@ const {
   mockUploadTenantLogoApi,
   mockUpsertTenantThemeApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockDeleteTenantIconApi: vi.fn(),
   mockDeleteTenantLogoApi: vi.fn(),
@@ -22,6 +24,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -144,6 +147,7 @@ describe("theme-settings", () => {
       { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns an error when there is no session", async () => {
@@ -159,6 +163,29 @@ describe("theme-settings", () => {
       requiresSignIn: true,
     });
     expect(mockGetTenantThemeApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("returns an error when the theme fetch fails", async () => {
+    mockGetTenantThemeApi.mockRejectedValueOnce(
+      new ConnectError("theme unavailable", Code.Unavailable)
+    );
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    const result = await getTenantThemeSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(result).not.toHaveProperty("theme");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns an invalid_argument error from an update as it is", async () => {

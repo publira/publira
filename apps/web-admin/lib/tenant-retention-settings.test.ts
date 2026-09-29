@@ -2,11 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantRetentionSettingsApi,
   mockUpdateTenantRetentionSettingsApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantRetentionSettingsApi: vi.fn(),
@@ -14,6 +16,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -73,6 +76,7 @@ describe("tenant-retention-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:retention-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reports a missing session without naming a saved period", async () => {
@@ -89,6 +93,11 @@ describe("tenant-retention-settings", () => {
       requiresSignIn: true,
     });
     expect(mockGetTenantRetentionSettingsApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("reports a failed read without naming a saved period", async () => {
@@ -103,6 +112,11 @@ describe("tenant-retention-settings", () => {
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("platformDefaults");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   // Every field is written, so a period the screen left following the platform

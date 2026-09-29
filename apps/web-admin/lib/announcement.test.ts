@@ -2,10 +2,12 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockGetSessionId,
   mockListAnnouncementsApi,
   mockCreateAnnouncementsApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCreateAnnouncementsApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockListAnnouncementsApi: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: vi.fn(),
 }));
 
@@ -72,6 +75,7 @@ describe("announcement lib", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token and the default limit", async () => {
@@ -156,6 +160,11 @@ describe("announcement lib", () => {
       previousToken: "",
       requiresSignIn: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns a result with no token when there is no session", async () => {
@@ -172,6 +181,11 @@ describe("announcement lib", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

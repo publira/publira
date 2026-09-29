@@ -9,6 +9,7 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -102,6 +103,7 @@ const listCreatorRolesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       creatorRoles: [],
       message: t("errors.rpc.unauthenticated"),
@@ -135,6 +137,7 @@ const listCreatorRolesForSession = async (
     );
 
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         creatorRoles: [],
         message: t("admin.creator_roles.list_failed"),
@@ -146,6 +149,7 @@ const listCreatorRolesForSession = async (
     return { creatorRoles, ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       creatorRoles: [],
       message: await mapErrorToMessage(

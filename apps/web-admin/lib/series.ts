@@ -16,6 +16,7 @@ import {
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -459,6 +460,7 @@ const listSeriesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
@@ -492,6 +494,7 @@ const listSeriesForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
@@ -531,6 +534,7 @@ const listAllSeriesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
@@ -570,6 +574,7 @@ const listAllSeriesForSession = async (
     // Match listAllCreators / episode reorder: never hand the form a partial
     // option list that operators treat as complete.
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         ...emptyCursorPageTokens,
         defaultReadingPeriodHours: 0,
@@ -590,6 +595,7 @@ const listAllSeriesForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
@@ -635,6 +641,7 @@ const getSeriesForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -652,6 +659,7 @@ const getSeriesForSession = async (
     );
 
     if (!response.series?.publicId?.trim()) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -672,6 +680,7 @@ const getSeriesForSession = async (
       purchaseAvailability === undefined ||
       toSurfaceAvailabilityValue(response.series.availability) === undefined
     ) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -690,6 +699,7 @@ const getSeriesForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,

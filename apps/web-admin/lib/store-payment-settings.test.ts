@@ -6,12 +6,14 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetApi,
   mockListProductsApi,
   mockUpdateApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetApi: vi.fn(),
@@ -20,6 +22,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -115,6 +118,7 @@ describe("store-payment-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:store-payment-settings"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("keeps a key in the response out of the settings meant for the screen", async () => {
@@ -149,6 +153,32 @@ describe("store-payment-settings", () => {
       requiresSignIn: true,
     });
     expect(mockGetApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a failed read as a message", async () => {
+    mockGetApi.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { getTenantStorePaymentSettings } =
+      await import("./store-payment-settings");
+    const result = await getTenantStorePaymentSettings("TENANT001", "en");
+
+    expect(result).toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("sends the route as the enum and each key with its mode", async () => {

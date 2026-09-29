@@ -8,6 +8,7 @@ import type { Locale } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockCancelInvitation,
   mockCreateInvitation,
@@ -18,6 +19,7 @@ const {
   mockResendInvitation,
   mockUpdateRole,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCancelInvitation: vi.fn(),
   mockCreateInvitation: vi.fn(),
@@ -30,6 +32,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -129,6 +132,7 @@ describe("listTenantMembers", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("tenant-members-TENANT001");
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("asks for a sign-in when the API rejects the session", async () => {
@@ -143,6 +147,30 @@ describe("listTenantMembers", () => {
       members: [],
       ok: false,
       requiresSignIn: true,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a sign-in without calling the API when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("");
+    const { listTenantMembers } = await import("./tenant-members");
+
+    const result = await listTenantMembers("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      members: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockListMembers).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -185,6 +213,46 @@ describe("listTenantAdminInvitations", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant-admin-invitations-TENANT001"
     );
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a sign-in without calling the API when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("");
+    const { listTenantAdminInvitations } = await import("./tenant-members");
+
+    const result = await listTenantAdminInvitations("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      invitations: [],
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockListInvitations).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a list the API could not answer", async () => {
+    mockListInvitations.mockRejectedValueOnce(
+      new ConnectError("invitations unavailable", Code.Unavailable)
+    );
+    const { listTenantAdminInvitations } = await import("./tenant-members");
+
+    const result = await listTenantAdminInvitations("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      invitations: [],
+      ok: false,
+      requiresSignIn: false,
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

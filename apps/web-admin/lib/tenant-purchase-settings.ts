@@ -5,6 +5,7 @@ import {
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -84,6 +85,7 @@ const getTenantPurchaseSettingsForSession = async (
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -101,6 +103,7 @@ const getTenantPurchaseSettingsForSession = async (
 
     const settings = toTenantPurchaseSettings(response.settings);
     if (settings === undefined) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.settings.purchase.load_failed"),
         ok: false,
@@ -110,6 +113,7 @@ const getTenantPurchaseSettingsForSession = async (
     return { ok: true, settings };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,

@@ -2,6 +2,7 @@ import { CommentMode } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import {
@@ -95,6 +96,7 @@ const getTenantCommentSettingsForSession = async (
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -114,6 +116,7 @@ const getTenantCommentSettingsForSession = async (
 
     const commentMode = toTenantCommentMode(response.commentMode);
     if (commentMode === undefined) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.settings.comments.load_failed"),
         ok: false,
@@ -128,6 +131,7 @@ const getTenantCommentSettingsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,

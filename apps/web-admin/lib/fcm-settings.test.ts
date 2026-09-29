@@ -2,12 +2,14 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockDeleteApi,
   mockGetAccessToken,
   mockGetApi,
   mockSaveApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockDeleteApi: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -16,6 +18,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -71,6 +74,7 @@ describe("fcm-settings", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:fcm-settings");
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("keeps anything but presence, project, account, and date off the screen", async () => {
@@ -107,6 +111,27 @@ describe("fcm-settings", () => {
       requiresSignIn: true,
     });
     expect(mockGetApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("fails and drops the cache entry when the read fails", async () => {
+    mockGetApi.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+    const { getTenantFcmSettings } = await import("./fcm-settings");
+
+    const result = await getTenantFcmSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("answers a refused key with the console's copy rather than the server's", async () => {

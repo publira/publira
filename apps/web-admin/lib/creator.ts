@@ -7,6 +7,7 @@ import {
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import type { ReaderItem } from "../app/[tenant_id]/(protected)/readers/reader-types";
@@ -150,6 +151,7 @@ const listCreatorsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -176,6 +178,7 @@ const listCreatorsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -207,6 +210,7 @@ const listAllCreatorsForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -243,6 +247,7 @@ const listAllCreatorsForSession = async (
     // Match episode reorder: a partial walk must not surface a half-built
     // option list that operators treat as complete.
     if (walkStop !== "completed") {
+      dropFailedCacheEntry();
       return {
         ...emptyCursorPageTokens,
         creators: [],
@@ -261,6 +266,7 @@ const listAllCreatorsForSession = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -432,6 +438,7 @@ const getCreatorForSession = async (
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -449,6 +456,7 @@ const getCreatorForSession = async (
     );
 
     if (!response.creator?.publicId?.trim()) {
+      dropFailedCacheEntry();
       return {
         message: t("admin.creators.list_failed"),
         ok: false,
@@ -465,6 +473,7 @@ const getCreatorForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,

@@ -6,11 +6,13 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantLegalPagesApi,
   mockUpdateTenantLegalPagesApi,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantLegalPagesApi: vi.fn(),
@@ -18,6 +20,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -98,6 +101,7 @@ describe("tenant-legal-pages", () => {
     // read reports both.
     expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:legal-pages");
     expect(mockCacheTag).toHaveBeenCalledWith("pages-TENANT001");
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("reads a role with no page as absent", async () => {
@@ -120,6 +124,28 @@ describe("tenant-legal-pages", () => {
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
     expect(mockGetTenantLegalPagesApi).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a read the API could not answer", async () => {
+    mockGetTenantLegalPagesApi.mockRejectedValueOnce(
+      new ConnectError("legal pages unavailable", Code.Unavailable)
+    );
+
+    const { getTenantLegalPages } = await import("./tenant-legal-pages");
+    const result = await getTenantLegalPages("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(result).not.toHaveProperty("pages");
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("writes both ids and reads back what was stored", async () => {

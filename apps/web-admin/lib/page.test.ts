@@ -6,6 +6,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockCreatePage,
   mockCreatePageTranslation,
@@ -15,7 +16,9 @@ const {
   mockGetPage,
   mockListPages,
   mockListPageTranslations,
+  mockListVersions,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreatePage: vi.fn(),
   mockCreatePageTranslation: vi.fn(),
@@ -25,6 +28,7 @@ const {
   mockGetPage: vi.fn(),
   mockListPageTranslations: vi.fn(),
   mockListPages: vi.fn(),
+  mockListVersions: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -41,6 +45,7 @@ vi.mock("./api", () => ({
       getPage: mockGetPage,
       listPageTranslations: mockListPageTranslations,
       listPages: mockListPages,
+      listVersions: mockListVersions,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -49,6 +54,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -95,6 +101,7 @@ describe("listPages", () => {
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("fetches the first page with an empty token", async () => {
@@ -146,6 +153,11 @@ describe("listPages", () => {
       pages: [],
       previousToken: "",
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("returns a result with no token when the fetch fails", async () => {
@@ -163,6 +175,11 @@ describe("listPages", () => {
       ok: false,
       pages: [],
       previousToken: "",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -211,6 +228,7 @@ describe("listPublishedPages", () => {
         { id: "p1", title: "Terms" },
       ],
     });
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   // A partial list would read as "these are all the published pages" and hide
@@ -229,6 +247,11 @@ describe("listPublishedPages", () => {
       ok: false,
       requiresSignIn: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("asks for a sign-in when there is no session", async () => {
@@ -239,6 +262,27 @@ describe("listPublishedPages", () => {
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
     expect(mockListPages).not.toHaveBeenCalled();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a failed page of the walk as a message", async () => {
+    mockListPages.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listPublishedPages } = await import("./page");
+    const result = await listPublishedPages("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 
@@ -369,6 +413,7 @@ describe("listPageTranslations", () => {
     });
     expect(mockCacheTag).toHaveBeenCalledWith("pages-TENANT001");
     expect(mockCacheTag).toHaveBeenCalledWith("page-TENANT001-PAGE001");
+    expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("leaves out a translation in a locale this build does not serve", async () => {
@@ -402,6 +447,196 @@ describe("listPageTranslations", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listPageTranslations } = await import("./page");
+    const result = await listPageTranslations(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListPageTranslations).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a failure other than a missing page as a message", async () => {
+    mockListPageTranslations.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listPageTranslations } = await import("./page");
+    const result = await listPageTranslations(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+});
+
+describe("getPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("returns the page without dropping the cache entry", async () => {
+    mockGetPage.mockResolvedValue({ page: page("PAGE001", "Privacy") });
+
+    const { getPage } = await import("./page");
+    const result = await getPage(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: true, page: { id: "PAGE001" } });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getPage } = await import("./page");
+    const result = await getPage(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockGetPage).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("keeps a missing page as a cacheable not found", async () => {
+    mockGetPage.mockRejectedValue(
+      new ConnectError("page not found", Code.NotFound)
+    );
+
+    const { getPage } = await import("./page");
+    const result = await getPage(
+      { pageId: "PAGE404", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ notFound: true, ok: false });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure other than a missing page as a message", async () => {
+    mockGetPage.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { getPage } = await import("./page");
+    const result = await getPage(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+});
+
+describe("listPageVersions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("returns the versions without dropping the cache entry", async () => {
+    mockListVersions.mockResolvedValue({
+      versions: [
+        {
+          contentMarkdown: "# Privacy",
+          id: "VERSION001",
+          pageId: "PAGE001",
+          status: "published",
+          versionNumber: 1,
+        },
+      ],
+    });
+
+    const { listPageVersions } = await import("./page");
+    const result = await listPageVersions(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      versions: [{ id: "VERSION001", status: "published" }],
+    });
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("asks for a sign-in without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listPageVersions } = await import("./page");
+    const result = await listPageVersions(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListVersions).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      requiresSignIn: true,
+      versions: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports a failed read as a message", async () => {
+    mockListVersions.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listPageVersions } = await import("./page");
+    const result = await listPageVersions(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      requiresSignIn: false,
+      versions: [],
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

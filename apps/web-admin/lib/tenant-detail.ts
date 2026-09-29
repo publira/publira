@@ -2,6 +2,7 @@ import {
   isMissingResourceRpcError,
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
@@ -33,6 +34,7 @@ const readTenantForSession = async (
 
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
     return { ok: false, requiresSignIn: !sessionId };
   }
 
@@ -47,6 +49,7 @@ const readTenantForSession = async (
     const publicId = response.tenant?.publicId?.trim() ?? "";
     const name = response.tenant?.name?.trim() ?? "";
     if (!publicId || !name) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
 
@@ -61,6 +64,7 @@ const readTenantForSession = async (
     };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
     if (isMissingResourceRpcError(error)) {
