@@ -23,6 +23,14 @@ out_dir="${MOBILE_DIR}/.run/screenshots"
 # catalog, and fetch the covers on it.
 wait_ms="${PUBLIRA_MOBILE_SCREENSHOT_WAIT_MS:-8000}"
 
+# The development-seed reader every screen is photographed signed in as, so a
+# screen only a reader reaches shows itself rather than the signed-out notice.
+# Named empty, the screens are photographed signed out.
+reader="${PUBLIRA_MOBILE_SCREENSHOT_READER-member@example.com}"
+# Every account the development seed holds has the password its address's
+# local part followed by `pass`.
+reader_password="${PUBLIRA_MOBILE_SCREENSHOT_PASSWORD:-${reader%%@*}pass}"
+
 routes=("$@")
 if [[ "${#routes[@]}" -eq 0 ]]; then
   routes=("/")
@@ -43,6 +51,43 @@ require_profile_stack() {
   wait4x http "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}/readyz" --timeout 5s
 }
 
+# Calls $1 on the profile's public API with the JSON body $2, and the tenant
+# header $3 when one is given.
+call_public_api() {
+  local procedure="$1" body="$2" tenant="${3:-}" response
+  local -a headers=(-H 'content-type: application/json')
+  [[ -z "${tenant}" ]] || headers+=(-H "x-publira-tenant-id: ${tenant}")
+  response="$(curl -sS --fail-with-body "${headers[@]}" --data "${body}" \
+    "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}/api/publira.v1.${procedure}")" ||
+    dev_env_die "${procedure} failed: ${response}"
+  printf '%s\n' "${response}"
+}
+
+# The define that starts the app signed in as the reader, empty for a run
+# photographed signed out. Either way the build holds its session in memory,
+# so the session a device already keeps is neither shown nor replaced.
+session_define='--dart-define=PUBLIRA_SESSION_TOKEN='
+
+sign_in_reader() {
+  local response tenant token
+  [[ -n "${reader}" ]] || return 0
+  response="$(call_public_api DomainService/GetTenantByDomain \
+    "$(jq -n --arg host "${PUBLIRA_TENANT_HOST}" '{domains: [$host]}')")" ||
+    exit 1
+  tenant="$(jq -r '.tenantId // empty' <<< "${response}")"
+  [[ -n "${tenant}" ]] ||
+    dev_env_die "no tenant is served on ${PUBLIRA_TENANT_HOST}"
+  response="$(call_public_api AuthService/Login \
+    "$(jq -n --arg tenant "${tenant}" --arg email "${reader}" \
+      --arg password "${reader_password}" \
+      '{tenant: {tenantId: $tenant}, email: $email, password: $password}')" \
+    "${tenant}")" || exit 1
+  token="$(jq -r '.accessToken.token // empty' <<< "${response}")"
+  [[ -n "${token}" ]] || dev_env_die "Login answered ${reader} with no token"
+  session_define="--dart-define=PUBLIRA_SESSION_TOKEN=${token}"
+  printf 'signed in as %s\n' "${reader}"
+}
+
 screenshot_on_device() {
   local device="$1" app_id activity route name attempt
   mobile_load_app_config "$(mobile_device_address "${device}")"
@@ -52,9 +97,11 @@ screenshot_on_device() {
     "${PUBLIRA_TENANT_HOST}"
   require_profile_stack
 
+  sign_in_reader
   mapfile -t defines < <(
     mobile_dart_defines "${PUBLIRA_BASE_URL}"
   )
+  defines+=("${session_define}")
   mobile_generate_build_config
   app_id="$(mobile_dev_application_id)"
   flutter build apk --debug "${defines[@]}"
@@ -108,7 +155,9 @@ screenshot_in_browser() {
   # picked from whatever is free.
   port="$((PUBLIRA_WEB_HOST_PORT + 60))"
   origin="http://127.0.0.1:${port}"
+  sign_in_reader
   mapfile -t defines < <(mobile_dart_defines "${origin}")
+  defines+=("${session_define}")
   flutter build web "${defines[@]}"
 
   dart run scripts/web_app_server.dart \

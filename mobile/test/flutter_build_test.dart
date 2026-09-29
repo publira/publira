@@ -192,4 +192,20 @@ void main() {
       );
     });
   });
+
+  group('a tenant build', () {
+    test('never carries a session', () {
+      expect(
+        _problemsOf([
+          'apk',
+          '--flavor=dev',
+          '--dart-define=PUBLIRA_SESSION_TOKEN=token',
+        ]),
+        [
+          '--dart-define=PUBLIRA_SESSION_TOKEN signs every reader in as one '
+              'account; leave it out',
+        ],
+      );
+    });
+  });
 }
