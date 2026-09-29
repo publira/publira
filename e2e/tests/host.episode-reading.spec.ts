@@ -280,12 +280,15 @@ const turnPages = async (page: Page, count: number): Promise<void> => {
 /** The index the drag scenario holds the thumb at: the spread that page 6 opens. */
 const DRAG_TARGET_INDEX = 5;
 
+/** The width of the slider's thumb, `size-3.5`. */
+const SLIDER_THUMB_PX = 14;
+
 /**
  * Grab the slider's thumb where it rests and drag it to `index`, still held.
  *
  * The toolbar runs right to left, so later pages lie toward the slider's left
  * end, and a native range keeps its thumb inside the track by half the
- * thumb's width, which is the slider's height, at either end.
+ * thumb's width at either end.
  */
 const dragProgressTo = async (page: Page, index: number): Promise<void> => {
   const slider = readingProgress(page);
@@ -297,8 +300,8 @@ const dragProgressTo = async (page: Page, index: number): Promise<void> => {
   const max = Number(await slider.getAttribute("max"));
   const thumbX = (value: number) =>
     box.x +
-    box.height / 2 +
-    (1 - (value - min) / (max - min)) * (box.width - box.height);
+    SLIDER_THUMB_PX / 2 +
+    (1 - (value - min) / (max - min)) * (box.width - SLIDER_THUMB_PX);
   const y = box.y + box.height / 2;
 
   await page.mouse.move(thumbX(Number(await slider.inputValue())), y);
