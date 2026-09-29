@@ -15,6 +15,27 @@ import {
 import { getTenantDefaultLocale } from "./tenant";
 
 /**
+ * {@link writePublicSessionCookie} without the cache tag, for a Route Handler
+ * that answers with a document navigation, which leaves no client cache behind.
+ */
+export const sealPublicSessionCookie = async (
+  session: PublicSession,
+  tenantId: string
+): Promise<void> => {
+  const sealed = await sealSessionCookieValue({
+    accessToken: session.accessToken,
+    expiresAt: session.expiresAt.toISOString(),
+    tenantId,
+  });
+  const cookieStore = await cookies();
+  cookieStore.set({
+    ...sessionCookieOptions(session.expiresAt),
+    name: PUBLIC_SESSION_COOKIE_NAME,
+    value: sealed,
+  });
+};
+
+/**
  * Seal a freshly minted access token into the local session cookie.
  *
  * **Server Actions only**, for the same reason as the deletion below: the
@@ -31,17 +52,7 @@ export const writePublicSessionCookie = async (
   session: PublicSession,
   tenantId: string
 ): Promise<void> => {
-  const sealed = await sealSessionCookieValue({
-    accessToken: session.accessToken,
-    expiresAt: session.expiresAt.toISOString(),
-    tenantId,
-  });
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions(session.expiresAt),
-    name: PUBLIC_SESSION_COOKIE_NAME,
-    value: sealed,
-  });
+  await sealPublicSessionCookie(session, tenantId);
   updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 };
 

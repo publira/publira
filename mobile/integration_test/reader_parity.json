@@ -361,6 +361,25 @@
       ]
     },
     {
+      "name": "Signing in and up with Apple or Google",
+      "web": {
+        "routes": [
+          "[locale]/(auth)/signup/continue",
+          "api/v1/auth/[provider]/callback"
+        ],
+        "rpcs": ["LoginWithIdToken"]
+      },
+      "exception": "Not in the app yet: #1778."
+    },
+    {
+      "name": "The Apple and Google accounts linked to the reader's account",
+      "web": {
+        "routes": ["[locale]/(site)/settings/security"],
+        "rpcs": ["ListMyIdentities", "UnlinkIdentity"]
+      },
+      "exception": "Not in the app yet: #1778."
+    },
+    {
       "name": "Signing out at the API",
       "web": { "rpcs": ["Logout"] },
       "exception": "The app drops its session without telling the API, which only audits the sign-out: #2830."

@@ -2952,6 +2952,22 @@
         "title": "请查收邮件",
         "to_resend_verification": "没有收到邮件？"
       },
+      "social": {
+        "continue": {
+          "description": "同意以下页面后即可创建账户。",
+          "submit": "创建账户",
+          "title": "完成注册"
+        },
+        "continue_with_apple": "通过Apple继续",
+        "continue_with_google": "通过Google继续",
+        "divider": "或",
+        "errors": {
+          "expired": "登录已超时。请重新开始。",
+          "failed": "无法登录。请重试。",
+          "refused": "此账户无法在此登录。请使用邮箱地址登录。",
+          "unavailable": "此登录方式目前不可用。"
+        }
+      },
       "verify": {
         "failed": "无法确认您的邮箱地址。链接可能已失效或无效。",
         "title": "邮箱地址确认",
@@ -3462,11 +3478,15 @@
       "current_password_label": "当前密码",
       "delete_confirm_description": "请输入当前密码以注销您的账户。",
       "delete_confirm_title": "确认注销账户",
+      "delete_confirm_with_provider": "您的账户没有密码。请使用关联的账户重新登录以确认。",
       "delete_description": "注销账户会永久取消您对它的访问权限，且无法撤销。",
       "delete_failed": "无法注销您的账户。请检查您输入的内容。",
       "delete_heading": "注销账户",
+      "delete_no_provider": "与您关联的账户目前都无法在本站登录。如需注销账户，请联系本站。",
       "delete_open": "注销账户",
       "delete_submit": "注销我的账户",
+      "delete_with_apple": "通过Apple确认",
+      "delete_with_google": "通过Google确认",
       "deleted": "您的账户已注销。感谢您的使用。",
       "description": "管理您的个人资料、关注、通知、安全与账户信息。",
       "email_change_failed": "无法申请邮箱地址变更。请检查您输入的内容。",
@@ -3496,6 +3516,14 @@
       "follows_unavailable": "停止发布的对象会从此列表中移除。",
       "follows_unpublished_title": "当前未发布",
       "heading": "账户设置",
+      "linked_account_last": "您的账户没有密码，因此无法解除最后一个关联的账户。",
+      "linked_account_linked_at": "关联于{$date}",
+      "linked_account_unlink": "解除关联",
+      "linked_account_unlink_aria": "解除与{$provider}的关联",
+      "linked_account_unlink_failed": "无法解除关联。请稍后重试。",
+      "linked_account_unlinked": "已解除关联。",
+      "linked_accounts_description": "可用于登录的Apple和Google账户。",
+      "linked_accounts_heading": "关联账户",
       "name_help": "此名称会显示在您的个人资料上。",
       "name_label": "显示名称",
       "name_placeholder": "请输入显示名称",

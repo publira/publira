@@ -28,6 +28,8 @@ import { getMessagesFor } from "#lib/messages";
 import { readConsentPageVersionIds } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
+import { sameVersions } from "./consent";
+
 const signupFormSchema = async (locale: Locale) => {
   const [t, birthDate, email, password, tenantId] = await Promise.all([
     getMessagesFor(locale),
@@ -72,11 +74,6 @@ const signupFormSchema = async (locale: Locale) => {
         path: ["consent"],
       }
     );
-};
-
-const sameVersions = (left: string[], right: string[]): boolean => {
-  const rightIds = new Set(right);
-  return left.length === rightIds.size && left.every((id) => rightIds.has(id));
 };
 
 export const signupAction = async (

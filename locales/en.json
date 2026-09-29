@@ -2952,6 +2952,22 @@
         "title": "Check your email",
         "to_resend_verification": "Didn't get the email?"
       },
+      "social": {
+        "continue": {
+          "description": "Agree to the pages below to create your account.",
+          "submit": "Create account",
+          "title": "Finish signing up"
+        },
+        "continue_with_apple": "Continue with Apple",
+        "continue_with_google": "Continue with Google",
+        "divider": "or",
+        "errors": {
+          "expired": "The sign-in took too long. Please start again.",
+          "failed": "Could not sign in. Please try again.",
+          "refused": "This account cannot sign in here. Sign in with your email address instead.",
+          "unavailable": "This sign-in method is not available right now."
+        }
+      },
       "verify": {
         "failed": "Could not confirm your email address. The link may have expired or be invalid.",
         "title": "Email confirmation",
@@ -3462,11 +3478,15 @@
       "current_password_label": "Current password",
       "delete_confirm_description": "Enter your current password to delete your account.",
       "delete_confirm_title": "Confirm account deletion",
+      "delete_confirm_with_provider": "Your account has no password. Sign in again with a linked account to confirm.",
       "delete_description": "Deleting your account permanently removes your access to it. This cannot be undone.",
       "delete_failed": "Could not delete your account. Please check what you entered.",
       "delete_heading": "Delete account",
+      "delete_no_provider": "None of the accounts linked to yours can sign in on this site right now. Contact the site to delete your account.",
       "delete_open": "Delete account",
       "delete_submit": "Delete my account",
+      "delete_with_apple": "Confirm with Apple",
+      "delete_with_google": "Confirm with Google",
       "deleted": "Your account has been deleted. Thank you for using the site.",
       "description": "Manage your profile, follows, notifications, security, and account details.",
       "email_change_failed": "Could not request the email change. Please check what you entered.",
@@ -3496,6 +3516,14 @@
       "follows_unavailable": "Targets that stop being published drop off this list.",
       "follows_unpublished_title": "Not currently published",
       "heading": "Account settings",
+      "linked_account_last": "Your account has no password, so the last linked account stays linked.",
+      "linked_account_linked_at": "Linked on {$date}",
+      "linked_account_unlink": "Unlink",
+      "linked_account_unlink_aria": "Unlink {$provider}",
+      "linked_account_unlink_failed": "Could not unlink the account. Please try again later.",
+      "linked_account_unlinked": "The account was unlinked.",
+      "linked_accounts_description": "The Apple and Google accounts you can sign in with.",
+      "linked_accounts_heading": "Linked accounts",
       "name_help": "This name appears on your profile.",
       "name_label": "Display name",
       "name_placeholder": "Enter a display name",

@@ -1,0 +1,230 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyScenarioSql, querySql } from "../src/db";
+import { openHostUserMenu, signOutHost } from "../src/host";
+import {
+  SOCIAL_SIGN_IN_CONSENT_TENANT,
+  SOCIAL_SIGN_IN_MEMBER,
+  SOCIAL_SIGN_IN_SCENARIO,
+  SOCIAL_SIGN_IN_TENANT,
+  SOCIAL_SIGN_IN_TERMS_PAGE,
+} from "../src/scenarios/social-sign-in";
+import { expectLoginPage } from "../src/session";
+import { stubGoogleSignIn } from "../src/sign-in-provider";
+import type { GoogleAccount } from "../src/sign-in-provider";
+import {
+  hostPath,
+  WEB_HOST_BASE_URL,
+  WEB_HOST_SOCIAL_SIGN_IN_BASE_URL,
+  WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL,
+} from "../src/urls";
+
+/**
+ * A tenant that offers Apple and Google puts a button for each on its sign-in
+ * screen, and a reader who picks Google comes back signed in: to a new account
+ * on a first sign-in, to the same one on the next, and to the account already
+ * holding the address Google vouches for. A tenant that asks for consent asks
+ * before the account is created. A linked account is listed in the security
+ * settings and can be unlinked, and an account without a password confirms its
+ * deletion by signing in again.
+ *
+ * Google is played by a route that answers its authorization endpoint the way
+ * `response_mode=form_post` does, with an ID token the stack's sign-in-provider
+ * stand-in signs; everything after that is the site and the API as deployed.
+ */
+
+const socialUrl = (pathname: string): string =>
+  `${WEB_HOST_SOCIAL_SIGN_IN_BASE_URL}${hostPath(pathname)}`;
+
+const CONTINUE_WITH_GOOGLE = "Continue with Google";
+const CONTINUE_WITH_APPLE = "Continue with Apple";
+
+const NEWCOMER: GoogleAccount = {
+  email: "social-newcomer@example.com",
+  name: "Social Newcomer",
+  subject: "google-social-newcomer",
+};
+
+const MEMBER_GOOGLE: GoogleAccount = {
+  email: SOCIAL_SIGN_IN_MEMBER.email,
+  name: "Member at Google",
+  subject: "google-social-member",
+};
+
+const CONSENT_NEWCOMER: GoogleAccount = {
+  email: "social-consent-newcomer@example.com",
+  name: "Consent Newcomer",
+  subject: "google-social-consent-newcomer",
+};
+
+const accountCount = (tenantPublicId: string, email: string): string =>
+  querySql(`
+    SELECT count(*)
+    FROM users u
+    JOIN tenants t ON t.id = u.tenant_id
+    WHERE t.public_id = '${tenantPublicId}' AND u.email = '${email}';
+  `);
+
+const linkCount = (email: string): string =>
+  querySql(`
+    SELECT count(*)
+    FROM user_identities i
+    JOIN users u ON u.id = i.user_id
+    WHERE u.email = '${email}' AND i.provider = 'google';
+  `);
+
+const signInWithGoogle = async (
+  page: Page,
+  account: GoogleAccount,
+  baseUrl: string = WEB_HOST_SOCIAL_SIGN_IN_BASE_URL
+): Promise<void> => {
+  await stubGoogleSignIn(page, account);
+  await page.goto(`${baseUrl}${hostPath("/login")}`);
+  await page.getByRole("button", { name: CONTINUE_WITH_GOOGLE }).click();
+};
+
+const expectSignedInAs = async (page: Page, name: string): Promise<void> => {
+  await openHostUserMenu(page);
+  await expect(page.getByRole("menu")).toContainText(name);
+  await page.keyboard.press("Escape");
+};
+
+test.describe("Sign in with Apple and Google on the public site", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeAll(() => {
+    applyScenarioSql(SOCIAL_SIGN_IN_SCENARIO);
+  });
+
+  test("offers a button for each provider the tenant enabled, and none elsewhere", async ({
+    page,
+  }) => {
+    await page.goto(socialUrl("/login"));
+    await expect(
+      page.getByRole("button", { name: CONTINUE_WITH_APPLE })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: CONTINUE_WITH_GOOGLE })
+    ).toBeVisible();
+
+    await page.goto(socialUrl("/signup"));
+    await expect(
+      page.getByRole("button", { name: CONTINUE_WITH_GOOGLE })
+    ).toBeVisible();
+
+    await page.goto(`${WEB_HOST_BASE_URL}${hostPath("/login")}`);
+    await expectLoginPage(page);
+    await expect(
+      page.getByRole("button", { name: CONTINUE_WITH_GOOGLE })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: CONTINUE_WITH_APPLE })
+    ).toHaveCount(0);
+  });
+
+  test("creates an account on the first sign-in and finds it again on the next", async ({
+    page,
+  }) => {
+    await signInWithGoogle(page, NEWCOMER);
+    await page.waitForURL(socialUrl("/"));
+    await expectSignedInAs(page, NEWCOMER.name);
+
+    await signOutHost(page);
+    await signInWithGoogle(page, NEWCOMER);
+    await page.waitForURL(socialUrl("/"));
+    await expectSignedInAs(page, NEWCOMER.name);
+
+    expect(accountCount(SOCIAL_SIGN_IN_TENANT, NEWCOMER.email)).toBe("1");
+  });
+
+  test("links the account holding the address, and unlinks it from the security settings", async ({
+    page,
+  }) => {
+    await signInWithGoogle(page, MEMBER_GOOGLE);
+    await page.waitForURL(socialUrl("/"));
+    await expectSignedInAs(page, SOCIAL_SIGN_IN_MEMBER.name);
+    expect(accountCount(SOCIAL_SIGN_IN_TENANT, MEMBER_GOOGLE.email)).toBe("1");
+
+    await page.goto(socialUrl("/settings/security"));
+    const linked = page.getByRole("region", { name: "Linked accounts" });
+    await expect(linked).toContainText("Google");
+    await expect(linked).toContainText(SOCIAL_SIGN_IN_MEMBER.email);
+
+    await linked.getByRole("button", { name: "Unlink Google" }).click();
+    await expect(page.getByText("The account was unlinked.")).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Linked accounts" })
+    ).toHaveCount(0);
+    expect(linkCount(SOCIAL_SIGN_IN_MEMBER.email)).toBe("0");
+  });
+
+  test("keeps the only way into an account without a password", async ({
+    page,
+  }) => {
+    await signInWithGoogle(page, NEWCOMER);
+    await page.waitForURL(socialUrl("/"));
+
+    await page.goto(socialUrl("/settings/security"));
+    const linked = page.getByRole("region", { name: "Linked accounts" });
+    await expect(
+      linked.getByRole("button", { name: "Unlink Google" })
+    ).toBeDisabled();
+    await expect(linked).toContainText(
+      "Your account has no password, so the last linked account stays linked."
+    );
+  });
+
+  test("deletes an account without a password once the reader signs in again", async ({
+    page,
+  }) => {
+    await signInWithGoogle(page, NEWCOMER);
+    await page.waitForURL(socialUrl("/"));
+
+    await page.goto(socialUrl("/settings"));
+    await page.getByRole("button", { name: "Delete account" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel("Current password")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Confirm with Google" }).click();
+
+    await page.waitForURL((url) => url.pathname.endsWith("/login"));
+    expect(accountCount(SOCIAL_SIGN_IN_TENANT, NEWCOMER.email)).toBe("0");
+  });
+
+  test("asks for consent to the tenant's terms before creating the account", async ({
+    page,
+  }) => {
+    await signInWithGoogle(
+      page,
+      CONSENT_NEWCOMER,
+      WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL
+    );
+    await page.waitForURL((url) => url.pathname.endsWith("/signup/continue"));
+    expect(
+      accountCount(SOCIAL_SIGN_IN_CONSENT_TENANT, CONSENT_NEWCOMER.email)
+    ).toBe("0");
+
+    await expect(
+      page.getByRole("link", { name: SOCIAL_SIGN_IN_TERMS_PAGE.title })
+    ).toBeVisible();
+    await page
+      .getByRole("checkbox", {
+        name: "I have read and agree to the following.",
+      })
+      .check();
+    await page.getByRole("button", { name: "Create account" }).click();
+
+    await page.waitForURL(
+      `${WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL}${hostPath("/")}`
+    );
+    await expectSignedInAs(page, CONSENT_NEWCOMER.name);
+    expect(
+      querySql(`
+        SELECT c.page_version_id
+        FROM user_page_consents c
+        JOIN users u ON u.id = c.user_id
+        WHERE u.email = '${CONSENT_NEWCOMER.email}';
+      `)
+    ).toBe(SOCIAL_SIGN_IN_TERMS_PAGE.versionId);
+  });
+});

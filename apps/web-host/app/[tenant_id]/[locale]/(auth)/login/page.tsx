@@ -18,6 +18,7 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { SocialSignInButtons } from "#components/social-sign-in-buttons";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
@@ -143,6 +144,10 @@ const LoginForm = ({
           </Suspense>
         </Button>
       </form>
+
+      <Suspense fallback={null}>
+        <SocialSignInButtons returnTo={returnToPath} />
+      </Suspense>
     </AuthScreenBody>
 
     <AuthScreenFooter>

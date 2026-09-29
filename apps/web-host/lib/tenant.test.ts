@@ -9,6 +9,7 @@ import {
   getTenantDisplayTimeZone,
   getTenantLegalPages,
   getTenantPublicOrigin,
+  getTenantSignInClients,
   getTenantSiteInfo,
   getTenantTheme,
   getTenantWebPushPublicKey,
@@ -123,6 +124,24 @@ describe("tenant", () => {
     expect(info?.googlePlayUrl).toBe(
       "https://play.google.com/store/apps/details?id=test"
     );
+  });
+
+  it("Offer a sign-in provider only where the site has a client to sign in through", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      appleSignIn: { servicesId: "" },
+      googleSignIn: { iosClientId: "ios-client", webClientId: " web-client " },
+    });
+
+    await expect(getTenantSignInClients("TENANT_001")).resolves.toEqual({
+      google: "web-client",
+    });
+  });
+
+  it("Offer no sign-in provider where the tenant enabled none", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantSignInClients("TENANT_001")).resolves.toEqual({});
   });
 
   it("Carry the pages the tenant names as its terms and privacy policy in the reader's locale", async () => {

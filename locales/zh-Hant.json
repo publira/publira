@@ -2952,6 +2952,22 @@
         "title": "請查收郵件",
         "to_resend_verification": "沒有收到郵件嗎？"
       },
+      "social": {
+        "continue": {
+          "description": "同意以下頁面後即可建立帳戶。",
+          "submit": "建立帳戶",
+          "title": "完成註冊"
+        },
+        "continue_with_apple": "透過Apple繼續",
+        "continue_with_google": "透過Google繼續",
+        "divider": "或",
+        "errors": {
+          "expired": "登入已逾時。請重新開始。",
+          "failed": "無法登入。請再試一次。",
+          "refused": "此帳戶無法在此登入。請使用電子郵件地址登入。",
+          "unavailable": "此登入方式目前無法使用。"
+        }
+      },
       "verify": {
         "failed": "無法確認您的電子郵件地址。連結可能已失效或無效。",
         "title": "電子郵件地址確認",
@@ -3462,11 +3478,15 @@
       "current_password_label": "目前的密碼",
       "delete_confirm_description": "請輸入目前的密碼以刪除您的帳戶。",
       "delete_confirm_title": "確認刪除帳戶",
+      "delete_confirm_with_provider": "您的帳戶沒有密碼。請使用已連結的帳戶重新登入以確認。",
       "delete_description": "刪除帳戶會永久取消您對它的存取權限，且無法復原。",
       "delete_failed": "無法刪除您的帳戶。請檢查您輸入的內容。",
       "delete_heading": "刪除帳戶",
+      "delete_no_provider": "與您連結的帳戶目前都無法在本站登入。如需刪除帳戶，請聯絡本站。",
       "delete_open": "刪除帳戶",
       "delete_submit": "刪除我的帳戶",
+      "delete_with_apple": "透過Apple確認",
+      "delete_with_google": "透過Google確認",
       "deleted": "您的帳戶已刪除。感謝您的使用。",
       "description": "管理您的個人資料、追蹤、通知、安全性與帳戶資訊。",
       "email_change_failed": "無法申請電子郵件地址變更。請檢查您輸入的內容。",
@@ -3496,6 +3516,14 @@
       "follows_unavailable": "停止發布的對象會從此列表中移除。",
       "follows_unpublished_title": "目前未發布",
       "heading": "帳戶設定",
+      "linked_account_last": "您的帳戶沒有密碼，因此無法解除最後一個已連結的帳戶。",
+      "linked_account_linked_at": "連結於{$date}",
+      "linked_account_unlink": "解除連結",
+      "linked_account_unlink_aria": "解除與{$provider}的連結",
+      "linked_account_unlink_failed": "無法解除連結。請稍後再試。",
+      "linked_account_unlinked": "已解除連結。",
+      "linked_accounts_description": "可用於登入的Apple和Google帳戶。",
+      "linked_accounts_heading": "已連結的帳戶",
       "name_help": "此名稱會顯示在您的個人資料上。",
       "name_label": "顯示名稱",
       "name_placeholder": "請輸入顯示名稱",

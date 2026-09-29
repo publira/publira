@@ -1,4 +1,9 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
+import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -7,6 +12,8 @@ const {
   mockLogout,
   mockGetMe,
   mockGetNotificationSettings,
+  mockListMyIdentities,
+  mockLoginWithIdToken,
   mockRequestEmailChange,
   mockResolveAccessToken,
   mockUpdateMe,
@@ -14,7 +21,9 @@ const {
   mockDeleteMe: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
+  mockListMyIdentities: vi.fn(),
   mockLogin: vi.fn(),
+  mockLoginWithIdToken: vi.fn(),
   mockLogout: vi.fn(),
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -27,7 +36,9 @@ vi.mock("./api-client", () => ({
       deleteMe: mockDeleteMe,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
+      listMyIdentities: mockListMyIdentities,
       login: mockLogin,
+      loginWithIdToken: mockLoginWithIdToken,
       logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
       updateMe: mockUpdateMe,
@@ -65,6 +76,134 @@ describe("web-host auth", () => {
     );
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
+  });
+
+  const idTokenSignIn = {
+    authorizationCode: "",
+    idToken: "header.payload.signature",
+    nonce: "nonce-value",
+    provider: "google" as const,
+    redirectUri: "https://reader.example/api/v1/auth/google/callback",
+  };
+
+  it("loginWithIdToken: signs the reader in with the provider's token", async () => {
+    const { loginWithIdToken } = await importAuth();
+    mockLoginWithIdToken.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
+    });
+
+    const outcome = await loginWithIdToken("TENANT001", idTokenSignIn);
+
+    expect(mockLoginWithIdToken).toHaveBeenCalledWith(
+      {
+        agreedPageVersionIds: [],
+        authorizationCode: "",
+        birthDate: "",
+        idToken: "header.payload.signature",
+        name: "",
+        nonce: "nonce-value",
+        provider: IdentityProvider.GOOGLE,
+        redirectUri: "https://reader.example/api/v1/auth/google/callback",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+    expect(outcome).toEqual({
+      kind: "signed_in",
+      session: {
+        accessToken: "tok",
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+    });
+  });
+
+  it("loginWithIdToken: reports the consent a first sign-in still needs", async () => {
+    const { loginWithIdToken } = await importAuth();
+    mockLoginWithIdToken.mockRejectedValueOnce(
+      new ConnectError("consent", Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "agreed_page_version_ids" }] },
+        },
+      ])
+    );
+
+    await expect(loginWithIdToken("TENANT001", idTokenSignIn)).resolves.toEqual(
+      { kind: "consent_required" }
+    );
+  });
+
+  it("loginWithIdToken: hands a refusal back for the caller to word", async () => {
+    const { loginWithIdToken } = await importAuth();
+    const error = new ConnectError("disabled", Code.FailedPrecondition);
+    mockLoginWithIdToken.mockRejectedValueOnce(error);
+
+    await expect(loginWithIdToken("TENANT001", idTokenSignIn)).resolves.toEqual(
+      { error, kind: "refused" }
+    );
+  });
+
+  it("loginWithIdToken: unclassifiable errors are propagated", async () => {
+    const { loginWithIdToken } = await importAuth();
+    mockLoginWithIdToken.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(
+      loginWithIdToken("TENANT001", idTokenSignIn)
+    ).rejects.toMatchObject({ code: Code.Internal });
+  });
+
+  it("listMyIdentities: maps the linked providers and whether a password is set", async () => {
+    const { listMyIdentities } = await importAuth();
+    mockListMyIdentities.mockResolvedValueOnce({
+      hasPassword: false,
+      identities: [
+        {
+          email: "reader@example.com",
+          linkedAt: "2026-09-01T00:00:00Z",
+          provider: IdentityProvider.APPLE,
+        },
+        {
+          email: "unknown@example.com",
+          linkedAt: "2026-09-01T00:00:00Z",
+          provider: IdentityProvider.UNSPECIFIED,
+        },
+      ],
+    });
+
+    await expect(listMyIdentities("TENANT001")).resolves.toEqual({
+      hasPassword: false,
+      identities: [
+        {
+          email: "reader@example.com",
+          linkedAt: "2026-09-01T00:00:00Z",
+          provider: "apple",
+        },
+      ],
+    });
+  });
+
+  it("deleteMe: confirms an account without a password with a fresh sign-in", async () => {
+    const { deleteMe } = await importAuth();
+    mockDeleteMe.mockResolvedValueOnce({});
+
+    await expect(
+      deleteMe("TENANT001", {
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: "apple",
+      })
+    ).resolves.toBe(true);
+    expect(mockDeleteMe).toHaveBeenCalledWith(
+      {
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: IdentityProvider.APPLE,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
   });
 
   it("logoutPublic: accessToken If empty, do not call API", async () => {
@@ -200,7 +339,9 @@ describe("web-host auth", () => {
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(deleteMe("TENANT001", "pw")).rejects.toMatchObject({
+    await expect(
+      deleteMe("TENANT001", { password: "pw" })
+    ).rejects.toMatchObject({
       code: Code.Unauthenticated,
     });
   });
@@ -209,7 +350,9 @@ describe("web-host auth", () => {
     const { deleteMe } = await importAuth();
     mockDeleteMe.mockRejectedValueOnce(new Error("network"));
 
-    await expect(deleteMe("TENANT001", "pw")).rejects.toThrow("network");
+    await expect(deleteMe("TENANT001", { password: "pw" })).rejects.toThrow(
+      "network"
+    );
   });
 
   it("getNotificationSettings: null if no session", async () => {
