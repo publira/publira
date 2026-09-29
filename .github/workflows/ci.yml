@@ -827,6 +827,14 @@ jobs:
           PUBLIRA_ANDROID_KEY_ALIAS: upload
           PUBLIRA_ANDROID_KEY_PASSWORD: throwaway
 
+      # `restore-keys` carries the previous entry's distributions into this job,
+      # so drop every one the wrapper no longer names before the cache is saved.
+      - name: Cache / Prune Gradle distributions
+        run: |
+          set -euo pipefail
+          url="$(sed -n 's/^distributionUrl=//p' mobile/android/gradle/wrapper/gradle-wrapper.properties)"
+          find ~/.gradle/wrapper/dists -mindepth 1 -maxdepth 1 -type d ! -name "$(basename "${url}" .zip)" -print -exec rm -rf {} +
+
       - name: Teardown / Server stack
         if: always()
         run: |
