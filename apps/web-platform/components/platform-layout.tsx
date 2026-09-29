@@ -219,6 +219,7 @@ const PlatformMobileNavigation = async () => {
         <ConsoleMobileNavigationCloseButton
           aria-label={t("platform.shell.navigation_close")}
         />
+        <PlatformNavigation />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
         aria-label={t("platform.shell.navigation_open")}

@@ -122,15 +122,22 @@ const ConsoleSidebarNavigationLink = ({
   children: ReactNode;
   current: boolean;
   href: string;
-}) => (
-  <Link
-    aria-current={current ? "page" : undefined}
-    className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
-    href={href}
-  >
-    {children}
-  </Link>
-);
+}) => {
+  // The layout outlives a navigation, so an entry followed from the drawer has
+  // to close it itself.
+  const mobileNavigation = useContext(ConsoleMobileNavigationContext);
+
+  return (
+    <Link
+      aria-current={current ? "page" : undefined}
+      className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+      href={href}
+      onClick={mobileNavigation?.close}
+    >
+      {children}
+    </Link>
+  );
+};
 
 /**
  * The console shell cannot read the URL it is serving, so which item is current

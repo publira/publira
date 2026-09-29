@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { DashboardIcon } from "@publira/icons";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -145,6 +151,38 @@ describe("Console layout slots", () => {
 
     expect(dialog.parentElement?.role).toBe("presentation");
     expect(dialog.dataset.swipeDirection).toBe("left");
+  });
+
+  it("closes the drawer when an entry in it is followed", async () => {
+    render(
+      <ConsoleLayout>
+        <ConsoleMobileNavigation>
+          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
+          <ConsoleSidebarNavigation hrefs={hrefs}>
+            <ConsoleSidebarNavigationSection>
+              <ConsoleSidebarNavigationItems>
+                <ConsoleSidebarNavigationItem href="/tenants">
+                  <ConsoleSidebarNavigationItemHeading>
+                    <ConsoleSidebarNavigationItemLabel>
+                      Tenants
+                    </ConsoleSidebarNavigationItemLabel>
+                  </ConsoleSidebarNavigationItemHeading>
+                </ConsoleSidebarNavigationItem>
+              </ConsoleSidebarNavigationItems>
+            </ConsoleSidebarNavigationSection>
+          </ConsoleSidebarNavigation>
+        </ConsoleMobileNavigation>
+        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+        <div />
+      </ConsoleLayout>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    fireEvent.click(screen.getByRole("link", { name: "Tenants" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 });
 
