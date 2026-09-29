@@ -735,7 +735,7 @@ jobs:
           distribution: temurin
           java-version: "25.0.4+101.0.LTS"
 
-      # The wrapper fetches gradle-*-all.zip from services.gradle.org, the only
+      # The wrapper fetches gradle-*-bin.zip from services.gradle.org, the only
       # third-party host this job still depends on at build time; restoring it
       # removes the request instead of retrying it. `restore-keys` keeps the
       # distribution and most dependencies across a build-file edit, since the
