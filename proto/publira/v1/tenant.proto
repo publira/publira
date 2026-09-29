@@ -10,14 +10,36 @@ message GetTenantRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
 
-// A published page the tenant names for a role. The slug is in storage form
-// ("/privacy"), which is also the path the storefront serves it at.
+message GetTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale. Each page is read in its published translation in
+  // this locale, else the tenant's default locale, else its oldest published
+  // one, and TenantLegalPage.locale names the one read. Empty means the
+  // tenant's default locale.
+  string locale = 2;
+}
+
+// A published page the tenant names for a role, in one of its translations.
+// The slug is in storage form ("/privacy"), which is also the path the
+// storefront serves it at.
 message TenantLegalPage {
   string slug = 1;
+  // The title of the translation read.
   string title = 2;
-  // The published version, which a sign-up sends back in
-  // CreateUserRequest.agreed_page_version_ids.
+  // The published version of the translation read, which a sign-up sends back
+  // in CreateUserRequest.agreed_page_version_ids.
   string version_id = 3;
+  // The locale of the translation read, which differs from the one asked for
+  // when the page has no published translation in it.
+  string locale = 4;
+}
+
+// The pages the tenant names as its terms of service and its privacy policy.
+// A role is absent where the tenant has named no page for it, and where the
+// page it named is not published, so a link built from one always resolves.
+message GetTenantLegalPagesResponse {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
 }
 
 message GetTenantResponse {
@@ -57,11 +79,10 @@ message GetTenantResponse {
   // no listing in that store.
   string app_store_url = 14;
   string google_play_url = 15;
-  // The pages the tenant names as its terms of service and its privacy policy.
-  // Absent where it has named none, and where the page it named is not
-  // published, so a link built from one always resolves.
-  TenantLegalPage terms_page = 16;
-  TenantLegalPage privacy_page = 17;
+  // 16 and 17 held the legal pages, which GetTenantLegalPages now reads in the
+  // reader's locale.
+  reserved 16, 17;
+  reserved "terms_page", "privacy_page";
   // Which purchase the tenant's app offers for an episode it may sell. Never
   // APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
   // through the external checkout.
@@ -104,5 +125,6 @@ message GetTenantMobileAppAssociationResponse {
 
 service TenantService {
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+  rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
 }

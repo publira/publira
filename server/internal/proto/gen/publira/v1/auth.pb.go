@@ -147,10 +147,11 @@ type CreateUserRequest struct {
 	// the work it signed up for until it has verified an address and signed in.
 	BirthDate string `protobuf:"bytes,5,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	// The version of each page the reader agreed to, as TenantLegalPage.version_id
-	// reported it. Required for every page GetTenant reports as the tenant's
-	// terms or privacy policy, and refused when one names any other page. A
-	// version the page has since superseded is still accepted, since it is the
-	// text the reader was shown.
+	// reported it. Required for every page GetTenantLegalPages reports as the
+	// tenant's terms or privacy policy, and refused when one names any other
+	// page. A published version of any translation of the page is accepted, and
+	// so is one the page has since superseded, since it is the text the reader
+	// was shown.
 	AgreedPageVersionIds []string `protobuf:"bytes,6,rep,name=agreed_page_version_ids,json=agreedPageVersionIds,proto3" json:"agreed_page_version_ids,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache

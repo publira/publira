@@ -61,7 +61,7 @@ func TestCreateUserRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
-		WithArgs(tenantID).
+		WithArgs("ja", tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectReaderAuthRequest(mock, tenantID, outbox.EventTypeReaderSignupRequest)
 

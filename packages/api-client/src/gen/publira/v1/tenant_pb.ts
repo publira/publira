@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJCCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJIsYFChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRIvCgp0ZXJtc19wYWdlGBAgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2USMQoMcHJpdmFjeV9wYWdlGBEgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2USPgoSYXBwX3B1cmNoYXNlX3JvdXRlGBIgASgOMiIucHVibGlyYS50eXBlcy52MS5BcHBQdXJjaGFzZVJvdXRlEiIKGmFjY2VwdHNfYXBwX3N0b3JlX3BheW1lbnRzGBMgASgIEiQKHGFjY2VwdHNfZ29vZ2xlX3BsYXlfcGF5bWVudHMYFCABKAgiVwokR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXChtUZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SFgoOYXBwbGljYXRpb25faWQYASABKAkSIAoYc2hhMjU2X2NlcnRfZmluZ2VycHJpbnRzGAIgAygJIkUKF1RlbmFudElvc0FwcEFzc29jaWF0aW9uEg8KB3RlYW1faWQYASABKAkSGQoRYnVuZGxlX2lkZW50aWZpZXIYAiABKAkikwEKJUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2USOAoHYW5kcm9pZBgBIAEoCzInLnB1YmxpcmEudjEuVGVuYW50QW5kcm9pZEFwcEFzc29jaWF0aW9uEjAKA2lvcxgCIAEoCzIjLnB1YmxpcmEudjEuVGVuYW50SW9zQXBwQXNzb2NpYXRpb24y5AEKDVRlbmFudFNlcnZpY2USSgoJR2V0VGVuYW50EhwucHVibGlyYS52MS5HZXRUZW5hbnRSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRUZW5hbnRSZXNwb25zZSIAEoYBCh1HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvbhIwLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJdChpHZXRUZW5hbnRMZWdhbFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGbG9jYWxlGAIgASgJIlIKD1RlbmFudExlZ2FsUGFnZRIMCgRzbHVnGAEgASgJEg0KBXRpdGxlGAIgASgJEhIKCnZlcnNpb25faWQYAyABKAkSDgoGbG9jYWxlGAQgASgJIoEBChtHZXRUZW5hbnRMZWdhbFBhZ2VzUmVzcG9uc2USLwoKdGVybXNfcGFnZRgBIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlEjEKDHByaXZhY3lfcGFnZRgCIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlIogFChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRI+ChJhcHBfcHVyY2hhc2Vfcm91dGUYEiABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLkFwcFB1cmNoYXNlUm91dGUSIgoaYWNjZXB0c19hcHBfc3RvcmVfcGF5bWVudHMYEyABKAgSJAocYWNjZXB0c19nb29nbGVfcGxheV9wYXltZW50cxgUIAEoCEoECBAQEUoECBEQElIKdGVybXNfcGFnZVIMcHJpdmFjeV9wYWdlIlcKJEdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiVwobVGVuYW50QW5kcm9pZEFwcEFzc29jaWF0aW9uEhYKDmFwcGxpY2F0aW9uX2lkGAEgASgJEiAKGHNoYTI1Nl9jZXJ0X2ZpbmdlcnByaW50cxgCIAMoCSJFChdUZW5hbnRJb3NBcHBBc3NvY2lhdGlvbhIPCgd0ZWFtX2lkGAEgASgJEhkKEWJ1bmRsZV9pZGVudGlmaWVyGAIgASgJIpMBCiVHZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlc3BvbnNlEjgKB2FuZHJvaWQYASABKAsyJy5wdWJsaXJhLnYxLlRlbmFudEFuZHJvaWRBcHBBc3NvY2lhdGlvbhIwCgNpb3MYAiABKAsyIy5wdWJsaXJhLnYxLlRlbmFudElvc0FwcEFzc29jaWF0aW9uMs4CCg1UZW5hbnRTZXJ2aWNlEkoKCUdldFRlbmFudBIcLnB1YmxpcmEudjEuR2V0VGVuYW50UmVxdWVzdBodLnB1YmxpcmEudjEuR2V0VGVuYW50UmVzcG9uc2UiABJoChNHZXRUZW5hbnRMZWdhbFBhZ2VzEiYucHVibGlyYS52MS5HZXRUZW5hbnRMZWdhbFBhZ2VzUmVxdWVzdBonLnB1YmxpcmEudjEuR2V0VGVuYW50TGVnYWxQYWdlc1Jlc3BvbnNlIgAShgEKHUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uEjAucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlcXVlc3QaMS5wdWJsaXJhLnYxLkdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -32,8 +32,36 @@ export const GetTenantRequestSchema: GenMessage<GetTenantRequest> = /*@__PURE__*
   messageDesc(file_publira_v1_tenant, 0);
 
 /**
- * A published page the tenant names for a role. The slug is in storage form
- * ("/privacy"), which is also the path the storefront serves it at.
+ * @generated from message publira.v1.GetTenantLegalPagesRequest
+ */
+export type GetTenantLegalPagesRequest = Message<"publira.v1.GetTenantLegalPagesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The reader's locale. Each page is read in its published translation in
+   * this locale, else the tenant's default locale, else its oldest published
+   * one, and TenantLegalPage.locale names the one read. Empty means the
+   * tenant's default locale.
+   *
+   * @generated from field: string locale = 2;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantLegalPagesRequest.
+ * Use `create(GetTenantLegalPagesRequestSchema)` to create a new message.
+ */
+export const GetTenantLegalPagesRequestSchema: GenMessage<GetTenantLegalPagesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 1);
+
+/**
+ * A published page the tenant names for a role, in one of its translations.
+ * The slug is in storage form ("/privacy"), which is also the path the
+ * storefront serves it at.
  *
  * @generated from message publira.v1.TenantLegalPage
  */
@@ -44,17 +72,27 @@ export type TenantLegalPage = Message<"publira.v1.TenantLegalPage"> & {
   slug: string;
 
   /**
+   * The title of the translation read.
+   *
    * @generated from field: string title = 2;
    */
   title: string;
 
   /**
-   * The published version, which a sign-up sends back in
-   * CreateUserRequest.agreed_page_version_ids.
+   * The published version of the translation read, which a sign-up sends back
+   * in CreateUserRequest.agreed_page_version_ids.
    *
    * @generated from field: string version_id = 3;
    */
   versionId: string;
+
+  /**
+   * The locale of the translation read, which differs from the one asked for
+   * when the page has no published translation in it.
+   *
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
 };
 
 /**
@@ -62,7 +100,33 @@ export type TenantLegalPage = Message<"publira.v1.TenantLegalPage"> & {
  * Use `create(TenantLegalPageSchema)` to create a new message.
  */
 export const TenantLegalPageSchema: GenMessage<TenantLegalPage> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 1);
+  messageDesc(file_publira_v1_tenant, 2);
+
+/**
+ * The pages the tenant names as its terms of service and its privacy policy.
+ * A role is absent where the tenant has named no page for it, and where the
+ * page it named is not published, so a link built from one always resolves.
+ *
+ * @generated from message publira.v1.GetTenantLegalPagesResponse
+ */
+export type GetTenantLegalPagesResponse = Message<"publira.v1.GetTenantLegalPagesResponse"> & {
+  /**
+   * @generated from field: publira.v1.TenantLegalPage terms_page = 1;
+   */
+  termsPage?: TenantLegalPage | undefined;
+
+  /**
+   * @generated from field: publira.v1.TenantLegalPage privacy_page = 2;
+   */
+  privacyPage?: TenantLegalPage | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantLegalPagesResponse.
+ * Use `create(GetTenantLegalPagesResponseSchema)` to create a new message.
+ */
+export const GetTenantLegalPagesResponseSchema: GenMessage<GetTenantLegalPagesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 3);
 
 /**
  * @generated from message publira.v1.GetTenantResponse
@@ -173,20 +237,6 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
   googlePlayUrl: string;
 
   /**
-   * The pages the tenant names as its terms of service and its privacy policy.
-   * Absent where it has named none, and where the page it named is not
-   * published, so a link built from one always resolves.
-   *
-   * @generated from field: publira.v1.TenantLegalPage terms_page = 16;
-   */
-  termsPage?: TenantLegalPage | undefined;
-
-  /**
-   * @generated from field: publira.v1.TenantLegalPage privacy_page = 17;
-   */
-  privacyPage?: TenantLegalPage | undefined;
-
-  /**
    * Which purchase the tenant's app offers for an episode it may sell. Never
    * APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
    * through the external checkout.
@@ -218,7 +268,7 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
  * Use `create(GetTenantResponseSchema)` to create a new message.
  */
 export const GetTenantResponseSchema: GenMessage<GetTenantResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 2);
+  messageDesc(file_publira_v1_tenant, 4);
 
 /**
  * @generated from message publira.v1.GetTenantMobileAppAssociationRequest
@@ -235,7 +285,7 @@ export type GetTenantMobileAppAssociationRequest = Message<"publira.v1.GetTenant
  * Use `create(GetTenantMobileAppAssociationRequestSchema)` to create a new message.
  */
 export const GetTenantMobileAppAssociationRequestSchema: GenMessage<GetTenantMobileAppAssociationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 3);
+  messageDesc(file_publira_v1_tenant, 5);
 
 /**
  * The Android app the tenant's links open in, as assetlinks.json names it.
@@ -262,7 +312,7 @@ export type TenantAndroidAppAssociation = Message<"publira.v1.TenantAndroidAppAs
  * Use `create(TenantAndroidAppAssociationSchema)` to create a new message.
  */
 export const TenantAndroidAppAssociationSchema: GenMessage<TenantAndroidAppAssociation> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 4);
+  messageDesc(file_publira_v1_tenant, 6);
 
 /**
  * The iOS app the tenant's links open in, which apple-app-site-association
@@ -287,7 +337,7 @@ export type TenantIosAppAssociation = Message<"publira.v1.TenantIosAppAssociatio
  * Use `create(TenantIosAppAssociationSchema)` to create a new message.
  */
 export const TenantIosAppAssociationSchema: GenMessage<TenantIosAppAssociation> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 5);
+  messageDesc(file_publira_v1_tenant, 7);
 
 /**
  * A platform is absent where the tenant has no app on it, and nothing stands
@@ -312,7 +362,7 @@ export type GetTenantMobileAppAssociationResponse = Message<"publira.v1.GetTenan
  * Use `create(GetTenantMobileAppAssociationResponseSchema)` to create a new message.
  */
 export const GetTenantMobileAppAssociationResponseSchema: GenMessage<GetTenantMobileAppAssociationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 6);
+  messageDesc(file_publira_v1_tenant, 8);
 
 /**
  * @generated from service publira.v1.TenantService
@@ -325,6 +375,14 @@ export const TenantService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantRequestSchema;
     output: typeof GetTenantResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.TenantService.GetTenantLegalPages
+   */
+  getTenantLegalPages: {
+    methodKind: "unary";
+    input: typeof GetTenantLegalPagesRequestSchema;
+    output: typeof GetTenantLegalPagesResponseSchema;
   },
   /**
    * @generated from rpc publira.v1.TenantService.GetTenantMobileAppAssociation

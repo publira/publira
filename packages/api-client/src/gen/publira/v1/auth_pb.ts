@@ -100,10 +100,11 @@ export type CreateUserRequest = Message<"publira.v1.CreateUserRequest"> & {
 
   /**
    * The version of each page the reader agreed to, as TenantLegalPage.version_id
-   * reported it. Required for every page GetTenant reports as the tenant's
-   * terms or privacy policy, and refused when one names any other page. A
-   * version the page has since superseded is still accepted, since it is the
-   * text the reader was shown.
+   * reported it. Required for every page GetTenantLegalPages reports as the
+   * tenant's terms or privacy policy, and refused when one names any other
+   * page. A published version of any translation of the page is accepted, and
+   * so is one the page has since superseded, since it is the text the reader
+   * was shown.
    *
    * @generated from field: repeated string agreed_page_version_ids = 6;
    */

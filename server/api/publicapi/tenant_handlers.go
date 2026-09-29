@@ -55,7 +55,6 @@ func (s *apiServer) GetTenant(
 	googlePlayURL := ""
 	// The column's default: the app sells through the external checkout.
 	appPurchaseRoute := publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT
-	var termsPage, privacyPage *publirav1.TenantLegalPage
 
 	if err == nil {
 		if config.CopyrightText.Valid {
@@ -81,7 +80,6 @@ func (s *apiServer) GetTenant(
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
 		}
-		termsPage, privacyPage = s.publishedLegalPages(ctx, queries, tenant.ID)
 	} else if err != sql.ErrNoRows {
 		// Log error but don't fail the request
 		_ = err
@@ -123,41 +121,59 @@ func (s *apiServer) GetTenant(
 		WebPushVapidPublicKey:     s.publishedWebPushPublicKey(ctx),
 		AppStoreUrl:               appStoreURL,
 		GooglePlayUrl:             googlePlayURL,
-		TermsPage:                 termsPage,
-		PrivacyPage:               privacyPage,
 		AppPurchaseRoute:          appPurchaseRoute,
 		AcceptsAppStorePayments:   acceptsAppStorePayments,
 		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
 	}), nil
 }
 
-// publishedLegalPages answers the terms and privacy pages the tenant names,
-// leaving out one that is not published so the storefront never links to a
-// page it cannot serve. A failed read answers neither, like the rest of the
-// optional site copy.
-func (s *apiServer) publishedLegalPages(ctx context.Context, queries Querier, tenantID uuid.UUID) (terms, privacy *publirav1.TenantLegalPage) {
-	row, err := queries.GetTenantLegalPages(ctx, tenantID)
+// GetTenantLegalPages answers the terms and privacy pages the tenant names,
+// each in the translation the reader's locale resolves to. A page that is not
+// published is left out, so the storefront never links to a page it cannot
+// serve.
+func (s *apiServer) GetTenantLegalPages(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetTenantLegalPagesRequest],
+) (*connect.Response[publirav1.GetTenantLegalPagesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			s.logger.WarnContext(ctx, "failed to read the tenant legal pages", "tenant_id", tenantID.String(), "error", err)
-		}
-		return nil, nil
+		return nil, err
 	}
+
+	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, dbmodels.GetTenantLegalPagesParams{
+		TenantID: tenant.ID,
+		Locale:   readerLocale,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetTenantLegalPagesResponse{}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenant.ID.String())
+	}
+
+	resp := &publirav1.GetTenantLegalPagesResponse{}
 	if row.TermsPublished {
-		terms = &publirav1.TenantLegalPage{
+		resp.TermsPage = &publirav1.TenantLegalPage{
 			Slug:      row.TermsSlug.String,
 			Title:     row.TermsTitle.String,
 			VersionId: row.TermsPublishedVersionID.UUID.String(),
+			Locale:    row.TermsLocale.String,
 		}
 	}
 	if row.PrivacyPublished {
-		privacy = &publirav1.TenantLegalPage{
+		resp.PrivacyPage = &publirav1.TenantLegalPage{
 			Slug:      row.PrivacySlug.String,
 			Title:     row.PrivacyTitle.String,
 			VersionId: row.PrivacyPublishedVersionID.UUID.String(),
+			Locale:    row.PrivacyLocale.String,
 		}
 	}
-	return terms, privacy
+	return connect.NewResponse(resp), nil
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

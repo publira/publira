@@ -339,39 +339,47 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 const GetTenantLegalPages = `-- name: GetTenantLegalPages :one
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
+    terms_translation.locale AS terms_locale,
     terms_translation.title AS terms_title,
-    (published_page_translation_for(terms.id, t.default_locale) IS NOT NULL)::boolean AS terms_published,
+    (published_page_translation_for(terms.id, $1) IS NOT NULL)::boolean AS terms_published,
     terms_translation.published_version_id AS terms_published_version_id,
     tc.privacy_page_id,
     privacy.slug AS privacy_slug,
+    privacy_translation.locale AS privacy_locale,
     privacy_translation.title AS privacy_title,
-    (published_page_translation_for(privacy.id, t.default_locale) IS NOT NULL)::boolean AS privacy_published,
+    (published_page_translation_for(privacy.id, $1) IS NOT NULL)::boolean AS privacy_published,
     privacy_translation.published_version_id AS privacy_published_version_id
 FROM tenant_config tc
-    JOIN tenants t ON t.id = tc.tenant_id
     LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
     AND terms.id = tc.terms_page_id
     LEFT JOIN page_translations terms_translation ON terms_translation.id = COALESCE(
-        published_page_translation_for(terms.id, t.default_locale),
-        page_translation_for(terms.id, t.default_locale)
+        published_page_translation_for(terms.id, $1),
+        page_translation_for(terms.id, $1)
     )
     LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
     AND privacy.id = tc.privacy_page_id
     LEFT JOIN page_translations privacy_translation ON privacy_translation.id = COALESCE(
-        published_page_translation_for(privacy.id, t.default_locale),
-        page_translation_for(privacy.id, t.default_locale)
+        published_page_translation_for(privacy.id, $1),
+        page_translation_for(privacy.id, $1)
     )
-WHERE tc.tenant_id = $1
+WHERE tc.tenant_id = $2
 `
+
+type GetTenantLegalPagesParams struct {
+	Locale   string    `json:"locale"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
 
 type GetTenantLegalPagesRow struct {
 	TermsPageID               uuid.NullUUID  `json:"terms_page_id"`
 	TermsSlug                 sql.NullString `json:"terms_slug"`
+	TermsLocale               sql.NullString `json:"terms_locale"`
 	TermsTitle                sql.NullString `json:"terms_title"`
 	TermsPublished            bool           `json:"terms_published"`
 	TermsPublishedVersionID   uuid.NullUUID  `json:"terms_published_version_id"`
 	PrivacyPageID             uuid.NullUUID  `json:"privacy_page_id"`
 	PrivacySlug               sql.NullString `json:"privacy_slug"`
+	PrivacyLocale             sql.NullString `json:"privacy_locale"`
 	PrivacyTitle              sql.NullString `json:"privacy_title"`
 	PrivacyPublished          bool           `json:"privacy_published"`
 	PrivacyPublishedVersionID uuid.NullUUID  `json:"privacy_published_version_id"`
@@ -380,19 +388,21 @@ type GetTenantLegalPagesRow struct {
 // The pages a tenant names as its terms of service and its privacy policy. A
 // page is published when any translation of it is, as the storefront serves it
 // then, and is read in the translation published_page_translation_for picks for
-// the tenant's default locale; an unpublished page is read in the one
-// page_translation_for picks. No row where the tenant has no config.
-func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error) {
-	row := q.db.QueryRowContext(ctx, GetTenantLegalPages, tenantID)
+// the locale; an unpublished page is read in the one page_translation_for
+// picks. No row where the tenant has no config.
+func (q *Queries) GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPagesParams) (GetTenantLegalPagesRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantLegalPages, arg.Locale, arg.TenantID)
 	var i GetTenantLegalPagesRow
 	err := row.Scan(
 		&i.TermsPageID,
 		&i.TermsSlug,
+		&i.TermsLocale,
 		&i.TermsTitle,
 		&i.TermsPublished,
 		&i.TermsPublishedVersionID,
 		&i.PrivacyPageID,
 		&i.PrivacySlug,
+		&i.PrivacyLocale,
 		&i.PrivacyTitle,
 		&i.PrivacyPublished,
 		&i.PrivacyPublishedVersionID,

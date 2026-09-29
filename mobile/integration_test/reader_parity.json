@@ -477,8 +477,8 @@
     },
     {
       "name": "The tenant's own settings: comments, payments, sign-up requirements",
-      "web": { "rpcs": ["GetTenant"] },
-      "mobile": { "rpcs": ["GetTenant"] }
+      "web": { "rpcs": ["GetTenant", "GetTenantLegalPages"] },
+      "mobile": { "rpcs": ["GetTenant", "GetTenantLegalPages"] }
     },
     {
       "name": "Counting what a reader opens",

@@ -239,33 +239,34 @@ RETURNING *;
 -- The pages a tenant names as its terms of service and its privacy policy. A
 -- page is published when any translation of it is, as the storefront serves it
 -- then, and is read in the translation published_page_translation_for picks for
--- the tenant's default locale; an unpublished page is read in the one
--- page_translation_for picks. No row where the tenant has no config.
+-- the locale; an unpublished page is read in the one page_translation_for
+-- picks. No row where the tenant has no config.
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
+    terms_translation.locale AS terms_locale,
     terms_translation.title AS terms_title,
-    (published_page_translation_for(terms.id, t.default_locale) IS NOT NULL)::boolean AS terms_published,
+    (published_page_translation_for(terms.id, sqlc.arg('locale')) IS NOT NULL)::boolean AS terms_published,
     terms_translation.published_version_id AS terms_published_version_id,
     tc.privacy_page_id,
     privacy.slug AS privacy_slug,
+    privacy_translation.locale AS privacy_locale,
     privacy_translation.title AS privacy_title,
-    (published_page_translation_for(privacy.id, t.default_locale) IS NOT NULL)::boolean AS privacy_published,
+    (published_page_translation_for(privacy.id, sqlc.arg('locale')) IS NOT NULL)::boolean AS privacy_published,
     privacy_translation.published_version_id AS privacy_published_version_id
 FROM tenant_config tc
-    JOIN tenants t ON t.id = tc.tenant_id
     LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
     AND terms.id = tc.terms_page_id
     LEFT JOIN page_translations terms_translation ON terms_translation.id = COALESCE(
-        published_page_translation_for(terms.id, t.default_locale),
-        page_translation_for(terms.id, t.default_locale)
+        published_page_translation_for(terms.id, sqlc.arg('locale')),
+        page_translation_for(terms.id, sqlc.arg('locale'))
     )
     LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
     AND privacy.id = tc.privacy_page_id
     LEFT JOIN page_translations privacy_translation ON privacy_translation.id = COALESCE(
-        published_page_translation_for(privacy.id, t.default_locale),
-        page_translation_for(privacy.id, t.default_locale)
+        published_page_translation_for(privacy.id, sqlc.arg('locale')),
+        page_translation_for(privacy.id, sqlc.arg('locale'))
     )
-WHERE tc.tenant_id = $1;
+WHERE tc.tenant_id = sqlc.arg('tenant_id');
 
 -- name: UpsertTenantLegalPages :one
 -- An upsert for the reason UpsertTenantCommentSettings gives. Both pages are

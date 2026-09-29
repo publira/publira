@@ -689,9 +689,9 @@ class ConnectFixtureServer {
   String ageVerification;
   String tenantTimeZone;
 
-  /// The pages `GetTenant` names as the tenant's terms of service and privacy
-  /// policy, as `TenantLegalPage` JSON. `null` is a role named for no page,
-  /// which the API omits.
+  /// The pages `GetTenantLegalPages` names as the tenant's terms of service
+  /// and privacy policy, as `TenantLegalPage` JSON. `null` is a role named for
+  /// no page, which the API omits.
   Map<String, Object?>? termsPage;
   Map<String, Object?>? privacyPage;
 
@@ -1153,10 +1153,6 @@ class ConnectFixtureServer {
         if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
         if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,
         if (tenantStatus == HttpStatus.ok) 'timezone': tenantTimeZone,
-        if (tenantStatus == HttpStatus.ok && termsPage != null)
-          'termsPage': termsPage,
-        if (tenantStatus == HttpStatus.ok && privacyPage != null)
-          'privacyPage': privacyPage,
         // protojson omits a false.
         if (tenantStatus == HttpStatus.ok && acceptsPayments)
           'acceptsPayments': true,
@@ -1165,6 +1161,18 @@ class ConnectFixtureServer {
           'acceptsAppStorePayments': true,
         if (tenantStatus == HttpStatus.ok && acceptsGooglePlayPayments)
           'acceptsGooglePlayPayments': true,
+        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.endsWith('/GetTenantLegalPages')) {
+      await _write(request, tenantStatus, {
+        if (tenantStatus == HttpStatus.ok && termsPage != null)
+          'termsPage': termsPage,
+        if (tenantStatus == HttpStatus.ok && privacyPage != null)
+          'privacyPage': privacyPage,
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });
