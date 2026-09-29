@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -100,38 +102,59 @@ func openMailGuard() *mailguard.Guard {
 // from one that does not.
 const testRevalidateToken = "test-revalidate-token"
 
+// revalidateTargets maps each web app a write is sent to onto the variable
+// that points the client at it.
+var revalidateTargets = map[string]string{
+	"web-host":     "PUBLIRA_WEB_HOST_INTERNAL_URL",
+	"web-admin":    "PUBLIRA_WEB_ADMIN_INTERNAL_URL",
+	"web-platform": "PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
+}
+
 // revalidateRecorder stands in for the Next.js apps and collects the tags the
-// handlers ask them to drop.
+// handlers ask each of them to drop.
 type revalidateRecorder struct {
 	mu   sync.Mutex
-	tags []string
+	tags map[string][]string
 }
 
-// requestedTags returns every tag seen, deduplicated and sorted. The three
-// targets are the same server here, so one call arrives three times.
-func (r *revalidateRecorder) requestedTags() []string {
+// requestedTags returns the tags each web app was sent, deduplicated and
+// sorted.
+func (r *revalidateRecorder) requestedTags() map[string][]string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	unique := slices.Clone(r.tags)
-	slices.Sort(unique)
-	return slices.Compact(unique)
+	requested := make(map[string][]string, len(r.tags))
+	for app, tags := range r.tags {
+		unique := slices.Clone(tags)
+		slices.Sort(unique)
+		requested[app] = slices.Compact(unique)
+	}
+	return requested
 }
 
-// waitForTags waits for the tags a write recorded to arrive. The attempt is
-// made off the request now, so a handler can answer before the apps have been
-// asked anything.
+// waitForTags waits until every web app has been sent the tags a write
+// recorded. The apps are asked off the request and in parallel, so the first
+// one to arrive says nothing of the others still being read.
 func (r *revalidateRecorder) waitForTags(t *testing.T, want []string) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
-	var got []string
+	var got map[string][]string
 	for time.Now().Before(deadline) {
 		got = r.requestedTags()
-		if slices.Equal(got, want) {
+		if everyTargetGot(got, want) {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("revalidated tags = %v, want %v", got, want)
+	t.Fatalf("revalidated tags = %v, want %v for each of %v", got, want, slices.Sorted(maps.Keys(revalidateTargets)))
+}
+
+func everyTargetGot(got map[string][]string, want []string) bool {
+	for app := range revalidateTargets {
+		if !slices.Equal(got[app], want) {
+			return false
+		}
+	}
+	return true
 }
 
 // disableRevalidationUnlessRecorded turns revalidation off for every test that
@@ -146,13 +169,20 @@ func disableRevalidationUnlessRecorded(t *testing.T) {
 	}
 }
 
-// newRevalidateRecorder points all three revalidate targets at one recording
-// server and configures the token that turns the client on. The handler reads
-// this environment when it is built, so call this before newTestAdminServer.
+// newRevalidateRecorder points the three revalidate targets at one recording
+// server, each under a path of its own so the recorder can tell them apart, and
+// configures the token that turns the client on. The handler reads this
+// environment when it is built, so call this before newTestAdminServer.
 func newRevalidateRecorder(t *testing.T) *revalidateRecorder {
 	t.Helper()
-	recorder := &revalidateRecorder{}
+	recorder := &revalidateRecorder{tags: map[string][]string{}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		app, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+		if _, ok := revalidateTargets[app]; !ok {
+			t.Errorf("revalidate request to %s, which names no web app", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		var payload struct {
 			Tags []string `json:"tags"`
 		}
@@ -162,14 +192,14 @@ func newRevalidateRecorder(t *testing.T) *revalidateRecorder {
 			return
 		}
 		recorder.mu.Lock()
-		recorder.tags = append(recorder.tags, payload.Tags...)
+		recorder.tags[app] = append(recorder.tags[app], payload.Tags...)
 		recorder.mu.Unlock()
 	}))
 	t.Cleanup(server.Close)
 	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", testRevalidateToken)
-	t.Setenv("PUBLIRA_WEB_HOST_INTERNAL_URL", server.URL)
-	t.Setenv("PUBLIRA_WEB_ADMIN_INTERNAL_URL", server.URL)
-	t.Setenv("PUBLIRA_WEB_PLATFORM_INTERNAL_URL", server.URL)
+	for app, env := range revalidateTargets {
+		t.Setenv(env, server.URL+"/"+app)
+	}
 	return recorder
 }
 
