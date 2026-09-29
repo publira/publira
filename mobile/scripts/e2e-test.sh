@@ -18,6 +18,7 @@ export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
 
 device="${PUBLIRA_E2E_MOBILE_DEVICE:-}"
 if [[ -z "${device}" ]]; then
+  # The Linux desktop is run only when named: it proves less than a phone.
   device="$(
     cd "${MOBILE_DIR}" && flutter devices --machine |
       python3 -c '
@@ -25,7 +26,7 @@ import json, sys
 devices = json.load(sys.stdin)
 for device in devices:
     target = device.get("id") or ""
-    if device.get("isSupported") and target:
+    if device.get("isSupported") and target and target != "linux":
         print(target)
         break
 '
@@ -90,6 +91,9 @@ collect_failure_artifacts() {
   adb -s "${device}" exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
   adb -s "${device}" pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
     > /dev/null 2>&1 || true
+  if [[ -n "${linux_tmp}" ]]; then
+    cp -r "${linux_tmp}/publira-integration" "${ART_DIR}/screenshots" 2> /dev/null || true
+  fi
   # The device only sees that its reads failed. The same read from the host
   # tells a stopped server or a missing seed tenant from a device with no way
   # out, and the device's own view says whether its network ever validated.
@@ -113,10 +117,21 @@ collect_failure_artifacts() {
 # Publira's own identity, whatever another manifest generated before.
 (cd "${MOBILE_DIR}" && dart run scripts/app_manifest.dart --generate)
 
+# The desktop build has no display or desktop session here, and writes its
+# failure screenshots under the system temp directory, which is this run's own.
+runner=()
+linux_tmp=''
+if [[ "${device}" == linux ]]; then
+  linux_tmp="$(mktemp -d)"
+  trap 'rm -rf "${linux_tmp}"' EXIT
+  export TMPDIR="${linux_tmp}"
+  runner=(bash "${MOBILE_DIR}/scripts/linux-session.sh")
+fi
+
 set +e
 (
   cd "${MOBILE_DIR}"
-  flutter test integration_test \
+  "${runner[@]}" flutter test integration_test \
     -d "${device}" \
     --reporter expanded \
     --dart-define="PUBLIRA_LIVE_API=${PUBLIRA_LIVE_API}" \

@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Writes a PNG of the current frame when a test fails.
 ///
-/// On the Android emulator the file lands in the app documents directory.
+/// On the Android emulator the file lands in the app documents directory, and
+/// on the Linux desktop under the system temp directory.
 /// The CI wrapper also captures `adb screencap` / logcat as a fallback.
 Future<void> saveFailureScreenshot(WidgetTester tester, String name) async {
   final boundary = tester.renderObject<RenderRepaintBoundary>(

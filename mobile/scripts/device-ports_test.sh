@@ -41,7 +41,27 @@ EOF
 cat > "${stub_bin}/dart" << 'EOF'
 #!/usr/bin/env bash
 EOF
-chmod +x "${stub_bin}/adb" "${stub_bin}/flutter" "${stub_bin}/dart"
+# The Linux desktop's session: each wrapper logs itself and runs its command.
+cat > "${stub_bin}/dbus-run-session" << 'EOF'
+#!/usr/bin/env bash
+printf 'dbus-run-session\n' >> "${STUB_LOG}"
+shift
+exec "$@"
+EOF
+cat > "${stub_bin}/xvfb-run" << 'EOF'
+#!/usr/bin/env bash
+printf 'xvfb-run\n' >> "${STUB_LOG}"
+while [[ "$1" == --* ]]; do shift; done
+exec "$@"
+EOF
+cat > "${stub_bin}/gnome-keyring-daemon" << 'EOF'
+#!/usr/bin/env bash
+cat > /dev/null
+EOF
+cat > "${stub_bin}/pkg-config" << 'EOF'
+#!/usr/bin/env bash
+EOF
+chmod +x "${stub_bin}"/*
 
 port=18123
 
@@ -96,6 +116,11 @@ if grep -q "PUBLIRA_BASE_URL=http://127.0.0.1:${port}" "${log}"; then
   pass "a target adb does not answer for is given loopback"
 else
   fail "a target adb does not answer for was given another address: $(cat "${log}")"
+fi
+if [[ "$(grep -oE '^(dbus-run-session|xvfb-run|flutter test)' "${log}")" == $'dbus-run-session\nxvfb-run\nflutter test' ]]; then
+  pass "the Linux desktop runs flutter test under Xvfb in a D-Bus session"
+else
+  fail "the Linux desktop ran flutter test outside its session: $(cat "${log}")"
 fi
 
 [[ "${failures}" -eq 0 ]]

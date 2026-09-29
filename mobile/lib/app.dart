@@ -245,10 +245,13 @@ class PubliraApp extends StatefulWidget {
         library: library,
         logoRequestHeaders: resolved.publicImageRequestHeaders,
       ),
-      // The web has no signal for a screenshot.
-      screenCaptures: kIsWeb
-          ? null
-          : ScreenCaptureNotices(captures: PlatformScreenCaptures()),
+      // Only the app's own Android and iOS sources report a screenshot.
+      screenCaptures:
+          !kIsWeb &&
+              (defaultTargetPlatform == TargetPlatform.android ||
+                  defaultTargetPlatform == TargetPlatform.iOS)
+          ? ScreenCaptureNotices(captures: PlatformScreenCaptures())
+          : null,
     );
   }
 

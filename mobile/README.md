@@ -60,6 +60,21 @@ The emulator needs KVM. The task stops before downloading anything when the cont
 | `ANDROID_HOME` | Where the SDK is installed and read from. `~/Android/Sdk` when unset |
 | `PUBLIRA_MOBILE_AVD_NAME` | The AVD to create and boot. `publira-pixel-7` when unset |
 
+### Linux desktop in the Dev Container
+
+Where the host passes no `/dev/kvm` through, no emulator can boot, and the integration tests run on the app's Linux desktop build instead (see [Integration tests](#integration-tests) for what that proves). Flutter already finds the Linux toolchain in the Dev Container; the rest is installed on demand:
+
+```bash
+task mobile:linux-install   # once per container; uses sudo
+```
+
+`task mobile:linux-install` runs `scripts/linux-install.sh`, which installs only what is missing from Debian's archive:
+
+- `xvfb` and `xauth`, the X server the build draws into with no display attached
+- `dbus-daemon`, for the D-Bus session the build runs in
+- `gnome-keyring`, the Secret Service that holds the session store's keychain
+- `libsecret-1-dev`, which `flutter_secure_storage_linux` compiles against
+
 ### Local machine (outside the Dev Container)
 
 After installing the Flutter SDK:
@@ -300,6 +315,7 @@ mobile/
 ├── scripts/                      # Mobile E2E lifecycle, running, photographing, or building the app, and the app manifest
 ├── android/                      # Android-specific files
 ├── ios/                          # iOS-specific files
+├── linux/                        # Linux desktop runner, for the integration tests where no emulator boots
 ├── web/                          # Web-specific files
 ├── pubspec.yaml
 └── analysis_options.yaml
@@ -661,5 +677,23 @@ task mobile:test-integration
 # The address and port forwarding each kind of device is given (no device)
 task mobile:test-device-ports
 ```
+
+### On the Linux desktop
+
+Where no emulator can boot — a Dev Container whose host passes no `/dev/kvm` through — the same suite runs on the app's Linux desktop build, after [`task mobile:linux-install`](#linux-desktop-in-the-dev-container):
+
+```bash
+# Start stack + integration tests on the Linux desktop + teardown
+task mobile:e2e-linux
+
+# When the API is already available
+PUBLIRA_E2E_MOBILE_DEVICE=linux task mobile:test-integration
+```
+
+The build runs under Xvfb, inside a D-Bus session of its own whose keyring and application data start empty and are removed afterwards, in a window the size of a Pixel 7 in portrait. It reaches the stack at `127.0.0.1`, as any build running on this machine does. `task mobile:test-integration` never chooses the Linux desktop on its own; it has to be named.
+
+What it proves is the app's own logic: navigation, the reader, sign-in, the fixture and live groups' calls to the API and the image routes, offline reading, and a session surviving in a real Secret Service. It does not prove the Android build. The renderer and every plugin take their Linux implementation — the keychain is libsecret rather than the Android Keystore, and `path_provider`, `app_links`, and `url_launcher` are the desktop ones — while the suite already stands fakes in for incoming links, the browser, and the store. Push notifications and screenshot notices have no Linux implementation and stay off, as in a build with no Firebase project. Use the emulator whenever one can boot, and always for a change to `android/`, a plugin, or anything that depends on the platform rather than the app; CI's `Test / Mobile E2E` runs on the emulator only.
+
+On failure, the screenshots the tests take are left in `mobile/.run/artifacts/screenshots/`.
 
 On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the server and the development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure. The server's image routes matter here because every seeded episode carries a body, so the live group's reader fetches pages as soon as it opens one.
