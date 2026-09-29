@@ -227,6 +227,7 @@
         "tenant_admin_invitation": "管理者招待",
         "tenant_community_limits": "コミュニティの上限",
         "tenant_retention": "保持期間",
+        "tenant_sign_in_settings": "ログイン方法",
         "user": "ユーザー"
       },
       "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
@@ -316,6 +317,7 @@
         "tenant_payment_settings_updated": "決済設定更新",
         "tenant_fcm_credentials_saved": "Firebaseの認証情報の保存",
         "tenant_fcm_credentials_deleted": "Firebaseの認証情報の削除",
+        "tenant_sign_in_settings_updated": "ログイン方法の設定更新",
         "tenant_community_limits_updated": "コミュニティの上限更新",
         "tenant_retention_updated": "保持期間更新",
         "admin_mfa_enrolled": "2段階認証の設定",
@@ -2391,6 +2393,65 @@
           "bundle_identifier_invalid": "バンドルIDはcom.example.readerのように、英数字とハイフンからなる部分をドットで区切って2つ以上入力してください。"
         }
       },
+      "sign_in": {
+        "title": "ログイン方法",
+        "description": "読者がメールアドレスに加えて、AppleやGoogleのアカウントでサイトとアプリにログインできるようにします。有効で必要な情報がそろった方法は、保存後まもなくサイトに表示されます。Appleのキーは書き込み専用です。再表示時は状態とマスクだけが表示され、値そのものは表示されません。",
+        "not_set": "未設定",
+        "status": {
+          "ready": "提供中",
+          "ready_description": "読者はこの方法でログインできます。",
+          "incomplete": "未完了",
+          "incomplete_description": "有効ですが、必要な情報が不足しているため、読者には表示されません。",
+          "disabled": "無効",
+          "disabled_description": "保存されていますが、読者には表示されません。",
+          "unset": "未設定",
+          "unset_description": "この方法には何も登録されていません。"
+        },
+        "apple": {
+          "title": "Apple",
+          "enabled": "Appleでサインインを提供する",
+          "services_id": "Services ID",
+          "services_id_description": "サイトがログインに使うServices IDの識別子です。Apple Developerアカウントの「Certificates, Identifiers & Profiles」で登録します。iOSアプリだけでAppleでサインインを提供する場合は空欄にしてください。",
+          "team_id": "Team ID",
+          "team_id_description": "Apple Developerチームの10文字のIDです。アカウントのメンバーシップの詳細に表示されます。",
+          "key_id": "キーID",
+          "key_id_description": "Appleでサインインを有効にしたキーの10文字のIDです。「Keys」でキーの横に表示されます。",
+          "private_key": "秘密鍵（.p8）",
+          "private_key_description": "Apple Developerアカウントがそのキーに発行した .p8ファイルを選ぶか、その内容を貼り付けてください。",
+          "bundle_identifier": "iOSのBundle ID",
+          "bundle_identifier_description": "「アプリリンク」で設定したiOSアプリが、これでログインします。変更はそちらで行います。"
+        },
+        "google": {
+          "title": "Google",
+          "enabled": "Googleでログインを提供する",
+          "web_client_id": "ウェブクライアントID",
+          "web_client_id_description": "Google Cloudコンソールで作成した、種類が「ウェブ アプリケーション」のOAuthクライアントのクライアントIDです。サイトとAndroidアプリがこれでログインします。",
+          "ios_client_id": "iOSクライアントID",
+          "ios_client_id_description": "iOSアプリがログインに使う、種類が「iOS」のOAuthクライアントのクライアントIDです。テナントにiOSアプリがない場合は空欄にしてください。"
+        },
+        "key_text": "または内容を貼り付け",
+        "key_change": "差し替える",
+        "key_change_cancel": "変更を取り消す",
+        "key_clear": "削除する",
+        "key_clear_cancel": "キーを残す",
+        "key_cleared": "保存すると、保存済みのキーは削除されます。",
+        "submit": "ログイン方法を保存",
+        "saved": "ログイン方法を保存しました。",
+        "load_failed": "ログイン方法の設定を読み込めませんでした。時間をおいて再度お試しください。",
+        "save_failed": "ログイン方法を保存できませんでした。時間をおいて再度お試しください。",
+        "validation": {
+          "services_id_invalid": "Services IDはcom.example.webのように、英数字とハイフンからなる2つ以上の部分をドットで区切って入力してください。",
+          "team_id_required": "Appleでサインインを提供するには、Team IDを入力してください。",
+          "team_id_invalid": "Team IDはABCDE12345のように、英大文字と数字の10文字で入力してください。",
+          "key_id_required": "Appleでサインインを提供するには、キーIDを入力してください。",
+          "key_id_invalid": "キーIDは2X9R4HXF34のように、英大文字と数字の10文字で入力してください。",
+          "private_key_required": "Appleでサインインを提供するには、秘密鍵を選ぶか貼り付けてください。",
+          "private_key_invalid": "キーが受け付けられませんでした。Apple DeveloperアカウントがAppleでサインイン用に発行した .p8ファイルを選んでください。",
+          "key_file_too_large": "キーファイルとしては大きすぎるファイルです。",
+          "client_id_invalid": "クライアントIDは、Google Cloudコンソールに表示される .apps.googleusercontent.comで終わる値を入力してください。",
+          "client_id_required": "Googleでログインを提供するには、クライアントIDを1つ以上入力してください。"
+        }
+      },
       "royalties": {
         "title": "印税の月の締め",
         "description": "月を締めると、その月の印税は以後変わらない明細になります。毎月ご自身で締めるか、指定した日に自動で締めるかを選べます。",
@@ -2496,7 +2557,8 @@
         "email": "メール情報",
         "payment": "決済",
         "mobile_push": "モバイルプッシュ",
-        "app_links": "アプリリンク"
+        "app_links": "アプリリンク",
+        "sign_in": "ログイン"
       },
       "email_title": "外部連携 - メール情報",
       "email_description": "テナントごとのメール送信設定を管理します。",
@@ -2509,7 +2571,10 @@
       "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
       "app_links_title": "外部連携 - アプリリンク",
       "app_links_description": "このテナントのリンクを開くAndroid / iOSアプリを管理します。",
-      "app_links_error": "アプリリンクの設定を表示できませんでした"
+      "app_links_error": "アプリリンクの設定を表示できませんでした",
+      "sign_in_title": "外部連携 - ログイン",
+      "sign_in_description": "このテナントの読者がログインに使えるAppleとGoogleのアカウントを管理します。",
+      "sign_in_error": "ログイン方法の設定を表示できませんでした"
     },
     "notifications": {
       "page_description": "自分宛の業務イベントを確認し、既読にできます。お知らせの配信管理は別画面です。",

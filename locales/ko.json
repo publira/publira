@@ -227,6 +227,7 @@
         "tenant_admin_invitation": "관리자 초대",
         "tenant_community_limits": "커뮤니티 제한",
         "tenant_retention": "보존 기간",
+        "tenant_sign_in_settings": "로그인 방법",
         "user": "사용자"
       },
       "list_failed": "감사 로그를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -316,6 +317,7 @@
         "tenant_payment_settings_updated": "결제 설정 변경",
         "tenant_fcm_credentials_saved": "Firebase 인증 정보 저장",
         "tenant_fcm_credentials_deleted": "Firebase 인증 정보 삭제",
+        "tenant_sign_in_settings_updated": "로그인 방법 설정 변경",
         "tenant_community_limits_updated": "커뮤니티 제한 변경",
         "tenant_retention_updated": "보존 기간 변경",
         "admin_mfa_enrolled": "2단계 인증 설정",
@@ -2391,6 +2393,65 @@
           "bundle_identifier_invalid": "번들 ID는 com.example.reader처럼 영문자, 숫자, 하이픈으로 된 부분을 점으로 구분해 두 개 이상 입력하세요."
         }
       },
+      "sign_in": {
+        "title": "로그인 방법",
+        "description": "독자가 이메일 주소뿐 아니라 Apple이나 Google 계정으로도 사이트와 앱에 로그인할 수 있게 합니다. 켜져 있고 필요한 정보가 모두 있는 방법은 저장 직후 사이트에 표시됩니다. Apple 키는 쓰기 전용입니다. 다시 열면 상태와 마스크만 보이며 값 자체는 표시되지 않습니다.",
+        "not_set": "미설정",
+        "status": {
+          "ready": "제공 중",
+          "ready_description": "독자가 이 방법으로 로그인할 수 있습니다.",
+          "incomplete": "미완료",
+          "incomplete_description": "켜져 있지만 필요한 정보가 없어 독자에게 표시되지 않습니다.",
+          "disabled": "사용 안 함",
+          "disabled_description": "저장되어 있지만 독자에게 표시되지 않습니다.",
+          "unset": "미설정",
+          "unset_description": "이 방법에는 아무것도 등록되어 있지 않습니다."
+        },
+        "apple": {
+          "title": "Apple",
+          "enabled": "Apple로 로그인 제공",
+          "services_id": "Services ID",
+          "services_id_description": "사이트가 로그인에 사용하는 Services ID의 식별자입니다. Apple Developer 계정의 Certificates, Identifiers & Profiles에서 등록합니다. iOS 앱에서만 Apple로 로그인을 제공한다면 비워 두세요.",
+          "team_id": "Team ID",
+          "team_id_description": "Apple Developer 팀의 10자 ID로, 계정의 멤버십 세부 정보에 표시됩니다.",
+          "key_id": "키 ID",
+          "key_id_description": "Apple로 로그인을 사용하도록 설정한 키의 10자 ID로, Keys에서 키 옆에 표시됩니다.",
+          "private_key": "개인 키(.p8)",
+          "private_key_description": "Apple Developer 계정이 그 키에 발급한 .p8 파일을 선택하거나 내용을 붙여넣으세요.",
+          "bundle_identifier": "iOS Bundle ID",
+          "bundle_identifier_description": "'앱 링크'에서 설정한 iOS 앱이 이 값으로 로그인합니다. 변경은 그곳에서 합니다."
+        },
+        "google": {
+          "title": "Google",
+          "enabled": "Google로 로그인 제공",
+          "web_client_id": "웹 클라이언트 ID",
+          "web_client_id_description": "Google Cloud 콘솔에서 만든 유형이 웹 애플리케이션인 OAuth 클라이언트의 클라이언트 ID입니다. 사이트와 Android 앱이 이 값으로 로그인합니다.",
+          "ios_client_id": "iOS 클라이언트 ID",
+          "ios_client_id_description": "iOS 앱이 로그인에 사용하는, 유형이 iOS인 OAuth 클라이언트의 클라이언트 ID입니다. 테넌트에 iOS 앱이 없다면 비워 두세요."
+        },
+        "key_text": "또는 내용 붙여넣기",
+        "key_change": "교체",
+        "key_change_cancel": "변경 취소",
+        "key_clear": "삭제",
+        "key_clear_cancel": "키 유지",
+        "key_cleared": "저장하면 저장된 키가 삭제됩니다.",
+        "submit": "로그인 방법 저장",
+        "saved": "로그인 방법을 저장했습니다.",
+        "load_failed": "로그인 방법 설정을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "로그인 방법을 저장할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "services_id_invalid": "Services ID는 com.example.web처럼 영문자, 숫자, 하이픈으로 된 두 개 이상의 부분을 점으로 구분해 입력하세요.",
+          "team_id_required": "Apple로 로그인을 제공하려면 Team ID를 입력하세요.",
+          "team_id_invalid": "Team ID는 ABCDE12345처럼 영문 대문자와 숫자 10자로 입력하세요.",
+          "key_id_required": "Apple로 로그인을 제공하려면 키 ID를 입력하세요.",
+          "key_id_invalid": "키 ID는 2X9R4HXF34처럼 영문 대문자와 숫자 10자로 입력하세요.",
+          "private_key_required": "Apple로 로그인을 제공하려면 개인 키를 선택하거나 붙여넣으세요.",
+          "private_key_invalid": "키가 거부되었습니다. Apple Developer 계정이 Apple로 로그인용으로 발급한 .p8 파일을 선택하세요.",
+          "key_file_too_large": "키 파일이라기에는 너무 큰 파일입니다.",
+          "client_id_invalid": "클라이언트 ID는 Google Cloud 콘솔에 표시되는 .apps.googleusercontent.com으로 끝나는 값을 입력하세요.",
+          "client_id_required": "Google로 로그인을 제공하려면 클라이언트 ID를 하나 이상 입력하세요."
+        }
+      },
       "royalties": {
         "title": "인세 월 마감",
         "description": "월을 마감하면 그 달의 인세는 이후 바뀌지 않는 명세서가 됩니다. 매달 직접 마감하거나, 지정한 날에 자동으로 마감되게 할 수 있습니다.",
@@ -2496,7 +2557,8 @@
         "email": "메일",
         "payment": "결제",
         "mobile_push": "모바일 푸시",
-        "app_links": "앱 링크"
+        "app_links": "앱 링크",
+        "sign_in": "로그인"
       },
       "email_title": "연동 — 메일",
       "email_description": "이 테넌트의 메일 발송 설정을 관리합니다.",
@@ -2509,7 +2571,10 @@
       "mobile_push_error": "모바일 푸시 설정을 표시할 수 없습니다",
       "app_links_title": "연동 — 앱 링크",
       "app_links_description": "이 테넌트의 링크가 열리는 Android 및 iOS 앱을 관리합니다.",
-      "app_links_error": "앱 링크 설정을 표시할 수 없습니다"
+      "app_links_error": "앱 링크 설정을 표시할 수 없습니다",
+      "sign_in_title": "연동 — 로그인",
+      "sign_in_description": "이 테넌트의 독자가 로그인에 사용할 수 있는 Apple 및 Google 계정을 관리합니다.",
+      "sign_in_error": "로그인 방법 설정을 표시할 수 없습니다"
     },
     "notifications": {
       "page_description": "나에게 온 업무 이벤트를 확인하고 읽음으로 표시합니다. 공지사항 발송 관리는 별도 화면입니다.",

@@ -65,6 +65,7 @@ export const auditActions = [
   "tenant_payment_settings_updated",
   "tenant_fcm_credentials_saved",
   "tenant_fcm_credentials_deleted",
+  "tenant_sign_in_settings_updated",
   "tenant_community_limits_updated",
   "tenant_retention_updated",
   "admin_mfa_enrolled",

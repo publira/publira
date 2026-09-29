@@ -227,6 +227,7 @@
         "tenant_admin_invitation": "Admin invitation",
         "tenant_community_limits": "Community limits",
         "tenant_retention": "Retention periods",
+        "tenant_sign_in_settings": "Sign-in providers",
         "user": "User"
       },
       "list_failed": "Could not load the audit log. Please try again later.",
@@ -316,6 +317,7 @@
         "tenant_payment_settings_updated": "Payment settings updated",
         "tenant_fcm_credentials_saved": "Firebase credentials saved",
         "tenant_fcm_credentials_deleted": "Firebase credentials removed",
+        "tenant_sign_in_settings_updated": "Sign-in providers updated",
         "tenant_community_limits_updated": "Community limits updated",
         "tenant_retention_updated": "Retention periods updated",
         "admin_mfa_enrolled": "Two-step verification set up",
@@ -2391,6 +2393,65 @@
           "bundle_identifier_invalid": "Enter the bundle identifier as two or more dot-separated parts of letters, digits, and hyphens, such as com.example.reader."
         }
       },
+      "sign_in": {
+        "title": "Sign-in providers",
+        "description": "Let readers sign in to the site and the app with Apple or Google as well as with an email address. The site offers a provider moments after it is saved on and complete. The Apple key is write-only: coming back, you see its state and a mask, never the value.",
+        "not_set": "Not set",
+        "status": {
+          "ready": "Offered",
+          "ready_description": "Readers can sign in with this provider.",
+          "incomplete": "Incomplete",
+          "incomplete_description": "On, but something it needs is missing, so readers are not offered it.",
+          "disabled": "Off",
+          "disabled_description": "Saved, but readers are not offered it.",
+          "unset": "Not set",
+          "unset_description": "Nothing is registered for this provider."
+        },
+        "apple": {
+          "title": "Apple",
+          "enabled": "Offer Sign in with Apple",
+          "services_id": "Services ID",
+          "services_id_description": "The identifier of the Services ID the site signs in with, registered under Certificates, Identifiers & Profiles in the Apple Developer account. Leave it empty if only the iOS app offers Sign in with Apple.",
+          "team_id": "Team ID",
+          "team_id_description": "The ten-character ID of the Apple Developer team, shown in the membership details of the account.",
+          "key_id": "Key ID",
+          "key_id_description": "The ten-character ID of the key enabled for Sign in with Apple, shown beside the key under Keys.",
+          "private_key": "Private key (.p8)",
+          "private_key_description": "Choose the .p8 file the Apple Developer account issued for that key, or paste its contents.",
+          "bundle_identifier": "iOS bundle ID",
+          "bundle_identifier_description": "The iOS app named under App links signs in with this. Change it there."
+        },
+        "google": {
+          "title": "Google",
+          "enabled": "Offer Sign in with Google",
+          "web_client_id": "Web client ID",
+          "web_client_id_description": "The client ID of the Web application OAuth client in the Google Cloud console. The site and the Android app sign in with it.",
+          "ios_client_id": "iOS client ID",
+          "ios_client_id_description": "The client ID of the iOS OAuth client, which the iOS app signs in with. Leave it empty if the tenant has no iOS app."
+        },
+        "key_text": "Or paste the contents",
+        "key_change": "Replace",
+        "key_change_cancel": "Cancel the change",
+        "key_clear": "Remove",
+        "key_clear_cancel": "Keep the key",
+        "key_cleared": "The stored key is removed when you save.",
+        "submit": "Save the sign-in providers",
+        "saved": "The sign-in providers were saved.",
+        "load_failed": "Could not load the sign-in providers. Please try again later.",
+        "save_failed": "Could not save the sign-in providers. Please try again later.",
+        "validation": {
+          "services_id_invalid": "Enter the Services ID as two or more dot-separated parts of letters, digits, and hyphens, such as com.example.web.",
+          "team_id_required": "Enter the Team ID to offer Sign in with Apple.",
+          "team_id_invalid": "Enter the Team ID as ten capital letters and digits, such as ABCDE12345.",
+          "key_id_required": "Enter the Key ID to offer Sign in with Apple.",
+          "key_id_invalid": "Enter the Key ID as ten capital letters and digits, such as 2X9R4HXF34.",
+          "private_key_required": "Choose or paste the private key to offer Sign in with Apple.",
+          "private_key_invalid": "The key was refused. Choose the .p8 file the Apple Developer account issued for Sign in with Apple.",
+          "key_file_too_large": "This file is too large to be a key file.",
+          "client_id_invalid": "Enter a client ID ending in .apps.googleusercontent.com, as the Google Cloud console shows it.",
+          "client_id_required": "Enter at least one client ID to offer Sign in with Google."
+        }
+      },
       "royalties": {
         "title": "Closing royalty months",
         "description": "A month's royalties become a statement that never changes when the month is closed. Close each month yourself, or let it close on a day of your choice.",
@@ -2496,7 +2557,8 @@
         "email": "Email",
         "payment": "Payments",
         "mobile_push": "Mobile push",
-        "app_links": "App links"
+        "app_links": "App links",
+        "sign_in": "Sign-in"
       },
       "email_title": "Integrations — Email",
       "email_description": "Manage how this tenant sends email.",
@@ -2509,7 +2571,10 @@
       "mobile_push_error": "Could not display the mobile push settings",
       "app_links_title": "Integrations — App links",
       "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
-      "app_links_error": "Could not display the app link settings"
+      "app_links_error": "Could not display the app link settings",
+      "sign_in_title": "Integrations — Sign-in",
+      "sign_in_description": "Manage the Apple and Google accounts readers of this tenant can sign in with.",
+      "sign_in_error": "Could not display the sign-in providers"
     },
     "notifications": {
       "page_description": "Review operational events addressed to you and mark them as read. Announcement delivery is managed on a separate screen.",

@@ -40,6 +40,7 @@ describe("IntegrationsTabNav", () => {
       ["Payments", "/integrations/payment"],
       ["Mobile push", "/integrations/mobile-push"],
       ["App links", "/integrations/app-links"],
+      ["Sign-in", "/integrations/sign-in"],
     ]);
   });
 });

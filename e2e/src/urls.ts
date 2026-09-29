@@ -247,6 +247,23 @@ export const WEB_HOST_APP_LINKS_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the sign-in providers tenant from
+ * `db/seeds/scenarios/340_sign_in_providers.sql`. Its suite switches the
+ * tenant's Apple and Google sign-in on and off, so it needs a console of its
+ * own.
+ */
+export const WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.sign-in.localhost")
+);
+
+/** Public site of the same tenant, whose tenant read names the providers offered. */
+export const WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "sign-in.localhost")
+);
+
+/**
  * Admin console of the royalties tenant from
  * `db/seeds/scenarios/260_royalties.sql`. Its suite closes a month, which is
  * tenant-wide and never undone, so it needs a console of its own.

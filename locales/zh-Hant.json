@@ -227,6 +227,7 @@
         "tenant_admin_invitation": "管理員邀請",
         "tenant_community_limits": "社群限制",
         "tenant_retention": "保留期限",
+        "tenant_sign_in_settings": "登入方式",
         "user": "使用者"
       },
       "list_failed": "無法載入稽核記錄。請稍後再試。",
@@ -316,6 +317,7 @@
         "tenant_payment_settings_updated": "更新了付款設定",
         "tenant_fcm_credentials_saved": "儲存了Firebase憑證",
         "tenant_fcm_credentials_deleted": "刪除了Firebase憑證",
+        "tenant_sign_in_settings_updated": "更新了登入方式設定",
         "tenant_community_limits_updated": "更新了社群限制",
         "tenant_retention_updated": "更新了保留期限",
         "admin_mfa_enrolled": "設定了兩步驟驗證",
@@ -2391,6 +2393,65 @@
           "bundle_identifier_invalid": "請依com.example.reader的形式，以點分隔的兩個或更多由字母、數字與連字號組成的部分輸入Bundle ID。"
         }
       },
+      "sign_in": {
+        "title": "登入方式",
+        "description": "讓讀者除電子郵件地址外，也能用Apple或Google帳戶登入網站與應用程式。已啟用且資訊齊全的方式會在儲存後不久顯示於網站上。Apple金鑰為唯寫：再次開啟時只顯示狀態與遮罩，不會顯示值本身。",
+        "not_set": "未設定",
+        "status": {
+          "ready": "已提供",
+          "ready_description": "讀者可以用此方式登入。",
+          "incomplete": "未完成",
+          "incomplete_description": "已啟用，但缺少所需資訊，因此不會向讀者顯示。",
+          "disabled": "已停用",
+          "disabled_description": "已儲存，但不會向讀者顯示。",
+          "unset": "未設定",
+          "unset_description": "此方式尚未登錄任何內容。"
+        },
+        "apple": {
+          "title": "Apple",
+          "enabled": "提供使用Apple登入",
+          "services_id": "Services ID",
+          "services_id_description": "網站登入所用的Services ID識別碼，在Apple Developer帳戶的「Certificates, Identifiers & Profiles」中註冊。若只有iOS應用程式提供使用Apple登入，請留空。",
+          "team_id": "Team ID",
+          "team_id_description": "Apple Developer團隊的10個字元ID，顯示於帳戶的會員資格詳細資訊中。",
+          "key_id": "金鑰ID",
+          "key_id_description": "已啟用使用Apple登入的金鑰的10個字元ID，在「Keys」中顯示於該金鑰旁。",
+          "private_key": "私密金鑰（.p8）",
+          "private_key_description": "選擇Apple Developer帳戶為該金鑰核發的 .p8檔案，或貼上其內容。",
+          "bundle_identifier": "iOS Bundle ID",
+          "bundle_identifier_description": "在「應用程式連結」中設定的iOS應用程式以它登入。請在該處變更。"
+        },
+        "google": {
+          "title": "Google",
+          "enabled": "提供使用Google登入",
+          "web_client_id": "網頁用戶端ID",
+          "web_client_id_description": "Google Cloud主控台中類型為「網頁應用程式」的OAuth用戶端的用戶端ID。網站與Android應用程式以它登入。",
+          "ios_client_id": "iOS用戶端ID",
+          "ios_client_id_description": "iOS應用程式登入所用、類型為「iOS」的OAuth用戶端的用戶端ID。若租戶沒有iOS應用程式，請留空。"
+        },
+        "key_text": "或貼上內容",
+        "key_change": "替換",
+        "key_change_cancel": "取消變更",
+        "key_clear": "刪除",
+        "key_clear_cancel": "保留金鑰",
+        "key_cleared": "儲存後將刪除已儲存的金鑰。",
+        "submit": "儲存登入方式",
+        "saved": "已儲存登入方式。",
+        "load_failed": "無法載入登入方式設定。請稍後再試。",
+        "save_failed": "無法儲存登入方式。請稍後再試。",
+        "validation": {
+          "services_id_invalid": "請依com.example.web的形式，以點分隔兩個以上由字母、數字與連字號組成的部分輸入Services ID。",
+          "team_id_required": "若要提供使用Apple登入，請輸入Team ID。",
+          "team_id_invalid": "請依ABCDE12345的形式，以10個大寫英文字母與數字輸入Team ID。",
+          "key_id_required": "若要提供使用Apple登入，請輸入金鑰ID。",
+          "key_id_invalid": "請依2X9R4HXF34的形式，以10個大寫英文字母與數字輸入金鑰ID。",
+          "private_key_required": "若要提供使用Apple登入，請選擇或貼上私密金鑰。",
+          "private_key_invalid": "此金鑰未被接受。請選擇Apple Developer帳戶為使用Apple登入核發的 .p8檔案。",
+          "key_file_too_large": "此檔案過大，不可能是金鑰檔案。",
+          "client_id_invalid": "請輸入Google Cloud主控台顯示、以 .apps.googleusercontent.com結尾的用戶端ID。",
+          "client_id_required": "若要提供使用Google登入，請至少輸入一個用戶端ID。"
+        }
+      },
       "royalties": {
         "title": "版稅月份結算",
         "description": "結算某月後，該月的版稅會成為此後不再變動的明細。可以每月自行結算，也可以在指定的日期自動結算。",
@@ -2496,7 +2557,8 @@
         "email": "郵件",
         "payment": "付款",
         "mobile_push": "行動推播",
-        "app_links": "應用程式連結"
+        "app_links": "應用程式連結",
+        "sign_in": "登入"
       },
       "email_title": "整合 — 郵件",
       "email_description": "管理該租戶寄送郵件的方式。",
@@ -2509,7 +2571,10 @@
       "mobile_push_error": "無法顯示行動推播設定",
       "app_links_title": "整合 — 應用程式連結",
       "app_links_description": "管理該租戶的連結所開啟的Android與iOS應用程式。",
-      "app_links_error": "無法顯示應用程式連結設定"
+      "app_links_error": "無法顯示應用程式連結設定",
+      "sign_in_title": "整合 — 登入",
+      "sign_in_description": "管理該租戶的讀者可用於登入的Apple與Google帳戶。",
+      "sign_in_error": "無法顯示登入方式設定"
     },
     "notifications": {
       "page_description": "查看寄給您的營運事件並標示為已讀。公告的發送在另一個頁面管理。",
