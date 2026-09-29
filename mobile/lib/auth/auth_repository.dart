@@ -152,4 +152,11 @@ abstract class AuthRepository {
   /// Throws [AuthFailure]; a wrong [password] is
   /// [AuthFailureKind.invalidInput].
   Future<void> deleteAccount(AuthSession session, {required String password});
+
+  /// Tells the API the reader behind [session] has signed out, which it
+  /// records in its audit trail. The token is stateless, so nothing else
+  /// changes on either side.
+  ///
+  /// Throws [AuthFailure].
+  Future<void> signOut(AuthSession session);
 }

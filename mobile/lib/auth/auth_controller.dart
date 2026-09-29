@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -164,7 +166,7 @@ class AuthController extends ChangeNotifier {
     } on AuthFailure catch (failure) {
       if (failure.kind == AuthFailureKind.sessionExpired &&
           _revision == revision) {
-        await signOut();
+        await _drop(expired: false);
       }
     }
   }
@@ -351,11 +353,23 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Drops the session in hand and tells the API without waiting, so the
+  /// sign-out is audited the way one on the website is. The token is
+  /// stateless, so nothing depends on the API hearing of it.
   Future<void> signOut() async {
-    await _store.clear();
-    _setSession(null);
-    _expired = false;
-    notifyListeners();
+    final session = _session;
+    if (session != null) {
+      unawaited(_recordSignOut(session));
+    }
+    await _drop(expired: false);
+  }
+
+  Future<void> _recordSignOut(AuthSession session) async {
+    try {
+      await _repository.signOut(session);
+    } on Object {
+      // The session is already gone on this device.
+    }
   }
 
   /// Reads and clears [expired], so the reader is told once rather than on
@@ -366,10 +380,12 @@ class AuthController extends ChangeNotifier {
     return expired;
   }
 
-  Future<void> _expire() async {
+  Future<void> _expire() => _drop(expired: true);
+
+  Future<void> _drop({required bool expired}) async {
     await _store.clear();
     _setSession(null);
-    _expired = true;
+    _expired = expired;
     notifyListeners();
   }
 

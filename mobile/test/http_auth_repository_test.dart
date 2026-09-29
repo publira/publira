@@ -723,6 +723,32 @@ void main() {
     );
     expect(server.memberDeleted, isFalse);
   });
+
+  test(
+    'signOut sends Logout for the tenant with the token being dropped',
+    () async {
+      await auth.signOut(stored);
+
+      final request = server.requestsTo('Logout').single;
+      expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
+      expect(request.body['tenant'], {
+        'tenantId': ConnectFixtureServer.defaultTenantId,
+      });
+    },
+  );
+
+  test('signOut maps an unreachable API to network', () async {
+    final closedBaseUrl = server.baseUrl;
+    await server.close();
+    final offline = HttpAuthRepository(
+      config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
+    );
+
+    await expectLater(
+      () => offline.signOut(stored),
+      failsWith(AuthFailureKind.network),
+    );
+  });
 }
 
 /// Sends [held] only once [release] completes, so a test can decide which of

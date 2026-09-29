@@ -1076,6 +1076,12 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/Logout')) {
+      // The API answers every token alike: it only records the sign-out.
+      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      return;
+    }
+
     if (path.endsWith('/GetSeriesDetail')) {
       if (detailStatus != HttpStatus.ok) {
         await _write(
