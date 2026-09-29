@@ -52,8 +52,10 @@ test.describe("web-admin notification bell", () => {
     await expect(more).toHaveAttribute("href", "/notifications");
     // The trigger sits in the sticky header, so the menu has to hold still in
     // the frame the page scrolls in: a click's press and release are otherwise
-    // split across two elements.
+    // split across two elements. This tenant's dashboard fits the screen, so
+    // the document is stretched to give it somewhere to scroll.
     const { drift, scrolled } = await more.evaluate((link) => {
+      document.body.style.minHeight = "200vh";
       const before = link.getBoundingClientRect().y;
       window.scrollBy(0, 200);
       const result = {
@@ -61,6 +63,7 @@ test.describe("web-admin notification bell", () => {
         scrolled: window.scrollY,
       };
       window.scrollTo(0, 0);
+      document.body.style.minHeight = "";
       return result;
     });
     expect(scrolled).toBeGreaterThan(0);
