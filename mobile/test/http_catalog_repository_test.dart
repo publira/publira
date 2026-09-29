@@ -711,6 +711,75 @@ void main() {
     expect(() => catalog.searchLabels(query: 'Seed'), isNetwork);
   });
 
+  test(
+    'listCreators maps every credited author onto PublishedCreator',
+    () async {
+      final page = await catalog.listCreators();
+
+      expect(page.creators.map((creator) => creator.id), [
+        'SeedAUTHAAA1',
+        'SeedAUTHAAA2',
+        'SeedAUTHAAA3',
+      ]);
+      expect(page.creators.first.name, 'Seed Author 001');
+      expect(page.creators.first.seriesCount, 1);
+      expect(page.nextToken, isEmpty);
+
+      final request = server.requestsTo('ListPublishedCreators').single;
+      expect(request.body['limit'], 20);
+      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      expect(request.body.containsKey('token'), isFalse);
+    },
+  );
+
+  test('listCreators asks for the limit and the page it is given', () async {
+    server.seriesPageSize = 2;
+
+    final first = await catalog.listCreators(limit: 2);
+    final second = await catalog.listCreators(limit: 2, token: first.nextToken);
+
+    expect(second.creators.single.id, 'SeedAUTHAAA3');
+    expect(second.nextToken, isEmpty);
+    final request = server.requestsTo('ListPublishedCreators').last;
+    expect(request.body['limit'], 2);
+    expect(request.body['token'], first.nextToken);
+  });
+
+  test('listLabels maps every label onto PublishedLabel', () async {
+    final page = await catalog.listLabels();
+
+    final label = page.labels.single;
+    expect(label.id, 'SeedLABLAAA1');
+    expect(label.name, 'Seed Label 01');
+    expect(page.nextToken, isEmpty);
+    expect(server.requestsTo('ListPublishedLabels').single.body['limit'], 20);
+  });
+
+  test(
+    'listCreators and listLabels read a tenant with none as empty',
+    () async {
+      server.series = const [];
+
+      expect((await catalog.listCreators()).creators, isEmpty);
+      expect((await catalog.listLabels()).labels, isEmpty);
+    },
+  );
+
+  test('an author or label list the API could not answer is a network '
+      'failure', () async {
+    server.directoryStatus = HttpStatus.serviceUnavailable;
+    final isNetwork = throwsA(
+      isA<CatalogFailure>().having(
+        (error) => error.kind,
+        'kind',
+        CatalogFailureKind.network,
+      ),
+    );
+
+    expect(() => catalog.listCreators(), isNetwork);
+    expect(() => catalog.listLabels(), isNetwork);
+  });
+
   test('getCreatorDetail carries the author and their series', () async {
     final detail = await catalog.getCreatorDetail('SeedAUTHAAA1');
 
@@ -1542,6 +1611,8 @@ void main() {
       await catalog.searchSeries(query: 'Seed');
       await catalog.searchCreators(query: 'Seed');
       await catalog.searchLabels(query: 'Seed');
+      await catalog.listCreators();
+      await catalog.listLabels();
       await catalog.getSeries(webOnly);
       await catalog.getCreator('SeedAUTHAAA1');
       await catalog.getCreatorDetail('SeedAUTHAAA1');
@@ -1559,6 +1630,8 @@ void main() {
           'SearchPublishedSeries',
           'SearchPublishedCreators',
           'SearchPublishedLabels',
+          'ListPublishedCreators',
+          'ListPublishedLabels',
           'GetSeriesDetail',
           'GetPublishedCreatorDetail',
           'GetPublishedLabelDetail',

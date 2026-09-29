@@ -3595,16 +3595,20 @@
       "all_series_heading": "All series",
       "continue_failed": "Could not show what you were reading. Try again.",
       "continue_heading": "Continue reading",
+      "creators_failed": "Could not show the featured authors. Try again.",
+      "creators_heading": "Featured authors",
       "empty": "No series have been published yet.",
       "genres_failed": "Could not show the genres. Try again.",
       "genres_heading": "Browse by genre",
-      "genres_view_all": "View all",
+      "labels_failed": "Could not show the featured labels. Try again.",
+      "labels_heading": "Featured labels",
       "load_failed": "Could not show the catalog. Try again.",
       "new_arrivals_failed": "Could not show the new arrivals. Try again.",
       "new_arrivals_heading": "New arrivals",
       "offline_not_saved": "You are offline, and this device holds no saved catalog.",
       "ranking_failed": "Could not show this week's ranking. Try again.",
-      "ranking_heading": "Top 10 this week"
+      "ranking_heading": "Top 10 this week",
+      "view_all": "View all"
     },
     "common": {
       "back_to_catalog": "Back to the catalog",
@@ -3707,6 +3711,11 @@
       "series_heading": "Related series",
       "title": "Author"
     },
+    "creators": {
+      "empty": "No authors are credited on a published series yet.",
+      "load_failed": "Could not show the authors. Try again.",
+      "title": "Authors"
+    },
     "follow": {
       "failed": "Could not change what you follow. Try again.",
       "follow": "Follow",
@@ -3741,6 +3750,11 @@
       "series_empty": "No published series yet.",
       "series_heading": "Series in this label",
       "title": "Label"
+    },
+    "labels": {
+      "empty": "No labels have been registered yet.",
+      "load_failed": "Could not show the labels. Try again.",
+      "title": "Labels"
     },
     "genres": {
       "empty": "No genres have been registered yet.",

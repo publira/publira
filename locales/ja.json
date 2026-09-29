@@ -3595,16 +3595,20 @@
       "all_series_heading": "すべてのシリーズ",
       "continue_failed": "読みかけの作品を表示できませんでした。もう一度お試しください。",
       "continue_heading": "読みかけの作品",
+      "creators_failed": "注目の著者を表示できませんでした。もう一度お試しください。",
+      "creators_heading": "注目の著者",
       "empty": "公開中のシリーズはありません",
       "genres_failed": "ジャンルを表示できませんでした。もう一度お試しください。",
       "genres_heading": "ジャンルから探す",
-      "genres_view_all": "すべて見る",
+      "labels_failed": "注目のレーベルを表示できませんでした。もう一度お試しください。",
+      "labels_heading": "注目のレーベル",
       "load_failed": "カタログを表示できませんでした。もう一度お試しください。",
       "new_arrivals_failed": "新着シリーズを表示できませんでした。もう一度お試しください。",
       "new_arrivals_heading": "新着シリーズ",
       "offline_not_saved": "オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。",
       "ranking_failed": "今週のランキングを表示できませんでした。もう一度お試しください。",
-      "ranking_heading": "今週のトップ10"
+      "ranking_heading": "今週のトップ10",
+      "view_all": "すべて見る"
     },
     "common": {
       "back_to_catalog": "カタログへ戻る",
@@ -3707,6 +3711,11 @@
       "series_heading": "関連シリーズ",
       "title": "著者"
     },
+    "creators": {
+      "empty": "公開中シリーズに紐づく著者はまだいません。",
+      "load_failed": "著者一覧を表示できませんでした。もう一度お試しください。",
+      "title": "著者一覧"
+    },
     "follow": {
       "failed": "フォローの状態を変更できませんでした。もう一度お試しください。",
       "follow": "フォローする",
@@ -3741,6 +3750,11 @@
       "series_empty": "まだ公開中シリーズはありません。",
       "series_heading": "所属シリーズ",
       "title": "レーベル"
+    },
+    "labels": {
+      "empty": "レーベルはまだ登録されていません。",
+      "load_failed": "レーベル一覧を表示できませんでした。もう一度お試しください。",
+      "title": "レーベル一覧"
     },
     "genres": {
       "empty": "ジャンルはまだ登録されていません。",

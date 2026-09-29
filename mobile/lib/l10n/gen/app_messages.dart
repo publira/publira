@@ -305,6 +305,12 @@ abstract class AppMessages {
   /// `mobile.catalog.continue_heading`
   String get catalogContinueHeading;
 
+  /// `mobile.catalog.creators_failed`
+  String get catalogCreatorsFailed;
+
+  /// `mobile.catalog.creators_heading`
+  String get catalogCreatorsHeading;
+
   /// `mobile.catalog.empty`
   String get catalogEmpty;
 
@@ -314,8 +320,11 @@ abstract class AppMessages {
   /// `mobile.catalog.genres_heading`
   String get catalogGenresHeading;
 
-  /// `mobile.catalog.genres_view_all`
-  String get catalogGenresViewAll;
+  /// `mobile.catalog.labels_failed`
+  String get catalogLabelsFailed;
+
+  /// `mobile.catalog.labels_heading`
+  String get catalogLabelsHeading;
 
   /// `mobile.catalog.load_failed`
   String get catalogLoadFailed;
@@ -334,6 +343,9 @@ abstract class AppMessages {
 
   /// `mobile.catalog.ranking_heading`
   String get catalogRankingHeading;
+
+  /// `mobile.catalog.view_all`
+  String get catalogViewAll;
 
   /// `mobile.change_email.current_label`
   String get changeEmailCurrentLabel;
@@ -668,6 +680,15 @@ abstract class AppMessages {
   /// `mobile.creator.title`
   String get creatorTitle;
 
+  /// `mobile.creators.empty`
+  String get creatorsEmpty;
+
+  /// `mobile.creators.load_failed`
+  String get creatorsLoadFailed;
+
+  /// `mobile.creators.title`
+  String get creatorsTitle;
+
   /// `mobile.delete_account.confirm`
   String get deleteAccountConfirm;
 
@@ -856,6 +877,15 @@ abstract class AppMessages {
 
   /// `mobile.label.title`
   String get labelTitle;
+
+  /// `mobile.labels.empty`
+  String get labelsEmpty;
+
+  /// `mobile.labels.load_failed`
+  String get labelsLoadFailed;
+
+  /// `mobile.labels.title`
+  String get labelsTitle;
 
   /// `mobile.library.continue_empty`
   String get libraryContinueEmpty;
@@ -1860,6 +1890,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get catalogCreatorsFailed {
+    return '注目の著者を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get catalogCreatorsHeading {
+    return '注目の著者';
+  }
+
+  @override
   String get catalogEmpty {
     return '公開中のシリーズはありません';
   }
@@ -1875,8 +1915,13 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get catalogGenresViewAll {
-    return 'すべて見る';
+  String get catalogLabelsFailed {
+    return '注目のレーベルを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get catalogLabelsHeading {
+    return '注目のレーベル';
   }
 
   @override
@@ -1907,6 +1952,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '今週のトップ10';
+  }
+
+  @override
+  String get catalogViewAll {
+    return 'すべて見る';
   }
 
   @override
@@ -2465,6 +2515,21 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get creatorsEmpty {
+    return '公開中シリーズに紐づく著者はまだいません。';
+  }
+
+  @override
+  String get creatorsLoadFailed {
+    return '著者一覧を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get creatorsTitle {
+    return '著者一覧';
+  }
+
+  @override
   String get deleteAccountConfirm {
     return '削除する';
   }
@@ -2777,6 +2842,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get labelTitle {
     return 'レーベル';
+  }
+
+  @override
+  String get labelsEmpty {
+    return 'レーベルはまだ登録されていません。';
+  }
+
+  @override
+  String get labelsLoadFailed {
+    return 'レーベル一覧を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get labelsTitle {
+    return 'レーベル一覧';
   }
 
   @override
@@ -4198,6 +4278,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get catalogCreatorsFailed {
+    return 'Could not show the featured authors. Try again.';
+  }
+
+  @override
+  String get catalogCreatorsHeading {
+    return 'Featured authors';
+  }
+
+  @override
   String get catalogEmpty {
     return 'No series have been published yet.';
   }
@@ -4213,8 +4303,13 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get catalogGenresViewAll {
-    return 'View all';
+  String get catalogLabelsFailed {
+    return 'Could not show the featured labels. Try again.';
+  }
+
+  @override
+  String get catalogLabelsHeading {
+    return 'Featured labels';
   }
 
   @override
@@ -4245,6 +4340,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get catalogRankingHeading {
     return 'Top 10 this week';
+  }
+
+  @override
+  String get catalogViewAll {
+    return 'View all';
   }
 
   @override
@@ -4803,6 +4903,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get creatorsEmpty {
+    return 'No authors are credited on a published series yet.';
+  }
+
+  @override
+  String get creatorsLoadFailed {
+    return 'Could not show the authors. Try again.';
+  }
+
+  @override
+  String get creatorsTitle {
+    return 'Authors';
+  }
+
+  @override
   String get deleteAccountConfirm {
     return 'Delete';
   }
@@ -5115,6 +5230,21 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get labelTitle {
     return 'Label';
+  }
+
+  @override
+  String get labelsEmpty {
+    return 'No labels have been registered yet.';
+  }
+
+  @override
+  String get labelsLoadFailed {
+    return 'Could not show the labels. Try again.';
+  }
+
+  @override
+  String get labelsTitle {
+    return 'Labels';
   }
 
   @override
@@ -6536,6 +6666,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get catalogCreatorsFailed {
+    return '주목할 작가를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get catalogCreatorsHeading {
+    return '주목할 작가';
+  }
+
+  @override
   String get catalogEmpty {
     return '아직 공개된 시리즈가 없습니다';
   }
@@ -6551,8 +6691,13 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get catalogGenresViewAll {
-    return '모두 보기';
+  String get catalogLabelsFailed {
+    return '주목할 레이블을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get catalogLabelsHeading {
+    return '주목할 레이블';
   }
 
   @override
@@ -6583,6 +6728,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '이번 주 톱 10';
+  }
+
+  @override
+  String get catalogViewAll {
+    return '모두 보기';
   }
 
   @override
@@ -7141,6 +7291,21 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get creatorsEmpty {
+    return '공개 중인 시리즈에 연결된 작가가 아직 없습니다.';
+  }
+
+  @override
+  String get creatorsLoadFailed {
+    return '작가 목록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get creatorsTitle {
+    return '작가 목록';
+  }
+
+  @override
   String get deleteAccountConfirm {
     return '삭제';
   }
@@ -7453,6 +7618,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get labelTitle {
     return '레이블';
+  }
+
+  @override
+  String get labelsEmpty {
+    return '아직 등록된 레이블이 없습니다.';
+  }
+
+  @override
+  String get labelsLoadFailed {
+    return '레이블 목록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get labelsTitle {
+    return '레이블 목록';
   }
 
   @override
@@ -8874,6 +9054,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get catalogCreatorsFailed {
+    return '无法显示推荐作者。请重试。';
+  }
+
+  @override
+  String get catalogCreatorsHeading {
+    return '推荐作者';
+  }
+
+  @override
   String get catalogEmpty {
     return '还没有发布任何系列。';
   }
@@ -8889,8 +9079,13 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get catalogGenresViewAll {
-    return '查看全部';
+  String get catalogLabelsFailed {
+    return '无法显示推荐品牌。请重试。';
+  }
+
+  @override
+  String get catalogLabelsHeading {
+    return '推荐品牌';
   }
 
   @override
@@ -8921,6 +9116,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '本周前十';
+  }
+
+  @override
+  String get catalogViewAll {
+    return '查看全部';
   }
 
   @override
@@ -9479,6 +9679,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get creatorsEmpty {
+    return '还没有作者署名于已发布的系列。';
+  }
+
+  @override
+  String get creatorsLoadFailed {
+    return '无法显示作者列表。请重试。';
+  }
+
+  @override
+  String get creatorsTitle {
+    return '作者';
+  }
+
+  @override
   String get deleteAccountConfirm {
     return '注销';
   }
@@ -9790,6 +10005,21 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get labelTitle {
+    return '品牌';
+  }
+
+  @override
+  String get labelsEmpty {
+    return '尚未登记任何品牌。';
+  }
+
+  @override
+  String get labelsLoadFailed {
+    return '无法显示品牌列表。请重试。';
+  }
+
+  @override
+  String get labelsTitle {
     return '品牌';
   }
 
@@ -11212,6 +11442,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get catalogCreatorsFailed {
+    return '無法顯示推薦作者。請重試。';
+  }
+
+  @override
+  String get catalogCreatorsHeading {
+    return '推薦作者';
+  }
+
+  @override
   String get catalogEmpty {
     return '尚未發布任何系列。';
   }
@@ -11227,8 +11467,13 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get catalogGenresViewAll {
-    return '查看全部';
+  String get catalogLabelsFailed {
+    return '無法顯示推薦品牌。請重試。';
+  }
+
+  @override
+  String get catalogLabelsHeading {
+    return '推薦品牌';
   }
 
   @override
@@ -11259,6 +11504,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '本週前十名';
+  }
+
+  @override
+  String get catalogViewAll {
+    return '查看全部';
   }
 
   @override
@@ -11817,6 +12067,21 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get creatorsEmpty {
+    return '還沒有作者署名於已發布的系列。';
+  }
+
+  @override
+  String get creatorsLoadFailed {
+    return '無法顯示作者列表。請重試。';
+  }
+
+  @override
+  String get creatorsTitle {
+    return '作者';
+  }
+
+  @override
   String get deleteAccountConfirm {
     return '刪除';
   }
@@ -12128,6 +12393,21 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get labelTitle {
+    return '品牌';
+  }
+
+  @override
+  String get labelsEmpty {
+    return '尚未新增任何品牌。';
+  }
+
+  @override
+  String get labelsLoadFailed {
+    return '無法顯示品牌列表。請重試。';
+  }
+
+  @override
+  String get labelsTitle {
     return '品牌';
   }
 

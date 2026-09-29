@@ -14,6 +14,7 @@ import 'package:publira/screens/confirm_email_screen.dart';
 import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
+import 'package:publira/screens/creators_screen.dart';
 import 'package:publira/screens/delete_account_screen.dart';
 import 'package:publira/screens/edit_name_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
@@ -22,6 +23,7 @@ import 'package:publira/screens/follow_updates_screen.dart';
 import 'package:publira/screens/genre_screen.dart';
 import 'package:publira/screens/genres_screen.dart';
 import 'package:publira/screens/label_screen.dart';
+import 'package:publira/screens/labels_screen.dart';
 import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
@@ -79,8 +81,10 @@ abstract final class AppRoutes {
 
   /// The catalog's routes, which every tab holds under its own root.
   static const seriesDetail = 'series/:seriesId';
-  static const creatorDetail = 'creators/:creatorId';
-  static const labelDetail = 'labels/:labelId';
+  static const creators = 'creators';
+  static const creatorDetail = '$creators/:creatorId';
+  static const labels = 'labels';
+  static const labelDetail = '$labels/:labelId';
   static const genres = 'genres';
   static const genreDetail = 'genres/:genreId';
   static const tagDetail = 'tags/:tagSlug';
@@ -130,9 +134,13 @@ abstract final class AppRoutes {
 
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
 
-  static String creatorDetailPath(String creatorId) => '/creators/$creatorId';
+  static const creatorsPath = '/$creators';
 
-  static String labelDetailPath(String labelId) => '/labels/$labelId';
+  static String creatorDetailPath(String creatorId) => '/$creators/$creatorId';
+
+  static const labelsPath = '/$labels';
+
+  static String labelDetailPath(String labelId) => '/$labels/$labelId';
 
   static const genresPath = '/$genres';
 
@@ -216,9 +224,17 @@ List<RouteBase> _tabRoutes() => [
         PublishedPageScreen(slug: '/${state.pathParameters['pageSlug']!}'),
   ),
   GoRoute(
+    path: AppRoutes.creators,
+    builder: (context, state) => const CreatorsScreen(),
+  ),
+  GoRoute(
     path: AppRoutes.creatorDetail,
     builder: (context, state) =>
         CreatorScreen(creatorId: state.pathParameters['creatorId']!),
+  ),
+  GoRoute(
+    path: AppRoutes.labels,
+    builder: (context, state) => const LabelsScreen(),
   ),
   GoRoute(
     path: AppRoutes.labelDetail,

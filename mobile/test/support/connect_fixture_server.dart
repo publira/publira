@@ -40,6 +40,7 @@ class ConnectFixtureServer {
     this.announcementStatus = HttpStatus.ok,
     this.listStatus = HttpStatus.ok,
     this.searchStatus = HttpStatus.ok,
+    this.directoryStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
@@ -605,6 +606,9 @@ class ConnectFixtureServer {
   int announcementStatus;
   int listStatus;
   int searchStatus;
+
+  /// What `ListPublishedCreators` and `ListPublishedLabels` answer with.
+  int directoryStatus;
   int rankedStatus;
   int detailStatus;
   int episodeStatus;
@@ -1243,6 +1247,30 @@ class ConnectFixtureServer {
           ),
         if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
         if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedCreators') ||
+        path.endsWith('/ListPublishedLabels')) {
+      final creators = path.endsWith('/ListPublishedCreators');
+      final shown = _seriesShownTo(body);
+      await _write(request, directoryStatus, {
+        // Authors come in name order, which the empty keyword leaves every
+        // one of. Labels come newest first, which the fixture has no record
+        // of, so they stay in the order the series carry them.
+        if (directoryStatus == HttpStatus.ok)
+          if (creators)
+            ..._namedPage(
+              'creators',
+              _publishedCreators(shown).where(_hasPublishedSeries),
+              '',
+              body['token'],
+            )
+          else
+            ..._pageOf('labels', _publishedLabels(shown), body['token']),
+        if (directoryStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (directoryStatus != HttpStatus.ok) 'message': 'unavailable',
       });
       return;
     }

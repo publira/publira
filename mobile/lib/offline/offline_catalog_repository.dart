@@ -117,6 +117,22 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<LabelPage> searchLabels({required String query, String token = ''}) =>
       _origin.searchLabels(query: query, token: token);
 
+  /// The author list, read from the API alone for the reason [listGenres]
+  /// gives.
+  @override
+  Future<CreatorPage> listCreators({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) => _origin.listCreators(limit: limit, token: token);
+
+  /// The label list, read from the API alone for the reason [listGenres]
+  /// gives.
+  @override
+  Future<LabelPage> listLabels({
+    int limit = directoryPageLimit,
+    String token = '',
+  }) => _origin.listLabels(limit: limit, token: token);
+
   /// The new-arrivals shelf, which only the API can answer.
   ///
   /// It is another order over the same series, and keeping it too would

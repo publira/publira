@@ -7,7 +7,7 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_tile.dart';
 import 'package:publira/catalog/label_tile.dart';
-import 'package:publira/catalog/paged_series_sliver.dart';
+import 'package:publira/catalog/paged_list.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/published_creator.dart';
@@ -267,23 +267,23 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
-      _SearchGroup.series => _GroupResults(
+      _SearchGroup.series => PagedList(
         pager: _series,
-        name: 'series',
+        sectionKey: 'search-series',
         emptyMessage: messages.searchSeriesNoResults(query: _query),
         failedMessage: messages.searchSeriesFailed,
         itemBuilder: (series) => SeriesTile(series: series),
       ),
-      _SearchGroup.creators => _GroupResults(
+      _SearchGroup.creators => PagedList(
         pager: _creators,
-        name: 'creators',
+        sectionKey: 'search-creators',
         emptyMessage: messages.searchCreatorsNoResults(query: _query),
         failedMessage: messages.searchCreatorsFailed,
         itemBuilder: (creator) => CreatorTile(creator: creator),
       ),
-      _SearchGroup.labels => _GroupResults(
+      _SearchGroup.labels => PagedList(
         pager: _labels,
-        name: 'labels',
+        sectionKey: 'search-labels',
         emptyMessage: messages.searchLabelsNoResults(query: _query),
         failedMessage: messages.searchLabelsFailed,
         itemBuilder: (label) => LabelTile(label: label),
@@ -433,90 +433,6 @@ class _OverviewSection<T> extends StatelessWidget {
                 ),
             ],
           ],
-        );
-      },
-    );
-  }
-}
-
-/// One group on its own: every row read so far, and the page under them asked
-/// for as the reader nears the end.
-class _GroupResults<T> extends StatelessWidget {
-  const _GroupResults({
-    required this.pager,
-    required this.name,
-    required this.emptyMessage,
-    required this.failedMessage,
-    required this.itemBuilder,
-  });
-
-  final CatalogPager<T, Null> pager;
-
-  /// Names the group on screen, as `search-<name>-…`.
-  final String name;
-
-  final String emptyMessage;
-
-  /// What the group calls a failure of its own.
-  final String failedMessage;
-
-  final Widget Function(T item) itemBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    return ListenableBuilder(
-      listenable: pager,
-      builder: (context, child) {
-        final failure = pager.failure;
-        if (failure != null) {
-          return CatalogMessage(
-            key: ValueKey('search-$name-error'),
-            message: catalogFailureCopy(messages, failure, failedMessage),
-            actionKey: ValueKey('search-$name-retry'),
-            actionLabel: messages.commonRetry,
-            onAction: pager.restart,
-          );
-        }
-        final items = pager.items;
-        if (items == null) {
-          return Padding(
-            key: ValueKey('search-$name-loading'),
-            padding: const EdgeInsets.all(24),
-            child: const Center(child: CircularProgressIndicator()),
-          );
-        }
-        final hasFooter = pager.hasFooter;
-        if (items.isEmpty && !hasFooter) {
-          return CatalogMessage(
-            key: ValueKey('search-$name-empty'),
-            message: emptyMessage,
-          );
-        }
-        return ListView.separated(
-          key: ValueKey('search-$name-results'),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: items.length + (hasFooter ? 1 : 0),
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            if (index >= items.length - readAheadRows) {
-              pager.readMore();
-            }
-            if (index == items.length) {
-              return PageFooter(
-                sectionKey: 'search-$name-more',
-                message: pager.moreFailure == null
-                    ? null
-                    : catalogFailureCopy(
-                        messages,
-                        pager.moreFailure,
-                        failedMessage,
-                      ),
-                onRetry: pager.retryMore,
-              );
-            }
-            return itemBuilder(items[index]);
-          },
         );
       },
     );
