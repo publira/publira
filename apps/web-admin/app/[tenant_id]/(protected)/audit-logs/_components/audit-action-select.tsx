@@ -287,6 +287,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_fcm_credentials_deleted",
             },
             {
+              label: t("admin.audit.actions.tenant_sign_in_settings_updated"),
+              value: "tenant_sign_in_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.tenant_community_limits_updated"),
               value: "tenant_community_limits_updated",
             },

@@ -282,6 +282,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_fcm_credentials_deleted" />
       );
     }
+    case "tenant_sign_in_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_sign_in_settings_updated" />
+      );
+    }
     case "tenant_community_limits_updated": {
       return (
         <Message message="admin.audit.actions.tenant_community_limits_updated" />
@@ -400,6 +405,9 @@ const tenantTargetName = (targetType: string) => {
     }
     case "tenant_retention": {
       return <Message message="admin.audit.targets.tenant_retention" />;
+    }
+    case "tenant_sign_in_settings": {
+      return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
     }
     case "user": {
       return <Message message="admin.audit.targets.user" />;

@@ -8,28 +8,29 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-interface StoreEnabledContextValue {
+interface CredentialsEnabledContextValue {
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
 }
 
-const StoreEnabledContext = createContext<StoreEnabledContextValue | null>(
-  null
-);
+const CredentialsEnabledContext =
+  createContext<CredentialsEnabledContextValue | null>(null);
 
-const useStoreEnabled = () => {
-  const context = use(StoreEnabledContext);
+const useCredentialsEnabled = () => {
+  const context = use(CredentialsEnabledContext);
   if (!context) {
-    throw new Error("StoreEnabled slots must be rendered inside StoreEnabled.");
+    throw new Error(
+      "CredentialsEnabled slots must be rendered inside CredentialsEnabled."
+    );
   }
   return context;
 };
 
 /**
- * Whether one store is switched on, which marks its credentials required.
- * Seeded once per mount; the form keys it by the saved settings.
+ * Whether one outside service is switched on, which marks its credentials
+ * required. Seeded once per mount; the form keys it by the saved settings.
  */
-export const StoreEnabled = ({
+export const CredentialsEnabled = ({
   children,
   initialEnabled,
 }: {
@@ -39,18 +40,22 @@ export const StoreEnabled = ({
   const [enabled, setEnabled] = useState(initialEnabled);
   const context = useMemo(() => ({ enabled, setEnabled }), [enabled]);
 
-  return <StoreEnabledContext value={context}>{children}</StoreEnabledContext>;
+  return (
+    <CredentialsEnabledContext value={context}>
+      {children}
+    </CredentialsEnabledContext>
+  );
 };
 
-/** The store's switch, posted as `name`, with `children` beside it. */
-export const StoreEnabledCheckbox = ({
+/** The service's switch, posted as `name`, with `children` beside it. */
+export const CredentialsEnabledCheckbox = ({
   children,
   name,
 }: {
   children: ReactNode;
   name: string;
 }) => {
-  const { enabled, setEnabled } = useStoreEnabled();
+  const { enabled, setEnabled } = useCredentialsEnabled();
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -60,28 +65,32 @@ export const StoreEnabledCheckbox = ({
   );
 };
 
-/** A credential's label, marked required while its store is switched on. */
-export const StoreEnabledLabel = ({ children }: { children: ReactNode }) => {
-  const { enabled } = useStoreEnabled();
+/** A credential's label, marked required while its service is switched on. */
+export const CredentialsEnabledLabel = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const { enabled } = useCredentialsEnabled();
 
   return <FieldLabel required={enabled}>{children}</FieldLabel>;
 };
 
-type StoreKeyMode = "clear" | "keep" | "replace";
+type SecretKeyMode = "clear" | "keep" | "replace";
 
-interface StoreKeyContextValue {
+interface SecretKeyContextValue {
   accept: string;
-  mode: StoreKeyMode;
+  mode: SecretKeyMode;
   name: string;
-  setMode: (mode: StoreKeyMode) => void;
+  setMode: (mode: SecretKeyMode) => void;
 }
 
-const StoreKeyContext = createContext<StoreKeyContextValue | null>(null);
+const SecretKeyContext = createContext<SecretKeyContextValue | null>(null);
 
-const useStoreKey = () => {
-  const context = use(StoreKeyContext);
+const useSecretKey = () => {
+  const context = use(SecretKeyContext);
   if (!context) {
-    throw new Error("StoreKey slots must be rendered inside StoreKey.");
+    throw new Error("SecretKey slots must be rendered inside SecretKey.");
   }
   return context;
 };
@@ -91,7 +100,7 @@ const useStoreKey = () => {
  * entered is a file or pasted text. The mode travels with the form so the
  * Action can tell "left as it is" from "removed".
  */
-export const StoreKey = ({
+export const SecretKey = ({
   accept,
   children,
   configured,
@@ -102,7 +111,7 @@ export const StoreKey = ({
   configured: boolean;
   name: string;
 }) => {
-  const [mode, setMode] = useState<StoreKeyMode>(
+  const [mode, setMode] = useState<SecretKeyMode>(
     configured ? "keep" : "replace"
   );
   const context = useMemo(
@@ -111,7 +120,7 @@ export const StoreKey = ({
   );
 
   return (
-    <StoreKeyContext value={context}>
+    <SecretKeyContext value={context}>
       <input name={`${name}_mode`} type="hidden" value={mode} />
       <input
         name={`${name}_configured`}
@@ -119,28 +128,28 @@ export const StoreKey = ({
         value={configured ? "1" : "0"}
       />
       {children}
-    </StoreKeyContext>
+    </SecretKeyContext>
   );
 };
 
 /** Renders its children while the key is in `mode`. */
-export const StoreKeyWhile = ({
+export const SecretKeyWhile = ({
   children,
   mode,
 }: {
   children: ReactNode;
-  mode: StoreKeyMode;
-}) => (useStoreKey().mode === mode ? children : null);
+  mode: SecretKeyMode;
+}) => (useSecretKey().mode === mode ? children : null);
 
 /** Switches the key to `mode`; `children` is the control's wording. */
-export const StoreKeyModeButton = ({
+export const SecretKeyModeButton = ({
   children,
   mode,
 }: {
   children: ReactNode;
-  mode: StoreKeyMode;
+  mode: SecretKeyMode;
 }) => {
-  const { setMode } = useStoreKey();
+  const { setMode } = useSecretKey();
 
   return (
     <Button
@@ -156,15 +165,15 @@ export const StoreKeyModeButton = ({
 };
 
 /** The new key as a file, posted as `<name>_file`. */
-export const StoreKeyFile = () => {
-  const { accept, name } = useStoreKey();
+export const SecretKeyFile = () => {
+  const { accept, name } = useSecretKey();
 
   return <Input accept={accept} name={`${name}_file`} type="file" />;
 };
 
 /** The new key as pasted text, posted as `name`. */
-export const StoreKeyText = () => {
-  const { name } = useStoreKey();
+export const SecretKeyText = () => {
+  const { name } = useSecretKey();
 
   return (
     <Textarea

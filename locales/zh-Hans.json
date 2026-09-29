@@ -227,6 +227,7 @@
         "tenant_admin_invitation": "管理员邀请",
         "tenant_community_limits": "社区限制",
         "tenant_retention": "保留期限",
+        "tenant_sign_in_settings": "登录方式",
         "user": "用户"
       },
       "list_failed": "无法加载审计日志。请稍后再试。",
@@ -316,6 +317,7 @@
         "tenant_payment_settings_updated": "更新了支付设置",
         "tenant_fcm_credentials_saved": "保存了Firebase凭据",
         "tenant_fcm_credentials_deleted": "删除了Firebase凭据",
+        "tenant_sign_in_settings_updated": "更新了登录方式设置",
         "tenant_community_limits_updated": "更新了社区限制",
         "tenant_retention_updated": "更新了保留期限",
         "admin_mfa_enrolled": "设置了两步验证",
@@ -2391,6 +2393,65 @@
           "bundle_identifier_invalid": "请按com.example.reader的形式，以点分隔的两个或更多由字母、数字和连字符组成的部分输入Bundle ID。"
         }
       },
+      "sign_in": {
+        "title": "登录方式",
+        "description": "让读者除电子邮件地址外，也能用Apple或Google账号登录网站和应用。已启用且信息齐全的方式会在保存后不久显示在网站上。Apple密钥为只写：再次打开时只显示状态和掩码，不会显示值本身。",
+        "not_set": "未设置",
+        "status": {
+          "ready": "已提供",
+          "ready_description": "读者可以用此方式登录。",
+          "incomplete": "未完成",
+          "incomplete_description": "已启用，但缺少所需信息，因此不会向读者显示。",
+          "disabled": "已停用",
+          "disabled_description": "已保存，但不会向读者显示。",
+          "unset": "未设置",
+          "unset_description": "此方式尚未登记任何内容。"
+        },
+        "apple": {
+          "title": "Apple",
+          "enabled": "提供通过Apple登录",
+          "services_id": "Services ID",
+          "services_id_description": "网站登录所用的Services ID标识符，在Apple Developer账号的“Certificates, Identifiers & Profiles”中注册。如果只有iOS应用提供通过Apple登录，请留空。",
+          "team_id": "Team ID",
+          "team_id_description": "Apple Developer团队的10位ID，显示在账号的会员资格详细信息中。",
+          "key_id": "密钥ID",
+          "key_id_description": "已启用通过Apple登录的密钥的10位ID，在“Keys”中显示于该密钥旁。",
+          "private_key": "私钥（.p8）",
+          "private_key_description": "选择Apple Developer账号为该密钥签发的 .p8文件，或粘贴其内容。",
+          "bundle_identifier": "iOS Bundle ID",
+          "bundle_identifier_description": "在“应用链接”中设置的iOS应用用它登录。请在那里修改。"
+        },
+        "google": {
+          "title": "Google",
+          "enabled": "提供通过Google登录",
+          "web_client_id": "Web客户端ID",
+          "web_client_id_description": "Google Cloud控制台中类型为“Web应用”的OAuth客户端的客户端ID。网站和Android应用用它登录。",
+          "ios_client_id": "iOS客户端ID",
+          "ios_client_id_description": "iOS应用登录所用的、类型为“iOS”的OAuth客户端的客户端ID。如果租户没有iOS应用，请留空。"
+        },
+        "key_text": "或粘贴内容",
+        "key_change": "替换",
+        "key_change_cancel": "取消更改",
+        "key_clear": "删除",
+        "key_clear_cancel": "保留密钥",
+        "key_cleared": "保存后将删除已保存的密钥。",
+        "submit": "保存登录方式",
+        "saved": "已保存登录方式。",
+        "load_failed": "无法加载登录方式设置。请稍后再试。",
+        "save_failed": "无法保存登录方式。请稍后再试。",
+        "validation": {
+          "services_id_invalid": "请按com.example.web的形式，以点分隔两个或更多由字母、数字和连字符组成的部分输入Services ID。",
+          "team_id_required": "要提供通过Apple登录，请输入Team ID。",
+          "team_id_invalid": "请按ABCDE12345的形式，以10位大写字母和数字输入Team ID。",
+          "key_id_required": "要提供通过Apple登录，请输入密钥ID。",
+          "key_id_invalid": "请按2X9R4HXF34的形式，以10位大写字母和数字输入密钥ID。",
+          "private_key_required": "要提供通过Apple登录，请选择或粘贴私钥。",
+          "private_key_invalid": "该密钥未被接受。请选择Apple Developer账号为通过Apple登录签发的 .p8文件。",
+          "key_file_too_large": "该文件过大，不可能是密钥文件。",
+          "client_id_invalid": "请输入Google Cloud控制台显示的、以 .apps.googleusercontent.com结尾的客户端ID。",
+          "client_id_required": "要提供通过Google登录，请至少输入一个客户端ID。"
+        }
+      },
       "royalties": {
         "title": "版税月份结算",
         "description": "结算某月后，该月的版税会成为此后不再变动的明细。可以每月自行结算，也可以在指定的日期自动结算。",
@@ -2496,7 +2557,8 @@
         "email": "邮件",
         "payment": "支付",
         "mobile_push": "移动推送",
-        "app_links": "应用链接"
+        "app_links": "应用链接",
+        "sign_in": "登录"
       },
       "email_title": "集成 — 邮件",
       "email_description": "管理该租户发送邮件的方式。",
@@ -2509,7 +2571,10 @@
       "mobile_push_error": "无法显示移动推送设置",
       "app_links_title": "集成 — 应用链接",
       "app_links_description": "管理该租户的链接所打开的Android和iOS应用。",
-      "app_links_error": "无法显示应用链接设置"
+      "app_links_error": "无法显示应用链接设置",
+      "sign_in_title": "集成 — 登录",
+      "sign_in_description": "管理该租户的读者可用于登录的Apple和Google账号。",
+      "sign_in_error": "无法显示登录方式设置"
     },
     "notifications": {
       "page_description": "查看发送给您的运营事件并标记为已读。公告的投放在另一个页面管理。",

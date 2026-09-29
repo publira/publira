@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 
 interface IntegrationsTabNavProps {
-  current: "app-links" | "email" | "mobile-push" | "payment";
+  current: "app-links" | "email" | "mobile-push" | "payment" | "sign-in";
 }
 
 export const IntegrationsTabNav = ({ current }: IntegrationsTabNavProps) => (
@@ -41,6 +41,14 @@ export const IntegrationsTabNav = ({ current }: IntegrationsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-20" />}>
         <Message message="admin.integrations.tabs.app_links" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/integrations/sign-in" />}
+      variant={current === "sign-in" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-14" />}>
+        <Message message="admin.integrations.tabs.sign_in" />
       </Suspense>
     </LinkButton>
   </div>

@@ -35,7 +35,9 @@ export type {
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
   TenantAndroidAppAssociation,
+  TenantAppleSignInSettings,
   TenantCommunityLimitOverrides,
+  TenantGoogleSignInSettings,
   TenantIosAppAssociation,
   TenantLegalPage,
   TenantMobileAppAssociation,

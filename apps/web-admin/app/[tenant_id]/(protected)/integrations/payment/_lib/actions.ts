@@ -17,7 +17,6 @@ import {
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
-  optionalFileFormSchema,
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -29,10 +28,15 @@ import {
 } from "#lib/payment-settings";
 import type { PaymentCredentialFieldUpdate } from "#lib/payment-settings";
 import {
+  hasSecretKey,
+  secretKeyFormInput,
+  secretKeySchema,
+  toSecretKeyUpdate,
+} from "#lib/secret-key-form";
+import {
   tenantStorePaymentSettingsCacheTag,
   updateTenantStorePaymentSettings,
 } from "#lib/store-payment-settings";
-import type { StoreKeyUpdate } from "#lib/store-payment-settings";
 import { APP_PURCHASE_ROUTES } from "#lib/store-payment-settings-shared";
 import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import {
@@ -249,44 +253,6 @@ export const updateTenantPurchaseSettingsAction = async (
   };
 };
 
-/** A store key file is a few kilobytes; anything far larger is not one. */
-const MAX_STORE_KEY_FILE_BYTES = 64 * 1024;
-
-/** What the form did with a stored key: kept its hint, replaced, or cleared it. */
-const STORE_KEY_MODES = ["keep", "replace", "clear"] as const;
-
-const storeKeySchema = (fileTooLarge: string) =>
-  z.object({
-    configured: flagOneFormSchema,
-    file: optionalFileFormSchema.refine(
-      (file) => file === undefined || file.size <= MAX_STORE_KEY_FILE_BYTES,
-      fileTooLarge
-    ),
-    mode: z.enum(STORE_KEY_MODES),
-    text: optionalSecretSchema,
-  });
-
-type StoreKeyInput = z.output<ReturnType<typeof storeKeySchema>>;
-
-/** A file chosen wins over pasted text, and neither leaves the key as it is. */
-const hasNewStoreKey = (key: StoreKeyInput): boolean =>
-  key.mode !== "clear" && (key.file !== undefined || key.text.trim() !== "");
-
-const hasStoreKey = (key: StoreKeyInput): boolean =>
-  hasNewStoreKey(key) || (key.configured && key.mode === "keep");
-
-const toStoreKeyUpdate = async (
-  key: StoreKeyInput
-): Promise<StoreKeyUpdate> => {
-  if (key.mode === "clear") {
-    return { mode: SECRET_UPDATE_MODE_CLEAR, value: "" };
-  }
-  const value = (key.file ? await key.file.text() : key.text).trim();
-  return value === ""
-    ? { mode: SECRET_UPDATE_MODE_UNCHANGED, value: "" }
-    : { mode: SECRET_UPDATE_MODE_REPLACE, value };
-};
-
 const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
   const fileTooLarge = t(
@@ -302,8 +268,8 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
       googlePlayEnabled: checkboxOnFormSchema,
       issuerId: optionalSecretSchema.transform((value) => value.trim()),
       keyId: optionalSecretSchema.transform((value) => value.trim()),
-      privateKey: storeKeySchema(fileTooLarge),
-      serviceAccountKey: storeKeySchema(fileTooLarge),
+      privateKey: secretKeySchema(fileTooLarge),
+      serviceAccountKey: secretKeySchema(fileTooLarge),
       tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     })
     .superRefine((value, ctx) => {
@@ -326,7 +292,7 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
             path: ["keyId"],
           });
         }
-        if (!hasStoreKey(value.privateKey)) {
+        if (!hasSecretKey(value.privateKey)) {
           ctx.addIssue({
             code: "custom",
             message: t(
@@ -336,7 +302,7 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
           });
         }
       }
-      if (value.googlePlayEnabled && !hasStoreKey(value.serviceAccountKey)) {
+      if (value.googlePlayEnabled && !hasSecretKey(value.serviceAccountKey)) {
         ctx.addIssue({
           code: "custom",
           message: t(
@@ -347,14 +313,6 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
       }
     });
 };
-
-const storeKeyFormInput = (formData: FormData, name: string) =>
-  toFormDataInput(formData, {
-    configured: { kind: "value", name: `${name}_configured` },
-    file: { kind: "file", name: `${name}_file` },
-    mode: { kind: "value", name: `${name}_mode` },
-    text: { kind: "value", name },
-  });
 
 export const updateTenantStorePaymentSettingsAction = async (
   _prevState: TenantStorePaymentSettingsFormState,
@@ -375,8 +333,8 @@ export const updateTenantStorePaymentSettingsAction = async (
       keyId: { kind: "value", name: "key_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     }),
-    privateKey: storeKeyFormInput(formData, "private_key"),
-    serviceAccountKey: storeKeyFormInput(formData, "service_account_key"),
+    privateKey: secretKeyFormInput(formData, "private_key"),
+    serviceAccountKey: secretKeyFormInput(formData, "service_account_key"),
   });
   if (!parsed.success) {
     return {
@@ -387,8 +345,8 @@ export const updateTenantStorePaymentSettingsAction = async (
   }
 
   const [privateKey, serviceAccountKey] = await Promise.all([
-    toStoreKeyUpdate(parsed.data.privateKey),
-    toStoreKeyUpdate(parsed.data.serviceAccountKey),
+    toSecretKeyUpdate(parsed.data.privateKey),
+    toSecretKeyUpdate(parsed.data.serviceAccountKey),
   ]);
 
   const result = await withAdminSessionReauth(() =>
