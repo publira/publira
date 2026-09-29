@@ -12,6 +12,8 @@ import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/native_provider_sign_in.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
@@ -72,6 +74,7 @@ class PubliraApp extends StatefulWidget {
     required this.router,
     required this.catalog,
     required this.auth,
+    this.providerSignIn,
     this.comments,
     this.follows,
     this.contentViews,
@@ -144,6 +147,7 @@ class PubliraApp extends StatefulWidget {
     DismissedAnnouncementStore dismissedAnnouncements =
         const FileDismissedAnnouncementStore(),
     AnonymousIdStore anonymousIds = const FileAnonymousIdStore(),
+    ProviderSignIn? providerSignIn,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library =
@@ -188,6 +192,9 @@ class PubliraApp extends StatefulWidget {
       router: router ?? createAppRouter(),
       catalog: catalog,
       auth: auth,
+      providerSignIn:
+          providerSignIn ??
+          NativeProviderSignIn(googleIosClientId: resolved.googleIosClientId),
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
       contentViews: HttpContentViewRepository(
@@ -258,6 +265,13 @@ class PubliraApp extends StatefulWidget {
   final GoRouter router;
   final CatalogRepository catalog;
   final AuthController auth;
+
+  /// The platform's Apple and Google sign-in.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// provider sign-in, and no screen then offers one.
+  final ProviderSignIn? providerSignIn;
 
   /// The reader comments on an episode.
   ///
@@ -723,36 +737,39 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       controller: widget.tenantBrand,
       child: AuthScope(
         controller: widget.auth,
-        child: PushScope(
-          controller: widget.push,
-          child: OfflineScope(
-            library: widget.offline,
-            downloader: widget.downloader,
-            child: CatalogScope(
-              repository: widget.catalog,
-              child: CommentScope(
-                repository: widget.comments,
-                child: FollowScope(
-                  repository: widget.follows,
-                  child: ContentViewScope(
-                    repository: widget.contentViews,
-                    child: NotificationScope(
-                      inbox: widget.notifications,
-                      child: AnnouncementScope(
-                        board: widget.announcements,
-                        child: ContactScope(
-                          repository: widget.contact,
-                          child: PageScope(
-                            repository: widget.pages,
-                            child: PurchaseScope(
-                              repository: widget.purchases,
-                              launcher: widget.checkoutLauncher,
-                              storePurchaser: widget.storePurchaser,
-                              child: AgeRatingConfirmationScope(
-                                controller: _ageRating,
-                                child: ScreenCaptureScope(
-                                  notices: widget.screenCaptures,
-                                  child: app,
+        child: ProviderSignInScope(
+          signIn: widget.providerSignIn,
+          child: PushScope(
+            controller: widget.push,
+            child: OfflineScope(
+              library: widget.offline,
+              downloader: widget.downloader,
+              child: CatalogScope(
+                repository: widget.catalog,
+                child: CommentScope(
+                  repository: widget.comments,
+                  child: FollowScope(
+                    repository: widget.follows,
+                    child: ContentViewScope(
+                      repository: widget.contentViews,
+                      child: NotificationScope(
+                        inbox: widget.notifications,
+                        child: AnnouncementScope(
+                          board: widget.announcements,
+                          child: ContactScope(
+                            repository: widget.contact,
+                            child: PageScope(
+                              repository: widget.pages,
+                              child: PurchaseScope(
+                                repository: widget.purchases,
+                                launcher: widget.checkoutLauncher,
+                                storePurchaser: widget.storePurchaser,
+                                child: AgeRatingConfirmationScope(
+                                  controller: _ageRating,
+                                  child: ScreenCaptureScope(
+                                    notices: widget.screenCaptures,
+                                    child: app,
+                                  ),
                                 ),
                               ),
                             ),

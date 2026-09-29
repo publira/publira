@@ -138,9 +138,10 @@ android:
 
 ios:
   bundleIdentifier: com.example.reader # the production bundle identifier
+  googleSignInClientId: 123456789012-abc123.apps.googleusercontent.com # optional
 ```
 
-Every field is required, and a field the format does not define is an error. Android and iOS take separate identifiers, so an app that already has a store listing under different ones keeps both. `schemaVersion` names the format, and a manifest of a version the tooling does not read is refused rather than half-applied.
+Every field is required but `ios.googleSignInClientId`, and a field the format does not define is an error. Android and iOS take separate identifiers, so an app that already has a store listing under different ones keeps both. `schemaVersion` names the format, and a manifest of a version the tooling does not read is refused rather than half-applied.
 
 | File | What it is |
 | --- | --- |
@@ -193,6 +194,7 @@ The command checks the manifest and the arguments, reports every problem before 
 | --- | --- |
 | `<manifest>` | Checked and generated into `.generated/`, or into `PUBLIRA_MOBILE_GENERATED_DIR`, which an `ios` or `ipa` build refuses |
 | `<target>` | One of `apk`, `appbundle`, `ios`, and `ipa` |
+| `ios.googleSignInClientId` | Passed as `--dart-define=PUBLIRA_GOOGLE_IOS_CLIENT_ID` when the manifest names one; giving the define as well is refused |
 | `--flavor` | `production` when no flavor is named; `--flavor dev` builds the development app under the same manifest |
 | `tenant.host` | Passed as `--dart-define=PUBLIRA_TENANT_HOST`, so the app asks the API about the tenant whose links it claims. Giving the define as well is refused |
 | `PUBLIRA_BASE_URL` | Passed as the define of the same name. A production build requires it, as an `https://` origin with no path, query, or fragment; a development build without it keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
@@ -305,7 +307,7 @@ mobile/
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements / published page
+│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   ├── tenant/                   # The tenant's brand and theme, and the controller that loads them
 │   └── viewer/                   # Paged reader
@@ -339,6 +341,7 @@ Every tab holds the catalog's routes and the sign-in forms under its own root, s
 | --- | --- |
 | `/sign-in` | Sign-in form |
 | `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
+| `/sign-up/continue` | Asks the consent and birth date a first Apple or Google sign-in creates an account with |
 | `/resend-verification` | Asks for a fresh confirmation link |
 | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
 | `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
@@ -358,7 +361,8 @@ The routes only one tab holds:
 | `/account/name` | Account | Renames the account (`AuthService/UpdateMe`) |
 | `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
 | `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
-| `/account/delete` | Account | Deletes the account after the password and a second confirmation, then signs out (`AuthService/DeleteMe`) |
+| `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`) |
+| `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 | `/account/contact` | Account | A message to the tenant's staff |
 | `/verify` | Account | Where a confirmation link is spent; the site's own path, claimed as an App Link |
 | `/confirm-password` | Account | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
@@ -541,6 +545,20 @@ A reader signs in with an email address and a password, which `AuthService/Login
 
 `web-host` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
 
+### Apple and Google
+
+The sign-in screen also offers a button for each provider `GetTenant` answers in `apple_sign_in` and `google_sign_in` and the device can sign in with. The provider's token goes to `AuthService/LoginWithIdToken`, and the session it answers with is kept as the password sign-in's is.
+
+| Platform | Apple | Google |
+| --- | --- | --- |
+| iOS | Sign in with Apple, audience the bundle identifier, handed the SHA-256 of the nonce; `LoginWithIdToken` gets the raw nonce and the authorization code | `google_sign_in_ios` with `google_sign_in.ios_client_id`, offered only when it is the client the build registered (`ios.googleSignInClientId`) and only beside Apple, as the App Store requires |
+| Android | Not offered yet (#3390) | Credential Manager with `google_sign_in.web_client_id` as the server client ID |
+
+- The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client
+- A first sign-in that would create an account on a tenant asking consent to its pages is refused with a field violation on `agreed_page_version_ids`, and continues on `/sign-up/continue`, which sends the same token with the consent and an optional birth date
+- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one
+- An account without a password confirms its deletion with a fresh sign-in to a linked provider the device offers (`DeleteMeRequest.provider`, `id_token`, `nonce`)
+
 ## Sign-up
 
 A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. The age rule comes from `GetTenant` and the pages from `GetTenantLegalPages`, read together, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it. The form reads the pages again when it sends, and asks for the consent anew when one was republished in between.
@@ -590,6 +608,7 @@ Use `--dart-define` to switch the test API and tenant host.
 | --- | --- | --- |
 | `PUBLIRA_BASE_URL` | `http://127.0.0.1:8000` | The origin the app asks for the public API under `/api` and for images under `/images`: the tenant's site, or the edge listener of `publira server` itself (port 8000, not gRPC port 8100) |
 | `PUBLIRA_TENANT_HOST` | `localhost:3080` | Host passed to `GetTenantByDomain`; the development seed stores `localhost` on the edge port, `3080` in the Dev Container. Sent with the image requests as `X-Forwarded-Host`. A production build must pass the manifest's `tenant.host` |
+| `PUBLIRA_GOOGLE_IOS_CLIENT_ID` | Unset | The Google iOS client whose URL scheme the build registered; `task mobile:build` passes the manifest's `ios.googleSignInClientId` |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
 The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.

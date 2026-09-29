@@ -10,6 +10,7 @@ class AppConfig {
     required this.baseUrl,
     required this.tenantHost,
     this.firebase,
+    this.googleIosClientId = '',
   });
 
   factory AppConfig.fromEnvironment() {
@@ -23,6 +24,9 @@ class AppConfig {
         defaultValue: defaultTenantHost,
       ),
       firebase: FirebaseConfig.fromEnvironment(),
+      googleIosClientId: const String.fromEnvironment(
+        'PUBLIRA_GOOGLE_IOS_CLIENT_ID',
+      ),
     );
   }
 
@@ -45,6 +49,10 @@ class AppConfig {
   /// The Firebase project the push notifications arrive from, or `null` when
   /// this build was given none and push is off.
   final FirebaseConfig? firebase;
+
+  /// The Google iOS client whose URL scheme the build registered from the app
+  /// manifest, empty for a build that registered none.
+  final String googleIosClientId;
 
   /// Resolves an `image_url` from the API against [baseUrl]. The API
   /// hands out a host-relative path, and keeps the media token it may carry in

@@ -9,12 +9,11 @@ import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/name_input.dart';
 import 'package:publira/forms/password_input.dart';
-import 'package:publira/l10n/formatting.dart';
+import 'package:publira/forms/sign_up_fields.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
-import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// Creating a reader account through `AuthService/CreateUser`, and what
 /// follows it until the address is confirmed.
@@ -26,10 +25,6 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// app takes it at [AppRoutes.verifyEmail].
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
-
-  /// The oldest birth date the picker offers, matching
-  /// `oldestPlausibleAge` in `server/internal/ageverification`.
-  static const oldestPlausibleAge = 130;
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -171,24 +166,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
   }
 
-  /// Asks for a date between the oldest one the API finds plausible and
-  /// today, so nothing the picker can produce is a date the API refuses.
   Future<void> _pickBirthDate() async {
-    final messages = AppMessages.of(context);
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialEntryMode: DatePickerEntryMode.input,
-      initialDatePickerMode: DatePickerMode.year,
-      firstDate: DateTime(now.year - SignUpScreen.oldestPlausibleAge),
-      lastDate: now,
-      helpText: messages.signUpBirthDateLabel,
-    );
+    final picked = await pickBirthDate(context);
     if (picked == null || !mounted) {
       return;
     }
     setState(() {
-      _birthDate = DateTime.utc(picked.year, picked.month, picked.day);
+      _birthDate = picked;
     });
   }
 
@@ -298,7 +282,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             onFieldSubmitted: (_) => unawaited(_submit()),
           ),
           if (_requirements?.ageVerification == AgeVerification.checked)
-            _BirthDateField(
+            BirthDateField(
               date: _birthDate,
               onPick: () => unawaited(_pickBirthDate()),
               onClear: () => setState(() => _birthDate = null),
@@ -306,7 +290,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           if (_requirements?.legalPages case final pages? when pages.isNotEmpty)
             // Keyed by the versions, so pages that changed are asked about
             // with the box cleared.
-            _ConsentField(
+            ConsentField(
               key: ValueKey(pages.map((page) => page.versionId).join(',')),
               pages: pages,
             ),
@@ -343,129 +327,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
       _ => messages.signUpFailed,
     };
-  }
-}
-
-/// The birth date the account is created with, offered only where the tenant
-/// checks ages.
-///
-/// It stays optional there: the API takes a sign-up without one, and the
-/// account screen is where a reader gives it afterwards. A tenant read that
-/// has not answered yet, or could not, therefore leaves the field out rather
-/// than holding the form back — a sign-up sent in the meantime has lost
-/// nothing the reader cannot still do.
-class _BirthDateField extends StatelessWidget {
-  const _BirthDateField({
-    required this.date,
-    required this.onPick,
-    required this.onClear,
-  });
-
-  final DateTime? date;
-  final VoidCallback onPick;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    final picked = date;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 16),
-        InputDecorator(
-          key: const ValueKey('sign-up-birth-date'),
-          decoration: InputDecoration(
-            label: AutospacedText(messages.signUpBirthDateLabel),
-            helper: AutospacedText(messages.signUpBirthDateHelp),
-            helperMaxLines: 4,
-            border: const OutlineInputBorder(),
-            suffixIcon: picked == null
-                ? AutospacedTooltip(
-                    message: messages.signUpBirthDateLabel,
-                    child: IconButton(
-                      key: const ValueKey('sign-up-birth-date-pick'),
-                      icon: const Icon(Icons.calendar_today_outlined),
-                      onPressed: onPick,
-                    ),
-                  )
-                : AutospacedTooltip(
-                    message: messages.signUpBirthDateClear,
-                    child: IconButton(
-                      key: const ValueKey('sign-up-birth-date-clear'),
-                      icon: const Icon(Icons.close),
-                      onPressed: onClear,
-                    ),
-                  ),
-          ),
-          child: InkWell(
-            onTap: onPick,
-            child: AutospacedText(
-              picked == null ? '' : messages.formatCalendarDate(picked),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Consent to the pages the tenant names as its terms of service and its
-/// privacy policy, asked only where it names one, and required there.
-///
-/// Each page opens on its own screen above the form, so reading it keeps
-/// everything the reader has typed.
-class _ConsentField extends StatelessWidget {
-  const _ConsentField({super.key, required this.pages});
-
-  final List<LegalPage> pages;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    final theme = Theme.of(context);
-    return FormField<bool>(
-      initialValue: false,
-      validator: (value) =>
-          value ?? false ? null : messages.signUpConsentRequired,
-      builder: (field) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            key: const ValueKey('sign-up-consent'),
-            value: field.value ?? false,
-            onChanged: field.didChange,
-            title: AutospacedText(messages.signUpConsentLabel),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final page in pages)
-                TextButton(
-                  key: ValueKey('sign-up-legal-page-${page.slug}'),
-                  onPressed: () => unawaited(
-                    context.pushInTab<void>(
-                      AppRoutes.publishedPagePath(page.slug),
-                    ),
-                  ),
-                  child: AutospacedText(page.title),
-                ),
-            ],
-          ),
-          if (field.errorText case final error?)
-            AutospacedText(
-              error,
-              key: const ValueKey('sign-up-consent-error'),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-        ],
-      ),
-    );
   }
 }
 

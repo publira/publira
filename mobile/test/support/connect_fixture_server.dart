@@ -671,6 +671,26 @@ class ConnectFixtureServer {
   /// The addresses `RequestEmailChange` has accepted a move to, in order.
   final requestedEmailChanges = <String>[];
 
+  /// What `GetTenant` answers for `apple_sign_in` and `google_sign_in`.
+  /// `null` is a provider the tenant has not enabled, which the API omits.
+  Map<String, Object?>? appleSignIn;
+  Map<String, Object?>? googleSignIn;
+
+  /// The ID tokens a provider has issued, keyed by the token itself, which
+  /// `LoginWithIdToken` and `DeleteMe` accept for the nonce they carry.
+  final idTokens = <String, FixtureIdToken>{};
+
+  /// The provider accounts linked to the member, keyed by the provider's
+  /// wire name, as `ListMyIdentities` reports them.
+  final memberIdentities = <String, FixtureIdToken>{};
+
+  /// Whether the member's account has a password, which an account a
+  /// provider sign-in created does not.
+  var memberHasPassword = true;
+
+  /// The nonces `LoginWithIdToken` has spent; each is accepted once.
+  final spentNonces = <String>{};
+
   /// Set once `DeleteMe` has gone through, after which the member can
   /// neither sign in nor use the token they held.
   var memberDeleted = false;
@@ -1083,6 +1103,55 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/LoginWithIdToken')) {
+      await _writeLoginWithIdToken(request, body);
+      return;
+    }
+
+    if (path.endsWith('/ListMyIdentities')) {
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _write(request, HttpStatus.ok, {
+        if (memberIdentities.isNotEmpty)
+          'identities': [
+            for (final MapEntry(key: provider, value: token)
+                in memberIdentities.entries)
+              {
+                'provider': provider,
+                'email': token.email,
+                'linkedAt': '2026-01-02T03:04:05Z',
+              },
+          ],
+        if (memberHasPassword) 'hasPassword': true,
+      });
+      return;
+    }
+
+    if (path.endsWith('/UnlinkIdentity')) {
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      final provider = _trimmed(body['provider']);
+      if (!memberIdentities.containsKey(provider)) {
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'no account of this provider is linked',
+        });
+        return;
+      }
+      if (!memberHasPassword && memberIdentities.length == 1) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'failed_precondition',
+          'message': 'the account keeps its last linked provider',
+        });
+        return;
+      }
+      memberIdentities.remove(provider);
+      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      return;
+    }
+
     if (path.endsWith('/Logout')) {
       // The API answers every token alike: it only records the sign-out.
       await _write(request, HttpStatus.ok, const <String, Object?>{});
@@ -1174,6 +1243,10 @@ class ConnectFixtureServer {
           'acceptsAppStorePayments': true,
         if (tenantStatus == HttpStatus.ok && acceptsGooglePlayPayments)
           'acceptsGooglePlayPayments': true,
+        if (tenantStatus == HttpStatus.ok && appleSignIn != null)
+          'appleSignIn': appleSignIn,
+        if (tenantStatus == HttpStatus.ok && googleSignIn != null)
+          'googleSignIn': googleSignIn,
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });
@@ -2236,6 +2309,103 @@ class ConnectFixtureServer {
     });
   }
 
+  /// `LoginWithIdToken` as the API answers it: a token linked to the member,
+  /// or carrying the member's address, signs the member in; any other opens
+  /// the account [signedUpAccessToken] stands for, once the consent the
+  /// tenant's pages ask for comes with it.
+  Future<void> _writeLoginWithIdToken(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final provider = _trimmed(body['provider']);
+    final nonce = _trimmed(body['nonce']);
+    final token = idTokens[_trimmed(body['idToken'])];
+    if (token == null ||
+        token.provider != provider ||
+        token.nonce != nonce ||
+        spentNonces.contains(nonce)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid ID token',
+      });
+      return;
+    }
+    final enabled = switch (provider) {
+      'IDENTITY_PROVIDER_APPLE' => appleSignIn != null,
+      'IDENTITY_PROVIDER_GOOGLE' => googleSignIn != null,
+      _ => false,
+    };
+    if (!enabled) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'the tenant does not sign readers in with this provider',
+      });
+      return;
+    }
+    final linked = memberIdentities[provider];
+    final isMember =
+        !memberDeleted &&
+        (linked?.subject == token.subject ||
+            (linked == null && token.email == memberEmail));
+    if (isMember) {
+      memberIdentities[provider] = token;
+      spentNonces.add(nonce);
+      await _write(request, HttpStatus.ok, {
+        'user': {
+          'publicId': memberPublicId,
+          'name': memberCurrentName,
+          'role': 'member',
+        },
+        'accessToken': _accessToken(memberAccessToken),
+      });
+      return;
+    }
+    final agreed = [
+      for (final id in (body['agreedPageVersionIds'] as List?) ?? const [])
+        '$id',
+    ];
+    if ((termsPage != null || privacyPage != null) && agreed.isEmpty) {
+      // Refused before the nonce is spent, so the same token comes again.
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'agreed_page_version_ids is required',
+        'details': [badRequestDetail('agreed_page_version_ids')],
+      });
+      return;
+    }
+    spentNonces.add(nonce);
+    final name = _trimmed(body['name']);
+    final signup = FixtureSignup(
+      name: name.isEmpty ? token.email.split('@').first : name,
+      password: '',
+      birthDate: _trimmed(body['birthDate']),
+      agreedPageVersionIds: agreed,
+    )..verified = true;
+    signups[token.email] = signup;
+    _signedUpSession = (email: token.email, signup: signup);
+    await _write(request, HttpStatus.ok, {
+      'user': {
+        'publicId': signedUpPublicId,
+        'name': signup.name,
+        'role': 'member',
+      },
+      'accessToken': _accessToken(signedUpAccessToken),
+      'accountCreated': true,
+    });
+  }
+
+  /// A Connect `google.rpc.BadRequest` detail naming [field], as connect-go
+  /// writes one: the message in protobuf binary, base64 without padding.
+  static Map<String, Object?> badRequestDetail(String field) {
+    final name = utf8.encode(field);
+    final violation = [0x0a, name.length, ...name];
+    final message = [0x0a, violation.length, ...violation];
+    return {
+      'type': 'google.rpc.BadRequest',
+      'value': base64.encode(message).replaceAll('=', ''),
+    };
+  }
+
   /// `CreateUser` as the API answers it: an address that is already taken is
   /// accepted exactly like a free one, so nothing here says which it was.
   Future<void> _writeCreateUser(
@@ -2500,7 +2670,18 @@ class ConnectFixtureServer {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (_trimmed(body['password']) != memberCurrentPassword) {
+    final provider = _trimmed(body['provider']);
+    if (provider.isNotEmpty) {
+      final token = idTokens[_trimmed(body['idToken'])];
+      final linked = memberIdentities[provider];
+      if (token == null ||
+          linked == null ||
+          token.subject != linked.subject ||
+          token.nonce != _trimmed(body['nonce'])) {
+        await _writeInvalidArgument(request, 'the ID token is not the account');
+        return;
+      }
+    } else if (_trimmed(body['password']) != memberCurrentPassword) {
       await _writeInvalidArgument(request, 'invalid password');
       return;
     }
@@ -2645,6 +2826,24 @@ class FixtureSignup {
   /// Whether a confirmation link has been opened for this address, which is
   /// what `Login` stops refusing it for.
   var verified = false;
+}
+
+/// An ID token a provider issued for one of its accounts.
+class FixtureIdToken {
+  const FixtureIdToken({
+    required this.provider,
+    required this.subject,
+    required this.email,
+    required this.nonce,
+  });
+
+  /// The provider's wire name (`IDENTITY_PROVIDER_GOOGLE`).
+  final String provider;
+
+  /// The provider's stable id for the account, which a link is keyed on.
+  final String subject;
+  final String email;
+  final String nonce;
 }
 
 /// One Connect request [ConnectFixtureServer] answered, kept so a test can

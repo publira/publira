@@ -18,6 +18,10 @@ const defaultBuildFlavor = 'production';
 const tenantHostDefine = 'PUBLIRA_TENANT_HOST';
 const baseUrlDefine = 'PUBLIRA_BASE_URL';
 
+/// The Google iOS client the manifest names, which the app compares with the
+/// one the tenant answers before it offers Google sign-in on iOS.
+const googleIosClientIdDefine = 'PUBLIRA_GOOGLE_IOS_CLIENT_ID';
+
 /// What `scripts/build.dart` was asked to build.
 class BuildRequest {
   const BuildRequest({
@@ -79,15 +83,22 @@ List<String> flutterBuildArguments(
     request.flutterArguments,
     'dart-define',
   ).map((define) => define.split('=').first).toSet();
-  for (final name in [tenantHostDefine, baseUrlDefine]) {
+  for (final name in [
+    tenantHostDefine,
+    baseUrlDefine,
+    googleIosClientIdDefine,
+  ]) {
     if (given.contains(name)) {
-      problems.add(
-        name == tenantHostDefine
-            ? '--dart-define=$name is the manifest\'s tenant.host; '
-                  'leave it out'
-            : '--dart-define=$name is read from the environment; '
-                  'export $name instead',
-      );
+      problems.add(switch (name) {
+        tenantHostDefine =>
+          '--dart-define=$name is the manifest\'s tenant.host; leave it out',
+        googleIosClientIdDefine =>
+          '--dart-define=$name is the manifest\'s ios.googleSignInClientId; '
+              'leave it out',
+        _ =>
+          '--dart-define=$name is read from the environment; '
+              'export $name instead',
+      });
     }
   }
 
@@ -136,6 +147,8 @@ List<String> flutterBuildArguments(
     ],
     '--dart-define=$tenantHostDefine=${manifest.tenantHost}',
     if (baseUrl.isNotEmpty) '--dart-define=$baseUrlDefine=$baseUrl',
+    if (manifest.iosGoogleSignInClientId case final clientId?)
+      '--dart-define=$googleIosClientIdDefine=$clientId',
     ...request.flutterArguments,
   ];
 }

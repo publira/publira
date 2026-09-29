@@ -3602,6 +3602,7 @@
       "contact": "Contact",
       "contact_description": "Send a message to the people who run this site.",
       "delete": "Delete account",
+      "linked_accounts": "Linked accounts",
       "name": "Name",
       "name_unset": "Not set",
       "notifications": "New episode notifications",
@@ -3971,11 +3972,17 @@
       "title": "Series"
     },
     "sign_in": {
+      "continue_with_apple": "Continue with Apple",
+      "continue_with_google": "Continue with Google",
+      "divider": "or",
       "email_not_verified": "Your email address has not been confirmed yet. Open the link in the confirmation email.",
       "failed": "Could not sign in.",
       "forgot_password": "Forgot your password?",
       "invalid_credentials": "That email address or password is incorrect. Check them and try again.",
       "no_account": "Don't have an account?",
+      "provider_failed": "Could not sign in. Try again.",
+      "provider_refused": "This account cannot sign in here. Sign in with your email address instead.",
+      "provider_unavailable": "This sign-in method is not available right now.",
       "sign_up": "Sign up"
     },
     "viewer": {
@@ -4124,12 +4131,17 @@
       "confirm": "Delete",
       "confirm_description": "You will be signed out, and the account cannot be restored.",
       "confirm_title": "Delete your account?",
+      "confirm_with_provider": "Your account has no password. Sign in again with a linked account to confirm.",
       "deleted": "Your account has been deleted. Thank you for using the site.",
       "description": "Deleting your account permanently removes your access to it. This cannot be undone.",
       "failed": "Could not delete your account. Check what you entered.",
+      "load_failed": "Could not check how to confirm the deletion.",
+      "no_provider": "None of the accounts linked to yours can sign in to this app right now. Contact the site to delete your account.",
       "password_label": "Current password",
       "submit": "Delete my account",
-      "title": "Delete account"
+      "title": "Delete account",
+      "with_apple": "Confirm with Apple",
+      "with_google": "Confirm with Google"
     },
     "confirm_email": {
       "changed": "Your email address has been changed.",
@@ -4141,6 +4153,23 @@
       "pending_new_email": "This confirmation is complete. The change takes effect once the new address is confirmed as well.",
       "title": "Email change confirmation",
       "to_account": "Back to account"
+    },
+    "continue_sign_up": {
+      "description": "Agree to the pages below to create your account.",
+      "expired": "The sign-in took too long. Start again.",
+      "submit": "Create account",
+      "title": "Finish signing up"
+    },
+    "linked_accounts": {
+      "description": "The Apple and Google accounts you can sign in with.",
+      "empty": "No Apple or Google account is linked.",
+      "last": "Your account has no password, so the last linked account stays linked.",
+      "linked_at": "Linked on {$date}",
+      "load_failed": "Could not load your linked accounts.",
+      "title": "Linked accounts",
+      "unlink": "Unlink",
+      "unlink_failed": "Could not unlink the account. Try again later.",
+      "unlinked": "The account was unlinked."
     }
   },
   "platform": {

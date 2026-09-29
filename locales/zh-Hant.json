@@ -3602,6 +3602,7 @@
       "contact": "聯絡我們",
       "contact_description": "向本網站的營運者傳送訊息。",
       "delete": "刪除帳戶",
+      "linked_accounts": "已連結的帳戶",
       "name": "名稱",
       "name_unset": "未設定",
       "notifications": "新章節通知",
@@ -3971,11 +3972,17 @@
       "title": "系列"
     },
     "sign_in": {
+      "continue_with_apple": "透過Apple繼續",
+      "continue_with_google": "透過Google繼續",
+      "divider": "或",
       "email_not_verified": "您的電子郵件地址尚未確認。請開啟確認信中的連結。",
       "failed": "無法登入。",
       "forgot_password": "忘記密碼？",
       "invalid_credentials": "電子郵件地址或密碼不正確。",
       "no_account": "還沒有帳戶嗎？",
+      "provider_failed": "無法登入。請再試一次。",
+      "provider_refused": "此帳戶無法在此登入。請使用電子郵件地址登入。",
+      "provider_unavailable": "此登入方式目前無法使用。",
       "sign_up": "註冊"
     },
     "viewer": {
@@ -4124,12 +4131,17 @@
       "confirm": "刪除",
       "confirm_description": "您將被登出，且帳戶無法復原。",
       "confirm_title": "要刪除您的帳戶嗎？",
+      "confirm_with_provider": "您的帳戶沒有密碼。請使用已連結的帳戶重新登入以確認。",
       "deleted": "您的帳戶已刪除。感謝您的使用。",
       "description": "刪除帳戶會永久取消您對它的存取權限，且無法復原。",
       "failed": "無法刪除您的帳戶。請檢查您輸入的內容。",
+      "load_failed": "無法載入刪除帳戶的確認方式。",
+      "no_provider": "與您連結的帳戶目前都無法在此應用程式中登入。如需刪除帳戶，請聯絡本站。",
       "password_label": "目前的密碼",
       "submit": "刪除我的帳戶",
-      "title": "刪除帳戶"
+      "title": "刪除帳戶",
+      "with_apple": "透過Apple確認",
+      "with_google": "透過Google確認"
     },
     "confirm_email": {
       "changed": "您的電子郵件地址已變更。",
@@ -4141,6 +4153,23 @@
       "pending_new_email": "此確認已完成。待新的電子郵件地址也完成確認後，變更才會生效。",
       "title": "電子郵件地址變更確認",
       "to_account": "返回帳戶"
+    },
+    "continue_sign_up": {
+      "description": "同意以下頁面後即可建立帳戶。",
+      "expired": "登入已逾時。請重新開始。",
+      "submit": "建立帳戶",
+      "title": "完成註冊"
+    },
+    "linked_accounts": {
+      "description": "可用於登入的Apple和Google帳戶。",
+      "empty": "沒有已連結的Apple或Google帳戶。",
+      "last": "您的帳戶沒有密碼，因此無法解除最後一個已連結的帳戶。",
+      "linked_at": "連結於{$date}",
+      "load_failed": "無法載入已連結的帳戶。",
+      "title": "已連結的帳戶",
+      "unlink": "解除連結",
+      "unlink_failed": "無法解除連結。請稍後再試。",
+      "unlinked": "已解除連結。"
     }
   },
   "platform": {

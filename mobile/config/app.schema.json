@@ -59,6 +59,12 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$",
           "examples": ["com.example.reader"]
+        },
+        "googleSignInClientId": {
+          "description": "The Google OAuth client ID of the iOS app, whose URL scheme the build registers. Optional; without it the iOS app offers no Google sign-in.",
+          "type": "string",
+          "pattern": "^[0-9]+-[0-9a-z]+\\.apps\\.googleusercontent\\.com$",
+          "examples": ["123456789012-abc123.apps.googleusercontent.com"]
         }
       }
     }

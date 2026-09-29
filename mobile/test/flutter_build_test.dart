@@ -149,6 +149,28 @@ void main() {
     });
   });
 
+  group('a manifest naming a Google iOS client', () {
+    test('hands it to the app as a define', () {
+      expect(
+        flutterBuildArguments(
+          BuildRequest.parse(['app.yaml', 'ipa']),
+          const AppManifest(
+            appName: 'Example Reader',
+            tenantHost: 'reader.example.com',
+            androidApplicationId: 'com.example.reader',
+            iosBundleIdentifier: 'com.example.reader',
+            iosGoogleSignInClientId: '1234-abc.apps.googleusercontent.com',
+          ),
+          _addresses,
+        ),
+        contains(
+          '--dart-define=PUBLIRA_GOOGLE_IOS_CLIENT_ID='
+          '1234-abc.apps.googleusercontent.com',
+        ),
+      );
+    });
+  });
+
   group('the defines the command sets', () {
     test('cannot be given as arguments too', () {
       expect(
@@ -157,12 +179,15 @@ void main() {
           '--dart-define=PUBLIRA_TENANT_HOST=other.example',
           '--dart-define',
           'PUBLIRA_BASE_URL=https://other.example',
+          '--dart-define=PUBLIRA_GOOGLE_IOS_CLIENT_ID=1-a.apps.googleusercontent.com',
         ]),
         [
           "--dart-define=PUBLIRA_TENANT_HOST is the manifest's tenant.host; "
               'leave it out',
           '--dart-define=PUBLIRA_BASE_URL is read from the environment; '
               'export PUBLIRA_BASE_URL instead',
+          "--dart-define=PUBLIRA_GOOGLE_IOS_CLIENT_ID is the manifest's "
+              'ios.googleSignInClientId; leave it out',
         ],
       );
     });

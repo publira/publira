@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/error_details.dart';
 
 /// Reads the public-audience JWT the app holds right now.
 ///
@@ -127,6 +128,7 @@ class ConnectClient {
       message: responseMessage.isEmpty
           ? 'HTTP ${response.statusCode}'
           : responseMessage,
+      fieldViolations: fieldViolationsOf(decoded['details']),
     );
   }
 

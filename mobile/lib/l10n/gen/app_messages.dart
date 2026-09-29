@@ -182,6 +182,9 @@ abstract class AppMessages {
   /// `mobile.account.delete`
   String get accountDelete;
 
+  /// `mobile.account.linked_accounts`
+  String get accountLinkedAccounts;
+
   /// `mobile.account.name`
   String get accountName;
 
@@ -662,6 +665,18 @@ abstract class AppMessages {
   /// `mobile.contact.title`
   String get contactTitle;
 
+  /// `mobile.continue_sign_up.description`
+  String get continueSignUpDescription;
+
+  /// `mobile.continue_sign_up.expired`
+  String get continueSignUpExpired;
+
+  /// `mobile.continue_sign_up.submit`
+  String get continueSignUpSubmit;
+
+  /// `mobile.continue_sign_up.title`
+  String get continueSignUpTitle;
+
   /// `mobile.creator.load_failed`
   String get creatorLoadFailed;
 
@@ -698,6 +713,9 @@ abstract class AppMessages {
   /// `mobile.delete_account.confirm_title`
   String get deleteAccountConfirmTitle;
 
+  /// `mobile.delete_account.confirm_with_provider`
+  String get deleteAccountConfirmWithProvider;
+
   /// `mobile.delete_account.deleted`
   String get deleteAccountDeleted;
 
@@ -707,6 +725,12 @@ abstract class AppMessages {
   /// `mobile.delete_account.failed`
   String get deleteAccountFailed;
 
+  /// `mobile.delete_account.load_failed`
+  String get deleteAccountLoadFailed;
+
+  /// `mobile.delete_account.no_provider`
+  String get deleteAccountNoProvider;
+
   /// `mobile.delete_account.password_label`
   String get deleteAccountPasswordLabel;
 
@@ -715,6 +739,12 @@ abstract class AppMessages {
 
   /// `mobile.delete_account.title`
   String get deleteAccountTitle;
+
+  /// `mobile.delete_account.with_apple`
+  String get deleteAccountWithApple;
+
+  /// `mobile.delete_account.with_google`
+  String get deleteAccountWithGoogle;
 
   /// `mobile.downloads.clear`
   String get downloadsClear;
@@ -895,6 +925,33 @@ abstract class AppMessages {
 
   /// `mobile.library.title`
   String get libraryTitle;
+
+  /// `mobile.linked_accounts.description`
+  String get linkedAccountsDescription;
+
+  /// `mobile.linked_accounts.empty`
+  String get linkedAccountsEmpty;
+
+  /// `mobile.linked_accounts.last`
+  String get linkedAccountsLast;
+
+  /// `mobile.linked_accounts.linked_at`
+  String linkedAccountsLinkedAt({required String date});
+
+  /// `mobile.linked_accounts.load_failed`
+  String get linkedAccountsLoadFailed;
+
+  /// `mobile.linked_accounts.title`
+  String get linkedAccountsTitle;
+
+  /// `mobile.linked_accounts.unlink`
+  String get linkedAccountsUnlink;
+
+  /// `mobile.linked_accounts.unlink_failed`
+  String get linkedAccountsUnlinkFailed;
+
+  /// `mobile.linked_accounts.unlinked`
+  String get linkedAccountsUnlinked;
 
   /// `mobile.navigation.account`
   String get navigationAccount;
@@ -1318,6 +1375,15 @@ abstract class AppMessages {
   /// `mobile.share.text`
   String shareText({required String creators, required String title});
 
+  /// `mobile.sign_in.continue_with_apple`
+  String get signInContinueWithApple;
+
+  /// `mobile.sign_in.continue_with_google`
+  String get signInContinueWithGoogle;
+
+  /// `mobile.sign_in.divider`
+  String get signInDivider;
+
   /// `mobile.sign_in.email_not_verified`
   String get signInEmailNotVerified;
 
@@ -1332,6 +1398,15 @@ abstract class AppMessages {
 
   /// `mobile.sign_in.no_account`
   String get signInNoAccount;
+
+  /// `mobile.sign_in.provider_failed`
+  String get signInProviderFailed;
+
+  /// `mobile.sign_in.provider_refused`
+  String get signInProviderRefused;
+
+  /// `mobile.sign_in.provider_unavailable`
+  String get signInProviderUnavailable;
 
   /// `mobile.sign_in.sign_up`
   String get signInSignUp;
@@ -1682,6 +1757,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountDelete {
     return 'アカウントを削除';
+  }
+
+  @override
+  String get accountLinkedAccounts {
+    return '連携アカウント';
   }
 
   @override
@@ -2485,6 +2565,26 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get continueSignUpDescription {
+    return '下記のページに同意すると、アカウントが作成されます。';
+  }
+
+  @override
+  String get continueSignUpExpired {
+    return 'サインインの有効期限が切れました。もう一度やり直してください。';
+  }
+
+  @override
+  String get continueSignUpSubmit {
+    return 'アカウントを作成';
+  }
+
+  @override
+  String get continueSignUpTitle {
+    return '新規登録を完了';
+  }
+
+  @override
   String get creatorLoadFailed {
     return '著者を表示できませんでした。もう一度お試しください。';
   }
@@ -2545,6 +2645,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirmWithProvider {
+    return 'このアカウントにはパスワードがありません。連携しているアカウントでもう一度サインインして確認してください。';
+  }
+
+  @override
   String get deleteAccountDeleted {
     return 'アカウントを削除しました。ご利用ありがとうございました。';
   }
@@ -2560,6 +2665,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get deleteAccountLoadFailed {
+    return '退会の確認方法を読み込めませんでした。';
+  }
+
+  @override
+  String get deleteAccountNoProvider {
+    return '連携しているアカウントは、いまこのアプリでサインインに使えません。退会するにはサイトにお問い合わせください。';
+  }
+
+  @override
   String get deleteAccountPasswordLabel {
     return '現在のパスワード';
   }
@@ -2572,6 +2687,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get deleteAccountTitle {
     return 'アカウントを削除';
+  }
+
+  @override
+  String get deleteAccountWithApple {
+    return 'Appleで確認';
+  }
+
+  @override
+  String get deleteAccountWithGoogle {
+    return 'Googleで確認';
   }
 
   @override
@@ -2872,6 +2997,51 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get libraryTitle {
     return '本棚';
+  }
+
+  @override
+  String get linkedAccountsDescription {
+    return 'サインインに使えるAppleとGoogleのアカウントです。';
+  }
+
+  @override
+  String get linkedAccountsEmpty {
+    return '連携しているAppleやGoogleのアカウントはありません。';
+  }
+
+  @override
+  String get linkedAccountsLast {
+    return 'このアカウントにはパスワードがないため、最後の連携アカウントは解除できません。';
+  }
+
+  @override
+  String linkedAccountsLinkedAt({required String date}) {
+    return '$dateに連携';
+  }
+
+  @override
+  String get linkedAccountsLoadFailed {
+    return '連携アカウントを読み込めませんでした。';
+  }
+
+  @override
+  String get linkedAccountsTitle {
+    return '連携アカウント';
+  }
+
+  @override
+  String get linkedAccountsUnlink {
+    return '連携を解除';
+  }
+
+  @override
+  String get linkedAccountsUnlinkFailed {
+    return '連携を解除できませんでした。しばらくしてからもう一度お試しください。';
+  }
+
+  @override
+  String get linkedAccountsUnlinked {
+    return '連携を解除しました。';
   }
 
   @override
@@ -3575,6 +3745,21 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get signInContinueWithApple {
+    return 'Appleで続ける';
+  }
+
+  @override
+  String get signInContinueWithGoogle {
+    return 'Googleで続ける';
+  }
+
+  @override
+  String get signInDivider {
+    return 'または';
+  }
+
+  @override
   String get signInEmailNotVerified {
     return 'メールアドレスの確認が完了していません。確認メールのリンクを開いてください。';
   }
@@ -3597,6 +3782,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get signInNoAccount {
     return 'アカウントをお持ちでない方は';
+  }
+
+  @override
+  String get signInProviderFailed {
+    return 'サインインできませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get signInProviderRefused {
+    return 'このアカウントではサインインできません。メールアドレスでサインインしてください。';
+  }
+
+  @override
+  String get signInProviderUnavailable {
+    return 'このサインイン方法は現在利用できません。';
   }
 
   @override
@@ -4070,6 +4270,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountDelete {
     return 'Delete account';
+  }
+
+  @override
+  String get accountLinkedAccounts {
+    return 'Linked accounts';
   }
 
   @override
@@ -4873,6 +5078,26 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get continueSignUpDescription {
+    return 'Agree to the pages below to create your account.';
+  }
+
+  @override
+  String get continueSignUpExpired {
+    return 'The sign-in took too long. Start again.';
+  }
+
+  @override
+  String get continueSignUpSubmit {
+    return 'Create account';
+  }
+
+  @override
+  String get continueSignUpTitle {
+    return 'Finish signing up';
+  }
+
+  @override
   String get creatorLoadFailed {
     return 'Could not show the author. Try again.';
   }
@@ -4933,6 +5158,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirmWithProvider {
+    return 'Your account has no password. Sign in again with a linked account to confirm.';
+  }
+
+  @override
   String get deleteAccountDeleted {
     return 'Your account has been deleted. Thank you for using the site.';
   }
@@ -4948,6 +5178,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get deleteAccountLoadFailed {
+    return 'Could not check how to confirm the deletion.';
+  }
+
+  @override
+  String get deleteAccountNoProvider {
+    return 'None of the accounts linked to yours can sign in to this app right now. Contact the site to delete your account.';
+  }
+
+  @override
   String get deleteAccountPasswordLabel {
     return 'Current password';
   }
@@ -4960,6 +5200,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get deleteAccountTitle {
     return 'Delete account';
+  }
+
+  @override
+  String get deleteAccountWithApple {
+    return 'Confirm with Apple';
+  }
+
+  @override
+  String get deleteAccountWithGoogle {
+    return 'Confirm with Google';
   }
 
   @override
@@ -5260,6 +5510,51 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get libraryTitle {
     return 'Library';
+  }
+
+  @override
+  String get linkedAccountsDescription {
+    return 'The Apple and Google accounts you can sign in with.';
+  }
+
+  @override
+  String get linkedAccountsEmpty {
+    return 'No Apple or Google account is linked.';
+  }
+
+  @override
+  String get linkedAccountsLast {
+    return 'Your account has no password, so the last linked account stays linked.';
+  }
+
+  @override
+  String linkedAccountsLinkedAt({required String date}) {
+    return 'Linked on $date';
+  }
+
+  @override
+  String get linkedAccountsLoadFailed {
+    return 'Could not load your linked accounts.';
+  }
+
+  @override
+  String get linkedAccountsTitle {
+    return 'Linked accounts';
+  }
+
+  @override
+  String get linkedAccountsUnlink {
+    return 'Unlink';
+  }
+
+  @override
+  String get linkedAccountsUnlinkFailed {
+    return 'Could not unlink the account. Try again later.';
+  }
+
+  @override
+  String get linkedAccountsUnlinked {
+    return 'The account was unlinked.';
   }
 
   @override
@@ -5963,6 +6258,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get signInContinueWithApple {
+    return 'Continue with Apple';
+  }
+
+  @override
+  String get signInContinueWithGoogle {
+    return 'Continue with Google';
+  }
+
+  @override
+  String get signInDivider {
+    return 'or';
+  }
+
+  @override
   String get signInEmailNotVerified {
     return 'Your email address has not been confirmed yet. Open the link in the confirmation email.';
   }
@@ -5985,6 +6295,21 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get signInNoAccount {
     return 'Don\'t have an account?';
+  }
+
+  @override
+  String get signInProviderFailed {
+    return 'Could not sign in. Try again.';
+  }
+
+  @override
+  String get signInProviderRefused {
+    return 'This account cannot sign in here. Sign in with your email address instead.';
+  }
+
+  @override
+  String get signInProviderUnavailable {
+    return 'This sign-in method is not available right now.';
   }
 
   @override
@@ -6458,6 +6783,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountDelete {
     return '계정 삭제';
+  }
+
+  @override
+  String get accountLinkedAccounts {
+    return '연결된 계정';
   }
 
   @override
@@ -7261,6 +7591,26 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get continueSignUpDescription {
+    return '아래 페이지에 동의하면 계정이 만들어집니다.';
+  }
+
+  @override
+  String get continueSignUpExpired {
+    return '로그인 시간이 초과되었습니다. 처음부터 다시 시도해 주세요.';
+  }
+
+  @override
+  String get continueSignUpSubmit {
+    return '계정 만들기';
+  }
+
+  @override
+  String get continueSignUpTitle {
+    return '회원가입 완료';
+  }
+
+  @override
   String get creatorLoadFailed {
     return '작가를 표시할 수 없습니다. 다시 시도해 주세요.';
   }
@@ -7321,6 +7671,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirmWithProvider {
+    return '이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인해 주세요.';
+  }
+
+  @override
   String get deleteAccountDeleted {
     return '계정을 삭제했습니다. 그동안 이용해 주셔서 감사합니다.';
   }
@@ -7336,6 +7691,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get deleteAccountLoadFailed {
+    return '계정 삭제 확인 방법을 불러오지 못했습니다.';
+  }
+
+  @override
+  String get deleteAccountNoProvider {
+    return '연결된 계정 중 지금 이 앱에서 로그인할 수 있는 계정이 없습니다. 계정을 삭제하려면 사이트에 문의해 주세요.';
+  }
+
+  @override
   String get deleteAccountPasswordLabel {
     return '현재 비밀번호';
   }
@@ -7348,6 +7713,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get deleteAccountTitle {
     return '계정 삭제';
+  }
+
+  @override
+  String get deleteAccountWithApple {
+    return 'Apple로 확인';
+  }
+
+  @override
+  String get deleteAccountWithGoogle {
+    return 'Google로 확인';
   }
 
   @override
@@ -7648,6 +8023,51 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get libraryTitle {
     return '보관함';
+  }
+
+  @override
+  String get linkedAccountsDescription {
+    return '로그인에 사용할 수 있는 Apple 및 Google 계정입니다.';
+  }
+
+  @override
+  String get linkedAccountsEmpty {
+    return '연결된 Apple 또는 Google 계정이 없습니다.';
+  }
+
+  @override
+  String get linkedAccountsLast {
+    return '이 계정에는 비밀번호가 없어 마지막으로 연결된 계정은 해제할 수 없습니다.';
+  }
+
+  @override
+  String linkedAccountsLinkedAt({required String date}) {
+    return '$date에 연결됨';
+  }
+
+  @override
+  String get linkedAccountsLoadFailed {
+    return '연결된 계정을 불러오지 못했습니다.';
+  }
+
+  @override
+  String get linkedAccountsTitle {
+    return '연결된 계정';
+  }
+
+  @override
+  String get linkedAccountsUnlink {
+    return '연결 해제';
+  }
+
+  @override
+  String get linkedAccountsUnlinkFailed {
+    return '연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get linkedAccountsUnlinked {
+    return '연결을 해제했습니다.';
   }
 
   @override
@@ -8351,6 +8771,21 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get signInContinueWithApple {
+    return 'Apple로 계속하기';
+  }
+
+  @override
+  String get signInContinueWithGoogle {
+    return 'Google로 계속하기';
+  }
+
+  @override
+  String get signInDivider {
+    return '또는';
+  }
+
+  @override
   String get signInEmailNotVerified {
     return '이메일 주소 확인이 완료되지 않았습니다. 확인 메일의 링크를 열어 주세요.';
   }
@@ -8373,6 +8808,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get signInNoAccount {
     return '계정이 없으신가요?';
+  }
+
+  @override
+  String get signInProviderFailed {
+    return '로그인하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get signInProviderRefused {
+    return '이 계정으로는 로그인할 수 없습니다. 이메일 주소로 로그인해 주세요.';
+  }
+
+  @override
+  String get signInProviderUnavailable {
+    return '지금은 이 로그인 방법을 사용할 수 없습니다.';
   }
 
   @override
@@ -8846,6 +9296,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountDelete {
     return '注销账户';
+  }
+
+  @override
+  String get accountLinkedAccounts {
+    return '关联账户';
   }
 
   @override
@@ -9649,6 +10104,26 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get continueSignUpDescription {
+    return '同意以下页面后即可创建账户。';
+  }
+
+  @override
+  String get continueSignUpExpired {
+    return '登录已超时。请重新开始。';
+  }
+
+  @override
+  String get continueSignUpSubmit {
+    return '创建账户';
+  }
+
+  @override
+  String get continueSignUpTitle {
+    return '完成注册';
+  }
+
+  @override
   String get creatorLoadFailed {
     return '无法显示该作者。请重试。';
   }
@@ -9709,6 +10184,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirmWithProvider {
+    return '您的账户没有密码。请使用关联的账户重新登录以确认。';
+  }
+
+  @override
   String get deleteAccountDeleted {
     return '您的账户已注销。感谢您的使用。';
   }
@@ -9724,6 +10204,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get deleteAccountLoadFailed {
+    return '无法加载注销账户的确认方式。';
+  }
+
+  @override
+  String get deleteAccountNoProvider {
+    return '与您关联的账户目前都无法在此应用中登录。如需注销账户，请联系本站。';
+  }
+
+  @override
   String get deleteAccountPasswordLabel {
     return '当前密码';
   }
@@ -9736,6 +10226,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get deleteAccountTitle {
     return '注销账户';
+  }
+
+  @override
+  String get deleteAccountWithApple {
+    return '通过Apple确认';
+  }
+
+  @override
+  String get deleteAccountWithGoogle {
+    return '通过Google确认';
   }
 
   @override
@@ -10036,6 +10536,51 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get libraryTitle {
     return '书架';
+  }
+
+  @override
+  String get linkedAccountsDescription {
+    return '可用于登录的Apple和Google账户。';
+  }
+
+  @override
+  String get linkedAccountsEmpty {
+    return '没有关联的Apple或Google账户。';
+  }
+
+  @override
+  String get linkedAccountsLast {
+    return '您的账户没有密码，因此无法解除最后一个关联的账户。';
+  }
+
+  @override
+  String linkedAccountsLinkedAt({required String date}) {
+    return '关联于$date';
+  }
+
+  @override
+  String get linkedAccountsLoadFailed {
+    return '无法加载关联账户。';
+  }
+
+  @override
+  String get linkedAccountsTitle {
+    return '关联账户';
+  }
+
+  @override
+  String get linkedAccountsUnlink {
+    return '解除关联';
+  }
+
+  @override
+  String get linkedAccountsUnlinkFailed {
+    return '无法解除关联。请稍后重试。';
+  }
+
+  @override
+  String get linkedAccountsUnlinked {
+    return '已解除关联。';
   }
 
   @override
@@ -10739,6 +11284,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get signInContinueWithApple {
+    return '通过Apple继续';
+  }
+
+  @override
+  String get signInContinueWithGoogle {
+    return '通过Google继续';
+  }
+
+  @override
+  String get signInDivider {
+    return '或';
+  }
+
+  @override
   String get signInEmailNotVerified {
     return '您的邮箱地址尚未确认。请打开确认邮件中的链接。';
   }
@@ -10761,6 +11321,21 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get signInNoAccount {
     return '还没有账户？';
+  }
+
+  @override
+  String get signInProviderFailed {
+    return '无法登录。请重试。';
+  }
+
+  @override
+  String get signInProviderRefused {
+    return '此账户无法在此登录。请使用邮箱地址登录。';
+  }
+
+  @override
+  String get signInProviderUnavailable {
+    return '此登录方式目前不可用。';
   }
 
   @override
@@ -11234,6 +11809,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountDelete {
     return '刪除帳戶';
+  }
+
+  @override
+  String get accountLinkedAccounts {
+    return '已連結的帳戶';
   }
 
   @override
@@ -12037,6 +12617,26 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get continueSignUpDescription {
+    return '同意以下頁面後即可建立帳戶。';
+  }
+
+  @override
+  String get continueSignUpExpired {
+    return '登入已逾時。請重新開始。';
+  }
+
+  @override
+  String get continueSignUpSubmit {
+    return '建立帳戶';
+  }
+
+  @override
+  String get continueSignUpTitle {
+    return '完成註冊';
+  }
+
+  @override
   String get creatorLoadFailed {
     return '無法顯示該作者。請重試。';
   }
@@ -12097,6 +12697,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirmWithProvider {
+    return '您的帳戶沒有密碼。請使用已連結的帳戶重新登入以確認。';
+  }
+
+  @override
   String get deleteAccountDeleted {
     return '您的帳戶已刪除。感謝您的使用。';
   }
@@ -12112,6 +12717,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get deleteAccountLoadFailed {
+    return '無法載入刪除帳戶的確認方式。';
+  }
+
+  @override
+  String get deleteAccountNoProvider {
+    return '與您連結的帳戶目前都無法在此應用程式中登入。如需刪除帳戶，請聯絡本站。';
+  }
+
+  @override
   String get deleteAccountPasswordLabel {
     return '目前的密碼';
   }
@@ -12124,6 +12739,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get deleteAccountTitle {
     return '刪除帳戶';
+  }
+
+  @override
+  String get deleteAccountWithApple {
+    return '透過Apple確認';
+  }
+
+  @override
+  String get deleteAccountWithGoogle {
+    return '透過Google確認';
   }
 
   @override
@@ -12424,6 +13049,51 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get libraryTitle {
     return '書架';
+  }
+
+  @override
+  String get linkedAccountsDescription {
+    return '可用於登入的Apple和Google帳戶。';
+  }
+
+  @override
+  String get linkedAccountsEmpty {
+    return '沒有已連結的Apple或Google帳戶。';
+  }
+
+  @override
+  String get linkedAccountsLast {
+    return '您的帳戶沒有密碼，因此無法解除最後一個已連結的帳戶。';
+  }
+
+  @override
+  String linkedAccountsLinkedAt({required String date}) {
+    return '連結於$date';
+  }
+
+  @override
+  String get linkedAccountsLoadFailed {
+    return '無法載入已連結的帳戶。';
+  }
+
+  @override
+  String get linkedAccountsTitle {
+    return '已連結的帳戶';
+  }
+
+  @override
+  String get linkedAccountsUnlink {
+    return '解除連結';
+  }
+
+  @override
+  String get linkedAccountsUnlinkFailed {
+    return '無法解除連結。請稍後再試。';
+  }
+
+  @override
+  String get linkedAccountsUnlinked {
+    return '已解除連結。';
   }
 
   @override
@@ -13127,6 +13797,21 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get signInContinueWithApple {
+    return '透過Apple繼續';
+  }
+
+  @override
+  String get signInContinueWithGoogle {
+    return '透過Google繼續';
+  }
+
+  @override
+  String get signInDivider {
+    return '或';
+  }
+
+  @override
   String get signInEmailNotVerified {
     return '您的電子郵件地址尚未確認。請開啟確認信中的連結。';
   }
@@ -13149,6 +13834,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signInNoAccount {
     return '還沒有帳戶嗎？';
+  }
+
+  @override
+  String get signInProviderFailed {
+    return '無法登入。請再試一次。';
+  }
+
+  @override
+  String get signInProviderRefused {
+    return '此帳戶無法在此登入。請使用電子郵件地址登入。';
+  }
+
+  @override
+  String get signInProviderUnavailable {
+    return '此登入方式目前無法使用。';
   }
 
   @override

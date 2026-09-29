@@ -102,6 +102,13 @@ class AccountScreen extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.accountPassword),
                   ),
                   const Divider(height: 1),
+                  ListTile(
+                    key: const ValueKey('account-linked-accounts'),
+                    title: AutospacedText(messages.accountLinkedAccounts),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountLinkedAccounts),
+                  ),
+                  const Divider(height: 1),
                   const _NotificationSwitch(),
                   const _ContactEntry(),
                   Padding(

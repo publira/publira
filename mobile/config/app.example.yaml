@@ -16,3 +16,6 @@ android:
 
 ios:
   bundleIdentifier: com.example.reader
+  # Optional: the iOS client of the tenant's Google sign-in, which the tenant
+  # console names as well. Leave it out where the tenant does not use Google.
+  googleSignInClientId: 123456789012-abc123.apps.googleusercontent.com

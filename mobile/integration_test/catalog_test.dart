@@ -1450,9 +1450,13 @@ void main() {
         await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
-          find.byKey(const ValueKey('account-delete')),
+          find.byKey(const ValueKey('account-name')),
         );
-        await tapVisible(tester, find.byKey(const ValueKey('account-delete')));
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('account-delete')),
+          scrollable: accountList(),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('delete-account-submit')),

@@ -67,12 +67,12 @@ class AppTabScope extends InheritedWidget {
 /// Navigation onto the stack of the tab a screen is on.
 extension TabNavigation on BuildContext {
   /// Pushes [location] onto this tab's stack.
-  Future<T?> pushInTab<T extends Object?>(String location) =>
-      push<T>(AppTab.of(this).locate(location));
+  Future<T?> pushInTab<T extends Object?>(String location, {Object? extra}) =>
+      push<T>(AppTab.of(this).locate(location), extra: extra);
 
   /// Replaces the screen on top of this tab's stack with [location].
-  void pushReplacementInTab(String location) =>
-      pushReplacement(AppTab.of(this).locate(location));
+  void pushReplacementInTab(String location, {Object? extra}) =>
+      pushReplacement(AppTab.of(this).locate(location), extra: extra);
 
   /// Replaces this tab's stack with the one [location] names.
   void goInTab(String location) => go(AppTab.of(this).locate(location));

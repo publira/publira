@@ -1,6 +1,8 @@
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
+import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 
@@ -11,6 +13,38 @@ abstract class AuthRepository {
   ///
   /// Throws [AuthFailure].
   Future<AuthSession> signIn({required String email, required String password});
+
+  /// The providers the tenant lets a reader sign in with, read without a
+  /// session.
+  ///
+  /// Throws [AuthFailure].
+  Future<SignInProviders> readSignInProviders();
+
+  /// Signs in with the token a provider issued, which finds the account
+  /// already linked to it, links the account holding the address it vouches
+  /// for, or creates one.
+  ///
+  /// [birthDate] and [agreedPageVersionIds] are read only when this creates
+  /// the account, and mean what they mean for [signUp].
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.consentRequired] leaves the token
+  /// unspent, so it is sent again with the consent.
+  Future<AuthSession> signInWithProvider(
+    ProviderCredential credential, {
+    String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
+  });
+
+  /// The provider accounts linked to the reader behind [session].
+  ///
+  /// Throws [AuthFailure].
+  Future<LinkedIdentities> readLinkedIdentities(AuthSession session);
+
+  /// Unlinks [provider] from the account behind [session].
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.lastSignInMethod] where it is the
+  /// last way an account without a password signs in.
+  Future<void> unlinkIdentity(AuthSession session, IdentityProvider provider);
 
   /// Asks the API for an account on [email], which it answers by mailing that
   /// address a confirmation link.
@@ -156,6 +190,17 @@ abstract class AuthRepository {
   /// Throws [AuthFailure]; a wrong [password] is
   /// [AuthFailureKind.invalidInput].
   Future<void> deleteAccount(AuthSession session, {required String password});
+
+  /// Deletes the account behind [session], which has no password, once a
+  /// fresh sign-in with a provider linked to it confirms it is the reader
+  /// asking.
+  ///
+  /// Throws [AuthFailure]; a token of another account is
+  /// [AuthFailureKind.invalidInput].
+  Future<void> deleteAccountWithProvider(
+    AuthSession session,
+    ProviderCredential credential,
+  );
 
   /// Tells the API the reader behind [session] has signed out, which it
   /// records in its audit trail. The token is stateless, so nothing else
