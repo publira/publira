@@ -9,7 +9,7 @@ import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { EpisodeComicViewer } from "./episode-comic-viewer";
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

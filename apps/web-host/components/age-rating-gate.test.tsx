@@ -28,7 +28,7 @@ vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "tenant-1",
 }));
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

@@ -29,7 +29,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

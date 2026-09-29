@@ -33,7 +33,7 @@ vi.mock("#components/message", () => ({
   }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

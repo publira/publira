@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
 import { useClientMessages } from "./client-message";
-import { useLocale, useTenantDefaultLocale } from "./locale-provider";
+import { useLocale, useTenantDefaultLocale } from "./locale-context";
 
 /**
  * Header control that swaps the locale segment and keeps the rest of the path.

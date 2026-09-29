@@ -42,7 +42,7 @@ vi.mock("#lib/episode-rating-actions", () => ({
   rateEpisodeAction: vi.fn(),
 }));
 
-vi.mock("./locale-provider", () => ({
+vi.mock("./locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

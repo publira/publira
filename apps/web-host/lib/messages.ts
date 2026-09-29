@@ -18,7 +18,7 @@ export type HostMessageAccessor = MessageAccessor<HostMessages>;
  * This module is safe to import from both Server and Client Components. The
  * locale itself is resolved elsewhere — `lib/locale.ts` on the server, where
  * its `next/root-params` dependency cannot leak into a client bundle, and
- * `components/locale-provider.tsx` in the browser.
+ * `components/locale-context.tsx` in the browser.
  */
 export const loadHostMessages = (locale: Locale): Promise<HostMessages> =>
   loadLocaleMessages(locale) as Promise<HostMessages>;

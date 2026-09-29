@@ -7,7 +7,6 @@ import {
   LocaleProvider,
   TenantDefaultLocaleProvider,
 } from "#components/locale-provider";
-import { getLocale, tenantDefaultLocale } from "#lib/locale";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -50,39 +49,16 @@ export const metadata: Metadata = {
 };
 
 /**
- * Seeds the locale context for everything under `(auth)`, the way `(site)`
- * does for the rest of the site: the root layout reads nothing, so this is the
- * first place the request's locale and the tenant's stored default both enter
- * the tree.
- *
- * Only the first of the two is awaited here, and that is what leaves the auth
- * screens in the static shell. The locale has to be awaited — `<LocaleProvider>`
- * and `<DocumentLocale>` both take the value — and it costs the shell nothing:
- * `generateStaticParams` enumerates that root parameter, so it already has a
- * literal value in a prerender. The tenant's default is a `GetTenant` read, and
- * `[tenant_id]` is a placeholder — one shell is shared by every tenant — so it
- * travels as the read itself and is awaited only where a prefix is actually
- * named: the footer's own `<Suspense>` here, and each `<LocaleLink>` inside the
- * boundary its section already has.
- *
- * Awaiting that read in this body instead costs every route under `(auth)` its
- * static shell — Cache Components reports it as `blocking-prerender-runtime` —
- * and `export const instant = false` is not the way out of that
- * (`apps/AGENTS.md`).
+ * Awaits nothing, so every route under `(auth)` keeps its static shell; the
+ * providers hand their reads down unresolved.
  */
-const AuthLayout = async ({
-  children,
-}: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const locale = await getLocale();
-
-  return (
-    <LocaleProvider locale={locale}>
-      <DocumentLocale locale={locale} />
-      <TenantDefaultLocaleProvider defaultLocale={tenantDefaultLocale()}>
-        <AuthShell>{children}</AuthShell>
-      </TenantDefaultLocaleProvider>
-    </LocaleProvider>
-  );
-};
+const AuthLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
+  <LocaleProvider>
+    <DocumentLocale />
+    <TenantDefaultLocaleProvider>
+      <AuthShell>{children}</AuthShell>
+    </TenantDefaultLocaleProvider>
+  </LocaleProvider>
+);
 
 export default AuthLayout;

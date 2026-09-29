@@ -8,7 +8,7 @@ import { RankingAgeGate } from "./ranking-age-gate";
 // `<Message>` resolves the locale through `next/root-params`, which only the
 // Next.js compiler can provide. The key it was handed is what this file is
 // about, so rendering the key itself keeps the assertions readable.
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

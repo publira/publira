@@ -18,7 +18,7 @@ vi.mock("#components/client-message", () => ({
   ClientMessage: ({ message }: { message: string }) => message,
 }));
 
-vi.mock("#components/locale-provider", () => ({
+vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
 }));

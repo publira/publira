@@ -3,7 +3,7 @@
 import { formatRelativeTime } from "@publira/utils";
 import { useSyncExternalStore } from "react";
 
-import { useLocale } from "./locale-provider";
+import { useLocale } from "./locale-context";
 
 /** Nothing pushes a new value; the phrase is read once, when the browser has one. */
 const subscribeToNothing = () => () => {

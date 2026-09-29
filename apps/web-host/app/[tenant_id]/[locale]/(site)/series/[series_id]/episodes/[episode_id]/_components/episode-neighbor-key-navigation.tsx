@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
-import { useLocale, useTenantDefaultLocale } from "#components/locale-provider";
+import { useLocale, useTenantDefaultLocale } from "#components/locale-context";
 import { withLocalePrefix } from "#lib/locale-path";
 
 import type { EpisodeNeighborSide } from "../_lib/neighbor-navigation";
