@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -29,6 +31,10 @@ const (
 	// dealt with is the time it was dealt with.
 	contactMessageStatusUnhandled = "unhandled"
 	contactMessageStatusHandled   = "handled"
+
+	// The length contact_messages_staff_note_check enforces, in characters as
+	// PostgreSQL counts them.
+	maxContactMessageStaffNoteRunes = 4000
 )
 
 // contactMessageRow is the single shape every contact message the console reads
@@ -91,6 +97,12 @@ func contactMessageToProto(row contactMessageRow) *publiraadminv1.ContactMessage
 	if row.SenderPublicID.Valid {
 		message.SenderPublicId = row.SenderPublicID.String
 	}
+	if row.AssignedTo.Valid {
+		message.AssigneeUserId = row.AssignedTo.UUID.String()
+		message.AssigneePublicId = row.AssigneePublicID.String
+		message.AssigneeName = row.AssigneeName.String
+	}
+	message.StaffNote = row.StaffNote.String
 	return message
 }
 
@@ -183,6 +195,29 @@ func requiredContactMessageField(raw, field string) (string, error) {
 		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New(field+" is required"), field)
 	}
 	return value, nil
+}
+
+// requiredContactMessageID reads the primary key an action addresses a message
+// by.
+func requiredContactMessageID(raw string) (uuid.UUID, error) {
+	value, err := requiredContactMessageField(raw, "contact_message_id")
+	if err != nil {
+		return uuid.Nil, err
+	}
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("contact_message_id is not an identifier"), "contact_message_id")
+	}
+	return id, nil
+}
+
+// contactMessageUpdateError reads a failed update of one message, which finds
+// no row for a message of another tenant exactly as for one that never existed.
+func (s *adminServer) contactMessageUpdateError(ctx context.Context, tenantID, messageID uuid.UUID, err error, what string) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
+	}
+	return s.internalDBError(ctx, "failed to "+what, err, "tenant_id", tenantID.String(), "contact_message_id", messageID.String())
 }
 
 func contactMessageAuditEntry(
@@ -303,13 +338,9 @@ func (s *adminServer) MarkContactMessageHandled(
 	if err != nil {
 		return nil, err
 	}
-	rawID, err := requiredContactMessageField(req.Msg.ContactMessageId, "contact_message_id")
+	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
 	if err != nil {
 		return nil, err
-	}
-	messageID, err := uuid.Parse(rawID)
-	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("contact_message_id is not an identifier"), "contact_message_id")
 	}
 
 	if _, err := s.queriesFor(ctx).SetContactMessageHandledByIDForTenant(ctx, dbmodels.SetContactMessageHandledByIDForTenantParams{
@@ -318,10 +349,7 @@ func (s *adminServer) MarkContactMessageHandled(
 		Handled:   req.Msg.Handled,
 		HandledBy: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
 	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to mark the contact message", err, "tenant_id", tenant.ID.String(), "contact_message_id", messageID.String())
+		return nil, s.contactMessageUpdateError(ctx, tenant.ID, messageID, err, "mark the contact message")
 	}
 
 	// Read back rather than project the update's own row: the answer describes
@@ -338,4 +366,117 @@ func (s *adminServer) MarkContactMessageHandled(
 	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
 
 	return connect.NewResponse(&publiraadminv1.MarkContactMessageHandledResponse{Message: contactMessageToProto(updated)}), nil
+}
+
+// contactMessageAssignee reads the account a request assigns a message to, or
+// no account for an empty identifier, which clears the assignment.
+func (s *adminServer) contactMessageAssignee(ctx context.Context, tenantID uuid.UUID, raw string) (uuid.NullUUID, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return uuid.NullUUID{}, nil
+	}
+	// A malformed identifier, another tenant's account, a reader, and a member
+	// who cannot open the inbox are one answer: none of them can take the
+	// message.
+	notAssignable := rpcerrors.NewFieldViolationError(
+		connect.CodeInvalidArgument,
+		errors.New("assignee_user_id is not an active tenant_admin of the tenant"),
+		"assignee_user_id",
+	)
+	userID, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.NullUUID{}, notAssignable
+	}
+	if _, err := s.queriesFor(ctx).GetContactMessageAssignableStaffForTenant(ctx, dbmodels.GetContactMessageAssignableStaffForTenantParams{
+		TenantID: tenantID,
+		UserID:   userID,
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.NullUUID{}, notAssignable
+		}
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to look up the contact message assignee", err, "tenant_id", tenantID.String(), "assignee_user_id", userID.String())
+	}
+	return uuid.NullUUID{UUID: userID, Valid: true}, nil
+}
+
+// AssignContactMessage hands one message to a member of staff, moves it to
+// another, or clears the assignment.
+func (s *adminServer) AssignContactMessage(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AssignContactMessageRequest],
+) (*connect.Response[publiraadminv1.AssignContactMessageResponse], error) {
+	tenant, sessionCtx, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	if err != nil {
+		return nil, err
+	}
+	assignee, err := s.contactMessageAssignee(ctx, tenant.ID, req.Msg.AssigneeUserId)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.queriesFor(ctx).SetContactMessageAssigneeByIDForTenant(ctx, dbmodels.SetContactMessageAssigneeByIDForTenantParams{
+		TenantID:   tenant.ID,
+		ID:         messageID,
+		AssignedTo: assignee,
+	}); err != nil {
+		return nil, s.contactMessageUpdateError(ctx, tenant.ID, messageID, err, "assign the contact message")
+	}
+
+	// Read back for the assignee's name, which the update does not return.
+	updated, err := s.loadContactMessageByID(ctx, tenant.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+
+	action := "contact_message_unassigned"
+	if assignee.Valid {
+		action = "contact_message_assigned"
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
+
+	return connect.NewResponse(&publiraadminv1.AssignContactMessageResponse{Message: contactMessageToProto(updated)}), nil
+}
+
+// UpdateContactMessageStaffNote saves, replaces, or clears the internal note on
+// one message.
+func (s *adminServer) UpdateContactMessageStaffNote(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateContactMessageStaffNoteRequest],
+) (*connect.Response[publiraadminv1.UpdateContactMessageStaffNoteResponse], error) {
+	tenant, sessionCtx, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	if err != nil {
+		return nil, err
+	}
+	note := strings.TrimSpace(req.Msg.StaffNote)
+	if utf8.RuneCountInString(note) > maxContactMessageStaffNoteRunes {
+		return nil, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("the note must be at most %d characters", maxContactMessageStaffNoteRunes),
+			"staff_note",
+		)
+	}
+
+	if _, err := s.queriesFor(ctx).SetContactMessageStaffNoteByIDForTenant(ctx, dbmodels.SetContactMessageStaffNoteByIDForTenantParams{
+		TenantID:  tenant.ID,
+		ID:        messageID,
+		StaffNote: sql.NullString{String: note, Valid: note != ""},
+	}); err != nil {
+		return nil, s.contactMessageUpdateError(ctx, tenant.ID, messageID, err, "update the contact message staff note")
+	}
+
+	updated, err := s.loadContactMessageByID(ctx, tenant.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
+
+	return connect.NewResponse(&publiraadminv1.UpdateContactMessageStaffNoteResponse{Message: contactMessageToProto(updated)}), nil
 }

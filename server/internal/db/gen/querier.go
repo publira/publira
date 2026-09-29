@@ -156,8 +156,11 @@ type Querier interface {
 	//     -> idx_contact_messages_tenant_created_at with no status filter,
 	//        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 	//        idx_contact_messages_tenant_handled_created_at for 'handled'
-	//   SetContactMessageHandledByIDForTenant
+	//   SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
+	//   SetContactMessageStaffNoteByIDForTenant
 	//     -> contact_messages_pkey
+	//   GetContactMessageAssignableStaffForTenant
+	//     -> users_tenant_id_id_key, then tenant_user_roles_user_id_role_key
 	//   ListTenantStaffContactRecipients
 	//     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 	// One message as the public API stores it. The sender is nullable because a
@@ -349,9 +352,14 @@ type Querier interface {
 	// Returns the announcement with the caller's read state. A row owned by another
 	// tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
+	// The account a message may be assigned to: an active tenant_admin of the
+	// tenant, because the inbox is theirs alone and an account that cannot open it
+	// could never work the message it was handed.
+	GetContactMessageAssignableStaffForTenant(ctx context.Context, arg GetContactMessageAssignableStaffForTenantParams) (uuid.UUID, error)
 	// What the outbox worker reads to word the staff mail. It is by primary key
 	// because the event names the row it was queued for, and it carries the
 	// sender's name so the mail can say who wrote without a second round trip.
+	// The assignee is joined too, so every read of a message has the same shape.
 	GetContactMessageByIDForTenant(ctx context.Context, arg GetContactMessageByIDForTenantParams) (GetContactMessageByIDForTenantRow, error)
 	// One message as the console reads it, by the identifier its screens carry.
 	GetContactMessageByPublicIDForTenant(ctx context.Context, arg GetContactMessageByPublicIDForTenantParams) (GetContactMessageByPublicIDForTenantRow, error)
@@ -2146,6 +2154,10 @@ type Querier interface {
 	// writes the current page on a timer would otherwise reorder the reader's
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
+	// Hands a message to a member of staff, or back to nobody with a NULL. Stated
+	// rather than toggled like the handled flag, and independent of it: marking a
+	// message handled or reopening it leaves the assignee where it is.
+	SetContactMessageAssigneeByIDForTenant(ctx context.Context, arg SetContactMessageAssigneeByIDForTenantParams) (ContactMessage, error)
 	// Staff stating which side of the flag a message is on.
 	//
 	// The state is stated rather than toggled, so two members of staff working the
@@ -2154,6 +2166,8 @@ type Querier interface {
 	// what the row records is when the message was dealt with, and a second press
 	// is not a second handling.
 	SetContactMessageHandledByIDForTenant(ctx context.Context, arg SetContactMessageHandledByIDForTenantParams) (ContactMessage, error)
+	// Replaces the one note staff keep on a message, or clears it with a NULL.
+	SetContactMessageStaffNoteByIDForTenant(ctx context.Context, arg SetContactMessageStaffNoteByIDForTenantParams) (ContactMessage, error)
 	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like a

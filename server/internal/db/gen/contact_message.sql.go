@@ -32,7 +32,7 @@ INSERT INTO contact_messages (
     $6,
     $7
 )
-RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by
+RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by, assigned_to, staff_note
 `
 
 type CreateContactMessageParams struct {
@@ -60,8 +60,11 @@ type CreateContactMessageParams struct {
 //	  -> idx_contact_messages_tenant_created_at with no status filter,
 //	     idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 //	     idx_contact_messages_tenant_handled_created_at for 'handled'
-//	SetContactMessageHandledByIDForTenant
+//	SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
+//	SetContactMessageStaffNoteByIDForTenant
 //	  -> contact_messages_pkey
+//	GetContactMessageAssignableStaffForTenant
+//	  -> users_tenant_id_id_key, then tenant_user_roles_user_id_role_key
 //	ListTenantStaffContactRecipients
 //	  -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 //
@@ -89,17 +92,53 @@ func (q *Queries) CreateContactMessage(ctx context.Context, arg CreateContactMes
 		&i.CreatedAt,
 		&i.HandledAt,
 		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
 	)
 	return i, err
 }
 
+const GetContactMessageAssignableStaffForTenant = `-- name: GetContactMessageAssignableStaffForTenant :one
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1::uuid
+    AND u.id = $2::uuid
+    AND (u.status)::text = 'active'
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.tenant_id = u.tenant_id
+            AND tur.user_id = u.id
+            AND tur.role = 'tenant_admin'
+    )
+`
+
+type GetContactMessageAssignableStaffForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// The account a message may be assigned to: an active tenant_admin of the
+// tenant, because the inbox is theirs alone and an account that cannot open it
+// could never work the message it was handed.
+func (q *Queries) GetContactMessageAssignableStaffForTenant(ctx context.Context, arg GetContactMessageAssignableStaffForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetContactMessageAssignableStaffForTenant, arg.TenantID, arg.UserID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const GetContactMessageByIDForTenant = `-- name: GetContactMessageByIDForTenant :one
-SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
+SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by, m.assigned_to, m.staff_note,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = $1
     AND m.id = $2
 `
@@ -110,23 +149,28 @@ type GetContactMessageByIDForTenantParams struct {
 }
 
 type GetContactMessageByIDForTenantRow struct {
-	ID             uuid.UUID      `json:"id"`
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	PublicID       string         `json:"public_id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	ReplyToEmail   string         `json:"reply_to_email"`
-	Subject        sql.NullString `json:"subject"`
-	Body           string         `json:"body"`
-	CreatedAt      time.Time      `json:"created_at"`
-	HandledAt      sql.NullTime   `json:"handled_at"`
-	HandledBy      uuid.NullUUID  `json:"handled_by"`
-	SenderPublicID sql.NullString `json:"sender_public_id"`
-	SenderName     sql.NullString `json:"sender_name"`
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	PublicID         string         `json:"public_id"`
+	UserID           uuid.NullUUID  `json:"user_id"`
+	ReplyToEmail     string         `json:"reply_to_email"`
+	Subject          sql.NullString `json:"subject"`
+	Body             string         `json:"body"`
+	CreatedAt        time.Time      `json:"created_at"`
+	HandledAt        sql.NullTime   `json:"handled_at"`
+	HandledBy        uuid.NullUUID  `json:"handled_by"`
+	AssignedTo       uuid.NullUUID  `json:"assigned_to"`
+	StaffNote        sql.NullString `json:"staff_note"`
+	SenderPublicID   sql.NullString `json:"sender_public_id"`
+	SenderName       sql.NullString `json:"sender_name"`
+	AssigneePublicID sql.NullString `json:"assignee_public_id"`
+	AssigneeName     sql.NullString `json:"assignee_name"`
 }
 
 // What the outbox worker reads to word the staff mail. It is by primary key
 // because the event names the row it was queued for, and it carries the
 // sender's name so the mail can say who wrote without a second round trip.
+// The assignee is joined too, so every read of a message has the same shape.
 func (q *Queries) GetContactMessageByIDForTenant(ctx context.Context, arg GetContactMessageByIDForTenantParams) (GetContactMessageByIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetContactMessageByIDForTenant, arg.TenantID, arg.ID)
 	var i GetContactMessageByIDForTenantRow
@@ -141,19 +185,27 @@ func (q *Queries) GetContactMessageByIDForTenant(ctx context.Context, arg GetCon
 		&i.CreatedAt,
 		&i.HandledAt,
 		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
 		&i.SenderPublicID,
 		&i.SenderName,
+		&i.AssigneePublicID,
+		&i.AssigneeName,
 	)
 	return i, err
 }
 
 const GetContactMessageByPublicIDForTenant = `-- name: GetContactMessageByPublicIDForTenant :one
-SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
+SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by, m.assigned_to, m.staff_note,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = $1
     AND m.public_id = $2
 `
@@ -164,18 +216,22 @@ type GetContactMessageByPublicIDForTenantParams struct {
 }
 
 type GetContactMessageByPublicIDForTenantRow struct {
-	ID             uuid.UUID      `json:"id"`
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	PublicID       string         `json:"public_id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	ReplyToEmail   string         `json:"reply_to_email"`
-	Subject        sql.NullString `json:"subject"`
-	Body           string         `json:"body"`
-	CreatedAt      time.Time      `json:"created_at"`
-	HandledAt      sql.NullTime   `json:"handled_at"`
-	HandledBy      uuid.NullUUID  `json:"handled_by"`
-	SenderPublicID sql.NullString `json:"sender_public_id"`
-	SenderName     sql.NullString `json:"sender_name"`
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	PublicID         string         `json:"public_id"`
+	UserID           uuid.NullUUID  `json:"user_id"`
+	ReplyToEmail     string         `json:"reply_to_email"`
+	Subject          sql.NullString `json:"subject"`
+	Body             string         `json:"body"`
+	CreatedAt        time.Time      `json:"created_at"`
+	HandledAt        sql.NullTime   `json:"handled_at"`
+	HandledBy        uuid.NullUUID  `json:"handled_by"`
+	AssignedTo       uuid.NullUUID  `json:"assigned_to"`
+	StaffNote        sql.NullString `json:"staff_note"`
+	SenderPublicID   sql.NullString `json:"sender_public_id"`
+	SenderName       sql.NullString `json:"sender_name"`
+	AssigneePublicID sql.NullString `json:"assignee_public_id"`
+	AssigneeName     sql.NullString `json:"assignee_name"`
 }
 
 // One message as the console reads it, by the identifier its screens carry.
@@ -193,19 +249,27 @@ func (q *Queries) GetContactMessageByPublicIDForTenant(ctx context.Context, arg 
 		&i.CreatedAt,
 		&i.HandledAt,
 		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
 		&i.SenderPublicID,
 		&i.SenderName,
+		&i.AssigneePublicID,
+		&i.AssigneeName,
 	)
 	return i, err
 }
 
 const ListContactMessagesByCreatedAtAsc = `-- name: ListContactMessagesByCreatedAtAsc :many
-SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
+SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by, m.assigned_to, m.staff_note,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = $1
     AND (
         $2::text IS NULL
@@ -244,18 +308,22 @@ type ListContactMessagesByCreatedAtAscParams struct {
 }
 
 type ListContactMessagesByCreatedAtAscRow struct {
-	ID             uuid.UUID      `json:"id"`
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	PublicID       string         `json:"public_id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	ReplyToEmail   string         `json:"reply_to_email"`
-	Subject        sql.NullString `json:"subject"`
-	Body           string         `json:"body"`
-	CreatedAt      time.Time      `json:"created_at"`
-	HandledAt      sql.NullTime   `json:"handled_at"`
-	HandledBy      uuid.NullUUID  `json:"handled_by"`
-	SenderPublicID sql.NullString `json:"sender_public_id"`
-	SenderName     sql.NullString `json:"sender_name"`
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	PublicID         string         `json:"public_id"`
+	UserID           uuid.NullUUID  `json:"user_id"`
+	ReplyToEmail     string         `json:"reply_to_email"`
+	Subject          sql.NullString `json:"subject"`
+	Body             string         `json:"body"`
+	CreatedAt        time.Time      `json:"created_at"`
+	HandledAt        sql.NullTime   `json:"handled_at"`
+	HandledBy        uuid.NullUUID  `json:"handled_by"`
+	AssignedTo       uuid.NullUUID  `json:"assigned_to"`
+	StaffNote        sql.NullString `json:"staff_note"`
+	SenderPublicID   sql.NullString `json:"sender_public_id"`
+	SenderName       sql.NullString `json:"sender_name"`
+	AssigneePublicID sql.NullString `json:"assignee_public_id"`
+	AssigneeName     sql.NullString `json:"assignee_name"`
 }
 
 // The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
@@ -287,8 +355,12 @@ func (q *Queries) ListContactMessagesByCreatedAtAsc(ctx context.Context, arg Lis
 			&i.CreatedAt,
 			&i.HandledAt,
 			&i.HandledBy,
+			&i.AssignedTo,
+			&i.StaffNote,
 			&i.SenderPublicID,
 			&i.SenderName,
+			&i.AssigneePublicID,
+			&i.AssigneeName,
 		); err != nil {
 			return nil, err
 		}
@@ -304,12 +376,16 @@ func (q *Queries) ListContactMessagesByCreatedAtAsc(ctx context.Context, arg Lis
 }
 
 const ListContactMessagesByCreatedAtDesc = `-- name: ListContactMessagesByCreatedAtDesc :many
-SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
+SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by, m.assigned_to, m.staff_note,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = $1
     AND (
         $2::text IS NULL
@@ -348,18 +424,22 @@ type ListContactMessagesByCreatedAtDescParams struct {
 }
 
 type ListContactMessagesByCreatedAtDescRow struct {
-	ID             uuid.UUID      `json:"id"`
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	PublicID       string         `json:"public_id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	ReplyToEmail   string         `json:"reply_to_email"`
-	Subject        sql.NullString `json:"subject"`
-	Body           string         `json:"body"`
-	CreatedAt      time.Time      `json:"created_at"`
-	HandledAt      sql.NullTime   `json:"handled_at"`
-	HandledBy      uuid.NullUUID  `json:"handled_by"`
-	SenderPublicID sql.NullString `json:"sender_public_id"`
-	SenderName     sql.NullString `json:"sender_name"`
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	PublicID         string         `json:"public_id"`
+	UserID           uuid.NullUUID  `json:"user_id"`
+	ReplyToEmail     string         `json:"reply_to_email"`
+	Subject          sql.NullString `json:"subject"`
+	Body             string         `json:"body"`
+	CreatedAt        time.Time      `json:"created_at"`
+	HandledAt        sql.NullTime   `json:"handled_at"`
+	HandledBy        uuid.NullUUID  `json:"handled_by"`
+	AssignedTo       uuid.NullUUID  `json:"assigned_to"`
+	StaffNote        sql.NullString `json:"staff_note"`
+	SenderPublicID   sql.NullString `json:"sender_public_id"`
+	SenderName       sql.NullString `json:"sender_name"`
+	AssigneePublicID sql.NullString `json:"assignee_public_id"`
+	AssigneeName     sql.NullString `json:"assignee_name"`
 }
 
 // The inbox, newest first. The status filter is the presence of handled_at
@@ -395,8 +475,12 @@ func (q *Queries) ListContactMessagesByCreatedAtDesc(ctx context.Context, arg Li
 			&i.CreatedAt,
 			&i.HandledAt,
 			&i.HandledBy,
+			&i.AssignedTo,
+			&i.StaffNote,
 			&i.SenderPublicID,
 			&i.SenderName,
+			&i.AssigneePublicID,
+			&i.AssigneeName,
 		); err != nil {
 			return nil, err
 		}
@@ -451,6 +535,43 @@ func (q *Queries) ListTenantStaffContactRecipients(ctx context.Context, tenantID
 	return items, nil
 }
 
+const SetContactMessageAssigneeByIDForTenant = `-- name: SetContactMessageAssigneeByIDForTenant :one
+UPDATE contact_messages
+SET assigned_to = $1
+WHERE tenant_id = $2
+    AND id = $3
+RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by, assigned_to, staff_note
+`
+
+type SetContactMessageAssigneeByIDForTenantParams struct {
+	AssignedTo uuid.NullUUID `json:"assigned_to"`
+	TenantID   uuid.UUID     `json:"tenant_id"`
+	ID         uuid.UUID     `json:"id"`
+}
+
+// Hands a message to a member of staff, or back to nobody with a NULL. Stated
+// rather than toggled like the handled flag, and independent of it: marking a
+// message handled or reopening it leaves the assignee where it is.
+func (q *Queries) SetContactMessageAssigneeByIDForTenant(ctx context.Context, arg SetContactMessageAssigneeByIDForTenantParams) (ContactMessage, error) {
+	row := q.db.QueryRowContext(ctx, SetContactMessageAssigneeByIDForTenant, arg.AssignedTo, arg.TenantID, arg.ID)
+	var i ContactMessage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.UserID,
+		&i.ReplyToEmail,
+		&i.Subject,
+		&i.Body,
+		&i.CreatedAt,
+		&i.HandledAt,
+		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
+	)
+	return i, err
+}
+
 const SetContactMessageHandledByIDForTenant = `-- name: SetContactMessageHandledByIDForTenant :one
 UPDATE contact_messages
 SET handled_at = CASE
@@ -465,7 +586,7 @@ SET handled_at = CASE
     END
 WHERE tenant_id = $3
     AND id = $4
-RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by
+RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by, assigned_to, staff_note
 `
 
 type SetContactMessageHandledByIDForTenantParams struct {
@@ -501,6 +622,43 @@ func (q *Queries) SetContactMessageHandledByIDForTenant(ctx context.Context, arg
 		&i.CreatedAt,
 		&i.HandledAt,
 		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
+	)
+	return i, err
+}
+
+const SetContactMessageStaffNoteByIDForTenant = `-- name: SetContactMessageStaffNoteByIDForTenant :one
+UPDATE contact_messages
+SET staff_note = $1
+WHERE tenant_id = $2
+    AND id = $3
+RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by, assigned_to, staff_note
+`
+
+type SetContactMessageStaffNoteByIDForTenantParams struct {
+	StaffNote sql.NullString `json:"staff_note"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	ID        uuid.UUID      `json:"id"`
+}
+
+// Replaces the one note staff keep on a message, or clears it with a NULL.
+func (q *Queries) SetContactMessageStaffNoteByIDForTenant(ctx context.Context, arg SetContactMessageStaffNoteByIDForTenantParams) (ContactMessage, error) {
+	row := q.db.QueryRowContext(ctx, SetContactMessageStaffNoteByIDForTenant, arg.StaffNote, arg.TenantID, arg.ID)
+	var i ContactMessage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.UserID,
+		&i.ReplyToEmail,
+		&i.Subject,
+		&i.Body,
+		&i.CreatedAt,
+		&i.HandledAt,
+		&i.HandledBy,
+		&i.AssignedTo,
+		&i.StaffNote,
 	)
 	return i, err
 }

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_contact_messages_tenant_assigned_to;

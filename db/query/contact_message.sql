@@ -12,8 +12,11 @@
 --     -> idx_contact_messages_tenant_created_at with no status filter,
 --        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 --        idx_contact_messages_tenant_handled_created_at for 'handled'
---   SetContactMessageHandledByIDForTenant
+--   SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
+--   SetContactMessageStaffNoteByIDForTenant
 --     -> contact_messages_pkey
+--   GetContactMessageAssignableStaffForTenant
+--     -> users_tenant_id_id_key, then tenant_user_roles_user_id_role_key
 --   ListTenantStaffContactRecipients
 --     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 
@@ -43,12 +46,17 @@ RETURNING *;
 -- What the outbox worker reads to word the staff mail. It is by primary key
 -- because the event names the row it was queued for, and it carries the
 -- sender's name so the mail can say who wrote without a second round trip.
+-- The assignee is joined too, so every read of a message has the same shape.
 SELECT m.*,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND m.id = sqlc.arg('id');
 
@@ -56,10 +64,14 @@ WHERE m.tenant_id = sqlc.arg('tenant_id')
 -- One message as the console reads it, by the identifier its screens carry.
 SELECT m.*,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND m.public_id = sqlc.arg('public_id');
 
@@ -72,10 +84,14 @@ WHERE m.tenant_id = sqlc.arg('tenant_id')
 -- cursor rules: proto/README.md.
 SELECT m.*,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('status')::text IS NULL
@@ -108,10 +124,14 @@ LIMIT sqlc.arg('limit');
 -- reverses the returned rows to preserve the newest-first order.
 SELECT m.*,
     u.public_id AS sender_public_id,
-    u.name AS sender_name
+    u.name AS sender_name,
+    a.public_id AS assignee_public_id,
+    a.name AS assignee_name
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
+    LEFT JOIN users a ON a.tenant_id = m.tenant_id
+        AND a.id = m.assigned_to
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('status')::text IS NULL
@@ -161,6 +181,41 @@ SET handled_at = CASE
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
 RETURNING *;
+
+-- name: SetContactMessageAssigneeByIDForTenant :one
+-- Hands a message to a member of staff, or back to nobody with a NULL. Stated
+-- rather than toggled like the handled flag, and independent of it: marking a
+-- message handled or reopening it leaves the assignee where it is.
+UPDATE contact_messages
+SET assigned_to = sqlc.narg('assigned_to')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+RETURNING *;
+
+-- name: SetContactMessageStaffNoteByIDForTenant :one
+-- Replaces the one note staff keep on a message, or clears it with a NULL.
+UPDATE contact_messages
+SET staff_note = sqlc.narg('staff_note')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+RETURNING *;
+
+-- name: GetContactMessageAssignableStaffForTenant :one
+-- The account a message may be assigned to: an active tenant_admin of the
+-- tenant, because the inbox is theirs alone and an account that cannot open it
+-- could never work the message it was handed.
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND u.id = sqlc.arg('user_id')::uuid
+    AND (u.status)::text = 'active'
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.tenant_id = u.tenant_id
+            AND tur.user_id = u.id
+            AND tur.role = 'tenant_admin'
+    );
 
 -- name: ListTenantStaffContactRecipients :many
 -- Who the mail announcing a message goes to: every member of staff the tenant

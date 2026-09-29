@@ -9,8 +9,8 @@ import "publira/types/v1/types.proto";
 // One message a reader sent the tenant, as staff read it.
 //
 // Publira carries no reply of its own, so the message is the whole record: what
-// the reader wrote, the address to answer at, and whether anyone has dealt with
-// it yet.
+// the reader wrote, the address to answer at, who on the staff owns it, and
+// whether anyone has dealt with it yet.
 message ContactMessage {
   string public_id = 1;
   // The address staff answer at, as the reader typed it.
@@ -28,8 +28,18 @@ message ContactMessage {
   // tenant may still owe an answer to the address on it.
   string sender_public_id = 7;
   string sender_name = 8;
-  // The message's primary key, which MarkContactMessageHandled addresses it by.
+  // The message's primary key, which every action on it addresses it by.
   string id = 9;
+  // The member of staff the message is assigned to, which is not who marked it
+  // handled: a handled message keeps its assignee. All three are empty while
+  // nobody is assigned, including after the assignee's account was deleted.
+  // assignee_user_id is the TenantMember.user_id AssignContactMessage takes.
+  string assignee_user_id = 10;
+  string assignee_public_id = 11;
+  string assignee_name = 12;
+  // The internal note staff keep on the message. Empty when there is none.
+  // Readers never see it: no public API carries it.
+  string staff_note = 13;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -78,6 +88,33 @@ message MarkContactMessageHandledResponse {
   ContactMessage message = 1;
 }
 
+message AssignContactMessageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The message's primary key (ContactMessage.id).
+  string contact_message_id = 2;
+  // The TenantMember.user_id of an active tenant_admin of the tenant, who is
+  // the only kind of account that can work the inbox. Empty clears the
+  // assignment. Any other account is invalid_argument.
+  string assignee_user_id = 3;
+}
+
+message AssignContactMessageResponse {
+  ContactMessage message = 1;
+}
+
+message UpdateContactMessageStaffNoteRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The message's primary key (ContactMessage.id).
+  string contact_message_id = 2;
+  // The whole note, replacing the one stored. Surrounding whitespace is
+  // trimmed; what is left is at most 4000 characters, and empty clears it.
+  string staff_note = 3;
+}
+
+message UpdateContactMessageStaffNoteResponse {
+  ContactMessage message = 1;
+}
+
 service AdminContactService {
   // Lists the messages readers sent the tenant, newest first.
   rpc ListContactMessages(ListContactMessagesRequest) returns (ListContactMessagesResponse) {}
@@ -93,4 +130,12 @@ service AdminContactService {
   // Marking a message that is already in the state asked for succeeds and
   // leaves the recorded time alone, so a repeated press does not move it.
   rpc MarkContactMessageHandled(MarkContactMessageHandledRequest) returns (MarkContactMessageHandledResponse) {}
+  // Assigns one message to a member of staff, moves it to another, or clears
+  // the assignment.
+  //
+  // The assignee is stated rather than toggled, and it is independent of the
+  // handled flag: marking the message handled or reopening it keeps it.
+  rpc AssignContactMessage(AssignContactMessageRequest) returns (AssignContactMessageResponse) {}
+  // Saves, replaces, or clears the internal note on one message.
+  rpc UpdateContactMessageStaffNote(UpdateContactMessageStaffNoteRequest) returns (UpdateContactMessageStaffNoteResponse) {}
 }

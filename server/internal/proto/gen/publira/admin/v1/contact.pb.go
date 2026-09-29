@@ -25,8 +25,8 @@ const (
 // One message a reader sent the tenant, as staff read it.
 //
 // Publira carries no reply of its own, so the message is the whole record: what
-// the reader wrote, the address to answer at, and whether anyone has dealt with
-// it yet.
+// the reader wrote, the address to answer at, who on the staff owns it, and
+// whether anyone has dealt with it yet.
 type ContactMessage struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -45,8 +45,18 @@ type ContactMessage struct {
 	// tenant may still owe an answer to the address on it.
 	SenderPublicId string `protobuf:"bytes,7,opt,name=sender_public_id,json=senderPublicId,proto3" json:"sender_public_id,omitempty"`
 	SenderName     string `protobuf:"bytes,8,opt,name=sender_name,json=senderName,proto3" json:"sender_name,omitempty"`
-	// The message's primary key, which MarkContactMessageHandled addresses it by.
-	Id            string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	// The message's primary key, which every action on it addresses it by.
+	Id string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	// The member of staff the message is assigned to, which is not who marked it
+	// handled: a handled message keeps its assignee. All three are empty while
+	// nobody is assigned, including after the assignee's account was deleted.
+	// assignee_user_id is the TenantMember.user_id AssignContactMessage takes.
+	AssigneeUserId   string `protobuf:"bytes,10,opt,name=assignee_user_id,json=assigneeUserId,proto3" json:"assignee_user_id,omitempty"`
+	AssigneePublicId string `protobuf:"bytes,11,opt,name=assignee_public_id,json=assigneePublicId,proto3" json:"assignee_public_id,omitempty"`
+	AssigneeName     string `protobuf:"bytes,12,opt,name=assignee_name,json=assigneeName,proto3" json:"assignee_name,omitempty"`
+	// The internal note staff keep on the message. Empty when there is none.
+	// Readers never see it: no public API carries it.
+	StaffNote     string `protobuf:"bytes,13,opt,name=staff_note,json=staffNote,proto3" json:"staff_note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -140,6 +150,34 @@ func (x *ContactMessage) GetSenderName() string {
 func (x *ContactMessage) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *ContactMessage) GetAssigneeUserId() string {
+	if x != nil {
+		return x.AssigneeUserId
+	}
+	return ""
+}
+
+func (x *ContactMessage) GetAssigneePublicId() string {
+	if x != nil {
+		return x.AssigneePublicId
+	}
+	return ""
+}
+
+func (x *ContactMessage) GetAssigneeName() string {
+	if x != nil {
+		return x.AssigneeName
+	}
+	return ""
+}
+
+func (x *ContactMessage) GetStaffNote() string {
+	if x != nil {
+		return x.StaffNote
 	}
 	return ""
 }
@@ -484,11 +522,226 @@ func (x *MarkContactMessageHandledResponse) GetMessage() *ContactMessage {
 	return nil
 }
 
+type AssignContactMessageRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The message's primary key (ContactMessage.id).
+	ContactMessageId string `protobuf:"bytes,2,opt,name=contact_message_id,json=contactMessageId,proto3" json:"contact_message_id,omitempty"`
+	// The TenantMember.user_id of an active tenant_admin of the tenant, who is
+	// the only kind of account that can work the inbox. Empty clears the
+	// assignment. Any other account is invalid_argument.
+	AssigneeUserId string `protobuf:"bytes,3,opt,name=assignee_user_id,json=assigneeUserId,proto3" json:"assignee_user_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AssignContactMessageRequest) Reset() {
+	*x = AssignContactMessageRequest{}
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignContactMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignContactMessageRequest) ProtoMessage() {}
+
+func (x *AssignContactMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignContactMessageRequest.ProtoReflect.Descriptor instead.
+func (*AssignContactMessageRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_contact_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AssignContactMessageRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AssignContactMessageRequest) GetContactMessageId() string {
+	if x != nil {
+		return x.ContactMessageId
+	}
+	return ""
+}
+
+func (x *AssignContactMessageRequest) GetAssigneeUserId() string {
+	if x != nil {
+		return x.AssigneeUserId
+	}
+	return ""
+}
+
+type AssignContactMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       *ContactMessage        `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssignContactMessageResponse) Reset() {
+	*x = AssignContactMessageResponse{}
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignContactMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignContactMessageResponse) ProtoMessage() {}
+
+func (x *AssignContactMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignContactMessageResponse.ProtoReflect.Descriptor instead.
+func (*AssignContactMessageResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_contact_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AssignContactMessageResponse) GetMessage() *ContactMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+type UpdateContactMessageStaffNoteRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The message's primary key (ContactMessage.id).
+	ContactMessageId string `protobuf:"bytes,2,opt,name=contact_message_id,json=contactMessageId,proto3" json:"contact_message_id,omitempty"`
+	// The whole note, replacing the one stored. Surrounding whitespace is
+	// trimmed; what is left is at most 4000 characters, and empty clears it.
+	StaffNote     string `protobuf:"bytes,3,opt,name=staff_note,json=staffNote,proto3" json:"staff_note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateContactMessageStaffNoteRequest) Reset() {
+	*x = UpdateContactMessageStaffNoteRequest{}
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateContactMessageStaffNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateContactMessageStaffNoteRequest) ProtoMessage() {}
+
+func (x *UpdateContactMessageStaffNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateContactMessageStaffNoteRequest.ProtoReflect.Descriptor instead.
+func (*UpdateContactMessageStaffNoteRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_contact_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateContactMessageStaffNoteRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateContactMessageStaffNoteRequest) GetContactMessageId() string {
+	if x != nil {
+		return x.ContactMessageId
+	}
+	return ""
+}
+
+func (x *UpdateContactMessageStaffNoteRequest) GetStaffNote() string {
+	if x != nil {
+		return x.StaffNote
+	}
+	return ""
+}
+
+type UpdateContactMessageStaffNoteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       *ContactMessage        `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateContactMessageStaffNoteResponse) Reset() {
+	*x = UpdateContactMessageStaffNoteResponse{}
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateContactMessageStaffNoteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateContactMessageStaffNoteResponse) ProtoMessage() {}
+
+func (x *UpdateContactMessageStaffNoteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_contact_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateContactMessageStaffNoteResponse.ProtoReflect.Descriptor instead.
+func (*UpdateContactMessageStaffNoteResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_contact_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdateContactMessageStaffNoteResponse) GetMessage() *ContactMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
 var File_publira_admin_v1_contact_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x9a\x02\n" +
+	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xb6\x03\n" +
 	"\x0eContactMessage\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12$\n" +
 	"\x0ereply_to_email\x18\x02 \x01(\tR\freplyToEmail\x12\x18\n" +
@@ -501,7 +754,13 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\x10sender_public_id\x18\a \x01(\tR\x0esenderPublicId\x12\x1f\n" +
 	"\vsender_name\x18\b \x01(\tR\n" +
 	"senderName\x12\x0e\n" +
-	"\x02id\x18\t \x01(\tR\x02id\"\x99\x01\n" +
+	"\x02id\x18\t \x01(\tR\x02id\x12(\n" +
+	"\x10assignee_user_id\x18\n" +
+	" \x01(\tR\x0eassigneeUserId\x12,\n" +
+	"\x12assignee_public_id\x18\v \x01(\tR\x10assigneePublicId\x12#\n" +
+	"\rassignee_name\x18\f \x01(\tR\fassigneeName\x12\x1d\n" +
+	"\n" +
+	"staff_note\x18\r \x01(\tR\tstaffNote\"\x99\x01\n" +
 	"\x1aListContactMessagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +
@@ -522,11 +781,26 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\ahandled\x18\x03 \x01(\bR\ahandled\x12,\n" +
 	"\x12contact_message_id\x18\x04 \x01(\tR\x10contactMessageIdJ\x04\b\x02\x10\x03R\tpublic_id\"_\n" +
 	"!MarkContactMessageHandledResponse\x12:\n" +
-	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage2\x84\x03\n" +
+	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\xae\x01\n" +
+	"\x1bAssignContactMessageRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12,\n" +
+	"\x12contact_message_id\x18\x02 \x01(\tR\x10contactMessageId\x12(\n" +
+	"\x10assignee_user_id\x18\x03 \x01(\tR\x0eassigneeUserId\"Z\n" +
+	"\x1cAssignContactMessageResponse\x12:\n" +
+	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\xac\x01\n" +
+	"$UpdateContactMessageStaffNoteRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12,\n" +
+	"\x12contact_message_id\x18\x02 \x01(\tR\x10contactMessageId\x12\x1d\n" +
+	"\n" +
+	"staff_note\x18\x03 \x01(\tR\tstaffNote\"c\n" +
+	"%UpdateContactMessageStaffNoteResponse\x12:\n" +
+	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage2\x92\x05\n" +
 	"\x13AdminContactService\x12t\n" +
 	"\x13ListContactMessages\x12,.publira.admin.v1.ListContactMessagesRequest\x1a-.publira.admin.v1.ListContactMessagesResponse\"\x00\x12n\n" +
 	"\x11GetContactMessage\x12*.publira.admin.v1.GetContactMessageRequest\x1a+.publira.admin.v1.GetContactMessageResponse\"\x00\x12\x86\x01\n" +
-	"\x19MarkContactMessageHandled\x122.publira.admin.v1.MarkContactMessageHandledRequest\x1a3.publira.admin.v1.MarkContactMessageHandledResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x19MarkContactMessageHandled\x122.publira.admin.v1.MarkContactMessageHandledRequest\x1a3.publira.admin.v1.MarkContactMessageHandledResponse\"\x00\x12w\n" +
+	"\x14AssignContactMessage\x12-.publira.admin.v1.AssignContactMessageRequest\x1a..publira.admin.v1.AssignContactMessageResponse\"\x00\x12\x92\x01\n" +
+	"\x1dUpdateContactMessageStaffNote\x126.publira.admin.v1.UpdateContactMessageStaffNoteRequest\x1a7.publira.admin.v1.UpdateContactMessageStaffNoteResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_contact_proto_rawDescOnce sync.Once
@@ -540,35 +814,47 @@ func file_publira_admin_v1_contact_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_contact_proto_rawDescData
 }
 
-var file_publira_admin_v1_contact_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_publira_admin_v1_contact_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_publira_admin_v1_contact_proto_goTypes = []any{
-	(*ContactMessage)(nil),                    // 0: publira.admin.v1.ContactMessage
-	(*ListContactMessagesRequest)(nil),        // 1: publira.admin.v1.ListContactMessagesRequest
-	(*ListContactMessagesResponse)(nil),       // 2: publira.admin.v1.ListContactMessagesResponse
-	(*GetContactMessageRequest)(nil),          // 3: publira.admin.v1.GetContactMessageRequest
-	(*GetContactMessageResponse)(nil),         // 4: publira.admin.v1.GetContactMessageResponse
-	(*MarkContactMessageHandledRequest)(nil),  // 5: publira.admin.v1.MarkContactMessageHandledRequest
-	(*MarkContactMessageHandledResponse)(nil), // 6: publira.admin.v1.MarkContactMessageHandledResponse
-	(*v1.TenantContext)(nil),                  // 7: publira.types.v1.TenantContext
+	(*ContactMessage)(nil),                        // 0: publira.admin.v1.ContactMessage
+	(*ListContactMessagesRequest)(nil),            // 1: publira.admin.v1.ListContactMessagesRequest
+	(*ListContactMessagesResponse)(nil),           // 2: publira.admin.v1.ListContactMessagesResponse
+	(*GetContactMessageRequest)(nil),              // 3: publira.admin.v1.GetContactMessageRequest
+	(*GetContactMessageResponse)(nil),             // 4: publira.admin.v1.GetContactMessageResponse
+	(*MarkContactMessageHandledRequest)(nil),      // 5: publira.admin.v1.MarkContactMessageHandledRequest
+	(*MarkContactMessageHandledResponse)(nil),     // 6: publira.admin.v1.MarkContactMessageHandledResponse
+	(*AssignContactMessageRequest)(nil),           // 7: publira.admin.v1.AssignContactMessageRequest
+	(*AssignContactMessageResponse)(nil),          // 8: publira.admin.v1.AssignContactMessageResponse
+	(*UpdateContactMessageStaffNoteRequest)(nil),  // 9: publira.admin.v1.UpdateContactMessageStaffNoteRequest
+	(*UpdateContactMessageStaffNoteResponse)(nil), // 10: publira.admin.v1.UpdateContactMessageStaffNoteResponse
+	(*v1.TenantContext)(nil),                      // 11: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_contact_proto_depIdxs = []int32{
-	7, // 0: publira.admin.v1.ListContactMessagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.admin.v1.ListContactMessagesResponse.messages:type_name -> publira.admin.v1.ContactMessage
-	7, // 2: publira.admin.v1.GetContactMessageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 3: publira.admin.v1.GetContactMessageResponse.message:type_name -> publira.admin.v1.ContactMessage
-	7, // 4: publira.admin.v1.MarkContactMessageHandledRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 5: publira.admin.v1.MarkContactMessageHandledResponse.message:type_name -> publira.admin.v1.ContactMessage
-	1, // 6: publira.admin.v1.AdminContactService.ListContactMessages:input_type -> publira.admin.v1.ListContactMessagesRequest
-	3, // 7: publira.admin.v1.AdminContactService.GetContactMessage:input_type -> publira.admin.v1.GetContactMessageRequest
-	5, // 8: publira.admin.v1.AdminContactService.MarkContactMessageHandled:input_type -> publira.admin.v1.MarkContactMessageHandledRequest
-	2, // 9: publira.admin.v1.AdminContactService.ListContactMessages:output_type -> publira.admin.v1.ListContactMessagesResponse
-	4, // 10: publira.admin.v1.AdminContactService.GetContactMessage:output_type -> publira.admin.v1.GetContactMessageResponse
-	6, // 11: publira.admin.v1.AdminContactService.MarkContactMessageHandled:output_type -> publira.admin.v1.MarkContactMessageHandledResponse
-	9, // [9:12] is the sub-list for method output_type
-	6, // [6:9] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	11, // 0: publira.admin.v1.ListContactMessagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 1: publira.admin.v1.ListContactMessagesResponse.messages:type_name -> publira.admin.v1.ContactMessage
+	11, // 2: publira.admin.v1.GetContactMessageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 3: publira.admin.v1.GetContactMessageResponse.message:type_name -> publira.admin.v1.ContactMessage
+	11, // 4: publira.admin.v1.MarkContactMessageHandledRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 5: publira.admin.v1.MarkContactMessageHandledResponse.message:type_name -> publira.admin.v1.ContactMessage
+	11, // 6: publira.admin.v1.AssignContactMessageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 7: publira.admin.v1.AssignContactMessageResponse.message:type_name -> publira.admin.v1.ContactMessage
+	11, // 8: publira.admin.v1.UpdateContactMessageStaffNoteRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 9: publira.admin.v1.UpdateContactMessageStaffNoteResponse.message:type_name -> publira.admin.v1.ContactMessage
+	1,  // 10: publira.admin.v1.AdminContactService.ListContactMessages:input_type -> publira.admin.v1.ListContactMessagesRequest
+	3,  // 11: publira.admin.v1.AdminContactService.GetContactMessage:input_type -> publira.admin.v1.GetContactMessageRequest
+	5,  // 12: publira.admin.v1.AdminContactService.MarkContactMessageHandled:input_type -> publira.admin.v1.MarkContactMessageHandledRequest
+	7,  // 13: publira.admin.v1.AdminContactService.AssignContactMessage:input_type -> publira.admin.v1.AssignContactMessageRequest
+	9,  // 14: publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote:input_type -> publira.admin.v1.UpdateContactMessageStaffNoteRequest
+	2,  // 15: publira.admin.v1.AdminContactService.ListContactMessages:output_type -> publira.admin.v1.ListContactMessagesResponse
+	4,  // 16: publira.admin.v1.AdminContactService.GetContactMessage:output_type -> publira.admin.v1.GetContactMessageResponse
+	6,  // 17: publira.admin.v1.AdminContactService.MarkContactMessageHandled:output_type -> publira.admin.v1.MarkContactMessageHandledResponse
+	8,  // 18: publira.admin.v1.AdminContactService.AssignContactMessage:output_type -> publira.admin.v1.AssignContactMessageResponse
+	10, // 19: publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote:output_type -> publira.admin.v1.UpdateContactMessageStaffNoteResponse
+	15, // [15:20] is the sub-list for method output_type
+	10, // [10:15] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_contact_proto_init() }
@@ -582,7 +868,7 @@ func file_publira_admin_v1_contact_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_contact_proto_rawDesc), len(file_publira_admin_v1_contact_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
