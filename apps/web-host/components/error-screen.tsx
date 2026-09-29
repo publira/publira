@@ -57,7 +57,7 @@ export const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
 
   return (
     <ErrorScreenStateContext value={state}>
-      <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+      <div className="mx-auto grid max-w-measure-prose gap-4 px-6 py-16">
         {children}
       </div>
     </ErrorScreenStateContext>

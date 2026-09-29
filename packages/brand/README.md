@@ -13,7 +13,7 @@ The typography tokens:
 | `--font-serif` | `--publira-font-serif`, falling back to the Mincho stack | `font-serif` |
 | `--font-sans` | `--publira-font-sans`, falling back to the Gothic stack | `font-sans` |
 | `--leading-reading-cjk` / `--leading-reading-latin` | 1.9 / 1.6 | `leading-reading-cjk` / `leading-reading-latin` |
-| `--measure-prose` | `40rem` | `max-w-(--measure-prose)` |
+| `--max-width-measure-prose` | `40rem` | `max-w-measure-prose` |
 
 No font file is served: both stacks name faces the reader's platform already has.
 

@@ -50,7 +50,7 @@ export const AuthScreen = ({ children }: { children: ReactNode }) => (
  */
 export const AuthScreenMain = ({ children }: { children: ReactNode }) => (
   <div className="flex flex-1 items-center justify-center">
-    <main className="grid w-full max-w-(--measure-prose) gap-8 px-6 py-10">
+    <main className="grid w-full max-w-measure-prose gap-8 px-6 py-10">
       {children}
     </main>
   </div>

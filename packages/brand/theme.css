@@ -1,7 +1,6 @@
 /**
  * `static` because Tailwind emits a theme variable only when a utility names
- * it, and `--measure-prose` and the reading line heights are read through
- * `var()` instead.
+ * it, and the reading line heights are read through `var()` instead.
  */
 @theme static {
   /* Installed faces only: no `@font-face` backs either stack. */
@@ -27,9 +26,6 @@
 
   --leading-reading-cjk: 1.9;
   --leading-reading-latin: 1.6;
-
-  /* Forty full-width characters at the base size. */
-  --measure-prose: 40rem;
 }
 
 @theme {
@@ -44,6 +40,9 @@
   /* A state change a person asked for: a dialog opening, a toggle switching. */
   --transition-duration-state: 150ms;
   --ease-state: var(--ease-out);
+
+  /* Forty full-width characters at the base size. */
+  --max-width-measure-prose: 40rem;
 }
 
 @theme {

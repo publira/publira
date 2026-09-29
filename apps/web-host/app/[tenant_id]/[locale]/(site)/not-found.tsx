@@ -29,7 +29,7 @@ import { Message } from "#components/message";
  * render a full HTML document without this shell.
  */
 const NotFound = () => (
-  <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+  <div className="mx-auto grid max-w-measure-prose gap-4 px-6 py-16">
     <h1 className="font-serif text-3xl leading-tight">
       <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
         <Message message="host.errors.not_found_title" />
