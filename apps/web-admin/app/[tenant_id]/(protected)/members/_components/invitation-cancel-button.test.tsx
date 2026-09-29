@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { ToastProvider } from "@publira/ui-components/toast";
 import {
@@ -13,8 +17,6 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { InvitationCancelButton } from "./invitation-cancel-button";
 
@@ -33,14 +35,18 @@ vi.mock("../_lib/actions", () => ({
   ) => cancel(previousState, formData),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleTestProvider locale="en">
-    <ToastProvider>{children}</ToastProvider>
-  </AdminLocaleTestProvider>
+const Toasts = ({ children }: { children: ReactNode }) => (
+  <ToastProvider>{children}</ToastProvider>
 );
 
 const renderButton = async () => {
@@ -49,8 +55,9 @@ const renderButton = async () => {
       <InvitationCancelButton
         email="invitee@example.com"
         invitationId="INVITATION001"
+        tenantId="TENANT001"
       />,
-      { wrapper: EnglishConsole }
+      { wrapper: Toasts }
     );
   });
   await screen.findByRole("button", { name: "Cancel invitation" });

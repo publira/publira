@@ -178,6 +178,7 @@ const ReaderCommentsContent = async ({
           ? buildQueryString({ token: result.previousToken })
           : undefined
       }
+      tenantId={tenantId}
       timeZone={timeZone}
     />
   );

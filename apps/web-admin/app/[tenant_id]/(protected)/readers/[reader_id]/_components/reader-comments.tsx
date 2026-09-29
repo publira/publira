@@ -57,6 +57,7 @@ type ReaderCommentsProps = CursorPageHrefs & {
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
+  tenantId: string;
   timeZone: string;
 };
 
@@ -73,6 +74,7 @@ export const ReaderComments = async ({
   nextHref,
   pageSize,
   previousHref,
+  tenantId,
   timeZone,
 }: ReaderCommentsProps) => {
   const t = await getMessagesFor(locale);
@@ -202,7 +204,7 @@ export const ReaderComments = async ({
                   {formatCommentDateTime(comment.createdAt, locale, timeZone)}
                 </TableCell>
                 <TableCell>
-                  <CommentRowActions comment={comment} />
+                  <CommentRowActions comment={comment} tenantId={tenantId} />
                 </TableCell>
               </TableRow>
             ))}

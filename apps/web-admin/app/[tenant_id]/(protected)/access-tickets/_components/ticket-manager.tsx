@@ -42,6 +42,7 @@ type TicketManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
+  tenantId: string;
   tickets: AccessTicketItem[];
   timeZone: string;
 };
@@ -100,6 +101,7 @@ const TicketListBody = ({
   itemLabel,
   listErrorMessage,
   locale,
+  tenantId,
   tickets,
   timeZone,
 }: {
@@ -110,6 +112,7 @@ const TicketListBody = ({
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
+  tenantId: string;
   tickets: AccessTicketItem[];
   timeZone: string;
 }) => {
@@ -248,7 +251,7 @@ const TicketListBody = ({
             </TableCell>
             <TableCell>
               {ticket.status === "active" ? (
-                <RevokeTicketButton ticketId={ticket.id} />
+                <RevokeTicketButton tenantId={tenantId} ticketId={ticket.id} />
               ) : (
                 <span className="text-sm text-muted-foreground">—</span>
               )}
@@ -270,6 +273,7 @@ export const TicketManager = async ({
   nextHref,
   pageSize,
   previousHref,
+  tenantId,
   tickets,
   timeZone,
 }: TicketManagerProps) => {
@@ -287,6 +291,7 @@ export const TicketManager = async ({
         itemLabel={t("admin.access_tickets.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
+        tenantId={tenantId}
         tickets={tickets}
         timeZone={timeZone}
       />

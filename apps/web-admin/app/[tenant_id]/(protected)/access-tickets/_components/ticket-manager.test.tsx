@@ -78,6 +78,7 @@ describe("TicketManager", () => {
       await TicketManager({
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         tickets: [],
         timeZone: "UTC",
       })
@@ -93,6 +94,7 @@ describe("TicketManager", () => {
         locale: "en",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         tickets: [],
         timeZone: "UTC",
       })
@@ -110,6 +112,7 @@ describe("TicketManager", () => {
       await TicketManager({
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         tickets: [
           {
             ...ticket("TICKET001"),
@@ -133,6 +136,7 @@ describe("TicketManager", () => {
         nextHref: "?token=next",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         tickets: [ticket("TICKET001")],
         timeZone: "UTC",
       })
@@ -155,6 +159,7 @@ describe("TicketManager", () => {
         nextHref: "?token=next",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         tickets: [],
         timeZone: "UTC",
       })

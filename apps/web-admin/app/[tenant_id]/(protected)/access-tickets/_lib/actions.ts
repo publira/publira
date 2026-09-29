@@ -230,13 +230,10 @@ export const revokeAccessTicketAction = async (
   });
   const schema = await revokeTicketSchema(locale);
   const parsed = schema.safeParse(input);
-  const ticketId =
-    typeof input.ticketId === "string" ? input.ticketId.trim() : "";
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      ticketId,
     };
   }
 
@@ -244,18 +241,10 @@ export const revokeAccessTicketAction = async (
     revokeAccessTicket(parsed.data.tenantId, parsed.data.ticketId, locale)
   );
   if (!result.ok) {
-    return {
-      message: result.message,
-      ok: false,
-      ticketId: parsed.data.ticketId,
-    };
+    return { message: result.message, ok: false };
   }
 
   updateTag(`access-tickets-${parsed.data.tenantId}`);
   const t = await getMessagesFor(locale);
-  return {
-    message: t("admin.access_tickets.revoked"),
-    ok: true,
-    ticketId: parsed.data.ticketId,
-  };
+  return { message: t("admin.access_tickets.revoked"), ok: true };
 };

@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -9,20 +14,16 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
-
-import type { CreatorRoleRowActionState } from "../creator-role-types";
 import { CreatorRoleDeleteButton } from "./creator-role-delete-button";
 
 const remove =
   vi.fn<
     (
-      previousState: CreatorRoleRowActionState,
+      previousState: FormActionState,
       formData: FormData
-    ) => Promise<CreatorRoleRowActionState>
+    ) => Promise<FormActionState>
   >();
 
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
@@ -30,26 +31,32 @@ const remove =
 // the role the row stands for, and reporting what comes back.
 vi.mock("../_lib/actions", () => ({
   deleteCreatorRoleAction: (
-    previousState: CreatorRoleRowActionState,
+    previousState: FormActionState,
     formData: FormData
   ) => remove(previousState, formData),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 const creatorRole = { id: "ROLE001", name: "Original Author" };
 
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-);
-
 const renderButton = async () => {
   await act(() => {
-    render(<CreatorRoleDeleteButton creatorRole={creatorRole} />, {
-      wrapper: EnglishConsole,
-    });
+    render(
+      <CreatorRoleDeleteButton
+        id={creatorRole.id}
+        name={creatorRole.name}
+        tenantId="TENANT001"
+      />
+    );
   });
   await screen.findByRole("button", { name: "Delete" });
 };
@@ -101,7 +108,7 @@ describe("CreatorRoleDeleteButton", () => {
   });
 
   it("posts the role the row stands for", async () => {
-    remove.mockResolvedValue({ id: "ROLE001", message: "", ok: true });
+    remove.mockResolvedValue({ message: "", ok: true });
 
     await renderButton();
     await confirmDelete();
@@ -118,7 +125,6 @@ describe("CreatorRoleDeleteButton", () => {
   // nothing else on the page says so.
   it("shows the refusal when credits still name the role", async () => {
     remove.mockResolvedValue({
-      id: "ROLE001",
       message:
         "A series or an episode is still credited in this role. Re-credit them before deleting it.",
       ok: false,
@@ -138,7 +144,6 @@ describe("CreatorRoleDeleteButton", () => {
   // would be attached to something that is no longer on screen.
   it("says nothing when the delete goes through", async () => {
     remove.mockResolvedValue({
-      id: "ROLE001",
       message: "Role deleted.",
       ok: true,
     });

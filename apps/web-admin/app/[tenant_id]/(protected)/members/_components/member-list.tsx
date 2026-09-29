@@ -214,6 +214,7 @@ const MemberTable = ({
           <TableCell>
             <MemberRemoveButton
               name={member.name || member.email}
+              tenantId={tenantId}
               userId={member.userId}
             />
           </TableCell>

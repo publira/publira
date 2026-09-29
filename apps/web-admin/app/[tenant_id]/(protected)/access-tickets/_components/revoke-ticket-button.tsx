@@ -1,6 +1,6 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
 } from "@publira/ui-components/action-form";
@@ -16,92 +16,81 @@ import {
   ConfirmDialogTitle,
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useToastManager } from "@publira/ui-components/toast";
-import { useActionState, useRef } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { SettledToast } from "#components/settled-toast";
 
 import { revokeAccessTicketAction } from "../_lib/actions";
-import type { RevokeAccessTicketActionState } from "../ticket-types";
 
 interface RevokeTicketButtonProps {
+  tenantId: string;
   ticketId: string;
 }
 
-export const RevokeTicketButton = ({ ticketId }: RevokeTicketButtonProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const { add } = useToastManager();
-  const formRef = useRef<HTMLFormElement>(null);
-  // Confirming the dialog is what raises the toast. The Action revalidates the
-  // ticket list itself, so nothing here has to ask the router for a refresh.
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: RevokeAccessTicketActionState,
-      formData: FormData
-    ): Promise<RevokeAccessTicketActionState> => {
-      const nextState = await revokeAccessTicketAction(previousState, formData);
-      if (nextState?.ok) {
-        add({
-          title: t("admin.access_tickets.revoked"),
-          type: "success",
-        });
-      }
-      return nextState;
-    },
-    null
-  );
+/**
+ * Revokes one ticket once staff confirm it. The row stays, relabelled as
+ * revoked, and loses this button with it, so success is a toast.
+ */
+export const RevokeTicketButton = ({
+  tenantId,
+  ticketId,
+}: RevokeTicketButtonProps) => {
+  const formId = `revoke-access-ticket-${ticketId}`;
 
   return (
-    <form action={formAction} className="grid gap-1" ref={formRef}>
+    <ActionForm
+      action={revokeAccessTicketAction}
+      className="grid gap-1"
+      id={formId}
+      showSuccess={false}
+    >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="access_ticket_id" type="hidden" value={ticketId} />
-      <ConfirmDialog>
-        <ConfirmDialogTrigger
-          render={
-            <Button
-              disabled={isPending}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
+      <SettledToast />
+      <ActionFormFieldset className="grid">
+        <ConfirmDialog>
+          <ConfirmDialogTrigger
+            render={<Button size="sm" type="button" variant="outline" />}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <ActionFormIdle>
-                <ClientMessage message="admin.access_tickets.revoke" />
+                <Message message="admin.access_tickets.revoke" />
               </ActionFormIdle>
               <ActionFormPending>
-                <ClientMessage message="admin.access_tickets.revoking" />
+                <Message message="admin.access_tickets.revoking" />
               </ActionFormPending>
-            </Button>
-          }
-        />
-        <ConfirmDialogContent>
-          <ConfirmDialogHeader>
-            <ConfirmDialogTitle>
-              <ClientMessage message="admin.access_tickets.revoke_confirm_title" />
-            </ConfirmDialogTitle>
-            <ConfirmDialogDescription>
-              <ClientMessage message="admin.access_tickets.revoke_confirm_description" />
-            </ConfirmDialogDescription>
-          </ConfirmDialogHeader>
-          <ConfirmDialogFooter>
-            <ConfirmDialogCancel>
-              <ClientMessage message="admin.common.cancel" />
-            </ConfirmDialogCancel>
-            <ConfirmDialogAction
-              onClick={() => {
-                formRef.current?.requestSubmit();
-              }}
-            >
-              <ClientMessage message="admin.access_tickets.revoke_confirm_action" />
-            </ConfirmDialogAction>
-          </ConfirmDialogFooter>
-        </ConfirmDialogContent>
-      </ConfirmDialog>
-      {state && !state.ok && state.ticketId === ticketId ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
+            </Suspense>
+          </ConfirmDialogTrigger>
+          <ConfirmDialogContent>
+            <ConfirmDialogHeader>
+              <ConfirmDialogTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                  <Message message="admin.access_tickets.revoke_confirm_title" />
+                </Suspense>
+              </ConfirmDialogTitle>
+              <ConfirmDialogDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                  <Message message="admin.access_tickets.revoke_confirm_description" />
+                </Suspense>
+              </ConfirmDialogDescription>
+            </ConfirmDialogHeader>
+            <ConfirmDialogFooter>
+              <ConfirmDialogCancel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.common.cancel" />
+                </Suspense>
+              </ConfirmDialogCancel>
+              <ConfirmDialogAction form={formId}>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.access_tickets.revoke_confirm_action" />
+                </Suspense>
+              </ConfirmDialogAction>
+            </ConfirmDialogFooter>
+          </ConfirmDialogContent>
+        </ConfirmDialog>
+      </ActionFormFieldset>
+    </ActionForm>
   );
 };

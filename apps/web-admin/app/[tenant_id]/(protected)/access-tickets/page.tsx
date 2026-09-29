@@ -89,6 +89,7 @@ const TicketManagerData = async ({
             ? accessTicketFilterQuery(filters, listResult.previousToken)
             : undefined
         }
+        tenantId={tenantId}
         tickets={listResult.tickets}
         timeZone={timeZone}
       />

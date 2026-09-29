@@ -38,6 +38,7 @@ interface OpenMonthProps {
   lines: RoyaltyLine[];
   locale: Locale;
   period: string;
+  tenantId: string;
   timeZone: string;
   totals: RoyaltyTotals;
 }
@@ -47,8 +48,12 @@ const CloseStatus = ({
   closeState,
   locale,
   period,
+  tenantId,
   totals,
-}: Pick<OpenMonthProps, "closeState" | "locale" | "period" | "totals">) => {
+}: Pick<
+  OpenMonthProps,
+  "closeState" | "locale" | "period" | "tenantId" | "totals"
+>) => {
   switch (closeState.kind) {
     case "automatic": {
       return (
@@ -103,6 +108,7 @@ const CloseStatus = ({
               </Suspense>
             }
             period={period}
+            tenantId={tenantId}
           />
         </div>
       );
@@ -122,6 +128,7 @@ export const OpenMonth = ({
   lines,
   locale,
   period,
+  tenantId,
   timeZone,
   totals,
 }: OpenMonthProps) => (
@@ -170,6 +177,7 @@ export const OpenMonth = ({
         closeState={closeState}
         locale={locale}
         period={period}
+        tenantId={tenantId}
         totals={totals}
       />
     </AdminSection>

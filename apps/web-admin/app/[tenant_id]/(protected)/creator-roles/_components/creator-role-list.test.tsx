@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -66,8 +70,15 @@ vi.mock("../_lib/actions", () => ({
   reorderCreatorRolesAction: (formData: FormData) => reorder(formData),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+// The rows are composed on the server, where each string is a `<Message>`.
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 const creatorRoles: CreatorRoleListItem[] = [
@@ -128,7 +139,9 @@ afterEach(() => {
 
 describe("CreatorRoleList", () => {
   it("lists the roles in priority order and states each position", async () => {
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     expect(namesOnScreen()).toEqual(["Original Author", "Artist", "Writer"]);
     expect(
@@ -140,7 +153,9 @@ describe("CreatorRoleList", () => {
   // the only thing that names it for a screen reader is the visually hidden
   // label `Field` ties to it.
   it("names each name box after the role it edits", async () => {
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     expect(
       screen.getByRole<HTMLInputElement>("textbox", {
@@ -152,7 +167,9 @@ describe("CreatorRoleList", () => {
   // The handle is what the pointer, the touch screen and the keyboard sensor
   // all pick a row up by, so every row has to offer one.
   it("gives every row a drag handle named after the role it moves", async () => {
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     expect(
       screen
@@ -162,7 +179,9 @@ describe("CreatorRoleList", () => {
   });
 
   it("posts the whole order it wants beside the one it was showing", async () => {
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     await dropOver("ROLE002", "ROLE001");
 
@@ -186,7 +205,9 @@ describe("CreatorRoleList", () => {
   // A drop that put the row back where it came from changes nothing, so there
   // is no order to post and no conflict to risk.
   it("writes nothing when the row is dropped where it started", async () => {
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     await dropOver("ROLE002", "ROLE002");
 
@@ -198,7 +219,9 @@ describe("CreatorRoleList", () => {
     const pending = Promise.withResolvers<CreatorRoleReorderResult>();
     reorder.mockReturnValue(pending.promise);
 
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     await dropOver("ROLE002", "ROLE001");
 
@@ -216,7 +239,9 @@ describe("CreatorRoleList", () => {
       ok: false,
     });
 
-    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+    await renderList(
+      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+    );
 
     await dropOver("ROLE002", "ROLE001");
 

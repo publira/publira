@@ -97,12 +97,14 @@ const PreviewContent = ({
   period,
   policy,
   preview,
+  tenantId,
   timeZone,
 }: {
   locale: Locale;
   period: string;
   policy: RoyaltyClosePolicy;
   preview: PreviewRoyaltyStatementResult;
+  tenantId: string;
   timeZone: string;
 }) => {
   if (preview.ok) {
@@ -113,6 +115,7 @@ const PreviewContent = ({
         lines={preview.lines}
         locale={locale}
         period={period}
+        tenantId={tenantId}
         timeZone={zone}
         totals={preview.totals}
       />
@@ -190,6 +193,7 @@ const OpenMonthContent = async ({
         period={period}
         policy={policyResult.policy}
         preview={preview}
+        tenantId={tenantId}
         timeZone={timeZone}
       />
     </AdminSections>

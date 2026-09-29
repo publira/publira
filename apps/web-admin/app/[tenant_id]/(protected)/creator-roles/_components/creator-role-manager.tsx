@@ -44,9 +44,11 @@ interface CreatorRoleManagerProps {
 const CreatorRoleListBody = ({
   creatorRoles,
   listErrorMessage,
+  tenantId,
 }: {
   creatorRoles: CreatorRoleListItem[];
   listErrorMessage?: string;
+  tenantId: string;
 }) => {
   // A failed read still hands an empty array; the empty state next to the
   // error would read as "this tenant has no roles".
@@ -87,7 +89,7 @@ const CreatorRoleListBody = ({
     );
   }
 
-  return <CreatorRoleList creatorRoles={creatorRoles} />;
+  return <CreatorRoleList creatorRoles={creatorRoles} tenantId={tenantId} />;
 };
 
 export const CreatorRoleManager = ({
@@ -157,6 +159,7 @@ export const CreatorRoleManager = ({
       <CreatorRoleListBody
         creatorRoles={creatorRoles}
         listErrorMessage={listErrorMessage}
+        tenantId={tenantId}
       />
     </AdminSection>
   </AdminSections>

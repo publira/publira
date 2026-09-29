@@ -12,19 +12,6 @@ export interface GenreListItem {
   eyeCatchImageVariants: EyeCatchVariantItem[];
 }
 
-/**
- * Action state for a write aimed at one genre.
- *
- * Rename and delete are rendered once per row and share a screen, so the state
- * carries the genre it answers: without it every row would show the message the
- * one that submitted produced.
- */
-export type GenreRowActionState = {
-  ok: boolean;
-  message: string;
-  id: string;
-} | null;
-
 /** Result of a reorder, which the list submits rather than a form. */
 export interface GenreReorderResult {
   ok: boolean;

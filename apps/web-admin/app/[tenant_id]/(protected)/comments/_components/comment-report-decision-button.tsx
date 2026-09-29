@@ -1,39 +1,23 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useToastManager } from "@publira/ui-components/toast";
-import { useActionState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { SettledToast } from "#components/settled-toast";
 
 import { resolveCommentReportAction } from "../_lib/actions";
-import type {
-  CommentReportActionState,
-  CommentReportResolution,
-} from "../comment-types";
+import type { CommentReportResolution } from "../comment-types";
 
 interface CommentReportDecisionButtonProps {
   reportId: string;
   resolution: CommentReportResolution;
+  tenantId: string;
 }
-
-/** What the toast says once the decision has landed. */
-const DecisionDone = ({
-  resolution,
-}: {
-  resolution: CommentReportResolution;
-}) =>
-  resolution === "resolved" ? (
-    <ClientMessage message="admin.comments.reports.resolved" />
-  ) : (
-    <ClientMessage message="admin.comments.reports.rejected" />
-  );
 
 /**
  * One of the two ways a report is decided.
@@ -46,65 +30,42 @@ const DecisionDone = ({
 export const CommentReportDecisionButton = ({
   reportId,
   resolution,
-}: CommentReportDecisionButtonProps) => {
-  const tenantId = useTenantId();
-  const { add } = useToastManager();
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: CommentReportActionState,
-      formData: FormData
-    ): Promise<CommentReportActionState> => {
-      const nextState = await resolveCommentReportAction(
-        previousState,
-        formData
-      );
-      if (nextState?.ok) {
-        // The toast renders outside this subtree, so the boundary its copy
-        // needs travels with the node rather than sitting at this call site.
-        add({
-          title: <DecisionDone resolution={resolution} />,
-          type: "success",
-        });
-      }
-      return nextState;
-    },
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid gap-1">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="report_id" type="hidden" value={reportId} />
-      <input name="resolution" type="hidden" value={resolution} />
-      <Button
-        disabled={isPending}
-        size="sm"
-        type="submit"
-        variant={resolution === "resolved" ? "default" : "outline"}
-      >
+  tenantId,
+}: CommentReportDecisionButtonProps) => (
+  <ActionForm
+    action={resolveCommentReportAction}
+    className="grid gap-1"
+    showSuccess={false}
+  >
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <input name="report_id" type="hidden" value={reportId} />
+    <input name="resolution" type="hidden" value={resolution} />
+    <SettledToast />
+    <ActionFormSubmit
+      size="sm"
+      variant={resolution === "resolved" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
         {resolution === "resolved" ? (
           <>
             <ActionFormIdle>
-              <ClientMessage message="admin.comments.reports.resolve" />
+              <Message message="admin.comments.reports.resolve" />
             </ActionFormIdle>
             <ActionFormPending>
-              <ClientMessage message="admin.comments.reports.resolving" />
+              <Message message="admin.comments.reports.resolving" />
             </ActionFormPending>
           </>
         ) : (
           <>
             <ActionFormIdle>
-              <ClientMessage message="admin.comments.reports.reject" />
+              <Message message="admin.comments.reports.reject" />
             </ActionFormIdle>
             <ActionFormPending>
-              <ClientMessage message="admin.comments.reports.rejecting" />
+              <Message message="admin.comments.reports.rejecting" />
             </ActionFormPending>
           </>
         )}
-      </Button>
-      {state && !state.ok && state.reportId === reportId ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+      </Suspense>
+    </ActionFormSubmit>
+  </ActionForm>
+);

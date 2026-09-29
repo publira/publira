@@ -25,10 +25,7 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
-import type {
-  CreatorRoleReorderResult,
-  CreatorRoleRowActionState,
-} from "../creator-role-types";
+import type { CreatorRoleReorderResult } from "../creator-role-types";
 
 const nameSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -117,9 +114,9 @@ export const createCreatorRoleAction = async (
 };
 
 export const renameCreatorRoleAction = async (
-  _prevState: CreatorRoleRowActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CreatorRoleRowActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
@@ -130,14 +127,7 @@ export const renameCreatorRoleAction = async (
     toFormDataInput(formData, { ...rowFormFields, name: "value" })
   );
   if (!parsed.success) {
-    // The row the message belongs to is the one that submitted, which is what
-    // the form posted — a parse failure has no validated id to echo.
-    const id = formData.get("creator_role_id");
-    return {
-      id: typeof id === "string" ? id : "",
-      message: toFormErrorMessage(parsed.error, { locale }),
-      ok: false,
-    };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { name, id, tenantId } = parsed.data;
@@ -145,22 +135,21 @@ export const renameCreatorRoleAction = async (
     updateCreatorRole({ id, name, tenantId }, locale)
   );
   if (!result.ok) {
-    return { id, message: result.message, ok: false };
+    return { message: result.message, ok: false };
   }
 
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
-    id,
     message: t("admin.creator_roles.updated"),
     ok: true,
   };
 };
 
 export const deleteCreatorRoleAction = async (
-  _prevState: CreatorRoleRowActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<CreatorRoleRowActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
@@ -169,12 +158,7 @@ export const deleteCreatorRoleAction = async (
   ]);
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
-    const id = formData.get("creator_role_id");
-    return {
-      id: typeof id === "string" ? id : "",
-      message: toFormErrorMessage(parsed.error, { locale }),
-      ok: false,
-    };
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, tenantId } = parsed.data;
@@ -182,13 +166,12 @@ export const deleteCreatorRoleAction = async (
     deleteCreatorRole({ id, tenantId }, locale)
   );
   if (!result.ok) {
-    return { id, message: result.message, ok: false };
+    return { message: result.message, ok: false };
   }
 
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
-    id,
     message: t("admin.creator_roles.deleted"),
     ok: true,
   };

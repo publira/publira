@@ -70,7 +70,7 @@ describe("notification actions", () => {
       })
     );
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ message: "", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith(
       {
         notificationId,
@@ -111,7 +111,7 @@ describe("notification actions", () => {
       formData({ tenant_id: "TENANT001" })
     );
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ message: "", ok: true });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(
       "TENANT001",
       "en"

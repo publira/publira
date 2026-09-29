@@ -150,30 +150,3 @@ export type CountPendingCommentsResult =
       requiresSignIn: boolean;
       pendingCount: number;
     };
-
-/**
- * What one moderation action reports back to the row it was submitted from.
- *
- * `commentId` is what lets a row show only its own failure: every row on the
- * screen submits to the same Action, and a message with no owner would appear
- * under all of them.
- */
-export type CommentActionState = {
-  commentId: string;
-  message: string;
-  ok: boolean;
-} | null;
-
-/**
- * What one report decision reports back to the row it was submitted from.
- *
- * Keyed by `reportId` rather than by the comment's `commentId` for the reason
- * {@link CommentActionState} is keyed at all: a comment several readers
- * reported is several rows in the queue, and a failure has to appear under the
- * one that was pressed.
- */
-export type CommentReportActionState = {
-  message: string;
-  ok: boolean;
-  reportId: string;
-} | null;

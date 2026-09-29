@@ -15,10 +15,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { SettledToast } from "#components/settled-toast";
 
 import { linkCreatorAccountAction } from "../../_lib/actions";
 import { CreatorAccountReaderField } from "./creator-account-reader-field";
-import { CreatorAccountSettledToast } from "./creator-account-settled-toast";
 
 interface CreatorAccountLinkFormProps {
   creatorId: string;
@@ -39,7 +39,7 @@ export const CreatorAccountLinkForm = ({
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="creator_id" type="hidden" value={creatorId} />
     <input name="creator_public_id" type="hidden" value={creatorPublicId} />
-    <CreatorAccountSettledToast />
+    <SettledToast />
     <ActionFormFieldset>
       <Field>
         <FieldLabel required>

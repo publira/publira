@@ -55,6 +55,7 @@ type CommentManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
+  tenantId: string;
   timeZone: string;
 };
 
@@ -209,18 +210,40 @@ export const CommentStateNotes = ({
  * `failed_precondition` for it, and a button that can only fail is not a
  * control. A purge is offered in every state — that is the point of it.
  */
-export const CommentRowActions = ({ comment }: { comment: CommentItem }) => (
+export const CommentRowActions = ({
+  comment,
+  tenantId,
+}: {
+  comment: CommentItem;
+  tenantId: string;
+}) => (
   <div className="grid gap-2">
     {comment.status === "pending" ? (
-      <CommentActionButton action="approve" commentId={comment.id} />
+      <CommentActionButton
+        action="approve"
+        commentId={comment.id}
+        tenantId={tenantId}
+      />
     ) : null}
     {comment.status === "hidden" ? (
-      <CommentActionButton action="restore" commentId={comment.id} />
+      <CommentActionButton
+        action="restore"
+        commentId={comment.id}
+        tenantId={tenantId}
+      />
     ) : null}
     {comment.status === "pending" || comment.status === "published" ? (
-      <CommentReasonDialog action="hide" commentId={comment.id} />
+      <CommentReasonDialog
+        action="hide"
+        commentId={comment.id}
+        tenantId={tenantId}
+      />
     ) : null}
-    <CommentReasonDialog action="purge" commentId={comment.id} />
+    <CommentReasonDialog
+      action="purge"
+      commentId={comment.id}
+      tenantId={tenantId}
+    />
   </div>
 );
 
@@ -232,6 +255,7 @@ const CommentListBody = ({
   itemLabel,
   listErrorMessage,
   locale,
+  tenantId,
   timeZone,
 }: {
   /** The empty state's copy, resolved by the async parent. */
@@ -242,6 +266,7 @@ const CommentListBody = ({
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
+  tenantId: string;
   timeZone: string;
 }) => {
   if (listErrorMessage) {
@@ -362,7 +387,7 @@ const CommentListBody = ({
               {formatCommentDateTime(comment.createdAt, locale, timeZone)}
             </TableCell>
             <TableCell>
-              <CommentRowActions comment={comment} />
+              <CommentRowActions comment={comment} tenantId={tenantId} />
             </TableCell>
           </TableRow>
         ))}
@@ -378,6 +403,7 @@ export const CommentManager = async ({
   nextHref,
   pageSize,
   previousHref,
+  tenantId,
   timeZone,
 }: CommentManagerProps) => {
   const t = await getMessagesFor(locale);
@@ -410,6 +436,7 @@ export const CommentManager = async ({
         itemLabel={t("admin.comments.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
+        tenantId={tenantId}
         timeZone={timeZone}
       />
 
