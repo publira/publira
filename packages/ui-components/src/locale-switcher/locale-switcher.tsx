@@ -5,6 +5,7 @@ import { cn } from "@publira/utils";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
+import { buttonVariants } from "../button/button";
 import {
   Popover,
   PopoverContent,
@@ -107,7 +108,10 @@ export const LocaleSwitcherTrigger = ({
 }) => (
   <PopoverTrigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
+    className={cn(
+      buttonVariants({ size: "icon", variant: "ghost" }),
+      "data-popup-open:bg-muted"
+    )}
   >
     <LanguageIcon aria-hidden="true" className="size-5" />
   </PopoverTrigger>
