@@ -38,13 +38,22 @@ export const ConsoleUserMenuInitial = ({ children }: { children: string }) => {
   return initial ? initial.toUpperCase() : null;
 };
 
+/**
+ * Fixed, like the sticky console header its trigger sits in, so the menu does
+ * not trail its trigger by a frame while the page scrolls.
+ */
 export const ConsoleUserMenuContent = ({
   children,
 }: {
   children: ReactNode;
 }) => (
   <Menu.Portal>
-    <Menu.Positioner align="end" className="z-40 outline-hidden" sideOffset={8}>
+    <Menu.Positioner
+      align="end"
+      className="z-40 outline-hidden"
+      positionMethod="fixed"
+      sideOffset={8}
+    >
       <Menu.Popup className="w-64 max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating outline-hidden">
         {children}
       </Menu.Popup>

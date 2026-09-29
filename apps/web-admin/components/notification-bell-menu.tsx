@@ -76,12 +76,22 @@ export const NotificationBellTrigger = ({
   );
 };
 
+/**
+ * Fixed, like the sticky header its trigger sits in: an absolute menu scrolls
+ * with the page and catches up a frame later, so a press made meanwhile is
+ * released over another element and never becomes a click.
+ */
 export const NotificationBellContent = ({
   children,
 }: {
   children: ReactNode;
 }) => (
-  <PopoverContent align="end" className="w-80" sideOffset={8}>
+  <PopoverContent
+    align="end"
+    className="w-80"
+    positionMethod="fixed"
+    sideOffset={8}
+  >
     {children}
   </PopoverContent>
 );
