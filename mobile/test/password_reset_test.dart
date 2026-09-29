@@ -247,6 +247,8 @@ void main() {
       // The reader replaced the password themselves, so they are not told
       // their session expired.
       expect(auth.acknowledgeExpiry(), isFalse);
+      // Nor is it recorded as a sign-out: the API ended the session itself.
+      expect(repository.signedOut, isEmpty);
     });
 
     testWidgets('is kept when it belongs to another account', (tester) async {

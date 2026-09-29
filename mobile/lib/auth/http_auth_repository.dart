@@ -46,6 +46,7 @@ class HttpAuthRepository implements AuthRepository {
   static const _confirmEmailChangeProcedure =
       '/publira.v1.AuthService/ConfirmEmailChange';
   static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
+  static const _logoutProcedure = '/publira.v1.AuthService/Logout';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _tenantLegalPagesProcedure =
       '/publira.v1.TenantService/GetTenantLegalPages';
@@ -399,6 +400,23 @@ class HttpAuthRepository implements AuthRepository {
         {
           'tenant': {'tenantId': tenantId},
           'password': password,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> signOut(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _logoutProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
         },
         tenantId: tenantId,
         accessToken: session.accessToken,

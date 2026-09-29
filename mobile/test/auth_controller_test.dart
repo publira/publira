@@ -68,6 +68,39 @@ void main() {
     expect(controller.isSignedIn, isFalse);
     expect(controller.accessToken, isEmpty);
     expect(store.session, isNull);
+    expect(repository.signedOut, [fakeSession.accessToken]);
+  });
+
+  test('signOut does not wait for the API to hear of it', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    repository.signOutGate = Completer<void>();
+
+    await controller.signOut();
+
+    expect(controller.isSignedIn, isFalse);
+    expect(store.session, isNull);
+    expect(repository.signedOut, [fakeSession.accessToken]);
+  });
+
+  test('signOut goes through when the API is unreachable', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    repository.signOutFailure = const AuthFailure(AuthFailureKind.network);
+
+    await controller.signOut();
+    await pumpEventQueue();
+
+    expect(controller.isSignedIn, isFalse);
+    expect(store.session, isNull);
+  });
+
+  test('signOut with nobody signed in tells the API nothing', () async {
+    final controller = controllerFor();
+
+    await controller.signOut();
+
+    expect(repository.signedOut, isEmpty);
   });
 
   test('restore brings back a stored session the API still accepts', () async {
@@ -93,6 +126,7 @@ void main() {
     expect(store.session, isNull);
     expect(controller.acknowledgeExpiry(), isTrue);
     expect(controller.acknowledgeExpiry(), isFalse);
+    expect(repository.signedOut, isEmpty);
   });
 
   test('restore keeps a stored session when the API is unreachable', () async {

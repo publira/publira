@@ -180,6 +180,15 @@ class FakeAuthRepository implements AuthRepository {
   /// the session the way the API refuses one of an account it no longer has.
   var deleted = false;
 
+  /// The access tokens [signOut] has been told were dropped, in order.
+  final signedOut = <String>[];
+
+  /// Thrown by [signOut], standing in for an API that cannot be reached.
+  AuthFailure? signOutFailure;
+
+  /// Held open by a test that needs to act while [signOut] is in flight.
+  Completer<void>? signOutGate;
+
   @override
   Future<AuthSession> signIn({
     required String email,
@@ -408,6 +417,16 @@ class FakeAuthRepository implements AuthRepository {
     }
     deleted = true;
     refreshFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+  }
+
+  @override
+  Future<void> signOut(AuthSession session) async {
+    signedOut.add(session.accessToken);
+    await signOutGate?.future;
+    final failure = signOutFailure;
+    if (failure != null) {
+      throw failure;
+    }
   }
 }
 
