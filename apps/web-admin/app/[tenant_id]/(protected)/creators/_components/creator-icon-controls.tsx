@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
+import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
 import type { ChangeEventHandler, ReactEventHandler, ReactNode } from "react";
@@ -33,7 +35,7 @@ interface CreatorIconContextValue {
   iconImageUrl: string;
   isFraming: boolean;
   localPreviewUrl: string;
-  onClearIconImageChange: ChangeEventHandler<HTMLInputElement>;
+  onClearIconImageChange: (clearIconImage: boolean) => void;
   onCropChange: (crop: CropRect) => void;
   onCropImageLoad: ReactEventHandler<HTMLImageElement>;
   onFramingChange: (isFraming: boolean) => void;
@@ -87,9 +89,7 @@ export const CreatorIcon = ({
       iconImageUrl,
       isFraming,
       localPreviewUrl,
-      onClearIconImageChange: (event) => {
-        setClearIconImage(event.target.checked);
-      },
+      onClearIconImageChange: setClearIconImage,
       onCropChange: setCrop,
       /**
        * The frame starts where the API would have cut on its own, so an editor
@@ -214,19 +214,21 @@ export const CreatorIconAdjust = ({ children }: { children: ReactNode }) => {
   ) : null;
 };
 
-/** Removes the saved icon on the next save; `children` are its wording. */
+/**
+ * Removes the saved icon on the next save; `children` are its wording. It is a
+ * `Field` of its own so the icon field's label does not name it.
+ */
 export const CreatorIconClear = ({ children }: { children: ReactNode }) => {
   const { clearIconImage, onClearIconImageChange } = useCreatorIcon();
 
   return (
-    <label className="mt-2 flex items-center gap-2 text-sm">
-      <input
+    <Field className="mt-2 flex items-center gap-2">
+      <Checkbox
         checked={clearIconImage}
-        onChange={onClearIconImageChange}
-        type="checkbox"
+        onCheckedChange={onClearIconImageChange}
       />
-      {children}
-    </label>
+      <FieldLabel className="font-normal">{children}</FieldLabel>
+    </Field>
   );
 };
 

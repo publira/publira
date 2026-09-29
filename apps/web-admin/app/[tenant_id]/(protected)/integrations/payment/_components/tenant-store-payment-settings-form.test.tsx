@@ -248,6 +248,27 @@ describe("TenantStorePaymentSettingsForm", () => {
     expect(posted("private_key_mode")).toBe("keep");
   });
 
+  it("posts each store's switch as the operator leaves it", async () => {
+    await renderForm(
+      <TenantStorePaymentSettingsForm
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={readySettings}
+      />
+    );
+
+    expect(posted("app_store_enabled")).toBe("on");
+    expect(posted("google_play_enabled")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Use the App Store" })
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Use Google Play" }));
+
+    expect(posted("app_store_enabled")).toBeNull();
+    expect(posted("google_play_enabled")).toBe("on");
+  });
+
   it("keeps the IDs typed and names the refused field beside them", async () => {
     action.current = vi.fn((): Promise<TenantStorePaymentSettingsFormState> =>
       Promise.resolve({
@@ -322,6 +343,15 @@ describe("TenantStorePaymentSettingsForm", () => {
       name: "Replace",
     })) {
       expect(replace.matches(":disabled")).toBe(true);
+    }
+    // The store switches are Base UI checkboxes, which say so with
+    // `aria-disabled` instead.
+    for (const store of ["Use the App Store", "Use Google Play"]) {
+      expect(
+        screen
+          .getByRole("checkbox", { name: store })
+          .getAttribute("aria-disabled")
+      ).toBe("true");
     }
     expect(submitButton().disabled).toBe(true);
   });
