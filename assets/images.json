@@ -422,9 +422,8 @@
         "width": 192
       },
       {
-        "background": "#F5F5F2",
+        "background": "#1F1D1A",
         "height": 180,
-        "padding": 24,
         "path": "packages/brand/logo-mark/apple-icon-180.png",
         "width": 180
       }

@@ -41,13 +41,13 @@ The motion tokens:
 
 The provisional Publira mark, a stand-in until the commissioned logo (#3406) replaces it:
 
-| Export | Size | Background | Consumer |
+| Export | Size | Corners | Consumer |
 | --- | --- | --- | --- |
-| `@publira/brand/logo-mark/icon-32.png` | 32x32 | Transparent | `web-platform` favicon |
-| `@publira/brand/logo-mark/icon-192.png` | 192x192 | Transparent | `web-platform` favicon |
-| `@publira/brand/logo-mark/apple-icon-180.png` | 180x180 | `#F5F5F2`, 24px margin | `web-platform` apple icon |
+| `@publira/brand/logo-mark/icon-32.png` | 32x32 | Rounded, transparent | `web-platform` favicon |
+| `@publira/brand/logo-mark/icon-192.png` | 192x192 | Rounded, transparent | `web-platform` favicon |
+| `@publira/brand/logo-mark/apple-icon-180.png` | 180x180 | Square, filled with Sumi; iOS rounds them itself | `web-platform` apple icon |
 
-The mark is drawn in Sumi (`#1F1D1A`) and never in Shu. The PNGs are rendered by `task images:gen` from `assets/brand/logo-mark.svg`, which `task images:logo-mark` generates; see [`assets/README.md`](../../assets/README.md). Import them rather than copying them, so that replacing the mark here is the whole change.
+The mark is ぱ in paper (`#F5F5F2`) on a Sumi (`#1F1D1A`) tile with rounded corners, and never takes Shu. The PNGs are rendered by `task images:gen` from `assets/brand/logo-mark.svg`, which `task images:logo-mark` generates; see [`assets/README.md`](../../assets/README.md). Import them rather than copying them, so that replacing the mark here is the whole change.
 
 The storefront and the tenant console carry the tenant's branding and do not use the mark.
 

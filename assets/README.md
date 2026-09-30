@@ -4,13 +4,13 @@ The vector originals of every JPEG and PNG this repository commits, and the map 
 
 | Path | What it holds |
 | --- | --- |
-| `brand/logo-mark.svg` | The provisional Publira mark, a stand-in until the commissioned logo (#3406) replaces it: ぱ from Shippori Mincho B1 ExtraBold (SIL Open Font License 1.1) as outline paths in Sumi, generated rather than drawn. Rendered to the icons `@publira/brand` exports |
+| `brand/logo-mark.svg` | The provisional Publira mark, a stand-in until the commissioned logo (#3406) replaces it: ぱ from Shippori Mincho B1 ExtraBold (SIL Open Font License 1.1) as outline paths, set in paper on a Sumi tile with rounded corners, generated rather than drawn. Rendered to the icons `@publira/brand` exports |
 | `eye-catch/<ratio>-<width>x<height>.svg` | One eye-catch card per aspect ratio the console accepts, at that ratio's minimum, plus a 2400x3200 card large enough for all four at once and a 600x800 card below the portrait minimum. Each is a different picture, so one delivered ratio can be told from another by its bytes. These are what the console's file field is given in `admin.eye-catch-upload.spec.ts`, not what the development seed stores |
 | `seeds/` | Everything the development seed stores, one directory per kind of image it seeds, named after the object keys it lands at |
 | `seeds/eye-catch/card-N.svg` | The eye-catch a series or a label is seeded with, five designs dealt round-robin over the catalogue. Each is drawn square with `preserveAspectRatio="none"` and stretched into every delivered ratio and width by the render, so one file covers twelve, and carries N dots so the design is identifiable in greyscale |
 | `seeds/creator-icon/icon-N.svg` | The icon a creator is seeded with, five designs numbered the same way |
 | `seeds/episode-page/page-NN.svg` | 1050x1500 monochrome comic body pages: panel frames, converging speed lines, a banded screentone, and a page number drawn as seven-segment rectangles so the render needs no font |
-| `images.json` | `source` (relative to this directory) → `outputs` (relative to the repository root), with `monochrome` for the sources encoded as a single channel. An output is a path, or a `{ path, width, height }` when it is rendered at a size of its own, which may add `padding` (pixels inside that size) and `background` (a colour the output is flattened onto). The extension picks the encoder: `.jpg` or `.png` |
+| `images.json` | `source` (relative to this directory) → `outputs` (relative to the repository root), with `monochrome` for the sources encoded as a single channel. An output is a path, or a `{ path, width, height }` when it is rendered at a size of its own, which may add a `background` colour the output is flattened onto. The extension picks the encoder: `.jpg` or `.png` |
 
 ```bash
 task images:gen
