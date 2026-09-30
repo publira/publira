@@ -23,6 +23,7 @@
     "eslint-plugin-github": "6.1.2",
     "eslint-plugin-sonarjs": "4.2.1",
     "lefthook": "2.1.14",
+    "opentype.js": "catalog:",
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
     "oxlint-plugin-react-doctor": "0.9.14",

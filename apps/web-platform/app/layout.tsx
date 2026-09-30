@@ -7,6 +7,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PlatformMessagesProvider } from "#components/platform-messages-provider";
+import { platformIcons } from "#lib/brand-icons";
 import { getMessages } from "#lib/get-messages";
 
 // Reading the locale cookie here costs no route its static shell: metadata
@@ -15,7 +16,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getMessages();
   const title = t("platform.shell.title");
 
-  return { title: { default: title, template: `%s | ${title}` } };
+  return {
+    icons: platformIcons,
+    title: { default: title, template: `%s | ${title}` },
+  };
 };
 
 /**

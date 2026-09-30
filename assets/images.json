@@ -407,5 +407,26 @@
   {
     "source": "seeds/creator-icon/icon-5.svg",
     "outputs": ["db/seeds/objects/creator-icon/icon-5.jpg"]
+  },
+  {
+    "source": "brand/logo-mark.svg",
+    "outputs": [
+      {
+        "height": 32,
+        "path": "packages/brand/logo-mark/icon-32.png",
+        "width": 32
+      },
+      {
+        "height": 192,
+        "path": "packages/brand/logo-mark/icon-192.png",
+        "width": 192
+      },
+      {
+        "background": "#1F1D1A",
+        "height": 180,
+        "path": "packages/brand/logo-mark/apple-icon-180.png",
+        "width": 180
+      }
+    ]
   }
 ]

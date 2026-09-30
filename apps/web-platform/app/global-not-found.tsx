@@ -4,6 +4,8 @@ import { buttonVariants } from "@publira/ui-components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { platformIcons } from "#lib/brand-icons";
+
 import "./globals.css";
 
 /** The one locale this document renders, named where `lang` is set from it. */
@@ -35,6 +37,7 @@ export const metadata: Metadata = {
     "platform.not_found.metadata_description",
     NOT_FOUND_LOCALE
   ),
+  icons: platformIcons,
   title: sharedMessage("platform.not_found.title", NOT_FOUND_LOCALE),
 };
 
