@@ -59,6 +59,13 @@ const TILE = 1280;
  */
 const RADIUS = TILE / 8;
 
+/**
+ * How long the download may take, body included, before the run gives up. The
+ * font is about 15 MB, so this is set for a slow connection finishing rather
+ * than for a fast one: its job is to end a run the host has stopped answering.
+ */
+const DOWNLOAD_TIMEOUT_MS = 300_000;
+
 const OUTPUT = new URL("../assets/brand/logo-mark.svg", import.meta.url);
 
 const fail = (message: string): never => {
@@ -68,11 +75,20 @@ const fail = (message: string): never => {
 
 const downloadFont = async (): Promise<ArrayBuffer> => {
   const url = `https://raw.githubusercontent.com/google/fonts/${FONT_COMMIT}/${FONT_PATH}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    fail(`GET ${url} answered ${response.status} ${response.statusText}.`);
+  const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
+  let bytes: ArrayBuffer;
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) {
+      fail(`GET ${url} answered ${response.status} ${response.statusText}.`);
+    }
+    bytes = await response.arrayBuffer();
+  } catch (error) {
+    if (signal.aborted) {
+      fail(`GET ${url} did not finish in ${DOWNLOAD_TIMEOUT_MS / 1000} s.`);
+    }
+    throw error;
   }
-  const bytes = await response.arrayBuffer();
   const digest = createHash("sha256")
     .update(new Uint8Array(bytes))
     .digest("hex");
