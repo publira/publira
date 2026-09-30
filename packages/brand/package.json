@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./logo-mark/*.png": "./logo-mark/*.png",
     "./theme.css": "./theme.css"
   }
 }

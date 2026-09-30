@@ -1,9 +1,10 @@
 # brand
 
-The package that provides Publira's brand tokens.
+The package that provides Publira's brand tokens and its mark.
 
 ## What it provides
 
+- `logo-mark/*.png`: the Publira mark's icons, described below
 - `theme.css`: the color and typography tokens used from Tailwind v4's `@theme`, and `.publira-theme-scope`, which re-derives the color tokens on one element so a subtree can be painted from a `--publira-color-*` set other than the document's
 
 The typography tokens:
@@ -37,6 +38,18 @@ The motion tokens:
 | `--ease-state` | `var(--ease-out)` | `ease-state` | The curve those take |
 
 `@publira/layouts/styles.css` drops every transition and animation under `prefers-reduced-motion: reduce`.
+
+The provisional Publira mark, a stand-in until the commissioned logo (#3406) replaces it:
+
+| Export | Size | Background | Consumer |
+| --- | --- | --- | --- |
+| `@publira/brand/logo-mark/icon-32.png` | 32x32 | Transparent | `web-platform` favicon |
+| `@publira/brand/logo-mark/icon-192.png` | 192x192 | Transparent | `web-platform` favicon |
+| `@publira/brand/logo-mark/apple-icon-180.png` | 180x180 | `#F5F5F2`, 24px margin | `web-platform` apple icon |
+
+The mark is drawn in Sumi (`#1F1D1A`) and never in Shu. The PNGs are rendered by `task images:gen` from `assets/brand/logo-mark.svg`, which `task images:logo-mark` generates; see [`assets/README.md`](../../assets/README.md). Import them rather than copying them, so that replacing the mark here is the whole change.
+
+The storefront and the tenant console carry the tenant's branding and do not use the mark.
 
 ## Usage
 

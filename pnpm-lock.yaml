@@ -212,6 +212,9 @@ catalogs:
     next:
       specifier: 16.3.6
       version: 16.3.6
+    opentype.js:
+      specifier: 2.0.0
+      version: 2.0.0
     p-retry:
       specifier: 8.0.1
       version: 8.0.1
@@ -268,6 +271,9 @@ importers:
       node:
         specifier: runtime:24.21.0
         version: runtime:24.21.0
+      opentype.js:
+        specifier: 'catalog:'
+        version: 2.0.0
       oxfmt:
         specifier: 0.70.0
         version: 0.70.0
@@ -4599,6 +4605,10 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
+  opentype.js@2.0.0:
+    resolution: {integrity: sha512-kCyjv6xdDY1W/jLWZ/L3QhhTlKUqDZMQ5+Jdlw12b3dXkKNpYBqqlMMj0YDQPShWFTMwgZI1hG14kN3XUDSg/A==}
+    hasBin: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -8847,6 +8857,8 @@ snapshots:
   onetime@7.0.0:
     dependencies:
       mimic-function: 5.0.1
+
+  opentype.js@2.0.0: {}
 
   optionator@0.9.4:
     dependencies:

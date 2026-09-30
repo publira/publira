@@ -28,9 +28,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 
 /**
- * JPEG, because that is what a reader's browser and the console's upload field
- * are given everywhere else: an upload is stored untouched and image-server
- * converts from it.
+ * The encoder is picked from the output's extension.
+ *
+ * JPEG for everything a reader's browser and the console's upload field are
+ * given: an upload is stored untouched and image-server converts from it.
  *
  * Full chroma resolution and mozjpeg's encoder, so the eye-catch cards survive
  * being cropped and re-encoded per aspect ratio without the suite comparing
@@ -46,10 +47,38 @@ const JPEG = {
 } as const;
 
 /**
+ * PNG for the brand mark's icons, which keep their transparency. Truecolour
+ * rather than a palette, so the bytes follow from the render alone and not from
+ * a quantiser's choices.
+ */
+const PNG = {
+  compressionLevel: 9,
+  palette: false,
+} as const;
+
+const TRANSPARENT = { alpha: 0, b: 0, g: 0, r: 0 } as const;
+
+/**
+ * One output with a size of its own. `padding` draws the render smaller than
+ * that size and `background` makes the rest opaque, for an icon a platform
+ * would otherwise fill in itself: iOS paints a transparent `apple-touch-icon`
+ * black and crops it to its own rounded square.
+ */
+interface SizedOutput {
+  /** Any colour sharp accepts; the whole output is flattened onto it. */
+  background?: string;
+  height: number;
+  /** Pixels between the drawing and each edge, taken from the named size. */
+  padding?: number;
+  path: string;
+  width: number;
+}
+
+/**
  * One rendered file. A bare string is the path, rendered at the SVG's own
  * size; an object renders at the size it names instead.
  */
-type ImageOutput = string | { height: number; path: string; width: number };
+type ImageOutput = string | SizedOutput;
 
 /** One entry of `assets/images.json`. */
 interface ImageEntry {
@@ -71,25 +100,55 @@ const manifest: ImageEntry[] = JSON.parse(
   await readFile(new URL("images.json", ASSETS), "utf-8")
 );
 
+const resize = (svg: Buffer, output: SizedOutput): sharp.Sharp => {
+  const padding = output.padding ?? 0;
+  // `fill` rather than a fitted resize: a card that names a size is drawn to
+  // be stretched into it, and a fitted one would letterbox instead.
+  const resized = sharp(svg).resize(
+    output.width - padding * 2,
+    output.height - padding * 2,
+    { fit: "fill" }
+  );
+  const flattened =
+    output.background === undefined
+      ? resized
+      : resized.flatten({ background: output.background });
+  if (padding === 0) {
+    return flattened;
+  }
+  return flattened.extend({
+    background: output.background ?? TRANSPARENT,
+    bottom: padding,
+    left: padding,
+    right: padding,
+    top: padding,
+  });
+};
+
+const encode = (pipeline: sharp.Sharp, path: string): sharp.Sharp => {
+  if (path.endsWith(".png")) {
+    return pipeline.png(PNG);
+  }
+  if (path.endsWith(".jpg")) {
+    return pipeline.jpeg(JPEG);
+  }
+  throw new Error(`${path}: no encoder for this extension`);
+};
+
 const renderOutput = async (
   svg: Buffer,
   entry: ImageEntry,
   output: ImageOutput
 ): Promise<string> => {
   const path = typeof output === "string" ? output : output.path;
-  // `fill` rather than a fitted resize: a card that names a size is drawn to
-  // be stretched into it, and a fitted one would letterbox instead.
   const pipeline =
-    typeof output === "string"
-      ? sharp(svg)
-      : sharp(svg).resize(output.width, output.height, { fit: "fill" });
-  const jpeg = await (
-    entry.monochrome ? pipeline.toColourspace("b-w") : pipeline
-  )
-    .jpeg(JPEG)
-    .toBuffer();
-  await writeFile(new URL(path, ROOT), jpeg);
-  return `${path} (${jpeg.length} bytes)`;
+    typeof output === "string" ? sharp(svg) : resize(svg, output);
+  const image = await encode(
+    entry.monochrome ? pipeline.toColourspace("b-w") : pipeline,
+    path
+  ).toBuffer();
+  await writeFile(new URL(path, ROOT), image);
+  return `${path} (${image.length} bytes)`;
 };
 
 const renderEntry = async (entry: ImageEntry): Promise<string[]> => {
