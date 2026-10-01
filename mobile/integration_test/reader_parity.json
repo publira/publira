@@ -55,7 +55,11 @@
         "routes": ["[locale]/(site)/ranking"],
         "rpcs": ["ListRankedSeries"]
       },
-      "exception": "The app shows the first ten positions on its catalog; the whole chart is #2826."
+      "mobile": { "routes": ["/", "/ranking"], "rpcs": ["ListRankedSeries"] },
+      "tests": [
+        "pages through the whole week from the ranking shelf and opens a series",
+        "the seed tenant chart is listed in full on the live API"
+      ]
     },
     {
       "name": "The list of every author and every label",

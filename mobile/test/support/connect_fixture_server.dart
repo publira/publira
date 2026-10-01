@@ -19,6 +19,7 @@ class ConnectFixtureServer {
     this.seriesPageSize = 0,
     this.seriesAvailability = const {},
     this.rankedSeries = const [],
+    this.rankedSeriesPageSize = 0,
     this.genres = const [],
     this.details = const {},
     this.episodes = const {},
@@ -507,6 +508,11 @@ class ConnectFixtureServer {
   /// is asked for. Empty acts out a tenant the ranking batch has not run for.
   List<Map<String, Object?>> rankedSeries;
 
+  /// The most positions one page of `ListRankedSeries` holds, under the
+  /// request's own `limit`, with the token written the way [followsPageSize]
+  /// writes one. `0` leaves the request's `limit` alone.
+  int rankedSeriesPageSize;
+
   Map<String, Map<String, Object?>> details;
 
   /// `GetEpisodeDetail` bodies keyed by episode public id.
@@ -928,15 +934,26 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/ListRankedSeries')) {
-      final ranked = [
+      final shown = [
         for (final entry in rankedSeries)
           if (_shows(body, (entry['series'] as Map?)?['publicId'])) entry,
       ];
+      final limit = body['limit'] as int? ?? 0;
+      var pageSize = limit > 0 ? limit : shown.length;
+      if (rankedSeriesPageSize > 0) {
+        pageSize = min(pageSize, rankedSeriesPageSize);
+      }
+      final token = body['token'] as String? ?? '';
+      final start = min(token.isEmpty ? 0 : int.parse(token), shown.length);
+      final end = min(start + pageSize, shown.length);
+      final ranked = shown.sublist(start, end);
       await _write(request, rankedStatus, {
         // protojson omits an empty repeated field, which is how a tenant the
         // ranking batch has not run for is answered.
         if (rankedStatus == HttpStatus.ok && ranked.isNotEmpty)
           'rankedSeries': ranked,
+        if (rankedStatus == HttpStatus.ok && end < shown.length)
+          'nextToken': '$end',
         if (rankedStatus != HttpStatus.ok) 'code': 'unavailable',
         if (rankedStatus != HttpStatus.ok) 'message': 'unavailable',
       });

@@ -21,6 +21,7 @@ import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/screens/ranking_screen.dart';
 
 import '../test/support/connect_fixture_server.dart';
 import '../test/support/fake_auth.dart';
@@ -658,6 +659,53 @@ void main() {
         expect(request.body['surface'], appClientSurface);
       });
     });
+
+    testApp(
+      'pages through the whole week from the ranking shelf and opens a series',
+      (tester) async {
+        await withFailureScreenshot(tester, 'fixture-ranking', () async {
+          server
+            ..rankedSeries = ConnectFixtureServer.populatedRankedSeries()
+            // One to a page, so the second position arrives on a page of its
+            // own.
+            ..rankedSeriesPageSize = 1;
+          await pumpApp(tester);
+          await openShelfList(
+            tester,
+            'Top 10 this week',
+            const ValueKey('catalog-ranking-all'),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('ranking-tile-series-kitchen')),
+          );
+
+          final pages = server
+              .requestsTo('ListRankedSeries')
+              .where((request) => request.body['limit'] == rankingPageLimit);
+          expect(pages.map((request) => request.body['token']), [null, '1']);
+          for (final page in pages) {
+            expect(page.body['period'], 'RANKING_PERIOD_WEEKLY');
+            expect(page.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+            expect(page.body['surface'], appClientSurface);
+          }
+
+          await tapVisible(
+            tester,
+            find.byKey(
+              const ValueKey(
+                'ranking-tile-${ConnectFixtureServer.seedSeriesId}',
+              ),
+            ),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('series-detail-body')),
+          );
+          expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
+        });
+      },
+    );
 
     testApp('opens the reader on a free episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer', () async {
@@ -2259,6 +2307,66 @@ void main() {
           find.byKey(const ValueKey('catalog-new-arrivals-error')),
           findsNothing,
         );
+      });
+    });
+
+    testApp('the seed tenant chart is listed in full on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-full-ranking', () async {
+        await pumpLive(tester);
+        await openShelfList(
+          tester,
+          'Top 10 this week',
+          const ValueKey('catalog-ranking-all'),
+          timeout: const Duration(seconds: 20),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('ranking-results')),
+          timeout: const Duration(seconds: 20),
+        );
+        // `db/seeds/scenarios/170_ranking.sql` puts Seed Series 042 at the
+        // top of the week and Seed Series 100 at the top of the day.
+        Finder firstRow() => find
+            .byWidgetPredicate(
+              (widget) => switch (widget.key) {
+                ValueKey<String>(:final value) => value.startsWith(
+                  'ranking-tile-',
+                ),
+                _ => false,
+              },
+            )
+            .first;
+        expect(
+          find.descendant(
+            of: firstRow(),
+            matching: find.text('Seed Series 042'),
+          ),
+          findsOneWidget,
+        );
+
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('ranking-period-daily')),
+        );
+        await pumpUntilFound(
+          tester,
+          find.descendant(
+            of: firstRow(),
+            matching: find.text('Seed Series 100'),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('ranking-error')), findsNothing);
+
+        await tapVisible(tester, firstRow());
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.text('Seed Series 100'), findsWidgets);
       });
     });
 

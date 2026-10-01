@@ -1141,6 +1141,24 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.ranking.empty`
+  String get rankingEmpty;
+
+  /// `mobile.ranking.load_failed`
+  String get rankingLoadFailed;
+
+  /// `mobile.ranking.period_daily`
+  String get rankingPeriodDaily;
+
+  /// `mobile.ranking.period_weekly`
+  String get rankingPeriodWeekly;
+
+  /// `mobile.ranking.rank_position`
+  String rankingRankPosition({required String rank});
+
+  /// `mobile.ranking.title`
+  String get rankingTitle;
+
   /// `mobile.reading_history.account_description`
   String get readingHistoryAccountDescription;
 
@@ -3355,6 +3373,36 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get pushOpen {
     return '開く';
+  }
+
+  @override
+  String get rankingEmpty {
+    return 'ランキングはまだ集計されていません。';
+  }
+
+  @override
+  String get rankingLoadFailed {
+    return 'ランキングを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get rankingPeriodDaily {
+    return 'デイリー';
+  }
+
+  @override
+  String get rankingPeriodWeekly {
+    return 'ウィークリー';
+  }
+
+  @override
+  String rankingRankPosition({required String rank}) {
+    return '$rank位';
+  }
+
+  @override
+  String get rankingTitle {
+    return 'ランキング';
   }
 
   @override
@@ -5876,6 +5924,36 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get rankingEmpty {
+    return 'No ranking has been computed yet.';
+  }
+
+  @override
+  String get rankingLoadFailed {
+    return 'Could not show the ranking. Try again.';
+  }
+
+  @override
+  String get rankingPeriodDaily {
+    return 'Daily';
+  }
+
+  @override
+  String get rankingPeriodWeekly {
+    return 'Weekly';
+  }
+
+  @override
+  String rankingRankPosition({required String rank}) {
+    return 'No. $rank';
+  }
+
+  @override
+  String get rankingTitle {
+    return 'Ranking';
+  }
+
+  @override
   String get readingHistoryAccountDescription {
     return 'Episodes you have finished, wherever you read them.';
   }
@@ -8391,6 +8469,36 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get pushOpen {
     return '열기';
+  }
+
+  @override
+  String get rankingEmpty {
+    return '아직 집계된 랭킹이 없습니다.';
+  }
+
+  @override
+  String get rankingLoadFailed {
+    return '랭킹을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get rankingPeriodDaily {
+    return '일간';
+  }
+
+  @override
+  String get rankingPeriodWeekly {
+    return '주간';
+  }
+
+  @override
+  String rankingRankPosition({required String rank}) {
+    return '$rank위';
+  }
+
+  @override
+  String get rankingTitle {
+    return '랭킹';
   }
 
   @override
@@ -10912,6 +11020,36 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get rankingEmpty {
+    return '尚未生成排行榜。';
+  }
+
+  @override
+  String get rankingLoadFailed {
+    return '无法显示排行榜。请重试。';
+  }
+
+  @override
+  String get rankingPeriodDaily {
+    return '日榜';
+  }
+
+  @override
+  String get rankingPeriodWeekly {
+    return '周榜';
+  }
+
+  @override
+  String rankingRankPosition({required String rank}) {
+    return '第$rank名';
+  }
+
+  @override
+  String get rankingTitle {
+    return '排行榜';
+  }
+
+  @override
   String get readingHistoryAccountDescription {
     return '查看您读完的章节，无论在哪里阅读。';
   }
@@ -13427,6 +13565,36 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get pushOpen {
     return '開啟';
+  }
+
+  @override
+  String get rankingEmpty {
+    return '尚未產生排行榜。';
+  }
+
+  @override
+  String get rankingLoadFailed {
+    return '無法顯示排行榜。請重試。';
+  }
+
+  @override
+  String get rankingPeriodDaily {
+    return '日榜';
+  }
+
+  @override
+  String get rankingPeriodWeekly {
+    return '週榜';
+  }
+
+  @override
+  String rankingRankPosition({required String rank}) {
+    return '第$rank名';
+  }
+
+  @override
+  String get rankingTitle {
+    return '排行榜';
   }
 
   @override
