@@ -27,7 +27,7 @@
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
     "oxlint-plugin-react-doctor": "0.9.14",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "temporal-polyfill": "catalog:",
     "turbo": "2.11.4",
     "typescript": "catalog:",
