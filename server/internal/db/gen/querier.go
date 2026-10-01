@@ -408,6 +408,14 @@ type Querier interface {
 	// publish or price gate.
 	GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	// One page's preview source: the smallest stored rendition of a page that is
+	// among the first `page_count` of its episode. A later page is no row at all,
+	// so the preview route cannot be walked through a whole body.
+	//
+	// Neither the price nor the age rule is read: the preview is unreadable by
+	// construction, so anyone who may see the episode at all may hold it. Whether
+	// they may is the publication state, handed back for the caller to refuse on.
+	GetEpisodePreviewImageByIDForTenant(ctx context.Context, arg GetEpisodePreviewImageByIDForTenantParams) (GetEpisodePreviewImageByIDForTenantRow, error)
 	// How many readers have rated the episode. Zero for one with no tally row,
 	// which is every episode until the first rating arrives. Read after the rating
 	// in the same transaction, so it carries whatever the trigger just made of it.
@@ -485,6 +493,14 @@ type Querier interface {
 	// an expired rental hands the reader the episode before it instead of a
 	// position they cannot act on.
 	GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error)
+	// The first published episode after one episode in its own series whose body
+	// is public at the moment of the read: priced at 0, or inside an open free
+	// window, which is what published_free_episodes answers. It is where a reader
+	// stopped at a paid episode can go on reading for nothing, so it is found by
+	// the same (order_index, id) order and the same publication and surface rules
+	// as ListPublishedEpisodeNeighborsForTenant, and is no row when the rest of the
+	// series has no such episode.
+	GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg GetNextPublishedFreeEpisodeForTenantParams) (GetNextPublishedFreeEpisodeForTenantRow, error)
 	// Non-revoked ticket for a user+episode pair (may already be expired).
 	// Used for idempotent issue under the unique partial index on non-revoked rows.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
@@ -1077,6 +1093,13 @@ type Querier interface {
 	ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]ListEpisodeFreeWindowBoundariesDueRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
+	// The opening pages of an episode's body, as the preview of a body the reader
+	// may not open offers them: the first `page_count` pages in reading order,
+	// each with the size of its smallest stored rendition, which is the one
+	// image-server renders the preview from. The order and the rendition are the
+	// ones GetEpisodePreviewImageByIDForTenant applies, so the pages this lists
+	// are the pages that route serves.
+	ListEpisodePreviewImagesByEpisodeID(ctx context.Context, arg ListEpisodePreviewImagesByEpisodeIDParams) ([]ListEpisodePreviewImagesByEpisodeIDRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 	// The order it describes is the same one.
 	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)

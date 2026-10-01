@@ -177,7 +177,8 @@ enum EpisodeAccess {
   // reader has not: they are reading as a guest, have given no birth date, or
   // are younger than the rating asks for. It outranks the three above, so a
   // free body and a purchased one are both withheld, and it is answered the
-  // same way as EPISODE_ACCESS_LOCKED — no images and no media token.
+  // same way as EPISODE_ACCESS_LOCKED — no images and no media token, and the
+  // same preview_images.
   EPISODE_ACCESS_AGE_RESTRICTED = 4;
 }
 
@@ -195,10 +196,11 @@ enum EpisodeEntitlementSource {
   EPISODE_ENTITLEMENT_SOURCE_CREATOR = 3;
 }
 
-// A published episode next to the one being read, in its own series. It holds
-// what a link to that episode needs and nothing about the reader, so an
-// episode detail carrying it stays as cacheable as it was; what the reader may
-// do with the neighbour's body is decided when they open it.
+// A published episode of the series being read that the episode detail links
+// to: one either side of it, or the next one free to read. It holds what a
+// link to that episode needs and nothing about the reader, so an episode
+// detail carrying it stays as cacheable as it was; what the reader may do with
+// the linked episode's body is decided when they open it.
 message EpisodeNeighbor {
   string public_id = 1;
   string title = 2;
@@ -227,7 +229,8 @@ message EpisodeNeighbor {
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
-  // Body images. Empty when access is locked (paid, no grant).
+  // Body images. Empty when access is EPISODE_ACCESS_LOCKED or
+  // EPISODE_ACCESS_AGE_RESTRICTED; preview_images stands in for them there.
   repeated publira.types.v1.EpisodeImage images = 3;
   // Viewer access state for this episode.
   EpisodeAccess access = 4;
@@ -247,6 +250,24 @@ message GetEpisodeDetailResponse {
   // Set only when access is EPISODE_ACCESS_ENTITLED, and unspecified
   // otherwise.
   EpisodeEntitlementSource entitlement_source = 8;
+  // A blurred, downscaled rendition of each of the body's opening pages, in
+  // reading order: the first two, or fewer when the body is shorter. Set only
+  // when access is EPISODE_ACCESS_LOCKED or EPISODE_ACCESS_AGE_RESTRICTED, and
+  // empty otherwise, whatever the series' rating.
+  //
+  // The blur is the server's, applied before the image leaves it, so what a
+  // client holds is the rendition and never the page: a client draws it as it
+  // comes and adds no blur of its own. Each image_url needs no token and is
+  // the same for every reader. width and height are the rendition's own,
+  // which keeps the page's aspect ratio and is far smaller than the page;
+  // file_size_bytes is 0, since the rendition is rendered on request and its
+  // size is not known until then.
+  repeated publira.types.v1.EpisodeImage preview_images = 9;
+  // The first published episode after this one in the same series, in the
+  // order previous_episode and next_episode follow, whose body is public at
+  // the moment of the read: price is 0, or a free window is open on it. It may
+  // be the same episode as next_episode. Unset when no later episode is free.
+  EpisodeNeighbor next_free_episode = 10;
 }
 
 // A creator that currently has at least one published series.

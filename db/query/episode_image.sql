@@ -169,6 +169,75 @@ WHERE ei.id = $1
     AND s.tenant_id = $2
 LIMIT 1;
 
+-- name: ListEpisodePreviewImagesByEpisodeID :many
+-- The opening pages of an episode's body, as the preview of a body the reader
+-- may not open offers them: the first `page_count` pages in reading order,
+-- each with the size of its smallest stored rendition, which is the one
+-- image-server renders the preview from. The order and the rendition are the
+-- ones GetEpisodePreviewImageByIDForTenant applies, so the pages this lists
+-- are the pages that route serves.
+SELECT ei.id,
+    ei.display_order,
+    eiv.width,
+    eiv.height
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width ASC
+    LIMIT 1
+) eiv ON true
+WHERE ei.episode_id = sqlc.arg('episode_id')
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC,
+    ei.id ASC
+LIMIT sqlc.arg('page_count')::int4;
+
+-- name: GetEpisodePreviewImageByIDForTenant :one
+-- One page's preview source: the smallest stored rendition of a page that is
+-- among the first `page_count` of its episode. A later page is no row at all,
+-- so the preview route cannot be walked through a whole body.
+--
+-- Neither the price nor the age rule is read: the preview is unreadable by
+-- construction, so anyone who may see the episode at all may hold it. Whether
+-- they may is the publication state, handed back for the caller to refuse on.
+SELECT ei.id,
+    ei.episode_id,
+    eiv.object_key,
+    eiv.content_type,
+    (
+        s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ) AS is_published
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width ASC
+    LIMIT 1
+) eiv ON true
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE ei.id = sqlc.arg('id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND ei.id IN (
+        SELECT opening.id
+        FROM episode_images opening
+        WHERE opening.episode_id = ei.episode_id
+        ORDER BY opening.display_order ASC,
+            opening.created_at ASC,
+            opening.id ASC
+        LIMIT sqlc.arg('page_count')::int4
+    )
+LIMIT 1;
+
 -- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
 SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM episode_images

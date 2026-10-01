@@ -137,21 +137,32 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// resolveStoreVersion names the object store configuration a cached rendition
+// of objectKey is keyed under. A false return means the response has already
+// been written: there is no store to serve from, or it could not be resolved.
+func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, objectKey string) (string, bool) {
+	versioned, ok := h.objects.(VersionedStore)
+	if !ok {
+		return "", true
+	}
+	version, err := versioned.Version(r.Context())
+	if errors.Is(err, storage.ErrNotConfigured) {
+		h.logger.Warn("no object store to serve from", "error", err, "object_key", objectKey)
+		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusServiceUnavailable, []byte("object storage is not configured\n"))
+		return "", false
+	}
+	if err != nil {
+		h.logger.Error("failed to resolve the object store", "error", err, "object_key", objectKey)
+		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
+		return "", false
+	}
+	return version, true
+}
+
 func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
-	var storeVersion string
-	if versioned, ok := h.objects.(VersionedStore); ok {
-		version, err := versioned.Version(r.Context())
-		if errors.Is(err, storage.ErrNotConfigured) {
-			h.logger.Warn("no object store to serve from", "error", err, "object_key", objectKey)
-			writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusServiceUnavailable, []byte("object storage is not configured\n"))
-			return
-		}
-		if err != nil {
-			h.logger.Error("failed to resolve the object store", "error", err, "object_key", objectKey)
-			writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
-			return
-		}
-		storeVersion = version
+	storeVersion, ok := h.resolveStoreVersion(w, r, objectKey)
+	if !ok {
+		return
 	}
 	key := cacheKey(storeVersion, objectKey, r)
 	if entry, ok := h.cache.Get(r.Context(), key); ok {

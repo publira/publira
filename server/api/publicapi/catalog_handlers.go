@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -1265,14 +1266,21 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	// The episode and the two links either side of it are credited in one
-	// read. Every episode carries its own credits, so a series whose artist
-	// changed part way through credits the next episode differently from this
-	// one, and a link that named this episode's team would be wrong.
-	episodeIDs := make([]uuid.UUID, 0, len(neighborRows)+1)
+	nextFreeRow, hasNextFree, err := s.nextPublishedFreeEpisodeRow(ctx, tenant.ID, surface, row)
+	if err != nil {
+		return nil, err
+	}
+	// The episode and every episode it links to are credited in one read.
+	// Every episode carries its own credits, so a series whose artist changed
+	// part way through credits the next episode differently from this one, and
+	// a link that named this episode's team would be wrong.
+	episodeIDs := make([]uuid.UUID, 0, len(neighborRows)+2)
 	episodeIDs = append(episodeIDs, row.ID)
 	for _, neighborRow := range neighborRows {
 		episodeIDs = append(episodeIDs, neighborRow.ID)
+	}
+	if hasNextFree {
+		episodeIDs = append(episodeIDs, nextFreeRow.ID)
 	}
 	creditsByEpisodeID, err := s.episodeCreditsByEpisodeIDs(ctx, tenant.ID, episodeIDs)
 	if err != nil {
@@ -1281,6 +1289,13 @@ func (s *apiServer) GetEpisodeDetail(
 	previousEpisode, nextEpisode, err := episodeNeighborsFromRows(neighborRows, creditsByEpisodeID)
 	if err != nil {
 		return nil, s.internalError(ctx, "episode neighbour holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
+	var nextFreeEpisode *publirav1.EpisodeNeighbor
+	if hasNextFree {
+		nextFreeEpisode, err = episodeNeighborFromNextFreeRow(nextFreeRow, creditsByEpisodeID)
+		if err != nil {
+			return nil, s.internalError(ctx, "next free episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		}
 	}
 
 	episode := protomapper.EpisodeFromGetPublishedEpisodeForTenantRow(row)
@@ -1305,6 +1320,8 @@ func (s *apiServer) GetEpisodeDetail(
 		PreviousEpisode:   previousEpisode,
 		NextEpisode:       nextEpisode,
 		EntitlementSource: entitlementSource,
+		PreviewImages:     make([]*publirattypesv1.EpisodeImage, 0),
+		NextFreeEpisode:   nextFreeEpisode,
 	})
 	if row.FreeUntil.Valid {
 		res.Msg.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
@@ -1319,6 +1336,22 @@ func (s *apiServer) GetEpisodeDetail(
 			mapped := protomapper.EpisodeImageFromEpisodeImage(image)
 			mapped.ImageUrl = auth.WithMediaTokenQuery(mapped.ImageUrl, mediaToken)
 			res.Msg.Images = append(res.Msg.Images, mapped)
+		}
+	}
+	// A withheld body is answered with the preview of its opening pages, a
+	// rating the tenant's rule covers included: the rendition is unreadable by
+	// construction, so it is what any reader may hold in the body's place.
+	if access == publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED || access == publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
+		previews, listErr := s.queriesFor(ctx).ListEpisodePreviewImagesByEpisodeID(ctx, dbmodels.ListEpisodePreviewImagesByEpisodeIDParams{
+			EpisodeID: row.ID,
+			PageCount: imageproc.EpisodePreviewPageCount,
+		})
+		if listErr != nil {
+			return nil, s.internalDBError(ctx, "failed to list episode preview images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		}
+		res.Msg.PreviewImages = make([]*publirattypesv1.EpisodeImage, 0, len(previews))
+		for _, preview := range previews {
+			res.Msg.PreviewImages = append(res.Msg.PreviewImages, protomapper.EpisodePreviewImageFromRow(preview))
 		}
 	}
 
@@ -1365,6 +1398,53 @@ func (s *apiServer) publishedEpisodeNeighborRows(
 		return nil, s.internalDBError(ctx, "failed to list episode neighbors", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
 	}
 	return rows, nil
+}
+
+// nextPublishedFreeEpisodeRow reads the first published episode after the
+// given one in its series whose body is public right now. The boolean is
+// false when the rest of the series has none.
+func (s *apiServer) nextPublishedFreeEpisodeRow(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	surface string,
+	row dbmodels.GetPublishedEpisodeForTenantRow,
+) (dbmodels.GetNextPublishedFreeEpisodeForTenantRow, bool, error) {
+	next, err := s.queriesFor(ctx).GetNextPublishedFreeEpisodeForTenant(ctx, dbmodels.GetNextPublishedFreeEpisodeForTenantParams{
+		TenantID:   tenantID,
+		SeriesID:   row.SeriesID,
+		OrderIndex: row.OrderIndex,
+		EpisodeID:  row.ID,
+		Surface:    surface,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.GetNextPublishedFreeEpisodeForTenantRow{}, false, nil
+	}
+	if err != nil {
+		return dbmodels.GetNextPublishedFreeEpisodeForTenantRow{}, false, s.internalDBError(ctx, "failed to get the next free episode", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
+	}
+	return next, true, nil
+}
+
+// episodeNeighborFromNextFreeRow puts the next free episode into the shape the
+// response carries the links of an episode detail in. The query only finds an
+// episode whose body is public, so it is free by construction.
+func episodeNeighborFromNextFreeRow(
+	row dbmodels.GetNextPublishedFreeEpisodeForTenantRow,
+	creditsByEpisodeID map[uuid.UUID][]*publirattypesv1.Creator,
+) (*publirav1.EpisodeNeighbor, error) {
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityFromStored(row.PurchaseAvailability)
+	if err != nil {
+		return nil, err
+	}
+	return &publirav1.EpisodeNeighbor{
+		PublicId:             row.PublicID,
+		Title:                row.Title,
+		OrderIndex:           row.OrderIndex,
+		Price:                row.Price,
+		IsFree:               true,
+		Creators:             creditsByEpisodeID[row.ID],
+		PurchaseAvailability: purchaseAvailability,
+	}, nil
 }
 
 // episodeNeighborsFromRows puts the neighbour rows into the shape the response

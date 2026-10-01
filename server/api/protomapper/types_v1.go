@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/imageproc"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
@@ -219,6 +220,23 @@ func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) 
 		DisplayOrder:  row.DisplayOrder,
 		Width:         row.Width,
 		Height:        row.Height,
+	}
+}
+
+// EpisodePreviewImageFromRow describes the preview image-server renders of one
+// opening page. The size is the rendition's, worked out from the page the
+// rendition is rendered from by the same function that renders it, so a
+// client lays out the box the image will fill. The byte size is not known
+// before the rendition is first rendered and stays 0.
+func EpisodePreviewImageFromRow(row dbmodels.ListEpisodePreviewImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
+	width, height := imageproc.EpisodePreviewSize(int(row.Width), int(row.Height))
+	return &publirattypesv1.EpisodeImage{
+		Id:           row.ID.String(),
+		ImageUrl:     fmt.Sprintf("/images/episodes/%s/preview", row.ID.String()),
+		ContentType:  imageproc.EpisodePreviewContentType,
+		DisplayOrder: row.DisplayOrder,
+		Width:        int32(width),
+		Height:       int32(height),
 	}
 }
 

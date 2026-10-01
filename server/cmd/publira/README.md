@@ -91,6 +91,8 @@ On a console host, a `t=<JWT>` of audience `admin-media` is evaluated as a previ
 
 The publication state and the price are not considered, so a draft, a scheduled, or a paid episode can still be checked from the admin UI's `<img>` / `next/image`. The tokens are appended to the URLs by `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages`. On a storefront host the same audience unlocks nothing, so a console URL carried to a tenant site is an ordinary anonymous request.
 
+`GET /images/episodes/{media_id}/preview` reads no credential: it serves a blurred, downscaled rendition of one of a published episode's opening pages to anyone, and `404` for any later page. See [Image delivery](../../README.md#image-delivery-manael).
+
 ### Platform console role permissions
 
 | Operation | `platform_auditor` | `platform_operator` | `platform_super_admin` |
