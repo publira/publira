@@ -3,7 +3,7 @@
 import { useActionFormSettled } from "@publira/ui-components/action-form";
 import type { ActionFormResult } from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { createContext, use, useState } from "react";
+import { createContext, use, useLayoutEffect, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
 
 import { IssuedMfaRecoveryCodes } from "#components/mfa-recovery-code-list";
@@ -22,6 +22,11 @@ const ReportMfaSettingsChangeContext =
  * codes it issued in `recoveryCodes`. Enabling or disabling the factor swaps
  * the forms below for the other set, so the form that made the change cannot
  * carry that answer itself.
+ *
+ * The router keeps a page it navigates away from inside a hidden `<Activity>`
+ * and shows it again, state included, on Back. The codes are shown only once,
+ * so the answer is dropped as the page is hidden; a layout Effect's cleanup
+ * runs before the page is taken off the screen.
  */
 export const MfaSettingsOutcome = ({
   children,
@@ -31,6 +36,12 @@ export const MfaSettingsOutcome = ({
   recoveryCodes: ReactNode;
 }) => {
   const [change, setChange] = useState<MfaSettingsChange | null>(null);
+  useLayoutEffect(
+    () => () => {
+      setChange(null);
+    },
+    []
+  );
 
   return (
     <ReportMfaSettingsChangeContext value={setChange}>
