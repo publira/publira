@@ -51,7 +51,7 @@ describe("StatusChip", () => {
   it("adds its own indicator to a badge that has no dot of its own", () => {
     const { container } = render(<StatusChip status="info">Draft</StatusChip>);
 
-    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(1);
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
   });
 
   it("leaves the dot to the outline badge, which draws one already", () => {
@@ -61,6 +61,6 @@ describe("StatusChip", () => {
       </StatusChip>
     );
 
-    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(0);
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
   });
 });

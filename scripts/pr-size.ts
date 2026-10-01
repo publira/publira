@@ -211,8 +211,10 @@ export interface FileScore {
   significantLines: number;
 }
 
-const stripPrefix = (value: string): string =>
-  value.replace(/\t.*$/u, "").replace(/^[ab]\//u, "");
+const stripPrefix = (value: string): string => {
+  const [filePath = ""] = value.split("\t", 1);
+  return filePath.replace(/^[ab]\//u, "");
+};
 
 /**
  * Added and removed lines together, per file, minus the lines that carry no

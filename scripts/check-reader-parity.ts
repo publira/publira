@@ -58,9 +58,9 @@ export interface Inventory {
 }
 
 /** `  catalog: Client<typeof CatalogService>;` → `catalog`. */
-const CLIENT_SERVICE = /^\s*(?<service>\w+): Client<typeof \w+>;/gmu;
+const CLIENT_SERVICE = /^[ \t]*(?<service>\w+): Client<typeof \w+>;/gmu;
 /** `  rpc GetSeriesDetail(GetSeriesDetailRequest)` → `GetSeriesDetail`. */
-const PROTO_RPC = /^\s*rpc (?<method>\w+)\(/gmu;
+const PROTO_RPC = /^[ \t]*rpc (?<method>\w+)\(/gmu;
 /** `'/publira.v1.CatalogService/GetSeriesDetail'` → `GetSeriesDetail`. */
 const MOBILE_RPC = /Service\/(?<method>[A-Z]\w*)'/gu;
 

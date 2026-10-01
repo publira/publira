@@ -101,7 +101,7 @@ describe("Site mobile navigation", () => {
   it("holds the controls the band stops drawing at a phone width", () => {
     renderHeader();
 
-    expect(screen.queryByRole("navigation")).toBe(null);
+    expect(screen.queryByRole("navigation")).toBeNull();
 
     openNavigation();
 
@@ -121,7 +121,7 @@ describe("Site mobile navigation", () => {
     renderHeader();
     openNavigation();
 
-    expect(screen.queryByRole("link", { name: "English" })).toBe(null);
+    expect(screen.queryByRole("link", { name: "English" })).toBeNull();
 
     const trigger = screen.getByRole("button", { name: "Language" });
 
@@ -158,7 +158,7 @@ describe("Site mobile navigation", () => {
     expect(option.getAttribute("lang")).toBe("en");
     expect(
       screen.getByRole("link", { name: "Series" }).getAttribute("aria-current")
-    ).toBe(null);
+    ).toBeNull();
   });
 
   it("closes the drawer when a language behind the disclosure is chosen", () => {
@@ -168,7 +168,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Japanese" }));
 
-    expect(screen.queryByRole("navigation")).toBe(null);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 
   it("closes when a link inside it is followed", () => {
@@ -177,7 +177,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Series" }));
 
-    expect(screen.queryByRole("navigation")).toBe(null);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 
   it("closes when the search field is submitted", () => {
@@ -186,7 +186,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.submit(screen.getByRole("searchbox", { name: "Search works" }));
 
-    expect(screen.queryByRole("navigation")).toBe(null);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 
   it("closes from its own close button", () => {
@@ -195,7 +195,7 @@ describe("Site mobile navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
 
-    expect(screen.queryByRole("navigation")).toBe(null);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 
   it("wraps the popup in a viewport so swipe and scroll locking stay enabled", () => {

@@ -101,7 +101,7 @@ describe("reactionFillRatio", () => {
 
   it("fills the heart by how far the reader has taken it in multiple mode", () => {
     expect(reactionFillRatio(0, "multiple")).toBe(0);
-    expect(reactionFillRatio(2, "multiple")).toBe(0.4);
+    expect(reactionFillRatio(2, "multiple")).toBeCloseTo(0.4);
     expect(reactionFillRatio(5, "multiple")).toBe(1);
   });
 });

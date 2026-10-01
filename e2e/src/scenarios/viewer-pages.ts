@@ -78,7 +78,9 @@ export const showsLastPage = (page: number, pageCount = VIEWER_PAGE_COUNT) =>
 
 /** The last page a slider value text names, or `0` when it names none. */
 export const lastPageNamed = (valueText: string | null): number =>
-  Number(/(?<page>\d+) of \d+$/u.exec(valueText ?? "")?.groups?.page ?? 0);
+  Number(
+    /(?<!\d)(?<page>\d+) of \d+$/u.exec(valueText ?? "")?.groups?.page ?? 0
+  );
 
 /**
  * The `episode_images` id the development seed gives one page, derived the way

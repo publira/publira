@@ -53,7 +53,7 @@ const episodeHandle = (page: Page, title: string): Locator =>
 const imageSizesInOrder = async (page: Page): Promise<string[]> => {
   const rows = await rowTexts(page, "Registered page images");
   return rows.flatMap((text) => {
-    const match = text.match(/(?<size>\d+x\d+)/u);
+    const match = text.match(/(?<!\d)(?<size>\d+x\d+)/u);
     return match?.groups?.size ? [match.groups.size] : [];
   });
 };
@@ -279,7 +279,7 @@ test.describe("admin list reordering", () => {
       new RegExp(`^Picked up ${name} at position \\d+\\.$`, "u")
     );
     const pickedUpText = await announcement(page).textContent();
-    const pickedUp = Number(pickedUpText?.match(/\d+(?=\.$)/u)?.[0]);
+    const pickedUp = Number(pickedUpText?.match(/(?<!\d)\d+(?=\.$)/u)?.[0]);
     await page.keyboard.press("ArrowUp");
     await expect(announcement(page)).toHaveText(
       `${name} moved to position ${pickedUp - 1}.`

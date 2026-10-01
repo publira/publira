@@ -36,7 +36,7 @@ describe("Skeleton components", () => {
   it("SkeletonText renders one element per line count", () => {
     const { container } = render(<SkeletonText lines={4} />);
 
-    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(4);
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(4);
   });
 
   it("SkeletonCard holds several Skeleton elements", () => {

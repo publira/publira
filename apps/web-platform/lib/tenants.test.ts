@@ -311,27 +311,22 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).not.toHaveBeenCalled();
   });
 
-  it("uses a generic message for domain conflicts without details", async () => {
+  it.each([
+    {
+      reason: "domain already exists",
+      title: "domain conflicts without details",
+    },
+    {
+      reason: "admin_domain already exists",
+      title: "admin domain conflicts without details",
+    },
+    {
+      reason: "duplicate key",
+      title: "conflicts that name neither domain",
+    },
+  ])("uses a generic message for $title", async ({ reason }) => {
     mockCreateTenant.mockRejectedValueOnce(
-      new ConnectError("domain already exists", Code.AlreadyExists)
-    );
-
-    await expect(
-      createPlatformTenant({
-        defaultLocale: "ja",
-        domain: "example.com",
-        locale: "en",
-        name: "n",
-      })
-    ).resolves.toEqual({
-      message: "Cannot create because this data already exists.",
-      ok: false,
-    });
-  });
-
-  it("uses a generic message for admin domain conflicts without details", async () => {
-    mockCreateTenant.mockRejectedValueOnce(
-      new ConnectError("admin_domain already exists", Code.AlreadyExists)
+      new ConnectError(reason, Code.AlreadyExists)
     );
 
     await expect(
@@ -412,24 +407,6 @@ describe("createPlatformTenant", () => {
       })
     ).resolves.toEqual({
       message: "This admin domain is already in use.",
-      ok: false,
-    });
-  });
-
-  it("uses a generic message for conflicts that name neither domain", async () => {
-    mockCreateTenant.mockRejectedValueOnce(
-      new ConnectError("duplicate key", Code.AlreadyExists)
-    );
-
-    await expect(
-      createPlatformTenant({
-        defaultLocale: "ja",
-        domain: "example.com",
-        locale: "en",
-        name: "n",
-      })
-    ).resolves.toEqual({
-      message: "Cannot create because this data already exists.",
       ok: false,
     });
   });

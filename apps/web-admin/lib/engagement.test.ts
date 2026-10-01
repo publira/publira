@@ -165,7 +165,7 @@ describe("readThroughRate", () => {
   it("divides completions by the member views of the same period", async () => {
     const { readThroughRate } = await import("./engagement");
 
-    expect(readThroughRate(7, 20)).toBe(0.35);
+    expect(readThroughRate(7, 20)).toBeCloseTo(0.35);
   });
 
   it("answers null rather than zero when nobody viewed", async () => {

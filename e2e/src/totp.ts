@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 const decodeBase32 = (encoded: string): Buffer => {
-  const bits = [...encoded.replace(/=+$/u, "").toUpperCase()]
+  const bits = [...encoded.replace(/(?<!=)=+$/u, "").toUpperCase()]
     .map((character) => {
       const value = BASE32_ALPHABET.indexOf(character);
       if (value === -1) {

@@ -231,9 +231,9 @@ it("opens on the classification the series carries", () => {
   expect(screen.getByRole("checkbox", { name: "Mon" }).dataset.checked).toBe(
     ""
   );
-  expect(screen.getByRole("checkbox", { name: "Tue" }).dataset.checked).toBe(
-    undefined
-  );
+  expect(
+    screen.getByRole("checkbox", { name: "Tue" }).dataset.checked
+  ).toBeUndefined();
 });
 
 // The mode the series states is what the form opens on, for the reason the

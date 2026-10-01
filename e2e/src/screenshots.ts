@@ -101,6 +101,9 @@ export const expectScreenshot = async (
   viewport: ScreenshotViewport,
   name: string
 ): Promise<void> => {
+  // The quiet network is the readiness condition, as explained above: no
+  // locator can tell the hydration that is still to come from one that is done.
+  // oxlint-disable-next-line sonarjs/no-networkidle-wait
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
@@ -125,6 +128,7 @@ export const expectElementScreenshot = async (
   element: Locator,
   name: string
 ): Promise<void> => {
+  // oxlint-disable-next-line sonarjs/no-networkidle-wait
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
 

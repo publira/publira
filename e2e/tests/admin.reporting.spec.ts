@@ -117,7 +117,7 @@ const readThroughRow = (page: Page, episodeTitle: string): Locator =>
 
 /** Every episode row of the engagement table: the ones with a rate cell. */
 const readThroughRows = (page: Page): Locator =>
-  page.getByRole("row").filter({ hasText: /\d+\.\d%$/u });
+  page.getByRole("row").filter({ hasText: /\d\.\d%$/u });
 
 const readThroughPagination = (page: Page): Locator =>
   page.getByRole("navigation", { name: "Read-through pages" });
