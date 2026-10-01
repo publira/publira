@@ -1,5 +1,13 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
+  // When it detects an AI coding agent, turbo writes a managed block into the
+  // root `AGENTS.md` before every repository-scoped command, so each agent run
+  // would leave that tracked file modified — a change every commit has to step
+  // around and one that stops `git rebase` from starting. Committing the block
+  // instead is not worth it: `CLAUDE.md` imports the root `AGENTS.md` into
+  // every session, and that file already states how this repository runs
+  // turbo. Opting out only stops future writes; it removes nothing.
+  "agentGuidance": false,
   // Turborepo 2.8+ hands every git worktree the main checkout's `.turbo/cache`
   // unless `cacheDir` is set to a relative path, which resolves from the
   // current worktree instead. That sharing has to stay off. An artifact is
