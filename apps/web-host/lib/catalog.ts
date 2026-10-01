@@ -654,7 +654,7 @@ export const toLabelListItem = (label: RawLabelListItem): LabelListItem => ({
   eyeCatchImageVariants: toEyeCatchImageVariants(label.eyeCatchImageVariants),
   name: label.name,
   publicId: label.publicId,
-  seriesCount: label.publishedSeriesCount,
+  seriesCount: label.publishedSeriesCount ?? 0,
 });
 
 export interface SeriesListPage {

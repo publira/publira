@@ -1259,6 +1259,13 @@ describe("catalog.listPublishedLabels", () => {
           publicId: "LABEL_2",
           publishedSeriesCount: 0,
         },
+        // A partial response, as a mock passes in, still counts as zero.
+        {
+          eyeCatchImageUpdatedAt: "",
+          eyeCatchImageVariants: [],
+          name: "Nightfall Comics",
+          publicId: "LABEL_3",
+        },
       ],
       nextToken: "",
       previousToken: "",
@@ -1275,6 +1282,7 @@ describe("catalog.listPublishedLabels", () => {
     ).toEqual([
       { publicId: "LABEL_1", seriesCount: 4 },
       { publicId: "LABEL_2", seriesCount: 0 },
+      { publicId: "LABEL_3", seriesCount: 0 },
     ]);
   });
 });
