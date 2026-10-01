@@ -79,7 +79,7 @@ test.describe("web-host controls for a reader with records", () => {
   }) => {
     await signInAsMember(page, SEED_MEMBER, paidEpisodePath, WEB_HOST_BASE_URL);
 
-    const option = await openHostLocaleMenu(page, "English", "日本語");
+    const option = await openHostLocaleMenu(page, "English", "English");
 
     await page.keyboard.press("Escape");
     await expect(option).toBeHidden();
