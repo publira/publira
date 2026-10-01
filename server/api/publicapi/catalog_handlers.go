@@ -703,6 +703,7 @@ type labelDisplay struct {
 	name                   string
 	eyeCatchImageID        uuid.NullUUID
 	eyeCatchImageUpdatedAt sql.NullTime
+	publishedSeriesCount   int32
 }
 
 type labelPageRow struct {
@@ -718,6 +719,7 @@ func labelPageFromDesc(row dbmodels.ListPublishedLabelsDescRow) labelPageRow {
 			name:                   row.Name,
 			eyeCatchImageID:        row.EyeCatchImageID,
 			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			publishedSeriesCount:   row.PublishedSeriesCount,
 		},
 		id:        row.ID,
 		createdAt: row.CreatedAt,
@@ -731,6 +733,7 @@ func labelPageFromAsc(row dbmodels.ListPublishedLabelsAscRow) labelPageRow {
 			name:                   row.Name,
 			eyeCatchImageID:        row.EyeCatchImageID,
 			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			publishedSeriesCount:   row.PublishedSeriesCount,
 		},
 		id:        row.ID,
 		createdAt: row.CreatedAt,
@@ -740,11 +743,15 @@ func labelPageFromAsc(row dbmodels.ListPublishedLabelsAscRow) labelPageRow {
 // labelItems maps label rows to the wire type and attaches every eye catch in
 // one further query, so a page of labels costs two round trips whatever
 // ordered it.
-func (s *apiServer) labelItems(ctx context.Context, rows []labelDisplay) ([]*publirattypesv1.Label, error) {
-	items := make([]*publirattypesv1.Label, 0, len(rows))
+func (s *apiServer) labelItems(ctx context.Context, rows []labelDisplay) ([]*publirav1.PublishedLabel, error) {
+	items := make([]*publirav1.PublishedLabel, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		item := &publirattypesv1.Label{PublicId: row.publicID, Name: row.name}
+		item := &publirav1.PublishedLabel{
+			PublicId:             row.publicID,
+			Name:                 row.name,
+			PublishedSeriesCount: row.publishedSeriesCount,
+		}
 		if row.eyeCatchImageUpdatedAt.Valid {
 			item.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 		}

@@ -1451,7 +1451,8 @@ type Querier interface {
 	// The backward direction of ListPublishedLabelsBySearchNameAsc.
 	ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error)
 	// The public ListPublishedLabels keeps the order of the admin pair above and
-	// adds the calling surface, which the console does not have.
+	// adds the calling surface, which the console does not have, and the count of
+	// series published on it, counted as GetPublishedLabelByPublicID counts it.
 	// cursor rules: proto/README.md.
 	ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error)
 	// Every published page, footer or not: the public site routes a path to a page
