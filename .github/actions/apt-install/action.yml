@@ -1,0 +1,42 @@
+name: Install apt packages
+description: Install Ubuntu packages on the runner, and make every later apt call in the job give up on an unresponsive mirror quickly.
+
+inputs:
+  packages:
+    description: Space-separated package names, installed without their recommended packages.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # The runner resolves the archive through a mirror list, the Azure mirror
+    # first and archive.ubuntu.com behind it. When the Azure mirror stalls, apt
+    # waits out the default timeout and retries on the same mirror before it
+    # moves on, which has added more than ten minutes to a job's install step.
+    # Measured against a mirror that accepts connections and never answers,
+    # with archive.ubuntu.com behind it, `apt-get update` had not finished
+    # after 400 seconds on the defaults and finished in 44 with these values.
+    # The timeout counts silence, not slowness, so a mirror that keeps sending
+    # bytes is never cut off by it.
+    #
+    # The file lives under apt.conf.d rather than on this command line, so it
+    # also reaches the apt calls other tools make later in the job, such as
+    # `playwright install --with-deps`.
+    - name: Configure apt
+      shell: bash
+      run: |
+        sudo tee /etc/apt/apt.conf.d/99-publira-ci > /dev/null << 'EOF'
+        Acquire::http::Timeout "5";
+        Acquire::https::Timeout "5";
+        Acquire::Retries "1";
+        EOF
+
+    - name: Install
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        sudo apt-get update
+        # PACKAGES is a space-separated list, split into one argument each.
+        # shellcheck disable=SC2086
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $PACKAGES

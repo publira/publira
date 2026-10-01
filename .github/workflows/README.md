@@ -167,7 +167,7 @@ Nightly full builds find cross-service drift that filters cannot catch. Host CI 
 
 `Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job that installs Ubuntu packages through the [`apt-install`](../actions/apt-install/action.yml) action watches that action too. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
 
 | Job | Watched paths |
 | --- | --- |
