@@ -2328,39 +2328,40 @@ void main() {
         );
         // `db/seeds/scenarios/170_ranking.sql` puts Seed Series 042 at the
         // top of the week and Seed Series 100 at the top of the day.
-        Finder firstRow() => find
-            .byWidgetPredicate(
-              (widget) => switch (widget.key) {
-                ValueKey<String>(:final value) => value.startsWith(
-                  'ranking-tile-',
-                ),
-                _ => false,
-              },
-            )
-            .first;
-        expect(
-          find.descendant(
-            of: firstRow(),
-            matching: find.text('Seed Series 042'),
-          ),
-          findsOneWidget,
+        final rows = find.byWidgetPredicate(
+          (widget) => switch (widget.key) {
+            ValueKey<String>(:final value) => value.startsWith('ranking-tile-'),
+            _ => false,
+          },
+        );
+        // The chart has no rows while a period is being read, so the first
+        // row is looked for only once there is one.
+        bool firstRowIs(String title) =>
+            rows.evaluate().isNotEmpty &&
+            find
+                .descendant(of: rows.first, matching: find.text(title))
+                .evaluate()
+                .isNotEmpty;
+        await pumpUntilTrue(
+          tester,
+          () => firstRowIs('Seed Series 042'),
+          description: 'Seed Series 042 at the top of the week',
+          timeout: const Duration(seconds: 20),
         );
 
         await tapVisible(
           tester,
           find.byKey(const ValueKey('ranking-period-daily')),
         );
-        await pumpUntilFound(
+        await pumpUntilTrue(
           tester,
-          find.descendant(
-            of: firstRow(),
-            matching: find.text('Seed Series 100'),
-          ),
+          () => firstRowIs('Seed Series 100'),
+          description: 'Seed Series 100 at the top of the day',
           timeout: const Duration(seconds: 20),
         );
         expect(find.byKey(const ValueKey('ranking-error')), findsNothing);
 
-        await tapVisible(tester, firstRow());
+        await tapVisible(tester, rows.first);
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('series-detail-body')),
