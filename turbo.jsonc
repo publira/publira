@@ -1,5 +1,7 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
+  // Otherwise turbo rewrites the root `AGENTS.md` whenever an AI agent runs it.
+  "agentGuidance": false,
   // Turborepo 2.8+ hands every git worktree the main checkout's `.turbo/cache`
   // unless `cacheDir` is set to a relative path, which resolves from the
   // current worktree instead. That sharing has to stay off. An artifact is
