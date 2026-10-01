@@ -141,6 +141,7 @@ jobs:
               - 'scripts/check-go-mod-tidy.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_go:
               - *docs_excluded
               - 'server/**'
@@ -151,6 +152,7 @@ jobs:
               - 'buf.gen.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_ts:
               - *docs_excluded
               - 'apps/**'
@@ -176,6 +178,7 @@ jobs:
               - 'mobile/Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_db_migrations:
               - *docs_excluded
               - 'db/**'
@@ -221,6 +224,7 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
               - 'scripts/setup-flutter.sh'
             test_e2e:
               - *docs_excluded
@@ -248,6 +252,7 @@ jobs:
               - 'scripts/storage-seed.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
@@ -268,6 +273,7 @@ jobs:
               - 'scripts/storage-seed.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_routing:
               - *docs_excluded
               - 'compose.yaml'
@@ -300,6 +306,7 @@ jobs:
               - 'turbo.jsonc'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             docker_web:
               - *docs_excluded
               - 'apps/**'
@@ -512,7 +519,9 @@ jobs:
         run: scripts/check-go-mod-tidy.sh
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       # The action installs the pinned binary and caches the analysis results;
       # the rule set itself lives in server/.golangci.yml, so this runs exactly
@@ -541,7 +550,9 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       - name: Validate / Go Tests
         working-directory: server
@@ -659,7 +670,9 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Install / Bash Tools
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends shellcheck shfmt
+        uses: ./.github/actions/apt-install
+        with:
+          packages: shellcheck shfmt
 
       - name: Validate / Bash Style
         run: |
@@ -727,7 +740,9 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       - name: Setup / Java
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -773,7 +788,9 @@ jobs:
           rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
 
       - name: Setup / PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+        uses: ./.github/actions/apt-install
+        with:
+          packages: postgresql-client
 
       - name: Dependencies / Install
         run: task mobile:deps
@@ -905,7 +922,9 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -1000,7 +1019,9 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -1146,7 +1167,9 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Setup / libvips
-        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
