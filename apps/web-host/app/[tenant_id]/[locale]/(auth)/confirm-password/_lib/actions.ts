@@ -12,6 +12,7 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { clearPublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
@@ -119,6 +120,11 @@ export const confirmPasswordAction = async (
     redirect(errorPath);
   }
 
+  // The reset ends every session of the account. A reader who set a first
+  // password from the security settings is still holding one of them, and
+  // `/login` sends a browser with a session cookie on to `/my`, where the
+  // rejected session would replace the reset's message with a sign-in prompt.
+  await clearPublicSessionCookie();
   const loginPath = await buildLoginPathWithResetResult(locale, tenantId);
   redirect(loginPath);
 };
