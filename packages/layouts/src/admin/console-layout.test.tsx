@@ -198,29 +198,27 @@ const currentHrefs = () =>
     .map((link) => link.getAttribute("href"));
 
 describe("Sidebar navigation active item", () => {
-  it("marks only the item whose path the browser is on", () => {
-    pathname.mockReturnValue("/tenants");
+  it.each([
+    {
+      browserPath: "/tenants",
+      current: "/tenants",
+      title: "marks only the item whose path the browser is on",
+    },
+    {
+      browserPath: "/tenants/new",
+      current: "/tenants/new",
+      title: "leaves a broader item to the more specific one that also matches",
+    },
+    {
+      browserPath: "/1b4e28ba-2fa1-11d2-883f-0016d3cca427/tenants/SR01",
+      current: "/tenants",
+      title: "reads the same item as current before and after a tenant rewrite",
+    },
+  ])("$title", ({ browserPath, current }) => {
+    pathname.mockReturnValue(browserPath);
 
     renderNavigation();
 
-    expect(currentHrefs()).toEqual(["/tenants"]);
-  });
-
-  it("leaves a broader item to the more specific one that also matches", () => {
-    pathname.mockReturnValue("/tenants/new");
-
-    renderNavigation();
-
-    expect(currentHrefs()).toEqual(["/tenants/new"]);
-  });
-
-  it("reads the same item as current before and after a tenant rewrite", () => {
-    pathname.mockReturnValue(
-      "/1b4e28ba-2fa1-11d2-883f-0016d3cca427/tenants/SR01"
-    );
-
-    renderNavigation();
-
-    expect(currentHrefs()).toEqual(["/tenants"]);
+    expect(currentHrefs()).toEqual([current]);
   });
 });

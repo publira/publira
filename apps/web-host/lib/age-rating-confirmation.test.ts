@@ -49,7 +49,7 @@ describe("writeConfirmedAgeRating", () => {
 
   it("Does not write when the tenant id is empty", () => {
     expect(writeConfirmedAgeRating("  ", "r15")).toBeUndefined();
-    expect(window.localStorage.length).toBe(0);
+    expect(window.localStorage).toHaveLength(0);
   });
 });
 

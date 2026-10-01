@@ -118,6 +118,9 @@ test.describe("web-host screenshots", () => {
         // reader's own click settles both the underline and the shelf under
         // it, and the module is then recorded as designed rather than masked.
         // Which day it opens on by default is `catalog.filters.spec.ts`.
+        // The tabs are a Client Component the server already drew, so a click
+        // that lands before hydration is dropped; a visible tab cannot tell.
+        // oxlint-disable-next-line sonarjs/no-networkidle-wait
         await page.waitForLoadState("networkidle");
         const schedule = page.getByRole("region", {
           name: SCREENSHOT_WEEKDAY_SECTION,

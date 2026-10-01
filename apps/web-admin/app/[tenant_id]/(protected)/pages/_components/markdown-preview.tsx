@@ -32,7 +32,7 @@ const toItemEntries = (blockKey: string, items: string[]) => {
 const parseInline = (text: string): ReactNode[] => {
   const nodes: ReactNode[] = [];
   const tokenPattern =
-    /(?:`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/u;
+    /(?:`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^[\]]+\]\([^)]+\))/u;
   let rest = text;
   let key = 0;
 
@@ -125,7 +125,7 @@ const parseHeading = (
 ): { block: MarkdownBlock; nextIndex: number } | null => {
   // Numbered groups: Next apps target ES2017 (no named capture groups).
   // oxlint-disable-next-line prefer-named-capture-group
-  const headingMatch = line.match(/^(#{1,6})\s+(.*)$/u);
+  const headingMatch = line.match(/^(#{1,6})\s(.*)$/u);
   if (!headingMatch) {
     return null;
   }
@@ -134,7 +134,7 @@ const parseHeading = (
     block: {
       key: `heading-${index}`,
       level: headingMatch[1].length,
-      text: headingMatch[2],
+      text: headingMatch[2].trimStart(),
       type: "heading",
     },
     nextIndex: index + 1,

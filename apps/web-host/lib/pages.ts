@@ -110,7 +110,7 @@ export const normalizePublishedPageSlug = (
   while (normalized.includes("//")) {
     normalized = normalized.replaceAll("//", "/");
   }
-  normalized = normalized.replaceAll(/^\/+|\/+$/gu, "");
+  normalized = normalized.replaceAll(/^\/|\/$/gu, "");
   if (!normalized) {
     return "";
   }
