@@ -436,3 +436,28 @@ func TestSMTPSetRefusesAPasswordWithoutAUsername(t *testing.T) {
 		t.Fatalf("stored password = %q, want the one saved first", got)
 	}
 }
+
+// Settings for a relay hold no password, so they are saved and tested without
+// the encryption keys, which smtp test asks for only once a password is saved.
+func TestSMTPRelayNeedsNoEncryptionKeys(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_KEYS", "")
+	relay := testutil.StartSMTPRelay(t)
+
+	mustSMTPCommand(t, "", smtpRelayArgs(relay)...)
+	mustSMTPCommand(t, "", "test", "--to", "operator@example.com")
+	if len(relay.Messages()) != 1 {
+		t.Fatalf("messages = %d, want 1", len(relay.Messages()))
+	}
+
+	setEncryptionKeys(t)
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(relay, "--password-stdin")...)
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_KEYS", "")
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "")
+	code, _, stderr := smtpCommand(t, "", "test", "--to", "operator@example.com")
+	if code != 1 || stderr != "publiractl: "+errNoEncryptionKeys.Error()+"\n" {
+		t.Fatalf("test of a saved password without the keys: exit code = %d, stderr = %q", code, stderr)
+	}
+}

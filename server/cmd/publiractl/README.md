@@ -226,7 +226,7 @@ With `--username`, the password comes from a masked prompt, from stdin with `--p
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
-- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the password `smtp set` stores, and decrypt the one `smtp test` sends with. Required by both: set the values the servers run with.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the password `smtp set` stores, and decrypt the one `smtp test` sends with. Required only with a `--username`, and by `smtp test` only when a password is saved: set the values the servers run with.
 
 ## storage
 

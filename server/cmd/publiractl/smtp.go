@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -149,8 +150,14 @@ func setupSMTPShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 func setupSMTPTest(f *commandFlags) func(context.Context, *commandEnv) error {
 	to := f.String("to", "", "the address to send the test message to")
 	return func(ctx context.Context, env *commandEnv) error {
-		secrets, err := env.secretManager()
-		if err != nil {
+		// Saved settings for a relay that takes no credentials hold no
+		// password, and test without the keys that would decrypt one.
+		var secrets emailsettings.SecretManager
+		manager, err := env.secretManager()
+		switch {
+		case err == nil:
+			secrets = manager
+		case !errors.Is(err, errNoEncryptionKeys):
 			return err
 		}
 		db, err := env.openPlatformDB()
@@ -164,7 +171,11 @@ func setupSMTPTest(f *commandFlags) func(context.Context, *commandEnv) error {
 			SMTP:      internalsmtp.NewClient(),
 			Recorder:  auditlog.New(q, env.logger),
 		}
-		if err := tester.SendSaved(ctx, q, auditlog.SystemPlatformActor, *to); err != nil {
+		err = tester.SendSaved(ctx, q, auditlog.SystemPlatformActor, *to)
+		if errors.Is(err, emailsettings.ErrSecretManagerUnavailable) {
+			return errNoEncryptionKeys
+		}
+		if err != nil {
 			return smtpError(err, true)
 		}
 		_, err = fmt.Fprintf(env.stdout, "Sent the test message to %s\n", strings.TrimSpace(*to))
