@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	stripego "github.com/stripe/stripe-go/v86"
-	"github.com/stripe/stripe-go/v86/webhook"
+	stripego "github.com/stripe/stripe-go/v87"
+	"github.com/stripe/stripe-go/v87/webhook"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 )
