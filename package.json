@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "eslint-plugin-github": "6.1.2",
-    "eslint-plugin-sonarjs": "4.2.1",
+    "eslint-plugin-sonarjs": "4.2.2",
     "lefthook": "2.1.14",
     "opentype.js": "catalog:",
     "oxfmt": "0.71.0",
