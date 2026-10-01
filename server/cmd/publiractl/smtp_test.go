@@ -340,3 +340,124 @@ func TestSMTPSetReadsThePasswordFromAFile(t *testing.T) {
 		t.Fatalf("stored password = %q, want the file's contents", got)
 	}
 }
+
+// smtpRelayArgs saves the plaintext relay at host:port, which takes no
+// credentials.
+func smtpRelayArgs(server *testutil.SMTPServer, extra ...string) []string {
+	return append([]string{
+		"set",
+		"--host", server.Host,
+		"--port", strconv.Itoa(int(server.Port)),
+		"--encryption", "none",
+		"--from-address", "no-reply@example.com",
+	}, extra...)
+}
+
+// A save without --username asks for no password, even on a terminal, and
+// removes the saved one, so settings that signed in move to a relay that takes
+// no credentials in one step.
+func TestSMTPSetWithoutAUsernameClearsTheSavedPassword(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	relay := testutil.StartSMTPRelay(t)
+
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(relay, "--password-stdin")...)
+
+	// No password is left to type, so a prompt would fail the save.
+	var out, errOut bytes.Buffer
+	if code := runGroup(&smtpGroup, smtpRelayArgs(relay), terminalConsole(&errOut, ""), &out); code != 0 {
+		t.Fatalf("set without --username: exit code = %d\n%s", code, errOut.String())
+	}
+	if strings.Contains(errOut.String(), "SMTP password") {
+		t.Fatalf("set without --username prompted for the password:\n%s", errOut.String())
+	}
+	var username, encrypted string
+	if err := pg.DB.QueryRowContext(context.Background(),
+		`SELECT username, password_encrypted FROM platform_smtp_config`,
+	).Scan(&username, &encrypted); err != nil {
+		t.Fatalf("read platform_smtp_config: %v", err)
+	}
+	if username != "" || encrypted != "" {
+		t.Fatalf("stored username = %q, password = %q; want both cleared", username, encrypted)
+	}
+
+	show := mustSMTPCommand(t, "", "show")
+	for _, want := range []string{"Username:      none\n", "Password:      not saved\n", "Revision:      2\n"} {
+		if !strings.Contains(show, want) {
+			t.Fatalf("show = \n%s\nwant a line %q", show, want)
+		}
+	}
+
+	mustSMTPCommand(t, "", "test", "--to", "operator@example.com")
+	if len(relay.Messages()) != 1 {
+		t.Fatalf("messages = %d, want 1", len(relay.Messages()))
+	}
+	if logins := relay.Logins(); len(logins) != 0 {
+		t.Fatalf("logins = %v, want the relay sent through without AUTH", logins)
+	}
+}
+
+// A password has no username to go with when --username is left out, so it is
+// refused naming --username, as the Platform Console refuses it, and the saved
+// settings are left as they were.
+func TestSMTPSetRefusesAPasswordWithoutAUsername(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	server := testutil.StartSMTPServer(t)
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(server, "--password-stdin")...)
+
+	for _, tc := range []struct {
+		name  string
+		stdin string
+		args  []string
+	}{
+		{name: "from stdin", stdin: "other", args: smtpRelayArgs(server, "--password-stdin")},
+		{name: "from a file", args: smtpRelayArgs(server, "--password-file", writeSecretFile(t, "other\n"))},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			code, _, stderr := smtpCommand(t, tc.stdin, tc.args...)
+			if code != 1 || stderr != "publiractl: --username: username is required with a password\n" {
+				t.Fatalf("exit code = %d, stderr = %q; want the refusal naming --username", code, stderr)
+			}
+		})
+	}
+
+	show := mustSMTPCommand(t, "", "show")
+	for _, want := range []string{"Username:      mailer\n", "Revision:      1\n"} {
+		if !strings.Contains(show, want) {
+			t.Fatalf("show = \n%s\nwant a line %q", show, want)
+		}
+	}
+	if got := storedSMTPPassword(t, pg); got != testSecretValue {
+		t.Fatalf("stored password = %q, want the one saved first", got)
+	}
+}
+
+// Settings for a relay hold no password, so they are saved and tested without
+// the encryption keys, which smtp test asks for only once a password is saved.
+func TestSMTPRelayNeedsNoEncryptionKeys(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_KEYS", "")
+	relay := testutil.StartSMTPRelay(t)
+
+	mustSMTPCommand(t, "", smtpRelayArgs(relay)...)
+	mustSMTPCommand(t, "", "test", "--to", "operator@example.com")
+	if len(relay.Messages()) != 1 {
+		t.Fatalf("messages = %d, want 1", len(relay.Messages()))
+	}
+
+	setEncryptionKeys(t)
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(relay, "--password-stdin")...)
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_KEYS", "")
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "")
+	code, _, stderr := smtpCommand(t, "", "test", "--to", "operator@example.com")
+	if code != 1 || stderr != "publiractl: "+errNoEncryptionKeys.Error()+"\n" {
+		t.Fatalf("test of a saved password without the keys: exit code = %d, stderr = %q", code, stderr)
+	}
+}

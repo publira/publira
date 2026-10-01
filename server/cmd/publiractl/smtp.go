@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -59,7 +60,7 @@ func setupSMTPSet(f *commandFlags) func(context.Context, *commandEnv) error {
 		return err
 	})
 	f.StringVar(&settings.Encryption, "encryption", "", "how the connection is encrypted, one of tls, starttls, none")
-	f.StringVar(&settings.Username, "username", "", "the user the server is signed in to as")
+	f.StringVar(&settings.Username, "username", "", "the user the server is signed in to as; left out, mail is sent without signing in and a saved password is removed")
 	f.StringVar(&settings.FromAddress, "from-address", "", "the address the platform's mail is sent from")
 	f.StringVar(&settings.ReplyTo, "reply-to", "", "the address replies go to, if not the sender's")
 	password := f.KeepableSecret("password", "SMTP password")
@@ -67,19 +68,28 @@ func setupSMTPSet(f *commandFlags) func(context.Context, *commandEnv) error {
 		return password.refusal(err, emailsettings.FieldPassword, func(err error) error { return smtpError(err, false) })
 	}
 	return func(ctx context.Context, env *commandEnv) error {
-		params := platformsmtp.SaveParams{Settings: settings, PasswordMode: secretupdate.Unchanged}
+		params := platformsmtp.SaveParams{Settings: settings, PasswordMode: secretupdate.Clear}
 		if err := params.Validate(); err != nil {
 			return named(err)
 		}
-		secrets, err := env.secretManager()
-		if err != nil {
-			return err
-		}
-		if params.Password, err = password.read(env.console); err != nil {
-			return err
-		}
-		if params.Password != "" {
-			params.PasswordMode = secretupdate.Replace
+		// Without a username the worker sends without authenticating, so there
+		// is no password to ask for or to encrypt, and a saved one is cleared.
+		var secrets emailsettings.SecretManager
+		if strings.TrimSpace(settings.Username) != "" {
+			manager, err := env.secretManager()
+			if err != nil {
+				return err
+			}
+			secrets = manager
+			if params.Password, err = password.read(env.console); err != nil {
+				return err
+			}
+			params.PasswordMode = secretupdate.Unchanged
+			if params.Password != "" {
+				params.PasswordMode = secretupdate.Replace
+			}
+		} else if password.given() {
+			return named(&fielderr.Invalid{Field: emailsettings.FieldUsername, Err: emailsettings.ErrPasswordWithoutUsername})
 		}
 
 		db, err := env.openPlatformDB()
@@ -115,6 +125,10 @@ func setupSMTPShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		if platformsmtp.HasPassword(config) {
 			password = "saved"
 		}
+		username := config.Username
+		if username == "" {
+			username = "none"
+		}
 		replyTo := "the sender"
 		if config.ReplyTo.Valid {
 			replyTo = config.ReplyTo.String
@@ -123,7 +137,7 @@ func setupSMTPShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Host:\t%s\n", config.Host)
 		fmt.Fprintf(&b, "Port:\t%d\n", config.Port)
 		fmt.Fprintf(&b, "Encryption:\t%s\n", config.Encryption)
-		fmt.Fprintf(&b, "Username:\t%s\n", config.Username)
+		fmt.Fprintf(&b, "Username:\t%s\n", username)
 		fmt.Fprintf(&b, "Password:\t%s\n", password)
 		fmt.Fprintf(&b, "From address:\t%s\n", config.FromAddress)
 		fmt.Fprintf(&b, "Reply-To:\t%s\n", replyTo)
@@ -136,8 +150,14 @@ func setupSMTPShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 func setupSMTPTest(f *commandFlags) func(context.Context, *commandEnv) error {
 	to := f.String("to", "", "the address to send the test message to")
 	return func(ctx context.Context, env *commandEnv) error {
-		secrets, err := env.secretManager()
-		if err != nil {
+		// Saved settings for a relay that takes no credentials hold no
+		// password, and test without the keys that would decrypt one.
+		var secrets emailsettings.SecretManager
+		manager, err := env.secretManager()
+		switch {
+		case err == nil:
+			secrets = manager
+		case !errors.Is(err, errNoEncryptionKeys):
 			return err
 		}
 		db, err := env.openPlatformDB()
@@ -151,7 +171,11 @@ func setupSMTPTest(f *commandFlags) func(context.Context, *commandEnv) error {
 			SMTP:      internalsmtp.NewClient(),
 			Recorder:  auditlog.New(q, env.logger),
 		}
-		if err := tester.SendSaved(ctx, q, auditlog.SystemPlatformActor, *to); err != nil {
+		err = tester.SendSaved(ctx, q, auditlog.SystemPlatformActor, *to)
+		if errors.Is(err, emailsettings.ErrSecretManagerUnavailable) {
+			return errNoEncryptionKeys
+		}
+		if err != nil {
 			return smtpError(err, true)
 		}
 		_, err = fmt.Fprintf(env.stdout, "Sent the test message to %s\n", strings.TrimSpace(*to))
