@@ -31,7 +31,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 export type PlatformEmailSettingsFormState =
-  | { message: string; ok: false }
+  | { fieldErrors?: { username?: string }; message: string; ok: false }
   | { message: string; ok: true; settings: PlatformSmtpSettings }
   | null;
 
@@ -152,7 +152,11 @@ export const updatePlatformEmailSettingsAction = async (
   );
 
   if (!result.ok) {
-    return { message: result.message, ok: false };
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
   }
 
   updateTag(platformEmailSettingsCacheTag);

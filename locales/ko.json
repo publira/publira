@@ -4657,6 +4657,7 @@
       "locale_save_failed": "기본 언어를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "password": "비밀번호",
       "password_change": "변경",
+      "password_clear_help": "비운 채로 저장하면 저장된 비밀번호가 삭제됩니다.",
       "password_undo": "변경 취소",
       "port": "포트",
       "port_invalid": "포트는 1~65535 사이의 정수로 입력해 주세요.",
@@ -4679,6 +4680,8 @@
       "timezone_required": "시간대를 선택해 주세요.",
       "timezone_save_failed": "기본 시간대를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "username": "사용자 이름",
+      "username_help": "자격 증명을 받지 않는 릴레이라면 비워 두세요. 비워 두면 인증 없이 메일을 보냅니다.",
+      "username_required_with_password": "비밀번호를 사용하려면 사용자 이름이 필요합니다. 사용자 이름을 입력하거나, 인증 없이 보내려면 비밀번호를 삭제하세요.",
       "wrong_password": "비밀번호가 올바르지 않습니다."
     },
     "shell": {

@@ -4657,6 +4657,7 @@
       "locale_save_failed": "无法保存默认语言。请稍后再试。",
       "password": "密码",
       "password_change": "变更",
+      "password_clear_help": "保持留空并保存将删除已保存的密码。",
       "password_undo": "撤销变更",
       "port": "端口",
       "port_invalid": "请输入1到65535之间的整数端口号。",
@@ -4679,6 +4680,8 @@
       "timezone_required": "请选择时区。",
       "timezone_save_failed": "无法保存默认时区。请稍后再试。",
       "username": "用户名",
+      "username_help": "如果中继服务器不需要凭据，请留空。留空时将不经身份验证发送邮件。",
+      "username_required_with_password": "使用密码时需要填写用户名。请输入用户名；如需不经身份验证发送，请删除密码。",
       "wrong_password": "密码不正确。"
     },
     "shell": {

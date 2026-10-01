@@ -68,6 +68,7 @@ const useSmtpPassword = () => {
  *       <SmtpPasswordStored>{change}</SmtpPasswordStored>
  *       <SmtpPasswordEditor>{undo}</SmtpPasswordEditor>
  *     </FieldContent>
+ *     <SmtpPasswordReplacing>{note}</SmtpPasswordReplacing>
  *   </Field>
  * </SmtpPassword>
  * ```
@@ -173,4 +174,19 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
       ) : null}
     </div>
   );
+};
+
+/**
+ * `children`, only while the stored password is open for change: what saving
+ * that box empty does to it. With nothing stored, an empty box has nothing to
+ * remove.
+ */
+export const SmtpPasswordReplacing = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const { hasStoredPassword, isEditing } = useSmtpPassword();
+
+  return hasStoredPassword && isEditing ? children : null;
 };

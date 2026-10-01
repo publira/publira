@@ -4,6 +4,7 @@ import {
 } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
@@ -65,6 +66,11 @@ export interface SendPlatformSmtpTestInput {
 export type PlatformSmtpSettingsResult =
   | { ok: true; settings: PlatformSmtpSettings }
   | {
+      /**
+       * What the save refused about one field, in the form's words. Only
+       * {@link updatePlatformEmailSettings} sets it.
+       */
+      fieldErrors?: { username?: string };
       message: string;
       ok: false;
       /**
@@ -229,6 +235,17 @@ export const updatePlatformEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    // The one refusal naming the username is a password, entered or kept from
+    // the stored settings, with no username to authenticate it.
+    if (rpcErrorHasFieldViolation(error, "username")) {
+      return {
+        fieldErrors: {
+          username: t("platform.settings.username_required_with_password"),
+        },
+        message: t("errors.validation"),
+        ok: false,
+      };
+    }
     return {
       message: await parseErrorMessage(error, input.locale),
       ok: false,
