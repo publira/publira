@@ -206,7 +206,7 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 | Command | RPC | What it does |
 | --- | --- | --- |
 | `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one. Saving what is already saved, the password included, changes nothing and files nothing, unless the password is sealed with a key other than the primary one: that save re-encrypts it, which is how a key rotation reaches it |
-| `smtp show` | `GetPlatformEmailSettings` | Prints the saved settings and whether a password is saved, never the password |
+| `smtp show` | `GetPlatformEmailSettings` | Prints the saved settings and whether a password is saved, never the password, with `none` for the username of a relay that takes no credentials |
 | `smtp test` | `SendPlatformSmtpTestEmail` | Sends the console's test message through the saved settings to `--to`, and exits `1` when the server does not take it |
 
 `smtp set` takes these flags:
@@ -215,11 +215,11 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 | --- | --- |
 | `--host`, `--port` | The SMTP server. Required |
 | `--encryption` | `tls` for a connection encrypted from the start, `starttls` for one upgraded after connecting, or `none`. Required |
-| `--username` | The user the server is signed in to as. Left out for a relay that takes no credentials, which the worker then sends through without authenticating |
+| `--username` | The user the server is signed in to as. Left out for a relay that takes no credentials, which the worker then sends through without authenticating, and a saved password is removed |
 | `--from-address` | The address the mail is sent from. Required |
 | `--reply-to` | The address replies go to, when it is not the sender's |
 
-The password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save with a `--username` needs one, and a password without a `--username` is refused. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
+With `--username`, the password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save with a `--username` needs one. Without `--username` no password is asked for, a saved one is removed, and a password given through either flag is refused naming `--username`. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
 
 `smtp set` files `platform_email_settings_updated` and every `smtp test` files `platform_smtp_test_email_sent` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 
