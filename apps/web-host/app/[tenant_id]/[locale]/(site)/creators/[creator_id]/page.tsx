@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
+import { JsonLd } from "#components/json-ld";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -32,6 +33,7 @@ import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getPublishedCreatorDetail } from "#lib/creators";
 import type { PublishedCreatorDetail } from "#lib/creators";
 import { getMessages } from "#lib/get-messages";
+import { breadcrumbJsonLd, creatorJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -306,6 +308,17 @@ const CreatorDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+      <Suspense fallback={null}>
+        <JsonLd build={(site) => creatorJsonLd(site, creator)} />
+        <JsonLd
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
+              { href: "/creators", name: t("host.creators.list_title") },
+              { href: `/creators/${creator.id}`, name: creator.name },
+            ])
+          }
+        />
+      </Suspense>
       <div className="grid gap-4">
         <div className="flex items-start gap-5">
           {creator.iconImageUrl && (

@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import { JsonLd } from "#components/json-ld";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -34,6 +35,7 @@ import {
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { findPublishedTagBySlug, listPublishedSeries } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -307,6 +309,17 @@ const TagDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+      {/* No step between the top page and a tag: the site has no list of tags,
+      so a tag is reached from the works that carry it. */}
+      <Suspense fallback={null}>
+        <JsonLd
+          build={(site) =>
+            breadcrumbJsonLd(site, [
+              { href: `/tags/${tagSlug}`, name: tag.name },
+            ])
+          }
+        />
+      </Suspense>
       <div className="grid gap-2">
         <h1 className="font-serif text-3xl leading-tight">{tag.name}</h1>
         <p className="text-sm text-muted-foreground tabular-nums">

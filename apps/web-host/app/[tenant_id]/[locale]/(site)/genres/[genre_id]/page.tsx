@@ -20,6 +20,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { JsonLd } from "#components/json-ld";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -36,6 +37,7 @@ import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import type { PublishedGenreItem } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -321,6 +323,16 @@ const GenreDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+      <Suspense fallback={null}>
+        <JsonLd
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
+              { href: "/genres", name: t("host.genres.list_title") },
+              { href: `/genres/${genre.publicId}`, name: genre.name },
+            ])
+          }
+        />
+      </Suspense>
       <div className="grid gap-4">
         {genre.eyeCatchImageVariants && (
           <span className="block overflow-hidden rounded-surface bg-muted">

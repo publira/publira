@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { JsonLd } from "#components/json-ld";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -24,6 +25,7 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getMessages } from "#lib/get-messages";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getPublishedLabelDetail } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
 import { getLocale } from "#lib/locale";
@@ -266,6 +268,16 @@ const LabelDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+      <Suspense fallback={null}>
+        <JsonLd
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
+              { href: "/labels", name: t("host.labels.list_title") },
+              { href: `/labels/${labelId}`, name: label.name },
+            ])
+          }
+        />
+      </Suspense>
       <div className="grid gap-4">
         {label.eyeCatchImageVariants &&
           label.eyeCatchImageVariants.length > 0 && (

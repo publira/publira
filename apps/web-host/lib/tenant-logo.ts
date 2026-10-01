@@ -9,7 +9,7 @@ import type { TenantImageVariant, TenantSiteInfo } from "./tenant";
  * them out, and the header then keeps the site-name text.
  */
 export const resolveTenantLogoVariant = (
-  info: TenantSiteInfo | null
+  info: Pick<TenantSiteInfo, "logoImageVariants"> | null
 ): TenantImageVariant | null => {
   const variant = info?.logoImageVariants?.[0];
   if (!(variant?.url.trim() && variant.width > 0 && variant.height > 0)) {
