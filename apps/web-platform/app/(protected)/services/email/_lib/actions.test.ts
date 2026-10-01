@@ -133,6 +133,24 @@ describe("SMTP settings actions", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
+  it("returns what the save refused about the username beside it", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      fieldErrors: { username: "A password needs a username." },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await expect(
+      updatePlatformEmailSettingsAction(null, smtpFormData())
+    ).resolves.toEqual({
+      fieldErrors: { username: "A password needs a username." },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+  });
+
   it("clears the audit log after a failed test send, which the API records too", async () => {
     mockSendPlatformSmtpTestEmail.mockResolvedValueOnce({
       message: "Could not send the test email.",

@@ -1,5 +1,6 @@
 import {
   ActionForm,
+  ActionFormFieldError,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -18,7 +19,12 @@ import {
   DialogTrigger,
   DialogViewport,
 } from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -42,6 +48,7 @@ import type {
 import {
   SmtpPassword,
   SmtpPasswordEditor,
+  SmtpPasswordReplacing,
   SmtpPasswordStored,
   SmtpRevisionField,
 } from "./smtp-password-field";
@@ -149,7 +156,13 @@ export const EmailSettingsForm = ({
               name="username"
               type="text"
             />
+            <ActionFormFieldError name="username" />
           </FieldContent>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+              <Message message="platform.settings.username_help" />
+            </Suspense>
+          </FieldDescription>
         </Field>
 
         <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
@@ -171,6 +184,13 @@ export const EmailSettingsForm = ({
                 </Suspense>
               </SmtpPasswordEditor>
             </FieldContent>
+            <SmtpPasswordReplacing>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+                  <Message message="platform.settings.password_clear_help" />
+                </Suspense>
+              </FieldDescription>
+            </SmtpPasswordReplacing>
           </Field>
         </SmtpPassword>
 

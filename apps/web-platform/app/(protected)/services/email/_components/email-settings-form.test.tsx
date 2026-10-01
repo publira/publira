@@ -239,6 +239,69 @@ describe("EmailSettingsForm", () => {
     );
   });
 
+  it("explains under the username what leaving it blank means", () => {
+    renderForm({});
+
+    const description = screen.getByText(
+      "Leave blank for a relay that takes no credentials; email is then sent without authenticating."
+    );
+    expect(
+      screen.getByLabelText(/Username/u).getAttribute("aria-describedby")
+    ).toBe(description.id);
+  });
+
+  it("says what an empty box does only while the stored password is open", () => {
+    const note = "Saving with this box empty removes the stored password.";
+    const { unmount } = renderForm({});
+
+    expect(screen.queryByText(note)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(screen.getByText(note)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Undo change" }));
+    expect(screen.queryByText(note)).toBeNull();
+
+    unmount();
+    renderForm({
+      initialSettings: { ...storedSettings, hasPassword: false, username: "" },
+    });
+    expect(screen.queryByText(note)).toBeNull();
+  });
+
+  it("shows the refusal of a password without a username on the username field", async () => {
+    const refusal =
+      "A password needs a username. Enter the username, or remove the password to send without authenticating.";
+    const saveAction = vi.fn(
+      (_previousState: PlatformEmailSettingsFormState, _formData: FormData) =>
+        Promise.resolve<PlatformEmailSettingsFormState>({
+          fieldErrors: { username: refusal },
+          message: "Please check the information you entered.",
+          ok: false,
+        })
+    );
+    const { container } = renderForm({
+      initialSettings: { ...storedSettings, hasPassword: false, username: "" },
+      saveAction,
+    });
+
+    const password = container.querySelector<HTMLInputElement>(
+      'input[name="password"]'
+    );
+    if (!password) {
+      throw new Error("The form has no password box with nothing stored.");
+    }
+    fireEvent.change(password, { target: { value: "new-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const message = await screen.findByText(refusal);
+    const sent = saveAction.mock.calls[0]?.[1];
+    expect(sent?.get("username")).toBe("");
+    expect(sent?.get("password")).toBe("new-secret");
+    const username = screen.getByLabelText(/Username/u);
+    expect(username.parentElement?.contains(message)).toBe(true);
+    expect(username).toHaveProperty("value", "");
+    expect(password.value).toBe("new-secret");
+  });
+
   it("masks a saved password again and sends the revision the save wrote next", async () => {
     const saveAction = vi.fn(
       (_previousState: PlatformEmailSettingsFormState, _formData: FormData) =>

@@ -1,3 +1,4 @@
+import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import {
   Code,
   ConnectError,
@@ -199,6 +200,33 @@ describe("updatePlatformEmailSettings", () => {
     await expect(updatePlatformEmailSettings(input)).resolves.toEqual({
       message:
         "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
+      ok: false,
+    });
+  });
+
+  it("puts a password refused for want of a username on the username field", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError(
+        "username: username is required with a password",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "username" }] },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      updatePlatformEmailSettings({ ...input, username: "" })
+    ).resolves.toEqual({
+      fieldErrors: {
+        username:
+          "A password needs a username. Enter the username, or remove the password to send without authenticating.",
+      },
+      message: "Please check the information you entered.",
       ok: false,
     });
   });

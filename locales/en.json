@@ -4653,6 +4653,7 @@
       "locale_save_failed": "Could not save the default language. Please try again later.",
       "password": "Password",
       "password_change": "Change",
+      "password_clear_help": "Saving with this box empty removes the stored password.",
       "password_undo": "Undo change",
       "port": "Port",
       "port_invalid": "Enter an integer port between 1 and 65535.",
@@ -4675,6 +4676,8 @@
       "timezone_required": "Select a time zone.",
       "timezone_save_failed": "Could not save the default time zone. Please try again later.",
       "username": "Username",
+      "username_help": "Leave blank for a relay that takes no credentials; email is then sent without authenticating.",
+      "username_required_with_password": "A password needs a username. Enter the username, or remove the password to send without authenticating.",
       "wrong_password": "The password is incorrect. Check it and try again."
     },
     "shell": {
