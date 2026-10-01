@@ -32,13 +32,18 @@ import { resolveTenantLogoVariant } from "./tenant-logo";
 /**
  * What every document needs to name a page: the tenant's origin, the locale
  * the page is served in and the one that goes unprefixed, and the site's name
- * for the first step of a breadcrumb trail.
+ * for the first step of a breadcrumb trail. `tenant` carries what the
+ * organization document says about the tenant beyond its name.
  */
 export interface JsonLdSite {
   defaultLocale: Locale;
   locale: Locale;
   name: string;
   origin: string;
+  tenant: Pick<
+    TenantSiteInfo,
+    "appStoreUrl" | "googlePlayUrl" | "logoImageVariants"
+  >;
 }
 
 /**
@@ -65,6 +70,11 @@ export const getJsonLdSite = async (
     locale,
     name: await getTenantSiteLabel(tenantId, locale),
     origin,
+    tenant: {
+      appStoreUrl: tenant.appStoreUrl,
+      googlePlayUrl: tenant.googlePlayUrl,
+      logoImageVariants: tenant.logoImageVariants,
+    },
   };
 };
 
@@ -216,12 +226,9 @@ export const websiteJsonLd = (site: JsonLdSite): WithContext<WebSite> => {
  * the other places it publishes under its own name, so they are its `sameAs`.
  */
 export const organizationJsonLd = (
-  site: JsonLdSite,
-  tenant: Pick<
-    TenantSiteInfo,
-    "appStoreUrl" | "googlePlayUrl" | "logoImageVariants"
-  >
+  site: JsonLdSite
 ): WithContext<Organization> => {
+  const { tenant } = site;
   const logo = resolveTenantLogoVariant(tenant);
   const sameAs = [tenant.appStoreUrl, tenant.googlePlayUrl].filter(
     (url): url is string => Boolean(url)

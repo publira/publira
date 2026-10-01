@@ -1,4 +1,3 @@
-import type { Locale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -30,12 +29,8 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
-import type {
-  EpisodeAccessState,
-  EpisodeDetail,
-  EpisodeSeriesSummary,
-} from "#lib/catalog";
-import { breadcrumbJsonLd, episodeJsonLd, getJsonLdSite } from "#lib/json-ld";
+import type { EpisodeSeriesSummary } from "#lib/catalog";
+import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
@@ -217,49 +212,6 @@ const EpisodeAgeRatingConfirmation = ({
   </AgeRatingGateConfirmation>
 );
 
-/**
- * The episode and the trail down to it, for a search engine. Every read here
- * is one the page body has already made, so it resolves from the same cache
- * entries rather than holding the body back.
- */
-const EpisodeJsonLd = async ({
-  access,
-  episode,
-  locale,
-  series,
-  tenantId,
-}: {
-  access: EpisodeAccessState;
-  episode: EpisodeDetail;
-  locale: Locale;
-  series: EpisodeSeriesSummary;
-  tenantId: string;
-}) => {
-  const [site, t] = await Promise.all([
-    getJsonLdSite(tenantId, locale),
-    getMessagesFor(locale),
-  ]);
-  if (!site) {
-    return null;
-  }
-
-  return (
-    <>
-      <JsonLd document={episodeJsonLd(site, { access, episode, series })} />
-      <JsonLd
-        document={breadcrumbJsonLd(site, [
-          { href: "/series", name: t("host.series.list_title") },
-          { href: `/series/${series.publicId}`, name: series.title },
-          {
-            href: episodePath(series.publicId, episode.publicId),
-            name: episodeDisplayTitle(t, episode),
-          },
-        ])}
-      />
-    </>
-  );
-};
-
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
 ) => {
@@ -340,13 +292,23 @@ const EpisodeContent = async (
   return (
     <>
       {/* Outside the rating gate, for the reason the series page gives. */}
-      <EpisodeJsonLd
-        access={access}
-        episode={episode}
-        locale={locale}
-        series={series}
-        tenantId={tenantId}
-      />
+      <Suspense fallback={null}>
+        <JsonLd
+          build={(site) => episodeJsonLd(site, { access, episode, series })}
+        />
+        <JsonLd
+          build={(site) =>
+            breadcrumbJsonLd(site, [
+              { href: "/series", name: t("host.series.list_title") },
+              { href: `/series/${series.publicId}`, name: series.title },
+              {
+                href: episodePath(series.publicId, episode.publicId),
+                name: episodeDisplayTitle(t, episode),
+              },
+            ])
+          }
+        />
+      </Suspense>
       <EpisodeRatingGate
         access={access}
         checkoutSessionId={checkoutSessionId}

@@ -25,7 +25,7 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getMessages } from "#lib/get-messages";
-import { breadcrumbJsonLd, getJsonLdSite } from "#lib/json-ld";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getPublishedLabelDetail } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
 import { getLocale } from "#lib/locale";
@@ -249,11 +249,12 @@ const LabelDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const [result, jsonLdSite, t] = await Promise.all([
-    loadPublishedLabelDetail(tenantId, labelId, locale, token),
-    getJsonLdSite(tenantId, locale),
-    getMessagesFor(locale),
-  ]);
+  const result = await loadPublishedLabelDetail(
+    tenantId,
+    labelId,
+    locale,
+    token
+  );
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -267,14 +268,16 @@ const LabelDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
-      {jsonLdSite && (
+      <Suspense fallback={null}>
         <JsonLd
-          document={breadcrumbJsonLd(jsonLdSite, [
-            { href: "/labels", name: t("host.labels.list_title") },
-            { href: `/labels/${labelId}`, name: label.name },
-          ])}
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
+              { href: "/labels", name: t("host.labels.list_title") },
+              { href: `/labels/${labelId}`, name: label.name },
+            ])
+          }
         />
-      )}
+      </Suspense>
       <div className="grid gap-4">
         {label.eyeCatchImageVariants &&
           label.eyeCatchImageVariants.length > 0 && (

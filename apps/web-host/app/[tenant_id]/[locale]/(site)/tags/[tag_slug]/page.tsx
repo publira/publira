@@ -35,7 +35,7 @@ import {
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { findPublishedTagBySlug, listPublishedSeries } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
-import { breadcrumbJsonLd, getJsonLdSite } from "#lib/json-ld";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -295,10 +295,7 @@ const TagDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const [result, jsonLdSite] = await Promise.all([
-    findPublishedTagBySlug(tenantId, tagSlug, locale),
-    getJsonLdSite(tenantId, locale),
-  ]);
+  const result = await findPublishedTagBySlug(tenantId, tagSlug, locale);
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -314,13 +311,15 @@ const TagDetailContent = async ({
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
       {/* No step between the top page and a tag: the site has no list of tags,
       so a tag is reached from the works that carry it. */}
-      {jsonLdSite && (
+      <Suspense fallback={null}>
         <JsonLd
-          document={breadcrumbJsonLd(jsonLdSite, [
-            { href: `/tags/${tagSlug}`, name: tag.name },
-          ])}
+          build={(site) =>
+            breadcrumbJsonLd(site, [
+              { href: `/tags/${tagSlug}`, name: tag.name },
+            ])
+          }
         />
-      )}
+      </Suspense>
       <div className="grid gap-2">
         <h1 className="font-serif text-3xl leading-tight">{tag.name}</h1>
         <p className="text-sm text-muted-foreground tabular-nums">

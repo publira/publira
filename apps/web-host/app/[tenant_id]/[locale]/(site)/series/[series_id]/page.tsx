@@ -50,7 +50,7 @@ import { ShareControl } from "#components/share-control";
 import { ShareMenuSkeleton } from "#components/share-menu";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
-import { breadcrumbJsonLd, getJsonLdSite, seriesJsonLd } from "#lib/json-ld";
+import { breadcrumbJsonLd, seriesJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
@@ -290,11 +290,9 @@ const SeriesDetailContent = async (
   // public site must not tell those apart. A failed read is a value as well:
   // a `"use cache"` fill that throws fails the whole request, so neither this
   // page nor any boundary would get to render anything.
-  const [result, timeZone, jsonLdSite, t] = await Promise.all([
+  const [result, timeZone] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
     getTenantDisplayTimeZone(tenantId),
-    getJsonLdSite(tenantId, locale),
-    getMessagesFor(locale),
   ]);
 
   if (!result.ok) {
@@ -318,17 +316,17 @@ const SeriesDetailContent = async (
       {/* Outside the gate, beside the metadata that already describes a rated
       work: the gate withholds the body from a first-time visitor, and a
       crawler is always one. */}
-      {jsonLdSite && (
-        <>
-          <JsonLd document={seriesJsonLd(jsonLdSite, series)} />
-          <JsonLd
-            document={breadcrumbJsonLd(jsonLdSite, [
+      <Suspense fallback={null}>
+        <JsonLd build={(site) => seriesJsonLd(site, series)} />
+        <JsonLd
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
               { href: "/series", name: t("host.series.list_title") },
               { href: `/series/${series.publicId}`, name: series.title },
-            ])}
-          />
-        </>
-      )}
+            ])
+          }
+        />
+      </Suspense>
       <AgeRatingGate
         provenAgeRating={provenAgeRating}
         rating={series.ageRating}

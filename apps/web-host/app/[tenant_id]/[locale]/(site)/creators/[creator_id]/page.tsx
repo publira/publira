@@ -33,7 +33,7 @@ import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getPublishedCreatorDetail } from "#lib/creators";
 import type { PublishedCreatorDetail } from "#lib/creators";
 import { getMessages } from "#lib/get-messages";
-import { breadcrumbJsonLd, creatorJsonLd, getJsonLdSite } from "#lib/json-ld";
+import { breadcrumbJsonLd, creatorJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -289,11 +289,12 @@ const CreatorDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const [result, jsonLdSite, t] = await Promise.all([
-    loadPublishedCreatorDetail(tenantId, creator_id, locale, token),
-    getJsonLdSite(tenantId, locale),
-    getMessagesFor(locale),
-  ]);
+  const result = await loadPublishedCreatorDetail(
+    tenantId,
+    creator_id,
+    locale,
+    token
+  );
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -307,17 +308,17 @@ const CreatorDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
-      {jsonLdSite && (
-        <>
-          <JsonLd document={creatorJsonLd(jsonLdSite, creator)} />
-          <JsonLd
-            document={breadcrumbJsonLd(jsonLdSite, [
+      <Suspense fallback={null}>
+        <JsonLd build={(site) => creatorJsonLd(site, creator)} />
+        <JsonLd
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
               { href: "/creators", name: t("host.creators.list_title") },
               { href: `/creators/${creator.id}`, name: creator.name },
-            ])}
-          />
-        </>
-      )}
+            ])
+          }
+        />
+      </Suspense>
       <div className="grid gap-4">
         <div className="flex items-start gap-5">
           {creator.iconImageUrl && (

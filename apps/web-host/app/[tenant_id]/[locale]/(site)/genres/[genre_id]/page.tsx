@@ -37,7 +37,7 @@ import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import type { PublishedGenreItem } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
-import { breadcrumbJsonLd, getJsonLdSite } from "#lib/json-ld";
+import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -309,11 +309,7 @@ const GenreDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const [genres, jsonLdSite, t] = await Promise.all([
-    listPublishedGenres(tenantId, locale),
-    getJsonLdSite(tenantId, locale),
-    getMessagesFor(locale),
-  ]);
+  const genres = await listPublishedGenres(tenantId, locale);
 
   if (!genres.ok) {
     return <PageLoadError description={genres.message} />;
@@ -327,14 +323,16 @@ const GenreDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
-      {jsonLdSite && (
+      <Suspense fallback={null}>
         <JsonLd
-          document={breadcrumbJsonLd(jsonLdSite, [
-            { href: "/genres", name: t("host.genres.list_title") },
-            { href: `/genres/${genre.publicId}`, name: genre.name },
-          ])}
+          build={(site, t) =>
+            breadcrumbJsonLd(site, [
+              { href: "/genres", name: t("host.genres.list_title") },
+              { href: `/genres/${genre.publicId}`, name: genre.name },
+            ])
+          }
         />
-      )}
+      </Suspense>
       <div className="grid gap-4">
         {genre.eyeCatchImageVariants && (
           <span className="block overflow-hidden rounded-surface bg-muted">

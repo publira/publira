@@ -35,6 +35,7 @@ const SITE: JsonLdSite = {
   locale: "en",
   name: "Example Comics",
   origin: ORIGIN,
+  tenant: { logoImageVariants: undefined },
 };
 
 /** The same site read in another locale, whose paths carry its prefix. */
@@ -81,17 +82,27 @@ const EPISODE = {
 
 beforeEach(() => {
   getTenantPublicOrigin.mockResolvedValue(ORIGIN);
-  getTenantSiteInfo.mockResolvedValue({ defaultLocale: "en" });
+  getTenantSiteInfo.mockResolvedValue({
+    appStoreUrl: "https://apps.apple.com/app/id000000000",
+    defaultLocale: "en",
+    logoImageVariants: undefined,
+    name: "Example Comics",
+  });
   getTenantSiteLabel.mockResolvedValue("Example Comics");
 });
 
 describe("getJsonLdSite", () => {
-  it("names the tenant's origin, both locales, and the site", async () => {
+  it("names the tenant's origin, both locales, the site, and the tenant", async () => {
     await expect(getJsonLdSite(TENANT_ID, "ja")).resolves.toStrictEqual({
       defaultLocale: "en",
       locale: "ja",
       name: "Example Comics",
       origin: ORIGIN,
+      tenant: {
+        appStoreUrl: "https://apps.apple.com/app/id000000000",
+        googlePlayUrl: undefined,
+        logoImageVariants: undefined,
+      },
     });
   });
 
@@ -138,20 +149,23 @@ describe("websiteJsonLd", () => {
 
 describe("organizationJsonLd", () => {
   it("makes the logo absolute and lists the app store listings as sameAs", () => {
-    const document = organizationJsonLd(SITE, {
-      appStoreUrl: "https://apps.apple.com/app/id000000000",
-      googlePlayUrl: "https://play.google.com/store/apps/details?id=test.app",
-      logoImageVariants: [
-        {
-          contentType: "image/png",
-          fileSizeBytes: 1,
-          height: 60,
-          label: "logo",
-          url: "/images/tenant/logo.png",
-          variantType: "logo",
-          width: 240,
-        },
-      ],
+    const document = organizationJsonLd({
+      ...SITE,
+      tenant: {
+        appStoreUrl: "https://apps.apple.com/app/id000000000",
+        googlePlayUrl: "https://play.google.com/store/apps/details?id=test.app",
+        logoImageVariants: [
+          {
+            contentType: "image/png",
+            fileSizeBytes: 1,
+            height: 60,
+            label: "logo",
+            url: "/images/tenant/logo.png",
+            variantType: "logo",
+            width: 240,
+          },
+        ],
+      },
     });
 
     expect(document).toMatchObject({
@@ -168,9 +182,7 @@ describe("organizationJsonLd", () => {
   });
 
   it("leaves out a logo and sameAs the tenant has not set", () => {
-    const document = organizationJsonLd(SITE, {
-      logoImageVariants: undefined,
-    });
+    const document = organizationJsonLd(SITE);
 
     expect(document).not.toHaveProperty("logo");
     expect(document).not.toHaveProperty("sameAs");
