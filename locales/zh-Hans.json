@@ -2398,6 +2398,8 @@
       "sign_in": {
         "description": "让读者除电子邮件地址外，也能用Apple或Google账号登录网站和应用。已启用且信息齐全的方式会在保存后不久显示在网站上。Apple密钥为只写：再次打开时只显示状态和掩码，不会显示值本身。",
         "not_set": "未设置",
+        "callback_url": "回调URL",
+        "copy_callback_url": "复制回调URL",
         "status": {
           "ready": "已提供",
           "ready_description": "读者可以用此方式登录。",
@@ -2411,6 +2413,7 @@
         "apple": {
           "title": "Apple",
           "enabled": "提供通过Apple登录",
+          "callback_url_description": "在Services ID中配置通过Apple登录时，请将此地址注册到“Return URLs”，并将其域名注册到“Domains and Subdomains”。Apple只会将读者送回已注册的地址。",
           "services_id": "Services ID",
           "services_id_description": "网站登录所用的Services ID标识符，在Apple Developer账号的“Certificates, Identifiers & Profiles”中注册。如果只有iOS应用提供通过Apple登录，请留空。",
           "team_id": "Team ID",
@@ -2425,6 +2428,7 @@
         "google": {
           "title": "Google",
           "enabled": "提供通过Google登录",
+          "callback_url_description": "请在Google Cloud控制台中，将此地址添加到类型为“Web应用”的OAuth客户端的“已获授权的重定向URI”。Google只会将读者送回其中列出的地址。",
           "web_client_id": "Web客户端ID",
           "web_client_id_description": "Google Cloud控制台中类型为“Web应用”的OAuth客户端的客户端ID。网站和Android应用用它登录。",
           "ios_client_id": "iOS客户端ID",
