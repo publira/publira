@@ -236,17 +236,17 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Labels" })
     ).toBeVisible();
-    // One row per label, each a single link. Counting the seeded names rather
-    // than every row: the admin suites run beside this one and register labels
-    // of their own — all named `E2E …` — which sort onto this first page until
-    // their test deletes them again, so a count of the whole page is a race.
+    // One row per label, each a single link carrying the name and the series
+    // count beside it. Counting the seeded names rather than every row: the
+    // admin suites run beside this one and register labels of their own — all
+    // named `E2E …` — which sort onto this first page until their test deletes
+    // them again, so a count of the whole page is a race.
     await expect(
-      page.getByRole("link", { name: /^Seed Label \d{2}$/u })
+      page.getByRole("link", { name: /^Seed Label \d{2}\b/u })
     ).toHaveCount(SEED_LABEL_COUNT);
 
     const labelRow = page.getByRole("link", {
-      exact: true,
-      name: SEED_TENANT.labelName,
+      name: new RegExp(`^${SEED_TENANT.labelName}\\b`, "u"),
     });
     await expect(labelRow).toHaveCount(1);
     await labelRow.click();
