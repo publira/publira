@@ -12,6 +12,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import { Activity } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminMfaStatus } from "#lib/admin-mfa";
@@ -184,6 +185,42 @@ describe("MfaSettingsCard", () => {
     expect(
       screen.getByText("New recovery codes have been issued.")
     ).toBeDefined();
+  });
+
+  // The router keeps a page it leaves inside a hidden Activity and shows it
+  // again on Back, which must not bring the codes back with it.
+  it("drops the codes when the page is hidden and shown again", async () => {
+    regenerate.mockResolvedValue({
+      message: "New recovery codes have been issued.",
+      ok: true,
+      recoveryCodes: ["EEEEE-FFFFF"],
+    });
+
+    const { rerender } = render(
+      <Activity mode="visible">
+        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
+      </Activity>
+    );
+
+    submitCode("Regenerate", "123456");
+    expect(await screen.findByText("EEEEE-FFFFF")).toBeDefined();
+
+    rerender(
+      <Activity mode="hidden">
+        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
+      </Activity>
+    );
+    rerender(
+      <Activity mode="visible">
+        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
+      </Activity>
+    );
+
+    expect(screen.getByRole("button", { name: "Regenerate" })).toBeDefined();
+    expect(screen.queryByText("EEEEE-FFFFF")).toBeNull();
+    expect(
+      screen.queryByText("New recovery codes have been issued.")
+    ).toBeNull();
   });
 
   it("drops the codes once the factor is turned off", async () => {
