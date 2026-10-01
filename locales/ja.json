@@ -2398,6 +2398,8 @@
       "sign_in": {
         "description": "読者がメールアドレスに加えて、AppleやGoogleのアカウントでサイトとアプリにログインできるようにします。有効で必要な情報がそろった方法は、保存後まもなくサイトに表示されます。Appleのキーは書き込み専用です。再表示時は状態とマスクだけが表示され、値そのものは表示されません。",
         "not_set": "未設定",
+        "callback_url": "コールバックURL",
+        "copy_callback_url": "コールバックURLをコピー",
         "status": {
           "ready": "提供中",
           "ready_description": "読者はこの方法でログインできます。",
@@ -2411,6 +2413,7 @@
         "apple": {
           "title": "Apple",
           "enabled": "Appleでサインインを提供する",
+          "callback_url_description": "Services IDでAppleでサインインを設定するときに、このアドレスを「Return URLs」に、そのドメインを「Domains and Subdomains」に登録してください。Appleは登録されたアドレスにしか読者を戻しません。",
           "services_id": "Services ID",
           "services_id_description": "サイトがログインに使うServices IDの識別子です。Apple Developerアカウントの「Certificates, Identifiers & Profiles」で登録します。iOSアプリだけでAppleでサインインを提供する場合は空欄にしてください。",
           "team_id": "Team ID",
@@ -2425,6 +2428,7 @@
         "google": {
           "title": "Google",
           "enabled": "Googleでログインを提供する",
+          "callback_url_description": "Google Cloudコンソールで、種類が「ウェブ アプリケーション」のOAuthクライアントの「承認済みのリダイレクトURI」にこのアドレスを追加してください。Googleは登録されたアドレスにしか読者を戻しません。",
           "web_client_id": "ウェブクライアントID",
           "web_client_id_description": "Google Cloudコンソールで作成した、種類が「ウェブ アプリケーション」のOAuthクライアントのクライアントIDです。サイトとAndroidアプリがこれでログインします。",
           "ios_client_id": "iOSクライアントID",

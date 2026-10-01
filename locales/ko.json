@@ -2398,6 +2398,8 @@
       "sign_in": {
         "description": "독자가 이메일 주소뿐 아니라 Apple이나 Google 계정으로도 사이트와 앱에 로그인할 수 있게 합니다. 켜져 있고 필요한 정보가 모두 있는 방법은 저장 직후 사이트에 표시됩니다. Apple 키는 쓰기 전용입니다. 다시 열면 상태와 마스크만 보이며 값 자체는 표시되지 않습니다.",
         "not_set": "미설정",
+        "callback_url": "콜백 URL",
+        "copy_callback_url": "콜백 URL 복사",
         "status": {
           "ready": "제공 중",
           "ready_description": "독자가 이 방법으로 로그인할 수 있습니다.",
@@ -2411,6 +2413,7 @@
         "apple": {
           "title": "Apple",
           "enabled": "Apple로 로그인 제공",
+          "callback_url_description": "Services ID에서 Apple로 로그인을 구성할 때 이 주소를 Return URLs에, 그 도메인을 Domains and Subdomains에 등록해 주세요. Apple은 등록된 주소로만 독자를 돌려보냅니다.",
           "services_id": "Services ID",
           "services_id_description": "사이트가 로그인에 사용하는 Services ID의 식별자입니다. Apple Developer 계정의 Certificates, Identifiers & Profiles에서 등록합니다. iOS 앱에서만 Apple로 로그인을 제공한다면 비워 두세요.",
           "team_id": "Team ID",
@@ -2425,6 +2428,7 @@
         "google": {
           "title": "Google",
           "enabled": "Google로 로그인 제공",
+          "callback_url_description": "Google Cloud 콘솔에서 유형이 웹 애플리케이션인 OAuth 클라이언트의 승인된 리디렉션 URI에 이 주소를 추가해 주세요. Google은 등록된 주소로만 독자를 돌려보냅니다.",
           "web_client_id": "웹 클라이언트 ID",
           "web_client_id_description": "Google Cloud 콘솔에서 만든 유형이 웹 애플리케이션인 OAuth 클라이언트의 클라이언트 ID입니다. 사이트와 Android 앱이 이 값으로 로그인합니다.",
           "ios_client_id": "iOS 클라이언트 ID",

@@ -109,6 +109,7 @@ const textbox = (name: RegExp | string) =>
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   action.current = () => Promise.resolve(null);
 });
 
@@ -231,6 +232,55 @@ describe("TenantSignInSettingsForm", () => {
       expect(screen.getByText(refusal)).toBeDefined();
     });
     expect(textbox("iOS client ID").value).toBe("ios.example.com");
+  });
+
+  it("shows each provider the callback URL to register, copyable without edit access", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    await renderForm(
+      <TenantSignInSettingsForm
+        callbackUrls={{
+          apple: "https://comics.example/api/v1/auth/apple/callback",
+          google: "https://comics.example/api/v1/auth/google/callback",
+        }}
+        canEdit={false}
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText("https://comics.example/api/v1/auth/apple/callback")
+    ).toBeDefined();
+    expect(
+      screen.getByText("https://comics.example/api/v1/auth/google/callback")
+    ).toBeDefined();
+
+    const [appleCopy, googleCopy] = screen.getAllByRole<HTMLButtonElement>(
+      "button",
+      { name: "Copy the callback URL" }
+    );
+    expect(appleCopy?.matches(":disabled")).toBe(false);
+    await act(() => {
+      fireEvent.click(googleCopy as HTMLButtonElement);
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      "https://comics.example/api/v1/auth/google/callback"
+    );
+  });
+
+  it("leaves the callback URL out while the tenant has no domain", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        canEdit
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Copy the callback URL" })
+    ).toBeNull();
   });
 
   it("keeps saving closed when the settings could not be read", async () => {

@@ -17,6 +17,8 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { signInCallbackUrl } from "#lib/storefront-url";
+import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantSignInSettings } from "#lib/tenant-sign-in-settings";
 
@@ -46,14 +48,24 @@ const SignInSettingsSkeleton = () => (
 const SignInSettingsSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, currentUserResult] = await Promise.all([
+  const [result, currentUserResult, tenantResult] = await Promise.all([
     getTenantSignInSettings(tenantId, locale),
     getAdminCurrentUser(tenantId),
+    getTenantForSession(tenantId),
   ]);
-  await redirectToLoginIfSessionRejected(result, currentUserResult);
+  await redirectToLoginIfSessionRejected(
+    result,
+    currentUserResult,
+    tenantResult
+  );
+  const domain = tenantResult.ok ? tenantResult.tenant.domain : "";
 
   return (
     <TenantSignInSettingsForm
+      callbackUrls={{
+        apple: signInCallbackUrl(domain, "apple"),
+        google: signInCallbackUrl(domain, "google"),
+      }}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}

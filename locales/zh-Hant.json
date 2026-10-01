@@ -2398,6 +2398,8 @@
       "sign_in": {
         "description": "讓讀者除電子郵件地址外，也能用Apple或Google帳戶登入網站與應用程式。已啟用且資訊齊全的方式會在儲存後不久顯示於網站上。Apple金鑰為唯寫：再次開啟時只顯示狀態與遮罩，不會顯示值本身。",
         "not_set": "未設定",
+        "callback_url": "回呼URL",
+        "copy_callback_url": "複製回呼URL",
         "status": {
           "ready": "已提供",
           "ready_description": "讀者可以用此方式登入。",
@@ -2411,6 +2413,7 @@
         "apple": {
           "title": "Apple",
           "enabled": "提供使用Apple登入",
+          "callback_url_description": "在Services ID中設定使用Apple登入時，請將此位址註冊到「Return URLs」，並將其網域註冊到「Domains and Subdomains」。Apple只會將讀者送回已註冊的位址。",
           "services_id": "Services ID",
           "services_id_description": "網站登入所用的Services ID識別碼，在Apple Developer帳戶的「Certificates, Identifiers & Profiles」中註冊。若只有iOS應用程式提供使用Apple登入，請留空。",
           "team_id": "Team ID",
@@ -2425,6 +2428,7 @@
         "google": {
           "title": "Google",
           "enabled": "提供使用Google登入",
+          "callback_url_description": "請在Google Cloud主控台中，將此位址加入類型為「網頁應用程式」的OAuth用戶端的「已授權的重新導向URI」。Google只會將讀者送回其中列出的位址。",
           "web_client_id": "網頁用戶端ID",
           "web_client_id_description": "Google Cloud主控台中類型為「網頁應用程式」的OAuth用戶端的用戶端ID。網站與Android應用程式以它登入。",
           "ios_client_id": "iOS用戶端ID",

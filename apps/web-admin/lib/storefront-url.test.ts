@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { storefrontOrigin, tenantWebhookUrl } from "./storefront-url";
+import {
+  signInCallbackUrl,
+  storefrontOrigin,
+  tenantWebhookUrl,
+} from "./storefront-url";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -37,5 +41,30 @@ describe("tenantWebhookUrl", () => {
 
   it("is absent when the tenant has no domain", () => {
     expect(tenantWebhookUrl("", "stripe")).toBeUndefined();
+  });
+});
+
+describe("signInCallbackUrl", () => {
+  it("names each provider's callback on the storefront origin", () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "");
+
+    expect(signInCallbackUrl("comics.example", "apple")).toBe(
+      "https://comics.example/api/v1/auth/apple/callback"
+    );
+    expect(signInCallbackUrl("comics.example", "google")).toBe(
+      "https://comics.example/api/v1/auth/google/callback"
+    );
+  });
+
+  it("keeps the deployment's scheme and the domain's port", () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "http");
+
+    expect(signInCallbackUrl("comics.example:3180", "google")).toBe(
+      "http://comics.example:3180/api/v1/auth/google/callback"
+    );
+  });
+
+  it("is absent when the tenant has no domain", () => {
+    expect(signInCallbackUrl("", "apple")).toBeUndefined();
   });
 });
