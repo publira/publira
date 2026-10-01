@@ -37,6 +37,8 @@ type platformServer struct {
 	tester    internalsmtp.Tester
 	tokens    *auth.TokenManager
 	logger    *slog.Logger
+	// serviceToken admits a web app to the reads in [serviceProcedures].
+	serviceToken *auth.ServiceToken
 	// storageTester exercises an object store configuration against the store
 	// it addresses.
 	storageTester storagesettings.Tester
@@ -70,6 +72,9 @@ type platformActor struct {
 	UserID uuid.UUID
 	Role   string
 	Email  string
+	// Service marks a call a web app made with its own credential rather than
+	// on an operator's behalf. UserID, Role, and Email are zero for it.
+	Service bool
 }
 
 type platformActorContextKey struct{}
@@ -102,9 +107,13 @@ func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettin
 	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, nil, nil)
 }
 
-// NewWithAsyncRecorder is New with an AsyncRecorder.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) *API {
-	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil, nil)
+// NewWithAsyncRecorder is New with an AsyncRecorder, and with the service
+// token the web apps read platform-level data with; a nil one admits no web
+// app.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken) *API {
+	api := newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil, nil)
+	api.server.serviceToken = serviceToken
+	return api
 }
 
 // Register mounts the publira.platform.v1 services on mux. What a mux carries
@@ -159,6 +168,12 @@ func handlerFromServer(server *platformServer) http.Handler {
 func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if actor, ok, err := server.serviceActor(req); ok {
+				if err != nil {
+					return nil, err
+				}
+				return next(context.WithValue(ctx, platformActorContextKey{}, actor), req)
+			}
 			_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
 			if err != nil {
 				return nil, err
@@ -235,7 +250,11 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(userPath, userHandler)
-	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server, traced)
+	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(authInterceptor),
+	)
 	mux.Handle(dashboardPath, dashboardHandler)
 	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server, traced)
 	mux.Handle(auditPath, auditHandler)

@@ -76,6 +76,9 @@ func (s *platformServer) auditActor(ctx context.Context, req connect.AnyRequest)
 	if err != nil {
 		return auditlog.PlatformActor{}, err
 	}
+	if err := actor.requirePerson(); err != nil {
+		return auditlog.PlatformActor{}, err
+	}
 	return actor.audit(req.Header()), nil
 }
 

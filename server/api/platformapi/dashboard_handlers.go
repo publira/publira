@@ -34,26 +34,25 @@ func (s *platformServer) GetDashboardSummary(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.GetDashboardSummaryRequest],
 ) (*connect.Response[publirasplatformv1.GetDashboardSummaryResponse], error) {
-	_, actorUser, _, err := s.authenticatePlatformSession(ctx, "", req.Header())
-	if err != nil {
+	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
 
 	totalTenants, err := s.queriesFor(ctx).CountAllTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to count tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count tenants for dashboard", err)
 	}
 	activeTenants, err := s.queriesFor(ctx).CountActiveTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to count active tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count active tenants for dashboard", err)
 	}
 	suspendedTenants, err := s.queriesFor(ctx).CountSuspendedTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to count suspended tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count suspended tenants for dashboard", err)
 	}
 	pendingEndUsers, err := s.queriesFor(ctx).CountPendingEndUsers(ctx)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to count pending end users for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count pending end users for dashboard", err)
 	}
 
 	limit := req.Msg.RecentEventsLimit
@@ -66,7 +65,7 @@ func (s *platformServer) GetDashboardSummary(
 
 	recentEvents, err := s.queriesFor(ctx).ListRecentPlatformEvents(ctx, limit)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list recent platform events for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list recent platform events for dashboard", err)
 	}
 
 	items := make([]*publirasplatformv1.DashboardRecentEvent, 0, len(recentEvents))

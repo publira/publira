@@ -227,9 +227,9 @@ These are URLs reachable inside the private network, not the public ones meant f
 
 ## Web service credential
 
-`PUBLIRA_WEB_SERVICE_TOKEN` is a secret `publira server` shares with the web apps, sent as `Authorization: Bearer <token>`, so that a console can read data every operator of a tenant sees alike without an operator's session and cache the answer per tenant. It is served on the internal listener only, like the rest of `publira.admin.v1`. Unset, the bearer is not recognized and the admin API accepts operator sessions alone.
+`PUBLIRA_WEB_SERVICE_TOKEN` is a secret `publira server` shares with the web apps, sent as `Authorization: Bearer <token>`, so that a console can read data every one of its operators sees alike without an operator's session and cache the answer for all of them. It is served on the internal listener only, like the rest of `publira.admin.v1` and `publira.platform.v1`. Unset, the bearer is not recognized and both APIs accept operator sessions alone.
 
-The call runs as a service principal of the tenant the request names, with no user and no role, and only on these RPCs; any other answers `permission_denied`:
+On the admin API the call runs as a service principal of the tenant the request names, with no user and no role, and only on these RPCs; any other answers `permission_denied`:
 
 - `AdminGenreService/ListGenres`
 - `AdminCreatorRoleService/ListCreatorRoles`
@@ -237,6 +237,17 @@ The call runs as a service principal of the tenant the request names, with no us
 - `AdminLabelService/ListLabels`, `GetLabel`
 - `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `GetEpisode`, `ListEpisodeCredits`
 - `AdminDashboardService/GetDashboard`
+
+On the platform API it runs as a service principal with no operator and no platform role, and only on these RPCs; any other behind the platform session answers `permission_denied`:
+
+- `PlatformTenantService/ListTenants`, `GetTenant`, `ListTenantMembers`, `ListTenantAdminInvitations`
+- `PlatformPolicyService/GetPlatformPolicy`, `GetPlatformRetentionDefaults`
+- `PlatformSettingsService/GetPlatformSettings`
+- `PlatformEmailSettingsService/GetPlatformEmailSettings`
+- `PlatformStorageSettingsService/GetPlatformStorageSettings`
+- `PlatformDashboardService/GetDashboardSummary`
+- `PlatformOperatorService/ListOperators`, `GetOperator`
+- `PlatformUserService/ListEndUsers`, `GetEndUser`
 
 ## Email renderer
 
