@@ -5,6 +5,8 @@ import 'package:publira/catalog/paged_list.dart';
 import 'package:publira/catalog/ranked_series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// How many positions one page of the ranking holds, as many as a page of the
@@ -19,8 +21,8 @@ const rankingPageLimit = 20;
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key, this.period = RankingPeriod.daily});
 
-  /// The chart the screen opens on. The reader switches between the periods
-  /// from there.
+  /// The chart on screen. The route is what holds it, so a switch on the
+  /// screen and a link arriving while it is open both change it the same way.
   final RankingPeriod period;
 
   @override
@@ -28,7 +30,6 @@ class RankingScreen extends StatefulWidget {
 }
 
 class _RankingScreenState extends State<RankingScreen> {
-  late var _period = widget.period;
   CatalogRepository? _catalog;
   CatalogPager<RankedSeriesItem, Null>? _pager;
 
@@ -50,18 +51,29 @@ class _RankingScreenState extends State<RankingScreen> {
     _read();
   }
 
+  /// A link to the other period lands on this same page rather than on a new
+  /// one, so the chart follows the route here.
+  @override
+  void didUpdateWidget(covariant RankingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.period != oldWidget.period) {
+      _read();
+    }
+  }
+
   @override
   void dispose() {
     _pager?.dispose();
     super.dispose();
   }
 
-  /// Starts [_period]'s chart from its first position. A token belongs to the
-  /// period it was issued for, so a switch never carries one across.
+  /// Starts the chart of [RankingScreen.period] from its first position. A
+  /// token belongs to the period it was issued for, so a switch never carries
+  /// one across.
   void _read() {
     _walks++;
     final catalog = _catalog!;
-    final period = _period;
+    final period = widget.period;
     Future<CatalogPageRead<RankedSeriesItem, Null>> read(String token) async {
       final page = await catalog.listRankedSeries(
         limit: rankingPageLimit,
@@ -78,14 +90,14 @@ class _RankingScreenState extends State<RankingScreen> {
     (_pager ??= CatalogPager(read)).restart(read);
   }
 
+  /// Moves the route to [period] in place, which [didUpdateWidget] then
+  /// follows. Keeping the period in the screen's own state instead would let
+  /// the route and the chart disagree, and a link naming the period the route
+  /// still held would change nothing.
   void _switchPeriod(RankingPeriod period) {
-    if (period == _period) {
-      return;
+    if (period != widget.period) {
+      context.replaceInTab(AppRoutes.rankingPath(period: period));
     }
-    setState(() {
-      _period = period;
-      _read();
-    });
   }
 
   /// A later page the API refused will be refused again: its token names a
@@ -128,7 +140,7 @@ class _RankingScreenState extends State<RankingScreen> {
                   ),
                 ),
               ],
-              selected: {_period},
+              selected: {widget.period},
               onSelectionChanged: (selection) =>
                   _switchPeriod(selection.single),
             ),

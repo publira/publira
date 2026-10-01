@@ -208,12 +208,41 @@ void main() {
 
       expect(isSelected(tester, RankingPeriod.daily), isTrue);
       expect(rowOf('weekly-1'), findsNothing);
+      // The route holds the period, so it names the chart on screen.
+      expect(router.state.uri.toString(), AppRoutes.rankingPath());
       // A token belongs to the chart it was issued for, so the switch starts
       // the daily one from the top rather than carrying the weekly one over.
       expect(
         chartReads().firstWhere((read) => read.period == RankingPeriod.daily),
         (period: RankingPeriod.daily, token: ''),
       );
+    });
+
+    testWidgets('follows a link to the other period while it is open', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        location: AppRoutes.rankingPath(period: RankingPeriod.weekly),
+        size: phoneSize,
+      );
+      await pumpUntilFound(tester, rowOf('weekly-1'));
+      // Switched on the screen first, so the link names the period the screen
+      // opened on rather than one it has never shown.
+      await tester.tap(find.byKey(const ValueKey('ranking-period-daily')));
+      await pumpUntilFound(tester, rowOf('daily-1'));
+
+      // What an incoming tenant link does.
+      router.go(AppRoutes.rankingPath(period: RankingPeriod.weekly));
+      await pumpUntilFound(tester, rowOf('weekly-1'));
+
+      expect(isSelected(tester, RankingPeriod.weekly), isTrue);
+      expect(rowOf('daily-1'), findsNothing);
+      final reads = chartReads();
+      final afterDaily = reads.skip(
+        reads.lastIndexWhere((read) => read.period == RankingPeriod.daily) + 1,
+      );
+      expect(afterDaily.first, (period: RankingPeriod.weekly, token: ''));
     });
 
     testWidgets('says so when no ranking has been computed', (tester) async {
