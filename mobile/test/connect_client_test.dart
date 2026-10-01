@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/error_details.dart';
 
 import 'support/connect_fixture_server.dart';
 
@@ -190,6 +191,71 @@ void main() {
             .having((error) => error.isNotFound, 'isNotFound', isTrue),
       ),
     );
+  });
+
+  test('unary keeps the ErrorInfo reasons an error body carries', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((_) async {
+        return http.Response(
+          jsonEncode({
+            'code': 'permission_denied',
+            'message': 'reader is credited on the episode',
+            'details': [
+              ConnectFixtureServer.errorInfoDetail(
+                readerCreditedOnEpisodeReason,
+              ),
+            ],
+          }),
+          403,
+        );
+      }),
+    );
+
+    expect(
+      () => client.unary('/publira.v1.RatingService/RateEpisode', {}),
+      throwsA(
+        isA<ConnectException>()
+            .having((error) => error.code, 'code', 'permission_denied')
+            .having((error) => error.reasons, 'reasons', [
+              readerCreditedOnEpisodeReason,
+            ]),
+      ),
+    );
+  });
+
+  group('errorReasonsOf', () {
+    test('reads the reason of an ErrorInfo detail the API owns', () {
+      expect(
+        errorReasonsOf([
+          ConnectFixtureServer.badRequestDetail('episode_id'),
+          ConnectFixtureServer.errorInfoDetail('READER_CREDITED_ON_EPISODE'),
+        ]),
+        ['READER_CREDITED_ON_EPISODE'],
+      );
+    });
+
+    test('skips a reason under another domain', () {
+      expect(
+        errorReasonsOf([
+          ConnectFixtureServer.errorInfoDetail(
+            'READER_CREDITED_ON_EPISODE',
+            domain: 'example.com',
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('skips a detail that does not decode', () {
+      expect(
+        errorReasonsOf([
+          {'type': 'google.rpc.ErrorInfo', 'value': 'CgUKA2Zv'},
+        ]),
+        isEmpty,
+      );
+      expect(errorReasonsOf(null), isEmpty);
+    });
   });
 
   test(

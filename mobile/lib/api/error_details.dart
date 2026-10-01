@@ -4,6 +4,17 @@ import 'dart:typed_data';
 /// The type name connect-go gives a `google.rpc.BadRequest` detail.
 const _badRequestType = 'google.rpc.BadRequest';
 
+/// The type name connect-go gives a `google.rpc.ErrorInfo` detail.
+const _errorInfoType = 'google.rpc.ErrorInfo';
+
+/// The `ErrorInfo.domain` the API sets on the reasons it owns. A reason under
+/// any other domain is not one of the values below.
+const _errorInfoDomain = 'publira';
+
+/// The ErrorInfo reason the API refuses a rating, a checkout, or a store
+/// purchase with when the reader is credited on the episode.
+const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
+
 /// The fields the `google.rpc.BadRequest` details of a Connect error body's
 /// `details` name.
 ///
@@ -35,6 +46,38 @@ List<String> fieldViolationsOf(Object? details) {
     }
   }
   return fields;
+}
+
+/// The reasons the API's own `google.rpc.ErrorInfo` details in a Connect
+/// error body's `details` name.
+///
+/// Read the way [fieldViolationsOf] reads its detail: `ErrorInfo.reason` (1)
+/// and `ErrorInfo.domain` (2), and a detail that does not decode is skipped.
+List<String> errorReasonsOf(Object? details) {
+  if (details is! List) {
+    return const [];
+  }
+  final reasons = <String>[];
+  for (final detail in details) {
+    if (detail is! Map || detail['type'] != _errorInfoType) {
+      continue;
+    }
+    final value = detail['value'];
+    if (value is! String) {
+      continue;
+    }
+    try {
+      final message = base64.decode(base64.normalize(value));
+      final domains = _lengthDelimited(message, 2).map(utf8.decode);
+      if (!domains.contains(_errorInfoDomain)) {
+        continue;
+      }
+      reasons.addAll(_lengthDelimited(message, 1).map(utf8.decode));
+    } on FormatException {
+      continue;
+    }
+  }
+  return reasons;
 }
 
 /// Every length-delimited value of field [number] in the protobuf [message].

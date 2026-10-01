@@ -988,6 +988,7 @@ class HttpCatalogRepository implements CatalogRepository {
           : CatalogFailureKind.unexpected,
       message: error.message,
       refused: _refusalCodes.contains(error.code),
+      reasons: error.reasons,
     );
   }
 
@@ -1254,6 +1255,9 @@ class HttpCatalogRepository implements CatalogRepository {
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: EpisodeAccess.fromWire(body['access']),
       images: _parseEpisodeImages(body['images']),
+      entitlementSource: EpisodeEntitlementSource.fromWire(
+        body['entitlementSource'],
+      ),
       previousEpisode: _neighborFromJson(
         body['previousEpisode'],
         'previousEpisode',
@@ -1301,6 +1305,9 @@ class HttpCatalogRepository implements CatalogRepository {
       score: rawScore < 0 ? 0 : (rawScore > 5 ? 5 : rawScore),
       ratingCount: _readCount(json, 'ratingCount', path),
       allowsMultiplePresses: json['mode'] == 'EPISODE_RATING_MODE_MULTIPLE',
+      // RateEpisode never carries it: a credited reader is refused before
+      // there is a response to read.
+      readerCredited: _readBool(json, 'readerCredited', path),
     );
   }
 

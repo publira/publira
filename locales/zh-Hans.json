@@ -4010,6 +4010,7 @@
         "count_single": "{$count}位读者已反馈",
         "failed": "无法记录反馈。请重试。",
         "press": "反馈",
+        "reader_credited": "您无法对自己作为作者的章节进行反馈。",
         "score": "反馈 ({$score}/5)",
         "sign_in": "登录后反馈",
         "submitting": "正在反馈…"
@@ -4019,6 +4020,7 @@
         "body_unnamed": "本页面仅限个人使用。",
         "dismiss": "关闭"
       },
+      "creator_access": "您作为作者可以阅读本章",
       "end": {
         "up_next": "接下来",
         "up_to_date_description": "《{$title}》还没有下一章。",

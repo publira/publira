@@ -72,8 +72,21 @@ class EpisodeEndPanel extends StatelessWidget {
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
+            // A purchase and the reader's own credit open the body alike, so
+            // the author is told which of the two this is.
+            if (detail.entitlementSource ==
+                EpisodeEntitlementSource.creator) ...[
+              AutospacedText(
+                key: const ValueKey('episode-end-creator-access'),
+                messages.viewerCreatorAccess,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              ),
+              const SizedBox(height: 24),
+            ],
             EpisodeReactionControl(episode: detail.episode),
-            const SizedBox(height: 24),
             if (onOpenComments != null)
               OutlinedButton.icon(
                 key: const ValueKey('episode-end-comments'),

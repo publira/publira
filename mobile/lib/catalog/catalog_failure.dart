@@ -22,7 +22,12 @@ enum CatalogFailureKind {
 /// A failed catalog read. [kind] is what the UI switches on; [message] is
 /// diagnostic only and must not be shown as user-facing copy.
 class CatalogFailure implements Exception {
-  const CatalogFailure(this.kind, {this.message = '', this.refused = false});
+  const CatalogFailure(
+    this.kind, {
+    this.message = '',
+    this.refused = false,
+    this.reasons = const [],
+  });
 
   final CatalogFailureKind kind;
   final String message;
@@ -31,6 +36,10 @@ class CatalogFailure implements Exception {
   /// does not have, a page outside it, a permission the reader lacks — which
   /// asking again cannot change. A server fault is not a refusal.
   final bool refused;
+
+  /// The ErrorInfo reasons the API named for a refusal, which is what tells a
+  /// screen why it was refused where the Connect code alone does not.
+  final List<String> reasons;
 
   @override
   String toString() => 'CatalogFailure($kind, $message)';

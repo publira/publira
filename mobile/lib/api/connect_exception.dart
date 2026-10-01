@@ -4,6 +4,7 @@ class ConnectException implements Exception {
     required this.code,
     required this.message,
     this.fieldViolations = const [],
+    this.reasons = const [],
   });
 
   /// Connect code such as `not_found` or `unavailable`. Transport and invalid
@@ -14,6 +15,11 @@ class ConnectException implements Exception {
   /// The request fields a `google.rpc.BadRequest` detail names, spelled as
   /// the proto spells them (`agreed_page_version_ids`).
   final List<String> fieldViolations;
+
+  /// The reasons the API's own `google.rpc.ErrorInfo` details carry, such as
+  /// `READER_CREDITED_ON_EPISODE`, which tell apart refusals that share a
+  /// [code].
+  final List<String> reasons;
 
   bool get isNotFound => code == 'not_found' || code == 'permission_denied';
 

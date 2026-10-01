@@ -93,6 +93,45 @@ void main() {
     expect(decoded!.episodes.values.single.detail.access, EpisodeAccess.free);
   });
 
+  test('why an entitled record opens survives the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: 'SeedMMBRAAA1',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 500,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.entitled,
+            entitlementSource: EpisodeEntitlementSource.creator,
+            images: [],
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    expect(
+      decoded!.episodes.values.single.detail.entitlementSource,
+      EpisodeEntitlementSource.creator,
+    );
+  });
+
+  test('an entitled record saved before its source was saved names none', () {
+    final decoded = OfflineIndex.fromJson(_index(_episode(access: 'entitled')));
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.access, EpisodeAccess.entitled);
+    expect(detail.entitlementSource, EpisodeEntitlementSource.unspecified);
+  });
+
   test('a record with an access this build cannot read is dropped', () {
     final decoded = OfflineIndex.fromJson(
       _index(_episode(access: 'EPISODE_ACCESS_SOMETHING_NEW', ownerId: null)),

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
@@ -1195,6 +1196,48 @@ void main() {
     expect(detail.images.single.url.queryParameters['t'], 'token-value');
   });
 
+  test('getEpisode reads why an entitled reader may open the body', () async {
+    Future<EpisodeDetail?> read(String? source) {
+      server.episodeResponse = {
+        'episode': {'publicId': 'EP', 'title': 'Paid', 'price': 500},
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_ENTITLED',
+        'entitlementSource': ?source,
+      };
+      return catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+    }
+
+    expect(
+      (await read('EPISODE_ENTITLEMENT_SOURCE_CREATOR'))!.entitlementSource,
+      EpisodeEntitlementSource.creator,
+    );
+    expect(
+      (await read('EPISODE_ENTITLEMENT_SOURCE_PURCHASE'))!.entitlementSource,
+      EpisodeEntitlementSource.purchase,
+    );
+    expect(
+      (await read(
+        'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET',
+      ))!.entitlementSource,
+      EpisodeEntitlementSource.accessTicket,
+    );
+    // protojson omits the zero value, and a name this build does not know is
+    // read the same way: the body still opens as entitled.
+    expect(
+      (await read(null))!.entitlementSource,
+      EpisodeEntitlementSource.unspecified,
+    );
+    final unknown = await read('EPISODE_ENTITLEMENT_SOURCE_GIFT');
+    expect(unknown!.access, EpisodeAccess.entitled);
+    expect(unknown.entitlementSource, EpisodeEntitlementSource.unspecified);
+  });
+
   test('getEpisode orders pages by displayOrder', () async {
     server.episodeResponse = {
       'episode': {'publicId': 'EP', 'title': 'Shuffled'},
@@ -2112,6 +2155,55 @@ void main() {
       for (final call in calls) {
         expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
       }
+    });
+
+    test(
+      'getEpisodeReaction reads whether the member is credited on it',
+      () async {
+        final internalId = ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        );
+        expect(
+          (await signedIn.getEpisodeReaction(internalId))!.readerCredited,
+          isFalse,
+        );
+
+        server.episodeRatingResponse = const {
+          'ratingCount': '3',
+          'readerCredited': true,
+        };
+        final credited = await signedIn.getEpisodeReaction(internalId);
+
+        expect(credited!.readerCredited, isTrue);
+        expect(credited.score, 0);
+        expect(credited.ratingCount, 3);
+      },
+    );
+
+    test('reactToEpisode carries the reason the press was refused', () async {
+      server.rateEpisodeError = (
+        status: HttpStatus.forbidden,
+        body: {
+          'code': 'permission_denied',
+          'message': 'reader is credited on the episode',
+          'details': [
+            ConnectFixtureServer.errorInfoDetail(readerCreditedOnEpisodeReason),
+          ],
+        },
+      );
+
+      expect(
+        () => signedIn.reactToEpisode(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedEpisodeId),
+        ),
+        throwsA(
+          isA<CatalogFailure>()
+              .having((error) => error.refused, 'refused', isTrue)
+              .having((error) => error.reasons, 'reasons', [
+                readerCreditedOnEpisodeReason,
+              ]),
+        ),
+      );
     });
 
     test('getReadingPosition answers the page the member stopped on', () async {

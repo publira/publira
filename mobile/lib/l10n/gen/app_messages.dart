@@ -1525,6 +1525,9 @@ abstract class AppMessages {
   /// `mobile.viewer.capture_notice.dismiss`
   String get viewerCaptureNoticeDismiss;
 
+  /// `mobile.viewer.creator_access`
+  String get viewerCreatorAccess;
+
   /// `mobile.viewer.end.up_next`
   String get viewerEndUpNext;
 
@@ -1597,6 +1600,9 @@ abstract class AppMessages {
 
   /// `mobile.viewer.reaction.press`
   String get viewerReactionPress;
+
+  /// `mobile.viewer.reaction.reader_credited`
+  String get viewerReactionReaderCredited;
 
   /// `mobile.viewer.reaction.score`
   String viewerReactionScore({required String score});
@@ -4016,6 +4022,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get viewerCreatorAccess {
+    return '著者として閲覧できます';
+  }
+
+  @override
   String get viewerEndUpNext {
     return '次のエピソード';
   }
@@ -4132,6 +4143,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerReactionPress {
     return 'リアクションする';
+  }
+
+  @override
+  String get viewerReactionReaderCredited {
+    return '著者としてクレジットされているエピソードにはリアクションできません。';
   }
 
   @override
@@ -6564,6 +6580,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerCreatorAccess {
+    return 'Open to you as its author';
+  }
+
+  @override
   String get viewerEndUpNext {
     return 'Up next';
   }
@@ -6680,6 +6701,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get viewerReactionPress {
     return 'React';
+  }
+
+  @override
+  String get viewerReactionReaderCredited {
+    return 'You cannot react to an episode you are credited on as its author.';
   }
 
   @override
@@ -9112,6 +9138,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get viewerCreatorAccess {
+    return '작가로서 열람할 수 있습니다';
+  }
+
+  @override
   String get viewerEndUpNext {
     return '다음 에피소드';
   }
@@ -9228,6 +9259,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerReactionPress {
     return '반응하기';
+  }
+
+  @override
+  String get viewerReactionReaderCredited {
+    return '작가로 등록된 에피소드에는 반응할 수 없습니다.';
   }
 
   @override
@@ -11660,6 +11696,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerCreatorAccess {
+    return '您作为作者可以阅读本章';
+  }
+
+  @override
   String get viewerEndUpNext {
     return '接下来';
   }
@@ -11776,6 +11817,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get viewerReactionPress {
     return '反馈';
+  }
+
+  @override
+  String get viewerReactionReaderCredited {
+    return '您无法对自己作为作者的章节进行反馈。';
   }
 
   @override
@@ -14208,6 +14254,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get viewerCreatorAccess {
+    return '您作為作者可以閱讀本章';
+  }
+
+  @override
   String get viewerEndUpNext {
     return '接下來';
   }
@@ -14324,6 +14375,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerReactionPress {
     return '回應';
+  }
+
+  @override
+  String get viewerReactionReaderCredited {
+    return '您無法回應自己作為作者的章節。';
   }
 
   @override

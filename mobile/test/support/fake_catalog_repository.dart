@@ -229,6 +229,9 @@ class FakeCatalogRepository implements CatalogRepository {
   final List<String> markedRead = [];
   CatalogFailure? reactionError;
 
+  /// What a press fails with while the reader's state still reads.
+  CatalogFailure? pressError;
+
   /// Held open by a test that switches readers while a reaction is loading.
   Completer<EpisodeReaction?>? reactionGate;
 
@@ -644,7 +647,7 @@ class FakeCatalogRepository implements CatalogRepository {
 
   @override
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId) async {
-    final error = reactionError;
+    final error = pressError ?? reactionError;
     if (error != null) {
       throw error;
     }
@@ -961,6 +964,8 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   int pageCount = 3,
   SeriesAgeRating? ageRating,
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
+  EpisodeEntitlementSource entitlementSource =
+      EpisodeEntitlementSource.unspecified,
 }) {
   final bodies = <String, EpisodeDetail>{};
   for (final item in fixtureSeries) {
@@ -972,6 +977,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
         seriesId: item.id,
         seriesTitle: item.title,
         access: access,
+        entitlementSource: entitlementSource,
         previousEpisode: index == 0
             ? null
             : fixtureNeighbor(episodes[index - 1]),
