@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
@@ -32,6 +33,7 @@ import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/published_page_screen.dart';
 import 'package:publira/screens/purchases_screen.dart';
+import 'package:publira/screens/ranking_screen.dart';
 import 'package:publira/screens/reading_history_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/reset_password_screen.dart';
@@ -97,6 +99,7 @@ abstract final class AppRoutes {
   static const genres = 'genres';
   static const genreDetail = 'genres/:genreId';
   static const tagDetail = 'tags/:tagSlug';
+  static const ranking = 'ranking';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
@@ -162,6 +165,18 @@ abstract final class AppRoutes {
   static const genresPath = '/$genres';
 
   static String genreDetailPath(String genreId) => '/$genres/$genreId';
+
+  /// The full ranking on [period]. The daily chart is the one the path names
+  /// on its own, as it is on the storefront's `/ranking`, so a link to either
+  /// chart opens on the same one here.
+  static String rankingPath({RankingPeriod period = RankingPeriod.daily}) =>
+      switch (period) {
+        RankingPeriod.daily => '/$ranking',
+        RankingPeriod.weekly => Uri(
+          path: '/$ranking',
+          queryParameters: {'period': 'weekly'},
+        ).toString(),
+      };
 
   /// A tag's slug is whatever an editor typed, so it is one encoded segment.
   static String tagDetailPath(String slug) =>
@@ -281,6 +296,15 @@ List<RouteBase> _tabRoutes() => [
     path: AppRoutes.tagDetail,
     builder: (context, state) =>
         TagScreen(tagSlug: state.pathParameters['tagSlug']!),
+  ),
+  GoRoute(
+    path: AppRoutes.ranking,
+    builder: (context, state) => RankingScreen(
+      // The storefront reads any other value as the daily chart too.
+      period: state.uri.queryParameters['period'] == 'weekly'
+          ? RankingPeriod.weekly
+          : RankingPeriod.daily,
+    ),
   ),
   GoRoute(
     path: AppRoutes.seriesDetail,

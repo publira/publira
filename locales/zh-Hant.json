@@ -3903,6 +3903,14 @@
       "sign_in_prompt": "登入後即可查看您購買的章節。",
       "title": "已購買"
     },
+    "ranking": {
+      "empty": "尚未產生排行榜。",
+      "load_failed": "無法顯示排行榜。請重試。",
+      "period_daily": "日榜",
+      "period_weekly": "週榜",
+      "rank_position": "第{$rank}名",
+      "title": "排行榜"
+    },
     "reading_history": {
       "account_description": "查看您讀完的章節，無論在哪裡閱讀。",
       "empty": "您還沒有讀完任何章節。讀到最後的章節會顯示在您登入的每台裝置上。",

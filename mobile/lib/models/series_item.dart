@@ -455,6 +455,20 @@ class RankedSeriesItem {
   final SeriesItem series;
 }
 
+/// One page of a ranking snapshot, as `ListRankedSeriesResponse` answers it.
+///
+/// [nextToken] belongs to the period and the rating it was issued for, and
+/// pins the snapshot the first page came from, so every page of one walk
+/// through a chart holds positions of the same ranking.
+class RankedSeriesPage {
+  const RankedSeriesPage({required this.rankedSeries, this.nextToken = ''});
+
+  final List<RankedSeriesItem> rankedSeries;
+
+  /// What the API calls the page after this one. Empty at the end of it.
+  final String nextToken;
+}
+
 /// One page of the catalog list, as `ListPublishedSeriesResponse` answers it.
 ///
 /// [nextToken] is opaque: the list hands it back unchanged to ask for the page

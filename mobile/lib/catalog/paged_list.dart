@@ -18,6 +18,7 @@ class PagedList<T> extends StatelessWidget {
     required this.emptyMessage,
     required this.failedMessage,
     required this.itemBuilder,
+    this.onRetryMore,
   });
 
   final CatalogPager<T, Object?> pager;
@@ -32,6 +33,10 @@ class PagedList<T> extends StatelessWidget {
   final String failedMessage;
 
   final Widget Function(T item) itemBuilder;
+
+  /// What the footer's retry does once a later page has failed. Asks for that
+  /// page again when `null`.
+  final VoidCallback? onRetryMore;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +88,7 @@ class PagedList<T> extends StatelessWidget {
                         pager.moreFailure,
                         failedMessage,
                       ),
-                onRetry: pager.retryMore,
+                onRetry: onRetryMore ?? pager.retryMore,
               );
             }
             return itemBuilder(items[index]);

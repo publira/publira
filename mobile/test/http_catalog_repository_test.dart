@@ -199,18 +199,47 @@ void main() {
       ageRating: SeriesAgeRating.all,
     );
 
-    expect(ranked, hasLength(2));
-    expect(ranked.first.rank, 1);
-    expect(ranked.first.series.id, ConnectFixtureServer.seedSeriesId);
-    expect(ranked.first.series.eyeCatchVariants, isNotEmpty);
+    final positions = ranked.rankedSeries;
+    expect(positions, hasLength(2));
+    expect(positions.first.rank, 1);
+    expect(positions.first.series.id, ConnectFixtureServer.seedSeriesId);
+    expect(positions.first.series.eyeCatchVariants, isNotEmpty);
     // A snapshot keeps the positions it recorded, so a series unpublished
     // since leaves the gap it was in.
-    expect(ranked.last.rank, 3);
+    expect(positions.last.rank, 3);
+    expect(ranked.nextToken, isEmpty);
 
     final request = server.requestsTo('ListRankedSeries').single;
     expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
     expect(request.body['limit'], 10);
     expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+    // The first page names no token, as every list RPC's first page does.
+    expect(request.body.containsKey('token'), isFalse);
+  });
+
+  test('listRankedSeries hands the next token back unchanged', () async {
+    server.rankedSeriesPageSize = 1;
+
+    final first = await catalog.listRankedSeries(
+      limit: 20,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+    );
+    final second = await catalog.listRankedSeries(
+      limit: 20,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+      token: first.nextToken,
+    );
+
+    expect([for (final item in first.rankedSeries) item.rank], [1]);
+    expect(first.nextToken, isNotEmpty);
+    expect([for (final item in second.rankedSeries) item.rank], [3]);
+    expect(second.nextToken, isEmpty);
+    expect(
+      server.requestsTo('ListRankedSeries').last.body['token'],
+      first.nextToken,
+    );
   });
 
   test('listRankedSeries names the day the daily chart asks for', () async {
@@ -235,7 +264,9 @@ void main() {
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
       ),
-      isEmpty,
+      isA<RankedSeriesPage>()
+          .having((page) => page.rankedSeries, 'rankedSeries', isEmpty)
+          .having((page) => page.nextToken, 'nextToken', isEmpty),
     );
   });
 
@@ -1657,7 +1688,10 @@ void main() {
         final searched = await catalog.searchSeries(query: 'Seed');
 
         expect(ids, [appOnly]);
-        expect([for (final item in ranked) item.series.id], [appOnly]);
+        expect(
+          [for (final item in ranked.rankedSeries) item.series.id],
+          [appOnly],
+        );
         expect(searched.series, isEmpty);
       },
     );

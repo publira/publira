@@ -266,10 +266,11 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<RankedSeriesItem>> listRankedSeries({
+  Future<RankedSeriesPage> listRankedSeries({
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String token = '',
   }) async {
     try {
       final tenantId = await _tenants.resolve();
@@ -290,9 +291,13 @@ class HttpCatalogRepository implements CatalogRepository {
           RankingPeriod.weekly => 'RANKING_PERIOD_WEEKLY',
         },
         'surface': appClientSurface,
+        if (token.isNotEmpty) 'token': token,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
-      return _parseRankedSeries(body['rankedSeries']);
+      return RankedSeriesPage(
+        rankedSeries: _parseRankedSeries(body['rankedSeries']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

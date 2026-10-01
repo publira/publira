@@ -82,13 +82,20 @@ abstract class CatalogRepository {
   /// [ageRating], in the positions that snapshot recorded. Each rating is a
   /// ranking of its own, so the all-ages one holds no rated work.
   ///
+  /// [limit] is how many positions one page holds. [token] is empty for the
+  /// first page, and otherwise the [RankedSeriesPage.nextToken] of the page
+  /// above the one wanted under the same [period] and [ageRating]. The API
+  /// refuses a token whose snapshot the retention purge has dropped since, and
+  /// the way on from there is the first page of the current ranking.
+  ///
   /// Empty for a tenant the ranking batch has not run for yet, which is an
   /// answer rather than a failure: nothing has been computed.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<List<RankedSeriesItem>> listRankedSeries({
+  Future<RankedSeriesPage> listRankedSeries({
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String token,
   });
 
   /// Detail for [publicId]. Returns `null` when the series is missing,

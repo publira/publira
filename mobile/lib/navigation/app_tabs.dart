@@ -74,6 +74,11 @@ extension TabNavigation on BuildContext {
   void pushReplacementInTab(String location, {Object? extra}) =>
       pushReplacement(AppTab.of(this).locate(location), extra: extra);
 
+  /// Replaces the screen on top of this tab's stack with [location], as the
+  /// same page: its state is kept and no transition runs.
+  void replaceInTab(String location) =>
+      replace(AppTab.of(this).locate(location));
+
   /// Replaces this tab's stack with the one [location] names.
   void goInTab(String location) => go(AppTab.of(this).locate(location));
 

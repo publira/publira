@@ -16,6 +16,8 @@ class FakeCatalogRepository implements CatalogRepository {
     this.seriesPageSize = 20,
     this.newestSeries = const [],
     this.rankedSeries = const [],
+    this.dailyRankedSeries,
+    this.rankedSeriesPageSize = 20,
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
@@ -47,6 +49,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.detailSeriesMoreError,
     this.newestSeriesError,
     this.rankedSeriesError,
+    this.rankedSeriesMoreError,
     this.creators = const [],
     this.detailError,
     this.creatorError,
@@ -142,8 +145,20 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What the new-arrivals shelf is answered with.
   List<SeriesItem> newestSeries;
 
-  /// What the ranking shelf is answered with.
+  /// What [listRankedSeries] answers for the weekly chart, and for the daily
+  /// one unless [dailyRankedSeries] says otherwise.
   List<RankedSeriesItem> rankedSeries;
+
+  /// What [listRankedSeries] answers for the daily chart. [rankedSeries] when
+  /// `null`.
+  List<RankedSeriesItem>? dailyRankedSeries;
+
+  /// The most positions one page of [listRankedSeries] holds, whatever limit
+  /// it is asked for, so a test can page a chart with only a few positions.
+  int rankedSeriesPageSize;
+
+  /// What a page of [listRankedSeries] after the first fails with.
+  CatalogFailure? rankedSeriesMoreError;
 
   Map<String, SeriesDetail> details;
 
@@ -255,6 +270,10 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// Age ratings [listRankedSeries] was called with, in order.
   final List<SeriesAgeRating> rankedSeriesAgeRatings = <SeriesAgeRating>[];
+
+  /// Every page [listRankedSeries] was asked for, in order.
+  final List<({RankingPeriod period, int limit, String token})>
+  rankedSeriesRequests = [];
 
   /// Pages over [series], [seriesPageSize] at a time.
   ///
@@ -499,18 +518,29 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<RankedSeriesItem>> listRankedSeries({
+  Future<RankedSeriesPage> listRankedSeries({
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String token = '',
   }) async {
     rankedSeriesPeriods.add(period);
     rankedSeriesAgeRatings.add(ageRating);
-    final error = rankedSeriesError;
+    rankedSeriesRequests.add((period: period, limit: limit, token: token));
+    final error = token.isEmpty
+        ? rankedSeriesError
+        : rankedSeriesMoreError ?? rankedSeriesError;
     if (error != null) {
       throw error;
     }
-    return List<RankedSeriesItem>.from(rankedSeries.take(limit));
+    final (page, nextToken) = _page(
+      period == RankingPeriod.daily
+          ? dailyRankedSeries ?? rankedSeries
+          : rankedSeries,
+      token,
+      min(limit, rankedSeriesPageSize),
+    );
+    return RankedSeriesPage(rankedSeries: page, nextToken: nextToken);
   }
 
   @override

@@ -785,7 +785,7 @@ void main() {
     expect(() => catalog.searchSeries(query: 'Seed'), throwsA(_network));
   });
 
-  test('the ranking shelf is answered by the API alone', () async {
+  test('the ranking is answered by the API alone', () async {
     origin.rankedSeries = [
       RankedSeriesItem(rank: 1, series: origin.series.single),
     ];
@@ -794,10 +794,12 @@ void main() {
       limit: 10,
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
+      token: '0',
     );
 
-    expect(ranked.single.rank, 1);
+    expect(ranked.rankedSeries.single.rank, 1);
     expect(origin.rankedSeriesPeriods, [RankingPeriod.weekly]);
     expect(origin.rankedSeriesAgeRatings, [SeriesAgeRating.all]);
+    expect(origin.rankedSeriesRequests.single.token, '0');
   });
 }

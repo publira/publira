@@ -143,18 +143,20 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<List<SeriesItem>> listNewestSeries({required int limit}) =>
       _origin.listNewestSeries(limit: limit);
 
-  /// The ranking shelf, which only the API can answer: a snapshot describes a
+  /// The ranking, which only the API can answer: a snapshot describes a
   /// window that has closed, and a stale one would name positions the tenant
   /// has moved on from.
   @override
-  Future<List<RankedSeriesItem>> listRankedSeries({
+  Future<RankedSeriesPage> listRankedSeries({
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String token = '',
   }) => _origin.listRankedSeries(
     limit: limit,
     period: period,
     ageRating: ageRating,
+    token: token,
   );
 
   @override
