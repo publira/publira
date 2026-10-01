@@ -22,6 +22,7 @@ import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { GenreChips } from "#components/genre-chips";
+import { JsonLd } from "#components/json-ld";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
@@ -44,10 +45,15 @@ import type {
   CatalogTopPopularSeries,
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
+import { getJsonLdSite, organizationJsonLd, websiteJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listMyRecentSeries } from "#lib/reading-progress";
-import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
+import {
+  getTenantDisplayTimeZone,
+  getTenantSiteInfo,
+  getTenantSiteLabel,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -1086,10 +1092,37 @@ const FeaturedCreatorsSection = async () => {
   );
 };
 
+/**
+ * The site and the tenant behind it, for a search engine. Nothing on the page
+ * waits for it: it sits behind a boundary of its own, and renders nothing a
+ * reader sees.
+ */
+const SiteJsonLd = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [site, tenant] = await Promise.all([
+    getJsonLdSite(tenantId, locale),
+    getTenantSiteInfo(tenantId),
+  ]);
+  if (!(site && tenant)) {
+    return null;
+  }
+
+  return (
+    <>
+      <JsonLd document={websiteJsonLd(site)} />
+      <JsonLd document={organizationJsonLd(site, tenant)} />
+    </>
+  );
+};
+
 const Page = () => (
   /* Four times the largest space a section keeps inside itself, so a boundary
      reads before its heading does. */
   <div className="mx-auto grid max-w-6xl gap-24 px-6 py-10">
+    <Suspense fallback={null}>
+      <SiteJsonLd />
+    </Suspense>
+
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -24,11 +25,17 @@ import {
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
 import { EpisodePrice } from "#components/episode-price";
+import { JsonLd } from "#components/json-ld";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
-import type { EpisodeSeriesSummary } from "#lib/catalog";
+import type {
+  EpisodeAccessState,
+  EpisodeDetail,
+  EpisodeSeriesSummary,
+} from "#lib/catalog";
+import { breadcrumbJsonLd, episodeJsonLd, getJsonLdSite } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
@@ -210,6 +217,49 @@ const EpisodeAgeRatingConfirmation = ({
   </AgeRatingGateConfirmation>
 );
 
+/**
+ * The episode and the trail down to it, for a search engine. Every read here
+ * is one the page body has already made, so it resolves from the same cache
+ * entries rather than holding the body back.
+ */
+const EpisodeJsonLd = async ({
+  access,
+  episode,
+  locale,
+  series,
+  tenantId,
+}: {
+  access: EpisodeAccessState;
+  episode: EpisodeDetail;
+  locale: Locale;
+  series: EpisodeSeriesSummary;
+  tenantId: string;
+}) => {
+  const [site, t] = await Promise.all([
+    getJsonLdSite(tenantId, locale),
+    getMessagesFor(locale),
+  ]);
+  if (!site) {
+    return null;
+  }
+
+  return (
+    <>
+      <JsonLd document={episodeJsonLd(site, { access, episode, series })} />
+      <JsonLd
+        document={breadcrumbJsonLd(site, [
+          { href: "/series", name: t("host.series.list_title") },
+          { href: `/series/${series.publicId}`, name: series.title },
+          {
+            href: episodePath(series.publicId, episode.publicId),
+            name: episodeDisplayTitle(t, episode),
+          },
+        ])}
+      />
+    </>
+  );
+};
+
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
 ) => {
@@ -288,159 +338,175 @@ const EpisodeContent = async (
   });
 
   return (
-    <EpisodeRatingGate
-      access={access}
-      checkoutSessionId={checkoutSessionId}
-      episodePublicId={episode.publicId}
-      locale={locale}
-      rating={series.ageRating}
-      seriesPublicId={series.publicId}
-      tenantId={tenantId}
-    >
-      <EpisodeAgeRatingConfirmation series={series} />
-      <AgeRatingGateContent>
-        <div>
-          <ContentViewTracker id={episode.id} kind="episode" />
-          {/* The reader opens the page: everything else is what the reader may
-          want after finishing, so it sits below the pages rather than above
-          them. */}
-          <section
-            aria-label={t("host.episode.body_label")}
-            className="border-b border-border"
-          >
-            <SectionErrorBoundary
-              title={
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="host.episode.body_error" />
-                </Suspense>
-              }
+    <>
+      {/* Outside the rating gate, for the reason the series page gives. */}
+      <EpisodeJsonLd
+        access={access}
+        episode={episode}
+        locale={locale}
+        series={series}
+        tenantId={tenantId}
+      />
+      <EpisodeRatingGate
+        access={access}
+        checkoutSessionId={checkoutSessionId}
+        episodePublicId={episode.publicId}
+        locale={locale}
+        rating={series.ageRating}
+        seriesPublicId={series.publicId}
+        tenantId={tenantId}
+      >
+        <EpisodeAgeRatingConfirmation series={series} />
+        <AgeRatingGateContent>
+          <div>
+            <ContentViewTracker id={episode.id} kind="episode" />
+            {/* The reader opens the page: everything else is what the reader may
+            want after finishing, so it sits below the pages rather than above
+            them. */}
+            <section
+              aria-label={t("host.episode.body_label")}
+              className="border-b border-border"
             >
-              <Suspense fallback={<EpisodeBodySkeleton />}>
-                <EpisodeBody
-                  access={access}
-                  acceptsPayments={tenant?.acceptsPayments ?? false}
-                  appStoreUrl={tenant?.appStoreUrl}
-                  checkoutSessionId={checkoutSessionId}
-                  commentMode={commentMode}
-                  commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
-                  episode={episode}
-                  googlePlayUrl={tenant?.googlePlayUrl}
-                  images={images}
-                  nextEpisode={nextEpisode}
-                  previousEpisode={previousEpisode}
-                  series={series}
-                  tenantId={tenantId}
-                />
-              </Suspense>
-            </SectionErrorBoundary>
-          </section>
-
-          <EpisodeColumn>
-            <CheckoutNotice checkout={purchaseSearchParams.checkout} />
-
-            {/* A running head: which instalment this is. The number is part of
-            the title line rather than a chip beside it, because a serial
-            numbers its instalments the way a book numbers its chapters. The
-            work is not named again here — the panel below ends on the link
-            back to it. */}
-            <header className="grid gap-2">
-              <h1 className="font-serif text-3xl leading-tight">
-                <span className="tabular-nums">
-                  <Suspense fallback={<SkeletonLine className="h-7 w-28" />}>
-                    <Message
-                      message="host.common.episode_number"
-                      values={{ number: episode.orderIndex }}
-                    />
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="host.episode.body_error" />
                   </Suspense>
-                </span>{" "}
-                {episode.title}
-              </h1>
-              {/* Who made this instalment. The episode's own credits, not the
-              series' — an artist who took over part way through is on the
-              episodes they drew and on none of the ones before them. */}
-              {episode.credits.length > 0 && (
-                <p className="text-sm">
-                  <CreatorCredits credits={episode.credits} locale={locale} />
-                </p>
-              )}
-              {/* The colophon: what the episode costs, when it appeared, how much
-              of it there is, and how long it stays open. */}
-              <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                <span className="tabular-nums">
-                  <EpisodePrice
-                    locale={locale}
-                    price={episode.price}
-                    purchaseSurface={episode.purchaseSurface}
-                  />
-                </span>
-                <Suspense fallback={null}>
-                  <EpisodeCreatorAccess
+                }
+              >
+                <Suspense fallback={<EpisodeBodySkeleton />}>
+                  <EpisodeBody
                     access={access}
+                    acceptsPayments={tenant?.acceptsPayments ?? false}
+                    appStoreUrl={tenant?.appStoreUrl}
                     checkoutSessionId={checkoutSessionId}
-                    episodePublicId={episode.publicId}
-                    seriesPublicId={series.publicId}
+                    commentMode={commentMode}
+                    commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
+                    episode={episode}
+                    googlePlayUrl={tenant?.googlePlayUrl}
+                    images={images}
+                    nextEpisode={nextEpisode}
+                    previousEpisode={previousEpisode}
+                    series={series}
                     tenantId={tenantId}
                   />
                 </Suspense>
-                {publishedAt ? (
-                  <span className="tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-                      <Message
-                        message="host.episode.published"
-                        values={{ date: publishedAt }}
-                      />
-                    </Suspense>
-                  </span>
-                ) : null}
-                {images.length > 0 ? (
-                  <span className="tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                      <Message
-                        message="host.episode.page_count_value"
-                        values={{ count: images.length }}
-                      />
-                    </Suspense>
-                  </span>
-                ) : null}
-                <span className="tabular-nums">
-                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                    <Message message="host.episode.reading_period" />{" "}
-                    {episode.readingPeriodHours > 0 ? (
-                      <Message
-                        message="host.episode.reading_period_hours"
-                        values={{ hours: episode.readingPeriodHours }}
-                      />
-                    ) : (
-                      <Message message="host.episode.reading_period_unlimited" />
-                    )}
-                  </Suspense>
-                </span>
-                {scheduledAt ? (
-                  <span className="tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-                      <Message message="host.episode.scheduled_at" />
-                    </Suspense>{" "}
-                    {scheduledAt}
-                  </span>
-                ) : null}
-              </p>
-            </header>
+              </SectionErrorBoundary>
+            </section>
 
-            {/* Directly under the running head, because finishing the pages is
-            when a reader decides whether to keep going. */}
-            <EpisodeEndPanel
-              episode={episode}
-              nextEpisode={nextEpisode}
-              previousEpisode={previousEpisode}
-              series={series}
-              shareText={shareText(t, locale, series.title, workCredits)}
-              shareTitle={episodeDisplayTitle(t, episode)}
-              tenantId={tenantId}
-            />
-          </EpisodeColumn>
-        </div>
-      </AgeRatingGateContent>
-    </EpisodeRatingGate>
+            <EpisodeColumn>
+              <CheckoutNotice checkout={purchaseSearchParams.checkout} />
+
+              {/* A running head: which instalment this is. The number is part of
+              the title line rather than a chip beside it, because a serial
+              numbers its instalments the way a book numbers its chapters. The
+              work is not named again here — the panel below ends on the link
+              back to it. */}
+              <header className="grid gap-2">
+                <h1 className="font-serif text-3xl leading-tight">
+                  <span className="tabular-nums">
+                    <Suspense fallback={<SkeletonLine className="h-7 w-28" />}>
+                      <Message
+                        message="host.common.episode_number"
+                        values={{ number: episode.orderIndex }}
+                      />
+                    </Suspense>
+                  </span>{" "}
+                  {episode.title}
+                </h1>
+                {/* Who made this instalment. The episode's own credits, not the
+                series' — an artist who took over part way through is on the
+                episodes they drew and on none of the ones before them. */}
+                {episode.credits.length > 0 && (
+                  <p className="text-sm">
+                    <CreatorCredits credits={episode.credits} locale={locale} />
+                  </p>
+                )}
+                {/* The colophon: what the episode costs, when it appeared, how much
+                of it there is, and how long it stays open. */}
+                <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span className="tabular-nums">
+                    <EpisodePrice
+                      locale={locale}
+                      price={episode.price}
+                      purchaseSurface={episode.purchaseSurface}
+                    />
+                  </span>
+                  <Suspense fallback={null}>
+                    <EpisodeCreatorAccess
+                      access={access}
+                      checkoutSessionId={checkoutSessionId}
+                      episodePublicId={episode.publicId}
+                      seriesPublicId={series.publicId}
+                      tenantId={tenantId}
+                    />
+                  </Suspense>
+                  {publishedAt ? (
+                    <span className="tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-44" />}
+                      >
+                        <Message
+                          message="host.episode.published"
+                          values={{ date: publishedAt }}
+                        />
+                      </Suspense>
+                    </span>
+                  ) : null}
+                  {images.length > 0 ? (
+                    <span className="tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message
+                          message="host.episode.page_count_value"
+                          values={{ count: images.length }}
+                        />
+                      </Suspense>
+                    </span>
+                  ) : null}
+                  <span className="tabular-nums">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                      <Message message="host.episode.reading_period" />{" "}
+                      {episode.readingPeriodHours > 0 ? (
+                        <Message
+                          message="host.episode.reading_period_hours"
+                          values={{ hours: episode.readingPeriodHours }}
+                        />
+                      ) : (
+                        <Message message="host.episode.reading_period_unlimited" />
+                      )}
+                    </Suspense>
+                  </span>
+                  {scheduledAt ? (
+                    <span className="tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-44" />}
+                      >
+                        <Message message="host.episode.scheduled_at" />
+                      </Suspense>{" "}
+                      {scheduledAt}
+                    </span>
+                  ) : null}
+                </p>
+              </header>
+
+              {/* Directly under the running head, because finishing the pages is
+              when a reader decides whether to keep going. */}
+              <EpisodeEndPanel
+                episode={episode}
+                nextEpisode={nextEpisode}
+                previousEpisode={previousEpisode}
+                series={series}
+                shareText={shareText(t, locale, series.title, workCredits)}
+                shareTitle={episodeDisplayTitle(t, episode)}
+                tenantId={tenantId}
+              />
+            </EpisodeColumn>
+          </div>
+        </AgeRatingGateContent>
+      </EpisodeRatingGate>
+    </>
   );
 };
 

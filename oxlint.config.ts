@@ -138,6 +138,21 @@ export default defineConfig({
     },
     {
       /**
+       * A schema.org document is the text of a
+       * `<script type="application/ld+json">`, and a child string there would
+       * be escaped as HTML, which is not JSON any more. So the one component
+       * that writes such an element sets its content directly, from
+       * `serializeJsonLd` in `lib/json-ld.ts`: `JSON.stringify` output with
+       * every `<` escaped, so no value in it, tenant-authored or not, can close
+       * the element and add markup.
+       */
+      files: ["apps/web-host/components/json-ld.tsx"],
+      rules: {
+        "react/no-danger": "off",
+      },
+    },
+    {
+      /**
        * All three apps ship their document with no `lang`, and scripts write
        * one once a locale has been read.
        *
