@@ -38,11 +38,26 @@ func newDBIntegrationEnv(t *testing.T) (*httptest.Server, *testutil.PostgresEnv)
 func newDBIntegrationEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
+	return newDBIntegrationEnvWith(t, mail, nil)
+}
+
+// newDBIntegrationEnvWithServiceToken is newDBIntegrationEnv for the cases that
+// are about a web app calling in with its own credential.
+func newDBIntegrationEnvWithServiceToken(t *testing.T, serviceToken *auth.ServiceToken) (*httptest.Server, *testutil.PostgresEnv) {
+	t.Helper()
+
+	return newDBIntegrationEnvWith(t, openMailGuard(), serviceToken)
+}
+
+func newDBIntegrationEnvWith(t *testing.T, mail *mailguard.Guard, serviceToken *auth.ServiceToken) (*httptest.Server, *testutil.PostgresEnv) {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
 
 	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail, nil)
+	api.server.serviceToken = serviceToken
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return server, pg

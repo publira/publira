@@ -12,6 +12,8 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -50,9 +52,9 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
 }
 
-// The web apps' credential reaches the tenant console's tenant-level reads on
-// the internal listener, never its writes, and nothing at all once the
-// variable is unset.
+// The web apps' credential reaches the tenant console's tenant-level reads and
+// the Platform Console's platform-level reads on the internal listener, never
+// their writes, and nothing at all once the variable is unset.
 func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -81,6 +83,25 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
 			t.Fatalf("GetTenantTimezone code = %v, want %v", code, connect.CodePermissionDenied)
 		}
+
+		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(http.DefaultClient, url)
+		policy := publirasplatformv1connect.NewPlatformPolicyServiceClient(http.DefaultClient, url)
+
+		listedTenants, err := tenants.ListTenants(t.Context(), bearerRequest(token, &publirasplatformv1.ListTenantsRequest{}))
+		if err != nil {
+			t.Fatalf("ListTenants: %v", err)
+		}
+		if len(listedTenants.Msg.Tenants) != 1 || listedTenants.Msg.Tenants[0].PublicId != tenant.PublicID {
+			t.Fatalf("tenants = %v, want the one seeded tenant", listedTenants.Msg.Tenants)
+		}
+		_, err = tenants.CreateTenant(t.Context(), bearerRequest(token, &publirasplatformv1.CreateTenantRequest{DefaultLocale: "en", Name: "Tenant B", Domain: "tenant-b.example.com"}))
+		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
+			t.Fatalf("CreateTenant code = %v, want %v", code, connect.CodePermissionDenied)
+		}
+		_, err = policy.UpdatePlatformPolicy(t.Context(), bearerRequest(token, &publirasplatformv1.UpdatePlatformPolicyRequest{}))
+		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
+			t.Fatalf("UpdatePlatformPolicy code = %v, want %v", code, connect.CodePermissionDenied)
+		}
 	})
 	t.Run("unset", func(t *testing.T) {
 		url := startInternalListener(t, pg, map[string]string{"PUBLIRA_WEB_SERVICE_TOKEN": ""})
@@ -89,6 +110,11 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 		_, err := genres.ListGenres(t.Context(), bearerRequest(token, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
 		if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 			t.Fatalf("ListGenres code = %v, want %v", code, connect.CodeUnauthenticated)
+		}
+		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(http.DefaultClient, url)
+		_, err = tenants.ListTenants(t.Context(), bearerRequest(token, &publirasplatformv1.ListTenantsRequest{}))
+		if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
+			t.Fatalf("ListTenants code = %v, want %v", code, connect.CodeUnauthenticated)
 		}
 	})
 }

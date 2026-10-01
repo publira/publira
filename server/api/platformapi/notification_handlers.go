@@ -38,8 +38,17 @@ func notificationPayloadJSON(raw json.RawMessage) string {
 	return string(raw)
 }
 
+// requirePlatformNotificationActor answers the operator whose notifications a
+// call reads or marks; a web app has none of its own.
 func (s *platformServer) requirePlatformNotificationActor(ctx context.Context) (platformActor, error) {
-	return s.requirePlatformActor(ctx, nil)
+	actor, err := s.requirePlatformActor(ctx, nil)
+	if err != nil {
+		return platformActor{}, err
+	}
+	if err := actor.requirePerson(); err != nil {
+		return platformActor{}, err
+	}
+	return actor, nil
 }
 
 func mapPlatformNotificationDescRows(rows []dbmodels.ListPlatformNotificationsForUserDescRow) []platformNotificationPageRow {

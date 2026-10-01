@@ -149,15 +149,17 @@ func runServer() int {
 
 	smtpTester := internalsmtp.NewClient()
 
+	webServiceToken := newWebServiceToken(logger)
+
 	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder, newWebServiceToken(logger))
+	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder, webServiceToken)
 	if err != nil {
 		logger.Error("failed to initialize admin api handler", "error", err)
 		return 1
 	}
 
 	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder)
+	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken)
 
 	imageHandler, err := imageserver.NewHandler(
 		dbmodels.New(pools.public),
