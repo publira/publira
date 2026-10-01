@@ -175,3 +175,48 @@ func TestDBEpisodePreviewIsRenderedFromTheSmallestStoredRendition(t *testing.T) 
 		t.Fatalf("preview: status = %d, body = %q", rec.Code, rec.Body.String())
 	}
 }
+
+// An upload writes the image row before its renditions, so a failed one can
+// leave a row with none. The reader never sees it as a page, so it is not one
+// of the opening pages either: the API and the route both skip it, and agree
+// on the two pages that follow.
+func TestDBEpisodePreviewSkipsAnImageRowWithNoRendition(t *testing.T) {
+	env := newPreviewDBEnv(t)
+	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
+	episode := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEPAY01",
+		Title:    "Paid",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    500,
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	orphan := uuid.Must(uuid.NewV7())
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
+		VALUES ($1, $2, $3, 1)
+	`, orphan, env.tenant.ID, episode.ID); err != nil {
+		t.Fatalf("insert an image row with no rendition: %v", err)
+	}
+	second := env.seedPage(t, episode.ID, 2)
+	third := env.seedPage(t, episode.ID, 3)
+
+	listed, err := dbmodels.New(env.pg.DB).ListEpisodePreviewImagesByEpisodeID(ctx, dbmodels.ListEpisodePreviewImagesByEpisodeIDParams{
+		EpisodeID: episode.ID,
+		PageCount: imageproc.EpisodePreviewPageCount,
+	})
+	if err != nil {
+		t.Fatalf("ListEpisodePreviewImagesByEpisodeID: %v", err)
+	}
+	if len(listed) != 2 || listed[0].ID != second || listed[1].ID != third {
+		t.Fatalf("listed preview pages = %+v, want %s and %s", listed, second, third)
+	}
+	for _, page := range listed {
+		if rec := env.get(t, "/images/episodes/"+page.ID.String()+"/preview"); rec.Code != http.StatusOK {
+			t.Fatalf("preview of listed page %s: status = %d, body = %q", page.ID, rec.Code, rec.Body.String())
+		}
+	}
+	if rec := env.get(t, "/images/episodes/"+orphan.String()+"/preview"); rec.Code != http.StatusNotFound {
+		t.Fatalf("preview of the row with no rendition: status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}

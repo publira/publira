@@ -410,7 +410,10 @@ type Querier interface {
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
 	// One page's preview source: the smallest stored rendition of a page that is
 	// among the first `page_count` of its episode. A later page is no row at all,
-	// so the preview route cannot be walked through a whole body.
+	// so the preview route cannot be walked through a whole body. Pages are
+	// counted as ListEpisodePreviewImagesByEpisodeID counts them, skipping an
+	// image row that has no rendition, so the two agree on which pages open the
+	// body.
 	//
 	// Neither the price nor the age rule is read: the preview is unreadable by
 	// construction, so anyone who may see the episode at all may hold it. Whether
@@ -1096,8 +1099,13 @@ type Querier interface {
 	// The opening pages of an episode's body, as the preview of a body the reader
 	// may not open offers them: the first `page_count` pages in reading order,
 	// each with the size of its smallest stored rendition, which is the one
-	// image-server renders the preview from. The order and the rendition are the
-	// ones GetEpisodePreviewImageByIDForTenant applies, so the pages this lists
+	// image-server renders the preview from.
+	//
+	// A page is an image row with at least one stored rendition. An upload writes
+	// the row before its renditions and outside a transaction, so a failed one can
+	// leave a row with none; ListEpisodeImagesByEpisodeID never shows such a row
+	// to a reader, and neither does this. GetEpisodePreviewImageByIDForTenant
+	// counts pages the same way and in the same order, so the pages this lists
 	// are the pages that route serves.
 	ListEpisodePreviewImagesByEpisodeID(ctx context.Context, arg ListEpisodePreviewImagesByEpisodeIDParams) ([]ListEpisodePreviewImagesByEpisodeIDRow, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
