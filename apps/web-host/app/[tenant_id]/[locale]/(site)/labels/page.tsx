@@ -59,6 +59,7 @@ const LabelRowsSkeleton = () => (
       <div className="flex items-center gap-4 py-3" key={index}>
         <Skeleton className="size-14 shrink-0 rounded-control" />
         <Skeleton className="h-4 w-40" />
+        <Skeleton className="ms-auto h-3 w-24 shrink-0" />
       </div>
     ))}
   </div>
@@ -222,6 +223,14 @@ const LabelsListData = async ({
               />
               <span className="min-w-0 flex-1 truncate underline-offset-4 group-hover:underline">
                 {label.name}
+              </span>
+              <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message
+                    message="host.common.series_count"
+                    values={{ count: label.seriesCount }}
+                  />
+                </Suspense>
               </span>
             </LocaleLink>
           </li>

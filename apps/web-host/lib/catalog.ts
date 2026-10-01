@@ -33,7 +33,7 @@ import type {
   EpisodeImage,
   EpisodeNeighbor,
   Genre,
-  Label,
+  PublishedLabel,
   Series,
   SeriesEyeCatchVariant,
   Tag,
@@ -628,19 +628,25 @@ const toSeriesCommentMode = (
 export interface LabelListItem {
   publicId: string;
   name: string;
+  /** Series published on the web right now. Zero for a label holding none. */
+  seriesCount: number;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
 /**
- * The generated `Label` fields {@link toLabelListItem} reads. Naming them
- * against the message type is what makes a proto rename fail here — a restated
- * structural type keeps compiling, and a label row then renders nameless with
- * nothing pointing at the cause.
+ * The generated `PublishedLabel` fields {@link toLabelListItem} reads. Naming
+ * them against the message type is what makes a proto rename fail here — a
+ * restated structural type keeps compiling, and a label row then renders
+ * nameless with nothing pointing at the cause.
  */
 type RawLabelListItem = Pick<
-  Label,
-  "eyeCatchImageUpdatedAt" | "eyeCatchImageVariants" | "name" | "publicId"
+  PublishedLabel,
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "name"
+  | "publicId"
+  | "publishedSeriesCount"
 >;
 
 export const toLabelListItem = (label: RawLabelListItem): LabelListItem => ({
@@ -648,6 +654,7 @@ export const toLabelListItem = (label: RawLabelListItem): LabelListItem => ({
   eyeCatchImageVariants: toEyeCatchImageVariants(label.eyeCatchImageVariants),
   name: label.name,
   publicId: label.publicId,
+  seriesCount: label.publishedSeriesCount,
 });
 
 export interface SeriesListPage {
@@ -1396,7 +1403,8 @@ export const listPublishedLabels = async (
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantLabelsTag(normalizedTenantId));
-  // Which labels the list holds depends on where their series are published.
+  // Which labels the list holds, and the series count on each, depend on
+  // where their series are published.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   let response: Awaited<

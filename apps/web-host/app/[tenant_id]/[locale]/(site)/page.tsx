@@ -1017,10 +1017,20 @@ const FeaturedLabelsSection = async () => {
       {featuredLabels.map((label) => (
         <li key={label.publicId}>
           <LocaleLink
-            className="flex items-baseline justify-between gap-4 py-3 underline-offset-4 hover:underline"
+            className="group flex items-baseline justify-between gap-4 py-3"
             href={`/labels/${label.publicId}`}
           >
-            {label.name}
+            <span className="truncate underline-offset-4 group-hover:underline">
+              {label.name}
+            </span>
+            <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message
+                  message="host.common.series_count"
+                  values={{ count: label.seriesCount }}
+                />
+              </Suspense>
+            </span>
           </LocaleLink>
         </li>
       ))}
