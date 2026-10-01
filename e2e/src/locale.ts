@@ -65,6 +65,23 @@ const openLocaleMenu = async (
 };
 
 /**
+ * Open the public site's header language menu, labelled in `from`, and hand
+ * back its option for `to`, already on screen.
+ */
+export const openHostLocaleMenu = async (
+  page: Page,
+  from: LocaleLabel,
+  to: LocaleLabel
+): Promise<Locator> => {
+  const option = page.getByRole("link", { exact: true, name: to });
+  await openLocaleMenu(
+    page.getByRole("button", { name: HOST_SWITCHER_TRIGGER[from] }),
+    option
+  );
+  return option;
+};
+
+/**
  * Pick a language from the public site's header control.
  *
  * Each option is a real link there — the locale is in the URL — so this is a
@@ -75,11 +92,7 @@ export const switchHostLocale = async (
   from: LocaleLabel,
   to: LocaleLabel
 ): Promise<void> => {
-  const option = page.getByRole("link", { exact: true, name: to });
-  await openLocaleMenu(
-    page.getByRole("button", { name: HOST_SWITCHER_TRIGGER[from] }),
-    option
-  );
+  const option = await openHostLocaleMenu(page, from, to);
   await option.click();
 };
 
