@@ -392,6 +392,82 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 	return max_order_index, err
 }
 
+const GetNextPublishedFreeEpisodeForTenant = `-- name: GetNextPublishedFreeEpisodeForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    epa.purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    JOIN published_free_episodes fe ON fe.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND e.series_id = $2
+    AND (e.order_index, e.id) > ($3::int4, $4::uuid)
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $5::text
+    )
+ORDER BY e.order_index ASC,
+    e.id ASC
+LIMIT 1
+`
+
+type GetNextPublishedFreeEpisodeForTenantParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SeriesID   uuid.UUID `json:"series_id"`
+	OrderIndex int32     `json:"order_index"`
+	EpisodeID  uuid.UUID `json:"episode_id"`
+	Surface    string    `json:"surface"`
+}
+
+type GetNextPublishedFreeEpisodeForTenantRow struct {
+	ID                   uuid.UUID `json:"id"`
+	PublicID             string    `json:"public_id"`
+	Title                string    `json:"title"`
+	OrderIndex           int32     `json:"order_index"`
+	Price                int32     `json:"price"`
+	PurchaseAvailability string    `json:"purchase_availability"`
+}
+
+// The first published episode after one episode in its own series whose body
+// is public at the moment of the read: priced at 0, or inside an open free
+// window, which is what published_free_episodes answers. It is where a reader
+// stopped at a paid episode can go on reading for nothing, so it is found by
+// the same (order_index, id) order and the same publication and surface rules
+// as ListPublishedEpisodeNeighborsForTenant, and is no row when the rest of the
+// series has no such episode.
+func (q *Queries) GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg GetNextPublishedFreeEpisodeForTenantParams) (GetNextPublishedFreeEpisodeForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetNextPublishedFreeEpisodeForTenant,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.OrderIndex,
+		arg.EpisodeID,
+		arg.Surface,
+	)
+	var i GetNextPublishedFreeEpisodeForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.OrderIndex,
+		&i.Price,
+		&i.PurchaseAvailability,
+	)
+	return i, err
+}
+
 const GetPublishedEpisodeForFollowerNotification = `-- name: GetPublishedEpisodeForFollowerNotification :one
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,

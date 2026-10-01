@@ -71,6 +71,8 @@ type stubTenantQueries struct {
 	adminImageTenant uuid.UUID
 	roles            []string
 	rolesErr         error
+	preview          dbmodels.GetEpisodePreviewImageByIDForTenantRow
+	previewErr       error
 }
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
@@ -150,6 +152,19 @@ func (s stubTenantQueries) GetEpisodeImageByIDForTenant(_ context.Context, arg d
 
 func (s stubTenantQueries) GetEpisodeImagePublicAccessByIDForTenant(context.Context, dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error) {
 	return s.public, s.publicErr
+}
+
+// GetEpisodePreviewImageByIDForTenant answers for the one page it holds and
+// for no other, which is what the real query does for a page past the opening
+// ones: that page is no row at all.
+func (s stubTenantQueries) GetEpisodePreviewImageByIDForTenant(_ context.Context, arg dbmodels.GetEpisodePreviewImageByIDForTenantParams) (dbmodels.GetEpisodePreviewImageByIDForTenantRow, error) {
+	if s.previewErr != nil {
+		return dbmodels.GetEpisodePreviewImageByIDForTenantRow{}, s.previewErr
+	}
+	if s.preview.ObjectKey == "" || arg.ID != s.preview.ID {
+		return dbmodels.GetEpisodePreviewImageByIDForTenantRow{}, sql.ErrNoRows
+	}
+	return s.preview, nil
 }
 
 func (s stubTenantQueries) ListTenantUserRoles(context.Context, uuid.UUID) ([]string, error) {

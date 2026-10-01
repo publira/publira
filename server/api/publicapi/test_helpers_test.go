@@ -102,6 +102,38 @@ func expectEpisodeNeighborsLookup(
 		WillReturnRows(rows)
 }
 
+// expectNextFreeEpisodeLookup registers the read of the first episode after
+// the one being read whose body is public right now. Passing no episode is a
+// series with none left, which is what the query returns as no row.
+func expectNextFreeEpisodeLookup(
+	mock sqlmock.Sqlmock,
+	tenantID uuid.UUID,
+	seriesID uuid.UUID,
+	orderIndex int32,
+	episodeID uuid.UUID,
+	next ...episodeNeighbor,
+) {
+	rows := sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "purchase_availability"})
+	for _, episode := range next {
+		rows.AddRow(episode.id, episode.publicID, episode.title, episode.orderIndex, episode.price, "all")
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNextPublishedFreeEpisodeForTenant)).
+		WithArgs(tenantID, seriesID, orderIndex, episodeID, "web").
+		WillReturnRows(rows)
+}
+
+// expectEpisodePreviewImagesLookup registers the read of a withheld body's
+// opening pages, answered with one page per given image id at 1200x1800.
+func expectEpisodePreviewImagesLookup(mock sqlmock.Sqlmock, episodeID uuid.UUID, imageIDs ...uuid.UUID) {
+	rows := sqlmock.NewRows([]string{"id", "display_order", "width", "height"})
+	for index, imageID := range imageIDs {
+		rows.AddRow(imageID, int32(index+1), int32(1200), int32(1800))
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodePreviewImagesByEpisodeID)).
+		WithArgs(episodeID, int32(2)).
+		WillReturnRows(rows)
+}
+
 // episodeCredit is one row of the credit read GetEpisodeDetail performs for
 // the episode it was asked about and its neighbours together.
 type episodeCredit struct {

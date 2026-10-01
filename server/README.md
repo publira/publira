@@ -188,6 +188,8 @@ After checking permissions, the image routes of `publira server` convert JPEG/PN
 
 For episode body images on a tenant site, the cached converted plaintext is never returned as-is: the server encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
 
+The preview of a withheld body, `GET /images/episodes/{media_id}/preview`, is not a body image in this sense and is never encrypted: it is a JPEG rendered by `imageproc.BuildEpisodePreview` from the page's smallest stored rendition, the same bytes for every reader, cached under a key of its own and served `public`. It answers for the episode's opening pages (`imageproc.EpisodePreviewPageCount`) once the episode is published, applies neither the price nor the tenant's age rule, and ignores `w` / `h` / `fit` / `q` and `Accept`.
+
 | Header | Value / meaning |
 | --- | --- |
 | `X-Publira-Image-Encryption` | `xor-hmac-sha256-v1` |

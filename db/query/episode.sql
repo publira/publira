@@ -509,6 +509,44 @@ UNION ALL
     LIMIT 1
 );
 
+-- name: GetNextPublishedFreeEpisodeForTenant :one
+-- The first published episode after one episode in its own series whose body
+-- is public at the moment of the read: priced at 0, or inside an open free
+-- window, which is what published_free_episodes answers. It is where a reader
+-- stopped at a paid episode can go on reading for nothing, so it is found by
+-- the same (order_index, id) order and the same publication and surface rules
+-- as ListPublishedEpisodeNeighborsForTenant, and is no row when the rest of the
+-- series has no such episode.
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    epa.purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    JOIN published_free_episodes fe ON fe.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND (e.order_index, e.id) > (sqlc.arg('order_index')::int4, sqlc.arg('episode_id')::uuid)
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
+ORDER BY e.order_index ASC,
+    e.id ASC
+LIMIT 1;
+
 -- name: MarkPublishedEpisodeAsRead :one
 -- Inserts the first completed read only after checking publication and body
 -- access in the same statement. A duplicate returns the preserved read_at.
