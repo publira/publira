@@ -26,7 +26,6 @@ require (
 	github.com/riverqueue/river v0.48.0
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.48.0
 	github.com/riverqueue/river/rivertype v0.48.0
-	github.com/stripe/stripe-go/v86 v86.4.2
 	github.com/stripe/stripe-go/v87 v87.0.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
@@ -121,6 +120,7 @@ require (
 	github.com/riverqueue/river/rivershared v0.48.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
