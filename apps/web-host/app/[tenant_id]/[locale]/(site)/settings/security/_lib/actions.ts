@@ -29,6 +29,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
+import { sendToProvider } from "#lib/social-sign-in-start";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
@@ -117,7 +118,7 @@ export const requestEmailChangeAction = async (
         tenantId,
         currentEmail,
         newEmail,
-        currentPassword,
+        { password: currentPassword },
         accessToken
       ),
     tenantId
@@ -139,6 +140,73 @@ export const requestEmailChangeAction = async (
     t("host.settings.email_change_requested")
   );
   redirect(successPath);
+};
+
+const confirmEmailChangeWithProviderFormSchema = async (locale: Locale) => {
+  const [currentEmail, newEmail, tenantId] = await Promise.all([
+    emailFormSchema(locale),
+    emailFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({
+    currentEmail,
+    locale: localeFormSchema,
+    newEmail,
+    provider: z.enum(SIGN_IN_PROVIDERS),
+    tenantId,
+  });
+};
+
+/**
+ * The email change of an account without a password, which has none to
+ * confirm with: the reader signs in again with the provider whose button they
+ * pressed, and the callback asks for the change with that sign-in.
+ */
+export const confirmEmailChangeWithProviderAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const schema =
+    await confirmEmailChangeWithProviderFormSchema(submittedLocale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      currentEmail: "value",
+      locale: "value",
+      newEmail: "value",
+      provider: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      toFormErrorMessage(parsed.error, {
+        fallback: validationErrorMessage(submittedLocale),
+        locale: submittedLocale,
+      })
+    );
+    redirect(errorPath);
+  }
+
+  const { currentEmail, locale, newEmail, provider, tenantId } = parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
+  );
+  await sendToProvider({
+    accessToken,
+    emailChange: { currentEmail, newEmail },
+    intent: "email_change",
+    locale,
+    provider,
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
+    tenantId,
+  });
 };
 
 const changePasswordFormSchema = async (locale: Locale) => {

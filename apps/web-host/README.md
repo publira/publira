@@ -137,7 +137,7 @@ The checkout button on a paid episode sends the reader to the URL `StartEpisodeC
 
 ### Sign in with Apple and Google
 
-`/login` and `/signup` offer a button for each provider `GetTenant` answers a client ID for, and `/settings/security` lists the providers linked to the account. A button sends the reader to the provider's authorization endpoint, which posts its answer to `POST /api/v1/auth/apple/callback` or `POST /api/v1/auth/google/callback` on the tenant's public domain; that is the redirect URI a tenant registers with Apple's Services ID and Google's web client. A first sign-in on a tenant that asks for consent to its terms continues on `/signup/continue`. The flow is in `lib/social-sign-in.ts`.
+`/login` and `/signup` offer a button for each provider `GetTenant` answers a client ID for, and `/settings/security` lists the providers linked to the account. A button sends the reader to the provider's authorization endpoint, which posts its answer to `POST /api/v1/auth/apple/callback` or `POST /api/v1/auth/google/callback` on the tenant's public domain; that is the redirect URI a tenant registers with Apple's Services ID and Google's web client. A first sign-in on a tenant that asks for consent to its terms continues on `/signup/continue`. An account without a password confirms its deletion on `/settings` and an email change on `/settings/security` with a fresh sign-in through the same callback, and `/settings/security` points it to `/reset-password` to set a first password. The flow is in `lib/social-sign-in.ts`.
 
 ## What it covers
 

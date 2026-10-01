@@ -3,7 +3,11 @@ import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
-import { deleteMe, loginWithIdToken } from "#lib/auth";
+import {
+  deleteMe,
+  loginWithIdToken,
+  requestPublicEmailChange,
+} from "#lib/auth";
 import type { IdTokenSignIn } from "#lib/auth";
 import { sealPublicSessionCookie } from "#lib/auth-session";
 import { buildLoginPath, PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
@@ -16,7 +20,10 @@ import {
   writePendingSignUp,
 } from "#lib/social-sign-in";
 import type { SignInRequest } from "#lib/social-sign-in";
-import { signInFailurePath } from "#lib/social-sign-in-paths";
+import {
+  CONFIRMING_SCREENS,
+  signInFailurePath,
+} from "#lib/social-sign-in-paths";
 import type { SignInOrigin } from "#lib/social-sign-in-paths";
 import { getTenantDefaultLocale } from "#lib/tenant";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
@@ -132,26 +139,41 @@ const finishLogin = async (
   );
 };
 
-const finishDeletion = async (
-  request: SignInRequest,
-  { idToken, nonce, provider }: IdTokenSignIn
-): Promise<Response> => {
-  const { accessToken, locale, tenantId } = request;
-  let deleted: boolean;
+/**
+ * Run what a fresh sign-in confirms with the session it was started from. A
+ * session that ended meanwhile sends the reader to sign in again, back to the
+ * screen the confirmation was asked from.
+ */
+const withConfirmingSession = async (
+  { locale, tenantId }: SignInRequest,
+  screen: string,
+  run: () => Promise<boolean>
+): Promise<boolean | Response> => {
   try {
-    deleted = await deleteMe(
-      tenantId,
-      { idToken, nonce, provider },
-      accessToken
-    );
+    return await run();
   } catch (error) {
     if (!isUnauthenticatedRpcError(error)) {
       throw error;
     }
     const defaultLocale = await getTenantDefaultLocale(tenantId);
     return seeOther(
-      buildLoginPath(locale, defaultLocale, "/settings", { revoked: true })
+      buildLoginPath(locale, defaultLocale, screen, { revoked: true })
     );
+  }
+};
+
+const finishDeletion = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, locale, tenantId } = request;
+  const deleted = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.delete,
+    () => deleteMe(tenantId, { idToken, nonce, provider }, accessToken)
+  );
+  if (deleted instanceof Response) {
+    return deleted;
   }
   const t = await getMessagesFor(locale);
   if (!deleted) {
@@ -166,6 +188,46 @@ const finishDeletion = async (
     status: "success",
   });
   return seeOther(`${loginPath}?${params.toString()}`);
+};
+
+const finishEmailChange = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, emailChange, locale, tenantId } = request;
+  const t = await getMessagesFor(locale);
+  if (!emailChange) {
+    return failure(request, t("host.settings.email_change_failed"));
+  }
+  const requested = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.email_change,
+    () =>
+      requestPublicEmailChange(
+        tenantId,
+        emailChange.currentEmail,
+        emailChange.newEmail,
+        { idToken, nonce, provider },
+        accessToken
+      )
+  );
+  if (requested instanceof Response) {
+    return requested;
+  }
+  if (!requested) {
+    return failure(request, t("host.settings.email_change_failed"));
+  }
+
+  const path = await tenantLocalePath(
+    tenantId,
+    locale,
+    CONFIRMING_SCREENS.email_change
+  );
+  const params = new URLSearchParams({
+    message: t("host.settings.email_change_requested"),
+    status: "success",
+  });
+  return seeOther(`${path}?${params.toString()}`);
 };
 
 /**
@@ -215,8 +277,15 @@ export const POST = async (
     provider: signInRequest.provider,
     redirectUri: signInRequest.redirectUri,
   };
-  if (signInRequest.intent === "delete") {
-    return finishDeletion(signInRequest, signIn);
+  switch (signInRequest.intent) {
+    case "delete": {
+      return finishDeletion(signInRequest, signIn);
+    }
+    case "email_change": {
+      return finishEmailChange(signInRequest, signIn);
+    }
+    default: {
+      return finishLogin(signInRequest, signIn, appleUserName(form.user));
+    }
   }
-  return finishLogin(signInRequest, signIn, appleUserName(form.user));
 };

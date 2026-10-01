@@ -1,19 +1,22 @@
+import type { Locale } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
+import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { listMyIdentities } from "#lib/auth";
 import { withPublicSessionReauth } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDER_NAMES } from "#lib/sign-in-provider";
-import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { getTenantDisplayTimeZone, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
   changePasswordAction,
+  confirmEmailChangeWithProviderAction,
   requestEmailChangeAction,
   unlinkIdentityAction,
 } from "./_lib/actions";
@@ -25,7 +28,7 @@ const submitClassName =
   "inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90";
 
 /**
- * Both forms here ask for the account's current password, so the two fields
+ * Both forms here ask an account with a password for it, so the two fields
  * carry the same label. Naming each section after its heading is what tells
  * them apart: a reader moving by landmark hears which form they are in, and a
  * locator scoped to the region resolves where the label alone matches twice.
@@ -34,8 +37,183 @@ const EMAIL_CHANGE_HEADING_ID = "email-change-heading";
 const LINKED_ACCOUNTS_HEADING_ID = "linked-accounts-heading";
 const PASSWORD_CHANGE_HEADING_ID = "password-change-heading";
 
+/**
+ * The reader's providers and whether the account has a password, read once for
+ * every section that asks.
+ */
+const readMyIdentities = cache((tenantId: string, locale: Locale) =>
+  withPublicSessionReauth(
+    locale,
+    "/settings/security",
+    () => listMyIdentities(tenantId),
+    tenantId
+  )
+);
+
+/**
+ * Whether the account confirms with its password. A failed read leaves the
+ * password forms, as it does for the deletion control.
+ */
+const readHasPassword = async (
+  tenantId: string,
+  locale: Locale
+): Promise<boolean> => {
+  const mine = await readMyIdentities(tenantId, locale);
+  return mine?.hasPassword ?? true;
+};
+
+const EmailAddressFields = () => (
+  <>
+    <div className="space-y-2">
+      <label htmlFor="currentEmail" className="text-sm font-medium">
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="host.settings.email_current_label" />
+        </Suspense>
+      </label>
+      <input
+        autoComplete="email"
+        className={fieldClassName}
+        id="currentEmail"
+        name="currentEmail"
+        placeholder="current@example.com"
+        required
+        type="email"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <label htmlFor="newEmail" className="text-sm font-medium">
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="host.settings.email_new_label" />
+        </Suspense>
+      </label>
+      <input
+        autoComplete="email"
+        className={fieldClassName}
+        id="newEmail"
+        name="newEmail"
+        placeholder="new@example.com"
+        required
+        type="email"
+      />
+    </div>
+  </>
+);
+
+const PasswordEmailChangeForm = ({ tenantId }: { tenantId: string }) => (
+  <form action={requestEmailChangeAction} className="space-y-4">
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+
+    <EmailAddressFields />
+
+    <div className="space-y-2">
+      <label htmlFor="currentPassword" className="text-sm font-medium">
+        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+          <Message message="host.settings.current_password_label" />
+        </Suspense>
+      </label>
+      <input
+        autoComplete="current-password"
+        className={fieldClassName}
+        id="currentPassword"
+        name="currentPassword"
+        placeholder="********"
+        required
+        type="password"
+      />
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+          <Message message="host.settings.password_required_help" />
+        </Suspense>
+      </p>
+    </div>
+
+    <div className="flex justify-end">
+      <button className={submitClassName} type="submit">
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.settings.email_change_submit" />
+        </Suspense>
+      </button>
+    </div>
+  </form>
+);
+
+/**
+ * An account without a password confirms with a fresh sign-in instead, to a
+ * linked provider the site can send the reader to. With none of those, the
+ * reader is pointed at setting a password first.
+ */
+const ProviderEmailChangeForm = async ({
+  locale,
+  tenantId,
+}: {
+  locale: Locale;
+  tenantId: string;
+}) => {
+  const [mine, clients] = await Promise.all([
+    readMyIdentities(tenantId, locale),
+    getTenantSignInClients(tenantId),
+  ]);
+  const linked = new Set(mine?.identities.map((identity) => identity.provider));
+  const canConfirmWithApple = linked.has("apple") && Boolean(clients.apple);
+  const canConfirmWithGoogle = linked.has("google") && Boolean(clients.google);
+  if (!(canConfirmWithApple || canConfirmWithGoogle)) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.settings.email_change_no_provider" />
+        </Suspense>
+      </p>
+    );
+  }
+
+  return (
+    <form action={confirmEmailChangeWithProviderAction} className="space-y-4">
+      <LocaleField />
+      <input name="tenantId" type="hidden" value={tenantId} />
+
+      <EmailAddressFields />
+
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+          <Message message="host.settings.email_change_confirm_with_provider" />
+        </Suspense>
+      </p>
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {canConfirmWithApple ? (
+          <button
+            className={submitClassName}
+            name="provider"
+            type="submit"
+            value="apple"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.settings.email_change_with_apple" />
+            </Suspense>
+          </button>
+        ) : null}
+        {canConfirmWithGoogle ? (
+          <button
+            className={submitClassName}
+            name="provider"
+            type="submit"
+            value="google"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.settings.email_change_with_google" />
+            </Suspense>
+          </button>
+        ) : null}
+      </div>
+    </form>
+  );
+};
+
 const EmailChangeSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const hasPassword = await readHasPassword(tenantId, locale);
 
   return (
     <section
@@ -47,74 +225,11 @@ const EmailChangeSection = async () => {
           <Message message="host.settings.email_change_heading" />
         </Suspense>
       </h2>
-      <form action={requestEmailChangeAction} className="space-y-4">
-        <LocaleField />
-        <input name="tenantId" type="hidden" value={tenantId} />
-
-        <div className="space-y-2">
-          <label htmlFor="currentEmail" className="text-sm font-medium">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="host.settings.email_current_label" />
-            </Suspense>
-          </label>
-          <input
-            autoComplete="email"
-            className={fieldClassName}
-            id="currentEmail"
-            name="currentEmail"
-            placeholder="current@example.com"
-            required
-            type="email"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="newEmail" className="text-sm font-medium">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="host.settings.email_new_label" />
-            </Suspense>
-          </label>
-          <input
-            autoComplete="email"
-            className={fieldClassName}
-            id="newEmail"
-            name="newEmail"
-            placeholder="new@example.com"
-            required
-            type="email"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="currentPassword" className="text-sm font-medium">
-            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-              <Message message="host.settings.current_password_label" />
-            </Suspense>
-          </label>
-          <input
-            autoComplete="current-password"
-            className={fieldClassName}
-            id="currentPassword"
-            name="currentPassword"
-            placeholder="********"
-            required
-            type="password"
-          />
-          <p className="text-xs text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-              <Message message="host.settings.password_required_help" />
-            </Suspense>
-          </p>
-        </div>
-
-        <div className="flex justify-end">
-          <button className={submitClassName} type="submit">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="host.settings.email_change_submit" />
-            </Suspense>
-          </button>
-        </div>
-      </form>
+      {hasPassword ? (
+        <PasswordEmailChangeForm tenantId={tenantId} />
+      ) : (
+        <ProviderEmailChangeForm locale={locale} tenantId={tenantId} />
+      )}
     </section>
   );
 };
@@ -126,8 +241,41 @@ const EmailChangeSectionFallback = () => (
   </section>
 );
 
+/**
+ * An account without a password has none to change. The reset flow sets a
+ * first one through a link mailed to the account's address, so that is where
+ * the reader is sent.
+ */
+const PasswordSetSection = () => (
+  <section
+    aria-labelledby={PASSWORD_CHANGE_HEADING_ID}
+    className="border border-border bg-card p-6"
+  >
+    <h2 className="mb-2 text-lg font-semibold" id={PASSWORD_CHANGE_HEADING_ID}>
+      <Suspense fallback={<SkeletonLine className="h-6 w-36" />}>
+        <Message message="host.settings.password_set_heading" />
+      </Suspense>
+    </h2>
+    <p className="mb-4 text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message="host.settings.password_set_description" />
+      </Suspense>
+    </p>
+    <div className="flex justify-end">
+      <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
+        <LocaleLink className={submitClassName} href="/reset-password">
+          <Message message="host.settings.password_set_link" />
+        </LocaleLink>
+      </Suspense>
+    </div>
+  </section>
+);
+
 const PasswordChangeSection = async () => {
-  const tenantId = await getTenantId();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  if (!(await readHasPassword(tenantId, locale))) {
+    return <PasswordSetSection />;
+  }
 
   return (
     <section
@@ -229,12 +377,7 @@ const PasswordChangeSectionFallback = () => (
 const LinkedAccountsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [mine, t, timeZone] = await Promise.all([
-    withPublicSessionReauth(
-      locale,
-      "/settings/security",
-      () => listMyIdentities(tenantId),
-      tenantId
-    ),
+    readMyIdentities(tenantId, locale),
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);

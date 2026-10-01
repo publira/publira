@@ -25,9 +25,9 @@ import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
  * What the fresh sign-in is for: signing in, or confirming that an account
- * without a password is to be deleted.
+ * without a password is to be deleted or to move to another address.
  */
-export const SIGN_IN_INTENTS = ["login", "delete"] as const;
+export const SIGN_IN_INTENTS = ["login", "delete", "email_change"] as const;
 
 export type SignInIntent = (typeof SIGN_IN_INTENTS)[number];
 
@@ -85,6 +85,9 @@ export const SIGN_IN_REQUEST_COOKIE_NAME = profileCookieName(
 
 const signInRequestSchema = z.object({
   accessToken: z.string().min(1).optional(),
+  emailChange: z
+    .object({ currentEmail: z.string(), newEmail: z.string() })
+    .optional(),
   intent: z.enum(SIGN_IN_INTENTS),
   locale: localeFormSchema,
   nonce: z.string().min(1),
@@ -97,10 +100,16 @@ const signInRequestSchema = z.object({
 
 export interface SignInRequest {
   /**
-   * The session a deletion is confirmed for. The provider's POST carries no
-   * `SameSite=Lax` cookie, so the session cookie never reaches the callback.
+   * The session a deletion or an email change is confirmed for. The provider's
+   * POST carries no `SameSite=Lax` cookie, so the session cookie never reaches
+   * the callback.
    */
   accessToken?: string;
+  /**
+   * The addresses an email change was asked with, which wait here while the
+   * reader is at the provider.
+   */
+  emailChange?: { currentEmail: string; newEmail: string };
   intent: SignInIntent;
   locale: Locale;
   nonce: string;

@@ -523,11 +523,29 @@ export const getPublicCurrentUser = async (
   }
 };
 
+/**
+ * How the signed-in reader confirms a change to their own account: with its
+ * password or, for an account without one, with a fresh sign-in to a linked
+ * provider.
+ */
+export type AccountConfirmation =
+  | { password: string }
+  | { idToken: string; nonce: string; provider: SignInProvider };
+
+/** The confirmation fields `RequestEmailChange` and `DeleteMe` both take. */
+const identityConfirmationFields = (
+  confirmation: Exclude<AccountConfirmation, { password: string }>
+) => ({
+  idToken: confirmation.idToken,
+  nonce: confirmation.nonce,
+  provider: IDENTITY_PROVIDERS[confirmation.provider],
+});
+
 export const requestPublicEmailChange = async (
   tenantId: string,
   currentEmail: string,
   newEmail: string,
-  currentPassword: string,
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
@@ -539,9 +557,11 @@ export const requestPublicEmailChange = async (
     const response = await apiClient.auth.requestEmailChange(
       {
         currentEmail,
-        currentPassword,
         newEmail,
         tenant: { tenantId },
+        ...("password" in confirmation
+          ? { currentPassword: confirmation.password }
+          : identityConfirmationFields(confirmation)),
       },
       buildSessionHeaders(sid)
     );
@@ -662,15 +682,10 @@ export const updateMe = async (
   }
 };
 
-/**
- * Delete the signed-in reader's account, confirmed with its password or, for
- * an account without one, with a fresh sign-in to a linked provider.
- */
+/** Delete the signed-in reader's account. */
 export const deleteMe = async (
   tenantId: string,
-  confirmation:
-    | { password: string }
-    | { idToken: string; nonce: string; provider: SignInProvider },
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
@@ -680,14 +695,12 @@ export const deleteMe = async (
 
   try {
     await apiClient.auth.deleteMe(
-      "password" in confirmation
-        ? { password: confirmation.password, tenant: { tenantId } }
-        : {
-            idToken: confirmation.idToken,
-            nonce: confirmation.nonce,
-            provider: IDENTITY_PROVIDERS[confirmation.provider],
-            tenant: { tenantId },
-          },
+      {
+        tenant: { tenantId },
+        ...("password" in confirmation
+          ? { password: confirmation.password }
+          : identityConfirmationFields(confirmation)),
+      },
       buildSessionHeaders(sid)
     );
 

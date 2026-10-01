@@ -10,17 +10,31 @@ export interface SignInOrigin {
   tenantId: string;
 }
 
+/** The settings screen each confirming sign-in is started from. */
+export const CONFIRMING_SCREENS: Record<
+  Exclude<SignInIntent, "login">,
+  string
+> = {
+  delete: "/settings",
+  email_change: "/settings/security",
+};
+
 /**
  * Where a sign-in that did not finish sends the reader back to: the sign-in
- * screen, or the settings screen a deletion was confirmed from. Without a
- * message the reader chose to stop, and nothing is said about it.
+ * screen, or the settings screen a deletion or an email change was confirmed
+ * from. Without a message the reader chose to stop, and nothing is said about
+ * it.
  */
 export const signInFailurePath = async (
   { intent, locale, returnTo, tenantId }: SignInOrigin,
   message?: string
 ): Promise<string> => {
-  if (intent === "delete") {
-    const path = await tenantLocalePath(tenantId, locale, "/settings");
+  if (intent !== "login") {
+    const path = await tenantLocalePath(
+      tenantId,
+      locale,
+      CONFIRMING_SCREENS[intent]
+    );
     return message
       ? `${path}?${new URLSearchParams({ message, status: "error" }).toString()}`
       : path;

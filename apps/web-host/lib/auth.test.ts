@@ -258,9 +258,38 @@ describe("web-host auth", () => {
         "TENANT001",
         "old@example.com",
         "new@example.com",
-        "pw"
+        { password: "pw" }
       )
     ).resolves.toBe(false);
+  });
+
+  it("requestPublicEmailChange: confirms an account without a password with a fresh sign-in", async () => {
+    const { requestPublicEmailChange } = await importAuth();
+    mockRequestEmailChange.mockResolvedValueOnce({ requested: true });
+
+    await expect(
+      requestPublicEmailChange(
+        "TENANT001",
+        "old@example.com",
+        "new@example.com",
+        {
+          idToken: "header.payload.signature",
+          nonce: "nonce-value",
+          provider: "google",
+        }
+      )
+    ).resolves.toBe(true);
+    expect(mockRequestEmailChange).toHaveBeenCalledWith(
+      {
+        currentEmail: "old@example.com",
+        idToken: "header.payload.signature",
+        newEmail: "new@example.com",
+        nonce: "nonce-value",
+        provider: IdentityProvider.GOOGLE,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
   });
 
   it("getMe: Unauthenticated cases are propagated to the caller without retrying.", async () => {

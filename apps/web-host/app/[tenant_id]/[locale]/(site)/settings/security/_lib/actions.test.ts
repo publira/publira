@@ -5,7 +5,9 @@ const {
   mockAssertSameOrigin,
   mockChangePublicPassword,
   mockRedirect,
+  mockRequestPublicEmailChange,
   mockRequirePublicSession,
+  mockSendToProvider,
   mockUnlinkMyIdentity,
   mockWritePublicSessionCookie,
 } = vi.hoisted(() => ({
@@ -14,7 +16,9 @@ const {
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  mockRequestPublicEmailChange: vi.fn(),
   mockRequirePublicSession: vi.fn(),
+  mockSendToProvider: vi.fn(),
   mockUnlinkMyIdentity: vi.fn(),
   mockWritePublicSessionCookie: vi.fn(),
 }));
@@ -25,7 +29,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/auth", () => ({
   changePublicPassword: mockChangePublicPassword,
-  requestPublicEmailChange: vi.fn(),
+  requestPublicEmailChange: mockRequestPublicEmailChange,
   unlinkMyIdentity: mockUnlinkMyIdentity,
 }));
 
@@ -40,6 +44,10 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
+
+vi.mock("#lib/social-sign-in-start", () => ({
+  sendToProvider: mockSendToProvider,
+}));
 
 vi.mock("#lib/tenant", () => ({
   getTenantDefaultLocale: () => "en",
@@ -246,6 +254,102 @@ describe("unlinkIdentityAction", () => {
     );
 
     expect(mockUnlinkMyIdentity).not.toHaveBeenCalled();
+    expect(lastFlash().status).toBe("error");
+  });
+});
+
+const emailChangeForm = (overrides: Record<string, string> = {}): FormData => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries({
+    currentEmail: "reader@example.com",
+    locale: "en",
+    newEmail: "moved@example.com",
+    tenantId,
+    ...overrides,
+  })) {
+    data.set(name, value);
+  }
+  return data;
+};
+
+describe("requestEmailChangeAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("confirms the change with the account's password", async () => {
+    mockRequestPublicEmailChange.mockResolvedValueOnce(true);
+    const { requestEmailChangeAction } = await importActions();
+
+    await expect(
+      requestEmailChangeAction(emailChangeForm({ currentPassword }))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(mockRequestPublicEmailChange).toHaveBeenCalledWith(
+      tenantId,
+      "reader@example.com",
+      "moved@example.com",
+      { password: currentPassword },
+      accessToken
+    );
+    expect(lastFlash().status).toBe("success");
+  });
+});
+
+describe("confirmEmailChangeWithProviderAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("sends the reader to the provider with the addresses and the session", async () => {
+    const { confirmEmailChangeWithProviderAction } = await importActions();
+
+    await confirmEmailChangeWithProviderAction(
+      emailChangeForm({ provider: "google" })
+    );
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockSendToProvider).toHaveBeenCalledWith({
+      accessToken,
+      emailChange: {
+        currentEmail: "reader@example.com",
+        newEmail: "moved@example.com",
+      },
+      intent: "email_change",
+      locale: "en",
+      provider: "google",
+      returnTo: "/settings/security",
+      tenantId,
+    });
+    expect(mockRequestPublicEmailChange).not.toHaveBeenCalled();
+  });
+
+  it("refuses an address it cannot send to before the reader leaves the site", async () => {
+    const { confirmEmailChangeWithProviderAction } = await importActions();
+
+    await expect(
+      confirmEmailChangeWithProviderAction(
+        emailChangeForm({ newEmail: "not-an-address", provider: "google" })
+      )
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(mockRequirePublicSession).not.toHaveBeenCalled();
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+    expect(lastFlash().status).toBe("error");
+  });
+
+  it("refuses a provider the site does not know", async () => {
+    const { confirmEmailChangeWithProviderAction } = await importActions();
+
+    await expect(
+      confirmEmailChangeWithProviderAction(
+        emailChangeForm({ provider: "github" })
+      )
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(mockSendToProvider).not.toHaveBeenCalled();
     expect(lastFlash().status).toBe("error");
   });
 });
