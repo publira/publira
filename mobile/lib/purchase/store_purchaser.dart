@@ -33,6 +33,25 @@ InAppPurchaseStore? deviceInAppPurchaseStore() {
   };
 }
 
+/// Registers the [InAppPurchasePlatform] of the store this device buys
+/// through and returns it, or returns `null` where there is none.
+///
+/// The app depends on the store plugins' implementations rather than on
+/// `in_app_purchase`, the package that would otherwise register them: neither
+/// declares a `dartPluginClass`, so the generated plugin registrant leaves
+/// [InAppPurchasePlatform.instance] unset, and reading it throws.
+InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
+  switch (deviceInAppPurchaseStore()) {
+    case InAppPurchaseStore.appStore:
+      InAppPurchaseStoreKitPlatform.registerPlatform();
+    case InAppPurchaseStore.googlePlay:
+      InAppPurchaseAndroidPlatform.registerPlatform();
+    case null:
+      return null;
+  }
+  return InAppPurchasePlatform.instance;
+}
+
 /// Buys an episode with the store's payment sheet and hands every transaction
 /// the store reports to the server before finishing it.
 ///

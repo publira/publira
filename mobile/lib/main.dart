@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:publira/app.dart';
 import 'package:publira/config.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -17,10 +16,7 @@ Future<void> main() async {
     PubliraApp.fromConfig(
       config: config,
       messaging: messaging,
-      // Registered before `main` on the platforms that have a store.
-      inAppPurchase: deviceInAppPurchaseStore() == null
-          ? null
-          : InAppPurchasePlatform.instance,
+      inAppPurchase: registerDeviceInAppPurchasePlatform(),
     ),
   );
 }
