@@ -242,23 +242,44 @@ func (s *apiServer) ListRecommendedSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+
+	res, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, limit, cursor)
+	if err != nil {
+		return nil, err
+	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
+	return connect.NewResponse(res), nil
+}
+
+// tenantRecommendedSeriesPage answers one page of the tenant-wide
+// recommendation order. The cursor arrives with its surface key already taken
+// off, and the tokens go back without one, so ListMyRecommendedSeries can give
+// a reader without features this exact page under tokens of its own.
+func (s *apiServer) tenantRecommendedSeriesPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	surface string,
+	limit int32,
+	cursor pagination.Cursor,
+) (*publirav1.ListRecommendedSeriesResponse, error) {
 	var keys recommendedCursorKeys
 	if !cursor.IsZero() {
+		var err error
 		keys, err = decodeRecommendedCursorKeys(cursor)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	ranking, err := s.latestSeriesRanking(ctx, tenant.ID, surface)
+	ranking, err := s.latestSeriesRanking(ctx, tenantID, surface)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenantID.String())
 	}
 
 	// One row past the page: its presence is what says another page exists.
 	pageRows, err := s.recommendedSeriesPageRows(
 		ctx,
-		tenant.ID,
+		tenantID,
 		surface,
 		ranking,
 		cursor.Direction == pagination.Backward,
@@ -266,7 +287,7 @@ func (s *apiServer) ListRecommendedSeries(
 		limit+1,
 	)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenantID.String())
 	}
 	pageRows, hasMore := pagination.Page(pageRows, limit, cursor.Direction)
 
@@ -277,9 +298,9 @@ func (s *apiServer) ListRecommendedSeries(
 		sortRankByID[pageRow.id] = pageRow.sortRank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenantID.String())
 	}
 	items, err := s.publishedSeriesItems(ctx, rows)
 	if err != nil {
@@ -314,6 +335,5 @@ func (s *apiServer) ListRecommendedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRecommendedRecoveryToken(pagination.Forward, keys)
 	}
-	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
