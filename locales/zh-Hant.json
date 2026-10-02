@@ -3115,6 +3115,7 @@
         "guest_title": "本章為付費內容",
         "guest_unpayable_description": "要閱讀本章，請登入並請管理員為您發放閱讀券。本網站目前無法受理購買。",
         "login": "登入後閱讀",
+        "next_free_episode": "免費閱讀第{$number}章",
         "purchase": "前往結帳",
         "signed_in_app_only_description": "本章在應用程式內販售。使用此帳戶在應用程式內購買後，也可以在這裡閱讀。",
         "signed_in_payable_description": "您目前沒有閱讀權限。您的閱讀券已過期或尚未發放。如果您已經購買過本章，請確認是否使用了其他帳戶登入。",

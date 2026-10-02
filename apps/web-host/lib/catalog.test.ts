@@ -508,6 +508,71 @@ describe("catalog.getEpisodeDetail", () => {
     const detail = result.ok ? result.value : null;
     expect(detail?.previousEpisode).toBeUndefined();
     expect(detail?.nextEpisode).toBeUndefined();
+    expect(detail?.nextFreeEpisode).toBeUndefined();
+  });
+
+  it("Carry the blurred preview and the next free episode of a locked body", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        orderIndex: 2,
+        price: 300,
+        publicId: "EP_002",
+        title: "Episode 2",
+      },
+      images: [],
+      nextFreeEpisode: {
+        isFree: true,
+        orderIndex: 4,
+        price: 0,
+        publicId: "EP_004",
+        title: "Episode 4",
+      },
+      previewImages: [
+        {
+          contentType: "image/webp",
+          displayOrder: 2,
+          height: 320,
+          id: "img_2",
+          imageUrl: "/images/episodes/img_2/preview",
+          width: 226,
+        },
+        {
+          contentType: "image/webp",
+          displayOrder: 1,
+          height: 320,
+          id: "img_1",
+          imageUrl: "/images/episodes/img_1/preview",
+          width: 226,
+        },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_002",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.images).toEqual([]);
+    expect(detail?.previewImages.map((image) => image.imageUrl)).toEqual([
+      "/images/episodes/img_1/preview",
+      "/images/episodes/img_2/preview",
+    ]);
+    expect(detail?.nextFreeEpisode).toEqual({
+      isFree: true,
+      orderIndex: 4,
+      price: 0,
+      publicId: "EP_004",
+      purchaseSurface: "all",
+      title: "Episode 4",
+    });
   });
 
   it("null if episode is missing", async () => {

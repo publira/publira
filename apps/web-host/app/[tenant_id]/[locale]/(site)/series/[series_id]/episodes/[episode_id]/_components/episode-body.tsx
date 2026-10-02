@@ -23,6 +23,7 @@ import { getLocale } from "#lib/locale";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
+import { EpisodeGateFrame } from "./episode-gate-frame";
 import { EpisodeViewer } from "./episode-viewer";
 
 export const EpisodeBody = async ({
@@ -36,6 +37,8 @@ export const EpisodeBody = async ({
   googlePlayUrl,
   images,
   nextEpisode,
+  nextFreeEpisode,
+  previewImages,
   previousEpisode,
   series,
   tenantId,
@@ -54,6 +57,10 @@ export const EpisodeBody = async ({
   images: EpisodeImageItem[];
   /** Absent at the ends of the series; the viewer's own chrome links to them. */
   nextEpisode?: EpisodeNeighborItem;
+  /** What the gate offers instead of a locked body, when there is one. */
+  nextFreeEpisode?: EpisodeNeighborItem;
+  /** The blurred opening pages the gate is drawn over. */
+  previewImages: EpisodeImageItem[];
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
   tenantId: string;
@@ -78,19 +85,23 @@ export const EpisodeBody = async ({
   ]);
   if (!sessionId) {
     return (
-      <EpisodeBodyNotice>
+      <EpisodeGateFrame
+        previewImages={previewImages}
+        readingDirection={episode.readingDirection}
+      >
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
           appStoreUrl={appStoreUrl}
           episodeId={episode.id}
           episodePublicId={episode.publicId}
           googlePlayUrl={googlePlayUrl}
+          nextFreeEpisode={nextFreeEpisode}
           purchaseSurface={episode.purchaseSurface}
           seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
         />
-      </EpisodeBodyNotice>
+      </EpisodeGateFrame>
     );
   }
 
@@ -141,18 +152,22 @@ export const EpisodeBody = async ({
   }
 
   return (
-    <EpisodeBodyNotice>
+    <EpisodeGateFrame
+      previewImages={previewImages}
+      readingDirection={episode.readingDirection}
+    >
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
         appStoreUrl={appStoreUrl}
         episodeId={episode.id}
         episodePublicId={episode.publicId}
         googlePlayUrl={googlePlayUrl}
+        nextFreeEpisode={nextFreeEpisode}
         purchaseSurface={episode.purchaseSurface}
         seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}
       />
-    </EpisodeBodyNotice>
+    </EpisodeGateFrame>
   );
 };

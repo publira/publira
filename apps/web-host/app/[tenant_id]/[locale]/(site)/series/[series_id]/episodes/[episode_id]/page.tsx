@@ -256,8 +256,16 @@ const EpisodeContent = async (
     notFound();
   }
 
-  const { access, episode, images, nextEpisode, previousEpisode, series } =
-    result.value;
+  const {
+    access,
+    episode,
+    images,
+    nextEpisode,
+    nextFreeEpisode,
+    previewImages,
+    previousEpisode,
+    series,
+  } = result.value;
   // GetSeriesDetail resolves a series override against the tenant default.
   // If that read failed, do not offer a form whose submission might be
   // rejected; the next request retries the uncached failure value.
@@ -314,7 +322,9 @@ const EpisodeContent = async (
         checkoutSessionId={checkoutSessionId}
         episodePublicId={episode.publicId}
         locale={locale}
+        previewImages={previewImages}
         rating={series.ageRating}
+        readingDirection={episode.readingDirection}
         seriesPublicId={series.publicId}
         tenantId={tenantId}
       >
@@ -348,6 +358,8 @@ const EpisodeContent = async (
                     googlePlayUrl={tenant?.googlePlayUrl}
                     images={images}
                     nextEpisode={nextEpisode}
+                    nextFreeEpisode={nextFreeEpisode}
+                    previewImages={previewImages}
                     previousEpisode={previousEpisode}
                     series={series}
                     tenantId={tenantId}

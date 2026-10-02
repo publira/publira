@@ -3115,6 +3115,7 @@
         "guest_title": "本章为付费内容",
         "guest_unpayable_description": "要阅读本章，请登录并请管理员为您发放阅读券。本站点目前无法受理购买。",
         "login": "登录后阅读",
+        "next_free_episode": "免费阅读第{$number}章",
         "purchase": "前往结算",
         "signed_in_app_only_description": "本章在应用内销售。使用此账户在应用内购买后，也可以在这里阅读。",
         "signed_in_payable_description": "您暂无阅读权限。您的阅读券已过期或尚未发放。如果您已经购买过本章，请确认是否使用了其他账户登录。",

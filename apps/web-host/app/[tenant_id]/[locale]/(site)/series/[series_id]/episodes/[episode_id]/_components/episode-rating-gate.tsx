@@ -3,11 +3,16 @@ import type { ReactNode } from "react";
 
 import { AgeRatingGate } from "#components/age-rating-gate";
 import type { RestrictedAgeRating } from "#lib/age-rating";
-import type { EpisodeAccessState } from "#lib/catalog";
+import type {
+  EpisodeAccessState,
+  EpisodeDetail,
+  EpisodeImageItem,
+} from "#lib/catalog";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
 
 import { getReaderAgeRestriction } from "../_lib/reader-age-restriction";
 import { EpisodeAgeGate } from "./episode-age-gate";
+import { EpisodeGateFrame } from "./episode-gate-frame";
 
 /**
  * Both age gates in front of the episode page, in the order a reader should
@@ -22,7 +27,9 @@ export const EpisodeRatingGate = async ({
   children,
   episodePublicId,
   locale,
+  previewImages,
   rating,
+  readingDirection,
   seriesPublicId,
   tenantId,
 }: {
@@ -36,7 +43,10 @@ export const EpisodeRatingGate = async ({
   children: ReactNode;
   episodePublicId: string;
   locale: Locale;
+  /** The blurred opening pages the tenant's rule is drawn over. */
+  previewImages: EpisodeImageItem[];
   rating?: RestrictedAgeRating;
+  readingDirection: EpisodeDetail["readingDirection"];
   seriesPublicId: string;
   tenantId: string;
 }) => {
@@ -54,14 +64,17 @@ export const EpisodeRatingGate = async ({
       : undefined;
   if (ageRestriction) {
     return (
-      <div className="mx-auto grid max-w-6xl px-6 py-10">
+      <EpisodeGateFrame
+        previewImages={previewImages}
+        readingDirection={readingDirection}
+      >
         <EpisodeAgeGate
           episodePublicId={episodePublicId}
           hasBirthDate={ageRestriction.hasBirthDate}
           seriesPublicId={seriesPublicId}
           signedIn={ageRestriction.signedIn}
         />
-      </div>
+      </EpisodeGateFrame>
     );
   }
 

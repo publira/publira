@@ -1,11 +1,4 @@
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
 import { QrCode, toQrCodePath } from "@publira/ui-components/qr-code";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -14,10 +7,11 @@ import type { ReactNode } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import type { EpisodePurchaseSurface } from "#lib/catalog";
+import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
 
 import { episodeLoginHref } from "../_lib/access-gate";
 import { startEpisodeCheckoutAction } from "../_lib/actions";
+import { episodePath } from "../_lib/episode-path";
 
 /**
  * The stores the tenant's app is listed in: each one's link, and above it a
@@ -64,13 +58,15 @@ const AppStoreLinks = ({
 );
 
 /**
- * What stands where the pages would be when the reader may not open them: why
- * the body is closed, and the one thing that opens it.
+ * The card over the preview when the reader may not open the pages: why the
+ * body is closed, the one thing that opens it, and the nearest later episode
+ * they could read instead.
  *
  * That action is the screen's single Shu. On an episode a reader can read, the
  * Shu is the mark on the next episode below the pages; here the next thing to
  * do is to get into this one, so the mark moves to the action that does it and
- * the row below carries none.
+ * the row below carries none. The free episode is a way around this one rather
+ * than into it, so it is a link under the actions and not a third button.
  */
 export const EpisodeAccessGate = ({
   acceptsPayments,
@@ -78,6 +74,7 @@ export const EpisodeAccessGate = ({
   episodeId,
   episodePublicId,
   googlePlayUrl,
+  nextFreeEpisode,
   purchaseSurface,
   seriesPublicId,
   signedIn,
@@ -89,6 +86,8 @@ export const EpisodeAccessGate = ({
   episodeId: string;
   episodePublicId: string;
   googlePlayUrl?: string;
+  /** Absent when no later episode of the series is free right now. */
+  nextFreeEpisode?: EpisodeNeighborItem;
   purchaseSurface: EpisodePurchaseSurface;
   seriesPublicId: string;
   signedIn: boolean;
@@ -163,48 +162,63 @@ export const EpisodeAccessGate = ({
   }
 
   return (
-    <EmptyState>
-      <EmptyStateHeading>
-        <EmptyStateTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+    <div className="grid gap-6">
+      <div className="grid gap-2">
+        <p className="font-serif text-xl leading-tight">
+          <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-64" />}>
             {signedIn ? (
               <Message message="host.episode.gate.signed_in_title" />
             ) : (
               <Message message="host.episode.gate.guest_title" />
             )}
           </Suspense>
-        </EmptyStateTitle>
-        <EmptyStateDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             {closedBecause}
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyStateHeading>
-      <EmptyStateActions>
-        <div className="grid justify-items-center gap-6">
-          {/* Signed in, the store is the one way into this episode and carries
-            the Shu. A guest who bought it in the app still has to sign in, so
-            signing in keeps it. */}
-          {soldInAppOnly && (appStoreUrl || googlePlayUrl) ? (
-            <AppStoreLinks
-              appStoreUrl={appStoreUrl}
-              googlePlayUrl={googlePlayUrl}
-              variant={signedIn ? "secondary" : "outline"}
-            />
-          ) : null}
-          <div className="flex flex-wrap justify-center gap-3">
-            {accessAction}
-            <LinkButton
-              render={<LocaleLink href={`/series/${seriesPublicId}`} />}
-              variant="outline"
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="host.episode.to_series_detail" />
-              </Suspense>
-            </LinkButton>
-          </div>
+        </p>
+      </div>
+      <div className="grid justify-items-center gap-6">
+        {/* Signed in, the store is the one way into this episode and carries
+          the Shu. A guest who bought it in the app still has to sign in, so
+          signing in keeps it. */}
+        {soldInAppOnly && (appStoreUrl || googlePlayUrl) ? (
+          <AppStoreLinks
+            appStoreUrl={appStoreUrl}
+            googlePlayUrl={googlePlayUrl}
+            variant={signedIn ? "secondary" : "outline"}
+          />
+        ) : null}
+        <div className="flex flex-wrap justify-center gap-3">
+          {accessAction}
+          <LinkButton
+            render={<LocaleLink href={`/series/${seriesPublicId}`} />}
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.episode.to_series_detail" />
+            </Suspense>
+          </LinkButton>
         </div>
-      </EmptyStateActions>
-    </EmptyState>
+        {nextFreeEpisode ? (
+          <LinkButton
+            render={
+              <LocaleLink
+                href={episodePath(seriesPublicId, nextFreeEpisode.publicId)}
+              />
+            }
+            variant="link"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message
+                message="host.episode.gate.next_free_episode"
+                values={{ number: nextFreeEpisode.orderIndex }}
+              />
+            </Suspense>
+          </LinkButton>
+        ) : null}
+      </div>
+    </div>
   );
 };
