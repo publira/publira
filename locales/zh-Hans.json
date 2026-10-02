@@ -4152,22 +4152,30 @@
       "updated": "您的个人资料已更新。"
     },
     "change_email": {
+      "confirm_with_provider": "您的账户没有密码。请使用关联的账户重新登录以发送确认邮件。",
       "current_label": "当前邮箱地址",
       "failed": "无法申请邮箱地址变更。请检查您输入的内容。",
       "load_failed": "无法读取您的邮箱地址。",
       "new_label": "新的邮箱地址",
+      "no_provider": "与您关联的账户目前都无法在此应用中登录。如需变更邮箱地址，请先设置密码。",
       "password_label": "当前密码",
       "requested": "我们已向您的当前邮箱地址和新邮箱地址各发送一封确认邮件。请打开两个链接完成变更。",
       "same_email": "请输入与当前不同的邮箱地址。",
       "submit": "发送确认邮件",
-      "title": "变更邮箱地址"
+      "title": "变更邮箱地址",
+      "with_apple": "通过Apple确认",
+      "with_google": "通过Google确认"
     },
     "change_password": {
       "changed": "您的密码已变更。您其他设备上的登录已退出。",
       "current_label": "当前密码",
       "failed": "无法变更您的密码。请检查您输入的内容。",
+      "load_failed": "无法确认您的账户是否设有密码。",
       "new_confirm_label": "确认新密码",
       "new_label": "新密码",
+      "set_description": "您的账户没有密码。请申请重设密码邮件，并通过邮件中的链接设置密码，之后也可以使用邮箱地址登录。",
+      "set_link": "申请重设密码邮件",
+      "set_title": "设置密码",
       "submit": "变更密码",
       "title": "变更密码",
       "unchanged": "请输入与当前密码不同的新密码。"

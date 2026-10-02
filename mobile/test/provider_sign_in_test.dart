@@ -372,6 +372,205 @@ void main() {
     });
   });
 
+  group('the email address and password of an account without a password', () {
+    setUp(() {
+      auth = fakeAuthController(session: fakeSession, repository: repository);
+      repository
+        ..hasPassword = false
+        ..identities = const [
+          LinkedIdentity(
+            provider: IdentityProvider.google,
+            email: 'member@gmail.example',
+          ),
+        ];
+    });
+
+    final googleConfirm = find.byKey(
+      const ValueKey('change-email-with-google'),
+    );
+
+    testWidgets('an email change confirms with a fresh sign-in to the linked '
+        'provider', (tester) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, googleConfirm);
+
+      expect(find.byKey(const ValueKey('change-email-password')), findsNothing);
+      // Apple is offered by the device but not linked to this account.
+      expect(
+        find.byKey(const ValueKey('change-email-with-apple')),
+        findsNothing,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-email-new')),
+        'moved@example.com',
+      );
+      await tester.tap(googleConfirm);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-email-requested')),
+      );
+
+      expect(providerSignIn.requested, [IdentityProvider.google]);
+      final call = repository.emailChanges.single;
+      expect(call.currentEmail, repository.email);
+      expect(call.newEmail, 'moved@example.com');
+      expect(call.currentPassword, isEmpty);
+      expect(call.credential?.idToken, 'google-id-token-1');
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('an address the form refuses never opens the provider', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, googleConfirm);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-email-new')),
+        repository.email,
+      );
+      await tester.tap(googleConfirm);
+      await tester.pump();
+
+      expect(
+        find.text('Enter an address different from your current one.'),
+        findsOneWidget,
+      );
+      expect(providerSignIn.requested, isEmpty);
+      expect(repository.emailChanges, isEmpty);
+    });
+
+    testWidgets('a closed provider sheet leaves the email form as it was', (
+      tester,
+    ) async {
+      providerSignIn.failure = const ProviderSignInCancelled();
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, googleConfirm);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-email-new')),
+        'moved@example.com',
+      );
+      await tester.tap(googleConfirm);
+      await pumpUntilTrue(tester, () => providerSignIn.requested.isNotEmpty);
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('change-email-error')), findsNothing);
+      expect(repository.emailChanges, isEmpty);
+      expect(tester.widget<FilledButton>(googleConfirm).onPressed, isNotNull);
+    });
+
+    testWidgets('a sign-in to another account keeps the form and says why', (
+      tester,
+    ) async {
+      repository.identities = const [
+        LinkedIdentity(provider: IdentityProvider.apple, email: ''),
+        LinkedIdentity(provider: IdentityProvider.google, email: ''),
+      ];
+      repository.accountFailure = const AuthFailure(
+        AuthFailureKind.invalidInput,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, googleConfirm);
+
+      expect(
+        find.byKey(const ValueKey('change-email-with-apple')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-email-new')),
+        'moved@example.com',
+      );
+      await tester.tap(googleConfirm);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-email-error')),
+      );
+
+      expect(
+        find.text(
+          'Could not request the email change. Check what you entered.',
+        ),
+        findsOneWidget,
+      );
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('an email change says so where no linked provider can sign '
+        'in here', (tester) async {
+      providerSignIn.providers = const [IdentityProvider.apple];
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-email-provider-note')),
+      );
+
+      expect(
+        find.textContaining('Set a password first to change your email'),
+        findsOneWidget,
+      );
+      expect(googleConfirm, findsNothing);
+    });
+
+    testWidgets('the password screen sends the reader to set one through the '
+        'reset', (tester) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountPassword);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-password-set-link')),
+      );
+
+      expect(find.text('Set a password'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('change-password-current')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('change-password-set-link')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('reset-password-submit')),
+      );
+
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('reset-password-email')),
+            )
+            .controller
+            ?.text,
+        repository.email,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('reset-password-sent')),
+      );
+
+      expect(repository.requestedPasswordResets, [repository.email]);
+    });
+
+    testWidgets('the password screen offers another try when the account '
+        'cannot be read', (tester) async {
+      repository.identitiesFailure = const AuthFailure(AuthFailureKind.network);
+      await pumpApp(tester, initialLocation: AppRoutes.accountPassword);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-password-load-error')),
+      );
+
+      repository.identitiesFailure = null;
+      await tester.tap(find.byKey(const ValueKey('change-password-retry')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-password-set-link')),
+      );
+    });
+  });
+
   group('deleting an account without a password', () {
     setUp(() {
       auth = fakeAuthController(session: fakeSession, repository: repository);

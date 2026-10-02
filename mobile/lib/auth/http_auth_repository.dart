@@ -459,26 +459,53 @@ class HttpAuthRepository implements AuthRepository {
     required String currentPassword,
   }) async {
     try {
-      final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _requestEmailChangeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'currentEmail': currentEmail,
-          'newEmail': newEmail,
-          'currentPassword': currentPassword,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
-      );
-      if (body['requested'] != true) {
-        throw const AuthFailure(
-          AuthFailureKind.unexpected,
-          message: 'RequestEmailChange answered without sending the links',
-        );
-      }
+      await _requestEmailChange(session, {
+        'currentEmail': currentEmail,
+        'newEmail': newEmail,
+        'currentPassword': currentPassword,
+      });
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> requestEmailChangeWithProvider(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required ProviderCredential credential,
+  }) async {
+    try {
+      await _requestEmailChange(session, {
+        'currentEmail': currentEmail,
+        'newEmail': newEmail,
+        ..._confirmationFields(credential),
+      });
+    } on ConnectException catch (error) {
+      throw await _toConfirmationFailure(session, error);
+    }
+  }
+
+  Future<void> _requestEmailChange(
+    AuthSession session,
+    Map<String, Object?> fields,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    final body = await _client.unary(
+      _requestEmailChangeProcedure,
+      {
+        'tenant': {'tenantId': tenantId},
+        ...fields,
+      },
+      tenantId: tenantId,
+      accessToken: session.accessToken,
+    );
+    if (body['requested'] != true) {
+      throw const AuthFailure(
+        AuthFailureKind.unexpected,
+        message: 'RequestEmailChange answered without sending the links',
+      );
     }
   }
 
@@ -546,16 +573,44 @@ class HttpAuthRepository implements AuthRepository {
         _deleteMeProcedure,
         {
           'tenant': {'tenantId': tenantId},
-          'provider': credential.provider.wireName,
-          'idToken': credential.idToken,
-          'nonce': credential.nonce,
+          ..._confirmationFields(credential),
         },
         tenantId: tenantId,
         accessToken: session.accessToken,
       );
     } on ConnectException catch (error) {
-      throw _toAccountFailure(error);
+      throw await _toConfirmationFailure(session, error);
     }
+  }
+
+  /// The fields a step an account without a password takes confirms it with,
+  /// named alike on every RPC that takes one.
+  Map<String, Object?> _confirmationFields(ProviderCredential credential) => {
+    'provider': credential.provider.wireName,
+    'idToken': credential.idToken,
+    'nonce': credential.nonce,
+  };
+
+  /// What a step confirmed with a fresh sign-in refuses with.
+  ///
+  /// The API answers `unauthenticated` for an ID token it cannot verify as it
+  /// does for a session it no longer accepts, and only the second may sign
+  /// the device out. `GetMe` tells them apart: a session it still accepts
+  /// makes the refusal the sign-in's, which is the reader's to try again.
+  Future<AuthFailure> _toConfirmationFailure(
+    AuthSession session,
+    ConnectException error,
+  ) async {
+    final failure = _toAccountFailure(error);
+    if (failure.kind != AuthFailureKind.sessionExpired) {
+      return failure;
+    }
+    try {
+      await _getMe(session);
+    } on AuthFailure catch (sessionFailure) {
+      return sessionFailure;
+    }
+    return AuthFailure(AuthFailureKind.invalidInput, message: error.message);
   }
 
   @override

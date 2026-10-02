@@ -4152,22 +4152,30 @@
       "updated": "您的個人資料已更新。"
     },
     "change_email": {
+      "confirm_with_provider": "您的帳戶沒有密碼。請使用已連結的帳戶重新登入以寄送確認郵件。",
       "current_label": "目前的電子郵件地址",
       "failed": "無法申請電子郵件地址變更。請檢查您輸入的內容。",
       "load_failed": "無法讀取您的電子郵件地址。",
       "new_label": "新的電子郵件地址",
+      "no_provider": "與您連結的帳戶目前都無法在此應用程式中登入。如需變更電子郵件地址，請先設定密碼。",
       "password_label": "目前的密碼",
       "requested": "我們已向您目前的電子郵件地址與新的電子郵件地址各寄出一封確認郵件。請開啟兩個連結完成變更。",
       "same_email": "請輸入與目前不同的電子郵件地址。",
       "submit": "寄送確認郵件",
-      "title": "變更電子郵件地址"
+      "title": "變更電子郵件地址",
+      "with_apple": "透過Apple確認",
+      "with_google": "透過Google確認"
     },
     "change_password": {
       "changed": "您的密碼已變更。您其他裝置上的登入已登出。",
       "current_label": "目前的密碼",
       "failed": "無法變更您的密碼。請檢查您輸入的內容。",
+      "load_failed": "無法確認您的帳戶是否設有密碼。",
       "new_confirm_label": "確認新密碼",
       "new_label": "新密碼",
+      "set_description": "您的帳戶沒有密碼。請申請重設密碼郵件，並透過郵件中的連結設定密碼，之後也可以使用電子郵件地址登入。",
+      "set_link": "申請重設密碼郵件",
+      "set_title": "設定密碼",
       "submit": "變更密碼",
       "title": "變更密碼",
       "unchanged": "請輸入與目前密碼不同的新密碼。"

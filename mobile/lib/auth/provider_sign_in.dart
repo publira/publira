@@ -2,7 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:publira/auth/identity_provider.dart';
 
 /// What a provider's own sign-in hands back, ready for
-/// `AuthService/LoginWithIdToken` or the confirmation `DeleteMe` takes.
+/// `AuthService/LoginWithIdToken` or the confirmation `RequestEmailChange` and
+/// `DeleteMe` take.
 @immutable
 class ProviderCredential {
   const ProviderCredential({

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/account_confirmation.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
@@ -35,7 +36,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   AuthFailureKind? _failure;
 
   /// How the account confirms the deletion, `null` until it has been read.
-  _Confirmation? _confirmation;
+  AccountConfirmation? _confirmation;
   var _loadFailed = false;
   var _started = false;
 
@@ -67,19 +68,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         _loadFailed = false;
       });
     }
-    _Confirmation confirmation;
+    AccountConfirmation confirmation;
     try {
-      final identities = await auth.readLinkedIdentities();
-      if (identities.hasPassword) {
-        confirmation = const _Confirmation.password();
-      } else {
-        final providers = await auth.readSignInProviders();
-        final offered = await signIn?.offered(providers) ?? const [];
-        confirmation = _Confirmation.provider(providers, [
-          for (final provider in offered)
-            if (identities.links(provider)) provider,
-        ]);
-      }
+      confirmation = await AccountConfirmation.read(auth, signIn);
     } on Exception {
       if (mounted) {
         setState(() {
@@ -211,8 +202,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 child: switch (_confirmation) {
                   _ when _loadFailed => _loadError(messages),
                   null => const Center(child: CircularProgressIndicator()),
-                  _Confirmation(providers: null) => _form(messages),
-                  _Confirmation(:final providers?, :final linked) =>
+                  AccountConfirmation(providers: null) => _form(messages),
+                  AccountConfirmation(:final providers?, :final linked) =>
                     _providerForm(messages, providers, linked),
                 },
               ),
@@ -346,18 +337,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       _ => messages.deleteAccountFailed,
     };
   }
-}
-
-/// How the account confirms its deletion: with its password where
-/// [providers] is `null`, and otherwise with a fresh sign-in to one of the
-/// [linked] providers this device offers.
-class _Confirmation {
-  const _Confirmation.password() : providers = null, linked = const [];
-
-  const _Confirmation.provider(SignInProviders this.providers, this.linked);
-
-  final SignInProviders? providers;
-  final List<IdentityProvider> linked;
 }
 
 /// The reader closed the provider's sheet, which leaves the screen as it was.

@@ -6,6 +6,8 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Replaces the signed-in account's password through
@@ -13,6 +15,10 @@ import 'package:publira/typography/autospaced_text.dart';
 ///
 /// The change signs every other device out. This one keeps its session on the
 /// token the API hands back.
+///
+/// An account a provider sign-in created has no password to give as the
+/// current one, so the screen sends it to the password reset instead, which
+/// sets a first password from the link it mails.
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -29,12 +35,60 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   var _submitting = false;
   AuthFailureKind? _failure;
 
+  /// Whether the account has a password, `null` until it has been read.
+  _Password? _password;
+  var _loadFailed = false;
+  var _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      unawaited(_load());
+    }
+  }
+
   @override
   void dispose() {
     _currentController.dispose();
     _newController.dispose();
     _confirmController.dispose();
     super.dispose();
+  }
+
+  /// Reads whether the account has a password and, where it has none, the
+  /// address the reset email is to go to.
+  Future<void> _load() async {
+    final auth = AuthScope.of(context);
+    if (!auth.isSignedIn) {
+      return;
+    }
+    if (_loadFailed) {
+      setState(() {
+        _loadFailed = false;
+      });
+    }
+    _Password password;
+    try {
+      final identities = await auth.readLinkedIdentities();
+      password = identities.hasPassword
+          ? (exists: true, email: '')
+          : (exists: false, email: await auth.readEmail() ?? '');
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _loadFailed = true;
+        });
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _password = password;
+    });
   }
 
   Future<void> _submit() async {
@@ -79,16 +133,71 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
+    final password = _password;
     return Scaffold(
-      appBar: AppBar(title: AutospacedText(messages.changePasswordTitle)),
+      appBar: AppBar(
+        title: AutospacedText(
+          password != null && !password.exists
+              ? messages.changePasswordSetTitle
+              : messages.changePasswordTitle,
+        ),
+      ),
       body: SafeArea(
         child: !signedIn
             ? const SignedOutNotice()
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: _form(messages),
+                child: switch (password) {
+                  _ when _loadFailed => _loadError(messages),
+                  null => const Center(child: CircularProgressIndicator()),
+                  (exists: true, email: _) => _form(messages),
+                  (exists: false, :final email) => _setPassword(
+                    messages,
+                    email,
+                  ),
+                },
               ),
       ),
+    );
+  }
+
+  Widget _loadError(AppMessages messages) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AutospacedText(
+          messages.changePasswordLoadFailed,
+          key: const ValueKey('change-password-load-error'),
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          key: const ValueKey('change-password-retry'),
+          onPressed: () => unawaited(_load()),
+          child: AutospacedText(messages.commonRetry),
+        ),
+      ],
+    );
+  }
+
+  /// The way to a first password for an account that has none: the reset
+  /// request form, with the account's address already in it.
+  Widget _setPassword(AppMessages messages, String email) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AutospacedText(
+          messages.changePasswordSetDescription,
+          key: const ValueKey('change-password-set-description'),
+        ),
+        const SizedBox(height: 24),
+        FilledButton(
+          key: const ValueKey('change-password-set-link'),
+          onPressed: () =>
+              context.pushInTab(AppRoutes.resetPasswordPath(email: email)),
+          child: AutospacedText(messages.changePasswordSetLink),
+        ),
+      ],
     );
   }
 
@@ -191,3 +300,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     };
   }
 }
+
+/// Whether the account has a password to change and, where it has none, the
+/// address the reset email for a first one goes to.
+typedef _Password = ({bool exists, String email});

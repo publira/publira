@@ -557,7 +557,7 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 - The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client
 - A first sign-in that would create an account on a tenant asking consent to its pages is refused with a field violation on `agreed_page_version_ids`, and continues on `/sign-up/continue`, which sends the same token with the consent and an optional birth date
 - **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one
-- An account without a password confirms its deletion with a fresh sign-in to a linked provider the device offers (`DeleteMeRequest.provider`, `id_token`, `nonce`)
+- An account without a password confirms an email change and its deletion with a fresh sign-in to a linked provider the device offers (`provider`, `id_token`, and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`), and **Change password** sends it to the password reset to set a first one
 
 ## Sign-up
 

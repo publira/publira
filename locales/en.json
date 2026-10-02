@@ -4152,22 +4152,30 @@
       "updated": "Your profile has been updated."
     },
     "change_email": {
+      "confirm_with_provider": "Your account has no password. Sign in again with a linked account to send the confirmation emails.",
       "current_label": "Current email address",
       "failed": "Could not request the email change. Check what you entered.",
       "load_failed": "Could not load your email address.",
       "new_label": "New email address",
+      "no_provider": "None of the accounts linked to yours can sign in to this app right now. Set a password first to change your email address.",
       "password_label": "Current password",
       "requested": "We sent a confirmation email to both your current and your new address. Open both links to finish the change.",
       "same_email": "Enter an address different from your current one.",
       "submit": "Send confirmation emails",
-      "title": "Change email address"
+      "title": "Change email address",
+      "with_apple": "Confirm with Apple",
+      "with_google": "Confirm with Google"
     },
     "change_password": {
       "changed": "Your password has been changed. Your other devices have been signed out.",
       "current_label": "Current password",
       "failed": "Could not change your password. Check what you entered.",
+      "load_failed": "Could not check whether your account has a password.",
       "new_confirm_label": "Confirm new password",
       "new_label": "New password",
+      "set_description": "Your account has no password. Request a password reset email for your address and set a password from the link in it. You can then sign in with your email address as well.",
+      "set_link": "Request a password reset email",
+      "set_title": "Set a password",
       "submit": "Change password",
       "title": "Change password",
       "unchanged": "Enter a new password that is different from your current one."

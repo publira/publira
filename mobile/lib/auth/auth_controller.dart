@@ -319,6 +319,24 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  /// [requestEmailChange] for an account without a password, confirmed by a
+  /// fresh sign-in with a provider linked to it.
+  Future<void> requestEmailChangeWithProvider({
+    required String currentEmail,
+    required String newEmail,
+    required ProviderCredential credential,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(
+      () => _repository.requestEmailChangeWithProvider(
+        session,
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        credential: credential,
+      ),
+    );
+  }
+
   /// Spends one of an email change's two links. The session carries no
   /// address, so whichever one is held stays as it is.
   ///

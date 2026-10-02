@@ -350,6 +350,9 @@ abstract class AppMessages {
   /// `mobile.catalog.view_all`
   String get catalogViewAll;
 
+  /// `mobile.change_email.confirm_with_provider`
+  String get changeEmailConfirmWithProvider;
+
   /// `mobile.change_email.current_label`
   String get changeEmailCurrentLabel;
 
@@ -361,6 +364,9 @@ abstract class AppMessages {
 
   /// `mobile.change_email.new_label`
   String get changeEmailNewLabel;
+
+  /// `mobile.change_email.no_provider`
+  String get changeEmailNoProvider;
 
   /// `mobile.change_email.password_label`
   String get changeEmailPasswordLabel;
@@ -377,6 +383,12 @@ abstract class AppMessages {
   /// `mobile.change_email.title`
   String get changeEmailTitle;
 
+  /// `mobile.change_email.with_apple`
+  String get changeEmailWithApple;
+
+  /// `mobile.change_email.with_google`
+  String get changeEmailWithGoogle;
+
   /// `mobile.change_password.changed`
   String get changePasswordChanged;
 
@@ -386,11 +398,23 @@ abstract class AppMessages {
   /// `mobile.change_password.failed`
   String get changePasswordFailed;
 
+  /// `mobile.change_password.load_failed`
+  String get changePasswordLoadFailed;
+
   /// `mobile.change_password.new_confirm_label`
   String get changePasswordNewConfirmLabel;
 
   /// `mobile.change_password.new_label`
   String get changePasswordNewLabel;
+
+  /// `mobile.change_password.set_description`
+  String get changePasswordSetDescription;
+
+  /// `mobile.change_password.set_link`
+  String get changePasswordSetLink;
+
+  /// `mobile.change_password.set_title`
+  String get changePasswordSetTitle;
 
   /// `mobile.change_password.submit`
   String get changePasswordSubmit;
@@ -2076,6 +2100,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get changeEmailConfirmWithProvider {
+    return 'このアカウントにはパスワードがありません。連携しているアカウントでもう一度サインインして、確認メールを送信してください。';
+  }
+
+  @override
   String get changeEmailCurrentLabel {
     return '現在のメールアドレス';
   }
@@ -2093,6 +2122,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get changeEmailNewLabel {
     return '新しいメールアドレス';
+  }
+
+  @override
+  String get changeEmailNoProvider {
+    return '連携しているアカウントは、いまこのアプリでサインインに使えません。メールアドレスを変更するには、先にパスワードを設定してください。';
   }
 
   @override
@@ -2121,6 +2155,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get changeEmailWithApple {
+    return 'Appleで確認';
+  }
+
+  @override
+  String get changeEmailWithGoogle {
+    return 'Googleで確認';
+  }
+
+  @override
   String get changePasswordChanged {
     return 'パスワードを変更しました。他の端末はログアウトされました。';
   }
@@ -2136,6 +2180,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get changePasswordLoadFailed {
+    return 'アカウントにパスワードがあるかを確認できませんでした。';
+  }
+
+  @override
   String get changePasswordNewConfirmLabel {
     return '新しいパスワード（確認）';
   }
@@ -2143,6 +2192,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get changePasswordNewLabel {
     return '新しいパスワード';
+  }
+
+  @override
+  String get changePasswordSetDescription {
+    return 'このアカウントにはパスワードがありません。パスワード再設定メールを請求し、メールのリンクからパスワードを設定すると、メールアドレスでもサインインできるようになります。';
+  }
+
+  @override
+  String get changePasswordSetLink {
+    return 'パスワード再設定メールを請求';
+  }
+
+  @override
+  String get changePasswordSetTitle {
+    return 'パスワード設定';
   }
 
   @override
@@ -4649,6 +4713,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get changeEmailConfirmWithProvider {
+    return 'Your account has no password. Sign in again with a linked account to send the confirmation emails.';
+  }
+
+  @override
   String get changeEmailCurrentLabel {
     return 'Current email address';
   }
@@ -4666,6 +4735,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get changeEmailNewLabel {
     return 'New email address';
+  }
+
+  @override
+  String get changeEmailNoProvider {
+    return 'None of the accounts linked to yours can sign in to this app right now. Set a password first to change your email address.';
   }
 
   @override
@@ -4694,6 +4768,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get changeEmailWithApple {
+    return 'Confirm with Apple';
+  }
+
+  @override
+  String get changeEmailWithGoogle {
+    return 'Confirm with Google';
+  }
+
+  @override
   String get changePasswordChanged {
     return 'Your password has been changed. Your other devices have been signed out.';
   }
@@ -4709,6 +4793,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get changePasswordLoadFailed {
+    return 'Could not check whether your account has a password.';
+  }
+
+  @override
   String get changePasswordNewConfirmLabel {
     return 'Confirm new password';
   }
@@ -4716,6 +4805,21 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get changePasswordNewLabel {
     return 'New password';
+  }
+
+  @override
+  String get changePasswordSetDescription {
+    return 'Your account has no password. Request a password reset email for your address and set a password from the link in it. You can then sign in with your email address as well.';
+  }
+
+  @override
+  String get changePasswordSetLink {
+    return 'Request a password reset email';
+  }
+
+  @override
+  String get changePasswordSetTitle {
+    return 'Set a password';
   }
 
   @override
@@ -7222,6 +7326,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get changeEmailConfirmWithProvider {
+    return '이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인 메일을 보내 주세요.';
+  }
+
+  @override
   String get changeEmailCurrentLabel {
     return '현재 이메일 주소';
   }
@@ -7239,6 +7348,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get changeEmailNewLabel {
     return '새 이메일 주소';
+  }
+
+  @override
+  String get changeEmailNoProvider {
+    return '연결된 계정 중 지금 이 앱에서 로그인할 수 있는 계정이 없습니다. 이메일 주소를 변경하려면 먼저 비밀번호를 설정해 주세요.';
   }
 
   @override
@@ -7267,6 +7381,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get changeEmailWithApple {
+    return 'Apple로 확인';
+  }
+
+  @override
+  String get changeEmailWithGoogle {
+    return 'Google로 확인';
+  }
+
+  @override
   String get changePasswordChanged {
     return '비밀번호를 변경했습니다. 다른 기기는 로그아웃되었습니다.';
   }
@@ -7282,6 +7406,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get changePasswordLoadFailed {
+    return '계정에 비밀번호가 있는지 확인하지 못했습니다.';
+  }
+
+  @override
   String get changePasswordNewConfirmLabel {
     return '새 비밀번호 확인';
   }
@@ -7289,6 +7418,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get changePasswordNewLabel {
     return '새 비밀번호';
+  }
+
+  @override
+  String get changePasswordSetDescription {
+    return '이 계정에는 비밀번호가 없습니다. 비밀번호 재설정 메일을 요청하고 메일의 링크에서 비밀번호를 설정하면 이메일 주소로도 로그인할 수 있습니다.';
+  }
+
+  @override
+  String get changePasswordSetLink {
+    return '비밀번호 재설정 메일 요청';
+  }
+
+  @override
+  String get changePasswordSetTitle {
+    return '비밀번호 설정';
   }
 
   @override
@@ -9795,6 +9939,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get changeEmailConfirmWithProvider {
+    return '您的账户没有密码。请使用关联的账户重新登录以发送确认邮件。';
+  }
+
+  @override
   String get changeEmailCurrentLabel {
     return '当前邮箱地址';
   }
@@ -9812,6 +9961,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get changeEmailNewLabel {
     return '新的邮箱地址';
+  }
+
+  @override
+  String get changeEmailNoProvider {
+    return '与您关联的账户目前都无法在此应用中登录。如需变更邮箱地址，请先设置密码。';
   }
 
   @override
@@ -9840,6 +9994,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get changeEmailWithApple {
+    return '通过Apple确认';
+  }
+
+  @override
+  String get changeEmailWithGoogle {
+    return '通过Google确认';
+  }
+
+  @override
   String get changePasswordChanged {
     return '您的密码已变更。您其他设备上的登录已退出。';
   }
@@ -9855,6 +10019,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get changePasswordLoadFailed {
+    return '无法确认您的账户是否设有密码。';
+  }
+
+  @override
   String get changePasswordNewConfirmLabel {
     return '确认新密码';
   }
@@ -9862,6 +10031,21 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get changePasswordNewLabel {
     return '新密码';
+  }
+
+  @override
+  String get changePasswordSetDescription {
+    return '您的账户没有密码。请申请重设密码邮件，并通过邮件中的链接设置密码，之后也可以使用邮箱地址登录。';
+  }
+
+  @override
+  String get changePasswordSetLink {
+    return '申请重设密码邮件';
+  }
+
+  @override
+  String get changePasswordSetTitle {
+    return '设置密码';
   }
 
   @override
@@ -12368,6 +12552,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get changeEmailConfirmWithProvider {
+    return '您的帳戶沒有密碼。請使用已連結的帳戶重新登入以寄送確認郵件。';
+  }
+
+  @override
   String get changeEmailCurrentLabel {
     return '目前的電子郵件地址';
   }
@@ -12385,6 +12574,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get changeEmailNewLabel {
     return '新的電子郵件地址';
+  }
+
+  @override
+  String get changeEmailNoProvider {
+    return '與您連結的帳戶目前都無法在此應用程式中登入。如需變更電子郵件地址，請先設定密碼。';
   }
 
   @override
@@ -12413,6 +12607,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get changeEmailWithApple {
+    return '透過Apple確認';
+  }
+
+  @override
+  String get changeEmailWithGoogle {
+    return '透過Google確認';
+  }
+
+  @override
   String get changePasswordChanged {
     return '您的密碼已變更。您其他裝置上的登入已登出。';
   }
@@ -12428,6 +12632,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get changePasswordLoadFailed {
+    return '無法確認您的帳戶是否設有密碼。';
+  }
+
+  @override
   String get changePasswordNewConfirmLabel {
     return '確認新密碼';
   }
@@ -12435,6 +12644,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get changePasswordNewLabel {
     return '新密碼';
+  }
+
+  @override
+  String get changePasswordSetDescription {
+    return '您的帳戶沒有密碼。請申請重設密碼郵件，並透過郵件中的連結設定密碼，之後也可以使用電子郵件地址登入。';
+  }
+
+  @override
+  String get changePasswordSetLink {
+    return '申請重設密碼郵件';
+  }
+
+  @override
+  String get changePasswordSetTitle {
+    return '設定密碼';
   }
 
   @override

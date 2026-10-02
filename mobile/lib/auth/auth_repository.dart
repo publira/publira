@@ -177,6 +177,18 @@ abstract class AuthRepository {
     required String currentPassword,
   });
 
+  /// [requestEmailChange] for an account without a password, confirmed by a
+  /// fresh sign-in with a provider linked to it.
+  ///
+  /// Throws [AuthFailure]; a token of another account and an address another
+  /// account holds are both [AuthFailureKind.invalidInput].
+  Future<void> requestEmailChangeWithProvider(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required ProviderCredential credential,
+  });
+
   /// Spends the [token] one of an email change's two links carries, which
   /// needs no session: the link may be opened on a device that holds none.
   ///
