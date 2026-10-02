@@ -213,6 +213,41 @@ func (q *Queries) DeleteEpisodeCommentByIDForTenant(ctx context.Context, arg Del
 	return result.RowsAffected()
 }
 
+const GetEpisodeCommentCreatorForUser = `-- name: GetEpisodeCommentCreatorForUser :one
+SELECT cc.id,
+    cc.public_id,
+    cc.name
+FROM creators cc
+WHERE cc.id = credited_creator_of_account(
+        $1::uuid,
+        $2::uuid,
+        $3::uuid
+    )
+`
+
+type GetEpisodeCommentCreatorForUserParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+type GetEpisodeCommentCreatorForUserRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+	Name     string    `json:"name"`
+}
+
+// The credit a comment the reader posts now is shown under: the one the
+// comment lists read through the same function. The post response carries it,
+// so the author's new comment is marked before either list has re-read it. No
+// row means the reader is not a creator this episode credits.
+func (q *Queries) GetEpisodeCommentCreatorForUser(ctx context.Context, arg GetEpisodeCommentCreatorForUserParams) (GetEpisodeCommentCreatorForUserRow, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeCommentCreatorForUser, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var i GetEpisodeCommentCreatorForUserRow
+	err := row.Scan(&i.ID, &i.PublicID, &i.Name)
+	return i, err
+}
+
 const GetEpisodeCommentForModerationByIDForTenant = `-- name: GetEpisodeCommentForModerationByIDForTenant :one
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
@@ -654,10 +689,14 @@ SELECT c.id,
     c.created_at,
     c.user_id,
     u.public_id AS author_public_id,
-    u.name AS author_name
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = $1
     AND c.episode_id = $2
     AND c.status = 'published'
@@ -693,13 +732,16 @@ type ListPublishedEpisodeCommentsByCreatedAtAscParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtAscRow struct {
-	ID             uuid.UUID `json:"id"`
-	PublicID       string    `json:"public_id"`
-	Body           string    `json:"body"`
-	CreatedAt      time.Time `json:"created_at"`
-	UserID         uuid.UUID `json:"user_id"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author_name"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
@@ -728,6 +770,9 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}
@@ -749,10 +794,14 @@ SELECT c.id,
     c.created_at,
     c.user_id,
     u.public_id AS author_public_id,
-    u.name AS author_name
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = $1
     AND c.episode_id = $2
     AND c.status = 'published'
@@ -788,18 +837,26 @@ type ListPublishedEpisodeCommentsByCreatedAtDescParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtDescRow struct {
-	ID             uuid.UUID `json:"id"`
-	PublicID       string    `json:"public_id"`
-	Body           string    `json:"body"`
-	CreatedAt      time.Time `json:"created_at"`
-	UserID         uuid.UUID `json:"user_id"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author_name"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The public list of one episode. Only 'published' rows appear here, so a
 // pending, removed, or withdrawn comment is absent for every reader; the author
 // sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
+//
+// The creator columns name the credit the author holds on this episode, and
+// are NULL for a comment by anyone the episode does not credit:
+// credited_creator_of_account answers per row, so the mark costs this query a
+// lookup per comment rather than the handler a query per comment.
 func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
@@ -824,6 +881,9 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}
@@ -839,37 +899,41 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 }
 
 const ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
-SELECT id,
-    public_id,
-    episode_id,
-    body,
-    status,
-    created_at,
-    published_at
-FROM episode_comments
-WHERE tenant_id = $1
-    AND user_id = $2
-    AND episode_id = $3
-    AND status IN ('pending', 'hidden')
+SELECT c.id,
+    c.public_id,
+    c.episode_id,
+    c.body,
+    c.status,
+    c.created_at,
+    c.published_at,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
+FROM episode_comments c
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+WHERE c.tenant_id = $1
+    AND c.user_id = $2
+    AND c.episode_id = $3
+    AND c.status IN ('pending', 'hidden')
     AND (
         $4::timestamptz IS NULL
         OR (
             $5::boolean
-            AND (created_at, id) >= (
+            AND (c.created_at, c.id) >= (
                 $4::timestamptz,
                 $6::uuid
             )
         )
         OR (
             NOT $5::boolean
-            AND (created_at, id) > (
+            AND (c.created_at, c.id) > (
                 $4::timestamptz,
                 $6::uuid
             )
         )
     )
-ORDER BY created_at ASC,
-    id ASC
+ORDER BY c.created_at ASC,
+    c.id ASC
 LIMIT $7
 `
 
@@ -884,13 +948,16 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams struct {
 }
 
 type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow struct {
-	ID          uuid.UUID    `json:"id"`
-	PublicID    string       `json:"public_id"`
-	EpisodeID   uuid.UUID    `json:"episode_id"`
-	Body        string       `json:"body"`
-	Status      string       `json:"status"`
-	CreatedAt   time.Time    `json:"created_at"`
-	PublishedAt sql.NullTime `json:"published_at"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	CreatedAt       time.Time      `json:"created_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of
@@ -920,6 +987,9 @@ func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx conte
 			&i.Status,
 			&i.CreatedAt,
 			&i.PublishedAt,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}
@@ -935,37 +1005,41 @@ func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx conte
 }
 
 const ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
-SELECT id,
-    public_id,
-    episode_id,
-    body,
-    status,
-    created_at,
-    published_at
-FROM episode_comments
-WHERE tenant_id = $1
-    AND user_id = $2
-    AND episode_id = $3
-    AND status IN ('pending', 'hidden')
+SELECT c.id,
+    c.public_id,
+    c.episode_id,
+    c.body,
+    c.status,
+    c.created_at,
+    c.published_at,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
+FROM episode_comments c
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+WHERE c.tenant_id = $1
+    AND c.user_id = $2
+    AND c.episode_id = $3
+    AND c.status IN ('pending', 'hidden')
     AND (
         $4::timestamptz IS NULL
         OR (
             $5::boolean
-            AND (created_at, id) <= (
+            AND (c.created_at, c.id) <= (
                 $4::timestamptz,
                 $6::uuid
             )
         )
         OR (
             NOT $5::boolean
-            AND (created_at, id) < (
+            AND (c.created_at, c.id) < (
                 $4::timestamptz,
                 $6::uuid
             )
         )
     )
-ORDER BY created_at DESC,
-    id DESC
+ORDER BY c.created_at DESC,
+    c.id DESC
 LIMIT $7
 `
 
@@ -980,13 +1054,16 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams struct {
 }
 
 type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow struct {
-	ID          uuid.UUID    `json:"id"`
-	PublicID    string       `json:"public_id"`
-	EpisodeID   uuid.UUID    `json:"episode_id"`
-	Body        string       `json:"body"`
-	Status      string       `json:"status"`
-	CreatedAt   time.Time    `json:"created_at"`
-	PublishedAt sql.NullTime `json:"published_at"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	CreatedAt       time.Time      `json:"created_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The viewer's own comments on one episode that the public list of that episode
@@ -997,6 +1074,9 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow struct {
 // exactly as it was: the removal is told through a notification, not by the
 // comment changing shape here. Only the author's own withdrawal takes it
 // away from them.
+//
+// The creator columns are the ones the public list carries, so the author's
+// comment is marked the same way before it is published as after.
 func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
@@ -1022,6 +1102,9 @@ func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx cont
 			&i.Status,
 			&i.CreatedAt,
 			&i.PublishedAt,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}

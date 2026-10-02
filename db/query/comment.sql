@@ -49,16 +49,25 @@ RETURNING *;
 -- The public list of one episode. Only 'published' rows appear here, so a
 -- pending, removed, or withdrawn comment is absent for every reader; the author
 -- sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
+--
+-- The creator columns name the credit the author holds on this episode, and
+-- are NULL for a comment by anyone the episode does not credit:
+-- credited_creator_of_account answers per row, so the mark costs this query a
+-- lookup per comment rather than the handler a query per comment.
 SELECT c.id,
     c.public_id,
     c.body,
     c.created_at,
     c.user_id,
     u.public_id AS author_public_id,
-    u.name AS author_name
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.episode_id = sqlc.arg('episode_id')
     AND c.status = 'published'
@@ -92,10 +101,14 @@ SELECT c.id,
     c.created_at,
     c.user_id,
     u.public_id AS author_public_id,
-    u.name AS author_name
+    u.name AS author_name,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.episode_id = sqlc.arg('episode_id')
     AND c.status = 'published'
@@ -129,74 +142,100 @@ LIMIT sqlc.arg('limit');
 -- exactly as it was: the removal is told through a notification, not by the
 -- comment changing shape here. Only the author's own withdrawal takes it
 -- away from them.
-SELECT id,
-    public_id,
-    episode_id,
-    body,
-    status,
-    created_at,
-    published_at
-FROM episode_comments
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND user_id = sqlc.arg('user_id')
-    AND episode_id = sqlc.arg('episode_id')
-    AND status IN ('pending', 'hidden')
+--
+-- The creator columns are the ones the public list carries, so the author's
+-- comment is marked the same way before it is published as after.
+SELECT c.id,
+    c.public_id,
+    c.episode_id,
+    c.body,
+    c.status,
+    c.created_at,
+    c.published_at,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
+FROM episode_comments c
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.user_id = sqlc.arg('user_id')
+    AND c.episode_id = sqlc.arg('episode_id')
+    AND c.status IN ('pending', 'hidden')
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) <= (
+            AND (c.created_at, c.id) <= (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) < (
+            AND (c.created_at, c.id) < (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY created_at DESC,
-    id DESC
+ORDER BY c.created_at DESC,
+    c.id DESC
 LIMIT sqlc.arg('limit');
 
 -- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
 -- The previous-page half of
 -- ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
-SELECT id,
-    public_id,
-    episode_id,
-    body,
-    status,
-    created_at,
-    published_at
-FROM episode_comments
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND user_id = sqlc.arg('user_id')
-    AND episode_id = sqlc.arg('episode_id')
-    AND status IN ('pending', 'hidden')
+SELECT c.id,
+    c.public_id,
+    c.episode_id,
+    c.body,
+    c.status,
+    c.created_at,
+    c.published_at,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
+FROM episode_comments c
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.user_id = sqlc.arg('user_id')
+    AND c.episode_id = sqlc.arg('episode_id')
+    AND c.status IN ('pending', 'hidden')
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) >= (
+            AND (c.created_at, c.id) >= (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (created_at, id) > (
+            AND (c.created_at, c.id) > (
                 sqlc.narg('cursor_created_at')::timestamptz,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY created_at ASC,
-    id ASC
+ORDER BY c.created_at ASC,
+    c.id ASC
 LIMIT sqlc.arg('limit');
+
+-- name: GetEpisodeCommentCreatorForUser :one
+-- The credit a comment the reader posts now is shown under: the one the
+-- comment lists read through the same function. The post response carries it,
+-- so the author's new comment is marked before either list has re-read it. No
+-- row means the reader is not a creator this episode credits.
+SELECT cc.id,
+    cc.public_id,
+    cc.name
+FROM creators cc
+WHERE cc.id = credited_creator_of_account(
+        sqlc.arg('tenant_id')::uuid,
+        sqlc.arg('user_id')::uuid,
+        sqlc.arg('episode_id')::uuid
+    );
 
 -- name: ListEpisodeCommentsForModerationByCreatedAtDesc :many
 -- The console queues: 'pending' is the approval queue, 'hidden' the removed

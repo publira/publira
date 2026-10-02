@@ -142,6 +142,22 @@ type publicCommentPageRow struct {
 	createdAt      time.Time
 	authorPublicID string
 	authorName     string
+	creator        *publirav1.EpisodeCommentCreator
+}
+
+// episodeCommentCreator projects the credit a comment's author holds on its
+// episode, which the comment queries read through credited_creator_of_account.
+// A NULL id is a comment by anyone the episode does not credit, and leaves the
+// message unset.
+func episodeCommentCreator(id uuid.NullUUID, publicID, name sql.NullString) *publirav1.EpisodeCommentCreator {
+	if !id.Valid {
+		return nil
+	}
+	return &publirav1.EpisodeCommentCreator{
+		Id:       id.UUID.String(),
+		PublicId: publicID.String,
+		Name:     name.String,
+	}
 }
 
 func (s *apiServer) publicCommentPage(
@@ -173,6 +189,7 @@ func (s *apiServer) publicCommentPage(
 				createdAt:      row.CreatedAt,
 				authorPublicID: row.AuthorPublicID,
 				authorName:     row.AuthorName,
+				creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 			})
 		}
 		return mapped, nil
@@ -189,6 +206,7 @@ func (s *apiServer) publicCommentPage(
 			createdAt:      row.CreatedAt,
 			authorPublicID: row.AuthorPublicID,
 			authorName:     row.AuthorName,
+			creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 		})
 	}
 	return mapped, nil
@@ -238,6 +256,7 @@ func (s *apiServer) ListEpisodeComments(
 			CreatedAt:      row.createdAt.UTC().Format(time.RFC3339),
 			AuthorPublicId: row.authorPublicID,
 			AuthorName:     row.authorName,
+			Creator:        row.creator,
 		})
 	}
 
@@ -267,6 +286,7 @@ type myCommentPageRow struct {
 	body        string
 	createdAt   time.Time
 	publishedAt sql.NullTime
+	creator     *publirav1.EpisodeCommentCreator
 }
 
 func (s *apiServer) myCommentPage(
@@ -292,7 +312,14 @@ func (s *apiServer) myCommentPage(
 			return nil, err
 		}
 		for _, row := range rows {
-			mapped = append(mapped, myCommentPageRow{id: row.ID, publicID: row.PublicID, body: row.Body, createdAt: row.CreatedAt, publishedAt: row.PublishedAt})
+			mapped = append(mapped, myCommentPageRow{
+				id:          row.ID,
+				publicID:    row.PublicID,
+				body:        row.Body,
+				createdAt:   row.CreatedAt,
+				publishedAt: row.PublishedAt,
+				creator:     episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+			})
 		}
 		return mapped, nil
 	}
@@ -301,7 +328,14 @@ func (s *apiServer) myCommentPage(
 		return nil, err
 	}
 	for _, row := range rows {
-		mapped = append(mapped, myCommentPageRow{id: row.ID, publicID: row.PublicID, body: row.Body, createdAt: row.CreatedAt, publishedAt: row.PublishedAt})
+		mapped = append(mapped, myCommentPageRow{
+			id:          row.ID,
+			publicID:    row.PublicID,
+			body:        row.Body,
+			createdAt:   row.CreatedAt,
+			publishedAt: row.PublishedAt,
+			creator:     episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+		})
 	}
 	return mapped, nil
 }
@@ -309,13 +343,20 @@ func (s *apiServer) myCommentPage(
 // myEpisodeComment projects one of the caller's own comments. It carries no
 // status: awaiting_approval reports whether the comment has ever been public,
 // so a removal — which the author is never told about — changes nothing here.
-func myEpisodeComment(id uuid.UUID, publicID, body string, createdAt time.Time, publishedAt sql.NullTime) *publirav1.MyEpisodeComment {
+func myEpisodeComment(
+	id uuid.UUID,
+	publicID, body string,
+	createdAt time.Time,
+	publishedAt sql.NullTime,
+	creator *publirav1.EpisodeCommentCreator,
+) *publirav1.MyEpisodeComment {
 	return &publirav1.MyEpisodeComment{
 		Id:               id.String(),
 		PublicId:         publicID,
 		Body:             body,
 		CreatedAt:        createdAt.UTC().Format(time.RFC3339),
 		AwaitingApproval: !publishedAt.Valid,
+		Creator:          creator,
 	}
 }
 
@@ -354,7 +395,7 @@ func (s *apiServer) ListMyEpisodeComments(
 
 	items := make([]*publirav1.MyEpisodeComment, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, myEpisodeComment(row.id, row.publicID, row.body, row.createdAt, row.publishedAt))
+		items = append(items, myEpisodeComment(row.id, row.publicID, row.body, row.createdAt, row.publishedAt, row.creator))
 	}
 
 	res := &publirav1.ListMyEpisodeCommentsResponse{Comments: items}
@@ -464,6 +505,30 @@ func (s *apiServer) storeComment(
 	return comment, nil
 }
 
+// postedCommentCreator is the mark a comment the reader posts on this episode
+// carries, or nil when the episode credits no creator the reader is linked to.
+func (s *apiServer) postedCommentCreator(
+	ctx context.Context,
+	tenantID, userID, episodeID uuid.UUID,
+) (*publirav1.EpisodeCommentCreator, error) {
+	row, err := s.queriesFor(ctx).GetEpisodeCommentCreatorForUser(ctx, dbmodels.GetEpisodeCommentCreatorForUserParams{
+		TenantID:  tenantID,
+		UserID:    userID,
+		EpisodeID: episodeID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get comment creator", err, "tenant_id", tenantID.String(), "user_id", userID.String())
+	}
+	return &publirav1.EpisodeCommentCreator{
+		Id:       row.ID.String(),
+		PublicId: row.PublicID,
+		Name:     row.Name,
+	}, nil
+}
+
 // PostEpisodeComment stores one comment by the authenticated reader.
 //
 // The episode is resolved before the mode is, because the mode is a property of
@@ -527,6 +592,12 @@ func (s *apiServer) PostEpisodeComment(
 	if !canRead {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("episode body is not readable"))
 	}
+	// Read before anything is written, so a failure here leaves no comment
+	// behind that the reader would then be refused as a repeat of.
+	creator, err := s.postedCommentCreator(ctx, tenant.ID, user.ID, episode.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	// The reader takes their place for this body before it is written, so two
 	// requests carrying the same text cannot both find nothing to repeat.
@@ -567,7 +638,7 @@ func (s *apiServer) PostEpisodeComment(
 	}
 
 	return noStorePrivateResponse(&publirav1.PostEpisodeCommentResponse{
-		Comment: myEpisodeComment(comment.ID, comment.PublicID, comment.Body, comment.CreatedAt, comment.PublishedAt),
+		Comment: myEpisodeComment(comment.ID, comment.PublicID, comment.Body, comment.CreatedAt, comment.PublishedAt, creator),
 	}), nil
 }
 

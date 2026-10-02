@@ -388,6 +388,11 @@ type Querier interface {
 	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
+	// The credit a comment the reader posts now is shown under: the one the
+	// comment lists read through the same function. The post response carries it,
+	// so the author's new comment is marked before either list has re-read it. No
+	// row means the reader is not a creator this episode credits.
+	GetEpisodeCommentCreatorForUser(ctx context.Context, arg GetEpisodeCommentCreatorForUserParams) (GetEpisodeCommentCreatorForUserRow, error)
 	// One comment in the shape the moderation list returns. Every moderation action
 	// reads it before deciding and again after writing, so the caller answers from
 	// the stored row rather than from what it assumed the transition would produce.
@@ -1392,6 +1397,11 @@ type Querier interface {
 	// The public list of one episode. Only 'published' rows appear here, so a
 	// pending, removed, or withdrawn comment is absent for every reader; the author
 	// sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
+	//
+	// The creator columns name the credit the author holds on this episode, and
+	// are NULL for a comment by anyone the episode does not credit:
+	// credited_creator_of_account answers per row, so the mark costs this query a
+	// lookup per comment rather than the handler a query per comment.
 	ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error)
 	// These projections are used only while constructing the public Follow API
 	// response. The follow relations and their cursor queries remain UUID-only.
@@ -1789,6 +1799,9 @@ type Querier interface {
 	// exactly as it was: the removal is told through a notification, not by the
 	// comment changing shape here. Only the author's own withdrawal takes it
 	// away from them.
+	//
+	// The creator columns are the ones the public list carries, so the author's
+	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
