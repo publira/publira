@@ -6,20 +6,26 @@ const {
   mockCreateEpisode,
   mockGetAccessToken,
   mockGetTenantDisplayTimeZone,
+  mockListAllCreators,
   mockListAllEpisodes,
+  mockListCreatorRoles,
   mockRedirect,
   mockReorderEpisodePage,
   mockUpdateTag,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCreateEpisode: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
+  mockListAllCreators: vi.fn(),
   mockListAllEpisodes: vi.fn(),
+  mockListCreatorRoles: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodePage: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -45,14 +51,28 @@ vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
 
+vi.mock("#lib/auth-session", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
+}));
+
+vi.mock("#lib/creator", () => ({
+  listAllCreatorsForTenant: mockListAllCreators,
+}));
+
+vi.mock("#lib/creator-roles", () => ({
+  listCreatorRolesForTenant: mockListCreatorRoles,
 }));
 
 vi.mock("#lib/episode", () => ({
   bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
   createEpisode: mockCreateEpisode,
-  listAllEpisodes: mockListAllEpisodes,
+  episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
+  listAllEpisodesForTenant: mockListAllEpisodes,
   reorderEpisodePage: mockReorderEpisodePage,
 }));
 
@@ -96,6 +116,8 @@ describe("episode create actions", () => {
     // The dashboard counts drafts and lists them in its publishing queue, so a
     // new episode changes what it shows.
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
+    // The series' episode list now holds one more row.
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?created=1"
     );
@@ -311,6 +333,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(result).toMatchObject({
       ok: true,
     });
@@ -423,4 +446,93 @@ describe("bulkEditEpisodeCreditsAction", () => {
       expect(mockBulkEditEpisodeCredits).not.toHaveBeenCalled();
     }
   );
+});
+
+const reorderFormData = (): FormData => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
+  formData.set(
+    "current_episode_ids",
+    JSON.stringify([fortyEpisodes[0]?.id, fortyEpisodes[1]?.id])
+  );
+  formData.set(
+    "ordered_episode_ids",
+    JSON.stringify([fortyEpisodes[1]?.id, fortyEpisodes[0]?.id])
+  );
+  return formData;
+};
+
+describe("reorderEpisodesAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("clears the episode tag once the new order is saved", async () => {
+    mockReorderEpisodePage.mockResolvedValueOnce({ episodes: [], ok: true });
+
+    const { reorderEpisodesAction } = await import("./actions");
+    const result = await reorderEpisodesAction(reorderFormData());
+
+    expect(result).toEqual({ ok: true });
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+  });
+
+  it("leaves the cache alone when the order cannot be saved", async () => {
+    mockReorderEpisodePage.mockResolvedValueOnce({
+      message: "The order could not be saved.",
+      ok: false,
+    });
+
+    const { reorderEpisodesAction } = await import("./actions");
+    await reorderEpisodesAction(reorderFormData());
+
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("listEpisodeCreditRangeOptionsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockListAllEpisodes.mockResolvedValue({
+      episodes: fortyEpisodes.slice(0, 2),
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
+    mockListAllCreators.mockResolvedValue({
+      creators: [{ id: "CREATOR001", name: "Example Author" }],
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
+    mockListCreatorRoles.mockResolvedValue({ creatorRoles: [], ok: true });
+  });
+
+  it("answers the episodes, creators, and roles of the tenant it names", async () => {
+    const { listEpisodeCreditRangeOptionsAction } = await import("./actions");
+    const result = await listEpisodeCreditRangeOptionsAction(
+      "TENANT001",
+      "018f0e6a-2000-7000-8000-000000000001",
+      "en"
+    );
+
+    expect(result.creators).toEqual([
+      { id: "CREATOR001", name: "Example Author" },
+    ]);
+    expect(result.episodes).toHaveLength(2);
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockListAllEpisodes).toHaveBeenCalledWith(
+      {
+        seriesId: "018f0e6a-2000-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockListAllCreators).toHaveBeenCalledWith("TENANT001", "en");
+    expect(mockListCreatorRoles).toHaveBeenCalledWith("TENANT001", "en");
+  });
 });

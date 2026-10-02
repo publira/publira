@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockCacheLife,
   mockCacheTag,
@@ -33,6 +50,9 @@ vi.mock("./api", () => ({
       uploadLabelEyeCatchAspectImage: mockUploadAspectImage,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -53,10 +73,7 @@ describe("listLabels", () => {
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "en", {
-      limit: 20,
-      token: "current-page",
-    });
+    const result = await listLabels({ limit: 20, token: "current-page" });
 
     expect(mockListLabels).toHaveBeenCalledWith(
       {
@@ -64,13 +81,15 @@ describe("listLabels", () => {
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result).toMatchObject({
       nextToken: "next-page",
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("labels-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
@@ -78,7 +97,7 @@ describe("listLabels", () => {
     mockListLabels.mockResolvedValue({ labels: [] });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "en", {});
+    const result = await listLabels({});
 
     expect(mockListLabels).toHaveBeenCalledWith(
       {
@@ -86,7 +105,7 @@ describe("listLabels", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     // A response that names no token still answers with empty strings, so the
     // caller never has to branch on their absence.
@@ -106,7 +125,7 @@ describe("listLabels", () => {
     });
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "en", {});
+    const result = await listLabels({});
 
     expect(result.labels.map((item) => item.publicId)).toEqual([
       "LABEL002",
@@ -121,34 +140,13 @@ describe("listLabels", () => {
     );
 
     const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "en", {
-      token: "current-page",
-    });
+    const result = await listLabels({ token: "current-page" });
 
     expect(result).toMatchObject({
       labels: [],
       nextToken: "",
       ok: false,
       previousToken: "",
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
-  it("asks for sign-in without calling the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listLabels } = await import("./label");
-    const result = await listLabels("TENANT001", "en", {});
-
-    expect(mockListLabels).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      labels: [],
-      ok: false,
-      requiresSignIn: true,
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
@@ -186,20 +184,14 @@ describe("getLabel", () => {
     });
 
     const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "LABEL101",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getLabel({ publicId: "LABEL101" });
 
     expect(mockGetLabel).toHaveBeenCalledExactlyOnceWith(
       {
         publicId: "LABEL101",
         tenant: { tenantId: "TENANT001" },
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockListLabels).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -221,48 +213,20 @@ describe("getLabel", () => {
       },
       ok: true,
     });
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("labels-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("label-TENANT001-LABEL101");
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
   it("returns notFound for invalid input without calling the RPC", async () => {
     const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "   ",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getLabel({ publicId: "   " });
 
     expect(mockGetLabel).not.toHaveBeenCalled();
     expect(mockCacheTag).not.toHaveBeenCalled();
     expect(result).toEqual({ notFound: true, ok: false });
     expect(mockCacheLife).not.toHaveBeenCalled();
-  });
-
-  it("returns an error without calling the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue(null);
-
-    const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "LABEL001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
-
-    expect(mockGetLabel).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   // The server answers not_found both for a record that does not exist and
@@ -275,13 +239,7 @@ describe("getLabel", () => {
     );
 
     const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "MISSING",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getLabel({ publicId: "MISSING" });
 
     expect(result).toEqual({ notFound: true, ok: false });
     expect(mockCacheLife).not.toHaveBeenCalled();
@@ -294,13 +252,7 @@ describe("getLabel", () => {
     );
 
     const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "LABEL001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getLabel({ publicId: "LABEL001" });
 
     expect(result.ok).toBe(false);
     expect(result).not.toMatchObject({ notFound: true });
@@ -315,13 +267,7 @@ describe("getLabel", () => {
     mockGetLabel.mockResolvedValue({});
 
     const { getLabel } = await import("./label");
-    const result = await getLabel(
-      {
-        publicId: "LABEL001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getLabel({ publicId: "LABEL001" });
 
     expect(result).toEqual({
       message: "Could not load the labels. Please try again later.",
@@ -361,7 +307,7 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "en");
+    const result = await listAllLabels();
 
     expect(mockListLabels).toHaveBeenNthCalledWith(
       1,
@@ -370,7 +316,7 @@ describe("listAllLabels", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockListLabels).toHaveBeenNthCalledWith(
       2,
@@ -379,7 +325,7 @@ describe("listAllLabels", () => {
         tenant: { tenantId: "TENANT001" },
         token: "page-2",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -391,29 +337,9 @@ describe("listAllLabels", () => {
     expect(result.labels.some((label) => label.publicId === "LABEL101")).toBe(
       true
     );
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("labels-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
-  });
-
-  it("does not call the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue(null);
-
-    const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "en");
-
-    expect(mockListLabels).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      labels: [],
-      message: "Your session is no longer valid. Please sign in again.",
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   it("returns no partial result when nextToken repeats itself", async () => {
@@ -431,7 +357,7 @@ describe("listAllLabels", () => {
       });
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "en");
+    const result = await listAllLabels();
 
     expect(mockListLabels).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
@@ -440,7 +366,6 @@ describe("listAllLabels", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: false,
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
@@ -456,13 +381,9 @@ describe("listAllLabels", () => {
     );
 
     const { listAllLabels } = await import("./label");
-    const result = await listAllLabels("TENANT001", "en");
+    const result = await listAllLabels();
 
-    expect(result).toMatchObject({
-      labels: [],
-      ok: false,
-      requiresSignIn: false,
-    });
+    expect(result).toMatchObject({ labels: [], ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -547,4 +468,47 @@ describe("label eye-catch aspect images", () => {
     expect(mockUploadAspectImage).not.toHaveBeenCalled();
     expect(result.ok).toBe(false);
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listLabels",
+      async () => {
+        const { listLabels } = await import("./label");
+        return await listLabels();
+      },
+      mockListLabels,
+    ],
+    [
+      "listAllLabels",
+      async () => {
+        const { listAllLabels } = await import("./label");
+        return await listAllLabels();
+      },
+      mockListLabels,
+    ],
+    [
+      "getLabel",
+      async () => {
+        const { getLabel } = await import("./label");
+        return await getLabel({ publicId: "LABEL101" });
+      },
+      mockGetLabel,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

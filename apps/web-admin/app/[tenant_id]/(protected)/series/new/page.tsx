@@ -14,7 +14,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { listGenres } from "#lib/genre";
@@ -69,14 +68,14 @@ const NewSeriesFormData = async () => {
     // Only `defaultReadingPeriodHours` is read here, and that comes from the
     // tenant rather than the page, so the smallest page the API allows is
     // enough.
-    listSeries(tenantId, locale, { limit: 1 }),
+    listSeries({ limit: 1 }),
     // Walk every cursor page so the Combobox can search past the first 100.
-    listAllCreators(tenantId, locale),
+    listAllCreators(),
     // In the tenant's priority order, which is the order the credit list on
     // the form is shown in.
-    listCreatorRoles(tenantId, locale),
-    listAllLabels(tenantId, locale),
-    listGenres(tenantId, locale),
+    listCreatorRoles(),
+    listAllLabels(),
+    listGenres(),
     listTagSuggestions(tenantId, locale),
     // Only to name the tenant's own mode inside the option that follows it, so
     // a read that failed leaves that option unnamed rather than the form
@@ -88,14 +87,6 @@ const NewSeriesFormData = async () => {
     // The placeholders are attributes, which cannot stream in as nodes.
     getMessagesFor(locale),
   ]);
-
-  await redirectToLoginIfSessionRejected(
-    listResult,
-    creatorsResult,
-    creatorRolesResult,
-    labelsResult,
-    genresResult
-  );
 
   return (
     <SeriesForm

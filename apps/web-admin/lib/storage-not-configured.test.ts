@@ -41,6 +41,12 @@ vi.mock("next/cache", () => ({
   cacheTag: vi.fn(),
 }));
 
+// The shared reads these modules also export resolve the screen's tenant
+// from `next/root-params`, which only the Next.js compiler can provide.
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: vi.fn(),
+}));
+
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
 }));

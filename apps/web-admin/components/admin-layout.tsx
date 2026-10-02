@@ -29,7 +29,6 @@ import {
   ConsoleUserMenuTrigger,
 } from "@publira/layouts/admin";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -37,14 +36,12 @@ import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
-import { getAdminCurrentUser } from "../lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
+import { verifyAdminSession } from "../lib/auth-session";
 import { logoutAction } from "../lib/logout-action";
+import { getTenantName } from "../lib/public-api";
 import { getTenantRoleLabel } from "../lib/role-labels";
 import { tenantBrandingVariant } from "../lib/tenant-branding-image";
 import type { TenantBrandingImageVariant } from "../lib/tenant-branding-image";
-import { getTenantForSession } from "../lib/tenant-detail";
-import type { TenantDetail } from "../lib/tenant-detail";
 import { getTenantId } from "../lib/tenant-id";
 import { getTenantThemeLogo } from "../lib/theme-settings";
 import { AdminBrandLogo } from "./admin-brand-logo";
@@ -63,22 +60,13 @@ export interface AdminLayoutCurrentUser {
 }
 
 /**
- * The tenant the console chrome names.
- *
- * The proxy lets a request in on the cookie alone, so this is where a session
- * the API has since rejected is sent back to `/login` — with the path to come
- * back to, and the marker that makes the proxy drop the cookie. A tenant the
- * session cannot see goes to `/login` too, rather than to a blank 404.
+ * The name the console chrome gives the tenant, from the public `GetTenant`
+ * every operator of the tenant shares. Empty while that read fails: the chrome
+ * has nothing to report a failure in, and the page below it reports its own.
  */
-const getConsoleTenant = async (): Promise<TenantDetail> => {
+const getConsoleTenantName = async (): Promise<string> => {
   const tenantId = await getTenantId();
-  const result = await getTenantForSession(tenantId);
-  if (!result.ok) {
-    await redirectToLoginIfSessionRejected(result);
-    redirect("/login");
-  }
-
-  return result.tenant;
+  return (await getTenantName(tenantId)) ?? "";
 };
 
 const getConsoleLogo = async (): Promise<TenantBrandingImageVariant | null> => {
@@ -88,16 +76,17 @@ const getConsoleLogo = async (): Promise<TenantBrandingImageVariant | null> => {
   return tenantBrandingVariant(await getTenantThemeLogo(tenantId, locale));
 };
 
+/**
+ * The signed-in operator's menu.
+ *
+ * The proxy lets a request in on the cookie alone, so this is where a session
+ * the API has since rejected is sent back to `/login` on every screen — with
+ * the path to come back to, and the marker that makes the proxy drop the
+ * cookie.
+ */
 export const AdminUser = async () => {
   const tenantId = await getTenantId();
-  const [result, tenant] = await Promise.all([
-    getAdminCurrentUser(tenantId),
-    getConsoleTenant(),
-  ]);
-  if (!result.ok) {
-    await redirectToLoginIfSessionRejected(result);
-    redirect("/login");
-  }
+  const user = await verifyAdminSession(tenantId);
 
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
@@ -106,19 +95,17 @@ export const AdminUser = async () => {
     <ConsoleHeaderUser>
       <ConsoleUserMenuTrigger
         aria-label={t("admin.shell.account_menu", {
-          name: result.user.name,
+          name: user.name,
         })}
       >
-        <ConsoleUserMenuInitial>{result.user.name}</ConsoleUserMenuInitial>
+        <ConsoleUserMenuInitial>{user.name}</ConsoleUserMenuInitial>
       </ConsoleUserMenuTrigger>
       <ConsoleUserMenuContent>
         <ConsoleUserMenuIdentity>
-          <ConsoleUserMenuName>{result.user.name}</ConsoleUserMenuName>
-          <ConsoleUserMenuPublicId>
-            {result.user.publicId}
-          </ConsoleUserMenuPublicId>
+          <ConsoleUserMenuName>{user.name}</ConsoleUserMenuName>
+          <ConsoleUserMenuPublicId>{user.publicId}</ConsoleUserMenuPublicId>
           <ConsoleUserMenuRole>
-            {await getTenantRoleLabel(result.user.role, locale)}
+            {await getTenantRoleLabel(user.role, locale)}
           </ConsoleUserMenuRole>
         </ConsoleUserMenuIdentity>
         <ConsoleUserMenuSeparator />
@@ -127,9 +114,7 @@ export const AdminUser = async () => {
             <Message message="admin.shell.account_settings" />
           </Suspense>
         </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout
-          action={logoutAction.bind(null, tenant.publicId)}
-        >
+        <ConsoleUserMenuLogout action={logoutAction.bind(null, tenantId)}>
           <ConsoleUserMenuLogoutButton>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.shell.logout" />
@@ -165,8 +150,8 @@ const AdminMobileNavigation = async () => {
  * tenant chrome.
  */
 export const AdminSidebarBrandMark = async () => {
-  const [tenant, logoVariant] = await Promise.all([
-    getConsoleTenant(),
+  const [tenantName, logoVariant] = await Promise.all([
+    getConsoleTenantName(),
     getConsoleLogo(),
   ]);
 
@@ -174,45 +159,41 @@ export const AdminSidebarBrandMark = async () => {
     <Suspense fallback={<Skeleton className="h-8 w-[10rem]" />}>
       <AdminBrandLogo
         className="h-8 max-w-[10rem]"
-        tenantName={tenant.name}
+        tenantName={tenantName}
         variant={logoVariant}
       />
     </Suspense>
   ) : (
-    <ConsoleSidebarBrandName>{tenant.name}</ConsoleSidebarBrandName>
+    <ConsoleSidebarBrandName>{tenantName}</ConsoleSidebarBrandName>
   );
 };
 
 /** The tenant name under a logo, which the brand text already is otherwise. */
 export const AdminSidebarContext = async () => {
-  const [tenant, logoVariant] = await Promise.all([
-    getConsoleTenant(),
+  const [tenantName, logoVariant] = await Promise.all([
+    getConsoleTenantName(),
     getConsoleLogo(),
   ]);
 
   return logoVariant ? (
-    <ConsoleSidebarContext>{tenant.name}</ConsoleSidebarContext>
+    <ConsoleSidebarContext>{tenantName}</ConsoleSidebarContext>
   ) : null;
 };
 
 export const AdminHeaderBrand = async () => {
-  const [tenant, logoVariant] = await Promise.all([
-    getConsoleTenant(),
+  const [tenantName, logoVariant] = await Promise.all([
+    getConsoleTenantName(),
     getConsoleLogo(),
   ]);
 
   return logoVariant ? (
     <Suspense fallback={<Skeleton className="h-6 w-[7rem]" />}>
-      <AdminBrandLogo priority tenantName={tenant.name} variant={logoVariant} />
+      <AdminBrandLogo priority tenantName={tenantName} variant={logoVariant} />
     </Suspense>
   ) : null;
 };
 
-export const AdminHeaderTenantName = async () => {
-  const tenant = await getConsoleTenant();
-
-  return tenant.name;
-};
+export const AdminHeaderTenantName = async () => await getConsoleTenantName();
 
 /**
  * The console chrome around every protected screen.

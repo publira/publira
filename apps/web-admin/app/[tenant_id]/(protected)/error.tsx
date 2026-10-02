@@ -21,7 +21,7 @@ import {
  * Error boundary for the console pages. It wraps the pages and nested layouts
  * under `(protected)` but not `(protected)/layout.tsx` itself, so the sidebar
  * and header keep rendering here; a failure in that layout — tenant
- * resolution, `getTenantForSession()` — falls through to
+ * resolution, `verifyAdminSession()` — falls through to
  * `app/[tenant_id]/error.tsx`.
  *
  * It catches what the data helpers do not turn into a message:

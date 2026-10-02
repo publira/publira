@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockCacheLife,
   mockCacheTag,
@@ -36,6 +53,9 @@ vi.mock("./api", () => ({
       unlinkCreatorAccount: mockUnlinkCreatorAccount,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -63,10 +83,7 @@ describe("listCreators", () => {
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "en", {
-      limit: 20,
-      token: "current-page",
-    });
+    const result = await listCreators({ limit: 20, token: "current-page" });
 
     expect(mockListCreators).toHaveBeenCalledWith(
       {
@@ -74,13 +91,15 @@ describe("listCreators", () => {
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result).toMatchObject({
       nextToken: "next-page",
       ok: true,
       previousToken: "previous-page",
     });
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("creators-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
@@ -88,7 +107,7 @@ describe("listCreators", () => {
     mockListCreators.mockResolvedValue({ creators: [] });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "en", {});
+    const result = await listCreators({});
 
     expect(mockListCreators).toHaveBeenCalledWith(
       {
@@ -96,7 +115,7 @@ describe("listCreators", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     // A response that names no token still answers with empty strings, so the
     // caller never has to branch on their absence.
@@ -116,7 +135,7 @@ describe("listCreators", () => {
     });
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "en", {});
+    const result = await listCreators({});
 
     expect(result.creators.map((item) => item.publicId)).toEqual([
       "CREATOR002",
@@ -131,34 +150,13 @@ describe("listCreators", () => {
     );
 
     const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "en", {
-      token: "current-page",
-    });
+    const result = await listCreators({ token: "current-page" });
 
     expect(result).toMatchObject({
       creators: [],
       nextToken: "",
       ok: false,
       previousToken: "",
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
-  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listCreators } = await import("./creator");
-    const result = await listCreators("TENANT001", "en", {});
-
-    expect(mockListCreators).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      creators: [],
-      ok: false,
-      requiresSignIn: true,
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
@@ -377,7 +375,7 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "en");
+    const result = await listAllCreators();
 
     expect(mockListCreators).toHaveBeenNthCalledWith(
       1,
@@ -386,7 +384,7 @@ describe("listAllCreators", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockListCreators).toHaveBeenNthCalledWith(
       2,
@@ -395,7 +393,7 @@ describe("listAllCreators", () => {
         tenant: { tenantId: "TENANT001" },
         token: "page-2",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -407,29 +405,9 @@ describe("listAllCreators", () => {
     expect(
       result.creators.some((creator) => creator.publicId === "CREATOR101")
     ).toBe(true);
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("creators-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
-  });
-
-  it("does not call the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue(null);
-
-    const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "en");
-
-    expect(mockListCreators).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      creators: [],
-      message: "Your session is no longer valid. Please sign in again.",
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   it("returns no partial result when nextToken repeats itself", async () => {
@@ -446,7 +424,7 @@ describe("listAllCreators", () => {
       });
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "en");
+    const result = await listAllCreators();
 
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
@@ -455,7 +433,6 @@ describe("listAllCreators", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: false,
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
@@ -471,13 +448,9 @@ describe("listAllCreators", () => {
     );
 
     const { listAllCreators } = await import("./creator");
-    const result = await listAllCreators("TENANT001", "en");
+    const result = await listAllCreators();
 
-    expect(result).toMatchObject({
-      creators: [],
-      ok: false,
-      requiresSignIn: false,
-    });
+    expect(result).toMatchObject({ creators: [], ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -591,4 +564,39 @@ describe("unlinkCreatorAccount", () => {
       ok: false,
     });
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listCreators",
+      async () => {
+        const { listCreators } = await import("./creator");
+        return await listCreators();
+      },
+      mockListCreators,
+    ],
+    [
+      "listAllCreators",
+      async () => {
+        const { listAllCreators } = await import("./creator");
+        return await listAllCreators();
+      },
+      mockListCreators,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

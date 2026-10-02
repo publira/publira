@@ -12,10 +12,12 @@ import {
   loginAdmin,
   requestAdminPasswordReset,
 } from "./admin-auth";
+import { ADMIN_SESSION_CACHE_TAG } from "./admin-auth-shared";
 
 const {
   mockAcceptTenantAdminInvitation,
   mockCacheLife,
+  mockCacheTag,
   mockConfirmPasswordReset,
   mockGetMe,
   mockGetAccessToken,
@@ -25,6 +27,7 @@ const {
 } = vi.hoisted(() => ({
   mockAcceptTenantAdminInvitation: vi.fn(),
   mockCacheLife: vi.fn(),
+  mockCacheTag: vi.fn(),
   mockConfirmPasswordReset: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetMe: vi.fn(),
@@ -35,6 +38,7 @@ const {
 
 vi.mock("next/cache", () => ({
   cacheLife: mockCacheLife,
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("next/headers", () => ({
@@ -178,7 +182,21 @@ describe("loginAdmin", () => {
   });
 });
 
+/** What `dropFailedCacheEntry` sets: the entry is never stored. */
+const droppedEntry = { expire: 0, revalidate: 0, stale: 0 };
+
 describe("getAdminCurrentUser", () => {
+  it("keeps the operator for five minutes under the session tag", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
+    });
+    await getAdminCurrentUser("tenant_001");
+    // The stale time is how long a browser keeps a console route before it
+    // asks again whether the session still stands.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+    expect(mockCacheTag).toHaveBeenCalledWith(ADMIN_SESSION_CACHE_TAG);
+  });
+
   it("asks for a fresh login for an empty accessToken", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
@@ -233,7 +251,7 @@ describe("getAdminCurrentUser", () => {
       ok: true,
       user: { name: "Jane Doe", publicId: "user-001", role: "admin" },
     });
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
   it("passes the access token from getAccessToken straight to the API", async () => {
@@ -256,7 +274,7 @@ describe("getAdminCurrentUser", () => {
     );
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ ok: false, requiresSignIn: false });
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
   it("asks for a fresh login when the session is rejected", async () => {
@@ -309,7 +327,7 @@ describe("isAdminSessionValid", () => {
     });
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(true);
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
   it("returns false on an expected error", async () => {
@@ -318,7 +336,7 @@ describe("isAdminSessionValid", () => {
     );
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
   it("rethrows an unexpected error", async () => {

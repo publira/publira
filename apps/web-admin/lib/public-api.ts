@@ -27,17 +27,38 @@ interface TenantPublicInfo {
   defaultLocale: Locale | null;
   name: string | null;
   theme: TenantTheme;
+  /**
+   * The IANA zone the tenant's wall clock is in, already resolved against the
+   * platform default, so `null` only for a response that predates the field.
+   */
+  timezone: string | null;
 }
+
+/**
+ * The tag the public tenant read carries. The API drops it in every app for
+ * some of the settings it answers — the time zone and the default locale among
+ * them — and the console's own Actions drop it for every one they save, so the
+ * operator who saved sees the change on the screen they return to rather than
+ * once a revalidation lands.
+ */
+export const tenantSiteCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:site`;
 
 const applyTenantSiteCacheTag = (tenantId: string) => {
   try {
-    cacheTag(`tenant:${tenantId}:site`);
+    cacheTag(tenantSiteCacheTag(tenantId));
   } catch {
     // Some unit tests run without Next cacheComponents runtime support.
   }
 };
 
-const getTenantPublicInfo = async (
+/**
+ * The tenant as the public `GetTenant` answers it, or `null` when it cannot be
+ * read. That answer is the same for everyone, so it is cached once per tenant
+ * — the values the console would otherwise read per operator through the
+ * admin API's settings RPCs come from here too.
+ */
+export const getTenantPublicInfo = async (
   tenantId: string
 ): Promise<TenantPublicInfo | null> => {
   "use cache";
@@ -59,14 +80,16 @@ const getTenantPublicInfo = async (
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
       theme: resolveTenantThemeColors(response.theme),
+      timezone: response.timezone?.trim() || null,
     };
   } catch (error) {
     if (!isMissingResourceRpcError(error)) {
-      // Console chrome only — the tenant name in `<title>` and the theme
-      // colours. Both are resolved before a static shell exists, where a throw
-      // from a `"use cache"` fill answers a bare 500 for the whole route
-      // instead of reaching any boundary. The entry is dropped, so the
-      // real name and theme come back as soon as the public API does.
+      // The tenant name in `<title>` and the theme colours are resolved
+      // before a static shell exists, where a throw from a `"use cache"` fill
+      // answers a bare 500 for the whole route instead of reaching any
+      // boundary; the readers that word a failure do so from `null`. The
+      // entry is dropped, so the real values come back as soon as the public
+      // API does.
       console.warn("[web-admin] getTenantPublicInfo failed", error);
       dropFailedCacheEntry();
     }

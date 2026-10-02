@@ -107,9 +107,21 @@ Do not reach for `revalidatePath` instead. Called from an Action it discards the
 
 No lint covers this. The unit tests of a `lib/` read assert the tag it carries, and the Action tests assert the tags each Action clears.
 
-## A cached read takes the session as an argument
+## A read is private only when its answer is about the caller
 
-Only the session read (`getAccessTokenFromCookie`, with `cacheLife({ stale: Infinity })`) reads the session cookie inside a cache scope; every other cached read takes the access token as an argument, resolved by its exported caller outside the scope.
+A `lib/` read is `"use cache: private"` only when its answer depends on who is asking: the operator's own account (`GetMe`, the MFA status, the notifications), an answer the API words by the caller's role, or one that embeds a per-user credential such as a media token. Next.js stores a private entry nowhere on the server, so such a read is replayed on every navigation of every operator.
+
+A read whose answer is the tenant's — the same for every operator of it — is `"use cache"`, keyed on what the data depends on (the tenant, the locale, the record) and called with the web service credential (`withServiceHeaders()`, over `PUBLIRA_WEB_SERVICE_TOKEN`), so one entry in the shared Redis cache serves all of them. A value the public API already answers, such as the tenant's name, time zone, and default locale, is read there instead, with no credential at all — but only where that RPC reports a failed read as a failure. One that answers a fallback to keep the storefront rendering, as `GetTenant` does for the site copy when the config row cannot be read, is no source for a form: the operator would save the fallback over the stored value.
+
+A read the API gates on the caller's role stays private until that gate is the page's. The service credential is refused on such an RPC, and moving the read means the page checks the role itself before it renders the answer and the API admits the credential on that RPC.
+
+A shared read says nothing about who is looking, so it cannot be what notices a rejected session, and its result carries no `requiresSignIn`. Its exported function checks the caller and then calls the cached body, the way `getPlaylists()` calls `verifyAuth()` and then `getPlaylistsForUser(userId)` in `vercel-labs/next-beats`, and it resolves what the body is keyed on itself rather than taking it from the caller: in `web-admin`, `listGenres()` awaits `verifyAdminPageSession()`, which resolves the tenant from the `[tenant_id]` segment and the locale from the operator's choice and confirms the operator for that tenant, then calls `listGenresForTenant(tenantId, locale)`. A Server Action cannot read that segment and is given the tenant by the client, so it awaits `verifyAdminSession(tenantId)` with that tenant before it calls a cached `*ForTenant` body directly — the service credential answers for any tenant, and without the check an Action would read another tenant's records through a field the client filled in.
+
+No lint covers this.
+
+## A private read takes the session as an argument
+
+Only the session read (`getAccessTokenFromCookie`, with `cacheLife({ stale: Infinity })`) reads the session cookie inside a cache scope; every other private read takes the access token as an argument, resolved by its exported caller outside the scope.
 
 No lint covers this.
 

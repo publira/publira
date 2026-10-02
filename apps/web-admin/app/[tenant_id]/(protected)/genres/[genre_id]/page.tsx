@@ -30,7 +30,6 @@ import {
 import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getGenre } from "#lib/genre";
 import { getLocale } from "#lib/locale";
@@ -130,11 +129,7 @@ const EditGenreFormData = async ({
     notFound();
   }
 
-  const locale = await getLocale(tenantId);
-  const result = await getGenre(
-    { publicId: parsedParams.genre_id, tenantId },
-    locale
-  );
+  const result = await getGenre({ publicId: parsedParams.genre_id });
 
   if (!result.ok) {
     if (result.notFound) {
@@ -142,8 +137,6 @@ const EditGenreFormData = async ({
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
-
-    await redirectToLoginIfSessionRejected(result);
 
     return (
       <SectionError>

@@ -11,11 +11,9 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 import { z } from "zod";
 
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -55,8 +53,6 @@ export type ListLabelsResult = CursorPageTokens &
         ok: false;
         message: string;
         labels: LabelItem[];
-        /** The API rejected the session — the page raises the login redirect. */
-        requiresSignIn: boolean;
       }
   );
 
@@ -74,7 +70,7 @@ export type UpdateLabelResult =
  * by `not-found.tsx`, and wording that distinguished a missing label from
  * another tenant's label would leak whether it exists.
  *
- * The flag exists because `getLabel()` runs inside a `"use cache: private"`
+ * The flag exists because `getLabel()` runs inside a `"use cache"`
  * scope, where a thrown `notFound()` is not observable by the caller.
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
@@ -85,8 +81,6 @@ export type GetLabelResult =
       message: string;
       notFound?: false;
       ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn?: boolean;
     };
 
 const invalidArgumentMessage = async (
@@ -151,26 +145,15 @@ const mapLabel = (label: RawLabel): LabelItem => ({
   publicId: label.publicId,
 });
 
-const listLabelsForSession = async (
+const listLabelsForTenant = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions,
-  sessionId: string
+  options: CursorPageOptions
 ): Promise<ListLabelsResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(`labels-${tenantId}`);
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      labels: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.label.listLabels(
@@ -178,7 +161,7 @@ const listLabelsForSession = async (
         ...cursorPageRequest(options),
         tenant: { tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     return {
@@ -187,7 +170,9 @@ const listLabelsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -198,7 +183,6 @@ const listLabelsForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -211,31 +195,20 @@ const listLabelsForSession = async (
  * reads as a broken order as soon as the list spans more than one page.
  */
 export const listLabels = async (
-  tenantId: string,
-  locale: Locale,
   options: CursorPageOptions = {}
-): Promise<ListLabelsResult> =>
-  listLabelsForSession(tenantId, locale, options, await getAccessToken());
-
-const listAllLabelsForSession = async (
-  tenantId: string,
-  locale: Locale,
-  sessionId: string
 ): Promise<ListLabelsResult> => {
-  "use cache: private";
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listLabelsForTenant(tenantId, locale, options);
+};
+
+const listAllLabelsForTenant = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListLabelsResult> => {
+  "use cache";
   cacheTag(`labels-${tenantId}`);
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      labels: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const labels: LabelItem[] = [];
@@ -247,7 +220,7 @@ const listAllLabelsForSession = async (
             tenant: { tenantId },
             token,
           },
-          withSessionHeaders(sessionId)
+          withServiceHeaders()
         );
         return {
           items: response.labels ?? [],
@@ -270,7 +243,6 @@ const listAllLabelsForSession = async (
         labels: [],
         message: t("admin.labels.list_failed"),
         ok: false,
-        requiresSignIn: false,
       };
     }
 
@@ -282,7 +254,9 @@ const listAllLabelsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -293,7 +267,6 @@ const listAllLabelsForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -309,11 +282,10 @@ const listAllLabelsForSession = async (
  * exhausted or a repeated token) fails with an empty list rather than a
  * partial option set that would hide labels beyond the rows already read.
  */
-export const listAllLabels = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListLabelsResult> =>
-  listAllLabelsForSession(tenantId, locale, await getAccessToken());
+export const listAllLabels = async (): Promise<ListLabelsResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listAllLabelsForTenant(tenantId, locale);
+};
 
 export const createLabel = async (
   input: {
@@ -436,15 +408,14 @@ const getLabelInputSchema = z.object({
   tenantId: z.string().trim().min(1).max(255),
 });
 
-const getLabelForSession = async (
+const getLabelForTenant = async (
   input: {
     tenantId: string;
     publicId: string;
   },
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<GetLabelResult> => {
-  "use cache: private";
+  "use cache";
   const parsed = getLabelInputSchema.safeParse(input);
   if (!parsed.success) {
     // Same notFound as a missing / other-tenant label: the URL is not a
@@ -457,14 +428,6 @@ const getLabelForSession = async (
   cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.label.getLabel(
@@ -472,7 +435,7 @@ const getLabelForSession = async (
         publicId: parsed.data.publicId,
         tenant: { tenantId: parsed.data.tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     if (!response.label?.publicId?.trim()) {
@@ -488,10 +451,12 @@ const getLabelForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -500,19 +465,16 @@ const getLabelForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getLabel = async (
-  input: {
-    tenantId: string;
-    publicId: string;
-  },
-  locale: Locale
-): Promise<GetLabelResult> =>
-  getLabelForSession(input, locale, await getAccessToken());
+export const getLabel = async (input: {
+  publicId: string;
+}): Promise<GetLabelResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return getLabelForTenant({ ...input, tenantId }, locale);
+};
 
 export type LabelEyeCatchAspectResult =
   | { ok: true; label: LabelItem }

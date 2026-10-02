@@ -12,11 +12,9 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "./creator-roles-shared";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
@@ -34,8 +32,6 @@ export type ListCreatorRolesResult =
       ok: false;
       message: string;
       creatorRoles: CreatorRoleItem[];
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
     };
 
 export type CreateCreatorRoleResult =
@@ -93,24 +89,22 @@ const mapCreatorRole = (creatorRole: RawCreatorRole): CreatorRoleItem => ({
   publicId: creatorRole.publicId ?? "",
 });
 
-const listCreatorRolesForSession = async (
+/**
+ * The cached body of {@link listCreatorRoles}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const listCreatorRolesForTenant = async (
   tenantId: string,
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<ListCreatorRolesResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(creatorRolesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      creatorRoles: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const creatorRoles: CreatorRoleItem[] = [];
@@ -122,7 +116,7 @@ const listCreatorRolesForSession = async (
             tenant: { tenantId },
             token,
           },
-          withSessionHeaders(sessionId)
+          withServiceHeaders()
         );
         return {
           items: response.creatorRoles ?? [],
@@ -142,13 +136,14 @@ const listCreatorRolesForSession = async (
         creatorRoles: [],
         message: t("admin.creator_roles.list_failed"),
         ok: false,
-        requiresSignIn: false,
       };
     }
 
     return { creatorRoles, ok: true };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       creatorRoles: [],
@@ -158,7 +153,6 @@ const listCreatorRolesForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -175,11 +169,10 @@ const listCreatorRolesForSession = async (
  * partial list would not only hide roles — it would make every move button on
  * screen post an order that is missing rows, which the API refuses.
  */
-export const listCreatorRoles = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListCreatorRolesResult> =>
-  listCreatorRolesForSession(tenantId, locale, await getAccessToken());
+export const listCreatorRoles = async (): Promise<ListCreatorRolesResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listCreatorRolesForTenant(tenantId, locale);
+};
 
 export const createCreatorRole = async (
   input: { tenantId: string; name: string },

@@ -15,7 +15,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
@@ -47,9 +46,6 @@ const NewPageFormData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const defaultLocaleResult = await getTenantDefaultLocale(tenantId, locale);
-  if (!defaultLocaleResult.ok) {
-    await redirectToLoginIfSessionRejected(defaultLocaleResult);
-  }
 
   return (
     <PageForm

@@ -1,21 +1,32 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheLife, mockCacheTag, mockGetSessionId, mockGetDashboardApi } =
-  vi.hoisted(() => ({
-    mockCacheLife: vi.fn(),
-    mockCacheTag: vi.fn(),
-    mockGetDashboardApi: vi.fn(),
-    mockGetSessionId: vi.fn(),
-  }));
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
+const { mockCacheLife, mockCacheTag, mockGetDashboardApi } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
+  mockCacheTag: vi.fn(),
+  mockGetDashboardApi: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
-}));
-
-vi.mock("./session", () => ({
-  getAccessToken: mockGetSessionId,
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({
@@ -30,7 +41,11 @@ describe("dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    mockGetSessionId.mockResolvedValue("session-token");
+    vi.stubEnv("PUBLIRA_WEB_SERVICE_TOKEN", "service-token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("fetches the dashboard data for the tenant id", async () => {
@@ -54,7 +69,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "en");
+    const result = await getDashboard();
 
     expect(result).toEqual({
       ok: true,
@@ -77,7 +92,9 @@ describe("dashboard", () => {
 
     expect(mockGetDashboardApi).toHaveBeenCalledWith(
       { tenant: { tenantId: "TENANT001" } },
-      { headers: { Authorization: "Bearer session-token" } }
+      expect.objectContaining({
+        headers: { Authorization: "Bearer service-token" },
+      })
     );
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
@@ -87,7 +104,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "en");
+    const result = await getDashboard();
 
     expect(result).toEqual({
       ok: true,
@@ -100,47 +117,6 @@ describe("dashboard", () => {
     });
   });
 
-  it("returns an error when there is no session", async () => {
-    mockGetSessionId.mockResolvedValue("");
-
-    const { getDashboard } = await import("./dashboard");
-
-    const result = await getDashboard("TENANT001", "en");
-
-    expect(result).toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockGetDashboardApi).not.toHaveBeenCalled();
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
-  it("returns an error on an unauthenticated API error", async () => {
-    mockGetDashboardApi.mockRejectedValueOnce(
-      new ConnectError("invalid session", Code.Unauthenticated)
-    );
-
-    const { getDashboard } = await import("./dashboard");
-
-    const result = await getDashboard("TENANT001", "en");
-
-    expect(result).toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
   it("returns the shared wording for an unreachable error", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
@@ -148,12 +124,11 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "en");
+    const result = await getDashboard();
 
     expect(result).toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
-      requiresSignIn: false,
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
@@ -162,14 +137,21 @@ describe("dashboard", () => {
     });
   });
 
-  it("propagates an RPC error it cannot classify", async () => {
+  it("reports an RPC error it cannot classify instead of throwing from the cache scope", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
     const { getDashboard } = await import("./dashboard");
 
-    await expect(getDashboard("TENANT001", "en")).rejects.toThrow("boom");
+    const result = await getDashboard();
+
+    expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
   it("maps an episode in draft status", async () => {
@@ -193,7 +175,7 @@ describe("dashboard", () => {
 
     const { getDashboard } = await import("./dashboard");
 
-    const result = await getDashboard("TENANT001", "en");
+    const result = await getDashboard();
 
     if (!result.ok) {
       throw new Error("Expected ok result");
@@ -201,17 +183,19 @@ describe("dashboard", () => {
     expect(result.queue[0].status).toBe("draft");
   });
 
-  it("files the counts and the queue under the tenant dashboard tag", async () => {
+  it("files the counts and the queue under the dashboard and episode tags", async () => {
     mockGetDashboardApi.mockResolvedValueOnce({ queue: [], stats: {} });
 
     const { getDashboard, tenantDashboardCacheTag } =
       await import("./dashboard");
 
-    await getDashboard("TENANT001", "en");
+    await getDashboard();
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       tenantDashboardCacheTag("TENANT001")
     );
+    expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:series:detail");
   });
 
   it("tenantDashboardCacheTag normalizes the tenant id", async () => {
@@ -221,4 +205,31 @@ describe("dashboard", () => {
       "tenant:TENANT001:dashboard"
     );
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "getDashboard",
+      async () => {
+        const { getDashboard } = await import("./dashboard");
+        return await getDashboard();
+      },
+      mockGetDashboardApi,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

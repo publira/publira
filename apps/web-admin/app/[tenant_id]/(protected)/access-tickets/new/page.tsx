@@ -15,7 +15,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listAllSeries } from "#lib/series";
@@ -47,12 +46,10 @@ const NewAccessTicketFormSkeleton = () => (
 
 const NewAccessTicketFormData = async () => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
   const [timeZone, seriesResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    listAllSeries(tenantId, locale),
+    listAllSeries(),
   ]);
-  await redirectToLoginIfSessionRejected(seriesResult);
 
   return (
     <TicketForm

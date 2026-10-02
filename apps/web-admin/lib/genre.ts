@@ -7,11 +7,9 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import { CATALOG_NAME_MAX_LENGTH } from "./catalog-name";
 import type { CropRect } from "./crop-rect";
 import {
@@ -42,13 +40,7 @@ export interface GenreItem {
 
 export type ListGenresResult =
   | { ok: true; genres: GenreItem[] }
-  | {
-      ok: false;
-      message: string;
-      genres: GenreItem[];
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
+  | { ok: false; message: string; genres: GenreItem[] };
 
 export type CreateGenreResult =
   | { ok: true; genre: GenreItem }
@@ -66,13 +58,7 @@ export type UpdateGenreResult =
 export type GetGenreResult =
   | { ok: true; genre: GenreItem }
   | { notFound: true; ok: false }
-  | {
-      message: string;
-      notFound?: false;
-      ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
+  | { message: string; notFound?: false; ok: false };
 
 export type GenreEyeCatchAspectResult =
   | { ok: true; genre: GenreItem }
@@ -158,25 +144,14 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
   slug: genre.slug ?? "",
 });
 
-const listGenresForSession = async (
+const listGenresForTenant = async (
   tenantId: string,
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<ListGenresResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(genresCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      genres: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
-
   try {
     const genres: GenreItem[] = [];
     const walkStop = await forEachPageWithToken(
@@ -187,7 +162,7 @@ const listGenresForSession = async (
             tenant: { tenantId },
             token,
           },
-          withSessionHeaders(sessionId)
+          withServiceHeaders()
         );
         return {
           items: response.genres ?? [],
@@ -207,13 +182,14 @@ const listGenresForSession = async (
         genres: [],
         message: t("admin.genres.list_failed"),
         ok: false,
-        requiresSignIn: false,
       };
     }
 
     return { genres, ok: true };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the list comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       genres: [],
@@ -223,7 +199,6 @@ const listGenresForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -239,12 +214,14 @@ const listGenresForSession = async (
  * An incomplete walk fails with an empty list rather than a partial one. A
  * partial list would not only hide genres — it would make every move button on
  * screen post an order that is missing rows, which the API refuses.
+ *
+ * Read with the service credential: the list is the same for every operator of
+ * the tenant, so one entry serves all of them.
  */
-export const listGenres = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListGenresResult> =>
-  listGenresForSession(tenantId, locale, await getAccessToken());
+export const listGenres = async (): Promise<ListGenresResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listGenresForTenant(tenantId, locale);
+};
 
 /**
  * One genre of the tenant, for the screen its eye-catch is edited on.
@@ -252,17 +229,12 @@ export const listGenres = async (
  * There is no `GetGenre` RPC: the genre is picked out of {@link listGenres},
  * which the console already reads whole and files under the same tag.
  */
-export const getGenre = async (
-  input: { tenantId: string; publicId: string },
-  locale: Locale
-): Promise<GetGenreResult> => {
-  const result = await listGenres(input.tenantId, locale);
+export const getGenre = async (input: {
+  publicId: string;
+}): Promise<GetGenreResult> => {
+  const result = await listGenres();
   if (!result.ok) {
-    return {
-      message: result.message,
-      ok: false,
-      requiresSignIn: result.requiresSignIn,
-    };
+    return { message: result.message, ok: false };
   }
 
   const genre = result.genres.find(

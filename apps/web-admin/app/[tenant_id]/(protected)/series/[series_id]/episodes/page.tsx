@@ -39,7 +39,6 @@ import {
   PaginationFooter,
   PaginationFooterDescription,
 } from "#components/pagination-controls";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -111,14 +110,9 @@ const SeriesEpisodesListSkeleton = () => (
 const SeriesEpisodeCreditsRange = async ({
   params,
 }: Pick<SeriesEpisodesPageProps, "params">) => {
-  const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  const { series_id } = await params;
   guardPlaceholder(series_id);
-  const locale = await getLocale(tenantId);
-  const seriesResult = await getSeries(
-    { publicId: series_id, tenantId },
-    locale
-  );
-  await redirectToLoginIfSessionRejected(seriesResult);
+  const seriesResult = await getSeries({ publicId: series_id });
 
   return seriesResult.ok ? (
     <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
@@ -178,11 +172,10 @@ const SeriesEpisodesData = async ({
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
   const [seriesResult, timeZone, t] = await Promise.all([
-    getSeries({ publicId: series_id, tenantId }, locale),
+    getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
   ]);
-  await redirectToLoginIfSessionRejected(seriesResult);
 
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
@@ -202,11 +195,10 @@ const SeriesEpisodesData = async ({
     );
   }
 
-  const result = await listEpisodes(
-    { seriesId: seriesResult.series.id, tenantId, token },
-    locale
-  );
-  await redirectToLoginIfSessionRejected(result);
+  const result = await listEpisodes({
+    seriesId: seriesResult.series.id,
+    token,
+  });
 
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);

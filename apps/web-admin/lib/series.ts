@@ -19,11 +19,9 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -153,8 +151,6 @@ export type ListSeriesResult = CursorPageTokens &
         message: string;
         series: SeriesItem[];
         defaultReadingPeriodHours: number;
-        /** The API rejected the session — the page raises the login redirect. */
-        requiresSignIn: boolean;
       }
   );
 
@@ -177,7 +173,7 @@ export type UpdateSeriesResult =
  * by `not-found.tsx`, and wording that distinguished a missing series from
  * another tenant's series would leak whether it exists.
  *
- * The flag exists because `getSeries()` runs inside a `"use cache: private"`
+ * The flag exists because `getSeries()` runs inside a `"use cache"`
  * scope, where a thrown `notFound()` is not observable by the caller.
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
@@ -210,8 +206,6 @@ export type GetSeriesResult =
       message: string;
       notFound?: false;
       ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn?: boolean;
     };
 
 const invalidArgumentMessage = async (
@@ -449,27 +443,15 @@ const mapSeries = (
   };
 };
 
-const listSeriesForSession = async (
+const listSeriesForTenant = async (
   tenantId: string,
   locale: Locale,
-  options: ListSeriesOptions,
-  sessionId: string
+  options: ListSeriesOptions
 ): Promise<ListSeriesResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(seriesListCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      defaultReadingPeriodHours: 0,
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-      series: [],
-    };
-  }
 
   try {
     const response = await apiClient.series.listSeries(
@@ -483,7 +465,7 @@ const listSeriesForSession = async (
           : {}),
         tenant: { tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     return {
@@ -493,7 +475,9 @@ const listSeriesForSession = async (
       series: (response.series ?? []).map((item) => mapSeries(item)),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -504,7 +488,6 @@ const listSeriesForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
       series: [],
     };
   }
@@ -518,32 +501,20 @@ const listSeriesForSession = async (
  * reads as a broken order as soon as the list spans more than one page.
  */
 export const listSeries = async (
-  tenantId: string,
-  locale: Locale,
   options: ListSeriesOptions = {}
-): Promise<ListSeriesResult> =>
-  listSeriesForSession(tenantId, locale, options, await getAccessToken());
-
-const listAllSeriesForSession = async (
-  tenantId: string,
-  locale: Locale,
-  sessionId: string
 ): Promise<ListSeriesResult> => {
-  "use cache: private";
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listSeriesForTenant(tenantId, locale, options);
+};
+
+const listAllSeriesForTenant = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListSeriesResult> => {
+  "use cache";
   cacheTag(seriesListCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      defaultReadingPeriodHours: 0,
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-      series: [],
-    };
-  }
 
   try {
     const series: SeriesItem[] = [];
@@ -556,7 +527,7 @@ const listAllSeriesForSession = async (
             tenant: { tenantId },
             token,
           },
-          withSessionHeaders(sessionId)
+          withServiceHeaders()
         );
         defaultReadingPeriodHours = response.defaultReadingPeriodHours ?? 0;
         return {
@@ -580,7 +551,6 @@ const listAllSeriesForSession = async (
         defaultReadingPeriodHours: 0,
         message: t("admin.series.list_failed"),
         ok: false,
-        requiresSignIn: false,
         series: [],
       };
     }
@@ -594,7 +564,9 @@ const listAllSeriesForSession = async (
       ),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -605,7 +577,6 @@ const listAllSeriesForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
       series: [],
     };
   }
@@ -622,32 +593,22 @@ const listAllSeriesForSession = async (
  * exhausted or a repeated token) fails with an empty list rather than a
  * partial option set that would hide series beyond the rows already read.
  */
-export const listAllSeries = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListSeriesResult> =>
-  listAllSeriesForSession(tenantId, locale, await getAccessToken());
+export const listAllSeries = async (): Promise<ListSeriesResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listAllSeriesForTenant(tenantId, locale);
+};
 
-const getSeriesForSession = async (
+const getSeriesForTenant = async (
   input: {
     tenantId: string;
     publicId: string;
   },
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<GetSeriesResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(seriesCacheTag(input.tenantId, input.publicId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.series.getSeries(
@@ -655,7 +616,7 @@ const getSeriesForSession = async (
         publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     if (!response.series?.publicId?.trim()) {
@@ -695,10 +656,12 @@ const getSeriesForSession = async (
       series: mapSeries(response.series, response.creatorCredits),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -707,19 +670,16 @@ const getSeriesForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getSeries = async (
-  input: {
-    tenantId: string;
-    publicId: string;
-  },
-  locale: Locale
-): Promise<GetSeriesResult> =>
-  getSeriesForSession(input, locale, await getAccessToken());
+export const getSeries = async (input: {
+  publicId: string;
+}): Promise<GetSeriesResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return getSeriesForTenant({ ...input, tenantId }, locale);
+};
 
 /**
  * The listing fields of a series. A new series states every one; an update

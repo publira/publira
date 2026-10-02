@@ -15,7 +15,6 @@ import {
   AdminSections,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listGenres } from "#lib/genre";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -49,10 +48,10 @@ const GenreManagerSkeleton = () => (
 
 const GenreManagerData = async () => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
-  const listResult = await listGenres(tenantId, locale);
-
-  await redirectToLoginIfSessionRejected(listResult);
+  const [locale, listResult] = await Promise.all([
+    getLocale(tenantId),
+    listGenres(),
+  ]);
 
   return (
     <GenreManager

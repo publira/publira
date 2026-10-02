@@ -15,7 +15,8 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -52,8 +53,6 @@ export type ListCreatorsResult = CursorPageTokens &
         ok: false;
         message: string;
         creators: CreatorItem[];
-        /** The API rejected the session — the page raises the login redirect. */
-        requiresSignIn: boolean;
       }
   );
 
@@ -140,26 +139,15 @@ const mapCreatorAccounts = (
     reader ? [{ ...mapReader(reader), linkedAt: linkedAt ?? "" }] : []
   );
 
-const listCreatorsForSession = async (
+const listCreatorsForTenant = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions,
-  sessionId: string
+  options: CursorPageOptions
 ): Promise<ListCreatorsResult> => {
-  "use cache: private";
+  "use cache";
   cacheTag(`creators-${tenantId}`);
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      creators: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.creator.listCreators(
@@ -167,7 +155,7 @@ const listCreatorsForSession = async (
         ...cursorPageRequest(options),
         tenant: { tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     return {
@@ -177,7 +165,9 @@ const listCreatorsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -188,37 +178,33 @@ const listCreatorsForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
 export const listCreators = async (
-  tenantId: string,
-  locale: Locale,
   options: CursorPageOptions = {}
-): Promise<ListCreatorsResult> =>
-  listCreatorsForSession(tenantId, locale, options, await getAccessToken());
-
-const listAllCreatorsForSession = async (
-  tenantId: string,
-  locale: Locale,
-  sessionId: string
 ): Promise<ListCreatorsResult> => {
-  "use cache: private";
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listCreatorsForTenant(tenantId, locale, options);
+};
+
+/**
+ * The cached body of {@link listAllCreators}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const listAllCreatorsForTenant = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListCreatorsResult> => {
+  "use cache";
   cacheTag(`creators-${tenantId}`);
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      ...emptyCursorPageTokens,
-      creators: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const creators: CreatorItem[] = [];
@@ -230,7 +216,7 @@ const listAllCreatorsForSession = async (
             tenant: { tenantId },
             token,
           },
-          withSessionHeaders(sessionId)
+          withServiceHeaders()
         );
         return {
           items: response.creators ?? [],
@@ -253,7 +239,6 @@ const listAllCreatorsForSession = async (
         creators: [],
         message: t("admin.creators.list_failed"),
         ok: false,
-        requiresSignIn: false,
       };
     }
 
@@ -265,7 +250,9 @@ const listAllCreatorsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -276,7 +263,6 @@ const listAllCreatorsForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -292,11 +278,10 @@ const listAllCreatorsForSession = async (
  * exhausted or a repeated token) fails with an empty list rather than a
  * partial option set that would hide creators beyond the rows already read.
  */
-export const listAllCreators = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListCreatorsResult> =>
-  listAllCreatorsForSession(tenantId, locale, await getAccessToken());
+export const listAllCreators = async (): Promise<ListCreatorsResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listAllCreatorsForTenant(tenantId, locale);
+};
 
 export const createCreator = async (
   input: {

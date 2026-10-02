@@ -2,8 +2,11 @@ import { createAdminApiClient } from "@publira/api-client/admin/client";
 import {
   createForwardedForInterceptor,
   FORWARDED_FOR_HEADER,
+  serviceCallContextValues,
 } from "@publira/api-client/forwarded-for";
 import { headers } from "next/headers";
+
+import { resolveWebServiceToken } from "./web-service-token";
 
 const readForwardedFor = async () => {
   const requestHeaders = await headers();
@@ -23,6 +26,20 @@ type SessionCallOptions = NonNullable<
 
 export const withSessionHeaders = (sessionId: string): SessionCallOptions => ({
   headers: { Authorization: `Bearer ${sessionId}` },
+});
+
+/**
+ * Call options for a read the console makes as itself: one of the admin API's
+ * tenant-level reads, whose answer is the same for every operator of the
+ * tenant and is therefore cached once for all of them in a `"use cache"`
+ * scope. The API refuses this credential on everything else.
+ *
+ * It says nothing about who is looking, so the exported read calls
+ * `verifyAdminSession` before the cached function it signs.
+ */
+export const withServiceHeaders = (): SessionCallOptions => ({
+  contextValues: serviceCallContextValues(),
+  headers: { Authorization: `Bearer ${resolveWebServiceToken()}` },
 });
 
 /**

@@ -31,7 +31,6 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -164,14 +163,13 @@ const EditSeriesFormData = async ({
   const { series_id: seriesId } = parsedParams;
   const locale = await getLocale(tenantId);
   if (activeTab === "eye-catch") {
-    const result = await getSeries({ publicId: seriesId, tenantId }, locale);
+    const result = await getSeries({ publicId: seriesId });
     if (!result.ok) {
       if (result.notFound) {
         // Missing, or another tenant's series — never told apart. Renders
         // `(protected)/not-found.tsx` inside the console chrome.
         notFound();
       }
-      await redirectToLoginIfSessionRejected(result);
       return <SeriesLoadError message={result.message} />;
     }
     return (
@@ -207,14 +205,14 @@ const EditSeriesFormData = async ({
     timeZone,
     t,
   ] = await Promise.all([
-    getSeries({ publicId: seriesId, tenantId }, locale),
+    getSeries({ publicId: seriesId }),
     // Walk every cursor page so the Combobox can search past the first 100.
-    listAllCreators(tenantId, locale),
+    listAllCreators(),
     // In the tenant's priority order, which is the order the credit list on
     // the form is shown in.
-    listCreatorRoles(tenantId, locale),
-    listAllLabels(tenantId, locale),
-    listGenres(tenantId, locale),
+    listCreatorRoles(),
+    listAllLabels(),
+    listGenres(),
     listTagSuggestions(tenantId, locale),
     // Only to name the tenant's own mode inside the option that follows it, so
     // a read that failed leaves that option unnamed rather than the form
@@ -231,16 +229,8 @@ const EditSeriesFormData = async ({
     if (result.notFound) {
       notFound();
     }
-    await redirectToLoginIfSessionRejected(result);
     return <SeriesLoadError message={result.message} />;
   }
-
-  await redirectToLoginIfSessionRejected(
-    creatorsResult,
-    creatorRolesResult,
-    labelsResult,
-    genresResult
-  );
 
   return (
     <SeriesForm
