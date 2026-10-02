@@ -523,11 +523,29 @@ export const getPublicCurrentUser = async (
   }
 };
 
+/**
+ * How the signed-in reader confirms a change to their own account: with its
+ * password or, for an account without one, with a fresh sign-in to a linked
+ * provider.
+ */
+export type AccountConfirmation =
+  | { password: string }
+  | { idToken: string; nonce: string; provider: SignInProvider };
+
+/** The confirmation fields `RequestEmailChange` and `DeleteMe` both take. */
+const identityConfirmationFields = (
+  confirmation: Exclude<AccountConfirmation, { password: string }>
+) => ({
+  idToken: confirmation.idToken,
+  nonce: confirmation.nonce,
+  provider: IDENTITY_PROVIDERS[confirmation.provider],
+});
+
 export const requestPublicEmailChange = async (
   tenantId: string,
   currentEmail: string,
   newEmail: string,
-  currentPassword: string,
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
@@ -539,9 +557,11 @@ export const requestPublicEmailChange = async (
     const response = await apiClient.auth.requestEmailChange(
       {
         currentEmail,
-        currentPassword,
         newEmail,
         tenant: { tenantId },
+        ...("password" in confirmation
+          ? { currentPassword: confirmation.password }
+          : identityConfirmationFields(confirmation)),
       },
       buildSessionHeaders(sid)
     );
@@ -620,6 +640,35 @@ export const getMe = async (
   }
 };
 
+/**
+ * Whether the API turns the session away: `accessToken`, or the one the cookie
+ * carries when it is omitted. A browser holding no session has nothing to turn
+ * away.
+ *
+ * For a caller that has just seen `unauthenticated` from an RPC that also
+ * authenticates something else — a fresh sign-in, say — or that has ended an
+ * account's sessions without knowing whose session this browser holds.
+ */
+export const isSessionRejected = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<boolean> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return false;
+  }
+
+  try {
+    await getMe(tenantId, sid);
+    return false;
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      return true;
+    }
+    throw error;
+  }
+};
+
 export const updateMe = async (
   tenantId: string,
   { birthDate, name }: ProfileUpdate,
@@ -662,15 +711,10 @@ export const updateMe = async (
   }
 };
 
-/**
- * Delete the signed-in reader's account, confirmed with its password or, for
- * an account without one, with a fresh sign-in to a linked provider.
- */
+/** Delete the signed-in reader's account. */
 export const deleteMe = async (
   tenantId: string,
-  confirmation:
-    | { password: string }
-    | { idToken: string; nonce: string; provider: SignInProvider },
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
@@ -680,14 +724,12 @@ export const deleteMe = async (
 
   try {
     await apiClient.auth.deleteMe(
-      "password" in confirmation
-        ? { password: confirmation.password, tenant: { tenantId } }
-        : {
-            idToken: confirmation.idToken,
-            nonce: confirmation.nonce,
-            provider: IDENTITY_PROVIDERS[confirmation.provider],
-            tenant: { tenantId },
-          },
+      {
+        tenant: { tenantId },
+        ...("password" in confirmation
+          ? { password: confirmation.password }
+          : identityConfirmationFields(confirmation)),
+      },
       buildSessionHeaders(sid)
     );
 

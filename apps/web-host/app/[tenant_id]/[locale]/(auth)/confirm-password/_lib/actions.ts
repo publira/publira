@@ -6,12 +6,13 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { confirmPublicPasswordReset } from "#lib/auth";
+import { confirmPublicPasswordReset, isSessionRejected } from "#lib/auth";
 import {
   authTokenFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { clearPublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
@@ -119,6 +120,15 @@ export const confirmPasswordAction = async (
     redirect(errorPath);
   }
 
+  // The reset ends every session of the account. A reader who set a first
+  // password from the security settings is still holding one of them, and
+  // `/login` sends a browser with a session cookie on to `/my`, where the
+  // rejected session would replace the reset's message with a sign-in prompt.
+  // The link names an account by its token alone, so a browser signed in to
+  // another one keeps that session.
+  if (await isSessionRejected(tenantId)) {
+    await clearPublicSessionCookie();
+  }
   const loginPath = await buildLoginPathWithResetResult(locale, tenantId);
   redirect(loginPath);
 };

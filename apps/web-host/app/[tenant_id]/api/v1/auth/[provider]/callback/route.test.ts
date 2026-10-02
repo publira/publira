@@ -5,14 +5,18 @@ const {
   cookieJar,
   mockDeleteMe,
   mockGetTenantSignInClients,
+  mockIsSessionRejected,
   mockLoginWithIdToken,
+  mockRequestPublicEmailChange,
   mockRequirePublicSession,
   mockSealPublicSessionCookie,
 } = vi.hoisted(() => ({
   cookieJar: new Map<string, string>(),
   mockDeleteMe: vi.fn(),
   mockGetTenantSignInClients: vi.fn(),
+  mockIsSessionRejected: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
+  mockRequestPublicEmailChange: vi.fn(),
   mockRequirePublicSession: vi.fn(),
   mockSealPublicSessionCookie: vi.fn(),
 }));
@@ -44,7 +48,9 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: vi.fn() }));
 
 vi.mock("#lib/auth", () => ({
   deleteMe: mockDeleteMe,
+  isSessionRejected: mockIsSessionRejected,
   loginWithIdToken: mockLoginWithIdToken,
+  requestPublicEmailChange: mockRequestPublicEmailChange,
 }));
 
 vi.mock("#lib/auth-session", () => ({
@@ -80,12 +86,10 @@ const startForm = (fields: Record<string, string>): FormData => {
   return data;
 };
 
-/** Start a sign-in and answer where the reader was sent. */
-const startSignIn = async (fields: Record<string, string> = {}) => {
-  const { startSocialSignInAction } =
-    await import("#lib/social-sign-in-actions");
+/** Where an Action sent the reader, read off the redirect it threw. */
+const redirectedTo = async (action: Promise<void>): Promise<URL> => {
   try {
-    await startSocialSignInAction(startForm(fields));
+    await action;
   } catch (error) {
     if (error instanceof Error && error.message.startsWith(REDIRECT_PREFIX)) {
       return new URL(
@@ -96,6 +100,30 @@ const startSignIn = async (fields: Record<string, string> = {}) => {
     throw error;
   }
   throw new Error("the action did not redirect");
+};
+
+/** Start a sign-in and answer where the reader was sent. */
+const startSignIn = async (fields: Record<string, string> = {}) => {
+  const { startSocialSignInAction } =
+    await import("#lib/social-sign-in-actions");
+  return redirectedTo(startSocialSignInAction(startForm(fields)));
+};
+
+/** Ask for an email change from the security settings of an account without a password. */
+const startEmailChange = async () => {
+  const { confirmEmailChangeWithProviderAction } =
+    await import("../../../../../[locale]/(site)/settings/security/_lib/actions");
+  const data = new FormData();
+  for (const [name, value] of Object.entries({
+    currentEmail: "reader@example.com",
+    locale: "en",
+    newEmail: "moved@example.com",
+    provider: "google",
+    tenantId,
+  })) {
+    data.set(name, value);
+  }
+  return redirectedTo(confirmEmailChangeWithProviderAction(data));
 };
 
 const postAnswer = async (
@@ -291,6 +319,107 @@ describe("Apple and Google sign-in round trip", () => {
     );
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
     expect(response.headers.get("Location")).toMatch(/^\/en\/login\?/u);
+  });
+
+  it("asks for an email change with the fresh sign-in", async () => {
+    const authorization = await startEmailChange();
+    mockRequestPublicEmailChange.mockResolvedValueOnce(true);
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(authorization.origin).toBe("https://accounts.google.com");
+    expect(mockRequirePublicSession).toHaveBeenCalledWith(
+      "en",
+      "/settings/security",
+      tenantId
+    );
+    // The addresses wait in the sealed request while the reader is at Google.
+    expect(mockRequestPublicEmailChange).toHaveBeenCalledWith(
+      tenantId,
+      "reader@example.com",
+      "moved@example.com",
+      {
+        idToken: "header.payload.signature",
+        nonce: authorization.searchParams.get("nonce"),
+        provider: "google",
+      },
+      "access-token"
+    );
+    expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("success");
+  });
+
+  it("returns a refused email change to the security settings", async () => {
+    const authorization = await startEmailChange();
+    mockRequestPublicEmailChange.mockResolvedValueOnce(false);
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.get("message")).toBe(
+      "Could not request the email change. Please check what you entered."
+    );
+  });
+
+  it("sends a reader whose session ended to sign in again before the change", async () => {
+    const authorization = await startEmailChange();
+    mockRequestPublicEmailChange.mockRejectedValueOnce(
+      new ConnectError("session ended", Code.Unauthenticated)
+    );
+    mockIsSessionRejected.mockResolvedValueOnce(true);
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("returnTo")).toBe("/settings/security");
+  });
+
+  it("keeps the reader signed in when the API refuses the sign-in rather than the session", async () => {
+    const authorization = await startEmailChange();
+    mockRequestPublicEmailChange.mockRejectedValueOnce(
+      new ConnectError("invalid ID token", Code.Unauthenticated)
+    );
+    mockIsSessionRejected.mockResolvedValueOnce(false);
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(mockIsSessionRejected).toHaveBeenCalledWith(
+      tenantId,
+      "access-token"
+    );
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.has("reason")).toBe(false);
   });
 
   it("offers no provider the tenant has not enabled", async () => {

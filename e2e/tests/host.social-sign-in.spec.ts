@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql } from "../src/db";
-import { openHostUserMenu, signOutHost } from "../src/host";
+import { openHostUserMenu, signInAsMember, signOutHost } from "../src/host";
+import { clearMessagesTo, tokenFromLink, waitForMessageTo } from "../src/mail";
 import {
   SOCIAL_SIGN_IN_CONSENT_TENANT,
   SOCIAL_SIGN_IN_MEMBER,
@@ -26,8 +27,9 @@ import {
  * on a first sign-in, to the same one on the next, and to the account already
  * holding the address Google vouches for. A tenant that asks for consent asks
  * before the account is created. A linked account is listed in the security
- * settings and can be unlinked, and an account without a password confirms its
- * deletion by signing in again.
+ * settings and can be unlinked. An account without a password confirms an
+ * email change and its deletion by signing in again, and sets a first password
+ * through the reset flow.
  *
  * Google is played by a route that answers its authorization endpoint the way
  * `response_mode=form_post` does, with an ID token the stack's sign-in-provider
@@ -51,6 +53,15 @@ const MEMBER_GOOGLE: GoogleAccount = {
   name: "Member at Google",
   subject: "google-social-member",
 };
+
+/** An account Google creates, which then moves to another address. */
+const MOVER: GoogleAccount = {
+  email: "social-mover@example.com",
+  name: "Social Mover",
+  subject: "google-social-mover",
+};
+const MOVER_NEW_EMAIL = "social-mover-moved@example.com";
+const MOVER_PASSWORD = "moverpass1";
 
 const CONSENT_NEWCOMER: GoogleAccount = {
   email: "social-consent-newcomer@example.com",
@@ -82,6 +93,16 @@ const signInWithGoogle = async (
   await stubGoogleSignIn(page, account);
   await page.goto(`${baseUrl}${hostPath("/login")}`);
   await page.getByRole("button", { name: CONTINUE_WITH_GOOGLE }).click();
+};
+
+/** The token of the `pathname` link mailed to `recipient`, opened on this tenant. */
+const openMailedLink = async (
+  page: Page,
+  recipient: string,
+  pathname: string
+): Promise<void> => {
+  const token = tokenFromLink(await waitForMessageTo(recipient), pathname);
+  await page.goto(socialUrl(`${pathname}?token=${encodeURIComponent(token)}`));
 };
 
 const expectSignedInAs = async (page: Page, name: string): Promise<void> => {
@@ -173,6 +194,82 @@ test.describe("Sign in with Apple and Google on the public site", () => {
     await expect(linked).toContainText(
       "Your account has no password, so the last linked account stays linked."
     );
+  });
+
+  test("moves an account without a password to another address, and sets its first password", async ({
+    page,
+  }) => {
+    await Promise.all([
+      clearMessagesTo(MOVER.email),
+      clearMessagesTo(MOVER_NEW_EMAIL),
+    ]);
+    await signInWithGoogle(page, MOVER);
+    await page.waitForURL(socialUrl("/"));
+
+    await page.goto(socialUrl("/settings/security"));
+    const emailChange = page.getByRole("region", {
+      name: "Change email address",
+    });
+    await expect(emailChange.getByLabel("Current password")).toHaveCount(0);
+    await emailChange.getByLabel("Current email address").fill(MOVER.email);
+    await emailChange.getByLabel("New email address").fill(MOVER_NEW_EMAIL);
+    await emailChange
+      .getByRole("button", { name: "Confirm with Google" })
+      .click();
+    await page.waitForURL(
+      (url) =>
+        url.pathname.endsWith("/settings/security") &&
+        url.searchParams.get("status") === "success"
+    );
+
+    await openMailedLink(page, MOVER.email, "/confirm-email");
+    await openMailedLink(page, MOVER_NEW_EMAIL, "/confirm-email");
+    await expect(
+      page.getByText("Your email address has been changed.")
+    ).toBeVisible();
+    expect(accountCount(SOCIAL_SIGN_IN_TENANT, MOVER_NEW_EMAIL)).toBe("1");
+
+    // The confirmation the new address was sent is spent, so the next message
+    // there is the reset link.
+    await clearMessagesTo(MOVER_NEW_EMAIL);
+    await page.goto(socialUrl("/settings/security"));
+    await page
+      .getByRole("region", { name: "Set a password" })
+      .getByRole("link", { name: "Request a password reset email" })
+      .click();
+    await page.waitForURL((url) => url.pathname.endsWith("/reset-password"));
+    // The link is a client-side navigation, which keeps the settings screen and
+    // its two address fields on the page until the next one renders.
+    await page
+      .getByRole("textbox", { name: /^Email address/u })
+      .fill(MOVER_NEW_EMAIL);
+    await page.getByRole("button", { name: "Send reset email" }).click();
+    await page.waitForURL(/\/reset-password\/requested\/?$/u);
+
+    await openMailedLink(page, MOVER_NEW_EMAIL, "/confirm-password");
+    await page.getByLabel(/^New password\s*\*?$/u).fill(MOVER_PASSWORD);
+    await page.getByLabel(/^Confirm new password\s*\*?$/u).fill(MOVER_PASSWORD);
+    await page.getByRole("button", { name: "Reset password" }).click();
+    await expect(
+      page.getByText(
+        "Your password has been reset. Sign in with your new password."
+      )
+    ).toBeVisible();
+
+    await signInAsMember(
+      page,
+      { email: MOVER_NEW_EMAIL, password: MOVER_PASSWORD },
+      "/settings/security",
+      WEB_HOST_SOCIAL_SIGN_IN_BASE_URL
+    );
+    await expect(
+      page.getByRole("region", { name: "Change password" })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Change email address" })
+        .getByLabel("Current password")
+    ).toBeVisible();
   });
 
   test("deletes an account without a password once the reader signs in again", async ({

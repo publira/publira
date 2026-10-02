@@ -258,9 +258,63 @@ describe("web-host auth", () => {
         "TENANT001",
         "old@example.com",
         "new@example.com",
-        "pw"
+        { password: "pw" }
       )
     ).resolves.toBe(false);
+  });
+
+  it("requestPublicEmailChange: confirms an account without a password with a fresh sign-in", async () => {
+    const { requestPublicEmailChange } = await importAuth();
+    mockRequestEmailChange.mockResolvedValueOnce({ requested: true });
+
+    await expect(
+      requestPublicEmailChange(
+        "TENANT001",
+        "old@example.com",
+        "new@example.com",
+        {
+          idToken: "header.payload.signature",
+          nonce: "nonce-value",
+          provider: "google",
+        }
+      )
+    ).resolves.toBe(true);
+    expect(mockRequestEmailChange).toHaveBeenCalledWith(
+      {
+        currentEmail: "old@example.com",
+        idToken: "header.payload.signature",
+        newEmail: "new@example.com",
+        nonce: "nonce-value",
+        provider: IdentityProvider.GOOGLE,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("isSessionRejected: true when the API turns the session away", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(true);
+    expect(mockGetMe).toHaveBeenCalledOnce();
+  });
+
+  it("isSessionRejected: false when the API still answers for the session", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockGetMe.mockResolvedValueOnce({ user: { name: "Reader" } });
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(false);
+  });
+
+  it("isSessionRejected: false without asking when the browser holds no session", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(false);
+    expect(mockGetMe).not.toHaveBeenCalled();
   });
 
   it("getMe: Unauthenticated cases are propagated to the caller without retrying.", async () => {
