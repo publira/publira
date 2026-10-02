@@ -53,16 +53,19 @@ const formPostPage = (action: string, fields: Record<string, string>) => `
 /**
  * Stand in for Google's authorization endpoint: the reader is signed in as
  * `account` at once, and the answer is posted to the site's callback with an
- * ID token for the client and nonce the site asked with.
+ * ID token for the client and nonce the site asked with. `audience` replaces
+ * that client, for a token the API cannot verify.
  */
 export const stubGoogleSignIn = async (
   page: Page,
-  account: GoogleAccount
+  account: GoogleAccount,
+  { audience }: { audience?: string } = {}
 ): Promise<void> => {
+  await page.unroute(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`);
   await page.route(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`, async (route) => {
     const request = new URL(route.request().url());
     const idToken = await signIdToken({
-      aud: request.searchParams.get("client_id"),
+      aud: audience ?? request.searchParams.get("client_id"),
       email: account.email,
       email_verified: true,
       iss: "https://accounts.google.com",
