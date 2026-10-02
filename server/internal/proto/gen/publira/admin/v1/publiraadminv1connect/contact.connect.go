@@ -61,7 +61,9 @@ type AdminContactServiceClient interface {
 	// an inbox that has lost its page can reach one message without walking back
 	// to it.
 	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
-	// Marks one message dealt with, or puts it back among the ones waiting.
+	// Marks one message dealt with, or puts it back among the ones waiting. A
+	// message put back keeps its assignee, so it is in_progress again when it
+	// has one and unhandled when it has none.
 	//
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
@@ -70,7 +72,8 @@ type AdminContactServiceClient interface {
 	// the assignment.
 	//
 	// The assignee is stated rather than toggled, and it is independent of the
-	// handled flag: marking the message handled or reopening it keeps it.
+	// handled flag: marking the message handled or reopening it keeps it, so a
+	// reopened message that has an assignee is in_progress again.
 	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
 	// Saves, replaces, or clears the internal note on one message.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
@@ -167,7 +170,9 @@ type AdminContactServiceHandler interface {
 	// an inbox that has lost its page can reach one message without walking back
 	// to it.
 	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
-	// Marks one message dealt with, or puts it back among the ones waiting.
+	// Marks one message dealt with, or puts it back among the ones waiting. A
+	// message put back keeps its assignee, so it is in_progress again when it
+	// has one and unhandled when it has none.
 	//
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
@@ -176,7 +181,8 @@ type AdminContactServiceHandler interface {
 	// the assignment.
 	//
 	// The assignee is stated rather than toggled, and it is independent of the
-	// handled flag: marking the message handled or reopening it keeps it.
+	// handled flag: marking the message handled or reopening it keeps it, so a
+	// reopened message that has an assignee is in_progress again.
 	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
 	// Saves, replaces, or clears the internal note on one message.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)

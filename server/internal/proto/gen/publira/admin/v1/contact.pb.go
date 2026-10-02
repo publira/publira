@@ -27,6 +27,9 @@ const (
 // Publira carries no reply of its own, so the message is the whole record: what
 // the reader wrote, the address to answer at, who on the staff owns it, and
 // whether anyone has dealt with it yet.
+//
+// Where the message stands is derived rather than stored: status reads
+// handled_at and the assignee together, so it cannot disagree with them.
 type ContactMessage struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -38,7 +41,7 @@ type ContactMessage struct {
 	// When the message arrived.
 	CreatedAt string `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// When staff marked the message dealt with. Empty while it is still waiting,
-	// which is what an inbox separates its unhandled messages by.
+	// whether or not anybody is assigned to it.
 	HandledAt string `protobuf:"bytes,6,opt,name=handled_at,json=handledAt,proto3" json:"handled_at,omitempty"`
 	// The account that sent the message. Both are empty for a guest, and for a
 	// reader whose account has been deleted since: the message stays, because the
@@ -56,7 +59,16 @@ type ContactMessage struct {
 	AssigneeName     string `protobuf:"bytes,12,opt,name=assignee_name,json=assigneeName,proto3" json:"assignee_name,omitempty"`
 	// The internal note staff keep on the message. Empty when there is none.
 	// Readers never see it: no public API carries it.
-	StaffNote     string `protobuf:"bytes,13,opt,name=staff_note,json=staffNote,proto3" json:"staff_note,omitempty"`
+	StaffNote string `protobuf:"bytes,13,opt,name=staff_note,json=staffNote,proto3" json:"staff_note,omitempty"`
+	// Where the message stands in the inbox, one of:
+	//
+	//	unhandled   - nobody has dealt with it and nobody is assigned
+	//	in_progress - nobody has dealt with it yet, but somebody is assigned
+	//	handled     - staff marked it dealt with, assigned or not
+	//
+	// The values are the ListContactMessagesRequest.status filter's, and a
+	// message lists under the filter its own status names.
+	Status        string `protobuf:"bytes,14,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -182,12 +194,20 @@ func (x *ContactMessage) GetStaffNote() string {
 	return ""
 }
 
+func (x *ContactMessage) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListContactMessagesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	// One of unhandled, handled. Empty lists both, which is how the whole history
-	// is read back. Anything else is invalid_argument.
+	// One of unhandled, in_progress, handled (ContactMessage.status). Empty
+	// lists all three, which is how the whole history is read back. Anything
+	// else is invalid_argument.
 	Status string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
@@ -741,7 +761,7 @@ var File_publira_admin_v1_contact_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xb6\x03\n" +
+	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xce\x03\n" +
 	"\x0eContactMessage\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12$\n" +
 	"\x0ereply_to_email\x18\x02 \x01(\tR\freplyToEmail\x12\x18\n" +
@@ -760,7 +780,8 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\x12assignee_public_id\x18\v \x01(\tR\x10assigneePublicId\x12#\n" +
 	"\rassignee_name\x18\f \x01(\tR\fassigneeName\x12\x1d\n" +
 	"\n" +
-	"staff_note\x18\r \x01(\tR\tstaffNote\"\x99\x01\n" +
+	"staff_note\x18\r \x01(\tR\tstaffNote\x12\x16\n" +
+	"\x06status\x18\x0e \x01(\tR\x06status\"\x99\x01\n" +
 	"\x1aListContactMessagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +

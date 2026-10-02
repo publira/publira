@@ -11,6 +11,9 @@ import "publira/types/v1/types.proto";
 // Publira carries no reply of its own, so the message is the whole record: what
 // the reader wrote, the address to answer at, who on the staff owns it, and
 // whether anyone has dealt with it yet.
+//
+// Where the message stands is derived rather than stored: status reads
+// handled_at and the assignee together, so it cannot disagree with them.
 message ContactMessage {
   string public_id = 1;
   // The address staff answer at, as the reader typed it.
@@ -21,7 +24,7 @@ message ContactMessage {
   // When the message arrived.
   string created_at = 5;
   // When staff marked the message dealt with. Empty while it is still waiting,
-  // which is what an inbox separates its unhandled messages by.
+  // whether or not anybody is assigned to it.
   string handled_at = 6;
   // The account that sent the message. Both are empty for a guest, and for a
   // reader whose account has been deleted since: the message stays, because the
@@ -40,13 +43,21 @@ message ContactMessage {
   // The internal note staff keep on the message. Empty when there is none.
   // Readers never see it: no public API carries it.
   string staff_note = 13;
+  // Where the message stands in the inbox, one of:
+  //   unhandled   - nobody has dealt with it and nobody is assigned
+  //   in_progress - nobody has dealt with it yet, but somebody is assigned
+  //   handled     - staff marked it dealt with, assigned or not
+  // The values are the ListContactMessagesRequest.status filter's, and a
+  // message lists under the filter its own status names.
+  string status = 14;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListContactMessagesRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // One of unhandled, handled. Empty lists both, which is how the whole history
-  // is read back. Anything else is invalid_argument.
+  // One of unhandled, in_progress, handled (ContactMessage.status). Empty
+  // lists all three, which is how the whole history is read back. Anything
+  // else is invalid_argument.
   string status = 2;
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 3;
@@ -125,7 +136,9 @@ service AdminContactService {
   // an inbox that has lost its page can reach one message without walking back
   // to it.
   rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageResponse) {}
-  // Marks one message dealt with, or puts it back among the ones waiting.
+  // Marks one message dealt with, or puts it back among the ones waiting. A
+  // message put back keeps its assignee, so it is in_progress again when it
+  // has one and unhandled when it has none.
   //
   // Marking a message that is already in the state asked for succeeds and
   // leaves the recorded time alone, so a repeated press does not move it.
@@ -134,7 +147,8 @@ service AdminContactService {
   // the assignment.
   //
   // The assignee is stated rather than toggled, and it is independent of the
-  // handled flag: marking the message handled or reopening it keeps it.
+  // handled flag: marking the message handled or reopening it keeps it, so a
+  // reopened message that has an assignee is in_progress again.
   rpc AssignContactMessage(AssignContactMessageRequest) returns (AssignContactMessageResponse) {}
   // Saves, replaces, or clears the internal note on one message.
   rpc UpdateContactMessageStaffNote(UpdateContactMessageStaffNoteRequest) returns (UpdateContactMessageStaffNoteResponse) {}
