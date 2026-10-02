@@ -29,6 +29,62 @@ export type ScreenshotViewport = (typeof SCREENSHOT_VIEWPORTS)[number];
 const LOADING_PLACEHOLDER = '[class*="animate-pulse"]';
 
 /**
+ * Every image on a screen, fetched and decoded, wherever on the page it sits.
+ *
+ * The storefront defers the artwork a reader has not scrolled to with
+ * `loading="lazy"`, and Chromium requests such an image only once it comes
+ * within a distance of the viewport that is Chromium's own and moves with its
+ * estimate of the connection. A full-page shot photographs below the viewport
+ * without scrolling, and an image that was never requested leaves the network
+ * as quiet and the placeholders as absent as one that has arrived, so a cover
+ * low on a page records as an empty frame on one run and as artwork on the
+ * next. Switching each image to `eager` is the spec's own way of releasing
+ * a deferred load, which makes "every image" mean every image rather than every
+ * image near the top; the pages themselves keep deferring for a reader.
+ *
+ * An image that ends up with nothing to draw fails here rather than being
+ * recorded, because a baseline of a broken image is a baseline of the bug.
+ */
+const expectEveryImageLoaded = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    for (const image of document.images) {
+      image.loading = "eager";
+    }
+  });
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          [...document.images].flatMap((image) =>
+            image.complete ? [] : [image.currentSrc || image.src]
+          )
+        ),
+      { message: "an image on the page is still loading" }
+    )
+    .toEqual([]);
+
+  // `decoding="async"` lets a loaded image paint a frame later than its load,
+  // and a rejected `decode()` is an image with nothing to draw.
+  const broken = await page.evaluate(async () => {
+    const outcomes = await Promise.all(
+      [...document.images].map(async (image) => {
+        try {
+          await image.decode();
+          return null;
+        } catch {
+          return image.currentSrc || image.src;
+        }
+      })
+    );
+
+    return outcomes.filter((source) => source !== null);
+  });
+
+  expect(broken, "an image on the page has nothing to draw").toEqual([]);
+};
+
+/**
  * The width a screen actually laid its content out at, against the width it
  * was given.
  *
@@ -95,6 +151,10 @@ const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
  * placeholders in the first of those two moments finds none, and the shot then
  * lands in the second. Once nothing is in flight there is no chunk left to
  * suspend on, so a screen with no placeholder is a screen that is finished.
+ *
+ * Except for its images: a deferred one is neither in flight nor a
+ * placeholder, so every image is loaded explicitly before the shot, as
+ * {@link expectEveryImageLoaded} explains.
  */
 export const expectScreenshot = async (
   page: Page,
@@ -106,6 +166,7 @@ export const expectScreenshot = async (
   // oxlint-disable-next-line sonarjs/no-networkidle-wait
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
+  await expectEveryImageLoaded(page);
   await expectNoHorizontalOverflow(page);
 
   await expect(page).toHaveScreenshot(`${name}-${viewport.label}.png`, {
@@ -131,6 +192,7 @@ export const expectElementScreenshot = async (
   // oxlint-disable-next-line sonarjs/no-networkidle-wait
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
+  await expectEveryImageLoaded(page);
 
   await expect(element).toHaveScreenshot(`${name}-${viewport.label}.png`);
 };
