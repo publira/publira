@@ -14,7 +14,7 @@
 services:
   app:
     # Pin the tag + digest the same way .devcontainer/compose.yaml does.
-    image: python:3.14-alpine@sha256:9e9fde4d32eedce0b661d9ab91e826b62dddf28e928c230ec55f1866cac66b01
+    image: python:3.14-alpine@sha256:2e740b2c28a426e74f11396c05e38afb3191acced75045b8d62df573c1dc8ce8
     command: ["python", "/echo.py"]
     volumes:
       - ${PUBLIRA_ROUTING_ECHO_PY}:/echo.py:ro
