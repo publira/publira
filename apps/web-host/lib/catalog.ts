@@ -1590,6 +1590,18 @@ export const getEpisodeDetail = async (
     episode: EpisodeDetail;
     images: EpisodeImageItem[];
     nextEpisode: EpisodeNeighborItem | undefined;
+    /**
+     * The first later episode free to read right now, which a locked body
+     * offers instead. It is the same for every reader, so it is read here
+     * rather than beside the session.
+     */
+    nextFreeEpisode: EpisodeNeighborItem | undefined;
+    /**
+     * The server's blurred renditions of the opening pages, set beside
+     * `locked` and `age_restricted` alone. They are the same for every reader
+     * and carry no key material, so this shared entry can hold them.
+     */
+    previewImages: EpisodeImageItem[];
     previousEpisode: EpisodeNeighborItem | undefined;
     series: EpisodeSeriesSummary;
   } | null>
@@ -1658,6 +1670,8 @@ export const getEpisodeDetail = async (
       episode,
       images: mapEpisodeImages(response.images),
       nextEpisode: mapEpisodeNeighbor(response.nextEpisode),
+      nextFreeEpisode: mapEpisodeNeighbor(response.nextFreeEpisode),
+      previewImages: mapEpisodeImages(response.previewImages),
       previousEpisode: mapEpisodeNeighbor(response.previousEpisode),
       series,
     },

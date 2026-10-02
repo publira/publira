@@ -1,11 +1,4 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -16,9 +9,12 @@ import { Message } from "#components/message";
 import { episodeLoginHref } from "../_lib/access-gate";
 
 /**
- * What stands where the pages would be when the tenant makes a reader prove an
- * age for this series and they have not. Its three states are the three things
- * that can be missing: the session, the birth date, or the years themselves.
+ * The card over the preview when the tenant makes a reader prove an age for
+ * this series and they have not. Its three states are the three things that
+ * can be missing: the session, the birth date, or the years themselves.
+ *
+ * Unlike the access gate it offers no free episode to read instead: the rule
+ * covers the whole series, so every episode of it is closed the same way.
  */
 export const EpisodeAgeGate = ({
   episodePublicId,
@@ -78,32 +74,30 @@ export const EpisodeAgeGate = ({
   }
 
   return (
-    <EmptyState>
-      <EmptyStateHeading>
-        <EmptyStateTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+    <div className="grid gap-6">
+      <div className="grid gap-2">
+        <p className="font-serif text-xl leading-tight">
+          <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-64" />}>
             <Message message="host.episode.age_gate.title" />
           </Suspense>
-        </EmptyStateTitle>
-        <EmptyStateDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             {closedBecause}
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyStateHeading>
-      <EmptyStateActions>
-        <div className="flex flex-wrap justify-center gap-3">
-          {ageAction}
-          <LinkButton
-            render={<LocaleLink href={`/series/${seriesPublicId}`} />}
-            variant="outline"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message message="host.episode.to_series_detail" />
-            </Suspense>
-          </LinkButton>
-        </div>
-      </EmptyStateActions>
-    </EmptyState>
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">
+        {ageAction}
+        <LinkButton
+          render={<LocaleLink href={`/series/${seriesPublicId}`} />}
+          variant="outline"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="host.episode.to_series_detail" />
+          </Suspense>
+        </LinkButton>
+      </div>
+    </div>
   );
 };

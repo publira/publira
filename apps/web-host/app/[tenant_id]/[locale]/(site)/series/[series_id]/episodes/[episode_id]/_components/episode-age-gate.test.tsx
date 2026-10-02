@@ -62,4 +62,12 @@ describe("EpisodeAgeGate", () => {
       screen.getByRole("link", { name: "host.episode.to_series_detail" })
     ).toBeDefined();
   });
+
+  it("Offers no other episode to read, since the rule closes all of them", () => {
+    render(<EpisodeAgeGate {...props} hasBirthDate={false} signedIn={false} />);
+
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
+      ["host.episode.gate.login", "host.episode.to_series_detail"]
+    );
+  });
 });

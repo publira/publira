@@ -3115,6 +3115,7 @@
         "guest_title": "This episode is paid",
         "guest_unpayable_description": "To read this episode, sign in and ask an administrator to grant you a ticket. This site cannot take purchases at the moment.",
         "login": "Sign in to read",
+        "next_free_episode": "Read episode {$number} for free",
         "purchase": "Buy this episode",
         "signed_in_app_only_description": "This episode is sold in the app. Buy it there with this account, and it opens here as well.",
         "signed_in_payable_description": "You do not have access. Your ticket has expired or has not been granted yet. If you have already bought this episode, check whether you are signed in with a different account.",

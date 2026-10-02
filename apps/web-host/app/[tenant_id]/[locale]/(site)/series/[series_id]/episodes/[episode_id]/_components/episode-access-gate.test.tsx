@@ -167,4 +167,65 @@ describe("EpisodeAccessGate", () => {
       screen.getByRole("button", { name: "host.episode.gate.purchase" })
     ).toBeDefined();
   });
+
+  describe("the next free episode", () => {
+    const nextFreeEpisode = {
+      isFree: true,
+      orderIndex: 4,
+      price: 0,
+      publicId: "EPISODE_004",
+      purchaseSurface: "all" as const,
+      title: "Episode 4",
+    };
+
+    it("Link to it beside the purchase, which stays the one filled action", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          nextFreeEpisode={nextFreeEpisode}
+        />
+      );
+
+      const link = screen.getByRole("link", {
+        name: "host.episode.gate.next_free_episode",
+      });
+      expect(link.getAttribute("href")).toBe(
+        "/series/SERIES_001/episodes/EPISODE_004"
+      );
+      expect(link.classList.contains("bg-secondary")).toBe(false);
+      expect(
+        screen
+          .getByRole("button", { name: "host.episode.gate.purchase" })
+          .classList.contains("bg-secondary")
+      ).toBe(true);
+    });
+
+    it("Offer it to a guest as well", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          nextFreeEpisode={nextFreeEpisode}
+          signedIn={false}
+        />
+      );
+
+      expect(
+        screen.getByRole("link", {
+          name: "host.episode.gate.next_free_episode",
+        })
+      ).toBeDefined();
+    });
+
+    it("Leave the link out when no later episode is free", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments />);
+
+      expect(
+        screen.queryByRole("link", {
+          name: "host.episode.gate.next_free_episode",
+        })
+      ).toBeNull();
+    });
+  });
 });
