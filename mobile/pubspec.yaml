@@ -32,7 +32,7 @@ dependencies:
   app_links: 7.2.1
   share_plus: 13.3.1
   timezone: 0.11.1
-  url_launcher: 6.3.2
+  url_launcher: 6.3.3
   flutter_markdown_plus: 1.0.12
   # The Markdown syntax tree flutter_markdown_plus lays out.
   markdown: 7.3.1
