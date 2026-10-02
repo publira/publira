@@ -1510,6 +1510,9 @@ abstract class AppMessages {
   /// `mobile.viewer.age_restricted.no_birth_date`
   String get viewerAgeRestrictedNoBirthDate;
 
+  /// `mobile.viewer.age_restricted.title`
+  String get viewerAgeRestrictedTitle;
+
   /// `mobile.viewer.age_restricted.too_young`
   String get viewerAgeRestrictedTooYoung;
 
@@ -1552,8 +1555,14 @@ abstract class AppMessages {
   /// `mobile.viewer.locked_sold_on_web_signed_out`
   String get viewerLockedSoldOnWebSignedOut;
 
+  /// `mobile.viewer.locked_title`
+  String get viewerLockedTitle;
+
   /// `mobile.viewer.next_episode`
   String get viewerNextEpisode;
+
+  /// `mobile.viewer.next_free_episode`
+  String viewerNextFreeEpisode({required String number});
 
   /// `mobile.viewer.next_page`
   String get viewerNextPage;
@@ -3997,6 +4006,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedTitle {
+    return 'このエピソードには年齢制限があります';
+  }
+
+  @override
   String get viewerAgeRestrictedTooYoung {
     return 'この作品はお客様の年齢では閲覧できません。';
   }
@@ -4067,8 +4081,18 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get viewerLockedTitle {
+    return 'このエピソードは有料です';
+  }
+
+  @override
   String get viewerNextEpisode {
     return '次のエピソード';
+  }
+
+  @override
+  String viewerNextFreeEpisode({required String number}) {
+    return '第$number話を無料で読む';
   }
 
   @override
@@ -6555,6 +6579,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedTitle {
+    return 'This episode is age-restricted';
+  }
+
+  @override
   String get viewerAgeRestrictedTooYoung {
     return 'This work is not available for your age.';
   }
@@ -6625,8 +6654,18 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerLockedTitle {
+    return 'This episode is paid';
+  }
+
+  @override
   String get viewerNextEpisode {
     return 'Next episode';
+  }
+
+  @override
+  String viewerNextFreeEpisode({required String number}) {
+    return 'Read episode $number for free';
   }
 
   @override
@@ -9113,6 +9152,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedTitle {
+    return '이 에피소드에는 연령 제한이 있습니다';
+  }
+
+  @override
   String get viewerAgeRestrictedTooYoung {
     return '이 작품은 현재 나이로는 열람할 수 없습니다.';
   }
@@ -9183,8 +9227,18 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get viewerLockedTitle {
+    return '이 에피소드는 유료입니다';
+  }
+
+  @override
   String get viewerNextEpisode {
     return '다음 에피소드';
+  }
+
+  @override
+  String viewerNextFreeEpisode({required String number}) {
+    return '$number화 무료로 읽기';
   }
 
   @override
@@ -11671,6 +11725,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedTitle {
+    return '本章设有年龄限制';
+  }
+
+  @override
   String get viewerAgeRestrictedTooYoung {
     return '本作品不适用于您的年龄。';
   }
@@ -11741,8 +11800,18 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerLockedTitle {
+    return '本章为付费内容';
+  }
+
+  @override
   String get viewerNextEpisode {
     return '下一章';
+  }
+
+  @override
+  String viewerNextFreeEpisode({required String number}) {
+    return '免费阅读第$number章';
   }
 
   @override
@@ -14229,6 +14298,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedTitle {
+    return '本章設有年齡限制';
+  }
+
+  @override
   String get viewerAgeRestrictedTooYoung {
     return '本作品不適用於您的年齡。';
   }
@@ -14299,8 +14373,18 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get viewerLockedTitle {
+    return '本章為付費內容';
+  }
+
+  @override
   String get viewerNextEpisode {
     return '下一章';
+  }
+
+  @override
+  String viewerNextFreeEpisode({required String number}) {
+    return '免費閱讀第$number章';
   }
 
   @override

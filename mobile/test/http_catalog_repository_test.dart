@@ -1352,7 +1352,77 @@ void main() {
     // there is no episode on that side.
     expect(detail!.previousEpisode, isNull);
     expect(detail.nextEpisode, isNull);
+    expect(detail.nextFreeEpisode, isNull);
+    expect(detail.previewImages, isEmpty);
   });
+
+  test(
+    'getEpisode hands a withheld body its preview and the next free episode',
+    () async {
+      server.episodeResponse = {
+        'episode': {'publicId': 'EP', 'title': 'Paid', 'price': 300},
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_LOCKED',
+        'previewImages': [
+          {
+            'id': 'page-2',
+            'imageUrl': '/images/episodes/page-2/preview',
+            'displayOrder': 2,
+            'width': 45,
+            'height': 64,
+          },
+          {
+            'id': 'page-1',
+            'imageUrl': '/images/episodes/page-1/preview',
+            'displayOrder': 1,
+            'width': 45,
+            'height': 64,
+          },
+        ],
+        'nextFreeEpisode': {
+          'publicId': 'EP05',
+          'title': 'Fifth',
+          'orderIndex': 5,
+          'isFree': true,
+        },
+      };
+      final authenticated = HttpCatalogRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+
+      final detail = await authenticated.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      expect(detail!.images, isEmpty);
+      expect(detail.previewImages.map((image) => image.id), [
+        'page-1',
+        'page-2',
+      ]);
+      expect(
+        detail.previewImages.first.url.toString(),
+        '${server.baseUrl}/images/episodes/page-1/preview',
+      );
+      expect(detail.previewImages.first.width, 45);
+      expect(detail.previewImages.first.height, 64);
+      // A preview is the same for every reader, so the session that read the
+      // body stays off its requests.
+      expect(detail.previewImageRequestHeaders, {
+        'x-forwarded-host': 'localhost',
+      });
+      expect(detail.nextFreeEpisode!.id, 'EP05');
+      expect(detail.nextFreeEpisode!.orderIndex, 5);
+      expect(detail.nextFreeEpisode!.isFree, isTrue);
+    },
+  );
 
   test(
     'getEpisode hands the viewer the episode\'s resolved reading direction and spread start',

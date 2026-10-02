@@ -14,13 +14,6 @@ import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
 import 'package:publira/viewer/page_spreads.dart';
 
-/// Narrowest screen a spread is worth showing on, in logical pixels.
-///
-/// It is Material's medium window breakpoint: below it each half of a spread
-/// is narrower than a phone shows a single page, so the pages would be smaller
-/// than the reader can read rather than larger.
-const _spreadMinWidth = 600.0;
-
 /// How long a page turn started from a control or a tap takes. A swipe carries
 /// its own timing from the gesture.
 const _turnDuration = Duration(milliseconds: 200);
@@ -155,11 +148,6 @@ class _EpisodeReaderState extends State<EpisodeReader> {
     super.dispose();
   }
 
-  /// Two pages share a screen only where both of them stay legible: a tablet,
-  /// or a phone held sideways, which is the shape a printed spread has.
-  bool _pairsPages(Size viewport) =>
-      viewport.width >= _spreadMinWidth && viewport.width > viewport.height;
-
   /// How many screens the reader turns through: the episode's, plus the one
   /// the end panel takes.
   int _screenCount(PageSpreads spreads) =>
@@ -287,7 +275,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
         final spreads = PageSpreads(
           pageCount: widget.images.length,
-          paired: _pairsPages(viewport),
+          paired: PageSpreads.pairsOn(viewport),
           spreadStartIndex: widget.spreadStartIndex,
         );
         final screen = _screenOf(spreads);

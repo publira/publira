@@ -178,8 +178,10 @@ void main() {
       seriesTitle: detail.seriesTitle,
       access: detail.access,
       images: detail.images,
+      previewImages: detail.previewImages,
       previousEpisode: detail.previousEpisode,
       nextEpisode: detail.nextEpisode,
+      nextFreeEpisode: detail.nextFreeEpisode,
       imageRequestHeaders: detail.imageRequestHeaders,
       creators: detail.creators,
       readingDirection: readingDirection,
@@ -478,6 +480,154 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+  });
+
+  group('the preview behind a gate', () {
+    final card = find.byKey(const ValueKey('episode-gate-card'));
+    final nextFree = find.byKey(const ValueKey('episode-next-free'));
+
+    /// The blurred rendition of the one-based opening page [number] of
+    /// [episodeId].
+    Finder preview(String episodeId, int number) =>
+        find.byKey(ValueKey('episode-gate-preview-$episodeId-preview-$number'));
+
+    testWidgets('a locked body shows its first page under the offer', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      expect(find.byKey(const ValueKey('episode-locked')), findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text('This episode is paid')),
+        findsOneWidget,
+      );
+      // A phone held upright shows one page at a time, so the preview does
+      // too, and it fills the screen the card floats over.
+      expect(preview(episodeId, 1), findsOneWidget);
+      expect(preview(episodeId, 2), findsNothing);
+      expect(tester.getSize(preview(episodeId, 1)).height, greaterThan(500));
+      expect(
+        tester.getRect(card).center.dy,
+        closeTo(tester.getRect(preview(episodeId, 1)).center.dy, 1),
+      );
+      expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+    });
+
+    testWidgets('a locked body leads to the next free episode', (tester) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, nextFree);
+
+      expect(
+        find.descendant(
+          of: nextFree,
+          matching: find.text('Read episode 2 for free'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(nextFree);
+      await pumpUntilFound(tester, preview('$seriesId-ep-2', 1));
+      expect(find.text('Seed Series 001 #2'), findsOneWidget);
+    });
+
+    testWidgets('the last episode offers no free one after it', (tester) async {
+      final last = '$seriesId-ep-10';
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      openEpisode(last);
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      expect(preview(last, 1), findsOneWidget);
+      expect(nextFree, findsNothing);
+      expect(find.textContaining('for free'), findsNothing);
+    });
+
+    testWidgets('a wide screen lays the opening pages out as a spread', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, screen: landscape, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      // A right-to-left work opens on its right-hand page.
+      final first = tester.getRect(preview(episodeId, 1));
+      final second = tester.getRect(preview(episodeId, 2));
+      expect(first.center.dx, greaterThan(second.center.dx));
+      expect(first.left, closeTo(second.right, 1));
+    });
+
+    testWidgets('a left-to-right spread opens on its left-hand page', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      layoutEpisode(episodeId, readingDirection: ReadingDirection.ltr);
+      await pumpApp(tester, screen: landscape, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      final first = tester.getRect(preview(episodeId, 1));
+      final second = tester.getRect(preview(episodeId, 2));
+      expect(first.center.dx, lessThan(second.center.dx));
+    });
+
+    testWidgets('the preview says nothing to a screen reader', (tester) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      expect(
+        find.ancestor(
+          of: preview(episodeId, 1),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ExcludeSemantics && widget.excluding,
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an R18 body shows its preview under the age gate', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.ageRestricted,
+        ageRating: SeriesAgeRating.r18,
+      );
+      await pumpApp(tester);
+      await pumpUntilFound(tester, card);
+
+      expect(
+        find.byKey(const ValueKey('episode-age-restricted')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text('This episode is age-restricted'),
+        ),
+        findsOneWidget,
+      );
+      expect(preview(episodeId, 1), findsOneWidget);
+      // The rule closes every episode of the series the same way, so there is
+      // no free one to read instead, though the read names one.
+      expect(nextFree, findsNothing);
+      expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
+      expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+    });
+
+    testWidgets('a gate leads back to the series', (tester) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, card);
+
+      await tester.tap(find.byKey(const ValueKey('episode-gate-series')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('series-detail-body')),
+      );
+    });
   });
 
   testWidgets('a guest is asked to sign in for an age-rated body', (

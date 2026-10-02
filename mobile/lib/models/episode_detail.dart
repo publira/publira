@@ -144,10 +144,13 @@ class EpisodeDetail {
     required this.seriesTitle,
     required this.access,
     required this.images,
+    this.previewImages = const [],
     this.entitlementSource = EpisodeEntitlementSource.unspecified,
     this.previousEpisode,
     this.nextEpisode,
+    this.nextFreeEpisode,
     this.imageRequestHeaders = const {},
+    this.previewImageRequestHeaders = const {},
     this.ageRating,
     this.creators = const [],
     this.readingDirection = ReadingDirection.rtl,
@@ -162,6 +165,13 @@ class EpisodeDetail {
   /// Body pages in `displayOrder`. Empty while access is [EpisodeAccess.locked].
   final List<EpisodeImageItem> images;
 
+  /// The opening pages as the server renders them for a reader who may not
+  /// open the body, in `displayOrder`: reduced and blurred before they leave
+  /// it, so they hold too little to read and are drawn as they come. Set only
+  /// while [access] is [EpisodeAccess.locked] or
+  /// [EpisodeAccess.ageRestricted], where they stand in for [images].
+  final List<EpisodeImageItem> previewImages;
+
   /// Why the reader may open the body, set only while [access] is
   /// [EpisodeAccess.entitled].
   final EpisodeEntitlementSource entitlementSource;
@@ -172,9 +182,19 @@ class EpisodeDetail {
   final EpisodeNeighbor? previousEpisode;
   final EpisodeNeighbor? nextEpisode;
 
+  /// The first later published episode of the series whose body is public at
+  /// the moment of the read, which may be [nextEpisode] itself, or `null` when
+  /// no later episode is free.
+  final EpisodeNeighbor? nextFreeEpisode;
+
   /// Headers [images] must be fetched with. They travel with the pages because
   /// the same read decided both which pages exist and who is asking for them.
   final Map<String, String> imageRequestHeaders;
+
+  /// Headers [previewImages] are fetched with. A preview is the same for every
+  /// reader and its route reads no credential, so they never carry the
+  /// session.
+  final Map<String, String> previewImageRequestHeaders;
 
   /// Who the series is meant for, taken from the series `GetEpisodeDetail`
   /// returned beside the body. The viewer gates on it the way the series
