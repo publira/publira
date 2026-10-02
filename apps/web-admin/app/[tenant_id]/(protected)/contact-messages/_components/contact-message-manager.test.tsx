@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,9 @@ vi.mock("next/link", () => ({
 const contactMessage = (
   overrides: Partial<ContactMessageItem> = {}
 ): ContactMessageItem => ({
+  assigneeName: "",
+  assigneePublicId: "",
+  assigneeUserId: "",
   body: "The second episode will not open for me.",
   createdAt: "2026-06-01T20:00:00Z",
   handledAt: "",
@@ -42,6 +45,7 @@ const contactMessage = (
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
   senderPublicId: "READER00001",
+  status: "unhandled",
   subject: "Cannot open an episode",
   ...overrides,
 });
@@ -51,7 +55,7 @@ afterEach(() => {
 });
 
 describe("ContactMessageManager", () => {
-  it("lists a message's subject, sender, reply-to address, state, and arrival in the tenant time zone", async () => {
+  it("lists a message's subject, sender, reply-to address, state, assignee, and arrival in the tenant time zone", async () => {
     render(
       await ContactMessageManager({
         filtered: false,
@@ -71,7 +75,8 @@ describe("ContactMessageManager", () => {
       screen.getByRole("link", { name: "Reader One" }).getAttribute("href")
     ).toBe("/readers/READER00001");
     expect(screen.getByText("reader@example.com")).toBeTruthy();
-    expect(screen.getByText("Waiting")).toBeTruthy();
+    expect(screen.getByText("Unhandled")).toBeTruthy();
+    expect(screen.getByText("Unassigned")).toBeTruthy();
     // 2026-06-01T20:00Z is already 2 June in Asia/Seoul.
     expect(screen.getByText(/Jun 2, 2026/u)).toBeTruthy();
   });
@@ -105,18 +110,58 @@ describe("ContactMessageManager", () => {
     expect(screen.getByRole("link", { name: "No subject" })).toBeTruthy();
   });
 
-  it("shows a message staff have dealt with as handled", async () => {
+  it("shows a message somebody is assigned to as in progress, naming the assignee", async () => {
     render(
       await ContactMessageManager({
         filtered: false,
         locale: "en",
-        messages: [contactMessage({ handledAt: "2026-06-03T00:00:00Z" })],
+        messages: [
+          contactMessage({
+            assigneeName: "Staff Two",
+            assigneePublicId: "STAFF000002",
+            assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+            status: "in_progress",
+          }),
+        ],
+        pageSize: 20,
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const [, row] = screen.getAllByRole("row");
+    if (!row) {
+      throw new Error("the message has no row");
+    }
+    const cells = within(row).getAllByRole("cell");
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent);
+    expect(cells[headers.indexOf("Status")]?.textContent).toBe("In progress");
+    expect(cells[headers.indexOf("Assignee")]?.textContent).toBe("Staff Two");
+    expect(screen.queryByText("Unassigned")).toBeNull();
+  });
+
+  it("shows a handled message as handled while it keeps its assignee", async () => {
+    render(
+      await ContactMessageManager({
+        filtered: false,
+        locale: "en",
+        messages: [
+          contactMessage({
+            assigneeName: "Staff Two",
+            assigneePublicId: "STAFF000002",
+            assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+            handledAt: "2026-06-03T00:00:00Z",
+            status: "handled",
+          }),
+        ],
         pageSize: 20,
         timeZone: "Asia/Seoul",
       })
     );
 
     expect(screen.getByText("Handled")).toBeTruthy();
+    expect(screen.getByText("Staff Two")).toBeTruthy();
   });
 
   it("says nothing has arrived yet for a tenant nobody has written to", async () => {
@@ -152,7 +197,7 @@ describe("ContactMessageManager", () => {
 
     expect(
       screen.getByText(
-        "No message is in this state. Try the other state, or reset the filter."
+        "No message is in this state. Try another state, or reset the filter."
       )
     ).toBeTruthy();
   });

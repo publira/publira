@@ -12,11 +12,17 @@ export const ContactMessageStatusMessage = ({
 }: {
   status: ContactMessageStatus;
 }) => {
-  if (status === "handled") {
-    return <Message message="admin.contact_messages.status_handled" />;
+  switch (status) {
+    case "handled": {
+      return <Message message="admin.contact_messages.status_handled" />;
+    }
+    case "in_progress": {
+      return <Message message="admin.contact_messages.status_in_progress" />;
+    }
+    default: {
+      return <Message message="admin.contact_messages.status_unhandled" />;
+    }
   }
-
-  return <Message message="admin.contact_messages.status_unhandled" />;
 };
 
 /** The same name as a string, for the `<option>` labels of the status filter. */
@@ -25,17 +31,36 @@ export const contactMessageStatusLabel = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (status === "handled") {
-    return t("admin.contact_messages.status_handled");
+  switch (status) {
+    case "handled": {
+      return t("admin.contact_messages.status_handled");
+    }
+    case "in_progress": {
+      return t("admin.contact_messages.status_in_progress");
+    }
+    default: {
+      return t("admin.contact_messages.status_unhandled");
+    }
   }
-
-  return t("admin.contact_messages.status_unhandled");
 };
 
 /**
- * A message still waiting reads as outstanding work rather than as a fault, so
- * it takes the warning tone and a handled one the success tone.
+ * A message nobody has picked up reads as outstanding work rather than as a
+ * fault, so it takes the warning tone; one somebody is working on is only
+ * information, and a handled one takes the success tone.
  */
 export const contactMessageStatusTone = (
   status: ContactMessageStatus
-): BadgeTone => (status === "handled" ? "success" : "warning");
+): BadgeTone => {
+  switch (status) {
+    case "handled": {
+      return "success";
+    }
+    case "in_progress": {
+      return "info";
+    }
+    default: {
+      return "warning";
+    }
+  }
+};

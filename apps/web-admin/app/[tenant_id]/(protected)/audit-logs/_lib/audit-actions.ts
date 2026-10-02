@@ -44,6 +44,8 @@ export const auditActions = [
   "comment_report_rejected",
   "contact_message_handled",
   "contact_message_reopened",
+  "contact_message_assigned",
+  "contact_message_unassigned",
   "reader_suspended",
   "reader_unsuspended",
   "reader_birth_date_changed",

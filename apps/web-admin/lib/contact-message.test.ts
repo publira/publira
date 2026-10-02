@@ -2,14 +2,18 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAssignContactMessage,
   mockGetAccessToken,
   mockGetContactMessage,
   mockListContactMessages,
+  mockListTenantMembers,
   mockMarkContactMessageHandled,
 } = vi.hoisted(() => ({
+  mockAssignContactMessage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetContactMessage: vi.fn(),
   mockListContactMessages: vi.fn(),
+  mockListTenantMembers: vi.fn(),
   mockMarkContactMessageHandled: vi.fn(),
 }));
 
@@ -20,9 +24,13 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     contact: {
+      assignContactMessage: mockAssignContactMessage,
       getContactMessage: mockGetContactMessage,
       listContactMessages: mockListContactMessages,
       markContactMessageHandled: mockMarkContactMessageHandled,
+    },
+    members: {
+      listTenantMembers: mockListTenantMembers,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -31,6 +39,9 @@ vi.mock("./api", () => ({
 }));
 
 const adminContactMessage = {
+  assigneeName: "",
+  assigneePublicId: "",
+  assigneeUserId: "",
   body: "The second episode will not open for me.",
   createdAt: "2026-06-01T00:00:00Z",
   handledAt: "",
@@ -39,6 +50,7 @@ const adminContactMessage = {
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
   senderPublicId: "READER00001",
+  status: "unhandled",
   subject: "Cannot open an episode",
 };
 
@@ -112,6 +124,9 @@ describe("contact message lib", () => {
     const result = await listContactMessages("TENANT001", "en");
 
     expect(result.messages[0]).toEqual({
+      assigneeName: "",
+      assigneePublicId: "",
+      assigneeUserId: "",
       body: "Is there an app?",
       createdAt: "2026-06-02T00:00:00Z",
       handledAt: "",
@@ -120,9 +135,67 @@ describe("contact message lib", () => {
       replyToEmail: "guest@example.com",
       senderName: "",
       senderPublicId: "",
+      status: "unhandled",
       subject: "",
     });
   });
+
+  it("reads the assignee apart from the state the API derived", async () => {
+    mockListContactMessages.mockResolvedValue({
+      messages: [
+        {
+          ...adminContactMessage,
+          assigneeName: "Staff Two",
+          assigneePublicId: "STAFF000002",
+          assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+          handledAt: "2026-06-03T00:00:00Z",
+          status: "handled",
+        },
+      ],
+    });
+
+    const { listContactMessages } = await import("./contact-message");
+    const {
+      messages: [message],
+    } = await listContactMessages("TENANT001", "en");
+
+    expect(message).toMatchObject({
+      assigneeName: "Staff Two",
+      assigneePublicId: "STAFF000002",
+      assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+      status: "handled",
+    });
+  });
+
+  it.each([
+    { assigneeUserId: "", handledAt: "", status: "unhandled" },
+    {
+      assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+      handledAt: "",
+      status: "in_progress",
+    },
+    {
+      assigneeUserId: "018f0f80-0001-7000-8000-000000000002",
+      handledAt: "2026-06-03T00:00:00Z",
+      status: "handled",
+    },
+  ])(
+    "derives $status the way the API does when it names no state",
+    async ({ assigneeUserId, handledAt, status }) => {
+      mockListContactMessages.mockResolvedValue({
+        messages: [
+          { ...adminContactMessage, assigneeUserId, handledAt, status: "" },
+        ],
+      });
+
+      const { listContactMessages } = await import("./contact-message");
+      const {
+        messages: [message],
+      } = await listContactMessages("TENANT001", "en");
+
+      expect(message?.status).toBe(status);
+    }
+  );
 
   it("asks for sign-in without calling the API when there is no session", async () => {
     mockGetAccessToken.mockResolvedValue("");
@@ -287,5 +360,174 @@ describe("contact message lib", () => {
 
     expect(mockMarkContactMessageHandled).not.toHaveBeenCalled();
     expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it.each(["018f0f80-0001-7000-8000-000000000002", ""])(
+    "states the assignee %j",
+    async (assigneeUserId) => {
+      mockAssignContactMessage.mockResolvedValue({});
+
+      const { assignContactMessage } = await import("./contact-message");
+      const result = await assignContactMessage(
+        {
+          assigneeUserId,
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+
+      expect(mockAssignContactMessage).toHaveBeenCalledWith(
+        {
+          assigneeUserId,
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          tenant: { tenantId: "TENANT001" },
+        },
+        { headers: { Authorization: "Bearer session-token" } }
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  );
+
+  it("reports a refused assignment as a message", async () => {
+    mockAssignContactMessage.mockRejectedValue(
+      new ConnectError("not assignable", Code.InvalidArgument)
+    );
+
+    const { assignContactMessage } = await import("./contact-message");
+    const result = await assignContactMessage(
+      {
+        assigneeUserId: "018f0f80-0001-7000-8000-000000000009",
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it("rethrows a session the assignment was refused for", async () => {
+    mockAssignContactMessage.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { assignContactMessage } = await import("./contact-message");
+
+    await expect(
+      assignContactMessage(
+        {
+          assigneeUserId: "",
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      )
+    ).rejects.toThrow();
+  });
+
+  it("offers every active tenant admin across every page of members, and nobody else", async () => {
+    mockListTenantMembers
+      .mockResolvedValueOnce({
+        members: [
+          {
+            email: "one@example.com",
+            name: "Staff One",
+            role: "tenant_admin",
+            status: "active",
+            userId: "018f0f80-0001-7000-8000-000000000001",
+            userPublicId: "STAFF000001",
+          },
+          {
+            email: "editor@example.com",
+            name: "Editor",
+            role: "tenant_editor",
+            status: "active",
+            userId: "018f0f80-0001-7000-8000-000000000003",
+            userPublicId: "STAFF000003",
+          },
+          {
+            email: "suspended@example.com",
+            name: "Suspended",
+            role: "tenant_admin",
+            status: "suspended",
+            userId: "018f0f80-0001-7000-8000-000000000004",
+            userPublicId: "STAFF000004",
+          },
+        ],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        members: [
+          {
+            email: "two@example.com",
+            name: "",
+            role: "tenant_admin",
+            status: "active",
+            userId: "018f0f80-0001-7000-8000-000000000002",
+            userPublicId: "STAFF000002",
+          },
+        ],
+      });
+
+    const { listContactMessageAssignees } = await import("./contact-message");
+    const result = await listContactMessageAssignees("TENANT001", "en");
+
+    expect(mockListTenantMembers).toHaveBeenLastCalledWith(
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "page-2" },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      assignees: [
+        {
+          name: "Staff One",
+          userId: "018f0f80-0001-7000-8000-000000000001",
+          userPublicId: "STAFF000001",
+        },
+        {
+          name: "two@example.com",
+          userId: "018f0f80-0001-7000-8000-000000000002",
+          userPublicId: "STAFF000002",
+        },
+      ],
+      ok: true,
+    });
+  });
+
+  it("fails rather than offering the part of the staff it read", async () => {
+    mockListTenantMembers
+      .mockResolvedValueOnce({
+        members: [
+          {
+            name: "Staff One",
+            role: "tenant_admin",
+            status: "active",
+            userId: "018f0f80-0001-7000-8000-000000000001",
+            userPublicId: "STAFF000001",
+          },
+        ],
+        nextToken: "page-2",
+      })
+      .mockRejectedValueOnce(new ConnectError("unavailable", Code.Unavailable));
+
+    const { listContactMessageAssignees } = await import("./contact-message");
+    const result = await listContactMessageAssignees("TENANT001", "en");
+
+    expect(result).toEqual({
+      assignees: [],
+      message: expect.stringMatching(/./u),
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("asks for sign-in without listing the staff when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listContactMessageAssignees } = await import("./contact-message");
+    const result = await listContactMessageAssignees("TENANT001", "en");
+
+    expect(mockListTenantMembers).not.toHaveBeenCalled();
+    expect(result.ok === false && result.requiresSignIn).toBe(true);
   });
 });

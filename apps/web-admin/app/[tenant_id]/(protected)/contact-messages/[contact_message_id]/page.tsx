@@ -27,17 +27,25 @@ import {
   AdminPageHeading,
   AdminPageTitle,
   AdminSection,
+  AdminSections,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getContactMessage } from "#lib/contact-message";
+import {
+  redirectToLoginIfSessionRejected,
+  verifyAdminSession,
+} from "#lib/auth-session";
+import {
+  getContactMessage,
+  listContactMessageAssignees,
+} from "#lib/contact-message";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { ContactMessageAssignment } from "./_components/contact-message-assignment";
 import { ContactMessageDetail } from "./_components/contact-message-detail";
 
 type ContactMessageDetailPageProps =
@@ -77,9 +85,11 @@ const ContactMessageDetailContent = async ({
   }
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, timeZone] = await Promise.all([
+  const [result, timeZone, assigneesResult, currentUser] = await Promise.all([
     getContactMessage(tenantId, locale, parsedParams.contact_message_id),
     getTenantDisplayTimeZone(tenantId),
+    listContactMessageAssignees(tenantId, locale),
+    verifyAdminSession(tenantId),
   ]);
 
   if (!result.ok) {
@@ -115,13 +125,27 @@ const ContactMessageDetailContent = async ({
     );
   }
 
+  await redirectToLoginIfSessionRejected(assigneesResult);
+
   return (
-    <ContactMessageDetail
-      contactMessage={result.contactMessage}
-      locale={locale}
-      tenantId={tenantId}
-      timeZone={timeZone}
-    />
+    <AdminSections>
+      <ContactMessageDetail
+        contactMessage={result.contactMessage}
+        locale={locale}
+        tenantId={tenantId}
+        timeZone={timeZone}
+      />
+      <ContactMessageAssignment
+        assignees={assigneesResult.assignees}
+        assigneesErrorMessage={
+          assigneesResult.ok ? undefined : assigneesResult.message
+        }
+        contactMessage={result.contactMessage}
+        currentUserPublicId={currentUser.publicId}
+        locale={locale}
+        tenantId={tenantId}
+      />
+    </AdminSections>
   );
 };
 
@@ -161,6 +185,14 @@ const ContactMessageDetailPage = ({
       <FlashToast
         keyName="reopened"
         message="admin.contact_messages.reopened"
+      />
+      <FlashToast
+        keyName="assigned"
+        message="admin.contact_messages.assignment.assigned"
+      />
+      <FlashToast
+        keyName="unassigned"
+        message="admin.contact_messages.assignment.unassigned"
       />
       <SectionErrorBoundary
         title={

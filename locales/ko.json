@@ -300,7 +300,9 @@
         "comment_report_resolved": "댓글 신고 타당 처리",
         "comment_report_rejected": "댓글 신고 기각",
         "contact_message_handled": "문의 처리 완료 표시",
-        "contact_message_reopened": "문의 미처리로 되돌림",
+        "contact_message_reopened": "문의 처리 완료 취소",
+        "contact_message_assigned": "문의 담당자 배정",
+        "contact_message_unassigned": "문의 담당자 배정 해제",
         "reader_suspended": "독자 정지",
         "reader_unsuspended": "독자 정지 해제",
         "reader_birth_date_changed": "독자 생년월일 변경",
@@ -654,7 +656,7 @@
     },
     "contact_messages": {
       "title": "문의",
-      "page_description": "독자가 이 사이트로 보낸 메시지를 읽고, 처리 여부를 관리합니다.",
+      "page_description": "독자가 이 사이트로 보낸 메시지를 읽고, 담당자와 처리 상황을 관리합니다.",
       "item_label": "문의",
       "list_error": "문의를 표시할 수 없습니다",
       "list_failed": "문의를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -664,9 +666,11 @@
       "pagination_aria": "문의 목록 페이지 이동",
       "pagination_description": "수신 일시 최신순으로 한 페이지에 최대 {$count}건까지 표시합니다.",
       "status_unhandled": "미처리",
+      "status_in_progress": "처리 중",
       "status_handled": "처리 완료",
       "subject_none": "제목 없음",
       "sender_guest": "게스트",
+      "assignee_none": "미배정",
       "body": "본문",
       "handled_at": "처리 일시",
       "columns": {
@@ -674,6 +678,7 @@
         "sender": "보낸 사람",
         "reply_to": "회신 주소",
         "status": "상태",
+        "assignee": "담당자",
         "created_at": "수신 일시"
       },
       "filter": {
@@ -683,7 +688,7 @@
         "reset": "초기화"
       },
       "detail_title": "문의",
-      "detail_description": "메시지 전문과 답장할 주소, 그리고 처리 여부를 확인합니다.",
+      "detail_description": "메시지 전문과 답장할 주소, 담당자, 그리고 처리 여부를 확인합니다.",
       "detail_section_title": "메시지",
       "detail_error": "문의를 표시할 수 없습니다",
       "detail_failed": "문의를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
@@ -692,13 +697,26 @@
       "marking_handled": "변경하는 중…",
       "marked_handled": "문의를 처리 완료로 표시했습니다.",
       "mark_handled_failed": "문의를 처리 완료로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      "reopen": "미처리로 되돌리기",
+      "reopen": "처리 완료 취소",
       "reopening": "변경하는 중…",
-      "reopened": "문의를 미처리로 되돌렸습니다.",
-      "reopen_failed": "문의를 미처리로 되돌리지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "reopened": "문의의 처리 완료를 취소했습니다.",
+      "reopen_failed": "문의의 처리 완료를 취소하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "assign_failed": "담당자를 배정하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "unassign_failed": "담당자 배정을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "assignees_failed": "배정할 수 있는 스태프를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "assignment": {
+        "title": "담당자 배정",
+        "description": "이 문의를 담당하는 스태프입니다. 처리 완료로 표시하거나 처리 완료를 취소해도 담당자는 유지됩니다.",
+        "assign_to_me": "나에게 배정",
+        "submit": "담당자 저장",
+        "assigning": "저장 중…",
+        "assigned": "담당자를 저장했습니다.",
+        "unassigned": "담당자 배정을 해제했습니다."
+      },
       "validation": {
         "target_missing": "대상 문의를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
-        "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요."
+        "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+        "assignee_invalid": "목록에서 스태프를 선택하거나 미배정을 선택하세요."
       }
     },
     "creators": {

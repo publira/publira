@@ -203,6 +203,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "contact_message_reopened",
             },
             {
+              label: t("admin.audit.actions.contact_message_assigned"),
+              value: "contact_message_assigned",
+            },
+            {
+              label: t("admin.audit.actions.contact_message_unassigned"),
+              value: "contact_message_unassigned",
+            },
+            {
               label: t("admin.audit.actions.reader_suspended"),
               value: "reader_suspended",
             },

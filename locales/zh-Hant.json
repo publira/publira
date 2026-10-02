@@ -300,7 +300,9 @@
         "comment_report_resolved": "採納了留言檢舉",
         "comment_report_rejected": "駁回了留言檢舉",
         "contact_message_handled": "將諮詢標記為已處理",
-        "contact_message_reopened": "將諮詢退回未處理",
+        "contact_message_reopened": "取消諮詢的已處理狀態",
+        "contact_message_assigned": "指派諮詢負責人",
+        "contact_message_unassigned": "取消諮詢負責人指派",
         "reader_suspended": "暫停了讀者",
         "reader_unsuspended": "解除了讀者暫停",
         "reader_birth_date_changed": "變更了讀者出生日期",
@@ -654,7 +656,7 @@
     },
     "contact_messages": {
       "title": "諮詢",
-      "page_description": "閱讀讀者傳送到本站的訊息，並管理其處理狀況。",
+      "page_description": "閱讀讀者傳送到本站的訊息，並管理負責人和處理狀況。",
       "item_label": "諮詢",
       "list_error": "無法顯示諮詢",
       "list_failed": "無法載入諮詢。請稍後再試。",
@@ -664,9 +666,11 @@
       "pagination_aria": "諮詢分頁",
       "pagination_description": "每頁最多顯示{$count}則諮詢，依接收時間由新到舊排列。",
       "status_unhandled": "未處理",
+      "status_in_progress": "處理中",
       "status_handled": "已處理",
       "subject_none": "無主旨",
       "sender_guest": "訪客",
+      "assignee_none": "未指派",
       "body": "內文",
       "handled_at": "處理時間",
       "columns": {
@@ -674,6 +678,7 @@
         "sender": "寄件人",
         "reply_to": "回覆地址",
         "status": "狀態",
+        "assignee": "負責人",
         "created_at": "接收時間"
       },
       "filter": {
@@ -683,7 +688,7 @@
         "reset": "重設"
       },
       "detail_title": "諮詢",
-      "detail_description": "查看訊息全文、回覆地址，以及是否已經處理。",
+      "detail_description": "查看訊息全文、回覆地址、負責人，以及是否已經處理。",
       "detail_section_title": "訊息",
       "detail_error": "無法顯示此諮詢",
       "detail_failed": "無法載入此諮詢。請稍後再試。",
@@ -692,13 +697,26 @@
       "marking_handled": "正在變更…",
       "marked_handled": "已將此諮詢標記為已處理。",
       "mark_handled_failed": "無法將此諮詢標記為已處理。請稍後再試。",
-      "reopen": "退回未處理",
+      "reopen": "取消已處理",
       "reopening": "正在變更…",
-      "reopened": "已將此諮詢退回未處理。",
-      "reopen_failed": "無法將此諮詢退回未處理。請稍後再試。",
+      "reopened": "已取消此諮詢的已處理狀態。",
+      "reopen_failed": "無法取消此諮詢的已處理狀態。請稍後再試。",
+      "assign_failed": "無法指派負責人。請稍後再試。",
+      "unassign_failed": "無法取消負責人指派。請稍後再試。",
+      "assignees_failed": "無法取得可指派的工作人員。請稍後再試。",
+      "assignment": {
+        "title": "指派負責人",
+        "description": "負責此諮詢的工作人員。標記為已處理或取消已處理後，負責人維持不變。",
+        "assign_to_me": "指派給我",
+        "submit": "儲存負責人",
+        "assigning": "正在儲存…",
+        "assigned": "已儲存負責人。",
+        "unassigned": "已取消負責人指派。"
+      },
       "validation": {
         "target_missing": "無法確定要操作的諮詢。請重新整理頁面後再試。",
-        "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。"
+        "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。",
+        "assignee_invalid": "請從清單中選擇工作人員，或選擇未指派。"
       }
     },
     "creators": {

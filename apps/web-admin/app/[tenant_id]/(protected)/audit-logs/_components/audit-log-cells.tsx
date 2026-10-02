@@ -117,7 +117,7 @@ const taxonomyActionName = (action: string) => {
   }
 };
 
-/** An action on pages, announcements, comments, or contact messages. */
+/** An action on pages, announcements, or comments. */
 const siteActionName = (action: string) => {
   switch (action) {
     case "page_created": {
@@ -171,11 +171,28 @@ const siteActionName = (action: string) => {
     case "comment_report_rejected": {
       return <Message message="admin.audit.actions.comment_report_rejected" />;
     }
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An action on contact messages. */
+const contactMessageActionName = (action: string) => {
+  switch (action) {
     case "contact_message_handled": {
       return <Message message="admin.audit.actions.contact_message_handled" />;
     }
     case "contact_message_reopened": {
       return <Message message="admin.audit.actions.contact_message_reopened" />;
+    }
+    case "contact_message_assigned": {
+      return <Message message="admin.audit.actions.contact_message_assigned" />;
+    }
+    case "contact_message_unassigned": {
+      return (
+        <Message message="admin.audit.actions.contact_message_unassigned" />
+      );
     }
     default: {
       return null;
@@ -325,6 +342,7 @@ const actionName = (action: string) =>
   catalogActionName(action) ??
   taxonomyActionName(action) ??
   siteActionName(action) ??
+  contactMessageActionName(action) ??
   readerActionName(action) ??
   settingsActionName(action);
 
