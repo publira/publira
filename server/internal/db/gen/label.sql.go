@@ -593,15 +593,30 @@ SELECT labels.id,
     labels.name,
     labels.created_at,
     labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = labels.id
+            AND s.tenant_id = labels.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
+            )
+    ) AS published_series_count
 FROM labels
 LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
-WHERE labels.tenant_id = $1
+WHERE labels.tenant_id = $2
     AND EXISTS (
         SELECT 1
         FROM label_surfaces ls
         WHERE ls.label_id = labels.id
-            AND ls.surface = $2::text
+            AND ls.surface = $1::text
     )
     AND (
         $3::uuid IS NULL
@@ -619,8 +634,8 @@ LIMIT $6
 `
 
 type ListPublishedLabelsAscParams struct {
-	TenantID        uuid.UUID     `json:"tenant_id"`
 	Surface         string        `json:"surface"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
@@ -634,13 +649,14 @@ type ListPublishedLabelsAscRow struct {
 	CreatedAt              time.Time     `json:"created_at"`
 	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+	PublishedSeriesCount   int32         `json:"published_series_count"`
 }
 
 // The backward direction of ListPublishedLabelsDesc.
 func (q *Queries) ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedLabelsAscParams) ([]ListPublishedLabelsAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsAsc,
-		arg.TenantID,
 		arg.Surface,
+		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -660,6 +676,7 @@ func (q *Queries) ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedL
 			&i.CreatedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
+			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
 		}
@@ -679,11 +696,26 @@ SELECT l.id,
     l.public_id,
     l.name,
     l.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
+            )
+    ) AS published_series_count
 FROM labels l
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
-WHERE l.tenant_id = $1
-    AND l.id = ANY($2::uuid [])
+WHERE l.tenant_id = $2
+    AND l.id = ANY($3::uuid [])
     AND EXISTS (
         SELECT 1
         FROM series s
@@ -696,15 +728,15 @@ WHERE l.tenant_id = $1
                 SELECT 1
                 FROM series_surfaces ss
                 WHERE ss.series_id = s.id
-                    AND ss.surface = $3::text
+                    AND ss.surface = $1::text
             )
     )
 `
 
 type ListPublishedLabelsByIDsParams struct {
+	Surface  string      `json:"surface"`
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
-	Surface  string      `json:"surface"`
 }
 
 type ListPublishedLabelsByIDsRow struct {
@@ -713,13 +745,14 @@ type ListPublishedLabelsByIDsRow struct {
 	Name                   string        `json:"name"`
 	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+	PublishedSeriesCount   int32         `json:"published_series_count"`
 }
 
 // Stage two of the label search. It checks for a published series again
 // because stage one may come from a search index that lags behind an
 // unpublish. No ORDER BY: the caller sorts the rows into stage one's id order.
 func (q *Queries) ListPublishedLabelsByIDs(ctx context.Context, arg ListPublishedLabelsByIDsParams) ([]ListPublishedLabelsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsByIDs, arg.TenantID, pq.Array(arg.Ids), arg.Surface)
+	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -733,6 +766,7 @@ func (q *Queries) ListPublishedLabelsByIDs(ctx context.Context, arg ListPublishe
 			&i.Name,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
+			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
 		}
@@ -944,15 +978,30 @@ SELECT labels.id,
     labels.name,
     labels.created_at,
     labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = labels.id
+            AND s.tenant_id = labels.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
+            )
+    ) AS published_series_count
 FROM labels
 LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
-WHERE labels.tenant_id = $1
+WHERE labels.tenant_id = $2
     AND EXISTS (
         SELECT 1
         FROM label_surfaces ls
         WHERE ls.label_id = labels.id
-            AND ls.surface = $2::text
+            AND ls.surface = $1::text
     )
     AND (
         $3::uuid IS NULL
@@ -970,8 +1019,8 @@ LIMIT $6
 `
 
 type ListPublishedLabelsDescParams struct {
-	TenantID        uuid.UUID     `json:"tenant_id"`
 	Surface         string        `json:"surface"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
@@ -985,15 +1034,17 @@ type ListPublishedLabelsDescRow struct {
 	CreatedAt              time.Time     `json:"created_at"`
 	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+	PublishedSeriesCount   int32         `json:"published_series_count"`
 }
 
 // The public ListPublishedLabels keeps the order of the admin pair above and
-// adds the calling surface, which the console does not have.
+// adds the calling surface, which the console does not have, and the count of
+// series published on it, counted as GetPublishedLabelByPublicID counts it.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsDesc,
-		arg.TenantID,
 		arg.Surface,
+		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -1013,6 +1064,7 @@ func (q *Queries) ListPublishedLabelsDesc(ctx context.Context, arg ListPublished
 			&i.CreatedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
+			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
 		}

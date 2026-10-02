@@ -278,6 +278,9 @@ func TestDBSearchPublishedLabelsRequireAPublishedSeries(t *testing.T) {
 	_ = env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELEMPTY1", Name: "Comics Empty"})
 
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true, LabelID: published.ID})
+	// A draft beside a published series leaves the label a hit, and out of
+	// its count.
+	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUBDR1", Title: "Published Label Draft", LabelID: published.ID})
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Still A Draft", LabelID: onlyDraft.ID})
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
 		PublicID:    "SERIESFUTUR1",
@@ -296,6 +299,9 @@ func TestDBSearchPublishedLabelsRequireAPublishedSeries(t *testing.T) {
 	}
 	if got := labelPublicIDs(resp.Msg.Labels); len(got) != 1 || got[0] != "LABELPUB001" {
 		t.Fatalf("labels = %v, want only the label holding a currently published series", got)
+	}
+	if got := resp.Msg.Labels[0].GetPublishedSeriesCount(); got != 1 {
+		t.Fatalf("published_series_count = %d, want 1", got)
 	}
 }
 

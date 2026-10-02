@@ -21,16 +21,16 @@ import (
 )
 
 func labelColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"})
+	return sqlmock.NewRows([]string{"id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at", "published_series_count"})
 }
 
 // addLabelRow appends a label without an eye catch image, so the page needs no
 // follow-up variant query.
 func addLabelRow(rows *sqlmock.Rows, id uuid.UUID, publicID, name string, createdAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, publicID, name, createdAt, nil, nil)
+	return rows.AddRow(id, publicID, name, createdAt, nil, nil, int32(0))
 }
 
-func labelNames(labels []*publirattypesv1.Label) []string {
+func labelNames(labels []*publirav1.PublishedLabel) []string {
 	names := make([]string, 0, len(labels))
 	for _, label := range labels {
 		names = append(names, label.Name)
@@ -58,7 +58,7 @@ func TestCatalogListPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 		rows = addLabelRow(rows, id, fmt.Sprintf("LABEL%03d", i), fmt.Sprintf("Label %d", i), now.Add(-time.Duration(i)*time.Minute))
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsDesc)).
-		WithArgs(tenantID, "web", uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(3)).
+		WithArgs("web", tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -86,6 +86,35 @@ func TestCatalogListPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+func TestCatalogListPublishedLabelsCarriesPublishedSeriesCount(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+
+	rows := labelColumns().
+		AddRow(uuid.Must(uuid.NewV7()), "LABEL001", "Busy", now, nil, nil, int32(4)).
+		AddRow(uuid.Must(uuid.NewV7()), "LABEL002", "Empty", now.Add(-time.Minute), nil, nil, int32(0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsDesc)).
+		WithArgs("web", tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
+		WillReturnRows(rows)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedLabels(context.Background(), newLabelListRequest(tenantID))
+	if err != nil {
+		t.Fatalf("ListPublishedLabels: %v", err)
+	}
+	got := make([]int32, 0, len(resp.Msg.Labels))
+	for _, label := range resp.Msg.Labels {
+		got = append(got, label.PublishedSeriesCount)
+	}
+	if !slices.Equal(got, []int32{4, 0}) {
+		t.Fatalf("published_series_count = %v, want [4 0]", got)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
 func TestCatalogListPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	tenantID := uuid.Must(uuid.NewV7())
@@ -100,7 +129,7 @@ func TestCatalogListPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 
 	rows := addLabelRow(addLabelRow(labelColumns(), olderID, "LABEL002", "Older", olderAt), newerID, "LABEL001", "Newer", newerAt)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsAsc)).
-		WithArgs(tenantID, "web", uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
+		WithArgs("web", tenantID, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -138,7 +167,7 @@ func TestCatalogListPublishedLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsDesc)).
-		WithArgs(tenantID, "web", uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
+		WithArgs("web", tenantID, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(labelColumns())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -192,7 +221,7 @@ func TestCatalogListPublishedLabelsReadsTheAppSurface(t *testing.T) {
 
 	rows := addLabelRow(addLabelRow(labelColumns(), labelID, "LABEL001", "App Label", now), uuid.Must(uuid.NewV7()), "LABEL002", "Older", now.Add(-time.Minute))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsDesc)).
-		WithArgs(tenantID, "app", uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(2)).
+		WithArgs("app", tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(2)).
 		WillReturnRows(rows)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -241,9 +270,9 @@ func TestCatalogListPublishedLabelsVariantLookupErrorIsReturned(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	rows := labelColumns().AddRow(labelID, "LABEL001", "Label", now, imageID, now)
+	rows := labelColumns().AddRow(labelID, "LABEL001", "Label", now, imageID, now, int32(0))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsDesc)).
-		WithArgs(tenantID, "web", uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
+		WithArgs("web", tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(rows)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WillReturnError(errors.New(`pq: relation "label_image_variants" does not exist`))

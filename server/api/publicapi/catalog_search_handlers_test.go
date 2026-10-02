@@ -423,10 +423,10 @@ func searchHitRows(hits ...searchHit) *sqlmock.Rows {
 // searchLabelColumns is the row ListPublishedLabelsByIDs reads for each label
 // a search found.
 func searchLabelColumns() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "name", "eye_catch_image_id", "eye_catch_image_updated_at"})
+	return sqlmock.NewRows([]string{"id", "public_id", "name", "eye_catch_image_id", "eye_catch_image_updated_at", "published_series_count"})
 }
 
-func labelPublicIDs(items []*publirattypesv1.Label) []string {
+func labelPublicIDs(items []*publirav1.PublishedLabel) []string {
 	ids := make([]string, 0, len(items))
 	for _, item := range items {
 		ids = append(ids, item.PublicId)
@@ -601,8 +601,8 @@ func TestCatalogSearchPublishedLabelsSuccess(t *testing.T) {
 		WithArgs(tenantID, "%jump%", "web", nil, false, nil, int32(21)).
 		WillReturnRows(searchHitRows(searchHit{labelID, "Jump"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsByIDs)).
-		WithArgs(tenantID, sqlmock.AnyArg(), "web").
-		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", nil, nil))
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", nil, nil, int32(3)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
@@ -614,6 +614,9 @@ func TestCatalogSearchPublishedLabelsSuccess(t *testing.T) {
 	}
 	if len(resp.Msg.Labels) != 1 || resp.Msg.Labels[0].PublicId != "LABELPUB001" {
 		t.Fatalf("labels = %+v, want LABELPUB001", resp.Msg.Labels)
+	}
+	if got := resp.Msg.Labels[0].PublishedSeriesCount; got != 3 {
+		t.Fatalf("published_series_count = %d, want 3", got)
 	}
 	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
 		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
@@ -671,10 +674,10 @@ func TestCatalogSearchPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 		WithArgs(tenantID, "%comics%", "web", nil, false, nil, int32(3)).
 		WillReturnRows(searchHitRows(searchHit{alphaID, "Alpha Comics"}, searchHit{betaID, "Beta Comics"}, searchHit{overFetchedID, "Zeta Comics"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsByIDs)).
-		WithArgs(tenantID, sqlmock.AnyArg(), "web").
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(searchLabelColumns().
-			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil).
-			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil))
+			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
+			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
@@ -715,10 +718,10 @@ func TestCatalogSearchPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T)
 		WithArgs(tenantID, "%comics%", "web", boundaryID, false, "Zeta Comics", int32(3)).
 		WillReturnRows(searchHitRows(searchHit{betaID, "Beta Comics"}, searchHit{alphaID, "Alpha Comics"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsByIDs)).
-		WithArgs(tenantID, sqlmock.AnyArg(), "web").
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(searchLabelColumns().
-			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil).
-			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil))
+			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
+			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
@@ -754,8 +757,8 @@ func TestCatalogSearchPublishedLabelsAttachesEyeCatchVariants(t *testing.T) {
 		WithArgs(tenantID, "%jump%", "web", nil, false, nil, int32(21)).
 		WillReturnRows(searchHitRows(searchHit{labelID, "Jump"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsByIDs)).
-		WithArgs(tenantID, sqlmock.AnyArg(), "web").
-		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", imageID, now))
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", imageID, now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -833,10 +836,10 @@ func TestCatalogSearchShowsTheHitsOfTheConfiguredBackend(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedLabelsByIDs)).
-		WithArgs(tenantID, sqlmock.AnyArg(), "web").
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(searchLabelColumns().
-			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil).
-			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil))
+			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
+			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{

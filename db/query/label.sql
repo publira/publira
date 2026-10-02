@@ -195,7 +195,8 @@ ORDER BY labels.created_at ASC, labels.id ASC
 LIMIT sqlc.arg('limit');
 
 -- The public ListPublishedLabels keeps the order of the admin pair above and
--- adds the calling surface, which the console does not have.
+-- adds the calling surface, which the console does not have, and the count of
+-- series published on it, counted as GetPublishedLabelByPublicID counts it.
 -- cursor rules: proto/README.md.
 -- name: ListPublishedLabelsDesc :many
 SELECT labels.id,
@@ -203,7 +204,22 @@ SELECT labels.id,
     labels.name,
     labels.created_at,
     labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = labels.id
+            AND s.tenant_id = labels.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    ) AS published_series_count
 FROM labels
 LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
 WHERE labels.tenant_id = sqlc.arg('tenant_id')
@@ -234,7 +250,22 @@ SELECT labels.id,
     labels.name,
     labels.created_at,
     labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = labels.id
+            AND s.tenant_id = labels.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    ) AS published_series_count
 FROM labels
 LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
 WHERE labels.tenant_id = sqlc.arg('tenant_id')
@@ -363,7 +394,22 @@ SELECT l.id,
     l.public_id,
     l.name,
     l.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+    ) AS published_series_count
 FROM labels l
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
 WHERE l.tenant_id = sqlc.arg('tenant_id')

@@ -325,9 +325,9 @@ func TestDBCatalogKeepsAnEpisodeWithinItsSeriesSurfaces(t *testing.T) {
 }
 
 // A label is listed on a surface unless it holds published series and every
-// one of them is kept off that surface, and its detail agrees with the list. A
-// label with no published series stays on both, so its URL outlives its last
-// series.
+// one of them is kept off that surface, and its detail agrees with the list,
+// down to how many series it counts there. A label with no published series
+// stays on both with a count of zero, so its URL outlives its last series.
 func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 	env := newPublicDBEnv(t)
 	ctx := context.Background()
@@ -371,17 +371,27 @@ func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 				t.Fatalf("ListPublishedLabels: %v", err)
 			}
 			got := make([]string, 0, len(list.Msg.Labels))
+			counts := make(map[string]int32, len(list.Msg.Labels))
 			for _, label := range list.Msg.Labels {
 				got = append(got, label.GetPublicId())
+				counts[label.GetPublicId()] = label.GetPublishedSeriesCount()
 			}
 			slices.Sort(got)
 			if !slices.Equal(got, want) {
 				t.Fatalf("ListPublishedLabels = %v, want %v", got, want)
 			}
 
+			if counts[empty.PublicID] != 0 || counts[mixed.PublicID] != 1 {
+				t.Fatalf("ListPublishedLabels counts = %v, want %s at 0 and %s at 1", counts, empty.PublicID, mixed.PublicID)
+			}
+
 			for _, publicID := range want {
-				if _, err := client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID, Surface: tc.surface})); err != nil {
+				detail, err := client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID, Surface: tc.surface}))
+				if err != nil {
 					t.Fatalf("GetPublishedLabelDetail(%s): %v", publicID, err)
+				}
+				if got := detail.Msg.GetLabel().GetPublishedSeriesCount(); got != counts[publicID] {
+					t.Fatalf("GetPublishedLabelDetail(%s) count = %d, ListPublishedLabels says %d", publicID, got, counts[publicID])
 				}
 			}
 			_, err = client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: tc.hidden.PublicID, Surface: tc.surface}))

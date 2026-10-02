@@ -182,6 +182,7 @@ func (s *apiServer) publishedLabelDisplaysInOrder(
 			name:                   row.Name,
 			eyeCatchImageID:        row.EyeCatchImageID,
 			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			publishedSeriesCount:   row.PublishedSeriesCount,
 		})
 	}
 	return ordered, nil

@@ -22,7 +22,7 @@ message ListPublishedLabelsRequest {
 }
 
 message ListPublishedLabelsResponse {
-  repeated publira.types.v1.Label labels = 1;
+  repeated PublishedLabel labels = 1;
   // Token for the previous page. Empty on the first page.
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
@@ -330,9 +330,11 @@ message GetPublishedCreatorDetailResponse {
 }
 
 // A label that belongs to the requested tenant, plus how many of its series
-// are currently published. Labels have no unpublished state of their own; a
-// label with zero published series is still returned so a shareable detail
-// URL stays valid after its last series is taken down.
+// are currently published on the calling surface. Labels have no unpublished
+// state of their own; a label with zero published series is still returned
+// by GetPublishedLabelDetail and ListPublishedLabels, so a shareable detail
+// URL stays valid after its last series is taken down. SearchPublishedLabels
+// answers only labels whose count is above zero.
 message PublishedLabel {
   string public_id = 1;
   string name = 2;
@@ -537,7 +539,7 @@ message SearchPublishedLabelsRequest {
 }
 
 message SearchPublishedLabelsResponse {
-  repeated publira.types.v1.Label labels = 1;
+  repeated PublishedLabel labels = 1;
   // Token for the previous page. Empty on the first page.
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
