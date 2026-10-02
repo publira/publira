@@ -82,6 +82,76 @@ func (CommentReportReason) EnumDescriptor() ([]byte, []int) {
 	return file_publira_v1_comment_proto_rawDescGZIP(), []int{0}
 }
 
+// The credit a comment's author holds on the episode the comment is on.
+//
+// A storefront shows the comment under this name rather than the account's:
+// a reader recognises the name the work is credited to, and a mark beside a
+// name they do not know identifies nobody. The id lets the mark link to the
+// creator.
+//
+// It is decided per episode. The same account commenting on a work that does
+// not credit it carries none. An account whose creators hold several credits
+// on the episode is named by the one that leads its credit line.
+type EpisodeCommentCreator struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EpisodeCommentCreator) Reset() {
+	*x = EpisodeCommentCreator{}
+	mi := &file_publira_v1_comment_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EpisodeCommentCreator) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EpisodeCommentCreator) ProtoMessage() {}
+
+func (x *EpisodeCommentCreator) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_comment_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EpisodeCommentCreator.ProtoReflect.Descriptor instead.
+func (*EpisodeCommentCreator) Descriptor() ([]byte, []int) {
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *EpisodeCommentCreator) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EpisodeCommentCreator) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *EpisodeCommentCreator) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 // One reader comment on an episode, as every visitor of that episode sees it.
 //
 // The author is named by the identifiers a storefront may show next to the
@@ -95,15 +165,18 @@ type EpisodeComment struct {
 	CreatedAt      string                 `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	AuthorPublicId string                 `protobuf:"bytes,4,opt,name=author_public_id,json=authorPublicId,proto3" json:"author_public_id,omitempty"`
 	// The author's display name, as stored on their account.
-	AuthorName    string `protobuf:"bytes,5,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
-	Id            string `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorName string `protobuf:"bytes,5,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	Id         string `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
+	// Set when the author is a creator this episode credits, and unset for
+	// every other comment.
+	Creator       *EpisodeCommentCreator `protobuf:"bytes,7,opt,name=creator,proto3" json:"creator,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EpisodeComment) Reset() {
 	*x = EpisodeComment{}
-	mi := &file_publira_v1_comment_proto_msgTypes[0]
+	mi := &file_publira_v1_comment_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -115,7 +188,7 @@ func (x *EpisodeComment) String() string {
 func (*EpisodeComment) ProtoMessage() {}
 
 func (x *EpisodeComment) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[0]
+	mi := &file_publira_v1_comment_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -128,7 +201,7 @@ func (x *EpisodeComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpisodeComment.ProtoReflect.Descriptor instead.
 func (*EpisodeComment) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{0}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *EpisodeComment) GetPublicId() string {
@@ -173,6 +246,13 @@ func (x *EpisodeComment) GetId() string {
 	return ""
 }
 
+func (x *EpisodeComment) GetCreator() *EpisodeCommentCreator {
+	if x != nil {
+		return x.Creator
+	}
+	return nil
+}
+
 // One of the caller's own comments that ListEpisodeComments cannot carry.
 //
 // It has the same fields a published comment is rendered from, minus the author
@@ -191,13 +271,16 @@ type MyEpisodeComment struct {
 	// message changes when staff remove a comment.
 	AwaitingApproval bool   `protobuf:"varint,4,opt,name=awaiting_approval,json=awaitingApproval,proto3" json:"awaiting_approval,omitempty"`
 	Id               string `protobuf:"bytes,5,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The same mark EpisodeComment carries, so the caller's own comment reads
+	// the same before it is published as after.
+	Creator       *EpisodeCommentCreator `protobuf:"bytes,6,opt,name=creator,proto3" json:"creator,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MyEpisodeComment) Reset() {
 	*x = MyEpisodeComment{}
-	mi := &file_publira_v1_comment_proto_msgTypes[1]
+	mi := &file_publira_v1_comment_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -209,7 +292,7 @@ func (x *MyEpisodeComment) String() string {
 func (*MyEpisodeComment) ProtoMessage() {}
 
 func (x *MyEpisodeComment) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[1]
+	mi := &file_publira_v1_comment_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -222,7 +305,7 @@ func (x *MyEpisodeComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyEpisodeComment.ProtoReflect.Descriptor instead.
 func (*MyEpisodeComment) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{1}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *MyEpisodeComment) GetPublicId() string {
@@ -260,6 +343,13 @@ func (x *MyEpisodeComment) GetId() string {
 	return ""
 }
 
+func (x *MyEpisodeComment) GetCreator() *EpisodeCommentCreator {
+	if x != nil {
+		return x.Creator
+	}
+	return nil
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListEpisodeCommentsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -277,7 +367,7 @@ type ListEpisodeCommentsRequest struct {
 
 func (x *ListEpisodeCommentsRequest) Reset() {
 	*x = ListEpisodeCommentsRequest{}
-	mi := &file_publira_v1_comment_proto_msgTypes[2]
+	mi := &file_publira_v1_comment_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +379,7 @@ func (x *ListEpisodeCommentsRequest) String() string {
 func (*ListEpisodeCommentsRequest) ProtoMessage() {}
 
 func (x *ListEpisodeCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[2]
+	mi := &file_publira_v1_comment_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +392,7 @@ func (x *ListEpisodeCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodeCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListEpisodeCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{2}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ListEpisodeCommentsRequest) GetTenant() *v1.TenantContext {
@@ -354,7 +444,7 @@ type ListEpisodeCommentsResponse struct {
 
 func (x *ListEpisodeCommentsResponse) Reset() {
 	*x = ListEpisodeCommentsResponse{}
-	mi := &file_publira_v1_comment_proto_msgTypes[3]
+	mi := &file_publira_v1_comment_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -366,7 +456,7 @@ func (x *ListEpisodeCommentsResponse) String() string {
 func (*ListEpisodeCommentsResponse) ProtoMessage() {}
 
 func (x *ListEpisodeCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[3]
+	mi := &file_publira_v1_comment_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -379,7 +469,7 @@ func (x *ListEpisodeCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodeCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListEpisodeCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{3}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListEpisodeCommentsResponse) GetComments() []*EpisodeComment {
@@ -420,7 +510,7 @@ type ListMyEpisodeCommentsRequest struct {
 
 func (x *ListMyEpisodeCommentsRequest) Reset() {
 	*x = ListMyEpisodeCommentsRequest{}
-	mi := &file_publira_v1_comment_proto_msgTypes[4]
+	mi := &file_publira_v1_comment_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +522,7 @@ func (x *ListMyEpisodeCommentsRequest) String() string {
 func (*ListMyEpisodeCommentsRequest) ProtoMessage() {}
 
 func (x *ListMyEpisodeCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[4]
+	mi := &file_publira_v1_comment_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +535,7 @@ func (x *ListMyEpisodeCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyEpisodeCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyEpisodeCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{4}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListMyEpisodeCommentsRequest) GetTenant() *v1.TenantContext {
@@ -497,7 +587,7 @@ type ListMyEpisodeCommentsResponse struct {
 
 func (x *ListMyEpisodeCommentsResponse) Reset() {
 	*x = ListMyEpisodeCommentsResponse{}
-	mi := &file_publira_v1_comment_proto_msgTypes[5]
+	mi := &file_publira_v1_comment_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +599,7 @@ func (x *ListMyEpisodeCommentsResponse) String() string {
 func (*ListMyEpisodeCommentsResponse) ProtoMessage() {}
 
 func (x *ListMyEpisodeCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[5]
+	mi := &file_publira_v1_comment_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +612,7 @@ func (x *ListMyEpisodeCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyEpisodeCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyEpisodeCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{5}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListMyEpisodeCommentsResponse) GetComments() []*MyEpisodeComment {
@@ -561,7 +651,7 @@ type PostEpisodeCommentRequest struct {
 
 func (x *PostEpisodeCommentRequest) Reset() {
 	*x = PostEpisodeCommentRequest{}
-	mi := &file_publira_v1_comment_proto_msgTypes[6]
+	mi := &file_publira_v1_comment_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -573,7 +663,7 @@ func (x *PostEpisodeCommentRequest) String() string {
 func (*PostEpisodeCommentRequest) ProtoMessage() {}
 
 func (x *PostEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[6]
+	mi := &file_publira_v1_comment_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -586,7 +676,7 @@ func (x *PostEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostEpisodeCommentRequest.ProtoReflect.Descriptor instead.
 func (*PostEpisodeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PostEpisodeCommentRequest) GetTenant() *v1.TenantContext {
@@ -628,7 +718,7 @@ type PostEpisodeCommentResponse struct {
 
 func (x *PostEpisodeCommentResponse) Reset() {
 	*x = PostEpisodeCommentResponse{}
-	mi := &file_publira_v1_comment_proto_msgTypes[7]
+	mi := &file_publira_v1_comment_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +730,7 @@ func (x *PostEpisodeCommentResponse) String() string {
 func (*PostEpisodeCommentResponse) ProtoMessage() {}
 
 func (x *PostEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[7]
+	mi := &file_publira_v1_comment_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +743,7 @@ func (x *PostEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostEpisodeCommentResponse.ProtoReflect.Descriptor instead.
 func (*PostEpisodeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PostEpisodeCommentResponse) GetComment() *MyEpisodeComment {
@@ -673,7 +763,7 @@ type WithdrawEpisodeCommentRequest struct {
 
 func (x *WithdrawEpisodeCommentRequest) Reset() {
 	*x = WithdrawEpisodeCommentRequest{}
-	mi := &file_publira_v1_comment_proto_msgTypes[8]
+	mi := &file_publira_v1_comment_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -685,7 +775,7 @@ func (x *WithdrawEpisodeCommentRequest) String() string {
 func (*WithdrawEpisodeCommentRequest) ProtoMessage() {}
 
 func (x *WithdrawEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[8]
+	mi := &file_publira_v1_comment_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -698,7 +788,7 @@ func (x *WithdrawEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawEpisodeCommentRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawEpisodeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{8}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *WithdrawEpisodeCommentRequest) GetTenant() *v1.TenantContext {
@@ -725,7 +815,7 @@ type WithdrawEpisodeCommentResponse struct {
 
 func (x *WithdrawEpisodeCommentResponse) Reset() {
 	*x = WithdrawEpisodeCommentResponse{}
-	mi := &file_publira_v1_comment_proto_msgTypes[9]
+	mi := &file_publira_v1_comment_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -737,7 +827,7 @@ func (x *WithdrawEpisodeCommentResponse) String() string {
 func (*WithdrawEpisodeCommentResponse) ProtoMessage() {}
 
 func (x *WithdrawEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[9]
+	mi := &file_publira_v1_comment_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -750,7 +840,7 @@ func (x *WithdrawEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawEpisodeCommentResponse.ProtoReflect.Descriptor instead.
 func (*WithdrawEpisodeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{9}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{10}
 }
 
 type ReportEpisodeCommentRequest struct {
@@ -771,7 +861,7 @@ type ReportEpisodeCommentRequest struct {
 
 func (x *ReportEpisodeCommentRequest) Reset() {
 	*x = ReportEpisodeCommentRequest{}
-	mi := &file_publira_v1_comment_proto_msgTypes[10]
+	mi := &file_publira_v1_comment_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -783,7 +873,7 @@ func (x *ReportEpisodeCommentRequest) String() string {
 func (*ReportEpisodeCommentRequest) ProtoMessage() {}
 
 func (x *ReportEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[10]
+	mi := &file_publira_v1_comment_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -796,7 +886,7 @@ func (x *ReportEpisodeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportEpisodeCommentRequest.ProtoReflect.Descriptor instead.
 func (*ReportEpisodeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{10}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReportEpisodeCommentRequest) GetTenant() *v1.TenantContext {
@@ -845,7 +935,7 @@ type ReportEpisodeCommentResponse struct {
 
 func (x *ReportEpisodeCommentResponse) Reset() {
 	*x = ReportEpisodeCommentResponse{}
-	mi := &file_publira_v1_comment_proto_msgTypes[11]
+	mi := &file_publira_v1_comment_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -857,7 +947,7 @@ func (x *ReportEpisodeCommentResponse) String() string {
 func (*ReportEpisodeCommentResponse) ProtoMessage() {}
 
 func (x *ReportEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_comment_proto_msgTypes[11]
+	mi := &file_publira_v1_comment_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -870,7 +960,7 @@ func (x *ReportEpisodeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportEpisodeCommentResponse.ProtoReflect.Descriptor instead.
 func (*ReportEpisodeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_comment_proto_rawDescGZIP(), []int{11}
+	return file_publira_v1_comment_proto_rawDescGZIP(), []int{12}
 }
 
 var File_publira_v1_comment_proto protoreflect.FileDescriptor
@@ -878,7 +968,11 @@ var File_publira_v1_comment_proto protoreflect.FileDescriptor
 const file_publira_v1_comment_proto_rawDesc = "" +
 	"\n" +
 	"\x18publira/v1/comment.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\xbb\x01\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"X\n" +
+	"\x15EpisodeCommentCreator\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xf8\x01\n" +
 	"\x0eEpisodeComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
@@ -887,14 +981,16 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\x10author_public_id\x18\x04 \x01(\tR\x0eauthorPublicId\x12\x1f\n" +
 	"\vauthor_name\x18\x05 \x01(\tR\n" +
 	"authorName\x12\x0e\n" +
-	"\x02id\x18\x06 \x01(\tR\x02id\"\x9f\x01\n" +
+	"\x02id\x18\x06 \x01(\tR\x02id\x12;\n" +
+	"\acreator\x18\a \x01(\v2!.publira.v1.EpisodeCommentCreatorR\acreator\"\xdc\x01\n" +
 	"\x10MyEpisodeComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12+\n" +
 	"\x11awaiting_approval\x18\x04 \x01(\bR\x10awaitingApproval\x12\x0e\n" +
-	"\x02id\x18\x05 \x01(\tR\x02id\"\xf4\x01\n" +
+	"\x02id\x18\x05 \x01(\tR\x02id\x12;\n" +
+	"\acreator\x18\x06 \x01(\v2!.publira.v1.EpisodeCommentCreatorR\acreator\"\xf4\x01\n" +
 	"\x1aListEpisodeCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
@@ -966,53 +1062,56 @@ func file_publira_v1_comment_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_comment_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_v1_comment_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_v1_comment_proto_goTypes = []any{
 	(CommentReportReason)(0),               // 0: publira.v1.CommentReportReason
-	(*EpisodeComment)(nil),                 // 1: publira.v1.EpisodeComment
-	(*MyEpisodeComment)(nil),               // 2: publira.v1.MyEpisodeComment
-	(*ListEpisodeCommentsRequest)(nil),     // 3: publira.v1.ListEpisodeCommentsRequest
-	(*ListEpisodeCommentsResponse)(nil),    // 4: publira.v1.ListEpisodeCommentsResponse
-	(*ListMyEpisodeCommentsRequest)(nil),   // 5: publira.v1.ListMyEpisodeCommentsRequest
-	(*ListMyEpisodeCommentsResponse)(nil),  // 6: publira.v1.ListMyEpisodeCommentsResponse
-	(*PostEpisodeCommentRequest)(nil),      // 7: publira.v1.PostEpisodeCommentRequest
-	(*PostEpisodeCommentResponse)(nil),     // 8: publira.v1.PostEpisodeCommentResponse
-	(*WithdrawEpisodeCommentRequest)(nil),  // 9: publira.v1.WithdrawEpisodeCommentRequest
-	(*WithdrawEpisodeCommentResponse)(nil), // 10: publira.v1.WithdrawEpisodeCommentResponse
-	(*ReportEpisodeCommentRequest)(nil),    // 11: publira.v1.ReportEpisodeCommentRequest
-	(*ReportEpisodeCommentResponse)(nil),   // 12: publira.v1.ReportEpisodeCommentResponse
-	(*v1.TenantContext)(nil),               // 13: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                  // 14: publira.types.v1.ClientSurface
+	(*EpisodeCommentCreator)(nil),          // 1: publira.v1.EpisodeCommentCreator
+	(*EpisodeComment)(nil),                 // 2: publira.v1.EpisodeComment
+	(*MyEpisodeComment)(nil),               // 3: publira.v1.MyEpisodeComment
+	(*ListEpisodeCommentsRequest)(nil),     // 4: publira.v1.ListEpisodeCommentsRequest
+	(*ListEpisodeCommentsResponse)(nil),    // 5: publira.v1.ListEpisodeCommentsResponse
+	(*ListMyEpisodeCommentsRequest)(nil),   // 6: publira.v1.ListMyEpisodeCommentsRequest
+	(*ListMyEpisodeCommentsResponse)(nil),  // 7: publira.v1.ListMyEpisodeCommentsResponse
+	(*PostEpisodeCommentRequest)(nil),      // 8: publira.v1.PostEpisodeCommentRequest
+	(*PostEpisodeCommentResponse)(nil),     // 9: publira.v1.PostEpisodeCommentResponse
+	(*WithdrawEpisodeCommentRequest)(nil),  // 10: publira.v1.WithdrawEpisodeCommentRequest
+	(*WithdrawEpisodeCommentResponse)(nil), // 11: publira.v1.WithdrawEpisodeCommentResponse
+	(*ReportEpisodeCommentRequest)(nil),    // 12: publira.v1.ReportEpisodeCommentRequest
+	(*ReportEpisodeCommentResponse)(nil),   // 13: publira.v1.ReportEpisodeCommentResponse
+	(*v1.TenantContext)(nil),               // 14: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                  // 15: publira.types.v1.ClientSurface
 }
 var file_publira_v1_comment_proto_depIdxs = []int32{
-	13, // 0: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 1: publira.v1.ListEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	1,  // 2: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
-	13, // 3: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 4: publira.v1.ListMyEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	2,  // 5: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
-	13, // 6: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 7: publira.v1.PostEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
-	2,  // 8: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
-	13, // 9: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 10: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 11: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
-	14, // 12: publira.v1.ReportEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
-	3,  // 13: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
-	5,  // 14: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
-	7,  // 15: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
-	9,  // 16: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
-	11, // 17: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
-	4,  // 18: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
-	6,  // 19: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
-	8,  // 20: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
-	10, // 21: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
-	12, // 22: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	1,  // 0: publira.v1.EpisodeComment.creator:type_name -> publira.v1.EpisodeCommentCreator
+	1,  // 1: publira.v1.MyEpisodeComment.creator:type_name -> publira.v1.EpisodeCommentCreator
+	14, // 2: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 3: publira.v1.ListEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 4: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
+	14, // 5: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 6: publira.v1.ListMyEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 7: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
+	14, // 8: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 9: publira.v1.PostEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 10: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
+	14, // 11: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 12: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 13: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
+	15, // 14: publira.v1.ReportEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	4,  // 15: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
+	6,  // 16: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
+	8,  // 17: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
+	10, // 18: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
+	12, // 19: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
+	5,  // 20: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
+	7,  // 21: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
+	9,  // 22: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
+	11, // 23: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
+	13, // 24: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
+	20, // [20:25] is the sub-list for method output_type
+	15, // [15:20] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_comment_proto_init() }
@@ -1026,7 +1125,7 @@ func file_publira_v1_comment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_comment_proto_rawDesc), len(file_publira_v1_comment_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -162,6 +162,11 @@ var publicDataTables = []struct {
 	{name: "episode_follows", count: "SELECT count(*) FROM episode_follows"},
 	{name: "creator_follows", count: "SELECT count(*) FROM creator_follows"},
 	{name: "episode_comments", count: "SELECT count(*) FROM episode_comments"},
+	// Which reader accounts belong to a credited creator. The comment lists
+	// read it to mark a creator's comment, and the content grant to open a
+	// creator's own episode, so it names a tenant's creators' accounts on
+	// this connection.
+	{name: "creator_accounts", count: "SELECT count(*) FROM creator_accounts"},
 	{name: "episode_comment_reports", count: "SELECT count(*) FROM episode_comment_reports"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	// Written by the Stripe webhook rather than read by a page, and on the same
@@ -303,6 +308,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		Price:    300,
 	})
 	env.PG.SeedPurchase(t, first.ID, member.ID, purchasedEpisode.ID, purchasedEpisode.Price)
+	env.PG.SeedCreatorAccount(t, first.ID, creator.ID, member.ID)
 	seed("store purchase intent", "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id) VALUES ($1, $2, $3, $4, $5, $6)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID, 500, "episode_500")
 	seed("held store refund", "INSERT INTO unapplied_store_refunds (tenant_id, store, store_transaction_id) VALUES ($1, 'app_store', $2)", first.ID, "2000000000000001")
 	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount) VALUES ($1, 'stripe', $2, $3)", first.ID, "pi_rls_held", 500)
@@ -388,6 +394,23 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		if visible {
 			t.Fatalf("reader_may_open_episode on the %s without a tenant setting = true, want false", probe.name)
 		}
+	}
+
+	// credited_creator_of_account is the other function this connection asks,
+	// once per listed comment, and it names the creator behind an account.
+	const credited = "SELECT credited_creator_of_account($1, $2, $3)"
+	var seededCreator, visibleCreator uuid.NullUUID
+	if err := env.PG.DB.QueryRowContext(ctx, credited, first.ID, member.ID, episode.ID).Scan(&seededCreator); err != nil {
+		t.Fatalf("credited_creator_of_account as the owner: %v", err)
+	}
+	if !seededCreator.Valid || seededCreator.UUID != creator.ID {
+		t.Fatalf("credited_creator_of_account as the owner = %v, want %s so the fail-closed check runs against a credited account", seededCreator, creator.ID)
+	}
+	if err := db.QueryRowContext(ctx, credited, first.ID, member.ID, episode.ID).Scan(&visibleCreator); err != nil {
+		t.Fatalf("credited_creator_of_account: %v", err)
+	}
+	if visibleCreator.Valid {
+		t.Fatalf("credited_creator_of_account without a tenant setting = %s, want NULL", visibleCreator.UUID)
 	}
 }
 

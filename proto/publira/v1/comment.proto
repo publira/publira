@@ -6,6 +6,22 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// The credit a comment's author holds on the episode the comment is on.
+//
+// A storefront shows the comment under this name rather than the account's:
+// a reader recognises the name the work is credited to, and a mark beside a
+// name they do not know identifies nobody. The id lets the mark link to the
+// creator.
+//
+// It is decided per episode. The same account commenting on a work that does
+// not credit it carries none. An account whose creators hold several credits
+// on the episode is named by the one that leads its credit line.
+message EpisodeCommentCreator {
+  string id = 1;
+  string public_id = 2;
+  string name = 3;
+}
+
 // One reader comment on an episode, as every visitor of that episode sees it.
 //
 // The author is named by the identifiers a storefront may show next to the
@@ -20,6 +36,9 @@ message EpisodeComment {
   // The author's display name, as stored on their account.
   string author_name = 5;
   string id = 6;
+  // Set when the author is a creator this episode credits, and unset for
+  // every other comment.
+  EpisodeCommentCreator creator = 7;
 }
 
 // One of the caller's own comments that ListEpisodeComments cannot carry.
@@ -39,6 +58,9 @@ message MyEpisodeComment {
   // message changes when staff remove a comment.
   bool awaiting_approval = 4;
   string id = 5;
+  // The same mark EpisodeComment carries, so the caller's own comment reads
+  // the same before it is published as after.
+  EpisodeCommentCreator creator = 6;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
