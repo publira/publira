@@ -4,11 +4,13 @@ const {
   mockAssertSameOrigin,
   mockClearPublicSessionCookie,
   mockConfirmPublicPasswordReset,
+  mockIsSessionRejected,
   mockRedirect,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockClearPublicSessionCookie: vi.fn(),
   mockConfirmPublicPasswordReset: vi.fn(),
+  mockIsSessionRejected: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
@@ -20,6 +22,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/auth", () => ({
   confirmPublicPasswordReset: mockConfirmPublicPasswordReset,
+  isSessionRejected: mockIsSessionRejected,
 }));
 
 vi.mock("#lib/auth-session", () => ({
@@ -55,8 +58,9 @@ describe("confirmPasswordAction", () => {
     vi.clearAllMocks();
   });
 
-  it("signs this browser out before sending it to sign in with the new password", async () => {
+  it("signs this browser out of the session the reset ended before sending it to sign in", async () => {
     mockConfirmPublicPasswordReset.mockResolvedValueOnce(true);
+    mockIsSessionRejected.mockResolvedValueOnce(true);
     const { confirmPasswordAction } = await import("./actions");
 
     await expect(confirmPasswordAction(confirmForm())).rejects.toThrow(
@@ -64,7 +68,20 @@ describe("confirmPasswordAction", () => {
     );
 
     expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockIsSessionRejected).toHaveBeenCalledWith(tenantId);
     expect(mockClearPublicSessionCookie).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the session of another account the browser is signed in to", async () => {
+    mockConfirmPublicPasswordReset.mockResolvedValueOnce(true);
+    mockIsSessionRejected.mockResolvedValueOnce(false);
+    const { confirmPasswordAction } = await import("./actions");
+
+    await expect(confirmPasswordAction(confirmForm())).rejects.toThrow(
+      "NEXT_REDIRECT:/en/login?reset=done"
+    );
+
+    expect(mockClearPublicSessionCookie).not.toHaveBeenCalled();
   });
 
   it("keeps the session of a reset the API refused", async () => {

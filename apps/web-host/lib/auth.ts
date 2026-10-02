@@ -640,6 +640,35 @@ export const getMe = async (
   }
 };
 
+/**
+ * Whether the API turns the session away: `accessToken`, or the one the cookie
+ * carries when it is omitted. A browser holding no session has nothing to turn
+ * away.
+ *
+ * For a caller that has just seen `unauthenticated` from an RPC that also
+ * authenticates something else — a fresh sign-in, say — or that has ended an
+ * account's sessions without knowing whose session this browser holds.
+ */
+export const isSessionRejected = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<boolean> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return false;
+  }
+
+  try {
+    await getMe(tenantId, sid);
+    return false;
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      return true;
+    }
+    throw error;
+  }
+};
+
 export const updateMe = async (
   tenantId: string,
   { birthDate, name }: ProfileUpdate,

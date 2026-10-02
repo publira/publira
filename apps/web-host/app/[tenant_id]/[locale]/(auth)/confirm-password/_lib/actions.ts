@@ -6,7 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { confirmPublicPasswordReset } from "#lib/auth";
+import { confirmPublicPasswordReset, isSessionRejected } from "#lib/auth";
 import {
   authTokenFormSchema,
   passwordFormSchema,
@@ -124,7 +124,11 @@ export const confirmPasswordAction = async (
   // password from the security settings is still holding one of them, and
   // `/login` sends a browser with a session cookie on to `/my`, where the
   // rejected session would replace the reset's message with a sign-in prompt.
-  await clearPublicSessionCookie();
+  // The link names an account by its token alone, so a browser signed in to
+  // another one keeps that session.
+  if (await isSessionRejected(tenantId)) {
+    await clearPublicSessionCookie();
+  }
   const loginPath = await buildLoginPathWithResetResult(locale, tenantId);
   redirect(loginPath);
 };

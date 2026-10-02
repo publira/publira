@@ -292,6 +292,31 @@ describe("web-host auth", () => {
     );
   });
 
+  it("isSessionRejected: true when the API turns the session away", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(true);
+    expect(mockGetMe).toHaveBeenCalledOnce();
+  });
+
+  it("isSessionRejected: false when the API still answers for the session", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockGetMe.mockResolvedValueOnce({ user: { name: "Reader" } });
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(false);
+  });
+
+  it("isSessionRejected: false without asking when the browser holds no session", async () => {
+    const { isSessionRejected } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(isSessionRejected("TENANT001")).resolves.toBe(false);
+    expect(mockGetMe).not.toHaveBeenCalled();
+  });
+
   it("getMe: Unauthenticated cases are propagated to the caller without retrying.", async () => {
     const { getMe } = await importAuth();
     mockGetMe.mockRejectedValueOnce(
