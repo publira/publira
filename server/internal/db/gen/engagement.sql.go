@@ -341,6 +341,32 @@ func (q *Queries) GetUserRecommendFeatures(ctx context.Context, arg GetUserRecom
 	return i, err
 }
 
+const HasUserRecommendFeatures = `-- name: HasUserRecommendFeatures :one
+SELECT EXISTS (
+        SELECT 1
+        FROM user_recommend_features
+        WHERE tenant_id = $1
+            AND user_id = $2
+            AND feature_version = $3
+    )::boolean AS has_features
+`
+
+type HasUserRecommendFeaturesParams struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	FeatureVersion int32     `json:"feature_version"`
+}
+
+// Whether the reader has features the current build of the batch wrote. A row
+// stamped with another feature_version is one an older build left behind, and
+// reads as no row at all rather than as features of the wrong shape.
+func (q *Queries) HasUserRecommendFeatures(ctx context.Context, arg HasUserRecommendFeaturesParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, HasUserRecommendFeatures, arg.TenantID, arg.UserID, arg.FeatureVersion)
+	var has_features bool
+	err := row.Scan(&has_features)
+	return has_features, err
+}
+
 const InsertContentEvent = `-- name: InsertContentEvent :one
 
 INSERT INTO content_events (
@@ -423,6 +449,11 @@ type InsertContentEventParams struct {
 //	  -> no index; sorts one tenant's published series (see the note there)
 //	ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
 //	  -> no index; scores one tenant's published series (see the note there)
+//	HasUserRecommendFeatures
+//	  -> user_recommend_features_pkey
+//	ListMyRecommendedSeriesIDs / ListMyRecommendedSeriesIDsReversed
+//	  -> no index; scores one tenant's published series against one reader's
+//	     features (see the note there)
 //	ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
 //	  -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 //	     aggregate it groups (see the note there)
@@ -1235,6 +1266,430 @@ func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg Lis
 			&i.GenreID,
 			&i.Surface,
 			&i.AgeRating,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListMyRecommendedSeriesIDs = `-- name: ListMyRecommendedSeriesIDs :many
+WITH reader_series AS (
+    SELECT (entry->>'series_id')::uuid AS series_id,
+        sum(
+            100 * (entry->>'purchase_count')::bigint
+            + 50 * (entry->>'comment_count')::bigint
+            + 40 * (entry->>'favorite_count')::bigint
+            + 8 * (entry->>'rating_sum')::bigint
+            + 5 * (entry->>'view_count')::bigint
+        )::bigint AS weight
+    FROM user_recommend_features urf
+        CROSS JOIN LATERAL jsonb_array_elements(urf.features->'top_series') AS entry
+    WHERE urf.tenant_id = $8
+        AND urf.user_id = $9
+        AND urf.feature_version = $10
+        AND entry->>'series_id' IS NOT NULL
+    GROUP BY (entry->>'series_id')::uuid
+),
+reader_labels AS (
+    SELECT s.label_id,
+        rs.series_id,
+        rs.weight
+    FROM reader_series rs
+        JOIN series s ON s.id = rs.series_id
+    WHERE s.tenant_id = $8
+        AND s.label_id IS NOT NULL
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        (
+            EXISTS (
+                SELECT 1
+                FROM reader_series rs
+                WHERE rs.series_id = s.id
+            )
+        )::int AS engaged,
+        (
+            3 * (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_creators sc
+                    JOIN series_creators rc ON rc.creator_id = sc.creator_id
+                    JOIN reader_series rs ON rs.series_id = rc.series_id
+                WHERE sc.series_id = s.id
+                    AND rs.series_id <> s.id
+            ) + 2 * (
+                SELECT COALESCE(sum(rl.weight), 0)
+                FROM reader_labels rl
+                WHERE rl.label_id = s.label_id
+                    AND rl.series_id <> s.id
+            ) + (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_genres sg
+                    JOIN series_genres rg ON rg.genre_id = sg.genre_id
+                    JOIN reader_series rs ON rs.series_id = rg.series_id
+                WHERE sg.series_id = s.id
+                    AND rs.series_id <> s.id
+            ) + (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_tags st
+                    JOIN series_tags rt ON rt.tag_id = st.tag_id
+                    JOIN reader_series rs ON rs.series_id = rt.series_id
+                WHERE st.series_id = s.id
+                    AND rs.series_id <> s.id
+            )
+        )::bigint AS score,
+        COALESCE(
+            100 * (irf.features->>'purchase_count')::bigint
+            + 50 * (irf.features->>'comment_count')::bigint
+            + 40 * (irf.features->>'favorite_count')::bigint
+            + 8 * (irf.features->>'rating_sum')::bigint
+            + 10 * (irf.features->>'viewer_days')::bigint
+            + 5 * (irf.features->>'view_count')::bigint,
+            0
+        )::bigint AS popularity
+    FROM series s
+        LEFT JOIN item_recommend_features irf ON irf.tenant_id = s.tenant_id
+        AND irf.entity_type = 'series'
+        AND irf.entity_id = s.id
+        AND irf.feature_version = $10
+    WHERE s.tenant_id = $8
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $11::text
+        )
+)
+SELECT id, engaged, score, popularity
+FROM candidate
+WHERE (
+        $1::uuid IS NULL
+        OR engaged > $2::int
+        OR (
+            engaged = $2::int
+            AND (
+                score < $3::bigint
+                OR (
+                    score = $3::bigint
+                    AND (
+                        popularity < $4::bigint
+                        OR (
+                            popularity = $4::bigint
+                            AND (
+                                (
+                                    $5::boolean
+                                    AND (published_at, id) <= (
+                                        $6::timestamptz,
+                                        $1::uuid
+                                    )
+                                )
+                                OR (
+                                    NOT $5::boolean
+                                    AND (published_at, id) < (
+                                        $6::timestamptz,
+                                        $1::uuid
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+ORDER BY engaged ASC,
+    score DESC,
+    popularity DESC,
+    published_at DESC,
+    id DESC
+LIMIT $7
+`
+
+type ListMyRecommendedSeriesIDsParams struct {
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorEngaged     sql.NullInt32 `json:"cursor_engaged"`
+	CursorScore       sql.NullInt64 `json:"cursor_score"`
+	CursorPopularity  sql.NullInt64 `json:"cursor_popularity"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	FeatureVersion    int32         `json:"feature_version"`
+	Surface           string        `json:"surface"`
+}
+
+type ListMyRecommendedSeriesIDsRow struct {
+	ID         uuid.UUID `json:"id"`
+	Engaged    int32     `json:"engaged"`
+	Score      int64     `json:"score"`
+	Popularity int64     `json:"popularity"`
+}
+
+// The keyset scan behind a signed-in reader's own recommendation list. It
+// scores every published series of the tenant against the series the reader
+// engaged with, as user_recommend_features.top_series names them, and orders
+// the whole catalogue by that score.
+//
+// Each of the reader's series is worth what they did with it in the window:
+// 100 per purchase, 50 per comment, 40 per favourite, 8 per rating point and 5
+// per view. Those are contentranking's weights scaled by five, so a rating
+// point is a whole number and the reader's weighing of their own signals is
+// the one the tenant-wide ranking applies to everyone's. A candidate scores
+// the sum, over the reader's series other than itself, of that worth times
+// what the two share, by the 3 / 2 / 1 rule ListRelatedSeriesIDs scores by.
+// Excluding the candidate itself keeps a series from recommending itself: one
+// the reader engaged with is scored only by what it shares with their others.
+//
+// The sort key is (engaged, score, popularity, published_at, id). engaged puts
+// the series the reader has already found behind the ones they have not.
+// popularity is the tenant-wide engagement with the series over the same
+// window, from item_recommend_features and weighted alike, plus 10 per distinct
+// reader-day, the way the ranking counts a distinct viewer twice a view. Every
+// feature row is read only under the current feature_version, so an item row
+// an older build left behind counts as no engagement, not as one of another
+// shape. published_at and then id settle the rest, and id keeps the key
+// unique.
+//
+// No index serves this: the leading sort keys are computed per row. The scan is
+// bounded by one tenant's published series, each scored by four lookups
+// against at most DefaultTopSeriesLimit reader series.
+func (q *Queries) ListMyRecommendedSeriesIDs(ctx context.Context, arg ListMyRecommendedSeriesIDsParams) ([]ListMyRecommendedSeriesIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListMyRecommendedSeriesIDs,
+		arg.CursorID,
+		arg.CursorEngaged,
+		arg.CursorScore,
+		arg.CursorPopularity,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+		arg.TenantID,
+		arg.UserID,
+		arg.FeatureVersion,
+		arg.Surface,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyRecommendedSeriesIDsRow
+	for rows.Next() {
+		var i ListMyRecommendedSeriesIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Engaged,
+			&i.Score,
+			&i.Popularity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListMyRecommendedSeriesIDsReversed = `-- name: ListMyRecommendedSeriesIDsReversed :many
+WITH reader_series AS (
+    SELECT (entry->>'series_id')::uuid AS series_id,
+        sum(
+            100 * (entry->>'purchase_count')::bigint
+            + 50 * (entry->>'comment_count')::bigint
+            + 40 * (entry->>'favorite_count')::bigint
+            + 8 * (entry->>'rating_sum')::bigint
+            + 5 * (entry->>'view_count')::bigint
+        )::bigint AS weight
+    FROM user_recommend_features urf
+        CROSS JOIN LATERAL jsonb_array_elements(urf.features->'top_series') AS entry
+    WHERE urf.tenant_id = $8
+        AND urf.user_id = $9
+        AND urf.feature_version = $10
+        AND entry->>'series_id' IS NOT NULL
+    GROUP BY (entry->>'series_id')::uuid
+),
+reader_labels AS (
+    SELECT s.label_id,
+        rs.series_id,
+        rs.weight
+    FROM reader_series rs
+        JOIN series s ON s.id = rs.series_id
+    WHERE s.tenant_id = $8
+        AND s.label_id IS NOT NULL
+),
+candidate AS (
+    SELECT s.id,
+        s.published_at,
+        (
+            EXISTS (
+                SELECT 1
+                FROM reader_series rs
+                WHERE rs.series_id = s.id
+            )
+        )::int AS engaged,
+        (
+            3 * (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_creators sc
+                    JOIN series_creators rc ON rc.creator_id = sc.creator_id
+                    JOIN reader_series rs ON rs.series_id = rc.series_id
+                WHERE sc.series_id = s.id
+                    AND rs.series_id <> s.id
+            ) + 2 * (
+                SELECT COALESCE(sum(rl.weight), 0)
+                FROM reader_labels rl
+                WHERE rl.label_id = s.label_id
+                    AND rl.series_id <> s.id
+            ) + (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_genres sg
+                    JOIN series_genres rg ON rg.genre_id = sg.genre_id
+                    JOIN reader_series rs ON rs.series_id = rg.series_id
+                WHERE sg.series_id = s.id
+                    AND rs.series_id <> s.id
+            ) + (
+                SELECT COALESCE(sum(rs.weight), 0)
+                FROM series_tags st
+                    JOIN series_tags rt ON rt.tag_id = st.tag_id
+                    JOIN reader_series rs ON rs.series_id = rt.series_id
+                WHERE st.series_id = s.id
+                    AND rs.series_id <> s.id
+            )
+        )::bigint AS score,
+        COALESCE(
+            100 * (irf.features->>'purchase_count')::bigint
+            + 50 * (irf.features->>'comment_count')::bigint
+            + 40 * (irf.features->>'favorite_count')::bigint
+            + 8 * (irf.features->>'rating_sum')::bigint
+            + 10 * (irf.features->>'viewer_days')::bigint
+            + 5 * (irf.features->>'view_count')::bigint,
+            0
+        )::bigint AS popularity
+    FROM series s
+        LEFT JOIN item_recommend_features irf ON irf.tenant_id = s.tenant_id
+        AND irf.entity_type = 'series'
+        AND irf.entity_id = s.id
+        AND irf.feature_version = $10
+    WHERE s.tenant_id = $8
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $11::text
+        )
+)
+SELECT id, engaged, score, popularity
+FROM candidate
+WHERE (
+        $1::uuid IS NULL
+        OR engaged < $2::int
+        OR (
+            engaged = $2::int
+            AND (
+                score > $3::bigint
+                OR (
+                    score = $3::bigint
+                    AND (
+                        popularity > $4::bigint
+                        OR (
+                            popularity = $4::bigint
+                            AND (
+                                (
+                                    $5::boolean
+                                    AND (published_at, id) >= (
+                                        $6::timestamptz,
+                                        $1::uuid
+                                    )
+                                )
+                                OR (
+                                    NOT $5::boolean
+                                    AND (published_at, id) > (
+                                        $6::timestamptz,
+                                        $1::uuid
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+ORDER BY engaged DESC,
+    score ASC,
+    popularity ASC,
+    published_at ASC,
+    id ASC
+LIMIT $7
+`
+
+type ListMyRecommendedSeriesIDsReversedParams struct {
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorEngaged     sql.NullInt32 `json:"cursor_engaged"`
+	CursorScore       sql.NullInt64 `json:"cursor_score"`
+	CursorPopularity  sql.NullInt64 `json:"cursor_popularity"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	FeatureVersion    int32         `json:"feature_version"`
+	Surface           string        `json:"surface"`
+}
+
+type ListMyRecommendedSeriesIDsReversedRow struct {
+	ID         uuid.UUID `json:"id"`
+	Engaged    int32     `json:"engaged"`
+	Score      int64     `json:"score"`
+	Popularity int64     `json:"popularity"`
+}
+
+// ListMyRecommendedSeriesIDs walked the other way. It exists only to build a
+// previous page; the order it describes is the same one.
+func (q *Queries) ListMyRecommendedSeriesIDsReversed(ctx context.Context, arg ListMyRecommendedSeriesIDsReversedParams) ([]ListMyRecommendedSeriesIDsReversedRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListMyRecommendedSeriesIDsReversed,
+		arg.CursorID,
+		arg.CursorEngaged,
+		arg.CursorScore,
+		arg.CursorPopularity,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+		arg.TenantID,
+		arg.UserID,
+		arg.FeatureVersion,
+		arg.Surface,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyRecommendedSeriesIDsReversedRow
+	for rows.Next() {
+		var i ListMyRecommendedSeriesIDsReversedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Engaged,
+			&i.Score,
+			&i.Popularity,
 		); err != nil {
 			return nil, err
 		}

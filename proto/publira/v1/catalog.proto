@@ -557,6 +557,9 @@ enum RecommendationSource {
   // The tenant has no usable ranking snapshot, so the whole list is ordered
   // newest first.
   RECOMMENDATION_SOURCE_NEW_ARRIVALS = 2;
+  // The signed-in reader's own features decided the order. Only
+  // ListMyRecommendedSeries answers it.
+  RECOMMENDATION_SOURCE_READER_FEATURES = 3;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -580,6 +583,35 @@ message ListRecommendedSeriesResponse {
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
   string next_token = 3;
+  RecommendationSource source = 4;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// There is no order field: the recommendation order is the one this RPC exists
+// to produce. The token carries which of the two orders it was built in — the
+// reader's own, or the tenant-wide one a reader without features gets — and a
+// token from the other one is invalid_argument. That happens when the daily
+// batch writes or drops the reader's features between two pages, and the
+// client starts again at the first page.
+message ListMyRecommendedSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
+}
+
+message ListMyRecommendedSeriesResponse {
+  // Every published series, in the order ListMyRecommendedSeries describes.
+  repeated publira.types.v1.Series series = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+  // READER_FEATURES when the reader's own features ordered the list, and
+  // otherwise whatever ListRecommendedSeries answers for the tenant.
   RecommendationSource source = 4;
 }
 
@@ -803,6 +835,29 @@ service CatalogService {
   // A ranking rebuilt between two pages moves the boundary the same way an
   // unpublished series does; the token names a position, not a snapshot.
   rpc ListRecommendedSeries(ListRecommendedSeriesRequest) returns (ListRecommendedSeriesResponse) {}
+  // Every published series, ordered for the authenticated member from the
+  // features the daily batch computes out of their own last 28 days.
+  //
+  // Each series the member engaged with in that window is worth what they did
+  // with it: 100 per purchase, 50 per comment, 40 per favourite, 8 per point of
+  // each rating they gave, and 5 per view of the series or one of its episodes.
+  // Another series scores that worth times what it shares with the engaged
+  // one — 3 per creator, 2 for the label, 1 per genre and 1 per tag, the rule
+  // ListRelatedSeries scores by — summed over every series the member engaged
+  // with. A series the member already engaged with goes behind every series
+  // they have not, since a recommendation is for something they have yet to
+  // find, and is ordered among the others by the same score.
+  //
+  // Ties go to the series the tenant's readers as a whole engaged with most in
+  // the same window, weighted alike plus 10 for each day a distinct reader
+  // viewed it, and then to the newer series.
+  //
+  // A member the batch has no features for — a new account, a tenant the batch
+  // has not run for yet, or features an older build of the batch wrote — gets
+  // exactly what ListRecommendedSeries answers. The response is private to the
+  // member either way and is never shared between readers; a guest calls
+  // ListRecommendedSeries instead, whose answer is cached and shared.
+  rpc ListMyRecommendedSeries(ListMyRecommendedSeriesRequest) returns (ListMyRecommendedSeriesResponse) {}
   // One page of the latest ranking snapshot for a period and an age rating, in
   // the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
   // empty list rather than an error: nothing has been computed, which is not

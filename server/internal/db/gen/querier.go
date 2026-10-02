@@ -745,6 +745,10 @@ type Querier interface {
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
+	// Whether the reader has features the current build of the batch wrote. A row
+	// stamped with another feature_version is one an older build left behind, and
+	// reads as no row at all rather than as features of the wrong shape.
+	HasUserRecommendFeatures(ctx context.Context, arg HasUserRecommendFeaturesParams) (bool, error)
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
@@ -790,6 +794,11 @@ type Querier interface {
 	//     -> no index; sorts one tenant's published series (see the note there)
 	//   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
 	//     -> no index; scores one tenant's published series (see the note there)
+	//   HasUserRecommendFeatures
+	//     -> user_recommend_features_pkey
+	//   ListMyRecommendedSeriesIDs / ListMyRecommendedSeriesIDsReversed
+	//     -> no index; scores one tenant's published series against one reader's
+	//        features (see the note there)
 	//   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
 	//     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 	//        aggregate it groups (see the note there)
@@ -1308,6 +1317,38 @@ type Querier interface {
 	// Backward calls ListMyRecentSeriesAsc, and the caller sorts the rows back.
 	// cursor rules: proto/README.md.
 	ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSeriesDescParams) ([]ListMyRecentSeriesDescRow, error)
+	// The keyset scan behind a signed-in reader's own recommendation list. It
+	// scores every published series of the tenant against the series the reader
+	// engaged with, as user_recommend_features.top_series names them, and orders
+	// the whole catalogue by that score.
+	//
+	// Each of the reader's series is worth what they did with it in the window:
+	// 100 per purchase, 50 per comment, 40 per favourite, 8 per rating point and 5
+	// per view. Those are contentranking's weights scaled by five, so a rating
+	// point is a whole number and the reader's weighing of their own signals is
+	// the one the tenant-wide ranking applies to everyone's. A candidate scores
+	// the sum, over the reader's series other than itself, of that worth times
+	// what the two share, by the 3 / 2 / 1 rule ListRelatedSeriesIDs scores by.
+	// Excluding the candidate itself keeps a series from recommending itself: one
+	// the reader engaged with is scored only by what it shares with their others.
+	//
+	// The sort key is (engaged, score, popularity, published_at, id). engaged puts
+	// the series the reader has already found behind the ones they have not.
+	// popularity is the tenant-wide engagement with the series over the same
+	// window, from item_recommend_features and weighted alike, plus 10 per distinct
+	// reader-day, the way the ranking counts a distinct viewer twice a view. Every
+	// feature row is read only under the current feature_version, so an item row
+	// an older build left behind counts as no engagement, not as one of another
+	// shape. published_at and then id settle the rest, and id keeps the key
+	// unique.
+	//
+	// No index serves this: the leading sort keys are computed per row. The scan is
+	// bounded by one tenant's published series, each scored by four lookups
+	// against at most DefaultTopSeriesLimit reader series.
+	ListMyRecommendedSeriesIDs(ctx context.Context, arg ListMyRecommendedSeriesIDsParams) ([]ListMyRecommendedSeriesIDsRow, error)
+	// ListMyRecommendedSeriesIDs walked the other way. It exists only to build a
+	// previous page; the order it describes is the same one.
+	ListMyRecommendedSeriesIDsReversed(ctx context.Context, arg ListMyRecommendedSeriesIDsReversedParams) ([]ListMyRecommendedSeriesIDsReversedRow, error)
 	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
 	// ListNotifications is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler

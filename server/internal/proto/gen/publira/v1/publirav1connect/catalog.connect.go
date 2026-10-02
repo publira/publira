@@ -85,6 +85,9 @@ const (
 	// CatalogServiceListRecommendedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRecommendedSeries RPC.
 	CatalogServiceListRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListRecommendedSeries"
+	// CatalogServiceListMyRecommendedSeriesProcedure is the fully-qualified name of the
+	// CatalogService's ListMyRecommendedSeries RPC.
+	CatalogServiceListMyRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListMyRecommendedSeries"
 	// CatalogServiceListRankedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRankedSeries RPC.
 	CatalogServiceListRankedSeriesProcedure = "/publira.v1.CatalogService/ListRankedSeries"
@@ -214,6 +217,29 @@ type CatalogServiceClient interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	// Every published series, ordered for the authenticated member from the
+	// features the daily batch computes out of their own last 28 days.
+	//
+	// Each series the member engaged with in that window is worth what they did
+	// with it: 100 per purchase, 50 per comment, 40 per favourite, 8 per point of
+	// each rating they gave, and 5 per view of the series or one of its episodes.
+	// Another series scores that worth times what it shares with the engaged
+	// one — 3 per creator, 2 for the label, 1 per genre and 1 per tag, the rule
+	// ListRelatedSeries scores by — summed over every series the member engaged
+	// with. A series the member already engaged with goes behind every series
+	// they have not, since a recommendation is for something they have yet to
+	// find, and is ordered among the others by the same score.
+	//
+	// Ties go to the series the tenant's readers as a whole engaged with most in
+	// the same window, weighted alike plus 10 for each day a distinct reader
+	// viewed it, and then to the newer series.
+	//
+	// A member the batch has no features for — a new account, a tenant the batch
+	// has not run for yet, or features an older build of the batch wrote — gets
+	// exactly what ListRecommendedSeries answers. The response is private to the
+	// member either way and is never shared between readers; a guest calls
+	// ListRecommendedSeries instead, whose answer is cached and shared.
+	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
 	// One page of the latest ranking snapshot for a period and an age rating, in
 	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
 	// empty list rather than an error: nothing has been computed, which is not
@@ -336,6 +362,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyRecommendedSeries: connect.NewClient[v1.ListMyRecommendedSeriesRequest, v1.ListMyRecommendedSeriesResponse](
+			httpClient,
+			baseURL+CatalogServiceListMyRecommendedSeriesProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListMyRecommendedSeries")),
+			connect.WithClientOptions(opts...),
+		),
 		listRankedSeries: connect.NewClient[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse](
 			httpClient,
 			baseURL+CatalogServiceListRankedSeriesProcedure,
@@ -373,6 +405,7 @@ type catalogServiceClient struct {
 	searchPublishedCreators   *connect.Client[v1.SearchPublishedCreatorsRequest, v1.SearchPublishedCreatorsResponse]
 	searchPublishedLabels     *connect.Client[v1.SearchPublishedLabelsRequest, v1.SearchPublishedLabelsResponse]
 	listRecommendedSeries     *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
+	listMyRecommendedSeries   *connect.Client[v1.ListMyRecommendedSeriesRequest, v1.ListMyRecommendedSeriesResponse]
 	listRankedSeries          *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
 	listRelatedSeries         *connect.Client[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse]
 	listSitemapEntries        *connect.Client[v1.ListSitemapEntriesRequest, v1.ListSitemapEntriesResponse]
@@ -448,6 +481,11 @@ func (c *catalogServiceClient) ListRecommendedSeries(ctx context.Context, req *c
 	return c.listRecommendedSeries.CallUnary(ctx, req)
 }
 
+// ListMyRecommendedSeries calls publira.v1.CatalogService.ListMyRecommendedSeries.
+func (c *catalogServiceClient) ListMyRecommendedSeries(ctx context.Context, req *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error) {
+	return c.listMyRecommendedSeries.CallUnary(ctx, req)
+}
+
 // ListRankedSeries calls publira.v1.CatalogService.ListRankedSeries.
 func (c *catalogServiceClient) ListRankedSeries(ctx context.Context, req *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
 	return c.listRankedSeries.CallUnary(ctx, req)
@@ -520,6 +558,29 @@ type CatalogServiceHandler interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	// Every published series, ordered for the authenticated member from the
+	// features the daily batch computes out of their own last 28 days.
+	//
+	// Each series the member engaged with in that window is worth what they did
+	// with it: 100 per purchase, 50 per comment, 40 per favourite, 8 per point of
+	// each rating they gave, and 5 per view of the series or one of its episodes.
+	// Another series scores that worth times what it shares with the engaged
+	// one — 3 per creator, 2 for the label, 1 per genre and 1 per tag, the rule
+	// ListRelatedSeries scores by — summed over every series the member engaged
+	// with. A series the member already engaged with goes behind every series
+	// they have not, since a recommendation is for something they have yet to
+	// find, and is ordered among the others by the same score.
+	//
+	// Ties go to the series the tenant's readers as a whole engaged with most in
+	// the same window, weighted alike plus 10 for each day a distinct reader
+	// viewed it, and then to the newer series.
+	//
+	// A member the batch has no features for — a new account, a tenant the batch
+	// has not run for yet, or features an older build of the batch wrote — gets
+	// exactly what ListRecommendedSeries answers. The response is private to the
+	// member either way and is never shared between readers; a guest calls
+	// ListRecommendedSeries instead, whose answer is cached and shared.
+	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
 	// One page of the latest ranking snapshot for a period and an age rating, in
 	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
 	// empty list rather than an error: nothing has been computed, which is not
@@ -638,6 +699,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListMyRecommendedSeriesHandler := connect.NewUnaryHandler(
+		CatalogServiceListMyRecommendedSeriesProcedure,
+		svc.ListMyRecommendedSeries,
+		connect.WithSchema(catalogServiceMethods.ByName("ListMyRecommendedSeries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceListRankedSeriesHandler := connect.NewUnaryHandler(
 		CatalogServiceListRankedSeriesProcedure,
 		svc.ListRankedSeries,
@@ -686,6 +753,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceSearchPublishedLabelsHandler.ServeHTTP(w, r)
 		case CatalogServiceListRecommendedSeriesProcedure:
 			catalogServiceListRecommendedSeriesHandler.ServeHTTP(w, r)
+		case CatalogServiceListMyRecommendedSeriesProcedure:
+			catalogServiceListMyRecommendedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRankedSeriesProcedure:
 			catalogServiceListRankedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRelatedSeriesProcedure:
@@ -755,6 +824,10 @@ func (UnimplementedCatalogServiceHandler) SearchPublishedLabels(context.Context,
 
 func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRecommendedSeries is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListMyRecommendedSeries is not implemented"))
 }
 
 func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
