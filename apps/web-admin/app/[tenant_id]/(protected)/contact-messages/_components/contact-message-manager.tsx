@@ -37,7 +37,7 @@ import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 
 import type { ContactMessageItem } from "../contact-message-types";
-import { contactMessageStatus } from "../contact-message-types";
+import { ContactMessageAssignee } from "./contact-message-assignee";
 import {
   ContactMessageStatusMessage,
   contactMessageStatusTone,
@@ -159,6 +159,11 @@ const ContactMessageListBody = ({
               <Message message="admin.contact_messages.columns.status" />
             </Suspense>
           </TableHead>
+          <TableHead>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.contact_messages.columns.assignee" />
+            </Suspense>
+          </TableHead>
           <TableHead className="w-48">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.contact_messages.columns.created_at" />
@@ -186,15 +191,14 @@ const ContactMessageListBody = ({
             </TableCell>
             <TableCell>{message.replyToEmail}</TableCell>
             <TableCell>
-              <StatusChip
-                status={contactMessageStatusTone(contactMessageStatus(message))}
-              >
+              <StatusChip status={contactMessageStatusTone(message.status)}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                  <ContactMessageStatusMessage
-                    status={contactMessageStatus(message)}
-                  />
+                  <ContactMessageStatusMessage status={message.status} />
                 </Suspense>
               </StatusChip>
+            </TableCell>
+            <TableCell>
+              <ContactMessageAssignee message={message} />
             </TableCell>
             <TableCell className="tabular-nums">
               {message.createdAt

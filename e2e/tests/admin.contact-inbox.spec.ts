@@ -61,7 +61,7 @@ test.describe("web-admin contact inbox", () => {
         name: CONTACT_INBOX_FROM_READER.replyToEmail,
       })
     ).toBeVisible();
-    await expect(fromReader.getByText("Waiting")).toBeVisible();
+    await expect(fromReader.getByText("Unhandled")).toBeVisible();
 
     // A guest's message names nobody, and one with no subject is still opened
     // by its own link.
@@ -142,7 +142,7 @@ test.describe("web-admin contact inbox", () => {
     await expect(
       message.getByRole("link", { name: CONTACT_INBOX_FROM_READER.senderName })
     ).toBeVisible();
-    await expect(message.getByText("Waiting")).toBeVisible();
+    await expect(message.getByText("Unhandled")).toBeVisible();
 
     await page
       .getByRole("button", { exact: true, name: "Mark handled" })
@@ -156,11 +156,9 @@ test.describe("web-admin contact inbox", () => {
       page.getByRole("button", { exact: true, name: "Mark handled" })
     ).toHaveCount(0);
 
-    await page
-      .getByRole("button", { exact: true, name: "Mark as waiting" })
-      .click();
+    await page.getByRole("button", { exact: true, name: "Reopen" }).click();
 
-    await expect(message.getByText("Waiting")).toBeVisible();
+    await expect(message.getByText("Unhandled")).toBeVisible();
     await expect(
       page.getByRole("button", { exact: true, name: "Mark handled" })
     ).toBeVisible();

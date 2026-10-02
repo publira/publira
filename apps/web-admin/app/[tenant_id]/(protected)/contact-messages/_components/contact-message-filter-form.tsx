@@ -17,7 +17,7 @@ interface ContactMessageFilterFormProps {
   locale: Locale;
 }
 
-/** The status options, with "both states" first as the default view. */
+/** The status options, with "every state" first as the default view. */
 const statusOptions = async (
   locale: Locale
 ): Promise<{ label: string; value: string }[]> => {

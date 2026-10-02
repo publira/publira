@@ -9,9 +9,16 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
-import { markContactMessageHandled } from "#lib/contact-message";
+import {
+  assignContactMessage,
+  markContactMessageHandled,
+} from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
+import {
+  optionalRecordId,
+  requiredRecordId,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 const contactMessageActionSchema = async (locale: Locale) => {
@@ -111,5 +118,68 @@ export const reopenContactMessageAction = async (
   }
   redirect(
     `/contact-messages/${encodeURIComponent(outcome.publicId)}?reopened=1`
+  );
+};
+
+const assignActionSchema = async (locale: Locale) => {
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    contactMessageActionSchema(locale),
+  ]);
+
+  return schema.extend({
+    assigneeUserId: optionalRecordId(
+      t("admin.contact_messages.validation.assignee_invalid")
+    ),
+  });
+};
+
+const assignActionFormFields = {
+  ...contactMessageActionFormFields,
+  assigneeUserId: { kind: "value", name: "assignee_user_id" },
+} as const;
+
+/**
+ * States who the message is assigned to, and an empty assignee clears it. The
+ * picker and "Assign to me" both post here, the latter with the signed-in
+ * account's own id.
+ *
+ * Redirects back to the message like the handled flag does, so the status and
+ * the controls are read again rather than patched in place.
+ */
+export const assignContactMessageAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await assignActionSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, assignActionFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    assignContactMessage(
+      {
+        assigneeUserId: parsed.data.assigneeUserId,
+        contactMessageId: parsed.data.contactMessageId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  const flash = parsed.data.assigneeUserId ? "assigned" : "unassigned";
+  redirect(
+    `/contact-messages/${encodeURIComponent(parsed.data.publicId)}?${flash}=1`
   );
 };

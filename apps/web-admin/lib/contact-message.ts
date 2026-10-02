@@ -1,16 +1,24 @@
-import type { ContactMessage } from "@publira/api-client/admin/types";
+import type {
+  ContactMessage,
+  TenantMember,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
 
 import type {
+  ContactMessageAssigneeOption,
   ContactMessageItem,
+  ContactMessageStatus,
   GetContactMessageResult,
+  ListContactMessageAssigneesResult,
   ListContactMessagesResult,
 } from "../app/[tenant_id]/(protected)/contact-messages/contact-message-types";
+import { CONTACT_MESSAGE_STATUSES } from "../app/[tenant_id]/(protected)/contact-messages/contact-message-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
@@ -26,13 +34,16 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 /*
- * Neither read is cached: a message arrives from the storefront, and nothing on
+ * None of the reads is cached: a message arrives from the storefront, and nothing on
  * that path can drop a cache entry web-admin holds.
  */
 
 /** The generated `ContactMessage` fields {@link mapContactMessage} reads. */
 type RawContactMessage = Pick<
   ContactMessage,
+  | "assigneeName"
+  | "assigneePublicId"
+  | "assigneeUserId"
   | "body"
   | "createdAt"
   | "handledAt"
@@ -41,10 +52,37 @@ type RawContactMessage = Pick<
   | "replyToEmail"
   | "senderName"
   | "senderPublicId"
+  | "status"
   | "subject"
 >;
 
+const knownStatuses: ReadonlySet<string> = new Set(CONTACT_MESSAGE_STATUSES);
+
+const isContactMessageStatus = (value: string): value is ContactMessageStatus =>
+  knownStatuses.has(value);
+
+/**
+ * The status the API derived, or the same derivation made here when it sent
+ * none: a message is `handled` once somebody dealt with it, and otherwise
+ * `in_progress` while somebody is assigned and `unhandled` while nobody is.
+ */
+const contactMessageStatus = (
+  item: RawContactMessage
+): ContactMessageStatus => {
+  const status = item.status ?? "";
+  if (isContactMessageStatus(status)) {
+    return status;
+  }
+  if (item.handledAt) {
+    return "handled";
+  }
+  return item.assigneeUserId ? "in_progress" : "unhandled";
+};
+
 const mapContactMessage = (item: RawContactMessage): ContactMessageItem => ({
+  assigneeName: item.assigneeName ?? "",
+  assigneePublicId: item.assigneePublicId ?? "",
+  assigneeUserId: item.assigneeUserId ?? "",
   body: item.body ?? "",
   createdAt: item.createdAt ?? "",
   handledAt: item.handledAt ?? "",
@@ -53,11 +91,12 @@ const mapContactMessage = (item: RawContactMessage): ContactMessageItem => ({
   replyToEmail: item.replyToEmail ?? "",
   senderName: item.senderName ?? "",
   senderPublicId: item.senderPublicId ?? "",
+  status: contactMessageStatus(item),
   subject: item.subject ?? "",
 });
 
 export interface ListContactMessagesFilters extends CursorPageOptions {
-  /** Empty lists both states. */
+  /** Empty lists every state. */
   status?: string;
 }
 
@@ -208,6 +247,145 @@ export const markContactMessageHandled = async (
     return {
       message: rpcErrorMessage(error, failed, { locale }),
       ok: false,
+    };
+  }
+};
+
+export interface AssignContactMessageInput {
+  /** The `userId` of the member of staff to assign. Empty clears it. */
+  assigneeUserId: string;
+  contactMessageId: string;
+  tenantId: string;
+}
+
+export type AssignContactMessageResult =
+  | { message: string; ok: false }
+  | { ok: true };
+
+/**
+ * Assigns one message to a member of staff, moves it to another, or clears the
+ * assignment. A rejected session leaves as a throw so the Action can send the
+ * staff member to sign in again.
+ */
+export const assignContactMessage = async (
+  input: AssignContactMessageInput,
+  locale: Locale
+): Promise<AssignContactMessageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.contact.assignContactMessage(
+      {
+        assigneeUserId: input.assigneeUserId,
+        contactMessageId: input.contactMessageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    const failed = input.assigneeUserId
+      ? t("admin.contact_messages.assign_failed")
+      : t("admin.contact_messages.unassign_failed");
+    return {
+      message: rpcErrorMessage(error, failed, { locale }),
+      ok: false,
+    };
+  }
+};
+
+type RawTenantMember = Pick<
+  TenantMember,
+  "email" | "name" | "role" | "status" | "userId" | "userPublicId"
+>;
+
+/**
+ * The account `AssignContactMessage` accepts: an active tenant admin, because
+ * the inbox is theirs alone.
+ */
+const isAssignableMember = (member: RawTenantMember): boolean =>
+  member.role === "tenant_admin" &&
+  member.status === "active" &&
+  Boolean(member.userId);
+
+/**
+ * Every member of staff a message can be assigned to, for the assignment
+ * picker.
+ *
+ * Walks every page of the member list, and fails rather than handing back the
+ * part it read: a picker missing somebody looks complete.
+ */
+export const listContactMessageAssignees = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListContactMessageAssigneesResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      assignees: [],
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const assignees: ContactMessageAssigneeOption[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.members.listTenantMembers(
+          { limit, tenant: { tenantId }, token },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.members ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (members) => {
+        for (const member of members) {
+          if (isAssignableMember(member)) {
+            assignees.push({
+              name: member.name?.trim() || (member.email ?? ""),
+              userId: member.userId ?? "",
+              userPublicId: member.userPublicId ?? "",
+            });
+          }
+        }
+      }
+    );
+    if (walkStop !== "completed") {
+      return {
+        assignees: [],
+        message: t("admin.contact_messages.assignees_failed"),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return { assignees, ok: true };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      assignees: [],
+      message: rpcErrorMessage(
+        error,
+        t("admin.contact_messages.assignees_failed"),
+        { locale }
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

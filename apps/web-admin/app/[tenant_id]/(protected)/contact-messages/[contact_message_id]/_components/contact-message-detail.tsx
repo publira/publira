@@ -14,12 +14,12 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 
+import { ContactMessageAssignee } from "../../_components/contact-message-assignee";
 import {
   ContactMessageStatusMessage,
   contactMessageStatusTone,
 } from "../../_components/contact-message-status-label";
 import type { ContactMessageItem } from "../../contact-message-types";
-import { contactMessageStatus } from "../../contact-message-types";
 import { MarkHandledButton } from "./mark-handled-button";
 import { ReopenMessageButton } from "./reopen-message-button";
 
@@ -39,7 +39,7 @@ export const ContactMessageDetail = ({
   tenantId,
   timeZone,
 }: ContactMessageDetailProps) => {
-  const status = contactMessageStatus(contactMessage);
+  const { status } = contactMessage;
 
   return (
     <AdminSection>
@@ -79,6 +79,15 @@ export const ContactMessageDetail = ({
               <ContactMessageStatusMessage status={status} />
             </Suspense>
           </StatusChip>
+        </dd>
+
+        <dt className={labelClassName}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.contact_messages.columns.assignee" />
+          </Suspense>
+        </dt>
+        <dd className={valueClassName}>
+          <ContactMessageAssignee message={contactMessage} />
         </dd>
 
         <dt className={labelClassName}>

@@ -12,6 +12,13 @@ describe("parseContactMessageFilters", () => {
     ).toEqual({ status: "unhandled", token: "cursor-token" });
   });
 
+  it.each(["unhandled", "in_progress", "handled"])(
+    "accepts the %s state",
+    (status) => {
+      expect(parseContactMessageFilters({ status }).status).toBe(status);
+    }
+  );
+
   it("falls back to the whole inbox when the query string carries nothing", () => {
     expect(parseContactMessageFilters({})).toEqual({ status: "", token: "" });
   });

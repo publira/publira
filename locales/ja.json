@@ -300,7 +300,9 @@
         "comment_report_resolved": "コメントの通報を妥当と判断",
         "comment_report_rejected": "コメントの通報の却下",
         "contact_message_handled": "お問い合わせを対応済みに変更",
-        "contact_message_reopened": "お問い合わせを未対応に変更",
+        "contact_message_reopened": "お問い合わせの対応済みを取り消し",
+        "contact_message_assigned": "お問い合わせの担当者を割り当て",
+        "contact_message_unassigned": "お問い合わせの担当者の割り当てを解除",
         "reader_suspended": "読者の停止",
         "reader_unsuspended": "読者の停止解除",
         "reader_birth_date_changed": "読者の生年月日変更",
@@ -654,7 +656,7 @@
     },
     "contact_messages": {
       "title": "お問い合わせ",
-      "page_description": "読者からこのサイトに届いたメッセージを読み、対応済みかどうかを管理します。",
+      "page_description": "読者からこのサイトに届いたメッセージを読み、担当者と対応状況を管理します。",
       "item_label": "お問い合わせ",
       "list_error": "お問い合わせを表示できませんでした",
       "list_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
@@ -664,9 +666,11 @@
       "pagination_aria": "お問い合わせのページ送り",
       "pagination_description": "1ページあたり最大{$count}件を受信日時の新しい順に表示します。",
       "status_unhandled": "未対応",
+      "status_in_progress": "対応中",
       "status_handled": "対応済み",
       "subject_none": "件名なし",
       "sender_guest": "ゲスト",
+      "assignee_none": "未割り当て",
       "body": "本文",
       "handled_at": "対応日時",
       "columns": {
@@ -674,6 +678,7 @@
         "sender": "差出人",
         "reply_to": "返信先",
         "status": "状態",
+        "assignee": "担当者",
         "created_at": "受信日時"
       },
       "filter": {
@@ -683,7 +688,7 @@
         "reset": "リセット"
       },
       "detail_title": "お問い合わせ",
-      "detail_description": "メッセージの全文と返信先のアドレス、そして対応済みかどうかを確認します。",
+      "detail_description": "メッセージの全文と返信先のアドレス、担当者、対応状況を確認します。",
       "detail_section_title": "メッセージ",
       "detail_error": "お問い合わせを表示できませんでした",
       "detail_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
@@ -692,13 +697,26 @@
       "marking_handled": "変更しています…",
       "marked_handled": "お問い合わせを対応済みにしました。",
       "mark_handled_failed": "お問い合わせを対応済みにできませんでした。時間をおいて再試行してください。",
-      "reopen": "未対応に戻す",
+      "reopen": "対応済みを取り消す",
       "reopening": "変更しています…",
-      "reopened": "お問い合わせを未対応に戻しました。",
-      "reopen_failed": "お問い合わせを未対応に戻せませんでした。時間をおいて再試行してください。",
+      "reopened": "対応済みを取り消しました。",
+      "reopen_failed": "対応済みを取り消せませんでした。時間をおいて再試行してください。",
+      "assign_failed": "担当者を割り当てられませんでした。時間をおいて再試行してください。",
+      "unassign_failed": "担当者の割り当てを解除できませんでした。時間をおいて再試行してください。",
+      "assignees_failed": "割り当てできるスタッフを取得できませんでした。時間をおいて再試行してください。",
+      "assignment": {
+        "title": "担当者の割り当て",
+        "description": "このお問い合わせを担当するスタッフです。対応済みにしても、対応済みを取り消しても担当者はそのまま残ります。",
+        "assign_to_me": "自分に割り当てる",
+        "submit": "担当者を保存",
+        "assigning": "保存しています…",
+        "assigned": "担当者を保存しました。",
+        "unassigned": "担当者の割り当てを解除しました。"
+      },
       "validation": {
         "target_missing": "対象のお問い合わせを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
-        "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。"
+        "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
+        "assignee_invalid": "一覧からスタッフを選ぶか、未割り当てを選んでください。"
       }
     },
     "creators": {

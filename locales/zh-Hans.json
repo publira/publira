@@ -300,7 +300,9 @@
         "comment_report_resolved": "采纳了评论举报",
         "comment_report_rejected": "驳回了评论举报",
         "contact_message_handled": "将咨询标记为已处理",
-        "contact_message_reopened": "将咨询退回未处理",
+        "contact_message_reopened": "取消咨询的已处理状态",
+        "contact_message_assigned": "分配咨询负责人",
+        "contact_message_unassigned": "取消咨询负责人分配",
         "reader_suspended": "暂停了读者",
         "reader_unsuspended": "解除了读者暂停",
         "reader_birth_date_changed": "更改了读者出生日期",
@@ -654,7 +656,7 @@
     },
     "contact_messages": {
       "title": "咨询",
-      "page_description": "阅读读者发送到本站的消息，并管理其处理情况。",
+      "page_description": "阅读读者发送到本站的消息，并管理负责人和处理情况。",
       "item_label": "咨询",
       "list_error": "无法显示咨询",
       "list_failed": "无法加载咨询。请稍后再试。",
@@ -664,9 +666,11 @@
       "pagination_aria": "咨询分页",
       "pagination_description": "每页最多显示{$count}条咨询，按接收时间从新到旧排列。",
       "status_unhandled": "未处理",
+      "status_in_progress": "处理中",
       "status_handled": "已处理",
       "subject_none": "无主题",
       "sender_guest": "访客",
+      "assignee_none": "未分配",
       "body": "正文",
       "handled_at": "处理时间",
       "columns": {
@@ -674,6 +678,7 @@
         "sender": "发件人",
         "reply_to": "回复地址",
         "status": "状态",
+        "assignee": "负责人",
         "created_at": "接收时间"
       },
       "filter": {
@@ -683,7 +688,7 @@
         "reset": "重置"
       },
       "detail_title": "咨询",
-      "detail_description": "查看消息全文、回复地址，以及是否已经处理。",
+      "detail_description": "查看消息全文、回复地址、负责人，以及是否已经处理。",
       "detail_section_title": "消息",
       "detail_error": "无法显示该咨询",
       "detail_failed": "无法加载该咨询。请稍后重试。",
@@ -692,13 +697,26 @@
       "marking_handled": "正在变更…",
       "marked_handled": "已将该咨询标记为已处理。",
       "mark_handled_failed": "无法将该咨询标记为已处理。请稍后重试。",
-      "reopen": "退回未处理",
+      "reopen": "取消已处理",
       "reopening": "正在变更…",
-      "reopened": "已将该咨询退回未处理。",
-      "reopen_failed": "无法将该咨询退回未处理。请稍后重试。",
+      "reopened": "已取消该咨询的已处理状态。",
+      "reopen_failed": "无法取消该咨询的已处理状态。请稍后重试。",
+      "assign_failed": "无法分配负责人。请稍后重试。",
+      "unassign_failed": "无法取消负责人分配。请稍后重试。",
+      "assignees_failed": "无法获取可分配的工作人员。请稍后重试。",
+      "assignment": {
+        "title": "分配负责人",
+        "description": "负责该咨询的工作人员。标记为已处理或取消已处理后，负责人保持不变。",
+        "assign_to_me": "分配给我",
+        "submit": "保存负责人",
+        "assigning": "正在保存…",
+        "assigned": "已保存负责人。",
+        "unassigned": "已取消负责人分配。"
+      },
       "validation": {
         "target_missing": "无法确定要操作的咨询。请刷新页面后重试。",
-        "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。"
+        "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。",
+        "assignee_invalid": "请从列表中选择工作人员，或选择未分配。"
       }
     },
     "creators": {
