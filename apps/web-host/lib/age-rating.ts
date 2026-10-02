@@ -1,5 +1,6 @@
 import { SeriesAgeRating } from "@publira/api-client/public/types";
 import { plainDateOrNull } from "@publira/utils";
+import type { Metadata } from "next";
 
 import type { TenantAgeVerification } from "./tenant";
 
@@ -106,3 +107,16 @@ export const withRestrictedAgeRating = <T extends object>(
   const ageRating = toRestrictedAgeRating(rating);
   return ageRating ? { ...value, ageRating } : value;
 };
+
+/**
+ * The `<meta name="rating" content="adult">` a rated work's own pages carry,
+ * which is how Google asks a site to mark the pages SafeSearch should filter.
+ *
+ * Only the series page and its episode pages spread this. A page that lists
+ * works mixes ratings, and labelling it would hand the classification back to
+ * the whole storefront — the very thing marking page by page keeps confined to
+ * the rated works.
+ */
+export const adultContentMetadata = (
+  rating?: RestrictedAgeRating
+): Pick<Metadata, "other"> => (rating ? { other: { rating: "adult" } } : {});

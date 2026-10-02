@@ -28,6 +28,7 @@ import { JsonLd } from "#components/json-ld";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { adultContentMetadata } from "#lib/age-rating";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
 import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
@@ -119,6 +120,7 @@ export const generateMetadata = async (
     : undefined;
 
   return {
+    ...adultContentMetadata(series.ageRating),
     alternates,
     description,
     openGraph: {
