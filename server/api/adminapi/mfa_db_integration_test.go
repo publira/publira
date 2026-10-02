@@ -24,10 +24,10 @@ import (
 // the flow spans an encrypted secret, a lock counter, and ten hashed recovery
 // codes, and what matters about it is the state each step leaves behind.
 
-// mfaErrorReason reads the ErrorInfo reason an MFA failure carries. A refused
-// code and a rejected session share the unauthenticated code, so the console
-// tells them apart by this reason alone.
-func mfaErrorReason(t *testing.T, err error) string {
+// errorInfoReason reads the Publira ErrorInfo reason an error carries, or ""
+// when it carries none. A refused MFA code and a rejected session share the
+// unauthenticated code, so the console tells them apart by this reason alone.
+func errorInfoReason(t *testing.T, err error) string {
 	t.Helper()
 
 	var connectErr *connect.Error
@@ -447,7 +447,7 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 		if connect.CodeOf(err) != want {
 			t.Fatalf("VerifyMfa attempt %d = %v, want %v (err=%v)", attempt, connect.CodeOf(err), want, err)
 		}
-		if reason := mfaErrorReason(t, err); reason != wantReason {
+		if reason := errorInfoReason(t, err); reason != wantReason {
 			t.Fatalf("VerifyMfa attempt %d reason = %q, want %q", attempt, reason, wantReason)
 		}
 	}

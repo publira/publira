@@ -66,8 +66,7 @@ type AdminComment struct {
 	// rather than of reports ever made, so deciding on one lowers it.
 	OpenReportCount int32 `protobuf:"varint,16,opt,name=open_report_count,json=openReportCount,proto3" json:"open_report_count,omitempty"`
 	// Whether the author holds a staff role on this tenant. A staff account can
-	// post from the storefront too, but it is not a reader, so GetReader does not
-	// answer for it.
+	// post from the storefront too, and GetReader reads it like any other.
 	AuthorIsStaff bool `protobuf:"varint,17,opt,name=author_is_staff,json=authorIsStaff,proto3" json:"author_is_staff,omitempty"`
 	// The comment's primary key, which every moderation request addresses it by.
 	Id            string `protobuf:"bytes,18,opt,name=id,proto3" json:"id,omitempty"`

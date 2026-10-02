@@ -311,8 +311,8 @@ type Querier interface {
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
-	// Hard delete, as DeleteUserByID. A staff account and another tenant's are no
-	// rows.
+	// Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
+	// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// An upload points its creator at the new icon and leaves the previous
@@ -715,11 +715,11 @@ type Querier interface {
 	// picks. No row where the tenant has no config.
 	GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPagesParams) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
-	// GetTenantReaderByPublicID keyed by the primary key. A staff account and an
-	// account of another tenant are both no rows.
+	// GetTenantReaderByPublicID keyed by the primary key. An account of another
+	// tenant is no rows.
 	GetTenantReaderByID(ctx context.Context, arg GetTenantReaderByIDParams) (GetTenantReaderByIDRow, error)
-	// One reader in the shape ListTenantReaders* returns. A staff account and an
-	// account of another tenant are both no rows.
+	// One account in the shape ListTenantReaders* returns. An account of another
+	// tenant is no rows.
 	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
 	// Returns no rows when the tenant has never saved an override.
 	GetTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
@@ -1786,9 +1786,11 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
 	ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error)
-	// Admin ListReaders lists the tenant's readers: its accounts that hold no
-	// tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
-	// through idx_users_tenant_created_at. Forward uses the DESC query; backward
+	// Admin ListReaders lists every account of the tenant, staff included: a staff
+	// member reads the storefront with the same account. role is the highest
+	// console role the account holds, resolved as ListTenantMembers resolves it,
+	// and '' for an account with none. (created_at, id) DESC, walked through
+	// idx_users_tenant_created_at. Forward uses the DESC query; backward
 	// uses ASC, and the handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	// The birth date is a NULL placeholder: a list has no use for it, so only the
@@ -2276,8 +2278,8 @@ type Querier interface {
 	SetContactMessageStaffNoteByIDForTenant(ctx context.Context, arg SetContactMessageStaffNoteByIDForTenantParams) (ContactMessage, error)
 	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
 	// Sets or clears a reader's birth date past the written-once guard of
-	// SetUserBirthDateByID. Writing the date already stored is no rows, like a
-	// staff account and another tenant's.
+	// SetUserBirthDateByID. Writing the date already stored is no rows, like
+	// another tenant's account.
 	SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error)
 	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
@@ -2304,8 +2306,9 @@ type Querier interface {
 	// expired nonces are dropped in the same statement, so the table holds only
 	// what can still be replayed.
 	SpendSignInNonce(ctx context.Context, arg SpendSignInNonceParams) (int64, error)
-	// Suspends a reader and invalidates the sessions they hold. A reader who is
-	// already suspended is no rows, like a staff account and another tenant's.
+	// Suspends an account and invalidates the sessions it holds. An account that
+	// is already suspended is no rows, like another tenant's. Keeping the tenant an
+	// active tenant_admin is the handler's, which checks before this runs.
 	SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error)
 	// Confirms an address nobody had confirmed on the strength of a provider's
 	// verified claim to it. The password goes: whoever set it never proved the

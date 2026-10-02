@@ -13,6 +13,8 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantlock"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -35,10 +37,10 @@ func adminReaderPublicIDs(readers []*publiraadminv1.AdminReader) []string {
 	return ids
 }
 
-func TestDBAdminListReadersListsReadersOnlyAndPages(t *testing.T) {
+func TestDBAdminListReadersListsEveryAccountAndPages(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RDRTENANT001", "readers.example.com", "Readers", "RDRADMIN0001", "admin@readers.example.com")
-	env.PG.SeedTenantUser(t, admin.Tenant.ID, "RDREDITOR001", "editor@readers.example.com", "Editor", auth.RoleTenantEditor)
+	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RDREDITOR001", "editor@readers.example.com", "Editor", auth.RoleTenantEditor)
 	first := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDRFIRST0001", "alice@readers.example.com", "Alice")
 	second := env.PG.SeedUnverifiedEndUser(t, admin.Tenant.ID, "RDRSECOND001", "bob@readers.example.com", "Bob")
 	third := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDRTHIRD0001", "carol@readers.example.com", "Carol")
@@ -46,10 +48,18 @@ func TestDBAdminListReadersListsReadersOnlyAndPages(t *testing.T) {
 	other := env.seedTenantWithAdmin(t, "RDOTENANT001", "readers-other.example.com", "Other", "RDOADMIN0001", "admin@readers-other.example.com")
 	env.PG.SeedEndUser(t, other.Tenant.ID, "RDOREADER001", "alice@readers-other.example.com", "Alice")
 
-	// Staff of this tenant and readers of another are both absent.
+	// The staff of this tenant are listed with their role; readers of another
+	// tenant are absent.
 	all := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{})
-	if got := adminReaderPublicIDs(all.Readers); !slices.Equal(got, []string{third.PublicID, second.PublicID, first.PublicID}) {
-		t.Fatalf("unfiltered list = %v, want the three readers newest first", got)
+	want := []string{third.PublicID, second.PublicID, first.PublicID, editor.PublicID, admin.User.PublicID}
+	if got := adminReaderPublicIDs(all.Readers); !slices.Equal(got, want) {
+		t.Fatalf("unfiltered list = %v, want %v", got, want)
+	}
+	wantRoles := []string{"", "", "", auth.RoleTenantEditor, auth.RoleTenantAdmin}
+	for i, reader := range all.Readers {
+		if reader.Role != wantRoles[i] {
+			t.Fatalf("listed account %s role = %q, want %q", reader.PublicId, reader.Role, wantRoles[i])
+		}
 	}
 
 	byName := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Query: "ALI"})
@@ -65,23 +75,23 @@ func TestDBAdminListReadersListsReadersOnlyAndPages(t *testing.T) {
 		t.Fatalf("inactive list = %v, want %s", got, second.PublicID)
 	}
 
-	page := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 2})
-	if got := adminReaderPublicIDs(page.Readers); !slices.Equal(got, []string{third.PublicID, second.PublicID}) {
-		t.Fatalf("first page = %v, want the two newest readers", got)
+	page := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 3})
+	if got := adminReaderPublicIDs(page.Readers); !slices.Equal(got, want[:3]) {
+		t.Fatalf("first page = %v, want the three newest accounts", got)
 	}
 	if page.NextToken == "" || page.PreviousToken != "" {
 		t.Fatalf("first page tokens = (%q, %q), want a next token only", page.PreviousToken, page.NextToken)
 	}
-	next := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 2, Token: page.NextToken})
-	if got := adminReaderPublicIDs(next.Readers); !slices.Equal(got, []string{first.PublicID}) {
-		t.Fatalf("second page = %v, want %s", got, first.PublicID)
+	next := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 3, Token: page.NextToken})
+	if got := adminReaderPublicIDs(next.Readers); !slices.Equal(got, want[3:]) {
+		t.Fatalf("second page = %v, want the two staff accounts", got)
 	}
 	if next.NextToken != "" || next.PreviousToken == "" {
 		t.Fatalf("last page tokens = (%q, %q), want a previous token only", next.PreviousToken, next.NextToken)
 	}
-	back := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 2, Token: next.PreviousToken})
-	if got := adminReaderPublicIDs(back.Readers); !slices.Equal(got, []string{third.PublicID, second.PublicID}) {
-		t.Fatalf("page back = %v, want the two newest readers", got)
+	back := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 3, Token: next.PreviousToken})
+	if got := adminReaderPublicIDs(back.Readers); !slices.Equal(got, want[:3]) {
+		t.Fatalf("page back = %v, want the three newest accounts", got)
 	}
 }
 
@@ -204,19 +214,29 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 	if got.Id != reader.ID.String() || got.PublicId != reader.PublicID || got.Name != "Reader" || got.Email != "reader@reader-get.example.com" || got.Status != "active" {
 		t.Fatalf("reader = %+v, want the seeded active reader", got)
 	}
-	if got.CreatedAt == "" || got.EmailVerifiedAt == "" || got.BirthDate != "2000-01-02" {
-		t.Fatalf("reader = %+v, want created_at, email_verified_at and the recorded birth date", got)
+	if got.CreatedAt == "" || got.EmailVerifiedAt == "" || got.BirthDate != "2000-01-02" || got.Role != "" {
+		t.Fatalf("reader = %+v, want created_at, email_verified_at, the recorded birth date and no role", got)
 	}
 
-	// A public id of another tenant and a staff account are both absent here.
-	for _, publicID := range []string{outsider.PublicID, admin.User.PublicID} {
-		_, err := client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
-			Tenant:   admin.tenantContext(),
-			PublicId: publicID,
-		}))
-		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("GetReader %s error = %v, want not_found", publicID, err)
-		}
+	// A staff account is read like any other, with its role.
+	staff, err := client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+		Tenant:   admin.tenantContext(),
+		PublicId: admin.User.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetReader for a staff account: %v", err)
+	}
+	if staff.Msg.Reader.Id != admin.User.ID.String() || staff.Msg.Reader.Role != auth.RoleTenantAdmin {
+		t.Fatalf("staff account = %+v, want %s as %s", staff.Msg.Reader, admin.User.PublicID, auth.RoleTenantAdmin)
+	}
+
+	// A public id of another tenant is absent here.
+	_, err = client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+		Tenant:   admin.tenantContext(),
+		PublicId: outsider.PublicID,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetReader %s error = %v, want not_found", outsider.PublicID, err)
 	}
 }
 
@@ -453,17 +473,16 @@ func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) 
 	}
 }
 
-// A staff account and a reader of another tenant are out of reach of every
-// action, as they are of GetReader.
-func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
+// A reader of another tenant is out of reach of every action, as it is of
+// GetReader.
+func TestDBAdminReaderActionsLeaveOtherTenantsAlone(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSCTENANT001", "reader-scope.example.com", "Scope", "RSCADMIN0001", "admin@reader-scope.example.com")
-	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RSCEDITOR001", "editor@reader-scope.example.com", "Editor", auth.RoleTenantEditor)
 	other := env.seedTenantWithAdmin(t, "RSOTENANT001", "reader-scope-other.example.com", "Other", "RSOADMIN0001", "admin@reader-scope-other.example.com")
 	outsider := env.PG.SeedEndUser(t, other.Tenant.ID, "RSOREADER001", "reader@reader-scope-other.example.com", "Outsider")
 	client := env.userClient()
 
-	for _, readerID := range []string{editor.ID.String(), outsider.ID.String(), admin.User.ID.String(), uuid.Must(uuid.NewV7()).String()} {
+	for _, readerID := range []string{outsider.ID.String(), other.User.ID.String(), uuid.Must(uuid.NewV7()).String()} {
 		if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: readerID,
@@ -492,16 +511,10 @@ func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
 	}
 
 	if count := env.countRows(t,
-		"SELECT count(*) FROM users WHERE id IN ($1, $2, $3) AND birth_date IS NULL",
-		editor.ID, outsider.ID, admin.User.ID,
-	); count != 3 {
-		t.Fatalf("accounts without a birth date = %d, want 3", count)
-	}
-	if count := env.countRows(t,
-		"SELECT count(*) FROM users WHERE id IN ($1, $2, $3) AND status = 'active'",
-		editor.ID, outsider.ID, admin.User.ID,
-	); count != 3 {
-		t.Fatalf("untouched active accounts = %d, want 3", count)
+		"SELECT count(*) FROM users WHERE id IN ($1, $2) AND birth_date IS NULL AND status = 'active'",
+		outsider.ID, other.User.ID,
+	); count != 2 {
+		t.Fatalf("untouched accounts of the other tenant = %d, want 2", count)
 	}
 	if logs := env.readerAuditLogs(t, admin); len(logs) != 0 {
 		t.Fatalf("audit log count = %d, want 0 (%+v)", len(logs), logs)
@@ -539,5 +552,238 @@ func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {
 	}
 	if got := adminCommentPublicIDs(fixture.list(t, &publiraadminv1.ListCommentsRequest{AuthorPublicId: "NOSUCHREADER"}).Comments); len(got) != 0 {
 		t.Fatalf("unknown author list = %v, want an empty page", got)
+	}
+}
+
+// A staff account is acted on like any other account: suspended, lifted,
+// corrected and deleted, and deleting it takes its roles with it.
+func TestDBAdminReaderActionsReachStaffAccounts(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RSFTENANT001", "reader-staff.example.com", "Staff", "RSFADMIN0001", "admin@reader-staff.example.com")
+	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RSFEDITOR001", "editor@reader-staff.example.com", "Editor", auth.RoleTenantEditor)
+	client := env.userClient()
+	ctx := context.Background()
+	// A staff account the console creates has its address confirmed, so lifting
+	// its suspension makes it active again rather than inactive.
+	if _, err := dbmodels.New(env.PG.DB).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              editor.ID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("UpdateUserEmailVerifiedAtByID: %v", err)
+	}
+
+	suspended, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: editor.ID.String(),
+	}))
+	if err != nil {
+		t.Fatalf("SuspendReader for a staff account: %v", err)
+	}
+	if got := suspended.Msg.Reader; got.Status != "suspended" || got.Role != auth.RoleTenantEditor {
+		t.Fatalf("suspended staff account = %+v, want suspended as %s", got, auth.RoleTenantEditor)
+	}
+	unsuspended, err := client.UnsuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: editor.ID.String(),
+	}))
+	if err != nil {
+		t.Fatalf("UnsuspendReader for a staff account: %v", err)
+	}
+	if got := unsuspended.Msg.Reader; got.Status != "active" || got.Role != auth.RoleTenantEditor {
+		t.Fatalf("unsuspended staff account = %+v, want active as %s", got, auth.RoleTenantEditor)
+	}
+	corrected, err := client.SetReaderBirthDate(ctx, newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+		Tenant:    admin.tenantContext(),
+		ReaderId:  editor.ID.String(),
+		BirthDate: "1990-01-01",
+	}))
+	if err != nil {
+		t.Fatalf("SetReaderBirthDate for a staff account: %v", err)
+	}
+	if got := corrected.Msg.Reader; got.BirthDate != "1990-01-01" || got.Role != auth.RoleTenantEditor {
+		t.Fatalf("corrected staff account = %+v, want born 1990-01-01 as %s", got, auth.RoleTenantEditor)
+	}
+
+	if _, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: editor.ID.String(),
+	})); err != nil {
+		t.Fatalf("DeleteReader for a staff account: %v", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", editor.ID); count != 0 {
+		t.Fatal("the deleted staff account is still there")
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM tenant_user_roles WHERE user_id = $1", editor.ID); count != 0 {
+		t.Fatalf("roles of the deleted staff account = %d, want none", count)
+	}
+
+	logs := env.readerAuditLogs(t, admin)
+	if len(logs) != 4 {
+		t.Fatalf("audit log count = %d, want 4 (%+v)", len(logs), logs)
+	}
+	// Newest first.
+	assertReaderAuditLog(t, logs[0], "reader_deleted", admin, editor.PublicID)
+	assertReaderAuditLog(t, logs[1], "reader_birth_date_changed", admin, editor.PublicID)
+	assertReaderAuditLog(t, logs[2], "reader_unsuspended", admin, editor.PublicID)
+	assertReaderAuditLog(t, logs[3], "reader_suspended", admin, editor.PublicID)
+}
+
+func requireReaderRefusal(t *testing.T, err error, reason string) {
+	t.Helper()
+
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("code = %v, want failed_precondition (err = %v)", connect.CodeOf(err), err)
+	}
+	if got := errorInfoReason(t, err); got != reason {
+		t.Fatalf("reason = %q, want %q (err = %v)", got, reason, err)
+	}
+}
+
+func TestDBAdminSuspendAndDeleteReaderRefuseTheCallersOwnAccount(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RSLTENANT001", "reader-self.example.com", "Self", "RSLADMIN0001", "admin@reader-self.example.com")
+	// Another active administrator, so the last-administrator guard is not
+	// what refuses.
+	env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RSLADMIN0002", "second@reader-self.example.com", "Second")
+	client := env.userClient()
+	ctx := context.Background()
+
+	_, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: admin.User.ID.String(),
+	}))
+	requireReaderRefusal(t, err, rpcerrors.ReasonOwnAccount)
+	_, err = client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: admin.User.ID.String(),
+	}))
+	requireReaderRefusal(t, err, rpcerrors.ReasonOwnAccount)
+
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND status = 'active'", admin.User.ID); count != 1 {
+		t.Fatal("the caller's own account is no longer active")
+	}
+	if logs := env.readerAuditLogs(t, admin); len(logs) != 0 {
+		t.Fatalf("audit log count = %d, want 0 (%+v)", len(logs), logs)
+	}
+}
+
+// afterConcurrentSuspension runs call while another transaction, holding the
+// tenant's administrator lock, suspends the calling administrator, and commits
+// that transaction once call waits on the lock. It is the moment two
+// administrators acting on each other at once would otherwise both get
+// through: the caller's session was still active when the request arrived. The
+// caller is active again when it returns.
+func (e *adminDBEnv) afterConcurrentSuspension(t *testing.T, caller adminDBTenant, call func() error) error {
+	t.Helper()
+
+	ctx := context.Background()
+	tx, err := e.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := tenantlock.Take(ctx, tx, "tenant-admins:"+caller.Tenant.ID.String()); err != nil {
+		t.Fatalf("take the administrator lock: %v", err)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE users SET status = 'suspended' WHERE id = $1", caller.User.ID); err != nil {
+		t.Fatalf("suspend the caller: %v", err)
+	}
+
+	result := make(chan error, 1)
+	go func() { result <- call() }()
+	e.waitForBlockedBackend(t)
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+
+	select {
+	case err = <-result:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the racing request never finished")
+	}
+	if _, execErr := e.PG.DB.ExecContext(ctx, "UPDATE users SET status = 'active' WHERE id = $1", caller.User.ID); execErr != nil {
+		t.Fatalf("reactivate the caller: %v", execErr)
+	}
+	return err
+}
+
+func TestDBAdminSuspendAndDeleteReaderKeepAnActiveTenantAdmin(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RLATENANT001", "reader-last-admin.example.com", "Last", "RLAADMIN0001", "admin@reader-last-admin.example.com")
+	second := env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RLAADMIN0002", "second@reader-last-admin.example.com", "Second")
+	client := env.userClient()
+	ctx := context.Background()
+
+	suspend := func() error {
+		_, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+			Tenant:   admin.tenantContext(),
+			ReaderId: second.ID.String(),
+		}))
+		return err
+	}
+	deleteSecond := func() error {
+		_, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+			Tenant:   admin.tenantContext(),
+			ReaderId: second.ID.String(),
+		}))
+		return err
+	}
+
+	// The second administrator suspended the caller a moment before: the
+	// second one is the last active administrator by the time the caller's
+	// request gets the lock.
+	requireLastTenantAdminRefusal(t, env.afterConcurrentSuspension(t, admin, suspend))
+	requireLastTenantAdminRefusal(t, env.afterConcurrentSuspension(t, admin, deleteSecond))
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND status = 'active'", second.ID); count != 1 {
+		t.Fatal("the last active administrator was suspended or deleted")
+	}
+
+	// With the caller active beside them, the second administrator can be
+	// suspended, and deleted.
+	if err := suspend(); err != nil {
+		t.Fatalf("SuspendReader for a second administrator: %v", err)
+	}
+	if err := deleteSecond(); err != nil {
+		t.Fatalf("DeleteReader for a second administrator: %v", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM tenant_user_roles WHERE user_id = $1", second.ID); count != 0 {
+		t.Fatalf("roles of the deleted administrator = %d, want none", count)
+	}
+}
+
+// An account the tenant's audit entries name as the one who acted stays, so
+// the record keeps saying who did what; suspending it is what remains.
+func TestDBAdminDeleteReaderRefusesAnAccountTheAuditLogNames(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RAHTENANT001", "reader-history.example.com", "History", "RAHADMIN0001", "admin@reader-history.example.com")
+	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAHADMIN0002", "second@reader-history.example.com", "Second"))
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RAHREADER001", "reader@reader-history.example.com", "Reader")
+	client := env.userClient()
+	ctx := context.Background()
+
+	if _, err := client.SuspendReader(ctx, newAdminDBRequest(second, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   second.tenantContext(),
+		ReaderId: reader.ID.String(),
+	})); err != nil {
+		t.Fatalf("SuspendReader by the second administrator: %v", err)
+	}
+
+	_, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: second.User.ID.String(),
+	}))
+	requireReaderRefusal(t, err, rpcerrors.ReasonAccountHasStaffHistory)
+	if count := env.countRows(t, "SELECT count(*) FROM tenant_user_roles WHERE user_id = $1 AND role = $2", second.User.ID, auth.RoleTenantAdmin); count != 1 {
+		t.Fatal("the refused deletion took the account's role")
+	}
+	if logs := env.readerAuditLogs(t, admin); len(logs) != 1 {
+		t.Fatalf("audit log count = %d, want only the suspension (%+v)", len(logs), logs)
+	}
+
+	if _, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: second.User.ID.String(),
+	})); err != nil {
+		t.Fatalf("SuspendReader for the account the audit log names: %v", err)
 	}
 }

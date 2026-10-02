@@ -19,16 +19,23 @@ const (
 	// ErrorInfoDomain scopes ErrorInfo reasons emitted by Publira APIs.
 	ErrorInfoDomain = "publira"
 
+	// ReasonAccountHasStaffHistory refuses deleting an account that audit
+	// entries or page versions still name as the one who acted, which the
+	// tenant's record keeps.
+	ReasonAccountHasStaffHistory  = "ACCOUNT_HAS_STAFF_HISTORY"
 	ReasonArchiveInvalidEPUB      = "ARCHIVE_INVALID_EPUB"
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
 	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
-	// ReasonLastTenantAdmin refuses removing or demoting the tenant's last
-	// active tenant_admin.
+	// ReasonLastTenantAdmin refuses removing, demoting, suspending, or deleting
+	// the tenant's last active tenant_admin.
 	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"
 	ReasonMfaInvalidCode  = "MFA_INVALID_CODE"
 	ReasonMfaLocked       = "MFA_LOCKED"
+	// ReasonOwnAccount refuses an administrator suspending or deleting the
+	// account they are signed in with.
+	ReasonOwnAccount = "OWN_ACCOUNT"
 	// ReasonReaderCreditedOnEpisode refuses buying or rating an episode that
 	// credits a creator the reader's account is linked to.
 	ReasonReaderCreditedOnEpisode = "READER_CREDITED_ON_EPISODE"
