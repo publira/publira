@@ -1,3 +1,12 @@
+import 'dart:ui';
+
+/// Narrowest screen a spread is worth showing on, in logical pixels.
+///
+/// It is Material's medium window breakpoint: below it each half of a spread
+/// is narrower than a phone shows a single page, so the pages would be smaller
+/// than the reader can read rather than larger.
+const _spreadMinWidth = 600.0;
+
 /// How the pages of one episode are laid out over the screens the reader turns
 /// through.
 ///
@@ -11,6 +20,12 @@ class PageSpreads {
     required this.paired,
     this.spreadStartIndex = 1,
   });
+
+  /// Whether two pages share a screen on [viewport]: only where both of them
+  /// stay legible, a tablet or a phone held sideways, which is the shape a
+  /// printed spread has.
+  static bool pairsOn(Size viewport) =>
+      viewport.width >= _spreadMinWidth && viewport.width > viewport.height;
 
   final int pageCount;
 

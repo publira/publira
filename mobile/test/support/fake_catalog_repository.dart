@@ -959,6 +959,9 @@ List<RankedSeriesItem> fixtureRankedSeries() {
 
 /// A readable body for every published episode of every fixture series, each
 /// carrying the episodes either side of it the way `GetEpisodeDetail` does.
+///
+/// Each names the next free episode after it, and one [access] withholds also
+/// carries the preview of its first two pages, the way the API answers then.
 Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
@@ -967,11 +970,17 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeEntitlementSource entitlementSource =
       EpisodeEntitlementSource.unspecified,
 }) {
+  final withheld =
+      access == EpisodeAccess.locked || access == EpisodeAccess.ageRestricted;
   final bodies = <String, EpisodeDetail>{};
   for (final item in fixtureSeries) {
     final episodes = fixtureDetail(item, paidSurface: paidSurface).episodes;
     for (var index = 0; index < episodes.length; index++) {
       final episode = episodes[index];
+      final nextFree = episodes
+          .skip(index + 1)
+          .where((later) => later.price == 0)
+          .firstOrNull;
       bodies[episodeKey(item.id, episode.id)] = EpisodeDetail(
         episode: episode,
         seriesId: item.id,
@@ -984,6 +993,20 @@ Map<String, EpisodeDetail> fixtureEpisodes({
         nextEpisode: index == episodes.length - 1
             ? null
             : fixtureNeighbor(episodes[index + 1]),
+        nextFreeEpisode: nextFree == null ? null : fixtureNeighbor(nextFree),
+        previewImages: [
+          if (withheld)
+            for (var page = 1; page <= pageCount && page <= 2; page++)
+              EpisodeImageItem(
+                id: '${episode.id}-preview-$page',
+                url: Uri.parse(
+                  'http://127.0.0.1:8200/images/episodes/${episode.id}-page-$page/preview',
+                ),
+                displayOrder: page,
+                width: 45,
+                height: 64,
+              ),
+        ],
         images: [
           for (var page = 1; page <= pageCount; page++)
             EpisodeImageItem(

@@ -1254,7 +1254,11 @@ class HttpCatalogRepository implements CatalogRepository {
       seriesId: seriesId,
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: EpisodeAccess.fromWire(body['access']),
-      images: _parseEpisodeImages(body['images']),
+      images: _parseEpisodeImages(body['images'], 'images'),
+      previewImages: _parseEpisodeImages(
+        body['previewImages'],
+        'previewImages',
+      ),
       entitlementSource: EpisodeEntitlementSource.fromWire(
         body['entitlementSource'],
       ),
@@ -1263,7 +1267,12 @@ class HttpCatalogRepository implements CatalogRepository {
         'previousEpisode',
       ),
       nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
+      nextFreeEpisode: _neighborFromJson(
+        body['nextFreeEpisode'],
+        'nextFreeEpisode',
+      ),
       imageRequestHeaders: config.imageRequestHeaders(accessToken),
+      previewImageRequestHeaders: config.publicImageRequestHeaders,
       ageRating: _parseAgeRating(rawSeries['ageRating']),
       creators: _parseCreators(rawEpisode['creators'], 'episode'),
       readingDirection: _parseReadingDirection(rawEpisode['readingDirection']),
@@ -1322,21 +1331,22 @@ class HttpCatalogRepository implements CatalogRepository {
     };
   }
 
-  List<EpisodeImageItem> _parseEpisodeImages(Object? raw) {
+  List<EpisodeImageItem> _parseEpisodeImages(Object? raw, String path) {
     if (raw == null) {
       return const [];
     }
-    final images = _expectList(raw, 'images')
-        .map((item) => _expectMap(item, 'images[]'))
+    final item = '$path[]';
+    final images = _expectList(raw, path)
+        .map((value) => _expectMap(value, item))
         .map((json) {
           return EpisodeImageItem(
-            id: _readString(json, 'id', 'images[]', requiredNonEmpty: true),
+            id: _readString(json, 'id', item, requiredNonEmpty: true),
             url: config.imageUri(
-              _readString(json, 'imageUrl', 'images[]', requiredNonEmpty: true),
+              _readString(json, 'imageUrl', item, requiredNonEmpty: true),
             ),
-            displayOrder: _readInt(json, 'displayOrder', 'images[]'),
-            width: _readInt(json, 'width', 'images[]'),
-            height: _readInt(json, 'height', 'images[]'),
+            displayOrder: _readInt(json, 'displayOrder', item),
+            width: _readInt(json, 'width', item),
+            height: _readInt(json, 'height', item),
           );
         })
         .toList();

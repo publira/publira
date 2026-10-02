@@ -4011,6 +4011,7 @@
         "add_birth_date": "登錄出生日期",
         "guest": "開啟本作品前需要核對年齡。請使用已登錄出生日期的帳戶登入。",
         "no_birth_date": "開啟本作品前需要核對年齡。您的帳戶尚未登錄出生日期。",
+        "title": "本章設有年齡限制",
         "too_young": "本作品不適用於您的年齡。"
       },
       "reaction": {
@@ -4039,7 +4040,9 @@
       "locked_signed_out": "購買後即可閱讀本章。如果您已經購買，請登入。",
       "locked_sold_on_web": "本章在網站上販售。購買後，使用同一帳戶即可在應用程式內閱讀。",
       "locked_sold_on_web_signed_out": "本章在網站上販售。如果您已經購買，請登入。",
+      "locked_title": "本章為付費內容",
       "next_episode": "下一章",
+      "next_free_episode": "免費閱讀第{$number}章",
       "next_page": "下一頁",
       "no_pages": "本章還沒有頁面。",
       "not_found": "找不到章節（{$id}）",

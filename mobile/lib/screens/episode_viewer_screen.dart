@@ -14,6 +14,7 @@ import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/content_views/content_view_recorder.dart';
 import 'package:publira/content_views/content_view_repository.dart';
+import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -27,6 +28,7 @@ import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
+import 'package:publira/viewer/episode_gate_frame.dart';
 import 'package:publira/viewer/episode_read_recorder.dart';
 import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
@@ -479,20 +481,24 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   }
 
   /// What stands where the pages would be while the episode is not the
-  /// reader's: why, and the purchase that opens it where the tenant takes one.
+  /// reader's: its blurred opening pages, and over them why, the purchase that
+  /// opens it where the tenant takes one, and the nearest later episode the
+  /// reader could read instead.
   Widget _locked(AppMessages messages, EpisodeDetail detail) {
     final signedIn = AuthScope.of(context).isSignedIn;
     // The browser reported the payment and the API has not recorded it yet.
     if (signedIn && widget.checkout == CheckoutOutcome.success) {
-      return _ViewerMessage(
+      return _gate(
+        detail,
         key: const ValueKey('episode-purchase-confirming'),
         message: messages.purchaseConfirming,
-        action: OutlinedButton(
-          key: const ValueKey('episode-purchase-check-again'),
-          style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-          onPressed: () => unawaited(_checkAgain()),
-          child: AutospacedText(messages.purchaseCheckAgain),
-        ),
+        actions: [
+          OutlinedButton(
+            key: const ValueKey('episode-purchase-check-again'),
+            onPressed: () => unawaited(_checkAgain()),
+            child: AutospacedText(messages.purchaseCheckAgain),
+          ),
+        ],
       );
     }
     final sold =
@@ -530,52 +536,104 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     } else {
       message = messages.viewerLockedSignedOut;
     }
-    if (buy == null && !signedIn) {
-      return _ViewerMessage(
-        key: const ValueKey('episode-locked'),
-        message: message,
-        action: FilledButton(
-          onPressed: () => context.pushInTab(AppRoutes.signIn),
-          child: AutospacedText(messages.commonSignIn),
-        ),
+    final Widget? accessAction;
+    if (buy != null) {
+      accessAction = buy;
+    } else if (!signedIn) {
+      accessAction = FilledButton(
+        onPressed: () => context.pushInTab(AppRoutes.signIn),
+        child: AutospacedText(messages.commonSignIn),
       );
+    } else {
+      accessAction = null;
     }
-    return _ViewerMessage(
+    // The free episode is a way around this one rather than into it, so it is
+    // a link under the actions rather than a third button beside them.
+    final nextFree = detail.nextFreeEpisode;
+    return _gate(
+      detail,
       key: const ValueKey('episode-locked'),
+      title: messages.viewerLockedTitle,
       message: message,
-      action: buy,
+      actions: [?accessAction, _backToSeries(messages)],
+      footer: nextFree == null
+          ? null
+          : TextButton(
+              key: const ValueKey('episode-next-free'),
+              onPressed: () => _open(nextFree),
+              child: AutospacedText(
+                messages.viewerNextFreeEpisode(
+                  number: messages.formatInteger(nextFree.orderIndex),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
     );
   }
 
   /// What stands where the pages would be when the tenant makes a reader
-  /// prove an age for this series and they have not.
+  /// prove an age for this series and they have not: the blurred opening
+  /// pages, with the age gate over them.
   ///
   /// Its three states are the three things that can be missing: the session,
-  /// the birth date, or the years themselves.
+  /// the birth date, or the years themselves. Unlike a locked episode it offers
+  /// no free one to read instead: the rule covers the whole series, so every
+  /// episode of it is closed the same way.
   Widget _ageRestricted(AppMessages messages, _OpenEpisode open) {
+    final String message;
+    final Widget? ageAction;
     if (!AuthScope.of(context).isSignedIn) {
-      return _ViewerMessage(
-        key: const ValueKey('episode-age-restricted'),
-        message: messages.viewerAgeRestrictedGuest,
-        action: FilledButton(
-          onPressed: () => context.pushInTab(AppRoutes.signIn),
-          child: AutospacedText(messages.commonSignIn),
-        ),
+      message = messages.viewerAgeRestrictedGuest;
+      ageAction = FilledButton(
+        onPressed: () => context.pushInTab(AppRoutes.signIn),
+        child: AutospacedText(messages.commonSignIn),
       );
-    }
-    if (open.readerHasBirthDate) {
-      return _ViewerMessage(
-        key: const ValueKey('episode-age-restricted'),
-        message: messages.viewerAgeRestrictedTooYoung,
-      );
-    }
-    return _ViewerMessage(
-      key: const ValueKey('episode-age-restricted'),
-      message: messages.viewerAgeRestrictedNoBirthDate,
-      action: FilledButton(
+    } else if (open.readerHasBirthDate) {
+      message = messages.viewerAgeRestrictedTooYoung;
+      ageAction = null;
+    } else {
+      message = messages.viewerAgeRestrictedNoBirthDate;
+      ageAction = FilledButton(
         onPressed: _addBirthDate,
         child: AutospacedText(messages.viewerAgeRestrictedAddBirthDate),
-      ),
+      );
+    }
+    return _gate(
+      open.detail,
+      key: const ValueKey('episode-age-restricted'),
+      title: messages.viewerAgeRestrictedTitle,
+      message: message,
+      actions: [?ageAction, _backToSeries(messages)],
+    );
+  }
+
+  /// A gate drawn over [detail]'s preview pages.
+  Widget _gate(
+    EpisodeDetail detail, {
+    required Key key,
+    required String message,
+    String? title,
+    List<Widget> actions = const [],
+    Widget? footer,
+  }) {
+    return EpisodeGateFrame(
+      key: key,
+      previewImages: detail.previewImages,
+      previewHeaders: detail.previewImageRequestHeaders,
+      readingDirection: detail.readingDirection,
+      title: title,
+      message: message,
+      actions: actions,
+      footer: footer,
+    );
+  }
+
+  Widget _backToSeries(AppMessages messages) {
+    return OutlinedButton(
+      key: const ValueKey('episode-gate-series'),
+      onPressed: () =>
+          context.goInTab(AppRoutes.seriesDetailPath(widget.seriesId)),
+      child: AutospacedText(messages.viewerBackToSeries),
     );
   }
 
