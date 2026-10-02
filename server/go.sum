@@ -197,8 +197,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/payjp/payjpv2-go v0.0.0-20260914052927-9f1082b2164b h1:J17PjQJ0Ca+DKNqq27mjW8SbOOj3iIJeJa5UEbwxkY8=
-github.com/payjp/payjpv2-go v0.0.0-20260914052927-9f1082b2164b/go.mod h1:PykF8XZvsJOIEycm7eSLPP+vpAUiQsxyLyZApwjH2d4=
+github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806 h1:Lg2D9uBNdlQh3LBF9H/z2hkpm/+4+JBV9oT4BR5XNlY=
+github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806/go.mod h1:PykF8XZvsJOIEycm7eSLPP+vpAUiQsxyLyZApwjH2d4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
