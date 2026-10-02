@@ -16,7 +16,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -46,17 +45,15 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseSeriesFilters(sp);
-  const locale = await getLocale(tenantId);
-  const [listResult, timeZone] = await Promise.all([
-    listSeries(tenantId, locale, {
+  const [locale, listResult, timeZone] = await Promise.all([
+    getLocale(tenantId),
+    listSeries({
       ageRating: filters.ageRating || undefined,
       status: filters.status || undefined,
       token: filters.token,
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
-
-  await redirectToLoginIfSessionRejected(listResult);
 
   const pageHref = (token: string): string | undefined =>
     token

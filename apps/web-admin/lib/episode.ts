@@ -26,7 +26,8 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -84,13 +85,7 @@ export type CreateEpisodeResult =
 export type ListEpisodesResult = CursorPageTokens &
   (
     | { ok: true; episodes: EpisodeItem[] }
-    | {
-        ok: false;
-        message: string;
-        episodes: EpisodeItem[];
-        /** The API rejected the session — the caller raises the login redirect. */
-        requiresSignIn: boolean;
-      }
+    | { ok: false; message: string; episodes: EpisodeItem[] }
   );
 
 /**
@@ -117,13 +112,7 @@ export type GetEpisodeResult =
       purchaseAvailability: PurchaseAvailabilityOverride;
     }
   | { notFound: true; ok: false }
-  | {
-      message: string;
-      notFound?: false;
-      ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn?: boolean;
-    };
+  | { message: string; notFound?: false; ok: false };
 
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
@@ -203,7 +192,7 @@ export interface EpisodeCreatorCreditItem {
 
 export type ListEpisodeCreditsResult =
   | { ok: true; credits: EpisodeCreatorCreditItem[] }
-  | { ok: false; message: string; requiresSignIn: boolean };
+  | { ok: false; message: string };
 
 export type ReplaceEpisodeCreditsResult =
   | { ok: true }
@@ -261,12 +250,31 @@ type RawEpisode = Pick<
 >;
 
 /**
- * The tag `getEpisode()` and `listEpisodeImages()` cache one episode under.
+ * The tag `getEpisode()`, `listEpisodeCredits()`, and `listEpisodeImages()`
+ * cache one episode under.
  * Every Action that changes what the edit screen shows of that episode clears
  * it, which carries the change back to the screen that submitted.
  */
 export const episodeCacheTag = (tenantId: string, episodeId: string): string =>
   `episode-${tenantId}-${episodeId}`;
+
+/**
+ * The tag every shared episode read is filed under — the lists, one episode,
+ * and its credits. Every Action that writes an episode clears it, so the
+ * change reaches every operator's next read of any of them.
+ */
+export const episodesCacheTag = (tenantId: string): string =>
+  `episodes-${tenantId}`;
+
+/**
+ * The tag `publira server` drops in every app when an episode changes without
+ * an operator — a scheduled episode going live, a free window opening or
+ * closing. The storefront's series pages carry it for the same reason, so
+ * the console's episode reads carry it too rather than showing an episode as
+ * scheduled after it went live.
+ */
+export const episodePublicationCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId}:series:detail`;
 
 const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   // A value naming none of the three is reported by the reads that open a
@@ -347,28 +355,22 @@ const mapEpisodeCredits = (
     source: creators[index]?.source ?? CreatorCreditSource.UNSPECIFIED,
   }));
 
-export const listEpisodeCredits = async (
+const listEpisodeCreditsForTenant = async (
   input: { tenantId: string; episodeId: string },
   locale: Locale
 ): Promise<ListEpisodeCreditsResult> => {
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
-  if (!sessionId) {
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
+  "use cache";
+  cacheTag(episodesCacheTag(input.tenantId));
+  cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
+
+  const t = await getMessagesFor(locale);
   try {
     const response = await apiClient.series.listEpisodeCredits(
       {
         episodeId: input.episodeId,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
     return {
       credits: mapEpisodeCredits(
@@ -378,7 +380,10 @@ export const listEpisodeCredits = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
+    dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
         error,
@@ -386,9 +391,19 @@ export const listEpisodeCredits = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
+};
+
+/**
+ * The credits one episode carries, read with the service credential: the same
+ * for every operator of the tenant, so one entry serves all of them.
+ */
+export const listEpisodeCredits = async (input: {
+  episodeId: string;
+}): Promise<ListEpisodeCreditsResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listEpisodeCreditsForTenant({ ...input, tenantId }, locale);
 };
 
 export const replaceEpisodeCredits = async (
@@ -585,34 +600,18 @@ export const createEpisode = async (
   }
 };
 
-/**
- * One page of a series' episodes, in the order the series displays them.
- *
- * The rows keep the server's keyset order (`order_index`, `id` ascending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the series spans more than one page.
- */
-export const listEpisodes = async (
+const listEpisodesForTenant = async (
   input: {
     tenantId: string;
     seriesId: string;
   } & CursorPageOptions,
   locale: Locale
 ): Promise<ListEpisodesResult> => {
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
-  if (!sessionId) {
-    return {
-      ...emptyCursorPageTokens,
-      episodes: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
+  "use cache";
+  cacheTag(episodesCacheTag(input.tenantId));
+  cacheTag(episodePublicationCacheTag(input.tenantId));
 
+  const t = await getMessagesFor(locale);
   try {
     const response = await apiClient.series.listEpisodes(
       {
@@ -620,7 +619,7 @@ export const listEpisodes = async (
         seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     return {
@@ -629,7 +628,10 @@ export const listEpisodes = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       episodes: [],
@@ -639,7 +641,101 @@ export const listEpisodes = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * One page of a series' episodes, in the order the series displays them.
+ *
+ * The rows keep the server's keyset order (`order_index`, `id` ascending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the series spans more than one page.
+ *
+ * Read with the service credential: the page is the same for every operator of
+ * the tenant, so one entry serves all of them.
+ */
+export const listEpisodes = async (
+  input: { seriesId: string } & CursorPageOptions
+): Promise<ListEpisodesResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listEpisodesForTenant({ ...input, tenantId }, locale);
+};
+
+/**
+ * The cached body of {@link listAllEpisodes}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const listAllEpisodesForTenant = async (
+  input: {
+    seriesId: string;
+    tenantId: string;
+  },
+  locale: Locale
+): Promise<ListEpisodesResult> => {
+  "use cache";
+  cacheTag(episodesCacheTag(input.tenantId));
+  cacheTag(episodePublicationCacheTag(input.tenantId));
+
+  const t = await getMessagesFor(locale);
+  try {
+    const episodes: EpisodeItem[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.series.listEpisodes(
+          {
+            limit,
+            seriesId: input.seriesId,
+            tenant: { tenantId: input.tenantId },
+            token,
+          },
+          withServiceHeaders()
+        );
+        return {
+          items: response.episodes ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          episodes.push(mapEpisode(item));
+        }
+      }
+    );
+
+    if (walkStop !== "completed") {
+      dropFailedCacheEntry();
+      return {
+        ...emptyCursorPageTokens,
+        episodes: [],
+        message: t("admin.series.episodes.list_failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      ...emptyCursorPageTokens,
+      episodes,
+      ok: true,
+    };
+  } catch (error) {
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      episodes: [],
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.list_failed"),
+        locale
+      ),
+      ok: false,
     };
   }
 };
@@ -655,103 +751,34 @@ export const listEpisodes = async (
  * fails with an empty list rather than a partial option set that would hide
  * later episodes.
  */
-export const listAllEpisodes = async (
-  input: {
-    seriesId: string;
-    tenantId: string;
-  },
-  locale: Locale
-): Promise<ListEpisodesResult> => {
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
-  if (!sessionId) {
-    return {
-      ...emptyCursorPageTokens,
-      episodes: [],
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
-
-  try {
-    const episodes: EpisodeItem[] = [];
-    const walkStop = await forEachPageWithToken(
-      async (token, limit) => {
-        const response = await apiClient.series.listEpisodes(
-          {
-            limit,
-            seriesId: input.seriesId,
-            tenant: { tenantId: input.tenantId },
-            token,
-          },
-          withSessionHeaders(sessionId)
-        );
-        return {
-          items: response.episodes ?? [],
-          nextToken: response.nextToken ?? "",
-        };
-      },
-      (items) => {
-        for (const item of items) {
-          episodes.push(mapEpisode(item));
-        }
-      }
-    );
-
-    if (walkStop !== "completed") {
-      return {
-        ...emptyCursorPageTokens,
-        episodes: [],
-        message: t("admin.series.episodes.list_failed"),
-        ok: false,
-        requiresSignIn: false,
-      };
-    }
-
-    return {
-      ...emptyCursorPageTokens,
-      episodes,
-      ok: true,
-    };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return {
-      ...emptyCursorPageTokens,
-      episodes: [],
-      message: await mapErrorToMessage(
-        error,
-        t("admin.series.episodes.list_failed"),
-        locale
-      ),
-      ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
-    };
-  }
+export const listAllEpisodes = async (input: {
+  seriesId: string;
+}): Promise<ListEpisodesResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return listAllEpisodesForTenant({ ...input, tenantId }, locale);
 };
 
-const getEpisodeForSession = async (
+/**
+ * The cached body of {@link getEpisode}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const getEpisodeForTenant = async (
   input: {
     tenantId: string;
     seriesPublicId: string;
     publicId: string;
   },
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<GetEpisodeResult> => {
-  "use cache: private";
+  "use cache";
+  cacheTag(episodesCacheTag(input.tenantId));
+  cacheTag(episodePublicationCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.series.getEpisode(
@@ -760,7 +787,7 @@ const getEpisodeForSession = async (
         seriesPublicId: input.seriesPublicId,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     const layout = toEpisodeLayoutOverrides(response);
@@ -790,10 +817,12 @@ const getEpisodeForSession = async (
       purchaseAvailability,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -802,20 +831,17 @@ const getEpisodeForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getEpisode = async (
-  input: {
-    tenantId: string;
-    seriesPublicId: string;
-    publicId: string;
-  },
-  locale: Locale
-): Promise<GetEpisodeResult> =>
-  getEpisodeForSession(input, locale, await getAccessToken());
+export const getEpisode = async (input: {
+  seriesPublicId: string;
+  publicId: string;
+}): Promise<GetEpisodeResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return getEpisodeForTenant({ ...input, tenantId }, locale);
+};
 
 export const updateEpisodePublishSchedule = async (
   input: {

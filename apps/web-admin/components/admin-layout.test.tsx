@@ -10,10 +10,11 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
+import { verifyAdminSession } from "../lib/auth-session";
 import { getLocale } from "../lib/locale";
+import { logoutAction } from "../lib/logout-action";
+import { getTenantName } from "../lib/public-api";
 import { renderServerComponent } from "../lib/render-server-component";
-import { getTenantForSession } from "../lib/tenant-detail";
 import { getTenantThemeLogo } from "../lib/theme-settings";
 import {
   AdminHeaderBrand,
@@ -56,7 +57,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("../lib/auth-session", () => ({
-  redirectToLoginIfSessionRejected: vi.fn(),
+  verifyAdminSession: vi.fn(),
 }));
 
 vi.mock("../lib/locale", () => ({
@@ -68,8 +69,8 @@ vi.mock("../lib/logout-action", () => ({
   logoutAction: vi.fn(),
 }));
 
-vi.mock("../lib/tenant-detail", () => ({
-  getTenantForSession: vi.fn(),
+vi.mock("../lib/public-api", () => ({
+  getTenantName: vi.fn(),
 }));
 
 vi.mock("../lib/tenant-id", () => ({
@@ -89,11 +90,10 @@ vi.mock("./pending-comment-badge", () => ({
   PendingCommentBadge: () => null,
 }));
 
-const tenant = {
-  adminDomain: "admin.example.com",
-  domain: "example.com",
-  name: "Acme Publishing",
-  publicId: "tenant_admin_001",
+const operator = {
+  name: "Avery Quinn",
+  publicId: "user_admin_001",
+  role: "tenant_owner",
 };
 
 const logo = {
@@ -112,7 +112,7 @@ const logo = {
 };
 
 beforeEach(() => {
-  vi.mocked(getTenantForSession).mockResolvedValue({ ok: true, tenant });
+  vi.mocked(getTenantName).mockResolvedValue("Acme Publishing");
   vi.mocked(getTenantThemeLogo).mockResolvedValue(null);
 });
 
@@ -134,18 +134,19 @@ const renderTenantChrome = async () =>
 describe("AdminLayout", () => {
   beforeEach(() => {
     vi.mocked(getLocale).mockResolvedValue("en");
+    vi.mocked(verifyAdminSession).mockResolvedValue(operator);
+    // The members link in the navigation reads the operator's role itself.
     vi.mocked(getAdminCurrentUser).mockResolvedValue({
       ok: true,
-      user: {
-        name: "Avery Quinn",
-        publicId: "user_admin_001",
-        role: "tenant_owner",
-      },
+      user: operator,
     });
   });
 
   it("renders the screen before the tenant and the session are read", async () => {
-    vi.mocked(getTenantForSession).mockReturnValue(
+    vi.mocked(getTenantName).mockReturnValue(
+      Promise.withResolvers<never>().promise
+    );
+    vi.mocked(verifyAdminSession).mockReturnValue(
       Promise.withResolvers<never>().promise
     );
     vi.mocked(getAdminCurrentUser).mockReturnValue(
@@ -237,15 +238,16 @@ describe("the tenant chrome", () => {
     expect(screen.getAllByText("Acme Publishing")).toHaveLength(2);
   });
 
-  it("sends a session the API rejected back to login", async () => {
-    const rejected = { ok: false, requiresSignIn: true } as const;
-    vi.mocked(getTenantForSession).mockResolvedValue(rejected);
-    vi.mocked(redirectToLoginIfSessionRejected).mockRejectedValue(
-      new Error("NEXT_REDIRECT")
-    );
+  it("reads the tenant name from the public tenant read", async () => {
+    await renderTenantChrome();
 
-    await expect(AdminHeaderTenantName()).rejects.toThrow("NEXT_REDIRECT");
-    expect(redirectToLoginIfSessionRejected).toHaveBeenCalledWith(rejected);
+    expect(getTenantName).toHaveBeenCalledWith("tenant-id");
+  });
+
+  it("names no tenant while the public tenant read fails", async () => {
+    vi.mocked(getTenantName).mockResolvedValue(null);
+
+    await expect(AdminHeaderTenantName()).resolves.toBe("");
   });
 });
 
@@ -257,20 +259,34 @@ describe("AdminUser", () => {
     "interpolates the name into the aria-label of the account menu in %s",
     async (locale, expected) => {
       vi.mocked(getLocale).mockResolvedValue(locale);
-      vi.mocked(getAdminCurrentUser).mockResolvedValue({
-        ok: true,
-        user: {
-          name: "Avery Quinn",
-          publicId: "user_admin_001",
-          role: "tenant_owner",
-        },
-      });
+      vi.mocked(verifyAdminSession).mockResolvedValue(operator);
 
       render(await AdminUser());
 
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }
   );
+
+  it("verifies the session against the tenant the console is serving", async () => {
+    vi.mocked(getLocale).mockResolvedValue("en");
+    vi.mocked(verifyAdminSession).mockResolvedValue(operator);
+    const bind = vi.spyOn(
+      logoutAction as unknown as { bind: (...args: unknown[]) => unknown },
+      "bind"
+    );
+
+    render(await AdminUser());
+
+    expect(verifyAdminSession).toHaveBeenCalledWith("tenant-id");
+    // The logout revokes the session on the tenant it was issued for.
+    expect(bind).toHaveBeenCalledWith(null, "tenant-id");
+  });
+
+  it("lets the login redirect of a rejected session through", async () => {
+    vi.mocked(verifyAdminSession).mockRejectedValue(new Error("NEXT_REDIRECT"));
+
+    await expect(AdminUser()).rejects.toThrow("NEXT_REDIRECT");
+  });
 });
 
 describe("AdminLocaleSwitcher", () => {

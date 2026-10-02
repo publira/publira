@@ -7,6 +7,23 @@ import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockCacheLife,
   mockCacheTag,
@@ -46,6 +63,9 @@ vi.mock("./api", () => ({
       updateCreatorRole: mockUpdateCreatorRole,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -113,7 +133,7 @@ describe("listCreatorRoles", () => {
       });
 
     const { listCreatorRoles } = await import("./creator-roles");
-    const result = await listCreatorRoles("TENANT001", "en");
+    const result = await listCreatorRoles();
 
     expect(result).toEqual({
       creatorRoles: [
@@ -122,26 +142,13 @@ describe("listCreatorRoles", () => {
       ],
       ok: true,
     });
+    expect(mockListCreatorRoles).toHaveBeenCalledWith(
+      expect.objectContaining({ tenant: { tenantId: "TENANT001" } }),
+      { headers: { Authorization: "Bearer service-token" } }
+    );
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("creator-roles-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
-  });
-
-  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listCreatorRoles } = await import("./creator-roles");
-    const result = await listCreatorRoles("TENANT001", "en");
-
-    expect(result).toMatchObject({
-      creatorRoles: [],
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockListCreatorRoles).not.toHaveBeenCalled();
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   it("fails with an empty list and drops the cache entry when the walk does not complete", async () => {
@@ -152,13 +159,9 @@ describe("listCreatorRoles", () => {
     });
 
     const { listCreatorRoles } = await import("./creator-roles");
-    const result = await listCreatorRoles("TENANT001", "en");
+    const result = await listCreatorRoles();
 
-    expect(result).toMatchObject({
-      creatorRoles: [],
-      ok: false,
-      requiresSignIn: false,
-    });
+    expect(result).toMatchObject({ creatorRoles: [], ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -172,13 +175,9 @@ describe("listCreatorRoles", () => {
     );
 
     const { listCreatorRoles } = await import("./creator-roles");
-    const result = await listCreatorRoles("TENANT001", "en");
+    const result = await listCreatorRoles();
 
-    expect(result).toMatchObject({
-      creatorRoles: [],
-      ok: false,
-      requiresSignIn: false,
-    });
+    expect(result).toMatchObject({ creatorRoles: [], ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -236,4 +235,31 @@ describe("deleteCreatorRole", () => {
       deleteCreatorRole({ id: "ROLE0001", tenantId: "TENANT001" }, "en")
     ).resolves.toEqual({ ok: true });
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listCreatorRoles",
+      async () => {
+        const { listCreatorRoles } = await import("./creator-roles");
+        return await listCreatorRoles();
+      },
+      mockListCreatorRoles,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

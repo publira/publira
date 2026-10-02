@@ -2,6 +2,8 @@ import { updateTag } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { getAdminCurrentUser } from "./admin-auth";
+import type { AdminCurrentUser } from "./admin-auth";
 import {
   ADMIN_SESSION_CACHE_TAG,
   ADMIN_SESSION_COOKIE_NAME,
@@ -71,6 +73,32 @@ export const redirectToLoginIfSessionRejected = async (
   if (results.some((result) => result.requiresSignIn)) {
     await redirectToLogin();
   }
+};
+
+/**
+ * The signed-in operator of `tenantId`, or the redirect to `/login`.
+ *
+ * Every read the console makes with the service credential calls this before
+ * its cached body: that credential answers whoever asks, so the read itself is
+ * what makes sure the caller is an operator of the tenant it names — a page
+ * cannot render the answer unchecked, and a Server Action that takes the
+ * tenant from the client cannot read another tenant's records through it.
+ * `GetMe` answers for this session alone, so it stays private, and its own
+ * `stale` is what lets a session revoked elsewhere be noticed on a later
+ * navigation.
+ *
+ * A `GetMe` that names nobody — a session this tenant does not know — goes to
+ * `/login` too, as the console chrome already sends it.
+ */
+export const verifyAdminSession = async (
+  tenantId: string
+): Promise<AdminCurrentUser> => {
+  const result = await getAdminCurrentUser(tenantId);
+  if (!result.ok) {
+    await redirectToLoginIfSessionRejected(result);
+    redirect("/login");
+  }
+  return result.user;
 };
 
 /**

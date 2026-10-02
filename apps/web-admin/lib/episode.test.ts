@@ -10,6 +10,23 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockBulkEditEpisodeCredits,
   mockCacheLife,
@@ -64,6 +81,9 @@ vi.mock("./api", () => ({
       updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -95,15 +115,11 @@ describe("listEpisodes", () => {
     });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes(
-      {
-        limit: 20,
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-        token: "current-page",
-      },
-      "en"
-    );
+    const result = await listEpisodes({
+      limit: 20,
+      seriesId: "SERIES001",
+      token: "current-page",
+    });
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
@@ -112,7 +128,7 @@ describe("listEpisodes", () => {
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result).toMatchObject({
       nextToken: "next-page",
@@ -125,13 +141,7 @@ describe("listEpisodes", () => {
     mockListEpisodes.mockResolvedValue({ episodes: [] });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await listEpisodes({ seriesId: "SERIES001" });
 
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
@@ -140,7 +150,7 @@ describe("listEpisodes", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     // A response that names no token still answers with empty strings, so the
     // caller never has to branch on their absence.
@@ -157,13 +167,7 @@ describe("listEpisodes", () => {
     });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await listEpisodes({ seriesId: "SERIES001" });
 
     expect(result.episodes.map((item) => item.publicId)).toEqual([
       "EPISODE003",
@@ -177,14 +181,10 @@ describe("listEpisodes", () => {
     );
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-        token: "current-page",
-      },
-      "en"
-    );
+    const result = await listEpisodes({
+      seriesId: "SERIES001",
+      token: "current-page",
+    });
 
     expect(result).toMatchObject({
       episodes: [],
@@ -192,6 +192,26 @@ describe("listEpisodes", () => {
       ok: false,
       previousToken: "",
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("files the page under the episode list tag and the publication tag", async () => {
+    mockListEpisodes.mockResolvedValue({ episodes: [] });
+
+    const { episodePublicationCacheTag, episodesCacheTag, listEpisodes } =
+      await import("./episode");
+    await listEpisodes({ seriesId: "SERIES001" });
+
+    expect(episodesCacheTag("TENANT001")).toBe("episodes-TENANT001");
+    expect(episodePublicationCacheTag("TENANT001")).toBe(
+      "tenant:TENANT001:series:detail"
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:series:detail");
   });
 });
 
@@ -211,13 +231,7 @@ describe("listAllEpisodes", () => {
       });
 
     const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await listAllEpisodes({ seriesId: "SERIES001" });
 
     expect(mockListEpisodes).toHaveBeenNthCalledWith(
       1,
@@ -227,7 +241,7 @@ describe("listAllEpisodes", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -236,25 +250,6 @@ describe("listAllEpisodes", () => {
     expect(result.episodes).toHaveLength(101);
     expect(result.episodes.at(0)?.publicId).toBe("EPISODE001");
     expect(result.episodes.at(-1)?.publicId).toBe("EPISODE101");
-  });
-
-  it("does not call the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
-
-    expect(mockListEpisodes).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      episodes: [],
-      ok: false,
-    });
   });
 
   it("returns no partial result when nextToken repeats itself", async () => {
@@ -269,13 +264,7 @@ describe("listAllEpisodes", () => {
       });
 
     const { listAllEpisodes } = await import("./episode");
-    const result = await listAllEpisodes(
-      {
-        seriesId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await listAllEpisodes({ seriesId: "SERIES001" });
 
     expect(result).toMatchObject({
       episodes: [],
@@ -291,14 +280,10 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(mockGetEpisode).toHaveBeenCalledWith(
       {
@@ -306,7 +291,7 @@ describe("getEpisode", () => {
         seriesPublicId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockListEpisodes).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -342,14 +327,10 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result).toMatchObject({
       layout: { readingDirection: "ltr", spreadStartIndex: undefined },
@@ -364,14 +345,10 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result.ok).toBe(false);
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -391,14 +368,10 @@ describe("getEpisode", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE002",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE002",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result).toMatchObject({
       episode: { scheduledAt: "2030-01-01T01:00:00Z", status: "scheduled" },
@@ -412,40 +385,14 @@ describe("getEpisode", () => {
     );
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE_MISSING",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE_MISSING",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result).toEqual({ notFound: true, ok: false });
     // A missing episode is an answer, so the entry stays cacheable.
     expect(mockCacheLife).not.toHaveBeenCalled();
-  });
-
-  it("asks for a fresh login and drops the cache entry when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
-
-    expect(mockGetEpisode).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   it("fails and drops the cache entry when the fetch fails", async () => {
@@ -454,21 +401,35 @@ describe("getEpisode", () => {
     );
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
-    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(result).toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
       stale: 0,
     });
+  });
+
+  it("files the episode under the episode tags and the publication tag", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+    });
+
+    const { episodeCacheTag, getEpisode } = await import("./episode");
+    await getEpisode({ publicId: "EPISODE001", seriesPublicId: "SERIES001" });
+
+    expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:series:detail");
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      episodeCacheTag("TENANT001", "EPISODE001-ID")
+    );
   });
 });
 
@@ -571,10 +532,7 @@ describe("the surfaces an episode is shown on", () => {
     });
 
     const { listEpisodes } = await import("./episode");
-    const result = await listEpisodes(
-      { seriesId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await listEpisodes({ seriesId: "SERIES001" });
 
     expect(result.episodes.map((item) => item.availability)).toEqual([
       "app",
@@ -590,14 +548,10 @@ describe("the surfaces an episode is shown on", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result.ok).toBe(false);
   });
@@ -715,14 +669,10 @@ describe("where an episode may be bought", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result).toMatchObject({ ok: true, purchaseAvailability: "app" });
   });
@@ -731,14 +681,10 @@ describe("where an episode may be bought", () => {
     mockGetEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result).toMatchObject({ ok: true, purchaseAvailability: "" });
   });
@@ -752,14 +698,10 @@ describe("where an episode may be bought", () => {
     });
 
     const { getEpisode } = await import("./episode");
-    const result = await getEpisode(
-      {
-        publicId: "EPISODE001",
-        seriesPublicId: "SERIES001",
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
 
     expect(result.ok).toBe(false);
   });
@@ -1161,10 +1103,7 @@ describe("listEpisodeCredits", () => {
     });
 
     const { listEpisodeCredits } = await import("./episode");
-    const result = await listEpisodeCredits(
-      { episodeId: "EP01", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await listEpisodeCredits({ episodeId: "EP01" });
 
     expect(result).toEqual({
       credits: [
@@ -1182,6 +1121,28 @@ describe("listEpisodeCredits", () => {
         },
       ],
       ok: true,
+    });
+    expect(mockListEpisodeCredits).toHaveBeenCalledWith(
+      { episodeId: "EP01", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer service-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("episode-TENANT001-EP01");
+  });
+
+  it("reports a failed read as a message and drops the entry", async () => {
+    mockListEpisodeCredits.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listEpisodeCredits } = await import("./episode");
+    const result = await listEpisodeCredits({ episodeId: "EP01" });
+
+    expect(result.ok).toBe(false);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 });
@@ -1331,4 +1292,58 @@ describe("bulkEditEpisodeCredits", () => {
       ok: false,
     });
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listEpisodes",
+      async () => {
+        const { listEpisodes } = await import("./episode");
+        return await listEpisodes({ seriesId: "series-1" });
+      },
+      mockListEpisodes,
+    ],
+    [
+      "listAllEpisodes",
+      async () => {
+        const { listAllEpisodes } = await import("./episode");
+        return await listAllEpisodes({ seriesId: "series-1" });
+      },
+      mockListEpisodes,
+    ],
+    [
+      "getEpisode",
+      async () => {
+        const { getEpisode } = await import("./episode");
+        return await getEpisode({
+          publicId: "EPISODE001",
+          seriesPublicId: "SERIES001",
+        });
+      },
+      mockGetEpisode,
+    ],
+    [
+      "listEpisodeCredits",
+      async () => {
+        const { listEpisodeCredits } = await import("./episode");
+        return await listEpisodeCredits({ episodeId: "episode-1" });
+      },
+      mockListEpisodeCredits,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

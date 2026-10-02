@@ -1,13 +1,20 @@
+import { createContextValues } from "@connectrpc/connect";
+import type { ContextValues } from "@connectrpc/connect";
 import { describe, expect, it, vi } from "vitest";
 
-import { createForwardedForInterceptor } from "./forwarded-for";
+import {
+  createForwardedForInterceptor,
+  serviceCallContextValues,
+} from "./forwarded-for";
 
 const run = async (
   resolve: () => Promise<string | null | undefined>,
-  header: Headers
+  header: Headers,
+  contextValues: ContextValues = createContextValues()
 ) => {
   const next = vi.fn(() => Promise.resolve({ ok: true }));
   await createForwardedForInterceptor(resolve)(next as never)({
+    contextValues,
     header,
   } as never);
   expect(next).toHaveBeenCalledOnce();
@@ -27,6 +34,16 @@ describe("createForwardedForInterceptor", () => {
     const header = new Headers();
 
     await run(resolve, header);
+
+    expect(resolve).not.toHaveBeenCalled();
+    expect(header.has("X-Forwarded-For")).toBe(false);
+  });
+
+  it("does not read the request for a service call", async () => {
+    const resolve = vi.fn(() => Promise.resolve("203.0.113.7"));
+    const header = new Headers({ Authorization: "Bearer service-token" });
+
+    await run(resolve, header, serviceCallContextValues());
 
     expect(resolve).not.toHaveBeenCalled();
     expect(header.has("X-Forwarded-For")).toBe(false);

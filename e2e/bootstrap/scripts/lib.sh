@@ -56,6 +56,10 @@ export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-bootstrap-only-insecu
 # Access token (HS256) signing key for publira server, required
 # and without a fallback. Exported here for the same reason as the line above.
 export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-bootstrap-only-insecure-access-token-secret}"
+# The credential the tenant console reads the tenant's catalog with, which it
+# refuses to start without, and which publira server admits to those reads.
+# Exported here for the same reason as the lines above.
+export PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN:-publira-bootstrap-only-insecure-web-service-token}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"

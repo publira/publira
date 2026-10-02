@@ -10,12 +10,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   episodeCacheTag,
-  getEpisode,
+  episodesCacheTag,
+  getEpisodeForTenant,
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
@@ -160,7 +161,8 @@ const confirmEpisodeTarget = async (
   },
   locale: Locale
 ): Promise<string | undefined> => {
-  const result = await getEpisode(
+  await verifyAdminSession(target.tenantId);
+  const result = await getEpisodeForTenant(
     {
       publicId: target.episodePublicId,
       seriesPublicId: target.seriesPublicId,
@@ -259,6 +261,7 @@ export const updateEpisodeScheduleAction = async (
   }
 
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
+  updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
 
   redirect(
@@ -310,6 +313,7 @@ export const updateEpisodeAvailabilityAction = async (
     return { message: result.message, ok: false };
   }
 
+  updateTag(episodesCacheTag(tenantId));
   updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
@@ -371,6 +375,7 @@ export const updateEpisodePurchaseAvailabilityAction = async (
     return { message: result.message, ok: false };
   }
 
+  updateTag(episodesCacheTag(tenantId));
   updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
@@ -457,6 +462,7 @@ export const updateEpisodeLayoutAction = async (
     return { message: result.message, ok: false };
   }
 
+  updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(episodeCacheTag(parsed.data.tenantId, episodeId));
 
   redirect(
@@ -497,6 +503,8 @@ export const replaceEpisodeCreditsAction = async (
   if (!result.ok) {
     return toFailure(result.message);
   }
+  updateTag(episodesCacheTag(parsed.data.tenantId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?credits_updated=1`
   );
@@ -585,6 +593,7 @@ export const uploadEpisodePagesAction = async (
       return toFailure(result.message);
     }
 
+    updateTag(episodesCacheTag(tenantId));
     updateTag(episodeCacheTag(tenantId, episodeId));
 
     redirect(
@@ -611,6 +620,7 @@ export const uploadEpisodePagesAction = async (
     return toFailure(result.message);
   }
 
+  updateTag(episodesCacheTag(tenantId));
   updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
@@ -665,6 +675,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
     return result;
   }
 
+  updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
 
   return {

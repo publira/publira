@@ -20,7 +20,7 @@ import {
 /**
  * Error boundary for the tenant segment itself. It catches what
  * `(protected)/error.tsx` cannot: failures raised by the console chrome
- * `(protected)/layout.tsx` renders — `getTenantId()`, `getTenantForSession()` —
+ * `(protected)/layout.tsx` renders — `getTenantId()`, `verifyAdminSession()` —
  * and the unauthenticated routes (`/login`, `/accept-invite`, …) that sit directly
  * under `[tenant_id]` with no group layout of their own.
  *

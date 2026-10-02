@@ -13,6 +13,7 @@ import { requestAdminEmailChange } from "#lib/admin-auth";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getMessagesFor } from "#lib/messages";
+import { tenantSiteCacheTag } from "#lib/public-api";
 import {
   tenantSiteSettingsCacheTag,
   updateTenantSiteSettings,
@@ -30,18 +31,12 @@ import {
   MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD,
   TENANT_COMMENT_MODES,
 } from "#lib/tenant-comment-settings-shared";
-import {
-  tenantDefaultLocaleCacheTag,
-  updateTenantDefaultLocale,
-} from "#lib/tenant-default-locale";
+import { updateTenantDefaultLocale } from "#lib/tenant-default-locale";
 import {
   tenantLegalPagesCacheTag,
   updateTenantLegalPages,
 } from "#lib/tenant-legal-pages";
-import {
-  tenantTimezoneCacheTag,
-  updateTenantTimezone,
-} from "#lib/tenant-timezone";
+import { updateTenantTimezone } from "#lib/tenant-timezone";
 
 import type {
   EmailChangeActionState,
@@ -239,7 +234,7 @@ export const updateTenantTimezoneAction = async (
 
   // The settings screen reads the time zone through a private cache, so without
   // this the operator would keep seeing the previous value in the same session.
-  updateTag(tenantTimezoneCacheTag(tenantId));
+  updateTag(tenantSiteCacheTag(tenantId));
 
   return {
     message: t("admin.settings.timezone.saved"),
@@ -296,7 +291,7 @@ export const updateTenantDefaultLocaleAction = async (
   // The settings screen and cookie-less `getLocale()` read the default
   // through a private cache, so without this the operator would keep seeing
   // the previous value in the same session.
-  updateTag(tenantDefaultLocaleCacheTag(tenantId));
+  updateTag(tenantSiteCacheTag(tenantId));
 
   return {
     message: t("admin.settings.default_locale.saved"),

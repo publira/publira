@@ -5,43 +5,20 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
-import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
 
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./admin-auth-shared";
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
+import { getTenantPublicInfo } from "./public-api";
 import { getAccessToken } from "./session";
 
 export type GetTenantTimezoneResult =
   | { ok: true; timezone: string }
-  | {
-      ok: false;
-      message: string;
-      timezone: string;
-      /**
-       * The API rejected the session — the settings screen raises the login
-       * redirect. {@link getTenantDisplayTimeZone} ignores it on purpose: a
-       * date rendered in the fallback zone is not worth interrupting a page
-       * whose own read will report the same rejection.
-       */
-      requiresSignIn: boolean;
-    };
+  | { ok: false; message: string; timezone: string };
 
 export type UpdateTenantTimezoneResult =
   | { ok: true; timezone: string }
   | { ok: false; message: string };
-
-/**
- * Tag the settings screen's cached read carries, so `updateTag` in the Server
- * Action makes the saved value visible in the same session instead of leaving
- * the previous zone in the private cache.
- */
-export const tenantTimezoneCacheTag = (tenantId: string): string =>
-  `tenant:${tenantId.trim()}:timezone`;
 
 /**
  * The server rejects an unknown IANA name with `invalid_argument` and names the
@@ -61,97 +38,28 @@ const parseErrorMessage = (
 };
 
 /**
- * The saved zone with no copy attached, so reading it needs no locale.
+ * The saved zone, for the settings screen that edits it.
  *
- * {@link getTenantTimezone} words its failures for the settings screen, which
- * makes it the wrong entry point for the screens that only want the zone: they
- * would have to resolve a language to read a value that is not a sentence.
+ * Read from the public `GetTenant`, which answers the same resolved zone as the
+ * admin API's `GetTenantTimezone` to everyone, so the entry is shared by every
+ * operator of the tenant and filed under `tenant:<id>:site`.
  */
-const readTenantTimezone = async (
-  tenantId: string,
-  sessionId: string
-): Promise<string | null> => {
-  "use cache: private";
-
-  const normalizedTenantId = tenantId.trim();
-  if (!normalizedTenantId || !sessionId) {
-    return null;
-  }
-
-  cacheTag(tenantTimezoneCacheTag(normalizedTenantId));
-
-  try {
-    const response = await apiClient.tenantSettings.getTenantTimezone(
-      {
-        tenant: { tenantId: normalizedTenantId },
-      },
-      withSessionHeaders(sessionId)
-    );
-
-    return response.timezone.trim() || null;
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    dropFailedCacheEntry();
-    return null;
-  }
-};
-
-const getTenantTimezoneForSession = async (
-  tenantId: string,
-  locale: Locale,
-  sessionId: string
-): Promise<GetTenantTimezoneResult> => {
-  "use cache: private";
-
-  const t = await getMessagesFor(locale);
-  const normalizedTenantId = tenantId.trim();
-  if (!normalizedTenantId || !sessionId) {
-    dropFailedCacheEntry();
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: !sessionId,
-      timezone: DEFAULT_TIME_ZONE,
-    };
-  }
-
-  cacheTag(tenantTimezoneCacheTag(normalizedTenantId));
-
-  try {
-    const response = await apiClient.tenantSettings.getTenantTimezone(
-      {
-        tenant: { tenantId: normalizedTenantId },
-      },
-      withSessionHeaders(sessionId)
-    );
-
-    return {
-      ok: true,
-      // The server always answers a resolved IANA name; the fallback only
-      // covers a response shape that predates the field.
-      timezone: response.timezone.trim() || DEFAULT_TIME_ZONE,
-    };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    dropFailedCacheEntry();
-    return {
-      message: parseErrorMessage(
-        error,
-        t("admin.settings.timezone.load_failed"),
-        locale
-      ),
-      ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
-      timezone: DEFAULT_TIME_ZONE,
-    };
-  }
-};
-
 export const getTenantTimezone = async (
   tenantId: string,
   locale: Locale
-): Promise<GetTenantTimezoneResult> =>
-  getTenantTimezoneForSession(tenantId, locale, await getAccessToken());
+): Promise<GetTenantTimezoneResult> => {
+  const info = await getTenantPublicInfo(tenantId);
+  if (info?.timezone) {
+    return { ok: true, timezone: info.timezone };
+  }
+
+  const t = await getMessagesFor(locale);
+  return {
+    message: t("admin.settings.timezone.load_failed"),
+    ok: false,
+    timezone: DEFAULT_TIME_ZONE,
+  };
+};
 
 /**
  * Display / conversion zone for every date the admin console shows or accepts.
@@ -161,15 +69,15 @@ export const getTenantTimezone = async (
  *
  * An unavailable tenant read degrades to {@link DEFAULT_TIME_ZONE} rather than
  * to the host's zone, so the rendered wall clock never depends on where the
- * container runs. The read is tagged `tenant:<id>:timezone`, which
- * `updateTag` invalidates when the zone is saved, so a change reaches every
- * screen in the same session.
+ * container runs. The read is the public `GetTenant`, tagged
+ * `tenant:<id>:site`, which saving the zone clears, so a change reaches every
+ * screen.
  */
 export const getTenantDisplayTimeZone = async (
   tenantId: string
 ): Promise<string> => {
-  const timezone = await readTenantTimezone(tenantId, await getAccessToken());
-  return timezone ?? DEFAULT_TIME_ZONE;
+  const info = await getTenantPublicInfo(tenantId);
+  return info?.timezone ?? DEFAULT_TIME_ZONE;
 };
 
 export const updateTenantTimezone = async (

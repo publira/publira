@@ -10,6 +10,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { updateSeries as UpdateSeries } from "./series";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockCacheLife,
   mockCacheTag,
@@ -43,6 +60,9 @@ vi.mock("./api", () => ({
       updateSeries: mockUpdateSeries,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -64,10 +84,7 @@ describe("listSeries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en", {
-      limit: 20,
-      token: "current-page",
-    });
+    const result = await listSeries({ limit: 20, token: "current-page" });
 
     expect(mockListSeries).toHaveBeenCalledWith(
       {
@@ -75,7 +92,7 @@ describe("listSeries", () => {
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result).toMatchObject({
       defaultReadingPeriodHours: 72,
@@ -90,7 +107,7 @@ describe("listSeries", () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en", {});
+    const result = await listSeries({});
 
     expect(mockListSeries).toHaveBeenCalledWith(
       {
@@ -98,7 +115,7 @@ describe("listSeries", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     // A response that names no token still answers with empty strings, so the
     // caller never has to branch on their absence.
@@ -113,10 +130,7 @@ describe("listSeries", () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries } = await import("./series");
-    await listSeries("TENANT001", "en", {
-      ageRating: "r15",
-      status: "completed",
-    });
+    await listSeries({ ageRating: "r15", status: "completed" });
 
     expect(mockListSeries).toHaveBeenCalledWith(
       {
@@ -126,7 +140,7 @@ describe("listSeries", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
   });
 
@@ -139,7 +153,7 @@ describe("listSeries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en", {});
+    const result = await listSeries({});
 
     expect(result.series.map((item) => item.publicId)).toEqual([
       "SERIES002",
@@ -153,9 +167,7 @@ describe("listSeries", () => {
     );
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en", {
-      token: "current-page",
-    });
+    const result = await listSeries({ token: "current-page" });
 
     expect(result).toMatchObject({
       nextToken: "",
@@ -170,30 +182,11 @@ describe("listSeries", () => {
     });
   });
 
-  it("asks for a sign-in without calling the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en", {});
-
-    expect(mockListSeries).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      ok: false,
-      requiresSignIn: true,
-      series: [],
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
   it("files the page under the tenant series list tag", async () => {
     mockListSeries.mockResolvedValue({ series: [] });
 
     const { listSeries, seriesListCacheTag } = await import("./series");
-    await listSeries("TENANT001", "en", {});
+    await listSeries({});
 
     expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
   });
@@ -227,7 +220,7 @@ describe("listAllSeries", () => {
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "en");
+    const result = await listAllSeries();
 
     expect(mockListSeries).toHaveBeenNthCalledWith(
       1,
@@ -236,7 +229,7 @@ describe("listAllSeries", () => {
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -257,24 +250,6 @@ describe("listAllSeries", () => {
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
-  it("does not call the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "en");
-
-    expect(mockListSeries).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      ok: false,
-      series: [],
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
   it("returns no partial result when nextToken repeats itself", async () => {
     mockListSeries
       .mockResolvedValueOnce({
@@ -291,7 +266,7 @@ describe("listAllSeries", () => {
       });
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "en");
+    const result = await listAllSeries();
 
     expect(result).toMatchObject({
       ok: false,
@@ -310,11 +285,10 @@ describe("listAllSeries", () => {
     );
 
     const { listAllSeries } = await import("./series");
-    const result = await listAllSeries("TENANT001", "en");
+    const result = await listAllSeries();
 
     expect(result).toMatchObject({
       ok: false,
-      requiresSignIn: false,
       series: [],
     });
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -328,7 +302,7 @@ describe("listAllSeries", () => {
     mockListSeries.mockResolvedValue({ nextToken: "", series: [] });
 
     const { listAllSeries, seriesListCacheTag } = await import("./series");
-    await listAllSeries("TENANT001", "en");
+    await listAllSeries();
 
     expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
   });
@@ -369,7 +343,7 @@ describe("the classification a series carries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en");
+    const result = await listSeries({});
 
     expect(result.series[0]).toMatchObject({
       ageRating: "r18",
@@ -396,7 +370,7 @@ describe("the classification a series carries", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en");
+    const result = await listSeries({});
 
     expect(result.series[0]).toMatchObject({
       ageRating: "all",
@@ -504,10 +478,7 @@ describe("the comment mode a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({
       commentMode: "approval_required",
@@ -525,10 +496,7 @@ describe("the comment mode a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({ commentMode: "", ok: true });
   });
@@ -543,10 +511,7 @@ describe("the comment mode a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result.ok).toBe(false);
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -644,10 +609,7 @@ describe("the layout a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({
       ok: true,
@@ -661,10 +623,7 @@ describe("the layout a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({
       ok: true,
@@ -682,10 +641,7 @@ describe("the layout a series states", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result.ok).toBe(false);
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -770,10 +726,7 @@ describe("the surfaces a series is shown on", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({
       ok: true,
@@ -800,7 +753,7 @@ describe("the surfaces a series is shown on", () => {
     });
 
     const { listSeries } = await import("./series");
-    const result = await listSeries("TENANT001", "en");
+    const result = await listSeries({});
 
     expect(result.series.map((item) => item.availability)).toEqual([
       "web",
@@ -821,10 +774,7 @@ describe("the surfaces a series is shown on", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result.ok).toBe(false);
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -903,10 +853,7 @@ describe("where a series' episodes may be bought", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({ ok: true, purchaseAvailability: "app" });
   });
@@ -917,10 +864,7 @@ describe("where a series' episodes may be bought", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({ ok: true, purchaseAvailability: "" });
   });
@@ -934,10 +878,7 @@ describe("where a series' episodes may be bought", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result.ok).toBe(false);
     expect(mockCacheLife).toHaveBeenCalledWith({
@@ -1031,10 +972,7 @@ describe("the shares a series' credits carry", () => {
     });
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toMatchObject({
       ok: true,
@@ -1063,32 +1001,11 @@ describe("getSeries", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("asks for a sign-in without calling the RPC when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
-
-    expect(mockGetSeries).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
   it("reports a response that names no series as a failure", async () => {
     mockGetSeries.mockResolvedValue({});
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
     expect(result).toEqual({
       message: "Could not load the series. Please try again later.",
@@ -1107,13 +1024,27 @@ describe("getSeries", () => {
     );
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES404", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES404" });
 
     expect(result).toEqual({ notFound: true, ok: false });
     expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reads the series with the service credential under its tag", async () => {
+    mockGetSeries.mockRejectedValue(
+      new ConnectError("series not found", Code.NotFound)
+    );
+
+    const { getSeries, seriesCacheTag } = await import("./series");
+    await getSeries({ publicId: "SERIES001" });
+
+    expect(mockGetSeries).toHaveBeenCalledWith(
+      { publicId: "SERIES001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer service-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      seriesCacheTag("TENANT001", "SERIES001")
+    );
   });
 
   it("reports a failure other than a missing series as a message", async () => {
@@ -1122,16 +1053,59 @@ describe("getSeries", () => {
     );
 
     const { getSeries } = await import("./series");
-    const result = await getSeries(
-      { publicId: "SERIES001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getSeries({ publicId: "SERIES001" });
 
-    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(result).toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
       stale: 0,
     });
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listSeries",
+      async () => {
+        const { listSeries } = await import("./series");
+        return await listSeries();
+      },
+      mockListSeries,
+    ],
+    [
+      "listAllSeries",
+      async () => {
+        const { listAllSeries } = await import("./series");
+        return await listAllSeries();
+      },
+      mockListSeries,
+    ],
+    [
+      "getSeries",
+      async () => {
+        const { getSeries } = await import("./series");
+        return await getSeries({ publicId: "SERIES001" });
+      },
+      mockGetSeries,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

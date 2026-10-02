@@ -10,12 +10,9 @@ import { z } from "zod";
 
 import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
-import {
-  redirectToLoginIfSessionRejected,
-  withAdminSessionReauth,
-} from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { listAllEpisodes } from "#lib/episode";
+import { listAllEpisodesForTenant } from "#lib/episode";
 import {
   optionalTrimmedString,
   requiredRecordId,
@@ -192,14 +189,16 @@ export const listEpisodeOptionsAction = async (
     };
   }
 
-  const result = await listAllEpisodes(
+  // The tenant comes from the client and the episodes are read with the
+  // service credential, which answers for any tenant.
+  await verifyAdminSession(parsed.data.tenantId);
+  const result = await listAllEpisodesForTenant(
     {
       seriesId: parsed.data.seriesId,
       tenantId: parsed.data.tenantId,
     },
     locale
   );
-  await redirectToLoginIfSessionRejected(result);
   if (!result.ok) {
     return {
       episodes: [],

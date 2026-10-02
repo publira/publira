@@ -98,10 +98,10 @@ const NewEpisodeFormData = async ({
   const locale = await getLocale(tenantId);
   const [timeZone, seriesResult, purchaseSettingsResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    getSeries({ publicId: seriesId, tenantId }, locale),
+    getSeries({ publicId: seriesId }),
     getTenantPurchaseSettings(tenantId, locale),
   ]);
-  await redirectToLoginIfSessionRejected(seriesResult, purchaseSettingsResult);
+  await redirectToLoginIfSessionRejected(purchaseSettingsResult);
 
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {

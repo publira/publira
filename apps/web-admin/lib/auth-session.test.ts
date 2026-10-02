@@ -1,8 +1,14 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockHeaders, mockRedirect } = vi.hoisted(() => ({
+const {
+  mockGetAccessToken,
+  mockGetAdminCurrentUser,
+  mockHeaders,
+  mockRedirect,
+} = vi.hoisted(() => ({
   mockGetAccessToken: vi.fn(),
+  mockGetAdminCurrentUser: vi.fn(),
   mockHeaders: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
@@ -24,6 +30,10 @@ vi.mock("next/headers", () => ({
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
+}));
+
+vi.mock("./admin-auth", () => ({
+  getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 
 const setReturnTo = (value?: string) => {
@@ -87,6 +97,46 @@ describe("web-admin auth-session", () => {
       { ok: true }
     );
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("verifyAdminSession answers the operator the API accepts", async () => {
+    const user = { name: "Jane Doe", publicId: "user-001", role: "admin" };
+    mockGetAdminCurrentUser.mockResolvedValueOnce({ ok: true, user });
+    const { verifyAdminSession } = await importAuthSession();
+
+    await expect(verifyAdminSession("tenant_001")).resolves.toEqual(user);
+    expect(mockGetAdminCurrentUser).toHaveBeenCalledWith("tenant_001");
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("verifyAdminSession sends a rejected session to a fresh login", async () => {
+    mockGetAdminCurrentUser.mockResolvedValueOnce({
+      ok: false,
+      requiresSignIn: true,
+    });
+    const { verifyAdminSession } = await importAuthSession();
+
+    await expect(verifyAdminSession("tenant_001")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/login?next=%2Fseries%3Ftoken%3Dabc&reason=session_revoked"
+    );
+  });
+
+  it("verifyAdminSession sends a session that names nobody to /login", async () => {
+    // The shared reads behind the page would answer anyone, so a session this
+    // tenant does not know must not reach them either.
+    mockGetAdminCurrentUser.mockResolvedValueOnce({
+      ok: false,
+      requiresSignIn: false,
+    });
+    const { verifyAdminSession } = await importAuthSession();
+
+    await expect(verifyAdminSession("tenant_001")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
   it("requireAdminSession returns the token when there is one", async () => {

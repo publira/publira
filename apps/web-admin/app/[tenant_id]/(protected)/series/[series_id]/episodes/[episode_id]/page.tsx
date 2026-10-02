@@ -110,16 +110,11 @@ const resolveEditEpisodeContext = async (
   };
 };
 
-const loadEpisode = async ({
-  episodeId,
-  locale,
-  seriesId,
-  tenantId,
-}: EditEpisodeContext) => {
-  const result = await getEpisode(
-    { publicId: episodeId, seriesPublicId: seriesId, tenantId },
-    locale
-  );
+const loadEpisode = async ({ episodeId, seriesId }: EditEpisodeContext) => {
+  const result = await getEpisode({
+    publicId: episodeId,
+    seriesPublicId: seriesId,
+  });
   if (!result.ok && result.notFound) {
     notFound();
   }
@@ -182,7 +177,6 @@ const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
     loadEpisode(context),
     getTenantDisplayTimeZone(context.tenantId),
   ]);
-  await redirectToLoginIfSessionRejected(episodeResult);
 
   if (!episodeResult.ok) {
     return (
@@ -214,12 +208,8 @@ const EpisodeAvailabilitySection = async ({
     loadEpisode(context),
     // Only to name what the option that follows the series follows, so a read
     // that failed leaves it unnamed rather than the form unusable.
-    getSeries(
-      { publicId: context.seriesId, tenantId: context.tenantId },
-      context.locale
-    ),
+    getSeries({ publicId: context.seriesId }),
   ]);
-  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
 
   if (!episodeResult.ok) {
     return (
@@ -255,17 +245,10 @@ const EpisodePurchaseAvailabilitySection = async ({
       loadEpisode(context),
       // Likewise only to name the place of sale the series follows; a series
       // that sets none follows the tenant's default.
-      getSeries(
-        { publicId: context.seriesId, tenantId: context.tenantId },
-        context.locale
-      ),
+      getSeries({ publicId: context.seriesId }),
       getTenantPurchaseSettings(context.tenantId, context.locale),
     ]);
-  await redirectToLoginIfSessionRejected(
-    episodeResult,
-    seriesResult,
-    purchaseSettingsResult
-  );
+  await redirectToLoginIfSessionRejected(purchaseSettingsResult);
 
   if (!episodeResult.ok) {
     return (
@@ -301,18 +284,9 @@ const EpisodePurchaseAvailabilitySection = async ({
 
 const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
-  const { locale, tenantId } = context;
+  const { tenantId } = context;
   const [episodeResult, creatorsResult, creatorRolesResult] = await Promise.all(
-    [
-      loadEpisode(context),
-      listAllCreators(tenantId, locale),
-      listCreatorRoles(tenantId, locale),
-    ]
-  );
-  await redirectToLoginIfSessionRejected(
-    episodeResult,
-    creatorsResult,
-    creatorRolesResult
+    [loadEpisode(context), listAllCreators(), listCreatorRoles()]
   );
 
   if (!episodeResult.ok) {
@@ -324,11 +298,9 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
-  const creditsResult = await listEpisodeCredits(
-    { episodeId: episodeResult.episode.id, tenantId },
-    locale
-  );
-  await redirectToLoginIfSessionRejected(creditsResult);
+  const creditsResult = await listEpisodeCredits({
+    episodeId: episodeResult.episode.id,
+  });
 
   if (!creditsResult.ok) {
     return (
@@ -357,12 +329,8 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
-    getSeries(
-      { publicId: context.seriesId, tenantId: context.tenantId },
-      context.locale
-    ),
+    getSeries({ publicId: context.seriesId }),
   ]);
-  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
 
   if (!episodeResult.ok) {
     return (
@@ -399,7 +367,6 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
 const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const episodeResult = await loadEpisode(context);
-  await redirectToLoginIfSessionRejected(episodeResult);
   if (!episodeResult.ok) {
     return (
       <EpisodeSectionError
@@ -454,12 +421,8 @@ const EpisodeReadingLayoutSection = async ({
   const context = await resolveEditEpisodeContext(params);
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
-    getSeries(
-      { publicId: context.seriesId, tenantId: context.tenantId },
-      context.locale
-    ),
+    getSeries({ publicId: context.seriesId }),
   ]);
-  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
 
   if (!episodeResult.ok) {
     return (

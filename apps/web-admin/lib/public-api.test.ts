@@ -135,3 +135,75 @@ describe("getTenantDisplayLocale", () => {
     ).rejects.toThrow("tenant default locale is unavailable");
   });
 });
+
+describe("getTenantPublicInfo", () => {
+  beforeEach(() => {
+    mockCacheLife.mockReset();
+    mockCacheTag.mockReset();
+    mockGetTenant.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("answers the time zone beside the name", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      defaultLocale: "en",
+      tenantName: "Example Publishing",
+      theme: undefined,
+      timezone: " America/Los_Angeles ",
+    });
+
+    const { getTenantPublicInfo } = await import("./public-api");
+
+    await expect(getTenantPublicInfo(tenantId)).resolves.toMatchObject({
+      defaultLocale: "en",
+      name: "Example Publishing",
+      timezone: "America/Los_Angeles",
+    });
+    expect(mockCacheTag).toHaveBeenCalledWith(`tenant:${tenantId}:site`);
+  });
+
+  it("answers no time zone for a response without one", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      defaultLocale: "en",
+      tenantName: "Example Publishing",
+      theme: undefined,
+    });
+
+    const { getTenantPublicInfo } = await import("./public-api");
+
+    await expect(getTenantPublicInfo(tenantId)).resolves.toMatchObject({
+      timezone: null,
+    });
+  });
+
+  it("answers null and drops the entry when the public API is down", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {
+      /* expected outage log from getTenantPublicInfo */
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    const { getTenantPublicInfo } = await import("./public-api");
+
+    await expect(getTenantPublicInfo(tenantId)).resolves.toBeNull();
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+});
+
+describe("tenantSiteCacheTag", () => {
+  it("names the tenant's public read by its trimmed id", async () => {
+    const { tenantSiteCacheTag } = await import("./public-api");
+
+    expect(tenantSiteCacheTag(`  ${tenantId} `)).toBe(
+      `tenant:${tenantId}:site`
+    );
+  });
+});

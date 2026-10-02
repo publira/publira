@@ -40,7 +40,6 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -128,15 +127,13 @@ const DashboardSkeleton = () => (
 
 const DashboardContent = async () => {
   const tenantId = await getTenantId();
-  const [locale, timeZone] = await Promise.all([
+  const [locale, timeZone, result] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
+    getDashboard(),
   ]);
-  const result = await getDashboard(tenantId, locale);
 
   if (!result.ok) {
-    await redirectToLoginIfSessionRejected(result);
-
     return (
       <SectionError>
         <SectionErrorHeading>

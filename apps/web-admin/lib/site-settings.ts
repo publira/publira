@@ -107,6 +107,15 @@ const getTenantSiteSettingsForSession = async (
   }
 };
 
+/**
+ * The site copy the settings form opens on, read through the admin API with
+ * the operator's session.
+ *
+ * Not through the public `GetTenant`, although it answers the same three
+ * fields: that RPC answers empty copy when the config row cannot be read, so the
+ * storefront keeps rendering, and a form opened on that answer would save the
+ * blanks over the copy the tenant has. `GetTenantConfig` reports the failure.
+ */
 export const getTenantSiteSettings = async (
   tenantId: string,
   locale: Locale

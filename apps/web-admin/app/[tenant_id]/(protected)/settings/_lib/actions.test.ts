@@ -41,6 +41,10 @@ vi.mock("#lib/admin-auth", () => ({
   requestAdminEmailChange: vi.fn(),
 }));
 
+vi.mock("#lib/public-api", () => ({
+  tenantSiteCacheTag: (tenantId: string) => `tenant:${tenantId}:site`,
+}));
+
 vi.mock("#lib/site-settings", () => ({
   tenantSiteSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:site-settings`,
@@ -48,8 +52,6 @@ vi.mock("#lib/site-settings", () => ({
 }));
 
 vi.mock("#lib/tenant-default-locale", () => ({
-  tenantDefaultLocaleCacheTag: (tenantId: string) =>
-    `tenant:${tenantId}:default-locale`,
   updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
 }));
 
@@ -60,7 +62,6 @@ vi.mock("#lib/tenant-legal-pages", () => ({
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
-  tenantTimezoneCacheTag: (tenantId: string) => `tenant:${tenantId}:timezone`,
   updateTenantTimezone: mockUpdateTenantTimezone,
 }));
 
@@ -108,7 +109,7 @@ describe("updateTenantTimezoneAction", () => {
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
   });
 
   it("saves an alias that is not enumerated just as the server does", async () => {
@@ -248,9 +249,7 @@ describe("updateTenantDefaultLocaleAction", () => {
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith(
-      "tenant:TENANT001:default-locale"
-    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
   });
 
   it.each([

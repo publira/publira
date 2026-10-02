@@ -21,8 +21,11 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { isTenantAdminRole } from "#lib/admin-auth";
+import {
+  redirectToLoginIfSessionRejected,
+  verifyAdminSession,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listPublishedPages } from "#lib/page";
@@ -101,7 +104,7 @@ const SettingsForms = async () => {
     ageVerificationResult,
     legalPagesResult,
     publishedPagesResult,
-    currentUserResult,
+    currentUser,
   ] = await Promise.all([
     getTenantSiteSettings(tenantId, locale),
     getTenantTimezone(tenantId, locale),
@@ -110,23 +113,18 @@ const SettingsForms = async () => {
     getTenantAgeVerification(tenantId, locale),
     getTenantLegalPages(tenantId, locale),
     listPublishedPages(tenantId, locale),
-    getAdminCurrentUser(tenantId),
+    verifyAdminSession(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(
     settingsResult,
-    timezoneResult,
-    defaultLocaleResult,
     commentSettingsResult,
     ageVerificationResult,
     legalPagesResult,
-    publishedPagesResult,
-    currentUserResult
+    publishedPagesResult
   );
 
-  const canEdit = isTenantAdminRole(
-    currentUserResult.ok ? currentUserResult.user.role : undefined
-  );
+  const canEdit = isTenantAdminRole(currentUser.role);
 
   return (
     <AdminSections>

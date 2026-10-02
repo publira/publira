@@ -5,6 +5,23 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockVerifyAdminPageSession, mockVerifyAdminSession } = vi.hoisted(
+  () => ({
+    mockVerifyAdminPageSession: vi.fn(() =>
+      Promise.resolve({ locale: "en" as const, tenantId: "TENANT001" })
+    ),
+    mockVerifyAdminSession: vi.fn(),
+  })
+);
+
+vi.mock("./admin-page-session", () => ({
+  verifyAdminPageSession: mockVerifyAdminPageSession,
+}));
+
+vi.mock("./auth-session", () => ({
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 const {
   mockCacheLife,
   mockCacheTag,
@@ -47,6 +64,9 @@ vi.mock("./api", () => ({
       uploadGenreEyeCatchAspectImage: mockUploadGenreEyeCatchAspectImage,
     },
   },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -115,7 +135,7 @@ describe("listGenres", () => {
       });
 
     const { listGenres } = await import("./genre");
-    const result = await listGenres("TENANT001", "en");
+    const result = await listGenres();
 
     expect(result).toEqual({
       genres: [
@@ -145,41 +165,24 @@ describe("listGenres", () => {
       tenant: { tenantId: "TENANT001" },
       token: "page-2",
     });
+    expect(mockListGenres.mock.calls[1]?.[1]).toEqual({
+      headers: { Authorization: "Bearer service-token" },
+    });
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+    expect(mockCacheTag).toHaveBeenCalledWith("genres-TENANT001");
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
-  it("reports a rejected session so the page can raise the login redirect", async () => {
+  it("reports a failed read as a message and drops the cache entry", async () => {
     mockListGenres.mockRejectedValue(
-      new ConnectError("session expired", Code.Unauthenticated)
+      new ConnectError("upstream is down", Code.Unavailable)
     );
 
     const { listGenres } = await import("./genre");
-    const result = await listGenres("TENANT001", "en");
+    const result = await listGenres();
 
-    expect(result).toMatchObject({
-      genres: [],
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
-  it("asks for sign-in without calling the API when there is no session", async () => {
-    mockGetAccessToken.mockResolvedValue("");
-
-    const { listGenres } = await import("./genre");
-    const result = await listGenres("TENANT001", "en");
-
-    expect(result).toMatchObject({
-      genres: [],
-      ok: false,
-      requiresSignIn: true,
-    });
-    expect(mockListGenres).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ genres: [], ok: false });
+    expect(result).not.toHaveProperty("requiresSignIn");
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -202,13 +205,9 @@ describe("listGenres", () => {
     });
 
     const { listGenres } = await import("./genre");
-    const result = await listGenres("TENANT001", "en");
+    const result = await listGenres();
 
-    expect(result).toMatchObject({
-      genres: [],
-      ok: false,
-      requiresSignIn: false,
-    });
+    expect(result).toMatchObject({ genres: [], ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -240,7 +239,7 @@ describe("listGenres", () => {
     });
 
     const { listGenres } = await import("./genre");
-    const result = await listGenres("TENANT001", "en");
+    const result = await listGenres();
 
     expect(result).toEqual({
       genres: [
@@ -257,12 +256,18 @@ describe("listGenres", () => {
     });
   });
 
-  it("rethrows an unclassifiable failure instead of showing an empty list", async () => {
+  it("reports an unclassifiable failure as a message rather than throwing from the cache scope", async () => {
     mockListGenres.mockRejectedValue(new Error("boom"));
 
     const { listGenres } = await import("./genre");
+    const result = await listGenres();
 
-    await expect(listGenres("TENANT001", "en")).rejects.toThrow("boom");
+    expect(result).toMatchObject({ genres: [], ok: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 
@@ -363,10 +368,7 @@ describe("getGenre", () => {
     });
 
     const { getGenre } = await import("./genre");
-    const result = await getGenre(
-      { publicId: "GENRE002", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getGenre({ publicId: "GENRE002" });
 
     expect(result).toEqual({
       genre: withoutEyeCatch({
@@ -393,27 +395,21 @@ describe("getGenre", () => {
     });
 
     const { getGenre } = await import("./genre");
-    const result = await getGenre(
-      { publicId: "GENRE404", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getGenre({ publicId: "GENRE404" });
 
     expect(result).toEqual({ notFound: true, ok: false });
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
-  it("passes on a failed read with the login redirect it needs", async () => {
+  it("passes on a failed read as a message", async () => {
     mockListGenres.mockRejectedValue(
-      new ConnectError("session expired", Code.Unauthenticated)
+      new ConnectError("upstream is down", Code.Unavailable)
     );
 
     const { getGenre } = await import("./genre");
-    const result = await getGenre(
-      { publicId: "GENRE001", tenantId: "TENANT001" },
-      "en"
-    );
+    const result = await getGenre({ publicId: "GENRE001" });
 
-    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(result).toEqual({ message: expect.any(String), ok: false });
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -641,4 +637,31 @@ describe("deleteGenre", () => {
 
     expect(result).toEqual({ ok: true });
   });
+});
+
+describe("the operator check before a shared read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it.each([
+    [
+      "listGenres",
+      async () => {
+        const { listGenres } = await import("./genre");
+        return await listGenres();
+      },
+      mockListGenres,
+    ],
+  ] as const)(
+    "%s confirms the operator of the screen's tenant before reading anything",
+    async (_, read, rpc) => {
+      const redirect = new Error("NEXT_REDIRECT");
+      mockVerifyAdminPageSession.mockRejectedValueOnce(redirect);
+
+      await expect(read()).rejects.toBe(redirect);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -106,7 +106,7 @@ With `tenantId` set, every API request automatically carries the `X-Publira-Tena
 
 ## The client's address
 
-`@publira/api-client/forwarded-for` exports `createForwardedForInterceptor(resolve)`, which sets `X-Forwarded-For` from `resolve()` on every call that carries `Authorization`, and `FORWARDED_FOR_HEADER` for a sessionless call that sets the header itself. An app passes the interceptor through `interceptors`, with a resolver that reads the header the edge set on the request being served.
+`@publira/api-client/forwarded-for` exports `createForwardedForInterceptor(resolve)`, which sets `X-Forwarded-For` from `resolve()` on every call that carries `Authorization`, `FORWARDED_FOR_HEADER` for a sessionless call that sets the header itself, and `serviceCallContextValues()`, the `contextValues` of a call made with the web service credential, which the interceptor leaves alone. An app passes the interceptor through `interceptors`, with a resolver that reads the header the edge set on the request being served.
 
 ```ts
 import { createAdminApiClient } from "@publira/api-client/admin/client";

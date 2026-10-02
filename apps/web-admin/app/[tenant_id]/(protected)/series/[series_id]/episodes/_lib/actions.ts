@@ -9,19 +9,17 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import {
-  redirectToLoginIfSessionRejected,
-  withAdminSessionReauth,
-} from "#lib/auth-session";
-import { listAllCreators } from "#lib/creator";
-import { listCreatorRoles } from "#lib/creator-roles";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
+import { listAllCreatorsForTenant } from "#lib/creator";
+import { listCreatorRolesForTenant } from "#lib/creator-roles";
 import { sharePercentToBps } from "#lib/credit-share";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   bulkEditEpisodeCredits,
   createEpisode,
-  listAllEpisodes,
+  episodesCacheTag,
+  listAllEpisodesForTenant,
   reorderEpisodePage,
 } from "#lib/episode";
 import type { BulkEpisodeCreditOperation } from "#lib/episode";
@@ -191,6 +189,7 @@ export const createEpisodeAction = async (
     return toCreateFailure(result.message);
   }
 
+  updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
   redirect(
@@ -258,6 +257,8 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   if (!reordered.ok) {
     return reordered;
   }
+
+  updateTag(episodesCacheTag(parsed.data.tenantId));
 
   return {
     ok: true,
@@ -434,23 +435,18 @@ export const listEpisodeCreditRangeOptionsAction = async (
     };
   }
 
+  // The tenant comes from the client and these lists are read with the
+  // service credential, which answers for any tenant.
+  await verifyAdminSession(parsed.data.tenantId);
   const [episodesResult, creatorsResult, creatorRolesResult] =
     await Promise.all([
-      listAllEpisodes(
-        {
-          seriesId: parsed.data.seriesId,
-          tenantId: parsed.data.tenantId,
-        },
+      listAllEpisodesForTenant(
+        { seriesId: parsed.data.seriesId, tenantId: parsed.data.tenantId },
         locale
       ),
-      listAllCreators(parsed.data.tenantId, locale),
-      listCreatorRoles(parsed.data.tenantId, locale),
+      listAllCreatorsForTenant(parsed.data.tenantId, locale),
+      listCreatorRolesForTenant(parsed.data.tenantId, locale),
     ]);
-  await redirectToLoginIfSessionRejected(
-    episodesResult,
-    creatorsResult,
-    creatorRolesResult
-  );
 
   return {
     creatorRoles: creatorRolesResult.creatorRoles,
@@ -517,14 +513,11 @@ export const bulkEditEpisodeCreditsAction = async (
     };
   }
 
-  const listed = await listAllEpisodes(
-    {
-      seriesId: parsed.data.seriesId,
-      tenantId: parsed.data.tenantId,
-    },
+  await verifyAdminSession(parsed.data.tenantId);
+  const listed = await listAllEpisodesForTenant(
+    { seriesId: parsed.data.seriesId, tenantId: parsed.data.tenantId },
     locale
   );
-  await redirectToLoginIfSessionRejected(listed);
   if (!listed.ok) {
     return {
       message: listed.message,
@@ -551,7 +544,7 @@ export const bulkEditEpisodeCreditsAction = async (
     };
   }
 
-  return await withAdminSessionReauth(() =>
+  const result = await withAdminSessionReauth(() =>
     bulkEditEpisodeCredits(
       {
         episodeIds: selected.map((episode) => episode.id),
@@ -562,4 +555,8 @@ export const bulkEditEpisodeCreditsAction = async (
       locale
     )
   );
+  if (result.ok) {
+    updateTag(episodesCacheTag(parsed.data.tenantId));
+  }
+  return result;
 };

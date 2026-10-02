@@ -1,13 +1,12 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
-import { isUnauthenticatedError } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { verifyAdminPageSession } from "./admin-page-session";
+import { apiClient, withServiceHeaders } from "./api";
+import { episodePublicationCacheTag, episodesCacheTag } from "./episode";
 import { getMessagesFor } from "./messages";
-import { getAccessToken } from "./session";
 
 export interface DashboardStats {
   publishedSeriesCount: number;
@@ -26,18 +25,13 @@ export interface DashboardQueueItem {
 
 export type GetDashboardResult =
   | { ok: true; stats: DashboardStats; queue: DashboardQueueItem[] }
-  | {
-      ok: false;
-      message: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
+  | { ok: false; message: string };
 
 /**
  * Tag the dashboard's cached read carries, so `updateTag` in a Server Action
  * that writes what it reports — a series' publish state or title, an episode's
- * schedule — makes the new counts and publishing queue visible in the same
- * session instead of leaving the numbers from before the save in the private
+ * schedule — makes the new counts and publishing queue visible on the next
+ * read instead of leaving the numbers from before the save in the shared
  * cache.
  */
 export const tenantDashboardCacheTag = (tenantId: string): string =>
@@ -52,29 +46,19 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(error, t("admin.dashboard.load_error"), { locale });
 };
 
-const getDashboardForSession = async (
+const getDashboardForTenant = async (
   tenantId: string,
-  locale: Locale,
-  sessionId: string
+  locale: Locale
 ): Promise<GetDashboardResult> => {
-  "use cache: private";
-
-  if (!sessionId) {
-    const t = await getMessagesFor(locale);
-    dropFailedCacheEntry();
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
-
+  "use cache";
   cacheTag(tenantDashboardCacheTag(tenantId));
+  cacheTag(episodesCacheTag(tenantId));
+  cacheTag(episodePublicationCacheTag(tenantId));
 
   try {
     const response = await apiClient.dashboard.getDashboard(
       { tenant: { tenantId } },
-      withSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     const stats: DashboardStats = {
@@ -94,18 +78,24 @@ const getDashboardForSession = async (
 
     return { ok: true, queue, stats };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the answer comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(error, locale),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getDashboard = async (
-  tenantId: string,
-  locale: Locale
-): Promise<GetDashboardResult> =>
-  getDashboardForSession(tenantId, locale, await getAccessToken());
+/**
+ * The tenant's publishing overview, read with the service credential: the same
+ * for every operator of the tenant, so one entry serves all of them. Its queue
+ * lists episodes, so it carries the episode tags as well — an episode saved,
+ * or gone live on its schedule, leaves the queue it was in.
+ */
+export const getDashboard = async (): Promise<GetDashboardResult> => {
+  const { locale, tenantId } = await verifyAdminPageSession();
+  return getDashboardForTenant(tenantId, locale);
+};

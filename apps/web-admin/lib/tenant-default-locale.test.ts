@@ -2,32 +2,26 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockCacheLife,
-  mockCacheTag,
+  mockFindTenantDisplayLocale,
   mockGetAccessToken,
-  mockGetTenantDefaultLocaleApi,
   mockUpdateTenantDefaultLocaleApi,
 } = vi.hoisted(() => ({
-  mockCacheLife: vi.fn(),
-  mockCacheTag: vi.fn(),
+  mockFindTenantDisplayLocale: vi.fn(),
   mockGetAccessToken: vi.fn(),
-  mockGetTenantDefaultLocaleApi: vi.fn(),
   mockUpdateTenantDefaultLocaleApi: vi.fn(),
-}));
-
-vi.mock("next/cache", () => ({
-  cacheLife: mockCacheLife,
-  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
 
+vi.mock("./public-api", () => ({
+  findTenantDisplayLocale: mockFindTenantDisplayLocale,
+}));
+
 vi.mock("./api", () => ({
   apiClient: {
     tenantSettings: {
-      getTenantDefaultLocale: mockGetTenantDefaultLocaleApi,
       updateTenantDefaultLocale: mockUpdateTenantDefaultLocaleApi,
     },
   },
@@ -43,62 +37,30 @@ describe("tenant-default-locale", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("returns the default locale of the tenant on a successful fetch", async () => {
-    mockGetTenantDefaultLocaleApi.mockResolvedValueOnce({
-      defaultLocale: "en",
-    });
+  it("returns the default locale the public tenant read answered with", async () => {
+    mockFindTenantDisplayLocale.mockResolvedValueOnce("en");
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
     const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
-    expect(mockGetTenantDefaultLocaleApi).toHaveBeenCalledWith(
-      { tenant: { tenantId: "TENANT001" } },
-      { headers: { Authorization: "Bearer session-token" } }
-    );
-    expect(mockCacheTag).toHaveBeenCalledWith(
-      "tenant:TENANT001:default-locale"
-    );
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    expect(mockFindTenantDisplayLocale).toHaveBeenCalledWith("TENANT001");
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
   });
 
-  it("reports a missing session without naming a saved locale", async () => {
-    mockGetAccessToken.mockResolvedValue("");
+  it("reports a failed read without naming a saved locale", async () => {
+    mockFindTenantDisplayLocale.mockResolvedValueOnce(null);
 
     const { getTenantDefaultLocale } = await import("./tenant-default-locale");
 
     const result = await getTenantDefaultLocale("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
+      message: "Could not load the default language. Please try again later.",
       ok: false,
-      requiresSignIn: true,
     });
-    expect(mockGetTenantDefaultLocaleApi).not.toHaveBeenCalled();
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
-  });
-
-  it("reports a failed read without naming a saved locale", async () => {
-    mockGetTenantDefaultLocaleApi.mockRejectedValueOnce(
-      new ConnectError("tenant unavailable", Code.Unavailable)
-    );
-
-    const { getTenantDefaultLocale } = await import("./tenant-default-locale");
-
-    const result = await getTenantDefaultLocale("TENANT001", "en");
-
-    expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 
   it("returns the saved default locale on a successful update", async () => {
@@ -166,32 +128,5 @@ describe("tenant-default-locale", () => {
     );
 
     expect(result.ok).toBe(false);
-  });
-
-  it("tenantDefaultLocaleCacheTag normalizes the tenant id", async () => {
-    const { tenantDefaultLocaleCacheTag } =
-      await import("./tenant-default-locale");
-
-    expect(tenantDefaultLocaleCacheTag("  TENANT001 ")).toBe(
-      "tenant:TENANT001:default-locale"
-    );
-  });
-
-  it("treats a code this build does not serve as a failed read", async () => {
-    mockGetTenantDefaultLocaleApi.mockResolvedValueOnce({
-      defaultLocale: "fr",
-    });
-
-    const { getTenantDefaultLocale } = await import("./tenant-default-locale");
-
-    const result = await getTenantDefaultLocale("TENANT001", "en");
-
-    expect(result.ok).toBe(false);
-    expect(result).not.toHaveProperty("defaultLocale");
-    expect(mockCacheLife).toHaveBeenCalledWith({
-      expire: 0,
-      revalidate: 0,
-      stale: 0,
-    });
   });
 });

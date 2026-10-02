@@ -14,8 +14,12 @@ import {
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheLife, cacheTag } from "next/cache";
 
-import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
+import {
+  ADMIN_SESSION_CACHE_TAG,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
@@ -250,11 +254,22 @@ export const logoutAdmin = async (
   );
 };
 
+/**
+ * `GetMe` for one session.
+ *
+ * Every console route awaits it — the chrome names the operator, and
+ * `verifyAdminSession` gates each page on it — so its `stale` is how long a
+ * browser keeps a route before asking again whether the session still stands.
+ * Five minutes is the shortest that still lets the routes keep their
+ * prefetched App Shell.
+ */
 const getAdminCurrentUserForSession = async (
   tenantId: string,
   token: string
 ): Promise<GetAdminCurrentUserResult> => {
   "use cache: private";
+  cacheLife("minutes");
+  cacheTag(ADMIN_SESSION_CACHE_TAG);
 
   if (!token) {
     dropFailedCacheEntry();

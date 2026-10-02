@@ -7,12 +7,14 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
+  mockReplaceEpisodeCredits,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePublishSchedule,
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateTag,
   mockUploadEpisodePages,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -20,12 +22,14 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
+  mockReplaceEpisodeCredits: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -51,6 +55,11 @@ vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
 
+vi.mock("#lib/auth-session", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  verifyAdminSession: mockVerifyAdminSession,
+}));
+
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
@@ -58,8 +67,10 @@ vi.mock("#lib/session", () => ({
 vi.mock("#lib/episode", () => ({
   episodeCacheTag: (tenantId: string, episodeId: string) =>
     `episode-${tenantId}-${episodeId}`,
-  getEpisode: mockGetEpisode,
+  episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
+  getEpisodeForTenant: mockGetEpisode,
   reorderEpisodeImages: mockReorderEpisodeImages,
+  replaceEpisodeCredits: mockReplaceEpisodeCredits,
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
@@ -122,6 +133,7 @@ describe("episode actions", () => {
     });
     expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
   });
 
   it("submitting an archive without its series is refused before the API", async () => {
@@ -171,6 +183,7 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?layout_updated=1"
     );
@@ -289,6 +302,7 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?availability_updated=1"
     );
@@ -373,6 +387,7 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?purchase_availability_updated=1"
     );
@@ -499,6 +514,7 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );
@@ -619,6 +635,7 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
     );
@@ -666,6 +683,33 @@ describe("episode actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
     expect(result).toEqual({ ok: true });
+  });
+
+  it("replacing the credits clears the episode's tags before it redirects", async () => {
+    mockReplaceEpisodeCredits.mockResolvedValueOnce({ ok: true });
+
+    const { replaceEpisodeCreditsAction } = await import("./actions");
+    await replaceEpisodeCreditsAction(
+      { message: "", ok: false },
+      layoutFormData({ creator_credits: "[]" })
+    );
+
+    expect(mockReplaceEpisodeCredits).toHaveBeenCalledWith(
+      {
+        creatorCredits: [],
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?credits_updated=1"
+    );
   });
 });

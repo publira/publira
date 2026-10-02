@@ -46,6 +46,7 @@ pnpm dev --filter @publira/web-admin
 ### API connection
 
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
+- `PUBLIRA_WEB_SERVICE_TOKEN` (required) — the server's `PUBLIRA_WEB_SERVICE_TOKEN`, which the console reads the tenant's catalog with as itself rather than as an operator: genres, creator roles, creators, labels, series, episodes, and the dashboard, each cached once per tenant. The app refuses to start without it. See [Web service credential](../../server/README.md#web-service-credential)
 
 ### Storefront URLs
 
