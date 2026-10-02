@@ -272,6 +272,32 @@ test.describe("Sign in with Apple and Google on the public site", () => {
     ).toBeVisible();
   });
 
+  test("keeps the reader signed in when the API cannot verify the fresh sign-in", async ({
+    page,
+  }) => {
+    await signInWithGoogle(page, NEWCOMER);
+    await page.waitForURL(socialUrl("/"));
+    await stubGoogleSignIn(page, NEWCOMER, {
+      audience: "another-client.apps.googleusercontent.com",
+    });
+
+    await page.goto(socialUrl("/settings"));
+    await page.getByRole("button", { name: "Delete account" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirm with Google" })
+      .click();
+
+    await page.waitForURL((url) => url.pathname.endsWith("/settings"));
+    await expect(
+      page.getByText(
+        "Could not delete your account. Please check what you entered."
+      )
+    ).toBeVisible();
+    await expectSignedInAs(page, NEWCOMER.name);
+    expect(accountCount(SOCIAL_SIGN_IN_TENANT, NEWCOMER.email)).toBe("1");
+  });
+
   test("deletes an account without a password once the reader signs in again", async ({
     page,
   }) => {

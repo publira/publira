@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import {
   deleteMe,
-  isSessionRejected,
   loginWithIdToken,
   requestPublicEmailChange,
 } from "#lib/auth";
@@ -145,13 +144,12 @@ const finishLogin = async (
  * session that ended meanwhile sends the reader to sign in again, back to the
  * screen the confirmation was asked from.
  *
- * The API answers `unauthenticated` for an ID token it cannot verify as well
- * as for the session, so which of the two it refused is asked of the session
- * itself. A sign-in it refused is a confirmation that failed, and leaves the
- * reader signed in.
+ * `unauthenticated` is only ever the session: a sign-in the API refuses is
+ * `invalid_argument`, a confirmation that failed, and leaves the reader signed
+ * in.
  */
 const withConfirmingSession = async (
-  { accessToken, locale, tenantId }: SignInRequest,
+  { locale, tenantId }: SignInRequest,
   screen: string,
   run: () => Promise<boolean>
 ): Promise<boolean | Response> => {
@@ -160,9 +158,6 @@ const withConfirmingSession = async (
   } catch (error) {
     if (!isUnauthenticatedRpcError(error)) {
       throw error;
-    }
-    if (!(await isSessionRejected(tenantId, accessToken))) {
-      return false;
     }
     const defaultLocale = await getTenantDefaultLocale(tenantId);
     return seeOther(

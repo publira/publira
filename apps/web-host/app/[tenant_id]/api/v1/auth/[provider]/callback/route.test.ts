@@ -1,11 +1,12 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+
 const {
   cookieJar,
   mockDeleteMe,
   mockGetTenantSignInClients,
-  mockIsSessionRejected,
   mockLoginWithIdToken,
   mockRequestPublicEmailChange,
   mockRequirePublicSession,
@@ -14,7 +15,6 @@ const {
   cookieJar: new Map<string, string>(),
   mockDeleteMe: vi.fn(),
   mockGetTenantSignInClients: vi.fn(),
-  mockIsSessionRejected: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
   mockRequestPublicEmailChange: vi.fn(),
   mockRequirePublicSession: vi.fn(),
@@ -48,7 +48,6 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: vi.fn() }));
 
 vi.mock("#lib/auth", () => ({
   deleteMe: mockDeleteMe,
-  isSessionRejected: mockIsSessionRejected,
   loginWithIdToken: mockLoginWithIdToken,
   requestPublicEmailChange: mockRequestPublicEmailChange,
 }));
@@ -382,7 +381,6 @@ describe("Apple and Google sign-in round trip", () => {
     mockRequestPublicEmailChange.mockRejectedValueOnce(
       new ConnectError("session ended", Code.Unauthenticated)
     );
-    mockIsSessionRejected.mockResolvedValueOnce(true);
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
@@ -397,29 +395,29 @@ describe("Apple and Google sign-in round trip", () => {
     expect(location.searchParams.get("returnTo")).toBe("/settings/security");
   });
 
-  it("keeps the reader signed in when the API refuses the sign-in rather than the session", async () => {
-    const authorization = await startEmailChange();
-    mockRequestPublicEmailChange.mockRejectedValueOnce(
-      new ConnectError("invalid ID token", Code.Unauthenticated)
-    );
-    mockIsSessionRejected.mockResolvedValueOnce(false);
+  it("returns a refused deletion to the settings with the reader still signed in", async () => {
+    const authorization = await startSignIn({
+      intent: "delete",
+      returnTo: "/settings",
+    });
+    cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
+    mockDeleteMe.mockResolvedValueOnce(false);
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
       state: authorization.searchParams.get("state") ?? "",
     });
 
-    expect(mockIsSessionRejected).toHaveBeenCalledWith(
-      tenantId,
-      "access-token"
-    );
     const location = new URL(
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
-    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.pathname).toBe("/en/settings");
     expect(location.searchParams.get("status")).toBe("error");
-    expect(location.searchParams.has("reason")).toBe(false);
+    expect(location.searchParams.get("message")).toBe(
+      "Could not delete your account. Please check what you entered."
+    );
+    expect(cookieJar.get(PUBLIC_SESSION_COOKIE_NAME)).toBe("sealed-session");
   });
 
   it("offers no provider the tenant has not enabled", async () => {
