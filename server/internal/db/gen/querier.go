@@ -745,6 +745,17 @@ type Querier interface {
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
+	// A signed-in reader's own recommendation list, ordered from the features the
+	// daily batch writes for them. The tenant-wide list every reader shares stays
+	// with the other engagement reads in engagement.sql; this file is the half
+	// that reads one reader.
+	//
+	// Expected plans:
+	//   HasUserRecommendFeatures
+	//     -> user_recommend_features_pkey
+	//   ListMyRecommendedSeriesIDs / ListMyRecommendedSeriesIDsReversed
+	//     -> no index for the scan; scores one tenant's published series against
+	//        one reader's features (see the note there)
 	// Whether the reader has features the current build of the batch wrote. A row
 	// stamped with another feature_version is one an older build left behind, and
 	// reads as no row at all rather than as features of the wrong shape.
@@ -794,11 +805,6 @@ type Querier interface {
 	//     -> no index; sorts one tenant's published series (see the note there)
 	//   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
 	//     -> no index; scores one tenant's published series (see the note there)
-	//   HasUserRecommendFeatures
-	//     -> user_recommend_features_pkey
-	//   ListMyRecommendedSeriesIDs / ListMyRecommendedSeriesIDsReversed
-	//     -> no index; scores one tenant's published series against one reader's
-	//        features (see the note there)
 	//   ListEpisodeReadThroughDesc / ListEpisodeReadThroughAsc
 	//     -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 	//        aggregate it groups (see the note there)
@@ -1333,7 +1339,14 @@ type Querier interface {
 	// the reader engaged with is scored only by what it shares with their others.
 	//
 	// The sort key is (engaged, score, popularity, published_at, id). engaged puts
-	// the series the reader has already found behind the ones they have not.
+	// the series the reader has already found behind the ones they have not. It is
+	// read from the reader's own events since the window began rather than from
+	// top_series alone: that list is capped at DefaultTopSeriesLimit, and a series
+	// that fell off it is still one the reader has found. The events are bounded
+	// by the start of the window the features cover, in the tenant's time zone as
+	// the batch bounds them, and run on to now, so a series first opened after the
+	// batch ran is already behind the rest. idx_content_events_tenant_user_occurred_at
+	// keeps that one reader's slice of the table.
 	// popularity is the tenant-wide engagement with the series over the same
 	// window, from item_recommend_features and weighted alike, plus 10 per distinct
 	// reader-day, the way the ranking counts a distinct viewer twice a view. Every

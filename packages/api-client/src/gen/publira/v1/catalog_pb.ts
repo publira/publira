@@ -4195,9 +4195,11 @@ export const CatalogService: GenService<{
    * Another series scores that worth times what it shares with the engaged
    * one — 3 per creator, 2 for the label, 1 per genre and 1 per tag, the rule
    * ListRelatedSeries scores by — summed over every series the member engaged
-   * with. A series the member already engaged with goes behind every series
-   * they have not, since a recommendation is for something they have yet to
-   * find, and is ordered among the others by the same score.
+   * with. A series the member has engaged with at all since that window
+   * began — counted from their own activity rather than from the features,
+   * which keep only the ten series they engaged with most — goes behind every
+   * series they have not, since a recommendation is for something they have
+   * yet to find, and is ordered among the others by the same score.
    *
    * Ties go to the series the tenant's readers as a whole engaged with most in
    * the same window, weighted alike plus 10 for each day a distinct reader

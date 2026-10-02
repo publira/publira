@@ -102,7 +102,7 @@ func TestListMyRecommendedSeriesOrdersByTheReadersFeatures(t *testing.T) {
 	// reader's own row read under the version this build writes.
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecommendedSeriesIDs)).
 		WithArgs(uuid.NullUUID{}, sql.NullInt32{}, sql.NullInt64{}, sql.NullInt64{}, false, sql.NullTime{}, int32(3),
-			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "web").
+			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "UTC", "web").
 		WillReturnRows(readerScoredSeriesIDRows(first, second, beyond))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", fixture.tenantID, sqlmock.AnyArg()).
@@ -149,7 +149,7 @@ func TestListMyRecommendedSeriesReadsTheBackwardDirectionReversed(t *testing.T) 
 			false,
 			sql.NullTime{Time: publishedAt, Valid: true},
 			int32(21),
-			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "web").
+			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "UTC", "web").
 		WillReturnRows(readerScoredSeriesIDRows(before))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", fixture.tenantID, sqlmock.AnyArg()).
@@ -184,7 +184,7 @@ func TestListMyRecommendedSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 			false,
 			sql.NullTime{Time: publishedAt, Valid: true},
 			int32(21),
-			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "web").
+			fixture.tenantID, fixture.userID, int32(recommendfeatures.FeatureVersion), "UTC", "web").
 		WillReturnRows(readerScoredSeriesIDRows())
 
 	resp, err := fixture.list(0, readerOrderToken(pagination.Forward, boundary, publishedAt))

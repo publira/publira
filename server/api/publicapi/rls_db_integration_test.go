@@ -129,6 +129,10 @@ var publicDataTables = []struct {
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
 	{name: "content_ranking_snapshots", count: "SELECT count(*) FROM content_ranking_snapshots"},
 	{name: "content_events", count: "SELECT count(*) FROM content_events"},
+	// The features the daily batch builds per reader and per series, which a
+	// signed-in reader's own recommendation list is ordered from.
+	{name: "user_recommend_features", count: "SELECT count(*) FROM user_recommend_features"},
+	{name: "item_recommend_features", count: "SELECT count(*) FROM item_recommend_features"},
 	{name: "genres", count: "SELECT count(*) FROM genres"},
 	{name: "tags", count: "SELECT count(*) FROM tags"},
 	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},
@@ -309,6 +313,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	})
 	env.PG.SeedPurchase(t, first.ID, member.ID, purchasedEpisode.ID, purchasedEpisode.Price)
 	env.PG.SeedCreatorAccount(t, first.ID, creator.ID, member.ID)
+	seed("reader features", "INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)", first.ID, member.ID)
+	seed("series features", "INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'series', $2)", first.ID, series.ID)
 	seed("store purchase intent", "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id) VALUES ($1, $2, $3, $4, $5, $6)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID, 500, "episode_500")
 	seed("held store refund", "INSERT INTO unapplied_store_refunds (tenant_id, store, store_transaction_id) VALUES ($1, 'app_store', $2)", first.ID, "2000000000000001")
 	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount) VALUES ($1, 'stripe', $2, $3)", first.ID, "pi_rls_held", 500)

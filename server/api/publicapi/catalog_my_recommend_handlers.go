@@ -12,8 +12,10 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/recommendfeatures"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 // The two orders ListMyRecommendedSeries can answer in, named in the first key
@@ -158,7 +160,7 @@ type readerRecommendedPageRow struct {
 func (s *apiServer) readerRecommendedPageRows(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	surface string,
+	surface, timeZone string,
 	reversed bool,
 	keys readerRecommendedCursorKeys,
 	limit int32,
@@ -174,6 +176,7 @@ func (s *apiServer) readerRecommendedPageRows(
 		Limit:             limit,
 		Surface:           surface,
 		TenantID:          tenantID,
+		TimeZone:          timeZone,
 		UserID:            userID,
 	}
 	queries := s.queriesFor(ctx)
@@ -210,10 +213,14 @@ func (s *apiServer) readerRecommendedPageRows(
 // readerRecommendedSeriesPage answers one page of the reader's own order. Like
 // tenantRecommendedSeriesPage it takes a cursor with no surface or order key
 // on it and hands back tokens without either.
+//
+// timeZone is the tenant's resolved zone, the one the batch counted the
+// features' window in; the scan bounds the reader's own events by the start of
+// that window, so it has to read the date the same way.
 func (s *apiServer) readerRecommendedSeriesPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	surface string,
+	surface, timeZone string,
 	limit int32,
 	cursor pagination.Cursor,
 ) (*publirav1.ListMyRecommendedSeriesResponse, error) {
@@ -232,6 +239,7 @@ func (s *apiServer) readerRecommendedSeriesPage(
 		tenantID,
 		userID,
 		surface,
+		timeZone,
 		cursor.Direction == pagination.Backward,
 		keys,
 		limit+1,
@@ -329,7 +337,8 @@ func (s *apiServer) ListMyRecommendedSeries(
 
 	var res *publirav1.ListMyRecommendedSeriesResponse
 	if hasFeatures {
-		res, err = s.readerRecommendedSeriesPage(ctx, tenant.ID, user.ID, surface, limit, cursor)
+		zone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
+		res, err = s.readerRecommendedSeriesPage(ctx, tenant.ID, user.ID, surface, zone, limit, cursor)
 		if err != nil {
 			return nil, err
 		}

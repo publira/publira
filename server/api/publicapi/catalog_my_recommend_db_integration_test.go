@@ -31,6 +31,27 @@ type readerSeriesSignals struct {
 	ratingSum int64
 }
 
+// readerFeatureWindow is the window a batch run today would summarise: the
+// DefaultWindowDays days ending yesterday, as UTC dates, which is the time zone
+// the test tenants are in.
+func readerFeatureWindow() (start, end time.Time) {
+	end = time.Now().UTC().AddDate(0, 0, -1)
+	return end.AddDate(0, 0, -(recommendfeatures.DefaultWindowDays - 1)), end
+}
+
+// seedSeriesViewEvent files one series_view the reader made at the given
+// instant, the way RecordContentView stores one.
+func (e *publicDBEnv) seedSeriesViewEvent(t *testing.T, tenantID, userID, seriesID uuid.UUID, at time.Time) {
+	t.Helper()
+
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO content_events (id, tenant_id, event_type, user_id, series_id, debounce_bucket, occurred_at)
+		VALUES (uuidv7(), $1, 'series_view', $2, $3, $4, $5)
+	`, tenantID, userID, seriesID, at.Unix()/1800, at); err != nil {
+		t.Fatalf("insert content_events: %v", err)
+	}
+}
+
 // seedReaderFeatures files a user_recommend_features row in the shape
 // recommendfeatures writes, stamped with the given version.
 func (e *publicDBEnv) seedReaderFeatures(t *testing.T, tenantID, userID uuid.UUID, version int, signals ...readerSeriesSignals) {
@@ -50,9 +71,12 @@ func (e *publicDBEnv) seedReaderFeatures(t *testing.T, tenantID, userID uuid.UUI
 			"last_event_at":  time.Now().UTC().Format(time.RFC3339),
 		})
 	}
+	windowStart, windowEnd := readerFeatureWindow()
 	features, err := json.Marshal(map[string]any{
-		"window_days": recommendfeatures.DefaultWindowDays,
-		"top_series":  topSeries,
+		"window_days":  recommendfeatures.DefaultWindowDays,
+		"window_start": windowStart.Format(time.DateOnly),
+		"window_end":   windowEnd.Format(time.DateOnly),
+		"top_series":   topSeries,
 	})
 	if err != nil {
 		t.Fatalf("marshal reader features: %v", err)
@@ -230,6 +254,47 @@ func TestDBListMyRecommendedSeriesWeighsWhatTheReaderDid(t *testing.T) {
 	// scan sorted by would start a page in the wrong place.
 	got := env.allMyRecommendedSeries(t, tenant, reader, 1)
 	want := []string{"SERIESGEN001", "SERIESCRE001", "SERIESLAB001", "SERIESTAG001", "SERIESNON001", "SERIESVIEW01", "SERIESBUY001"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("series = %v, want %v", got, want)
+	}
+}
+
+// top_series keeps only the series a reader engaged with most, so it cannot
+// say on its own what the reader has already found. A series the reader opened
+// since the window began goes to the back whether or not it made the list —
+// and, being one they engaged with, it still lends nothing to the scores, which
+// stay the capped list's. Activity from before the window counts for nothing.
+func TestDBListMyRecommendedSeriesPutsEverythingTheReaderOpenedBehindTheRest(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	reader := env.PG.SeedTenantUser(t, tenant.ID, "READERA00001", "reader-a@example.com", "Reader A", "tenant_member")
+
+	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Creator A"})
+	seed := func(publicID, title string, age time.Duration) testutil.Series {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID: publicID, Title: title, Published: true, PublishedAt: time.Now().Add(-age),
+		})
+		env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
+		return series
+	}
+	listed := seed("SERIESLIST01", "In The Features", 96*time.Hour)
+	offList := seed("SERIESOFF001", "Opened, Off The Capped List", 12*time.Hour)
+	longAgo := seed("SERIESOLD001", "Opened Before The Window", 48*time.Hour)
+	seed("SERIESNEW001", "Never Opened", 24*time.Hour)
+
+	env.seedReaderFeatures(t, tenant.ID, reader.ID, recommendfeatures.FeatureVersion, readerSeriesSignals{seriesID: listed.ID, views: 2})
+	windowStart, _ := readerFeatureWindow()
+	env.seedSeriesViewEvent(t, tenant.ID, reader.ID, listed.ID, time.Now().Add(-48*time.Hour))
+	// Opened today, after the batch ran: not in the features at all.
+	env.seedSeriesViewEvent(t, tenant.ID, reader.ID, offList.ID, time.Now().Add(-time.Minute))
+	env.seedSeriesViewEvent(t, tenant.ID, reader.ID, longAgo.ID, windowStart.Add(-48*time.Hour))
+
+	// Every series shares the creator with the listed one and scores alike, so
+	// publication order alone would put the newest — the one off the list — in
+	// front. The unopened go first, the series opened before the window among
+	// them, and the opened two follow, ordered by the same rule.
+	got := env.allMyRecommendedSeries(t, tenant, reader, 2)
+	want := []string{"SERIESNEW001", "SERIESOLD001", "SERIESOFF001", "SERIESLIST01"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want %v", got, want)
 	}
