@@ -1,15 +1,19 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockHeaders, mockRedirect, mockResolveAccessToken } = vi.hoisted(
-  () => ({
-    mockHeaders: vi.fn(),
-    mockRedirect: vi.fn((path: string) => {
-      throw new Error(`NEXT_REDIRECT:${path}`);
-    }),
-    mockResolveAccessToken: vi.fn(),
-  })
-);
+const {
+  mockGetPlatformCurrentOperator,
+  mockHeaders,
+  mockRedirect,
+  mockResolveAccessToken,
+} = vi.hoisted(() => ({
+  mockGetPlatformCurrentOperator: vi.fn(),
+  mockHeaders: vi.fn(),
+  mockRedirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT:${path}`);
+  }),
+  mockResolveAccessToken: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -26,6 +30,10 @@ vi.mock("next/headers", () => ({
 
 vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
+}));
+
+vi.mock("./auth", () => ({
+  getPlatformCurrentOperator: mockGetPlatformCurrentOperator,
 }));
 
 const setReturnTo = (value?: string) => {
@@ -173,5 +181,45 @@ describe("web-platform auth-session", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/login?next=%2Ftenants%3Ftoken%3Dabc&reason=session_revoked"
     );
+  });
+
+  it("answers the operator verifyPlatformSession confirms", async () => {
+    const operator = {
+      name: "Admin",
+      publicId: "usr_1",
+      role: "platform_super_admin",
+    };
+    mockGetPlatformCurrentOperator.mockResolvedValueOnce({
+      ok: true,
+      operator,
+    });
+    const { verifyPlatformSession } = await importAuthSession();
+
+    await expect(verifyPlatformSession()).resolves.toEqual(operator);
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("sends a session the API rejects to login, flagged as revoked", async () => {
+    mockGetPlatformCurrentOperator.mockResolvedValueOnce({
+      ok: false,
+      requiresSignIn: true,
+    });
+    const { verifyPlatformSession } = await importAuthSession();
+
+    await expect(verifyPlatformSession()).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockRedirect).toHaveBeenCalledExactlyOnceWith(
+      "/login?next=%2Ftenants%3Ftoken%3Dabc&reason=session_revoked"
+    );
+  });
+
+  it("sends a session GetMe names nobody for to login", async () => {
+    mockGetPlatformCurrentOperator.mockResolvedValueOnce({
+      ok: false,
+      requiresSignIn: false,
+    });
+    const { verifyPlatformSession } = await importAuthSession();
+
+    await expect(verifyPlatformSession()).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockRedirect).toHaveBeenCalledExactlyOnceWith("/login");
   });
 });

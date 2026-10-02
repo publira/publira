@@ -45,7 +45,6 @@ import {
   PlatformSectionTitle,
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -80,7 +79,7 @@ export const generateMetadata = async ({
     return { title: t("platform.tenants.heading") };
   }
 
-  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id);
   const name =
     tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
 
@@ -148,13 +147,9 @@ const TenantDetailContent = async ({
 
   const [t, tenantResult, timeZone] = await Promise.all([
     getMessagesFor(locale),
-    getPlatformTenant(tenantId, locale),
+    getPlatformTenant(tenantId),
     getPlatformDisplayTimeZone(),
   ]);
-
-  // Before both branches below: a rejected session reads every record as
-  // missing, and a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(tenantResult);
 
   if (!tenantResult.ok) {
     return <TenantLoadError message={tenantResult.message} />;

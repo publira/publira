@@ -38,7 +38,6 @@ import {
   PlatformSections,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type { PlatformDashboardRecentEvent } from "#lib/dashboard";
 import { getPlatformLocale } from "#lib/locale";
@@ -155,13 +154,11 @@ const DashboardSkeleton = () => (
 const DashboardContent = async () => {
   // Timestamps follow the platform default time zone, not the host's or the
   // browser's, so every operator reads the same wall clock.
-  const locale = await getPlatformLocale();
-  const [result, timeZone] = await Promise.all([
-    getPlatformDashboardSummary({ locale, recentEventsLimit }),
+  const [locale, result, timeZone] = await Promise.all([
+    getPlatformLocale(),
+    getPlatformDashboardSummary({ recentEventsLimit }),
     getPlatformDisplayTimeZone(),
   ]);
-
-  await redirectToLoginIfSessionRejected(result);
 
   if (!result.ok) {
     return (

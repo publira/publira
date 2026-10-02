@@ -3,26 +3,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockCacheTag,
-  mockCheckSetupStatusApi,
+  mockGetPlatformLocale,
   mockGetPlatformSettingsApi,
-  mockHeaders,
   mockResolveAccessToken,
   mockUpdatePlatformSettingsApi,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
-  mockCheckSetupStatusApi: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
-  mockHeaders: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformSettingsApi: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
   cacheTag: mockCacheTag,
 }));
 
-vi.mock("next/headers", () => ({
-  headers: mockHeaders,
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
 }));
 
 vi.mock("./api-client", () => ({
@@ -31,14 +36,14 @@ vi.mock("./api-client", () => ({
       getPlatformSettings: mockGetPlatformSettingsApi,
       updatePlatformSettings: mockUpdatePlatformSettingsApi,
     },
-    setup: {
-      checkSetupStatus: mockCheckSetupStatusApi,
-    },
   },
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
   resolveAccessToken: mockResolveAccessToken,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
 
 /**
@@ -55,10 +60,11 @@ describe("platform-settings", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockResolveAccessToken.mockResolvedValue("session-token");
-    mockHeaders.mockResolvedValue(new Headers());
-    mockCheckSetupStatusApi.mockResolvedValue({
-      defaultLocale: "ja",
-      setupCompleted: true,
+    mockGetPlatformLocale.mockResolvedValue("en");
+    mockVerifyPlatformSession.mockResolvedValue({
+      name: "Admin",
+      publicId: "usr_1",
+      role: "platform_super_admin",
     });
   });
 
@@ -69,7 +75,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("en");
+    const result = await getPlatformSettings();
 
     expect(result).toEqual({
       defaultLocale: "en",
@@ -78,39 +84,41 @@ describe("platform-settings", () => {
     });
     expect(mockGetPlatformSettingsApi).toHaveBeenCalledWith(
       {},
-      { headers: { Authorization: "Bearer session-token" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
   });
 
-  it("returns default time zone, locale, and an error when there is no session", async () => {
-    mockResolveAccessToken.mockResolvedValue("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValue(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    const { getPlatformSettings } = await import("./platform-settings");
+    const { getPlatformDisplayTimeZone, getPlatformSettings } =
+      await import("./platform-settings");
 
-    const result = await getPlatformSettings("en");
-
-    expect(result).toEqual({
-      defaultTimezone: "UTC",
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
+    await expect(getPlatformSettings()).rejects.toThrow(/NEXT_REDIRECT/u);
+    await expect(getPlatformDisplayTimeZone()).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
   });
 
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveAccessToken.mockResolvedValue("");
+  it("words a failed read in the operator's locale, so ja is Japanese", async () => {
+    mockGetPlatformLocale.mockResolvedValue("ja");
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "fr", defaultTimezone: "UTC" },
+    });
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("ja");
+    const result = await getPlatformSettings();
 
     expect(result).toEqual({
       defaultTimezone: "UTC",
-      message: "セッションが無効です。再ログインしてください。",
+      message:
+        "プラットフォーム設定の取得に失敗しました。時間をおいて再試行してください。",
       ok: false,
-      requiresSignIn: true,
     });
   });
 
@@ -121,7 +129,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("en");
+    const result = await getPlatformSettings();
 
     expect(result.ok).toBe(false);
     expect(result.defaultTimezone).toBe("UTC");
@@ -135,7 +143,7 @@ describe("platform-settings", () => {
 
     const { getPlatformSettings } = await import("./platform-settings");
 
-    const result = await getPlatformSettings("en");
+    const result = await getPlatformSettings();
 
     expect(result.ok).toBe(false);
     expect(result).not.toHaveProperty("defaultLocale");
@@ -149,6 +157,21 @@ describe("platform-settings", () => {
     const { getPlatformDisplayTimeZone } = await import("./platform-settings");
 
     expect(await getPlatformDisplayTimeZone()).toBe("UTC");
+  });
+
+  it("reads the display time zone with the service credential", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: { defaultLocale: "en", defaultTimezone: "Asia/Tokyo" },
+    });
+
+    const { getPlatformDisplayTimeZone } = await import("./platform-settings");
+
+    await expect(getPlatformDisplayTimeZone()).resolves.toBe("Asia/Tokyo");
+    expect(mockGetPlatformSettingsApi).toHaveBeenCalledWith(
+      {},
+      { headers: { Authorization: "Bearer service-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
   });
 
   it("returns the saved default time zone when updating succeeds", async () => {
@@ -385,72 +408,5 @@ describe("platform-settings", () => {
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
-  });
-
-  it("reports the saved default locale as the display locale", async () => {
-    mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "en", defaultTimezone: "Europe/Paris" },
-    });
-
-    const { getPlatformDisplayLocale } = await import("./platform-settings");
-
-    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
-  });
-
-  it("reads the saved default without a session, through the setup status", async () => {
-    // The login screen: no session for `GetPlatformSettings`, but the saved
-    // language still decides what it renders in.
-    mockResolveAccessToken.mockResolvedValue("");
-    mockCheckSetupStatusApi.mockResolvedValue({
-      defaultLocale: "en",
-      setupCompleted: true,
-    });
-    mockHeaders.mockResolvedValue(
-      new Headers({ "accept-language": "ja,en;q=0.9" })
-    );
-
-    const { getPlatformDisplayLocale } = await import("./platform-settings");
-
-    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
-    expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
-  });
-
-  it("keeps the saved language through an outage", async () => {
-    // The operator is reading an error screen; arriving in another language
-    // would make the outage look like a setting they had changed. The signed-in
-    // read is what confirmed the language, so an outage after it must not
-    // renegotiate one from the browser.
-    mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "UTC" },
-    });
-    mockHeaders.mockResolvedValue(
-      new Headers({ "accept-language": "en-US,en;q=0.9" })
-    );
-
-    const { getPlatformDisplayLocale } = await import("./platform-settings");
-
-    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
-
-    mockResolveAccessToken.mockResolvedValue("");
-    mockCheckSetupStatusApi.mockRejectedValue(
-      new ConnectError("platform api unavailable", Code.Unavailable)
-    );
-
-    await expect(getPlatformDisplayLocale()).resolves.toBe("ja");
-  });
-
-  it("negotiates from Accept-Language only before anything is saved", async () => {
-    mockResolveAccessToken.mockResolvedValue("");
-    mockCheckSetupStatusApi.mockResolvedValue({
-      defaultLocale: "",
-      setupCompleted: false,
-    });
-    mockHeaders.mockResolvedValue(
-      new Headers({ "accept-language": "en-US,en;q=0.9" })
-    );
-
-    const { getPlatformDisplayLocale } = await import("./platform-settings");
-
-    await expect(getPlatformDisplayLocale()).resolves.toBe("en");
   });
 });

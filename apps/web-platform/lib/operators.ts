@@ -1,20 +1,23 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import type { PlatformOperator } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
@@ -34,7 +37,6 @@ export interface PlatformOperatorSummary {
 
 export interface ListPlatformOperatorsInput {
   limit?: number;
-  locale: Locale;
   token?: string;
 }
 
@@ -62,9 +64,17 @@ export type ListPlatformOperatorsResult =
       ok: false;
       operators: PlatformOperatorSummary[];
       previousToken: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
     };
+
+/**
+ * The operator, or why they could not be read.
+ *
+ * `operator: null` is the missing record the caller turns into `notFound()`;
+ * `ok: false` is a read that failed, which a 404 would misreport.
+ */
+export type GetPlatformOperatorResult =
+  | { ok: true; operator: PlatformOperatorSummary | null }
+  | { message: string; ok: false };
 
 /**
  * The generated `PlatformOperator` fields {@link mapOperator} reads. Naming
@@ -92,33 +102,26 @@ const mapOperator = (
 /** The tag every operator read is filed under, and every operator write clears. */
 export const platformOperatorsCacheTag = "platform:operators";
 
-const listPlatformOperatorsForSession = async (
-  input: ListPlatformOperatorsInput,
-  sessionId: string
-): Promise<ListPlatformOperatorsResult> => {
-  "use cache: private";
-  cacheTag(platformOperatorsCacheTag);
+/**
+ * How long an operator read is kept. An operator confirms a new email address
+ * from a link, which no Action here sees, so the entry is refreshed after a
+ * minute rather than kept for the default quarter of an hour.
+ */
+const operatorsCacheLife = "minutes";
 
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      nextToken: "",
-      ok: false,
-      operators: [],
-      previousToken: "",
-      requiresSignIn: true,
-    };
-  }
+const listPlatformOperatorsForLocale = async (
+  locale: Locale,
+  limit: number,
+  token: string
+): Promise<ListPlatformOperatorsResult> => {
+  "use cache";
+  cacheLife(operatorsCacheLife);
+  cacheTag(platformOperatorsCacheTag);
 
   try {
     const response = await apiClient.operators.listOperators(
-      {
-        limit: input.limit ?? 20,
-        token: input.token ?? "",
-      },
-      buildSessionHeaders(sessionId)
+      { limit, token },
+      withServiceHeaders()
     );
     return {
       nextToken: response.nextToken ?? "",
@@ -127,29 +130,39 @@ const listPlatformOperatorsForSession = async (
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the list comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
+    const t = await getMessagesFor(locale);
     return {
       message: rpcErrorMessage(error, t("platform.operators.list_failed"), {
-        locale: input.locale,
+        locale,
       }),
       nextToken: "",
       ok: false,
       operators: [],
       previousToken: "",
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
+/**
+ * One page of the platform's operators.
+ *
+ * Read with the service credential: the list is the same for every operator,
+ * so one entry serves all of them.
+ */
 export const listPlatformOperators = async (
-  input: ListPlatformOperatorsInput
-): Promise<ListPlatformOperatorsResult> =>
-  listPlatformOperatorsForSession(input, await resolveAccessToken());
+  input: ListPlatformOperatorsInput = {}
+): Promise<ListPlatformOperatorsResult> => {
+  await verifyPlatformSession();
+  return listPlatformOperatorsForLocale(
+    await getPlatformLocale(),
+    input.limit ?? 20,
+    input.token ?? ""
+  );
+};
 
 export const createPlatformOperator = async (
   input: CreatePlatformOperatorInput
@@ -231,51 +244,61 @@ export const unsuspendPlatformOperator = async (
   }
 };
 
-const getPlatformOperatorForSession = async (
-  publicId: string,
+const getPlatformOperatorForLocale = async (
   locale: Locale,
-  sessionId: string
-): Promise<PlatformOperatorSummary | null> => {
-  "use cache: private";
+  publicId: string
+): Promise<GetPlatformOperatorResult> => {
+  "use cache";
+  cacheLife(operatorsCacheLife);
   cacheTag(platformOperatorsCacheTag);
-
-  // Locale is a cache-key argument so a later localized miss does not replay
-  // under the wrong language. This read currently returns null on a miss.
-  void locale;
-
-  if (!sessionId) {
-    return null;
-  }
 
   try {
     const response = await apiClient.operators.getOperator(
       { publicId },
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
-    return response.operator ? mapOperator(response.operator) : null;
+    return {
+      ok: true,
+      operator: response.operator ? mapOperator(response.operator) : null,
+    };
   } catch (error) {
-    // Classified RPC failures mean "no operator to show"; unexpected ones rethrow.
-    rethrowUnclassifiedRpcError(error);
-    return null;
+    if (isMissingResourceRpcError(error)) {
+      return { ok: true, operator: null };
+    }
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the operator comes back as
+    // soon as the API does.
+    dropFailedCacheEntry();
+    const t = await getMessagesFor(locale);
+    return {
+      message: rpcErrorMessage(error, t("platform.operators.get_failed"), {
+        locale,
+      }),
+      ok: false,
+    };
   }
 };
 
+/**
+ * One operator, read with the service credential like
+ * {@link listPlatformOperators}.
+ */
 export const getPlatformOperator = async (
-  publicId: string,
-  locale: Locale
-): Promise<PlatformOperatorSummary | null> => {
+  publicId: string
+): Promise<GetPlatformOperatorResult> => {
+  await verifyPlatformSession();
+
   const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
   if (!parsed.success) {
-    // Same null as a missing operator: the URL is not a resource, and
-    // wording that said "malformed" would only help an attacker probe
-    // which strings the server accepts.
-    return null;
+    // Same answer as a missing operator: the URL is not a resource, and
+    // wording that said "malformed" would only help an attacker probe which
+    // strings the server accepts.
+    return { ok: true, operator: null };
   }
 
-  return getPlatformOperatorForSession(
-    parsed.data.publicId,
-    locale,
-    await resolveAccessToken()
+  return getPlatformOperatorForLocale(
+    await getPlatformLocale(),
+    parsed.data.publicId
   );
 };
 

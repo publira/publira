@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCookies, mockGetPlatformDisplayLocale } = vi.hoisted(() => ({
-  mockCookies: vi.fn(),
-  mockGetPlatformDisplayLocale: vi.fn(),
-}));
+const { mockCookies, mockHeaders, mockReadSetupDefaultLocale } = vi.hoisted(
+  () => ({
+    mockCookies: vi.fn(),
+    mockHeaders: vi.fn(),
+    mockReadSetupDefaultLocale: vi.fn(),
+  })
+);
 
 vi.mock("next/headers", () => ({
   cookies: mockCookies,
+  headers: mockHeaders,
 }));
 
-vi.mock("./platform-settings", () => ({
-  getPlatformDisplayLocale: mockGetPlatformDisplayLocale,
+vi.mock("./setup-status", () => ({
+  readSetupDefaultLocale: mockReadSetupDefaultLocale,
 }));
 
 const setLocaleCookie = (value?: string) => {
@@ -29,12 +33,13 @@ describe("web-platform locale", () => {
     vi.clearAllMocks();
     vi.resetModules();
     setLocaleCookie();
-    mockGetPlatformDisplayLocale.mockResolvedValue("ja");
+    mockHeaders.mockResolvedValue(new Headers());
+    mockReadSetupDefaultLocale.mockResolvedValue("ja");
   });
 
   describe("getPlatformLocale", () => {
     it("falls back to the platform default locale when the cookie is not set", async () => {
-      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      mockReadSetupDefaultLocale.mockResolvedValue("en");
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("en");
@@ -48,21 +53,21 @@ describe("web-platform locale", () => {
     });
 
     it("keeps a cookie of ja instead of falling through to the platform default", async () => {
-      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      mockReadSetupDefaultLocale.mockResolvedValue("en");
       setLocaleCookie("ja");
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("ja");
-      expect(mockGetPlatformDisplayLocale).not.toHaveBeenCalled();
+      expect(mockReadSetupDefaultLocale).not.toHaveBeenCalled();
     });
 
     it("returns the locale stored in the cookie", async () => {
-      mockGetPlatformDisplayLocale.mockResolvedValue("ja");
+      mockReadSetupDefaultLocale.mockResolvedValue("ja");
       setLocaleCookie("en");
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("en");
-      expect(mockGetPlatformDisplayLocale).not.toHaveBeenCalled();
+      expect(mockReadSetupDefaultLocale).not.toHaveBeenCalled();
     });
 
     it("trims surrounding whitespace in the cookie value", async () => {
@@ -73,7 +78,7 @@ describe("web-platform locale", () => {
     });
 
     it("falls back to the platform default for an unsupported cookie value", async () => {
-      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      mockReadSetupDefaultLocale.mockResolvedValue("en");
       setLocaleCookie("fr");
       const { getPlatformLocale } = await importLocale();
 
@@ -81,8 +86,47 @@ describe("web-platform locale", () => {
     });
 
     it("falls back to the platform default for a full BCP 47 tag", async () => {
-      mockGetPlatformDisplayLocale.mockResolvedValue("en");
+      mockReadSetupDefaultLocale.mockResolvedValue("en");
       setLocaleCookie("ja-JP");
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
+    });
+  });
+
+  describe("the platform default", () => {
+    it("reads the saved default through the setup status, which needs no session", async () => {
+      // The login screen and the signed-in console alike: the saved language
+      // decides, not the browser's.
+      mockReadSetupDefaultLocale.mockResolvedValue("en");
+      mockHeaders.mockResolvedValue(
+        new Headers({ "accept-language": "ja,en;q=0.9" })
+      );
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("en");
+    });
+
+    it("keeps the saved language through an outage", async () => {
+      // The operator is reading an error screen; arriving in another language
+      // would make the outage look like a setting they had changed.
+      mockHeaders.mockResolvedValue(
+        new Headers({ "accept-language": "en-US,en;q=0.9" })
+      );
+      const { getPlatformLocale } = await importLocale();
+
+      await expect(getPlatformLocale()).resolves.toBe("ja");
+
+      mockReadSetupDefaultLocale.mockResolvedValue(null);
+
+      await expect(getPlatformLocale()).resolves.toBe("ja");
+    });
+
+    it("negotiates from Accept-Language only before anything is saved", async () => {
+      mockReadSetupDefaultLocale.mockResolvedValue(null);
+      mockHeaders.mockResolvedValue(
+        new Headers({ "accept-language": "en-US,en;q=0.9" })
+      );
       const { getPlatformLocale } = await importLocale();
 
       await expect(getPlatformLocale()).resolves.toBe("en");

@@ -1,15 +1,11 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
-import {
-  apiClient,
-  buildSessionHeaders,
-  resolveAccessToken,
-} from "./api-client";
-import { isUnauthenticatedError } from "./auth-shared";
+import { apiClient, withServiceHeaders } from "./api-client";
+import { verifyPlatformSession } from "./auth-session";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export interface PlatformDashboardRecentEvent {
@@ -30,12 +26,7 @@ export interface PlatformDashboardSummary {
 
 export type GetPlatformDashboardSummaryResult =
   | { ok: true; summary: PlatformDashboardSummary }
-  | {
-      ok: false;
-      message: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
+  | { ok: false; message: string };
 
 const normalizeRecentEventsLimit = (value?: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -51,32 +42,21 @@ const normalizeRecentEventsLimit = (value?: number): number => {
  */
 export const platformDashboardCacheTag = "platform:dashboard";
 
-const getPlatformDashboardSummaryForSession = async (
-  input: {
-    locale: Locale;
-    recentEventsLimit?: number;
-  },
-  sid: string
+const getPlatformDashboardSummaryForLocale = async (
+  locale: Locale,
+  recentEventsLimit: number
 ): Promise<GetPlatformDashboardSummaryResult> => {
-  "use cache: private";
+  "use cache";
+  // End users sign up and tenant consoles write the audit log without any
+  // Action here clearing the tag, so the entry is refreshed after a minute
+  // rather than kept for the default quarter of an hour.
+  cacheLife("minutes");
   cacheTag(platformDashboardCacheTag);
-
-  if (!sid) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.dashboard.getDashboardSummary(
-      {
-        recentEventsLimit: normalizeRecentEventsLimit(input.recentEventsLimit),
-      } as never,
-      buildSessionHeaders(sid)
+      { recentEventsLimit } as never,
+      withServiceHeaders()
     );
 
     return {
@@ -96,24 +76,32 @@ const getPlatformDashboardSummaryForSession = async (
       },
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the dashboard comes back as
+    // soon as the API does.
     dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
+    const t = await getMessagesFor(locale);
     return {
       message: rpcErrorMessage(error, t("platform.dashboard.list_failed"), {
-        locale: input.locale,
+        locale,
       }),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getPlatformDashboardSummary = async (input: {
-  locale: Locale;
-  recentEventsLimit?: number;
-}): Promise<GetPlatformDashboardSummaryResult> =>
-  getPlatformDashboardSummaryForSession(input, await resolveAccessToken());
+/**
+ * The platform's tenant counts, pending end users, and recent events.
+ *
+ * Read with the service credential: the summary is the same for every
+ * operator, so one entry serves all of them.
+ */
+export const getPlatformDashboardSummary = async (
+  input: { recentEventsLimit?: number } = {}
+): Promise<GetPlatformDashboardSummaryResult> => {
+  await verifyPlatformSession();
+  return getPlatformDashboardSummaryForLocale(
+    await getPlatformLocale(),
+    normalizeRecentEventsLimit(input.recentEventsLimit)
+  );
+};

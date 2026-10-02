@@ -12,7 +12,6 @@ import {
   PlatformPageTitle,
   PlatformSection,
 } from "#components/platform-page";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformEmailSettings } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings";
 import { getPlatformLocale } from "#lib/locale";
@@ -53,10 +52,7 @@ const EmailSettingsFormSkeleton = () => (
 );
 
 const EmailSettingsSection = async () => {
-  const locale = await getPlatformLocale();
-  const settingsResult = await getPlatformEmailSettings(locale);
-
-  await redirectToLoginIfSessionRejected(settingsResult);
+  const settingsResult = await getPlatformEmailSettings();
 
   const initialSettings = settingsResult.ok
     ? settingsResult.settings

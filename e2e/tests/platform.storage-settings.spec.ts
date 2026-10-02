@@ -8,6 +8,11 @@ import {
   snapshotPlatformSettingsRow,
 } from "../src/db";
 import { STACK_STORAGE, signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import {
+  platformStorageSettingsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
+import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const STORAGE_PATH = "/services/storage";
 
@@ -44,6 +49,32 @@ const openStorageSettings = async (page: Page): Promise<void> => {
   ).toBeVisible();
 };
 
+/**
+ * Empty the storage row and open the screen until it reads the empty row.
+ * The settings are a shared `"use cache"` read, which a write straight to
+ * Postgres does not clear, and revalidation serves the stale entry once while
+ * the refresh runs behind it.
+ */
+const openUnconfiguredStorageSettings = async (page: Page): Promise<void> => {
+  runSql(`DELETE FROM platform_storage_config;`);
+  await revalidatePlatformTags([platformStorageSettingsTag]);
+
+  await openStorageSettings(page);
+  const bucket = page.getByRole("textbox", { name: /^Bucket/u });
+  await expect
+    .poll(
+      async () => {
+        await page.goto(`${WEB_PLATFORM_BASE_URL}${STORAGE_PATH}`);
+        return await bucket.inputValue();
+      },
+      {
+        message: `${STORAGE_PATH} never caught up with the emptied row`,
+        timeout: 30_000,
+      }
+    )
+    .toBe("");
+};
+
 const save = async (page: Page): Promise<void> => {
   await page.getByRole("button", { name: "Save storage settings" }).click();
   await expect(page.getByText(SAVED_MESSAGE)).toBeVisible();
@@ -74,18 +105,17 @@ test.describe("web-platform storage settings", () => {
     snapshot = snapshotPlatformSettingsRow("platform_storage_config");
   });
 
-  test.afterAll(() => {
+  test.afterAll(async () => {
     if (snapshot) {
       restorePlatformSettingsRow("platform_storage_config", snapshot);
+      await revalidatePlatformTags([platformStorageSettingsTag]);
     }
   });
 
   test("an unconfigured platform says so, and a save is read back", async ({
     page,
   }) => {
-    runSql(`DELETE FROM platform_storage_config;`);
-
-    await openStorageSettings(page);
+    await openUnconfiguredStorageSettings(page);
     await expect(page.getByText(UNCONFIGURED_MESSAGE)).toBeVisible();
 
     await page.getByRole("textbox", { name: /^Bucket/u }).fill(BUCKET);

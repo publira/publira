@@ -57,8 +57,7 @@ const OptionalNecessity = () => (
 
 /** Silent when a read failed, since the row that failed already says so. */
 const ConfigurationSummary = async () => {
-  const locale = await getPlatformLocale();
-  const state = await getRequiredConfigurationState(locale);
+  const state = await getRequiredConfigurationState();
 
   switch (state) {
     case "needs_setup": {
@@ -86,9 +85,7 @@ const ConfigurationSummary = async () => {
 };
 
 const GeneralRow = async () => {
-  const locale = await getPlatformLocale();
-  const result = await getPlatformSettings(locale);
-  await redirectToLoginIfSessionRejected(result);
+  const result = await getPlatformSettings();
 
   const name = (
     <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
@@ -130,9 +127,7 @@ const GeneralRow = async () => {
 };
 
 const EmailRow = async () => {
-  const locale = await getPlatformLocale();
-  const result = await getPlatformEmailSettings(locale);
-  await redirectToLoginIfSessionRejected(result);
+  const result = await getPlatformEmailSettings();
 
   const name = (
     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -188,9 +183,7 @@ const EmailRow = async () => {
 };
 
 const StorageRow = async () => {
-  const locale = await getPlatformLocale();
-  const result = await getPlatformStorageSettings(locale);
-  await redirectToLoginIfSessionRejected(result);
+  const result = await getPlatformStorageSettings();
 
   const name = (
     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -287,12 +280,10 @@ const WebPushRow = async () => {
 };
 
 const PoliciesRow = async () => {
-  const locale = await getPlatformLocale();
   const [policy, retention] = await Promise.all([
-    getPlatformPolicy(locale),
-    getPlatformRetentionDefaults(locale),
+    getPlatformPolicy(),
+    getPlatformRetentionDefaults(),
   ]);
-  await redirectToLoginIfSessionRejected(policy, retention);
 
   const name = (
     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>

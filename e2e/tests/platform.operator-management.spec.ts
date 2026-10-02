@@ -15,6 +15,11 @@ import {
   signOutPlatform,
   submitOperatorForm,
 } from "../src/platform";
+import {
+  platformEndUsersTag,
+  platformOperatorsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { SEED_MEMBER_PUBLIC_ID } from "../src/scenarios/auth";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
@@ -48,6 +53,37 @@ const roleForm = (page: Page): Locator =>
 
 const listRow = (page: Page, text: string): Locator =>
   page.locator("tr", { hasText: text });
+
+/**
+ * Put the operators back and drop what web-platform holds of them: the list
+ * and the detail are shared `"use cache"` reads, and the scenario writes their
+ * rows straight to Postgres.
+ */
+const resetOperators = async (): Promise<void> => {
+  applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
+  await revalidatePlatformTags([platformOperatorsTag]);
+};
+
+/**
+ * Open `path` until `ready` reports the state the test expects. Revalidation
+ * serves the stale entry once while the refresh runs behind it, so a screen
+ * read right after a reset may still show the state before it.
+ */
+const openWhen = async (
+  page: Page,
+  path: string,
+  ready: () => Promise<boolean>
+): Promise<void> => {
+  await expect
+    .poll(
+      async () => {
+        await page.goto(platformUrl(path));
+        return await ready();
+      },
+      { message: `${path} never caught up with the reset`, timeout: 30_000 }
+    )
+    .toBe(true);
+};
 
 /**
  * The same locator with the screen the console navigated away from left out.
@@ -123,14 +159,14 @@ test.describe("platform operator management", () => {
 
   test.beforeEach(async ({ page }) => {
     invitedEmails = [];
-    applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
+    await resetOperators();
     await signInAsSeedPlatformSuperAdmin(page);
   });
 
-  test.afterEach(() => {
+  test.afterEach(async () => {
     deletePlatformOperatorsByEmails(invitedEmails);
     invitedEmails = [];
-    applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
+    await resetOperators();
   });
 
   const trackOperator = (email: string): string => {
@@ -195,14 +231,18 @@ test.describe("platform operator management", () => {
   }) => {
     const detailPath = `/operators/${SCENARIO_ROLE_CHANGE_OPERATOR.publicId}`;
 
-    await page.goto(platformUrl(detailPath));
+    const role = roleForm(page).getByRole("combobox");
+    await openWhen(page, detailPath, async () => {
+      await expect(role).toBeVisible();
+      return (await role.textContent()) === "Operator";
+    });
     await expect(
       page.getByRole("heading", {
         level: 1,
         name: `Operator: ${SCENARIO_ROLE_CHANGE_OPERATOR.name}`,
       })
     ).toBeVisible();
-    await expect(roleForm(page).getByRole("combobox")).toHaveText("Operator");
+    await expect(role).toHaveText("Operator");
 
     await changeRoleTo(page, "Super admin");
 
@@ -244,7 +284,16 @@ test.describe("platform operator management", () => {
   }) => {
     const detailPath = `/operators/${SCENARIO_DEACTIVATED_OPERATOR.publicId}`;
 
-    await page.goto(platformUrl(detailPath));
+    const deactivate = page.getByRole("button", {
+      exact: true,
+      name: "Deactivate",
+    });
+    await openWhen(page, detailPath, async () => {
+      await page
+        .getByRole("heading", { level: 1 })
+        .waitFor({ state: "visible" });
+      return (await deactivate.count()) > 0;
+    });
     await confirmDangerAction(page, "Deactivate", "Deactivate");
     await page.waitForURL((url) => url.pathname === "/operators");
 
@@ -312,12 +361,20 @@ test.describe("platform operator management", () => {
 
   test("lists users across tenants and opens one of them", async ({ page }) => {
     applyScenarioSql(NOTIFICATION_INBOX_SCENARIO);
+    // The end-user list is a shared `"use cache"` read, which the scenario's
+    // write straight to Postgres does not clear.
+    await revalidatePlatformTags([platformEndUsersTag]);
 
     // 50 per page: the list is newest-first across every tenant and other suites
     // create readers of their own, so the two seeded ones are not on a page of 20
     // forever.
     const listPath = "/users?limit=50";
-    await page.goto(platformUrl(listPath));
+    await openWhen(page, listPath, async () => {
+      await page
+        .getByRole("heading", { level: 1, name: "Users" })
+        .waitFor({ state: "visible" });
+      return (await listRow(page, NOTIFICATION_INBOX_MEMBER.name).count()) > 0;
+    });
     await expect(
       page.getByRole("heading", { level: 1, name: "Users" })
     ).toBeVisible();

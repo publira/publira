@@ -1,6 +1,7 @@
 import {
   createForwardedForInterceptor,
   FORWARDED_FOR_HEADER,
+  serviceCallContextValues,
 } from "@publira/api-client/forwarded-for";
 import { createPlatformApiClient } from "@publira/api-client/platform/client";
 import {
@@ -16,6 +17,7 @@ import {
   PLATFORM_SESSION_CACHE_TAG,
   PLATFORM_SESSION_COOKIE_NAME,
 } from "./auth-shared";
+import { resolveWebServiceToken } from "./web-service-token";
 
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
@@ -45,6 +47,24 @@ export const buildClientAddressHeaders = async () => {
 
 export const buildSessionHeaders = (accessToken: string) =>
   buildBearerHeaders(accessToken);
+
+type CallOptions = NonNullable<Parameters<(typeof apiClient.auth)["getMe"]>[1]>;
+
+/**
+ * Call options for a read the console makes as itself: one of the platform
+ * API's platform-level reads, whose answer is the same for every operator and
+ * is therefore cached once for all of them in a `"use cache"` scope. The API
+ * refuses this credential on everything else.
+ *
+ * It says nothing about who is looking, so the exported read awaits
+ * `verifyPlatformSession` before the cached function it signs. The context
+ * value keeps the forwarded-for interceptor from reading `headers()`, which a
+ * shared cache scope may not do.
+ */
+export const withServiceHeaders = (): CallOptions => ({
+  contextValues: serviceCallContextValues(),
+  headers: { Authorization: `Bearer ${resolveWebServiceToken()}` },
+});
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 

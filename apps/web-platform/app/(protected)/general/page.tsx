@@ -13,7 +13,6 @@ import {
   PlatformPageTitle,
   PlatformSection,
 } from "#components/platform-page";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformSettings } from "#lib/platform-settings";
@@ -74,10 +73,7 @@ const TimezoneSection = ({
 );
 
 const GeneralSettingsContent = async () => {
-  const locale = await getPlatformLocale();
-  const settingsResult = await getPlatformSettings(locale);
-
-  await redirectToLoginIfSessionRejected(settingsResult);
+  const settingsResult = await getPlatformSettings();
 
   return (
     <div className="grid gap-6">

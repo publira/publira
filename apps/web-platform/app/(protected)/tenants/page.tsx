@@ -37,7 +37,6 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -92,15 +91,12 @@ const TenantsContent = async ({
     getMessagesFor(locale),
     listPlatformTenants({
       limit: pageSize,
-      locale,
       name: filters.name || undefined,
       status: filters.status || undefined,
       token: filters.token || undefined,
     }),
     getPlatformDisplayTimeZone(),
   ]);
-
-  await redirectToLoginIfSessionRejected(result);
 
   const previousHref = result.previousToken
     ? buildTenantsPath({
