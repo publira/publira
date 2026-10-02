@@ -22,6 +22,7 @@ import {
   getSeriesDetail,
   isPublicEpisodeBody,
   listPublishedGenres,
+  listPublishedLabels,
   listPublishedSeries,
   listRankedSeries,
   listReaderRankedSeries,
@@ -35,6 +36,7 @@ const {
   mockGetEpisodeDetail,
   mockGetSeriesDetail,
   mockListPublishedGenres,
+  mockListPublishedLabels,
   mockListPublishedSeries,
   mockListPublishedTags,
   mockListRankedSeries,
@@ -43,6 +45,7 @@ const {
   mockGetEpisodeDetail: vi.fn(),
   mockGetSeriesDetail: vi.fn(),
   mockListPublishedGenres: vi.fn(),
+  mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
   mockListPublishedTags: vi.fn(),
   mockListRankedSeries: vi.fn(),
@@ -55,6 +58,7 @@ vi.mock("./api-client", () => ({
       getEpisodeDetail: mockGetEpisodeDetail,
       getSeriesDetail: mockGetSeriesDetail,
       listPublishedGenres: mockListPublishedGenres,
+      listPublishedLabels: mockListPublishedLabels,
       listPublishedSeries: mockListPublishedSeries,
       listPublishedTags: mockListPublishedTags,
       listRankedSeries: mockListRankedSeries,
@@ -1230,6 +1234,56 @@ describe("catalog.getSeriesDetail", () => {
       status: undefined,
       tags: [],
     });
+  });
+});
+
+describe("catalog.listPublishedLabels", () => {
+  beforeEach(() => {
+    mockListPublishedLabels.mockReset();
+  });
+
+  it("Carries each label's published series count, zero included", async () => {
+    mockListPublishedLabels.mockResolvedValueOnce({
+      labels: [
+        {
+          eyeCatchImageUpdatedAt: "",
+          eyeCatchImageVariants: [],
+          name: "Moonlight Comics",
+          publicId: "LABEL_1",
+          publishedSeriesCount: 4,
+        },
+        {
+          eyeCatchImageUpdatedAt: "",
+          eyeCatchImageVariants: [],
+          name: "Daybreak Comics",
+          publicId: "LABEL_2",
+          publishedSeriesCount: 0,
+        },
+        // A partial response, as a mock passes in, still counts as zero.
+        {
+          eyeCatchImageUpdatedAt: "",
+          eyeCatchImageVariants: [],
+          name: "Nightfall Comics",
+          publicId: "LABEL_3",
+        },
+      ],
+      nextToken: "",
+      previousToken: "",
+    });
+
+    const result = await listPublishedLabels("TENANT_001", { locale: "en" });
+
+    expect(
+      result.ok &&
+        result.value.labels.map(({ publicId, seriesCount }) => ({
+          publicId,
+          seriesCount,
+        }))
+    ).toEqual([
+      { publicId: "LABEL_1", seriesCount: 4 },
+      { publicId: "LABEL_2", seriesCount: 0 },
+      { publicId: "LABEL_3", seriesCount: 0 },
+    ]);
   });
 });
 

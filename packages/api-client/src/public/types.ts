@@ -14,6 +14,7 @@ export type {
   MyFollow,
   MyPurchase,
   PublishedCreator,
+  PublishedLabel,
   RecentSeries,
   SeriesProgress,
 } from "../gen/publira/v1/catalog_pb.js";

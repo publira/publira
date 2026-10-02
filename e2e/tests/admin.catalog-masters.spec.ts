@@ -147,9 +147,13 @@ const uploadIcon = async (
     .digest("hex");
 };
 
-/** The public label list's row for one label. Each row is a single link. */
+/**
+ * The public label list's row for one label. Each row is a single link
+ * carrying the name and the series count beside it, so the name only starts
+ * the link's accessible name.
+ */
 const labelRow = (page: Page, name: string): Locator =>
-  page.getByRole("link", { exact: true, name });
+  page.getByRole("link", { name: new RegExp(`^${name}\\b`, "u") });
 
 /**
  * The creator and label masters a tenant admin maintains beside the series
