@@ -531,6 +531,91 @@ func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
 	}
 }
 
+// An ID token that does not verify refuses an account confirmation as
+// invalid_argument on id_token, as a wrong password does, because a client
+// ends the session on unauthenticated and the session it came with is still
+// good. A sign-in has no session, so it keeps answering unauthenticated.
+func TestDBIdentityConfirmationRefusesAnUnverifiableIDTokenWithoutEndingTheSession(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
+	session := env.mustSignIn(t, google, env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1").AccessToken.Token
+	googleToken := func(edit func(*signintest.Token)) func(*testing.T, string) string {
+		return func(t *testing.T, nonce string) string {
+			token := signintest.Token{
+				Issuer:   signin.GoogleIssuer,
+				Subject:  "google-subject",
+				Audience: identityWebClientID,
+				Email:    "reader@example.com",
+				Nonce:    nonce,
+			}
+			edit(&token)
+			return env.google.Sign(t, token)
+		}
+	}
+
+	for _, tc := range []struct {
+		name  string
+		token func(*testing.T, string) string
+	}{
+		{"a token signed with another key", func(t *testing.T, nonce string) string {
+			return env.apple.Sign(t, signintest.Token{
+				Issuer:   signin.GoogleIssuer,
+				Subject:  "google-subject",
+				Audience: identityWebClientID,
+				Email:    "reader@example.com",
+				Nonce:    nonce,
+			})
+		}},
+		{"a token issued for another client", googleToken(func(token *signintest.Token) {
+			token.Audience = "456-other.apps.googleusercontent.com"
+		})},
+		{"an expired token", googleToken(func(token *signintest.Token) {
+			token.ExpiresAt = time.Now().Add(-time.Hour)
+		})},
+		{"a token of another nonce", googleToken(func(token *signintest.Token) {
+			token.Nonce = "another-nonce"
+		})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idToken := tc.token(t, "nonce-2")
+
+			_, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(&publirav1.DeleteMeRequest{
+				Tenant:   tenantContext(env.tenant),
+				Provider: google,
+				IdToken:  idToken,
+				Nonce:    "nonce-2",
+			}, session))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("DeleteMe code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			assertPublicBadRequestField(t, err, "id_token")
+
+			_, err = env.authClient().RequestEmailChange(context.Background(), newBearerRequest(&publirav1.RequestEmailChangeRequest{
+				Tenant:       tenantContext(env.tenant),
+				CurrentEmail: "reader@example.com",
+				NewEmail:     "moved@example.com",
+				Provider:     google,
+				IdToken:      idToken,
+				Nonce:        "nonce-2",
+			}, session))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("RequestEmailChange code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			assertPublicBadRequestField(t, err, "id_token")
+
+			_, err = env.signIn(google, idToken, "nonce-2")
+			if connect.CodeOf(err) != connect.CodeUnauthenticated {
+				t.Fatalf("LoginWithIdToken code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+			}
+		})
+	}
+
+	if _, err := env.authClient().GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)}, session)); err != nil {
+		t.Fatalf("GetMe after the refused confirmations: %v", err)
+	}
+}
+
 // GetTenant answers the providers a client can offer, with the client IDs it
 // signs in through, and nothing of the key.
 func TestDBGetTenantAnswersTheProvidersReadersCanSignInWith(t *testing.T) {

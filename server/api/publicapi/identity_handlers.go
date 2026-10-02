@@ -559,12 +559,16 @@ func (s *apiServer) verifyIdentityConfirmation(
 	if err != nil {
 		return signin.Claims{}, s.internalDBError(ctx, "failed to read the linked identity", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
+	// The refusals below are not Unauthenticated: the session is fine, the
+	// confirmation is not the account's, as a wrong password is not, and a
+	// client drops a session it gets Unauthenticated for.
 	claims, err := s.verifyIDToken(ctx, tenantID, provider, rawToken, nonce, false)
+	if connect.CodeOf(err) == connect.CodeUnauthenticated {
+		return signin.Claims{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid ID token"), "id_token")
+	}
 	if err != nil {
 		return signin.Claims{}, err
 	}
-	// Not Unauthenticated: the session is fine, the confirmation is not the
-	// account's, as a wrong password is not.
 	if claims.Subject != identity.Subject {
 		return signin.Claims{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the ID token is not of the linked account"), "id_token")
 	}
