@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { bindMessages } from "@publira/i18n";
-import type { MessageKey, MessageValues } from "@publira/i18n";
+import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,12 +13,17 @@ import type { EpisodeCommentItem, EpisodeCommentPage } from "#lib/comments";
 
 import { EpisodeComments } from "./episode-comments";
 
-const { mockGetMe, mockListEpisodeComments, mockListMyEpisodeComments } =
-  vi.hoisted(() => ({
-    mockGetMe: vi.fn(),
-    mockListEpisodeComments: vi.fn(),
-    mockListMyEpisodeComments: vi.fn(),
-  }));
+const {
+  messageLocale,
+  mockGetMe,
+  mockListEpisodeComments,
+  mockListMyEpisodeComments,
+} = vi.hoisted(() => ({
+  messageLocale: { current: "en" as Locale },
+  mockGetMe: vi.fn(),
+  mockListEpisodeComments: vi.fn(),
+  mockListMyEpisodeComments: vi.fn(),
+}));
 
 // `<Message>` is an async Server Component, which the client renderer cannot
 // mount. It resolves through the real catalog here, so the assertions stay on
@@ -30,7 +35,7 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog(messageLocale.current))(message, values),
 }));
 
 vi.mock("#components/locale-context", () => ({
@@ -138,6 +143,7 @@ const publicComment = (
   awaitingApproval: false,
   body: `Body of ${id}`,
   createdAt,
+  creatorName: "",
   id,
   ...overrides,
 });
@@ -178,6 +184,7 @@ const renderedBodies = (): string[] =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  messageLocale.current = "en";
   mockGetMe.mockResolvedValue(null);
   mockListEpisodeComments.mockResolvedValue(listPage([]));
   mockListMyEpisodeComments.mockResolvedValue({ ok: true, value: [] });
@@ -254,6 +261,92 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     expect(screen.getByText("Awaiting approval")).toBeDefined();
+  });
+
+  it("marks a creator's comment and shows it under the credited name", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA2", "2026-09-02T00:00:00Z", {
+          authorName: "Sample Member",
+          creatorName: "Sample Author",
+        }),
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z"),
+      ])
+    );
+
+    await renderSection();
+
+    const [creatorRow, readerRow] = screen.getAllByRole("listitem");
+    if (!(creatorRow && readerRow)) {
+      throw new Error("expected two comments");
+    }
+    expect(within(creatorRow).getByText("Sample Author")).toBeDefined();
+    expect(within(creatorRow).getByText("Author")).toBeDefined();
+    expect(within(creatorRow).queryByText("Sample Member")).toBeNull();
+    expect(within(readerRow).getByText("Another Reader")).toBeDefined();
+    expect(within(readerRow).queryByText("Author")).toBeNull();
+  });
+
+  it("marks the reader's own comment when the episode credits them", async () => {
+    mockGetMe.mockResolvedValueOnce(viewer);
+    mockListMyEpisodeComments.mockResolvedValueOnce({
+      ok: true,
+      value: [
+        publicComment("CmntAAAAAAA9", "2026-09-02T00:00:00Z", {
+          authorName: viewer.name,
+          authorPublicId: viewer.publicId,
+          awaitingApproval: true,
+          creatorName: "Sample Author",
+        }),
+      ],
+    });
+
+    await renderSection();
+
+    expect(screen.getByText("Author")).toBeDefined();
+    expect(screen.getByText("Sample Author")).toBeDefined();
+    expect(screen.getByText("Delete CmntAAAAAAA9")).toBeDefined();
+  });
+
+  it("names a creator's comment by the credited name in the report control", async () => {
+    mockGetMe.mockResolvedValueOnce(viewer);
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
+          creatorName: "Sample Author",
+        }),
+      ])
+    );
+
+    await renderSection();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Report the comment Sample Author posted on Sep 1, 2026, 12:00 AM",
+      })
+    ).toBeDefined();
+  });
+
+  // The word is the one each locale gives the person a work is credited to,
+  // which is not the one it gives the writer of a comment.
+  it.each([
+    ["ja", "著者"],
+    ["ko", "작가"],
+    ["zh-Hans", "作者"],
+    ["zh-Hant", "作者"],
+  ] as const)("words the badge in %s", async (locale, word) => {
+    messageLocale.current = locale;
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
+          creatorName: "Sample Author",
+        }),
+      ])
+    );
+
+    await renderSection();
+
+    expect(screen.getByText(word)).toBeDefined();
   });
 
   it("renders a comment removed after it was published exactly as a published one", async () => {

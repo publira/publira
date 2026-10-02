@@ -3061,6 +3061,7 @@
         "body_placeholder": "分享您对这一章的感想",
         "body_required": "请先输入内容再发表。",
         "body_too_long": "评论最多{$max}个字符。",
+        "creator_badge": "作者",
         "delete": "删除",
         "delete_aria": "删除您在{$date}发表的评论",
         "delete_failed": "无法删除评论。请稍后再试。",

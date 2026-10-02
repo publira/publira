@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeCommentItem, EpisodeCommentPage } from "./comments";
 import {
+  episodeCommentDisplayName,
   listEpisodeComments,
   listMyEpisodeComments,
   mergeOwnEpisodeComments,
@@ -58,6 +59,7 @@ const comment = (
   authorPublicId: "SeedMMBRAAA1",
   awaitingApproval: false,
   body: "A comment",
+  creatorName: "",
   id: `C${overrides.createdAt}`,
   ...overrides,
 });
@@ -111,11 +113,54 @@ describe("listEpisodeComments", () => {
             awaitingApproval: false,
             body: "Loved this episode",
             createdAt: "2026-09-01T10:00:00Z",
+            creatorName: "",
             id: "CmntAAAAAAA1",
           },
         ],
         nextToken: "next",
         previousToken: "previous",
+      },
+    });
+  });
+
+  it("carries the name the episode credits a creator's comment under", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce({
+      comments: [
+        {
+          authorName: "Sample Member",
+          authorPublicId: "SeedMMBRAAA1",
+          body: "Thank you for reading",
+          createdAt: "2026-09-02T10:00:00Z",
+          creator: {
+            id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            name: "Sample Author",
+            publicId: "SeedCRTRAAA1",
+          },
+          id: "CmntAAAAAAA2",
+        },
+        {
+          authorName: "Another Reader",
+          authorPublicId: "OthrMMBRAAA1",
+          body: "Loved this episode",
+          createdAt: "2026-09-01T10:00:00Z",
+          id: "CmntAAAAAAA1",
+        },
+      ],
+    });
+
+    const result = await listEpisodeComments(tenantId, {
+      episodeId,
+      episodePublicId,
+      locale: "en",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        comments: [
+          { authorName: "Sample Member", creatorName: "Sample Author" },
+          { authorName: "Another Reader", creatorName: "" },
+        ],
       },
     });
   });
@@ -190,9 +235,40 @@ describe("listMyEpisodeComments", () => {
           awaitingApproval: true,
           body: "Waiting for approval",
           createdAt: "2026-09-02T10:00:00Z",
+          creatorName: "",
           id: "CmntAAAAAAA2",
         },
       ],
+    });
+  });
+
+  it("keeps the credit the episode gives the caller on their own rows", async () => {
+    mockListMyEpisodeComments.mockResolvedValueOnce({
+      comments: [
+        {
+          awaitingApproval: true,
+          body: "Thank you for reading",
+          createdAt: "2026-09-02T10:00:00Z",
+          creator: {
+            id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            name: "Sample Author",
+            publicId: "SeedCRTRAAA1",
+          },
+          id: "CmntAAAAAAA2",
+        },
+      ],
+    });
+
+    const result = await listMyEpisodeComments(tenantId, {
+      author,
+      episodeId,
+      episodePublicId,
+      locale: "en",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: [{ authorName: "Sample Member", creatorName: "Sample Author" }],
     });
   });
 
@@ -208,6 +284,26 @@ describe("listMyEpisodeComments", () => {
 
     expect(result).toEqual({ ok: true, value: [] });
     expect(mockListMyEpisodeComments).not.toHaveBeenCalled();
+  });
+});
+
+describe("episodeCommentDisplayName", () => {
+  it("shows a creator's comment under the name the episode credits", () => {
+    expect(
+      episodeCommentDisplayName({
+        authorName: "Sample Member",
+        creatorName: "Sample Author",
+      })
+    ).toBe("Sample Author");
+  });
+
+  it("shows a reader's comment under their account name", () => {
+    expect(
+      episodeCommentDisplayName({
+        authorName: "Sample Member",
+        creatorName: "",
+      })
+    ).toBe("Sample Member");
   });
 });
 
