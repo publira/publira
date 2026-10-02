@@ -790,3 +790,189 @@ func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasReRated(t *testing.T) {
 		t.Fatalf("ranked series = %v, want %v", got, want)
 	}
 }
+
+// A genre's chart is a leaderboard of its own: its first page, a page pinned to
+// the snapshot that page came from, and the movement markers all stay inside
+// the genre, so a series that climbed among its genre's works shows the climb
+// even where the tenant-wide chart did not move it.
+func TestDBListRankedSeriesPagesAGenresOwnRanking(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	action := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREACTION1", Name: "Action"})
+	drama := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREDRAMA01", Name: "Drama"})
+	actionID := uuid.NullUUID{UUID: action.ID, Valid: true}
+
+	seed := func(publicID string) testutil.Series {
+		return env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:    publicID,
+			Title:       publicID,
+			Published:   true,
+			PublishedAt: time.Now().Add(-24 * time.Hour),
+		})
+	}
+	outsider := seed("SERIESAOUT01")
+	climber, slipper, steady := seed("SERIESAUPP01"), seed("SERIESADWN01"), seed("SERIESASTD01")
+	for _, series := range []testutil.Series{climber, slipper, steady} {
+		env.PG.SeedSeriesGenre(t, tenant.ID, series.ID, action.ID)
+	}
+
+	// Tenant-wide, nothing moved between the two periods. Within Action, the
+	// climber overtook the slipper.
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(2),
+		outsider.ID, climber.ID, slipper.ID, steady.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(1),
+		outsider.ID, climber.ID, slipper.ID, steady.ID)
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, actionID, contentranking.DailyRankingKey, rankingPeriodDate(2),
+		slipper.ID, climber.ID, steady.ID)
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, actionID, contentranking.DailyRankingKey, rankingPeriodDate(1),
+		climber.ID, slipper.ID, steady.ID)
+
+	first := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		GenrePublicId: action.PublicID,
+		Limit:         2,
+		Tenant:        tenantContext(tenant),
+	})
+	if got, want := rankedPositions(first.RankedSeries), []string{"SERIESAUPP01@1", "SERIESADWN01@2"}; !slices.Equal(got, want) {
+		t.Fatalf("first page = %v, want %v", got, want)
+	}
+	if got := first.RankedSeries[0].GetPreviousRank(); got != 2 {
+		t.Fatalf("previous_rank of the climber = %d, want 2 (its place in the genre)", got)
+	}
+	if got := first.RankedSeries[1].GetPreviousRank(); got != 1 {
+		t.Fatalf("previous_rank of the slipper = %d, want 1 (its place in the genre)", got)
+	}
+	if period := rankingPeriodDate(1).Format(time.DateOnly); first.PeriodStart != period || first.PeriodEnd != period {
+		t.Fatalf("period = %q..%q, want %q on both sides", first.PeriodStart, first.PeriodEnd, period)
+	}
+	if want := rankingPeriodDate(0).Format(time.RFC3339); first.ComputedAt != want {
+		t.Fatalf("computed_at = %q, want %q", first.ComputedAt, want)
+	}
+
+	// The batch lands between the two pages and reverses the genre's chart.
+	// Page 2 continues in the snapshot page 1 came from.
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, actionID, contentranking.DailyRankingKey, rankingPeriodDate(0),
+		steady.ID, slipper.ID, climber.ID)
+
+	second := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		GenrePublicId: action.PublicID,
+		Limit:         2,
+		Tenant:        tenantContext(tenant),
+		Token:         first.NextToken,
+	})
+	if got, want := rankedPositions(second.RankedSeries), []string{"SERIESASTD01@3"}; !slices.Equal(got, want) {
+		t.Fatalf("second page = %v, want %v (the ranking page 1 came from)", got, want)
+	}
+	if got := second.RankedSeries[0].GetPreviousRank(); got != 3 {
+		t.Fatalf("previous_rank on the pinned page = %d, want 3", got)
+	}
+	if second.PeriodStart != first.PeriodStart || second.ComputedAt != first.ComputedAt {
+		t.Fatalf("second page reports %q/%q, want the first page's %q/%q",
+			second.PeriodStart, second.ComputedAt, first.PeriodStart, first.ComputedAt)
+	}
+
+	// The tenant-wide chart is untouched by the genre's: same positions, and
+	// the climber has not moved there.
+	overall := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{Tenant: tenantContext(tenant)})
+	if got, want := rankedPositions(overall.RankedSeries),
+		[]string{"SERIESAOUT01@1", "SERIESAUPP01@2", "SERIESADWN01@3", "SERIESASTD01@4"}; !slices.Equal(got, want) {
+		t.Fatalf("tenant-wide ranked series = %v, want %v", got, want)
+	}
+	if got := overall.RankedSeries[1].GetPreviousRank(); got != 2 {
+		t.Fatalf("tenant-wide previous_rank of the climber = %d, want 2", got)
+	}
+
+	// A genre's token continues that genre's chart and nothing else.
+	for _, genre := range []string{"", drama.PublicID} {
+		_, err := env.catalogClient().ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+			GenrePublicId: genre,
+			Limit:         2,
+			Tenant:        tenantContext(tenant),
+			Token:         first.NextToken,
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("Action's token under genre %q: error code = %v, want InvalidArgument", genre, connect.CodeOf(err))
+		}
+	}
+}
+
+// A genre the batch has not ranked yet — Drama here, created after the last
+// run — answers an empty chart, as a tenant with no snapshot does, and never
+// the tenant-wide ranking in its place.
+func TestDBListRankedSeriesReturnsAnEmptyListForAGenreWithoutASnapshot(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	drama := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREDRAMA01", Name: "Drama"})
+
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESADRM01",
+		Title:       "Drama",
+		Published:   true,
+		PublishedAt: time.Now().Add(-24 * time.Hour),
+	})
+	env.PG.SeedSeriesGenre(t, tenant.ID, series.ID, drama.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), series.ID)
+
+	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		GenrePublicId: drama.PublicID,
+		Tenant:        tenantContext(tenant),
+	})
+	if len(resp.RankedSeries) != 0 || resp.ComputedAt != "" || resp.NextToken != "" {
+		t.Fatalf("ranked_series = %v, computed_at = %q, next_token = %q, want an empty chart",
+			rankedPositions(resp.RankedSeries), resp.ComputedAt, resp.NextToken)
+	}
+}
+
+// A series taken out of the genre since the batch ran still sits in the
+// genre's snapshot, and the read leaves its place empty rather than rank it
+// under a genre it no longer carries.
+func TestDBListRankedSeriesLeavesTheGapWhereASeriesLeftTheGenre(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	action := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREACTION1", Name: "Action"})
+
+	seed := func(publicID string) testutil.Series {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:    publicID,
+			Title:       publicID,
+			Published:   true,
+			PublishedAt: time.Now().Add(-24 * time.Hour),
+		})
+		env.PG.SeedSeriesGenre(t, tenant.ID, series.ID, action.ID)
+		return series
+	}
+	top, moved, tail := seed("SERIESATOP01"), seed("SERIESAMOVE1"), seed("SERIESATAIL1")
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, uuid.NullUUID{UUID: action.ID, Valid: true},
+		contentranking.DailyRankingKey, rankingPeriodDate(0), top.ID, moved.ID, tail.ID)
+
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"DELETE FROM series_genres WHERE series_id = $1 AND genre_id = $2", moved.ID, action.ID,
+	); err != nil {
+		t.Fatalf("remove series from genre: %v", err)
+	}
+
+	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		GenrePublicId: action.PublicID,
+		Tenant:        tenantContext(tenant),
+	})
+	if got, want := rankedPositions(resp.RankedSeries), []string{"SERIESATOP01@1", "SERIESATAIL1@3"}; !slices.Equal(got, want) {
+		t.Fatalf("ranked series = %v, want %v", got, want)
+	}
+}
+
+// A genre is read through the tenant, so another tenant's genre is as absent
+// as one that was never created.
+func TestDBListRankedSeriesRejectsAnotherTenantsGenre(t *testing.T) {
+	env := newPublicDBEnv(t)
+	first, second := env.seedTwoTenants(t)
+	foreign := env.PG.SeedGenre(t, second.ID, testutil.GenreSeed{PublicID: "GENREFOREIGN", Name: "Foreign"})
+
+	for _, genre := range []string{foreign.PublicID, "GENRENOWHERE"} {
+		_, err := env.catalogClient().ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+			GenrePublicId: genre,
+			Tenant:        tenantContext(first),
+		}))
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("genre %q: error code = %v, want NotFound", genre, connect.CodeOf(err))
+		}
+	}
+}

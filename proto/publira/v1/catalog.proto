@@ -642,9 +642,11 @@ message RankedSeries {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 // There is no order field: a ranking has one order, the one it was computed
-// in. The token carries the period and the age rating it was built for,
-// because the same position names a different series in another ranking;
-// sending it with a different period or rating is invalid_argument.
+// in. The token carries the period, the age rating, and the genre it was
+// built for, because the same position names a different series in another
+// ranking; sending it with a different period, rating, or genre — a genre's
+// token with none, or the tenant-wide token with a genre, included — is
+// invalid_argument.
 // It also pins the snapshot the first page came from, so the rest of a
 // traversal keeps the positions of one ranking even when the batch writes a
 // new one in between. A token whose snapshot has since been dropped by the
@@ -670,6 +672,17 @@ message ListRankedSeriesRequest {
   // them, rather than an empty page. A rating the rule does not cover is as
   // public as the all-ages ranking.
   publira.types.v1.SeriesAgeRating age_rating = 6;
+  // Rank only this genre's series, named by the public ID ListPublishedGenres
+  // reports. Each genre is a leaderboard of its own, so a position and its
+  // previous_rank are both counted within the genre: a series can climb in its
+  // genre without moving in the tenant-wide ranking. Empty is the tenant-wide
+  // ranking. A public ID naming no genre of the tenant is not_found, for the
+  // reason ListPublishedSeriesRequest.genre_public_id is.
+  //
+  // A genre's ranking admits all-ages series alone, so naming a genre together
+  // with any other age_rating is invalid_argument rather than an empty chart
+  // that would read as a genre nobody has engaged with.
+  string genre_public_id = 7;
 }
 
 message ListRankedSeriesResponse {
@@ -860,12 +873,13 @@ service CatalogService {
   // member either way and is never shared between readers; a guest calls
   // ListRecommendedSeries instead, whose answer is cached and shared.
   rpc ListMyRecommendedSeries(ListMyRecommendedSeriesRequest) returns (ListMyRecommendedSeriesResponse) {}
-  // One page of the latest ranking snapshot for a period and an age rating, in
-  // the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
-  // empty list rather than an error: nothing has been computed, which is not
-  // a failure. A series unpublished since the snapshot was written drops out
-  // and leaves a gap in the positions, because a snapshot describes a past
-  // window rather than the catalogue as it stands now.
+  // One page of the latest ranking snapshot for a period, an age rating, and
+  // optionally a genre, in the positions that snapshot recorded. A tenant or
+  // a genre the batch has not ranked yet gets an empty list rather than an
+  // error: nothing has been computed, which is not a failure. A series
+  // unpublished — or taken out of the genre — since the snapshot was written
+  // drops out and leaves a gap in the positions, because a snapshot describes
+  // a past window rather than the catalogue as it stands now.
   rpc ListRankedSeries(ListRankedSeriesRequest) returns (ListRankedSeriesResponse) {}
   // The tenant's other published series, ordered by how much they share with
   // one series: each creator they have in common counts 3, the same label 2,

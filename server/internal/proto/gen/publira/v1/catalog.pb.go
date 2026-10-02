@@ -3576,9 +3576,11 @@ func (x *RankedSeries) GetPreviousRank() int32 {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 // There is no order field: a ranking has one order, the one it was computed
-// in. The token carries the period and the age rating it was built for,
-// because the same position names a different series in another ranking;
-// sending it with a different period or rating is invalid_argument.
+// in. The token carries the period, the age rating, and the genre it was
+// built for, because the same position names a different series in another
+// ranking; sending it with a different period, rating, or genre — a genre's
+// token with none, or the tenant-wide token with a genre, included — is
+// invalid_argument.
 // It also pins the snapshot the first page came from, so the rest of a
 // traversal keeps the positions of one ranking even when the batch writes a
 // new one in between. A token whose snapshot has since been dropped by the
@@ -3604,7 +3606,18 @@ type ListRankedSeriesRequest struct {
 	// them. Anyone else gets permission_denied, as a rated body is withheld from
 	// them, rather than an empty page. A rating the rule does not cover is as
 	// public as the all-ages ranking.
-	AgeRating     v1.SeriesAgeRating `protobuf:"varint,6,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
+	AgeRating v1.SeriesAgeRating `protobuf:"varint,6,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating" json:"age_rating,omitempty"`
+	// Rank only this genre's series, named by the public ID ListPublishedGenres
+	// reports. Each genre is a leaderboard of its own, so a position and its
+	// previous_rank are both counted within the genre: a series can climb in its
+	// genre without moving in the tenant-wide ranking. Empty is the tenant-wide
+	// ranking. A public ID naming no genre of the tenant is not_found, for the
+	// reason ListPublishedSeriesRequest.genre_public_id is.
+	//
+	// A genre's ranking admits all-ages series alone, so naming a genre together
+	// with any other age_rating is invalid_argument rather than an empty chart
+	// that would read as a genre nobody has engaged with.
+	GenrePublicId string `protobuf:"bytes,7,opt,name=genre_public_id,json=genrePublicId,proto3" json:"genre_public_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3679,6 +3692,13 @@ func (x *ListRankedSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 		return x.AgeRating
 	}
 	return v1.SeriesAgeRating(0)
+}
+
+func (x *ListRankedSeriesRequest) GetGenrePublicId() string {
+	if x != nil {
+		return x.GenrePublicId
+	}
+	return ""
 }
 
 type ListRankedSeriesResponse struct {
@@ -7503,7 +7523,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x04rank\x18\x01 \x01(\x05R\x04rank\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12(\n" +
 	"\rprevious_rank\x18\x03 \x01(\x05H\x00R\fpreviousRank\x88\x01\x01B\x10\n" +
-	"\x0e_previous_rank\"\xae\x02\n" +
+	"\x0e_previous_rank\"\xd6\x02\n" +
 	"\x17ListRankedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x121\n" +
 	"\x06period\x18\x02 \x01(\x0e2\x19.publira.v1.RankingPeriodR\x06period\x12\x14\n" +
@@ -7511,7 +7531,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12@\n" +
 	"\n" +
-	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\"\x82\x02\n" +
+	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12&\n" +
+	"\x0fgenre_public_id\x18\a \x01(\tR\rgenrePublicId\"\x82\x02\n" +
 	"\x18ListRankedSeriesResponse\x12=\n" +
 	"\rranked_series\x18\x01 \x03(\v2\x18.publira.v1.RankedSeriesR\frankedSeries\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +

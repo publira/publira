@@ -146,20 +146,21 @@ SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items,
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND id = $2
-    AND genre_id IS NULL
-    AND surface = $3::text
-    AND age_rating = $4::text
-    AND ranking_key = $5
-    AND entity_type = $6
+    AND genre_id IS NOT DISTINCT FROM $3::uuid
+    AND surface = $4::text
+    AND age_rating = $5::text
+    AND ranking_key = $6
+    AND entity_type = $7
 `
 
 type GetContentRankingSnapshotByIDParams struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	ID         uuid.UUID `json:"id"`
-	Surface    string    `json:"surface"`
-	AgeRating  string    `json:"age_rating"`
-	RankingKey string    `json:"ranking_key"`
-	EntityType string    `json:"entity_type"`
+	TenantID   uuid.UUID     `json:"tenant_id"`
+	ID         uuid.UUID     `json:"id"`
+	GenreID    uuid.NullUUID `json:"genre_id"`
+	Surface    string        `json:"surface"`
+	AgeRating  string        `json:"age_rating"`
+	RankingKey string        `json:"ranking_key"`
+	EntityType string        `json:"entity_type"`
 }
 
 // One snapshot named by a pagination token, refused unless it belongs to the
@@ -179,6 +180,7 @@ func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetCont
 	row := q.db.QueryRowContext(ctx, GetContentRankingSnapshotByID,
 		arg.TenantID,
 		arg.ID,
+		arg.GenreID,
 		arg.Surface,
 		arg.AgeRating,
 		arg.RankingKey,
@@ -1157,32 +1159,39 @@ const ListLatestContentRankingSnapshots = `-- name: ListLatestContentRankingSnap
 SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
-    AND genre_id IS NULL
-    AND surface = $2::text
-    AND age_rating = $3::text
-    AND ranking_key = $4
-    AND entity_type = $5
     AND (
-        $6::date IS NULL
-        OR period_start < $6::date
+        ($2::uuid IS NULL AND genre_id IS NULL)
+        OR genre_id = $2::uuid
+    )
+    AND surface = $3::text
+    AND age_rating = $4::text
+    AND ranking_key = $5
+    AND entity_type = $6
+    AND (
+        $7::date IS NULL
+        OR period_start < $7::date
     )
 ORDER BY period_start DESC, period_end DESC, computed_at DESC, id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListLatestContentRankingSnapshotsParams struct {
-	TenantID          uuid.UUID    `json:"tenant_id"`
-	Surface           string       `json:"surface"`
-	AgeRating         string       `json:"age_rating"`
-	RankingKey        string       `json:"ranking_key"`
-	EntityType        string       `json:"entity_type"`
-	BeforePeriodStart sql.NullTime `json:"before_period_start"`
-	Limit             int32        `json:"limit"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	GenreID           uuid.NullUUID `json:"genre_id"`
+	Surface           string        `json:"surface"`
+	AgeRating         string        `json:"age_rating"`
+	RankingKey        string        `json:"ranking_key"`
+	EntityType        string        `json:"entity_type"`
+	BeforePeriodStart sql.NullTime  `json:"before_period_start"`
+	Limit             int32         `json:"limit"`
 }
 
-// The newest computation of each period for one surface, age rating, and
-// ranking key, newest period first. A ranking screen takes two of them: the period to show, and the one
-// before it, which is where a position's previous rank comes from.
+// The newest computation of each period for one genre, surface, age rating,
+// and ranking key, newest period first. A ranking screen takes two of them:
+// the period to show, and the one before it, which is where a position's
+// previous rank comes from. A NULL genre_id is the tenant-wide ranking, so a
+// genre's chart and its movement markers never borrow a period from the
+// tenant-wide one or the other way round.
 //
 // DISTINCT ON is what makes those two different periods. algorithm_version is
 // part of the snapshot's unique key, so a bumped version files its
@@ -1203,11 +1212,15 @@ type ListLatestContentRankingSnapshotsParams struct {
 //
 // No index serves the order.
 // idx_content_ranking_snapshots_tenant_leaderboard_computed narrows the scan to
-// one tenant's surface, age rating, and ranking key, and what is left is the periods
-// purge-content-rankings has not yet dropped — a sort over days, not over rows.
+// one tenant's genre, surface, age rating, and ranking key, and what is left is
+// the periods purge-content-rankings has not yet dropped — a sort over days, not
+// over rows. The genre predicate is spelled as two branches rather than IS NOT
+// DISTINCT FROM, which no btree index serves; the planner drops the branch the
+// bound value rules out.
 func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error) {
 	rows, err := q.db.QueryContext(ctx, ListLatestContentRankingSnapshots,
 		arg.TenantID,
+		arg.GenreID,
 		arg.Surface,
 		arg.AgeRating,
 		arg.RankingKey,
@@ -1253,7 +1266,7 @@ const ListRankedSeriesIDs = `-- name: ListRankedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($8::jsonb) AS item
+    FROM jsonb_array_elements($9::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
@@ -1273,29 +1286,39 @@ WHERE s.is_published = true
     )
     AND (
         $4::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_genres sg
+            WHERE sg.series_id = s.id
+                AND sg.genre_id = $4::uuid
+        )
+    )
+    AND (
+        $5::uuid IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (r.rank, r.entity_id) >= (
-                $6::int,
-                $4::uuid
+                $7::int,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (r.rank, r.entity_id) > (
-                $6::int,
-                $4::uuid
+                $7::int,
+                $5::uuid
             )
         )
     )
 ORDER BY r.rank ASC, r.entity_id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListRankedSeriesIDsParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
 	AgeRating       string          `json:"age_rating"`
 	Surface         string          `json:"surface"`
+	GenreID         uuid.NullUUID   `json:"genre_id"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
 	CursorRank      sql.NullInt32   `json:"cursor_rank"`
@@ -1310,15 +1333,17 @@ type ListRankedSeriesIDsRow struct {
 
 // The keyset scan behind the ranking screen: one snapshot's items, in the
 // positions it recorded, restricted to the series that are still published on
-// the surface and still carry the age rating the snapshot was cut for.
+// the surface, still carry the age rating the snapshot was cut for, and, for a
+// genre's snapshot, still belong to that genre.
 //
 // Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
 // than from the catalogue, so an unpublished series does not move the ones
 // behind it: it drops out and leaves its position empty. The ranks are the
 // snapshot's own and are never renumbered here. The snapshot was cut for the
-// surface and the rating, so only a series whose availability or rating
-// changed since the batch ran leaves such a gap. A series without a listing is
-// all-ages, as it is everywhere else.
+// surface, the rating, and the genre, so only a series whose availability,
+// rating, or genres changed since the batch ran leaves such a gap. A series
+// without a listing is all-ages, as it is everywhere else. A NULL genre_id is
+// the tenant-wide ranking, which asks for no genre.
 //
 // Duplicate entity ids are folded with min() exactly as the recommendation
 // scan folds them, which is also what makes entity_id unique in the result.
@@ -1332,12 +1357,14 @@ type ListRankedSeriesIDsRow struct {
 //
 // No index serves this: the sort key comes from the snapshot's JSONB. The scan
 // is bounded by one snapshot's items (50 by default), each joined to one series
-// row by primary key.
+// row by primary key, and for a genre to one series_genres row by
+// series_genres_pkey.
 func (q *Queries) ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesIDsParams) ([]ListRankedSeriesIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRankedSeriesIDs,
 		arg.TenantID,
 		arg.AgeRating,
 		arg.Surface,
+		arg.GenreID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorRank,
@@ -1369,7 +1396,7 @@ const ListRankedSeriesIDsReversed = `-- name: ListRankedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($8::jsonb) AS item
+    FROM jsonb_array_elements($9::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
@@ -1389,29 +1416,39 @@ WHERE s.is_published = true
     )
     AND (
         $4::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_genres sg
+            WHERE sg.series_id = s.id
+                AND sg.genre_id = $4::uuid
+        )
+    )
+    AND (
+        $5::uuid IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (r.rank, r.entity_id) <= (
-                $6::int,
-                $4::uuid
+                $7::int,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (r.rank, r.entity_id) < (
-                $6::int,
-                $4::uuid
+                $7::int,
+                $5::uuid
             )
         )
     )
 ORDER BY r.rank DESC, r.entity_id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListRankedSeriesIDsReversedParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
 	AgeRating       string          `json:"age_rating"`
 	Surface         string          `json:"surface"`
+	GenreID         uuid.NullUUID   `json:"genre_id"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
 	CursorRank      sql.NullInt32   `json:"cursor_rank"`
@@ -1431,6 +1468,7 @@ func (q *Queries) ListRankedSeriesIDsReversed(ctx context.Context, arg ListRanke
 		arg.TenantID,
 		arg.AgeRating,
 		arg.Surface,
+		arg.GenreID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorRank,

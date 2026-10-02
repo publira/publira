@@ -242,12 +242,13 @@ type CatalogServiceClient interface {
 	// member either way and is never shared between readers; a guest calls
 	// ListRecommendedSeries instead, whose answer is cached and shared.
 	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
-	// One page of the latest ranking snapshot for a period and an age rating, in
-	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
-	// empty list rather than an error: nothing has been computed, which is not
-	// a failure. A series unpublished since the snapshot was written drops out
-	// and leaves a gap in the positions, because a snapshot describes a past
-	// window rather than the catalogue as it stands now.
+	// One page of the latest ranking snapshot for a period, an age rating, and
+	// optionally a genre, in the positions that snapshot recorded. A tenant or
+	// a genre the batch has not ranked yet gets an empty list rather than an
+	// error: nothing has been computed, which is not a failure. A series
+	// unpublished — or taken out of the genre — since the snapshot was written
+	// drops out and leaves a gap in the positions, because a snapshot describes
+	// a past window rather than the catalogue as it stands now.
 	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
 	// The tenant's other published series, ordered by how much they share with
 	// one series: each creator they have in common counts 3, the same label 2,
@@ -585,12 +586,13 @@ type CatalogServiceHandler interface {
 	// member either way and is never shared between readers; a guest calls
 	// ListRecommendedSeries instead, whose answer is cached and shared.
 	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
-	// One page of the latest ranking snapshot for a period and an age rating, in
-	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
-	// empty list rather than an error: nothing has been computed, which is not
-	// a failure. A series unpublished since the snapshot was written drops out
-	// and leaves a gap in the positions, because a snapshot describes a past
-	// window rather than the catalogue as it stands now.
+	// One page of the latest ranking snapshot for a period, an age rating, and
+	// optionally a genre, in the positions that snapshot recorded. A tenant or
+	// a genre the batch has not ranked yet gets an empty list rather than an
+	// error: nothing has been computed, which is not a failure. A series
+	// unpublished — or taken out of the genre — since the snapshot was written
+	// drops out and leaves a gap in the positions, because a snapshot describes
+	// a past window rather than the catalogue as it stands now.
 	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
 	// The tenant's other published series, ordered by how much they share with
 	// one series: each creator they have in common counts 3, the same label 2,
