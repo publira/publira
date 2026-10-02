@@ -687,7 +687,8 @@ class ConnectFixtureServer {
   String? iosAppBundleIdentifier;
 
   /// The ID tokens a provider has issued, keyed by the token itself, which
-  /// `LoginWithIdToken` and `DeleteMe` accept for the nonce they carry.
+  /// `LoginWithIdToken`, `RequestEmailChange`, and `DeleteMe` accept for the
+  /// nonce they carry.
   final idTokens = <String, FixtureIdToken>{};
 
   /// The provider accounts linked to the member, keyed by the provider's
@@ -2666,9 +2667,10 @@ class ConnectFixtureServer {
     });
   }
 
-  /// `RequestEmailChange` as the API answers it: the current address and
-  /// password have to be the member's, and an address another account holds
-  /// is refused as `already_exists`.
+  /// `RequestEmailChange` as the API answers it: the current address has to
+  /// be the member's and confirmed with their password or a fresh sign-in to
+  /// a linked provider, and an address another account holds is refused as
+  /// `already_exists`.
   Future<void> _writeRequestEmailChange(
     HttpRequest request,
     Map<String, Object?> body,
@@ -2678,10 +2680,15 @@ class ConnectFixtureServer {
     }
     final current = _trimmed(body['currentEmail']);
     final next = _trimmed(body['newEmail']);
-    if (current != memberEmail ||
-        next.isEmpty ||
-        next == current ||
-        _trimmed(body['currentPassword']) != memberCurrentPassword) {
+    if (current != memberEmail || next.isEmpty || next == current) {
+      await _writeInvalidArgument(request, 'invalid email change');
+      return;
+    }
+    if (_trimmed(body['provider']).isNotEmpty) {
+      if (!await _writeUnlessConfirmedWithIdentity(request, body)) {
+        return;
+      }
+    } else if (_trimmed(body['currentPassword']) != memberCurrentPassword) {
       await _writeInvalidArgument(request, 'invalid email change');
       return;
     }
@@ -2741,15 +2748,8 @@ class ConnectFixtureServer {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final provider = _trimmed(body['provider']);
-    if (provider.isNotEmpty) {
-      final token = idTokens[_trimmed(body['idToken'])];
-      final linked = memberIdentities[provider];
-      if (token == null ||
-          linked == null ||
-          token.subject != linked.subject ||
-          token.nonce != _trimmed(body['nonce'])) {
-        await _writeInvalidArgument(request, 'the ID token is not the account');
+    if (_trimmed(body['provider']).isNotEmpty) {
+      if (!await _writeUnlessConfirmedWithIdentity(request, body)) {
         return;
       }
     } else if (_trimmed(body['password']) != memberCurrentPassword) {
@@ -2759,6 +2759,31 @@ class ConnectFixtureServer {
     memberDeleted = true;
     activeAccessToken = null;
     await _write(request, HttpStatus.ok, const <String, Object?>{});
+  }
+
+  /// Checks the fresh sign-in an account without a password confirms a step
+  /// with, as the API does: `unauthenticated` for an ID token no provider
+  /// issued, the same answer as for a rejected session, and
+  /// `invalid_argument` for a token of an account not linked to the member.
+  /// Reports whether the request may go on.
+  Future<bool> _writeUnlessConfirmedWithIdentity(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final token = idTokens[_trimmed(body['idToken'])];
+    if (token == null || token.nonce != _trimmed(body['nonce'])) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid ID token',
+      });
+      return false;
+    }
+    final linked = memberIdentities[_trimmed(body['provider'])];
+    if (linked == null || token.subject != linked.subject) {
+      await _writeInvalidArgument(request, 'the ID token is not the account');
+      return false;
+    }
+    return true;
   }
 
   /// Answers `unauthenticated` for a request without the active token, and

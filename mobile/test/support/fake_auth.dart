@@ -170,7 +170,8 @@ class FakeAuthRepository implements AuthRepository {
   /// The token [changePassword] hands back.
   static const changedAccessToken = 'changed-access-token';
 
-  /// What [requestEmailChange] has been asked for, in order.
+  /// What [requestEmailChange] and [requestEmailChangeWithProvider] have been
+  /// asked for, in order.
   final emailChanges = <EmailChangeCall>[];
 
   /// What [confirmEmailChange] answers for each token it accepts. Anything
@@ -202,6 +203,7 @@ class FakeAuthRepository implements AuthRepository {
   final providerSignInFailures = <AuthFailure>[];
 
   /// What [readLinkedIdentities] answers, and [unlinkIdentity] removes from.
+  /// [requestEmailChangeWithProvider] accepts a sign-in to any of them.
   List<LinkedIdentity> identities = const [];
   bool hasPassword = true;
 
@@ -464,6 +466,30 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> requestEmailChangeWithProvider(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required ProviderCredential credential,
+  }) async {
+    emailChanges.add(
+      EmailChangeCall(
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        credential: credential,
+      ),
+    );
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (currentEmail != email ||
+        !identities.any((linked) => linked.provider == credential.provider)) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+  }
+
+  @override
   Future<EmailChangeProgress> confirmEmailChange(String token) async {
     final failure = confirmEmailChangeFailure;
     if (failure != null) {
@@ -574,17 +600,22 @@ class FakeProviderSignIn implements ProviderSignIn {
   );
 }
 
-/// One call to [FakeAuthRepository.requestEmailChange].
+/// One call to [FakeAuthRepository.requestEmailChange] or
+/// [FakeAuthRepository.requestEmailChangeWithProvider].
 class EmailChangeCall {
   const EmailChangeCall({
     required this.currentEmail,
     required this.newEmail,
-    required this.currentPassword,
+    this.currentPassword = '',
+    this.credential,
   });
 
   final String currentEmail;
   final String newEmail;
   final String currentPassword;
+
+  /// The fresh sign-in an account without a password confirmed with.
+  final ProviderCredential? credential;
 }
 
 /// One call to [FakeAuthRepository.signUp], so a test can assert on what the

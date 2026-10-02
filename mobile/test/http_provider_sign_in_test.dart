@@ -258,11 +258,88 @@ void main() {
       ),
       failsWith(AuthFailureKind.invalidInput),
     );
+    // The API answers a token it cannot verify as it answers an ended
+    // session; GetMe still accepting the session makes it the token's fault.
+    await expectLater(
+      auth.deleteAccountWithProvider(
+        member,
+        const ProviderCredential(
+          provider: IdentityProvider.google,
+          idToken: 'forged-token',
+          nonce: 'google-nonce-1',
+        ),
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+    expect(server.memberDeleted, isFalse);
     await auth.deleteAccountWithProvider(
       member,
       issueGoogleToken(email: 'member@gmail.example'),
     );
 
     expect(server.memberDeleted, isTrue);
+  });
+
+  group('requestEmailChangeWithProvider', () {
+    setUp(() {
+      server
+        ..memberHasPassword = false
+        ..memberIdentities['IDENTITY_PROVIDER_GOOGLE'] = const FixtureIdToken(
+          provider: 'IDENTITY_PROVIDER_GOOGLE',
+          subject: 'google-subject-1',
+          email: 'member@gmail.example',
+          nonce: '',
+        );
+    });
+
+    Future<void> requestWith(ProviderCredential credential) =>
+        auth.requestEmailChangeWithProvider(
+          member,
+          currentEmail: ConnectFixtureServer.memberEmail,
+          newEmail: 'moved@example.com',
+          credential: credential,
+        );
+
+    test('confirms with a token of the linked account', () async {
+      await requestWith(issueGoogleToken(email: 'member@gmail.example'));
+
+      expect(server.requestedEmailChanges, ['moved@example.com']);
+    });
+
+    test('maps a token of another account to invalidInput', () async {
+      await expectLater(
+        requestWith(
+          issueGoogleToken(
+            email: 'someone-else@example.com',
+            subject: 'google-subject-2',
+          ),
+        ),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+      expect(server.requestedEmailChanges, isEmpty);
+    });
+
+    test('maps a token the API cannot verify to invalidInput while the '
+        'session is still accepted', () async {
+      await expectLater(
+        requestWith(
+          const ProviderCredential(
+            provider: IdentityProvider.google,
+            idToken: 'forged-token',
+            nonce: 'google-nonce-1',
+          ),
+        ),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+    });
+
+    test('maps a session the API no longer accepts to sessionExpired', () {
+      server.activeAccessToken = 'another-session';
+
+      expect(
+        requestWith(issueGoogleToken(email: 'member@gmail.example')),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+    });
   });
 }

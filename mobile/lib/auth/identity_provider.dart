@@ -128,8 +128,9 @@ class LinkedIdentities {
 
   final List<LinkedIdentity> identities;
 
-  /// False for an account a provider sign-in created, which confirms its
-  /// deletion with a fresh sign-in and keeps its last linked provider.
+  /// False for an account a provider sign-in created, which confirms an email
+  /// change and its deletion with a fresh sign-in, sets a password through
+  /// the password reset, and keeps its last linked provider.
   final bool hasPassword;
 
   /// Whether [provider] is linked.
