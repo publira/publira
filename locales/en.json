@@ -4010,6 +4010,7 @@
         "count_single": "{$count} reader reacted",
         "failed": "Could not record the reaction. Try again.",
         "press": "React",
+        "reader_credited": "You cannot react to an episode you are credited on as its author.",
         "score": "React ({$score}/5)",
         "sign_in": "Sign in to react",
         "submitting": "Reacting…"
@@ -4019,6 +4020,7 @@
         "body_unnamed": "These pages are for your personal use only.",
         "dismiss": "Close"
       },
+      "creator_access": "Open to you as its author",
       "end": {
         "up_next": "Up next",
         "up_to_date_description": "“{$title}” has no episode after this one yet.",

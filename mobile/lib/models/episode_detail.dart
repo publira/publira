@@ -16,7 +16,8 @@ enum EpisodeAccess {
   /// The episode is paid and this reader holds no purchase or ticket.
   locked,
 
-  /// The episode is paid and this reader holds a purchase or an active ticket.
+  /// The episode is paid and this reader holds a purchase or an active ticket,
+  /// or is credited on it. Which of those is [EpisodeEntitlementSource].
   entitled,
 
   /// The tenant makes a reader prove an age for this series' rating and this
@@ -36,6 +37,40 @@ enum EpisodeAccess {
       'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
       'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
       _ => EpisodeAccess.unknown,
+    };
+  }
+}
+
+/// Why an [EpisodeAccess.entitled] reader may open the body, as
+/// `GetEpisodeDetail` reports it beside the access state.
+///
+/// A purchase and the reader's own credit are both [EpisodeAccess.entitled],
+/// so this is what tells the author apart from a buyer.
+enum EpisodeEntitlementSource {
+  /// A purchase neither refunded nor past its reading period.
+  purchase,
+
+  /// An access ticket neither revoked nor expired.
+  accessTicket,
+
+  /// The reader's account is linked to a creator the episode credits. The
+  /// server reports it over a purchase or a ticket the same reader also holds.
+  creator,
+
+  /// No source: the body is not entitled, or the server named one this build
+  /// does not know.
+  unspecified;
+
+  /// Reads `publira.v1.EpisodeEntitlementSource` as protojson writes it: by
+  /// name, and omitted entirely when it is the zero value.
+  static EpisodeEntitlementSource fromWire(Object? raw) {
+    return switch (raw) {
+      'EPISODE_ENTITLEMENT_SOURCE_PURCHASE' =>
+        EpisodeEntitlementSource.purchase,
+      'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET' =>
+        EpisodeEntitlementSource.accessTicket,
+      'EPISODE_ENTITLEMENT_SOURCE_CREATOR' => EpisodeEntitlementSource.creator,
+      _ => EpisodeEntitlementSource.unspecified,
     };
   }
 }
@@ -109,6 +144,7 @@ class EpisodeDetail {
     required this.seriesTitle,
     required this.access,
     required this.images,
+    this.entitlementSource = EpisodeEntitlementSource.unspecified,
     this.previousEpisode,
     this.nextEpisode,
     this.imageRequestHeaders = const {},
@@ -125,6 +161,10 @@ class EpisodeDetail {
 
   /// Body pages in `displayOrder`. Empty while access is [EpisodeAccess.locked].
   final List<EpisodeImageItem> images;
+
+  /// Why the reader may open the body, set only while [access] is
+  /// [EpisodeAccess.entitled].
+  final EpisodeEntitlementSource entitlementSource;
 
   /// The published episodes either side of this one in the same series, or
   /// `null` at the ends of it. A draft or scheduled episode is never one of
@@ -163,6 +203,7 @@ class EpisodeReaction {
     required this.score,
     required this.ratingCount,
     required this.allowsMultiplePresses,
+    this.readerCredited = false,
   });
 
   /// Zero before this reader reacts, otherwise their score from one to five.
@@ -171,4 +212,9 @@ class EpisodeReaction {
 
   /// Whether another press raises the score instead of being a no-op.
   final bool allowsMultiplePresses;
+
+  /// Whether the reader's account is linked to a creator the episode credits,
+  /// free or not. The API refuses such a reader's rating, so the control is
+  /// not offered to them.
+  final bool readerCredited;
 }

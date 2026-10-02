@@ -458,6 +458,8 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
     'access': detail.access.name,
+    if (detail.entitlementSource != EpisodeEntitlementSource.unspecified)
+      'entitlementSource': detail.entitlementSource.name,
     if (detail.ageRating != null) 'ageRating': detail.ageRating!.name,
     'episode': _episodeToJson(detail.episode),
     'readingDirection': detail.readingDirection.name,
@@ -505,6 +507,9 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       seriesId: seriesId,
       seriesTitle: _string(decoded['seriesTitle']),
       access: access,
+      entitlementSource: _entitlementSourceFromName(
+        _string(decoded['entitlementSource']),
+      ),
       images: [
         for (final item in rawImages is List ? rawImages : const [])
           ?_imageFromJson(item),
@@ -602,6 +607,18 @@ EpisodeAccess _accessFromName(String name) {
     }
   }
   return EpisodeAccess.unknown;
+}
+
+/// A file written before the source was saved names none, which is read as
+/// [EpisodeEntitlementSource.unspecified]: the body opens as it did, and only
+/// the author's note is missing until the episode is read online again.
+EpisodeEntitlementSource _entitlementSourceFromName(String name) {
+  for (final source in EpisodeEntitlementSource.values) {
+    if (source.name == name) {
+      return source;
+    }
+  }
+  return EpisodeEntitlementSource.unspecified;
 }
 
 String _string(Object? value) => value is String ? value : '';

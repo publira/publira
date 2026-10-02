@@ -783,6 +783,13 @@ class ConnectFixtureServer {
   /// shape the client is not expecting.
   Object? tenantResponse;
 
+  /// Replaces the whole `GetMyEpisodeRating` body.
+  Object? episodeRatingResponse;
+
+  /// The error `RateEpisode` answers with in place of a score, as the status
+  /// and the Connect error body.
+  ({int status, Map<String, Object?> body})? rateEpisodeError;
+
   /// The status `RecordContentView` answers with.
   int contentViewStatus = HttpStatus.ok;
 
@@ -1469,13 +1476,21 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/RateEpisode') && rateEpisodeError != null) {
+      final error = rateEpisodeError!;
+      await _write(request, error.status, error.body);
+      return;
+    }
+
     // Both rating RPCs answer with the reader's score, which is all a test
-    // reads back from them.
+    // reads back from them unless it replaces the answer.
     if (path.endsWith('/GetMyEpisodeRating') || path.endsWith('/RateEpisode')) {
-      await _write(request, HttpStatus.ok, const {
-        'score': 1,
-        'ratingCount': '1',
-      });
+      await _write(
+        request,
+        HttpStatus.ok,
+        (path.endsWith('/GetMyEpisodeRating') ? episodeRatingResponse : null) ??
+            const {'score': 1, 'ratingCount': '1'},
+      );
       return;
     }
 
@@ -2430,6 +2445,28 @@ class ConnectFixtureServer {
 
   /// A Connect `google.rpc.BadRequest` detail naming [field], as connect-go
   /// writes one: the message in protobuf binary, base64 without padding.
+  /// A `google.rpc.ErrorInfo` detail naming [reason] under [domain], encoded
+  /// the way connect-go puts it in an error body.
+  static Map<String, Object?> errorInfoDetail(
+    String reason, {
+    String domain = 'publira',
+  }) {
+    final reasonBytes = utf8.encode(reason);
+    final domainBytes = utf8.encode(domain);
+    final message = [
+      0x0a,
+      reasonBytes.length,
+      ...reasonBytes,
+      0x12,
+      domainBytes.length,
+      ...domainBytes,
+    ];
+    return {
+      'type': 'google.rpc.ErrorInfo',
+      'value': base64.encode(message).replaceAll('=', ''),
+    };
+  }
+
   static Map<String, Object?> badRequestDetail(String field) {
     final name = utf8.encode(field);
     final violation = [0x0a, name.length, ...name];

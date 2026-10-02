@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -13,6 +15,11 @@ import 'package:publira/typography/autospaced_text.dart';
 ///
 /// Its private state is read only for a signed-in reader. Guests still see the
 /// public headcount carried by the episode detail and are sent to sign in.
+///
+/// The API refuses a rating from a reader credited on the episode, so the
+/// author is not offered a press that would end in that refusal: the control
+/// renders nothing once their state says so. It holds the space below it for
+/// the same reason, so a withheld control leaves no gap where it would be.
 class EpisodeReactionControl extends StatefulWidget {
   const EpisodeReactionControl({super.key, required this.episode});
 
@@ -128,11 +135,21 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     final reaction = _reaction;
+    if (signedIn && reaction != null && reaction.readerCredited) {
+      return const SizedBox.shrink();
+    }
     final ratingCount = reaction?.ratingCount ?? widget.episode.ratingCount;
     final atMaximum =
         reaction != null &&
         reaction.score > 0 &&
         (!reaction.allowsMultiplePresses || reaction.score >= 5);
+    // A press refused because the reader is credited on the episode — linked
+    // after the control was drawn — is refused again on every press, and says
+    // so rather than asking for another try.
+    final error = _error;
+    final refusedAsCredited =
+        error is CatalogFailure &&
+        error.reasons.contains(readerCreditedOnEpisodeReason);
 
     return Column(
       key: const ValueKey('episode-reaction'),
@@ -148,7 +165,9 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         else
           FilledButton.icon(
             key: const ValueKey('episode-reaction-press'),
-            onPressed: _loading || _submitting || atMaximum ? null : _react,
+            onPressed: _loading || _submitting || atMaximum || refusedAsCredited
+                ? null
+                : _react,
             icon: Icon(
               reaction?.score == 0 || reaction == null
                   ? Icons.favorite_border
@@ -177,15 +196,18 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        if (_error != null) ...[
+        if (error != null) ...[
           const SizedBox(height: 8),
           AutospacedText(
             key: const ValueKey('episode-reaction-error'),
-            messages.viewerReactionFailed,
+            refusedAsCredited
+                ? messages.viewerReactionReaderCredited
+                : messages.viewerReactionFailed,
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
+        const SizedBox(height: 24),
       ],
     );
   }

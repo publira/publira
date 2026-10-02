@@ -38,6 +38,8 @@ final _pageUrl = Uri.parse(
 
 EpisodeDetail _detail({
   EpisodeAccess access = EpisodeAccess.free,
+  EpisodeEntitlementSource entitlementSource =
+      EpisodeEntitlementSource.unspecified,
   Map<String, String> headers = const {'authorization': 'Bearer reader-token'},
   ReadingDirection readingDirection = ReadingDirection.rtl,
   int spreadStartIndex = 1,
@@ -52,6 +54,7 @@ EpisodeDetail _detail({
     seriesId: _seriesId,
     seriesTitle: 'Seed Series 001',
     access: access,
+    entitlementSource: entitlementSource,
     nextEpisode: const EpisodeNeighbor(
       id: 'SeedEPSDAAA2',
       title: 'Seed Episode 001-02',
@@ -453,6 +456,7 @@ void main() {
       origin.episodes = {
         episodeKey(_seriesId, _episodeId): _detail(
           access: EpisodeAccess.entitled,
+          entitlementSource: EpisodeEntitlementSource.creator,
         ),
       };
       await build().getEpisode(_seriesId, _episodeId);
@@ -461,6 +465,8 @@ void main() {
       final detail = await build().getEpisode(_seriesId, _episodeId);
 
       expect(detail?.access, EpisodeAccess.entitled);
+      // The author is still told why the body opens without a network.
+      expect(detail?.entitlementSource, EpisodeEntitlementSource.creator);
     },
   );
 

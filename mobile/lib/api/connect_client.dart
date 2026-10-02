@@ -129,6 +129,7 @@ class ConnectClient {
           ? 'HTTP ${response.statusCode}'
           : responseMessage,
       fieldViolations: fieldViolationsOf(decoded['details']),
+      reasons: errorReasonsOf(decoded['details']),
     );
   }
 

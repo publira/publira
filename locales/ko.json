@@ -4010,6 +4010,7 @@
         "count_single": "{$count}명이 반응했습니다",
         "failed": "반응을 기록하지 못했습니다. 다시 시도해 주세요.",
         "press": "반응하기",
+        "reader_credited": "작가로 등록된 에피소드에는 반응할 수 없습니다.",
         "score": "반응하기 ({$score}/5)",
         "sign_in": "반응하려면 로그인",
         "submitting": "반응하는 중…"
@@ -4019,6 +4020,7 @@
         "body_unnamed": "이 페이지는 개인적인 용도로만 이용해 주세요.",
         "dismiss": "닫기"
       },
+      "creator_access": "작가로서 열람할 수 있습니다",
       "end": {
         "up_next": "다음 에피소드",
         "up_to_date_description": "“{$title}”에는 아직 다음 에피소드가 없습니다",

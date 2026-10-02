@@ -6,6 +6,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -960,6 +961,128 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('0 readers reacted'), findsOneWidget);
+  });
+
+  group('the reader\'s own episode', () {
+    final creatorAccess = find.byKey(
+      const ValueKey('episode-end-creator-access'),
+    );
+    final reactionControl = find.byKey(const ValueKey('episode-reaction'));
+
+    /// The reaction state the API answers for [episodeId].
+    void react({required bool readerCredited}) {
+      catalog.reactions = {
+        fixtureInternalId(episodeId): EpisodeReaction(
+          score: 0,
+          ratingCount: 2,
+          allowsMultiplePresses: false,
+          readerCredited: readerCredited,
+        ),
+      };
+    }
+
+    testWidgets('a linked creator is told the episode is open as its author, '
+        'and is not offered the reaction', (tester) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.creator,
+      );
+      react(readerCredited: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(creatorAccess, findsOneWidget);
+      expect(find.text('Open to you as its author'), findsOneWidget);
+      expect(reactionControl, findsNothing);
+      expect(
+        find.byKey(const ValueKey('episode-end-back-to-series')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a reader who bought the episode sees it as bought, '
+        'and is offered the reaction', (tester) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.purchase,
+      );
+      react(readerCredited: false);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(creatorAccess, findsNothing);
+      expect(
+        find.byKey(const ValueKey('episode-reaction-press')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a linked creator is not offered the reaction on a free '
+        'episode either', (tester) async {
+      // A free body carries no entitlement source, so the reaction state is
+      // what says whose episode it is.
+      react(readerCredited: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(reactionControl, findsNothing);
+      expect(creatorAccess, findsNothing);
+    });
+
+    testWidgets('a press refused because the reader is its author says so', (
+      tester,
+    ) async {
+      // Linked after the control was drawn: the state read before the link
+      // still offers the press, and the API refuses it.
+      react(readerCredited: false);
+      catalog.pressError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+        refused: true,
+        reasons: [readerCreditedOnEpisodeReason],
+      );
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      final press = find.byKey(const ValueKey('episode-reaction-press'));
+      tester.widget<FilledButton>(press).onPressed!.call();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'You cannot react to an episode you are credited on as its author.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Could not record the reaction. Try again.'),
+        findsNothing,
+      );
+      expect(tester.widget<FilledButton>(press).onPressed, isNull);
+    });
+
+    testWidgets('a press refused for any other reason asks for another try', (
+      tester,
+    ) async {
+      react(readerCredited: false);
+      catalog.pressError = const CatalogFailure(CatalogFailureKind.unexpected);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      final press = find.byKey(const ValueKey('episode-reaction-press'));
+      tester.widget<FilledButton>(press).onPressed!.call();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Could not record the reaction. Try again.'),
+        findsOneWidget,
+      );
+      expect(tester.widget<FilledButton>(press).onPressed, isNotNull);
+    });
   });
 
   testWidgets('a tenant that takes no comments offers none at the end', (

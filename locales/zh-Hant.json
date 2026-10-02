@@ -4010,6 +4010,7 @@
         "count_single": "{$count}位讀者已回應",
         "failed": "無法記錄回應。請再試一次。",
         "press": "回應",
+        "reader_credited": "您無法回應自己作為作者的章節。",
         "score": "回應 ({$score}/5)",
         "sign_in": "登入後即可回應",
         "submitting": "正在回應…"
@@ -4019,6 +4020,7 @@
         "body_unnamed": "本頁面僅限個人使用。",
         "dismiss": "關閉"
       },
+      "creator_access": "您作為作者可以閱讀本章",
       "end": {
         "up_next": "接下來",
         "up_to_date_description": "《{$title}》還沒有下一章。",
