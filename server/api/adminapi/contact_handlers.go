@@ -26,11 +26,14 @@ const (
 	defaultContactMessageListLimit = int32(20)
 	maxContactMessageListLimit     = int32(100)
 
-	// The accepted values of the list filter. They are the two sides of
-	// handled_at rather than a stored column, because whether a message has been
-	// dealt with is the time it was dealt with.
-	contactMessageStatusUnhandled = "unhandled"
-	contactMessageStatusHandled   = "handled"
+	// Where a message stands, which is both ContactMessage.status and the
+	// accepted values of the list filter. They are derived from handled_at and
+	// assigned_to rather than stored, because whether a message has been dealt
+	// with is the time it was dealt with and whether somebody is on it is who
+	// that is: a column of its own could only drift from the two.
+	contactMessageStatusUnhandled  = "unhandled"
+	contactMessageStatusInProgress = "in_progress"
+	contactMessageStatusHandled    = "handled"
 
 	// The length contact_messages_staff_note_check enforces, in characters as
 	// PostgreSQL counts them.
@@ -61,16 +64,35 @@ func contactMessageRowsFromAsc(rows []dbmodels.ListContactMessagesByCreatedAtAsc
 	return mapped
 }
 
-// normalizeContactMessageStatusFilter accepts the two states and nothing else.
-// An unrecognised filter is rejected rather than ignored: silently listing both
-// would answer a question the caller did not ask, and staff reading what they
-// believe is their queue would see messages somebody has already answered.
+// contactMessageStatus derives where a message stands, by the same rule the
+// list queries filter on.
+//
+// Handled wins over assigned: a message keeps its assignee once it is dealt
+// with, and handled_by, not the assignee, records who dealt with it. Putting
+// the message back clears handled_at alone, so it returns to in_progress for as
+// long as it has an assignee.
+func contactMessageStatus(row contactMessageRow) string {
+	switch {
+	case row.HandledAt.Valid:
+		return contactMessageStatusHandled
+	case row.AssignedTo.Valid:
+		return contactMessageStatusInProgress
+	default:
+		return contactMessageStatusUnhandled
+	}
+}
+
+// normalizeContactMessageStatusFilter accepts the three states and nothing else.
+// An unrecognised filter is rejected rather than ignored: silently listing
+// every message would answer a question the caller did not ask, and staff
+// reading what they believe is their queue would see messages somebody has
+// already answered.
 func normalizeContactMessageStatusFilter(raw string) (sql.NullString, error) {
 	status := strings.TrimSpace(raw)
 	switch status {
 	case "":
 		return sql.NullString{}, nil
-	case contactMessageStatusUnhandled, contactMessageStatusHandled:
+	case contactMessageStatusUnhandled, contactMessageStatusInProgress, contactMessageStatusHandled:
 		return sql.NullString{String: status, Valid: true}, nil
 	default:
 		return sql.NullString{}, rpcerrors.NewFieldViolationError(
@@ -90,6 +112,7 @@ func contactMessageToProto(row contactMessageRow) *publiraadminv1.ContactMessage
 		Body:         row.Body,
 		CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
 		SenderName:   row.SenderName.String,
+		Status:       contactMessageStatus(row),
 	}
 	if row.HandledAt.Valid {
 		message.HandledAt = row.HandledAt.Time.UTC().Format(time.RFC3339)

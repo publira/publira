@@ -10,7 +10,8 @@
 --     -> contact_messages_tenant_public_id_key
 --   ListContactMessagesByCreatedAt*
 --     -> idx_contact_messages_tenant_created_at with no status filter,
---        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
+--        idx_contact_messages_tenant_unhandled_created_at for 'unhandled' and
+--        'in_progress', filtering on assigned_to,
 --        idx_contact_messages_tenant_handled_created_at for 'handled'
 --   SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
 --   SetContactMessageStaffNoteByIDForTenant
@@ -76,10 +77,16 @@ WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND m.public_id = sqlc.arg('public_id');
 
 -- name: ListContactMessagesByCreatedAtDesc :many
--- The inbox, newest first. The status filter is the presence of handled_at
--- rather than a column of its own, so the two partial indexes answer it
--- directly: 'unhandled' is the queue staff work from and 'handled' the history
--- behind it.
+-- The inbox, newest first. The status filter is derived from handled_at and
+-- assigned_to rather than read from a column of its own, the same way the
+-- handler derives ContactMessage.status: 'unhandled' and 'in_progress' split
+-- the queue staff work from by whether anybody owns a message, and 'handled'
+-- is the history behind it, whoever owned it.
+--
+-- The two halves of the queue share the partial index on handled_at IS NULL
+-- rather than having one each: the queue shrinks to nothing as staff work it,
+-- so filtering it on assigned_to costs little, while the history is what keeps
+-- growing.
 --
 -- cursor rules: proto/README.md.
 SELECT m.*,
@@ -95,7 +102,16 @@ FROM contact_messages m
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('status')::text IS NULL
-        OR (sqlc.narg('status')::text = 'unhandled' AND m.handled_at IS NULL)
+        OR (
+            sqlc.narg('status')::text = 'unhandled'
+            AND m.handled_at IS NULL
+            AND m.assigned_to IS NULL
+        )
+        OR (
+            sqlc.narg('status')::text = 'in_progress'
+            AND m.handled_at IS NULL
+            AND m.assigned_to IS NOT NULL
+        )
         OR (sqlc.narg('status')::text = 'handled' AND m.handled_at IS NOT NULL)
     )
     AND (
@@ -135,7 +151,16 @@ FROM contact_messages m
 WHERE m.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('status')::text IS NULL
-        OR (sqlc.narg('status')::text = 'unhandled' AND m.handled_at IS NULL)
+        OR (
+            sqlc.narg('status')::text = 'unhandled'
+            AND m.handled_at IS NULL
+            AND m.assigned_to IS NULL
+        )
+        OR (
+            sqlc.narg('status')::text = 'in_progress'
+            AND m.handled_at IS NULL
+            AND m.assigned_to IS NOT NULL
+        )
         OR (sqlc.narg('status')::text = 'handled' AND m.handled_at IS NOT NULL)
     )
     AND (

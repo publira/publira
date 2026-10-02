@@ -365,3 +365,190 @@ func collectStaffNoteFields(message protoreflect.MessageDescriptor, carrying *[]
 		collectStaffNoteFields(nested.Get(i), carrying)
 	}
 }
+
+var contactMessageStatuses = []string{"unhandled", "in_progress", "handled"}
+
+// assertContactMessageStatus checks where a message stands from every side the
+// console reads it: the answer an action returned, the single read, and the
+// inbox, where it lists under its own status's filter and under no other.
+func (c adminContactConsole) assertContactMessageStatus(t *testing.T, answer *publiraadminv1.ContactMessage, want string) {
+	t.Helper()
+
+	if answer.Status != want {
+		t.Errorf("the answer carries status = %q, want %q", answer.Status, want)
+	}
+	got, err := c.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
+		PublicId: answer.PublicId,
+	}, c.token))
+	if err != nil {
+		t.Fatalf("GetContactMessage: %v", err)
+	}
+	if got.Msg.Message.Status != want {
+		t.Errorf("GetContactMessage carries status = %q, want %q", got.Msg.Message.Status, want)
+	}
+
+	for _, filter := range append([]string{""}, contactMessageStatuses...) {
+		var listed *publiraadminv1.ContactMessage
+		for _, message := range c.list(t, filter, 100, "").Messages {
+			if message.Id == answer.Id {
+				listed = message
+			}
+			if filter != "" && message.Status != filter {
+				t.Errorf("ListContactMessages(%q) lists %s with status = %q", filter, message.PublicId, message.Status)
+			}
+		}
+		switch {
+		case filter == "" || filter == want:
+			if listed == nil {
+				t.Errorf("ListContactMessages(%q) leaves out a message whose status is %q", filter, want)
+			} else if listed.Status != want {
+				t.Errorf("ListContactMessages(%q) carries status = %q, want %q", filter, listed.Status, want)
+			}
+		case listed != nil:
+			t.Errorf("ListContactMessages(%q) lists a message whose status is %q", filter, want)
+		}
+	}
+}
+
+func (e *publicDBEnv) storedContactMessageHandler(t *testing.T, messageID string) uuid.NullUUID {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var handler uuid.NullUUID
+	if err := e.PG.DB.QueryRowContext(ctx, `SELECT handled_by FROM contact_messages WHERE id = $1`, messageID).Scan(&handler); err != nil {
+		t.Fatalf("read handled_by: %v", err)
+	}
+	return handler
+}
+
+// The status is derived from the handled flag and the assignee together, so
+// every way either one changes moves the message between the three filters.
+func TestDBContactMessageStatusFollowsHandlingAndAssignment(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "CONTACT14", "contact14.example.com", "Aoto Press")
+	first := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTST14A", "first@contact14.example.com", "Kei Arata")
+	second := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTST14B", "second@contact14.example.com", "Mio Sato")
+
+	console := env.openAdminContactConsole(t, tenant, first)
+	message := env.seedGuestContactMessage(t, tenant, console)
+	console.assertContactMessageStatus(t, message, "unhandled")
+
+	assigned, err := console.assign(message.Id, first.ID.String())
+	if err != nil {
+		t.Fatalf("AssignContactMessage: %v", err)
+	}
+	console.assertContactMessageStatus(t, assigned, "in_progress")
+
+	reassigned, err := console.assign(message.Id, second.ID.String())
+	if err != nil {
+		t.Fatalf("AssignContactMessage to another member of staff: %v", err)
+	}
+	console.assertContactMessageStatus(t, reassigned, "in_progress")
+
+	// The first member of staff completes a message the second one owns: the
+	// row records each of them in its own column.
+	handled := console.markHandled(t, message.Id, true)
+	console.assertContactMessageStatus(t, handled, "handled")
+	assertContactMessageAssignee(t, handled, second)
+	if stored := env.storedContactMessageHandler(t, message.Id); stored.UUID != first.ID {
+		t.Errorf("handled_by = %v, want the member of staff who marked it, %s", stored, first.ID)
+	}
+	if stored := env.storedContactMessageAssignee(t, message.Id); stored.UUID != second.ID {
+		t.Errorf("assigned_to = %v after the message was handled, want %s", stored, second.ID)
+	}
+
+	// Reopening keeps the assignee, so the message is somebody's work again
+	// rather than back in the untouched queue.
+	reopened := console.markHandled(t, message.Id, false)
+	console.assertContactMessageStatus(t, reopened, "in_progress")
+	assertContactMessageAssignee(t, reopened, second)
+
+	cleared, err := console.assign(message.Id, "")
+	if err != nil {
+		t.Fatalf("AssignContactMessage to nobody: %v", err)
+	}
+	console.assertContactMessageStatus(t, cleared, "unhandled")
+
+	// A message nobody owns is handled all the same, and reopening it with
+	// nobody assigned puts it back in the untouched queue.
+	console.assertContactMessageStatus(t, console.markHandled(t, message.Id, true), "handled")
+	console.assertContactMessageStatus(t, console.markHandled(t, message.Id, false), "unhandled")
+
+	// Assigning a handled message leaves it handled.
+	console.markHandled(t, message.Id, true)
+	assignedAfterHandling, err := console.assign(message.Id, first.ID.String())
+	if err != nil {
+		t.Fatalf("AssignContactMessage on a handled message: %v", err)
+	}
+	console.assertContactMessageStatus(t, assignedAfterHandling, "handled")
+}
+
+// The two halves of the queue page apart: a page of one filter is filled with
+// that filter's messages, not cut short by the other half's.
+func TestDBContactMessageStatusFiltersPageIndependently(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "CONTACT15", "contact15.example.com", "Aoto Press")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF15", "staff@contact15.example.com", "Staff")
+	console := env.openAdminContactConsole(t, tenant, staff)
+
+	// Six messages: the newest is handled, and behind it assigned ones
+	// alternate with untouched ones, so neither half of the queue is a run the
+	// other could hide behind a page boundary.
+	for range 6 {
+		env.seedGuestContactMessage(t, tenant, console)
+	}
+	all := console.list(t, "", 20, "").Messages
+	if len(all) != 6 {
+		t.Fatalf("the inbox lists %d messages, want 6", len(all))
+	}
+	want := map[string][]string{}
+	for i, message := range all {
+		switch {
+		case i == 0:
+			console.markHandled(t, message.Id, true)
+			want["handled"] = append(want["handled"], message.Id)
+		case i%2 == 1:
+			if _, err := console.assign(message.Id, staff.ID.String()); err != nil {
+				t.Fatalf("AssignContactMessage: %v", err)
+			}
+			want["in_progress"] = append(want["in_progress"], message.Id)
+		default:
+			want["unhandled"] = append(want["unhandled"], message.Id)
+		}
+	}
+
+	for _, status := range contactMessageStatuses {
+		var got []string
+		token := ""
+		for {
+			page := console.list(t, status, 1, token)
+			for _, message := range page.Messages {
+				got = append(got, message.Id)
+			}
+			if page.NextToken == "" {
+				break
+			}
+			token = page.NextToken
+		}
+		if strings.Join(got, ",") != strings.Join(want[status], ",") {
+			t.Errorf("paging ListContactMessages(%q) one at a time = %v, want %v", status, got, want[status])
+		}
+	}
+}
+
+func TestDBContactMessageStatusFilterRefusesAnUnknownState(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "CONTACT16", "contact16.example.com", "Aoto Press")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF16", "staff@contact16.example.com", "Staff")
+	console := env.openAdminContactConsole(t, tenant, staff)
+
+	_, err := console.client.ListContactMessages(context.Background(), newBearerRequest(&publiraadminv1.ListContactMessagesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		Status: "assigned",
+	}, console.token))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListContactMessages(%q) = %v, want invalid_argument", "assigned", err)
+	}
+}
