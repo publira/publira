@@ -1,3 +1,4 @@
+import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   EmptyState,
@@ -22,6 +23,7 @@ import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
 import type { SeriesCommentMode } from "#lib/catalog";
 import {
+  episodeCommentDisplayName,
   listEpisodeComments,
   listMyEpisodeComments,
   mergeOwnEpisodeComments,
@@ -58,6 +60,11 @@ export interface EpisodeCommentsProps {
  * The two reads are deliberately separate. The public one is shared and cached
  * for everyone; the per-viewer one is keyed to a session, so no reader's
  * pending or removed comment can enter an entry another reader is served.
+ *
+ * A comment by one of the episode's credited creators is shown under the name
+ * the episode credits them as, with a badge saying so in words: the badge is
+ * the whole of the mark, so a reader who cannot tell its colour apart still
+ * reads it.
  *
  * Nothing here marks a comment as removed. A comment staff took down keeps
  * rendering to its author exactly as it did before — same place in the list,
@@ -238,7 +245,18 @@ export const EpisodeComments = async ({
             <li className="py-4 first:pt-0" key={comment.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">{comment.authorName}</p>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                    {episodeCommentDisplayName(comment)}
+                    {comment.creatorName ? (
+                      <Badge tone="info">
+                        <Suspense
+                          fallback={<SkeletonLine className="h-3 w-12" />}
+                        >
+                          <Message message="host.episode.comments.creator_badge" />
+                        </Suspense>
+                      </Badge>
+                    ) : null}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     <time dateTime={comment.createdAt}>
                       {commentedAt(comment)}
@@ -271,7 +289,7 @@ export const EpisodeComments = async ({
                 {viewer && comment.authorPublicId !== viewer.publicId ? (
                   <CommentReportButton
                     aria-label={t("host.episode.comments.report_aria", {
-                      author: comment.authorName,
+                      author: episodeCommentDisplayName(comment),
                       date: commentedAt(comment),
                     })}
                     commentId={comment.id}

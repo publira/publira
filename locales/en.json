@@ -3061,6 +3061,7 @@
         "body_placeholder": "Share what you thought of this episode",
         "body_required": "Write something before posting.",
         "body_too_long": "A comment can be at most {$max} characters.",
+        "creator_badge": "Author",
         "delete": "Delete",
         "delete_aria": "Delete your comment posted on {$date}",
         "delete_failed": "Could not delete the comment. Please try again later.",

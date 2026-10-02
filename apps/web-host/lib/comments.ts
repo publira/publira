@@ -56,8 +56,23 @@ export interface EpisodeCommentItem {
   awaitingApproval: boolean;
   body: string;
   createdAt: string;
+  /**
+   * The name this episode credits the author as, and empty on every comment
+   * whose author it does not credit. The server decides it per episode, so the
+   * same account reads as a creator on their own work and as a reader anywhere
+   * else.
+   */
+  creatorName: string;
   id: string;
 }
+
+/**
+ * The name a comment is shown under: the credited name for a creator, because
+ * that is the name a reader knows the work by, and the account's otherwise.
+ */
+export const episodeCommentDisplayName = (
+  comment: Pick<EpisodeCommentItem, "authorName" | "creatorName">
+): string => comment.creatorName || comment.authorName;
 
 export interface EpisodeCommentPage {
   comments: EpisodeCommentItem[];
@@ -88,13 +103,13 @@ const emptyPage: EpisodeCommentPage = {
  */
 type RawEpisodeComment = Pick<
   EpisodeComment,
-  "authorName" | "authorPublicId" | "body" | "createdAt" | "id"
+  "authorName" | "authorPublicId" | "body" | "createdAt" | "creator" | "id"
 >;
 
 /** The generated `MyEpisodeComment` fields {@link toOwnComment} reads. */
 type RawMyEpisodeComment = Pick<
   MyEpisodeComment,
-  "awaitingApproval" | "body" | "createdAt" | "id"
+  "awaitingApproval" | "body" | "createdAt" | "creator" | "id"
 >;
 
 const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
@@ -103,6 +118,7 @@ const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
   awaitingApproval: false,
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
+  creatorName: comment.creator?.name ?? "",
   id: comment.id ?? "",
 });
 
@@ -119,6 +135,7 @@ const toOwnComment = (
   awaitingApproval: comment.awaitingApproval === true,
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
+  creatorName: comment.creator?.name ?? "",
   id: comment.id ?? "",
 });
 

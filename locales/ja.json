@@ -3061,6 +3061,7 @@
         "body_placeholder": "このエピソードの感想を書く",
         "body_required": "コメントを入力してください。",
         "body_too_long": "コメントは{$max}文字以内で入力してください。",
+        "creator_badge": "著者",
         "delete": "削除",
         "delete_aria": "{$date}に投稿したコメントを削除",
         "delete_failed": "コメントを削除できませんでした。時間をおいて再度お試しください。",
