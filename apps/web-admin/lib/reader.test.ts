@@ -295,10 +295,6 @@ describe("reader lib", () => {
       "LAST_TENANT_ADMIN",
       "This account is the tenant's last active tenant admin. Make someone else a tenant admin before suspending or deleting it.",
     ],
-    [
-      "ACCOUNT_HAS_STAFF_HISTORY",
-      "This account cannot be deleted while the audit log or page history still records what it did.",
-    ],
   ])(
     "words a refusal for %s as the guard behind it",
     async (reason, message) => {

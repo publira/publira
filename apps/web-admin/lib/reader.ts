@@ -234,8 +234,8 @@ const readerModerationFailedMessage = async (
  * The wording of a suspend or delete the API refused for a reason staff can do
  * something about. The page withholds both actions on the signed-in
  * administrator's own account, and the last active administrator is refused
- * only when two administrators act on each other at once, so the first two
- * reasons reach here only when the account changed after the page was drawn.
+ * only when two administrators act on each other at once, so either reason
+ * reaches here only when the account changed after the page was drawn.
  * Any other failed precondition keeps the operation's own fallback.
  */
 const readerModerationRefusal = async (
@@ -248,9 +248,6 @@ const readerModerationRefusal = async (
   }
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)) {
     return t("admin.readers.last_tenant_admin");
-  }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.accountHasStaffHistory)) {
-    return t("admin.readers.staff_history");
   }
   return undefined;
 };
