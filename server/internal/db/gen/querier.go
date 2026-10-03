@@ -1205,9 +1205,12 @@ type Querier interface {
 	// ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
-	// The newest computation of each period for one surface, age rating, and
-	// ranking key, newest period first. A ranking screen takes two of them: the period to show, and the one
-	// before it, which is where a position's previous rank comes from.
+	// The newest computation of each period for one genre, surface, age rating,
+	// and ranking key, newest period first. A ranking screen takes two of them:
+	// the period to show, and the one before it, which is where a position's
+	// previous rank comes from. A NULL genre_id is the tenant-wide ranking, so a
+	// genre's chart and its movement markers never borrow a period from the
+	// tenant-wide one or the other way round.
 	//
 	// DISTINCT ON is what makes those two different periods. algorithm_version is
 	// part of the snapshot's unique key, so a bumped version files its
@@ -1228,8 +1231,11 @@ type Querier interface {
 	//
 	// No index serves the order.
 	// idx_content_ranking_snapshots_tenant_leaderboard_computed narrows the scan to
-	// one tenant's surface, age rating, and ranking key, and what is left is the periods
-	// purge-content-rankings has not yet dropped — a sort over days, not over rows.
+	// one tenant's genre, surface, age rating, and ranking key, and what is left is
+	// the periods purge-content-rankings has not yet dropped — a sort over days, not
+	// over rows. The genre predicate is spelled as two branches rather than IS NOT
+	// DISTINCT FROM, which no btree index serves; the planner drops the branch the
+	// bound value rules out.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
 	// The backward direction of ListMyEpisodeReadsDesc.
 	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
@@ -1598,15 +1604,17 @@ type Querier interface {
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published on
-	// the surface and still carry the age rating the snapshot was cut for.
+	// the surface, still carry the age rating the snapshot was cut for, and, for a
+	// genre's snapshot, still belong to that genre.
 	//
 	// Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
 	// than from the catalogue, so an unpublished series does not move the ones
 	// behind it: it drops out and leaves its position empty. The ranks are the
 	// snapshot's own and are never renumbered here. The snapshot was cut for the
-	// surface and the rating, so only a series whose availability or rating
-	// changed since the batch ran leaves such a gap. A series without a listing is
-	// all-ages, as it is everywhere else.
+	// surface, the rating, and the genre, so only a series whose availability,
+	// rating, or genres changed since the batch ran leaves such a gap. A series
+	// without a listing is all-ages, as it is everywhere else. A NULL genre_id is
+	// the tenant-wide ranking, which asks for no genre.
 	//
 	// Duplicate entity ids are folded with min() exactly as the recommendation
 	// scan folds them, which is also what makes entity_id unique in the result.
@@ -1620,7 +1628,8 @@ type Querier interface {
 	//
 	// No index serves this: the sort key comes from the snapshot's JSONB. The scan
 	// is bounded by one snapshot's items (50 by default), each joined to one series
-	// row by primary key.
+	// row by primary key, and for a genre to one series_genres row by
+	// series_genres_pkey.
 	ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesIDsParams) ([]ListRankedSeriesIDsRow, error)
 	// ListRankedSeriesIDs walked the other way, to build a previous page. The
 	// order it describes is the same one.

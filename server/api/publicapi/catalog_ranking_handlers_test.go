@@ -31,76 +31,82 @@ func rankedSeriesIDRows(rows ...rankedID) *sqlmock.Rows {
 }
 
 // rankingSnapshotRow is one row of the snapshot pair lookup. period and
-// computedAt are what the response reports back as the ranked window.
+// computedAt are what the response reports back as the ranked window, and a
+// nil genreID is the tenant-wide ranking.
 func rankingSnapshotRow(
 	rows *sqlmock.Rows,
 	snapshotID, tenantID uuid.UUID,
+	genreID any,
 	rankingKey string,
 	periodStart, periodEnd, computedAt time.Time,
 	items []byte,
 ) *sqlmock.Rows {
 	return rows.AddRow(
 		snapshotID, tenantID, rankingKey,
-		periodStart, periodEnd, "series", items, int32(1), computedAt, nil, "web", "all",
+		periodStart, periodEnd, "series", items, int32(1), computedAt, genreID, "web", "all",
 	)
 }
 
 // expectRankingSnapshotPairLookup replays the two snapshots a first page is
 // built from: the newest period, and the one the movement markers compare with.
+// A nil genreID is the tenant-wide ranking.
 func expectRankingSnapshotPairLookup(
 	mock sqlmock.Sqlmock,
 	tenantID, snapshotID uuid.UUID,
+	genreID any,
 	rankingKey string,
 	computedAt time.Time,
 	current, previous []byte,
 ) {
 	rows := rankingSnapshotRow(
 		sqlmock.NewRows(contentRankingSnapshotColumns()),
-		snapshotID, tenantID, rankingKey,
+		snapshotID, tenantID, genreID, rankingKey,
 		computedAt.AddDate(0, 0, -1), computedAt.AddDate(0, 0, -1), computedAt,
 		current,
 	)
 	if previous != nil {
 		rows = rankingSnapshotRow(
 			rows,
-			uuid.Must(uuid.NewV7()), tenantID, rankingKey,
+			uuid.Must(uuid.NewV7()), tenantID, genreID, rankingKey,
 			computedAt.AddDate(0, 0, -2), computedAt.AddDate(0, 0, -2), computedAt.AddDate(0, 0, -1),
 			previous,
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, "web", "all", rankingKey, "series", nil, int32(2)).
+		WithArgs(tenantID, genreID, "web", "all", rankingKey, "series", nil, int32(2)).
 		WillReturnRows(rows)
 }
 
 // expectPinnedRankingSnapshotLookup replays what a page after the first reads:
-// the snapshot its token pinned, then the period before that one.
+// the snapshot its token pinned, then the period before that one. A nil genreID
+// is the tenant-wide ranking.
 func expectPinnedRankingSnapshotLookup(
 	mock sqlmock.Sqlmock,
 	tenantID, snapshotID uuid.UUID,
+	genreID any,
 	rankingKey string,
 	computedAt time.Time,
 	current, previous []byte,
 ) {
 	periodStart := computedAt.AddDate(0, 0, -1)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
-		WithArgs(tenantID, snapshotID, "web", "all", rankingKey, "series").
+		WithArgs(tenantID, snapshotID, genreID, "web", "all", rankingKey, "series").
 		WillReturnRows(rankingSnapshotRow(
 			sqlmock.NewRows(contentRankingSnapshotColumns()),
-			snapshotID, tenantID, rankingKey, periodStart, periodStart, computedAt, current,
+			snapshotID, tenantID, genreID, rankingKey, periodStart, periodStart, computedAt, current,
 		))
 
 	rows := sqlmock.NewRows(contentRankingSnapshotColumns())
 	if previous != nil {
 		rows = rankingSnapshotRow(
 			rows,
-			uuid.Must(uuid.NewV7()), tenantID, rankingKey,
+			uuid.Must(uuid.NewV7()), tenantID, genreID, rankingKey,
 			computedAt.AddDate(0, 0, -2), computedAt.AddDate(0, 0, -2), computedAt.AddDate(0, 0, -1),
 			previous,
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, "web", "all", rankingKey, "series", periodStart, int32(1)).
+		WithArgs(tenantID, genreID, "web", "all", rankingKey, "series", periodStart, int32(1)).
 		WillReturnRows(rows)
 }
 
@@ -138,12 +144,12 @@ func TestCatalogListRankedSeriesReportsSnapshotPositionsAndMovement(t *testing.T
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// The two series that were ranked last time swapped places, and the third
 	// is new to the leaderboard.
-	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "daily", now,
+	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, nil, "daily", now,
 		rankingItemsJSON(climbed, slipped, entered),
 		rankingItemsJSON(slipped, climbed),
 	)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
+		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: climbed, rank: 1},
 			rankedID{id: slipped, rank: 2},
@@ -199,13 +205,13 @@ func TestCatalogListRankedSeriesKeepsSnapshotPositionsOverAGap(t *testing.T) {
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "daily", now,
+	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, nil, "daily", now,
 		rankingItemsJSON(first, unpublished, third), nil)
 	// The scan drops the series that was unpublished since the snapshot was
 	// written. The positions around it are the snapshot's own and do not close
 	// up over the gap.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
+		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: first, rank: 1},
 			rankedID{id: third, rank: 3},
@@ -238,9 +244,9 @@ func TestCatalogListRankedSeriesReadsTheWeeklySnapshotForTheWeeklyPeriod(t *test
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "weekly", now, rankingItemsJSON(seriesID), nil)
+	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, nil, "weekly", now, rankingItemsJSON(seriesID), nil)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -270,7 +276,7 @@ func TestCatalogListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T)
 	// The batch has never ranked this tenant. Nothing computed is not a
 	// failure, and there is no window to report either.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, "web", "all", "daily", "series", nil, int32(2)).
+		WithArgs(tenantID, nil, "web", "all", "daily", "series", nil, int32(2)).
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -305,10 +311,10 @@ func TestCatalogListRankedSeriesServesTheRankingWhenTheEarlierSnapshotIsMalforme
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// An object where the batch writes an array. The movement markers are lost
 	// with it; the positions themselves are correct without them.
-	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "daily", now,
+	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, nil, "daily", now,
 		rankingItemsJSON(seriesID), []byte(`{"broken":true}`))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -341,10 +347,10 @@ func TestCatalogListRankedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	token := webToken(pagination.Forward, "daily", "all", snapshotID.String(), "1", boundary.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectPinnedRankingSnapshotLookup(mock, tenantID, snapshotID, "daily", now, rankingItemsJSON(boundary), nil)
+	expectPinnedRankingSnapshotLookup(mock, tenantID, snapshotID, nil, "daily", now, rankingItemsJSON(boundary), nil)
 	// Everything past the boundary was unpublished after the token was issued.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "all", "web", nil, boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -465,7 +471,7 @@ func TestCatalogListRankedSeriesRejectsATokenWhoseRankingIsGone(t *testing.T) {
 	// positions cannot be continued in a newer ranking, so the token is refused
 	// and the client starts again at the first page.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
-		WithArgs(tenantID, snapshotID, "web", "all", "daily", "series").
+		WithArgs(tenantID, snapshotID, nil, "web", "all", "daily", "series").
 		WillReturnError(sql.ErrNoRows)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -495,10 +501,10 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 	// names the snapshot page 1 came from, so page 2 continues in that one: a
 	// position from the old ranking read against the new ordering would skip or
 	// repeat the series around the boundary.
-	expectPinnedRankingSnapshotLookup(mock, tenantID, pinned, "daily", now,
+	expectPinnedRankingSnapshotLookup(mock, tenantID, pinned, nil, "daily", now,
 		rankingItemsJSON(boundary, tail), rankingItemsJSON(tail, boundary))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
-		WithArgs(tenantID, "all", "web", boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
+		WithArgs(tenantID, "all", "web", nil, boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -542,4 +548,184 @@ func TestCatalogListRankedSeriesRejectsAnotherTenantsRequest(t *testing.T) {
 		t.Fatalf("error code = %v, want NotFound", connect.CodeOf(err))
 	}
 	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRankedSeriesReadsTheLeaderboardOfTheNamedGenre(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	snapshotID := uuid.Must(uuid.NewV7())
+	climbed := uuid.Must(uuid.NewV7())
+	slipped := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreIDByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE0000001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(genreID))
+	// Both periods, and the scan behind the page, are the genre's: the movement
+	// is measured within the genre rather than against the tenant-wide chart.
+	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, genreID, "daily", now,
+		rankingItemsJSON(climbed, slipped),
+		rankingItemsJSON(slipped, climbed),
+	)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
+		WithArgs(tenantID, "all", "web", genreID, nil, false, nil, int32(2), sqlmock.AnyArg()).
+		WillReturnRows(rankedSeriesIDRows(
+			rankedID{id: climbed, rank: 1},
+			rankedID{id: slipped, rank: 2},
+		))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(recommendedSeriesRow(
+			recommendedSeriesRow(seriesDetailColumns(), slipped, "SLIPPED", "Slipped", now),
+			climbed, "CLIMBED", "Climbed", now))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		GenrePublicId: "GENRE0000001",
+		Limit:         1,
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListRankedSeries: %v", err)
+	}
+
+	assertRankedPositions(t, resp.Msg.RankedSeries, "CLIMBED@1")
+	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 2 {
+		t.Fatalf("previous_rank = %d, want 2", got)
+	}
+	// The token names the genre beside the period, so it continues this genre's
+	// chart and no other.
+	want := webToken(pagination.Forward, "daily+genre:GENRE0000001", "all", snapshotID.String(), "1", climbed.String())
+	if resp.Msg.NextToken != want {
+		t.Fatalf("next_token = %q, want %q", resp.Msg.NextToken, want)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRankedSeriesKeepsALaterGenrePageInThePinnedSnapshot(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	pinned := uuid.Must(uuid.NewV7())
+	boundary := uuid.Must(uuid.NewV7())
+	tail := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreIDByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE0000001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(genreID))
+	// The pinned read is checked against the genre too, so an id lifted from
+	// another chart's token finds nothing.
+	expectPinnedRankingSnapshotLookup(mock, tenantID, pinned, genreID, "daily", now,
+		rankingItemsJSON(boundary, tail), rankingItemsJSON(tail, boundary))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
+		WithArgs(tenantID, "all", "web", genreID, boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
+		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		GenrePublicId: "GENRE0000001",
+		Limit:         2,
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:         webToken(pagination.Forward, "daily+genre:GENRE0000001", "all", pinned.String(), "1", boundary.String()),
+	}))
+	if err != nil {
+		t.Fatalf("ListRankedSeries: %v", err)
+	}
+
+	assertRankedPositions(t, resp.Msg.RankedSeries, "TAIL@2")
+	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 1 {
+		t.Fatalf("previous_rank = %d, want 1", got)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRankedSeriesRejectsAGenreTheTenantDoesNotCurate(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// Deleted, never created, or another tenant's: all three are the 404 the
+	// genre's series list already answers, never an empty chart.
+	expectGenreLookup(mock, tenantID, "GENRE0000404", false)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		GenrePublicId: "GENRE0000404",
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("error code = %v, want NotFound", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRankedSeriesRejectsAGenreUnderARatedRanking(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	// The batch ranks a genre's all-ages series alone, so an R18 chart of a
+	// genre is refused before anything is read rather than answered empty.
+	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		AgeRating:     publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+		GenrePublicId: "GENRE0000001",
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListRankedSeriesRejectsATokenFromAnotherGenre(t *testing.T) {
+	snapshotID := uuid.Must(uuid.NewV7()).String()
+	seriesID := uuid.Must(uuid.NewV7()).String()
+
+	// The same position names a different series in each genre's chart and in
+	// the tenant-wide one, so a token crosses none of those lines. Each case is
+	// refused before the genre is looked up.
+	tests := []struct {
+		name     string
+		genre    string
+		tokenKey string
+	}{
+		{name: "another genre's token", genre: "GENRE0000001", tokenKey: "daily+genre:GENRE0000002"},
+		{name: "a genre's token with no genre", genre: "", tokenKey: "daily+genre:GENRE0000001"},
+		{name: "the tenant-wide token with a genre", genre: "GENRE0000001", tokenKey: "daily"},
+		{name: "another period of the same genre", genre: "GENRE0000001", tokenKey: "weekly+genre:GENRE0000001"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+				GenrePublicId: tt.genre,
+				Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Token:         webToken(pagination.Forward, tt.tokenKey, "all", snapshotID, "1", seriesID),
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
 }

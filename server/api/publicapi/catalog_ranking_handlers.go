@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -55,12 +57,50 @@ func rankingKeyForPeriod(period publirav1.RankingPeriod) (string, error) {
 }
 
 // rankingLeaderboard names the snapshots one ranking is read from: the
-// surface the batch cut them for, the period they cover, and the age rating
-// whose series they rank.
+// surface the batch cut them for, the period they cover, the age rating whose
+// series they rank, and the genre they rank within.
 type rankingLeaderboard struct {
 	surface    string
 	rankingKey string
 	ageRating  string
+	// genreID is the genre the snapshots rank, null for the tenant-wide
+	// ranking. genrePublicID is the same genre as the request named it, which is
+	// what the token is bound to.
+	genreID       uuid.NullUUID
+	genrePublicID string
+}
+
+// rankingGenreFilter names the genre filter in the token's list key, after the
+// pagination convention for a filter that narrows to one value.
+const rankingGenreFilter = "genre"
+
+// listKey is the first key of every token issued for this leaderboard: the
+// ranking key, then the genre when there is one. The tenant-wide ranking keeps
+// the bare ranking key, so its tokens read the same as before genres were
+// ranked.
+func (l rankingLeaderboard) listKey() string {
+	return pagination.NewListKey(l.rankingKey).Value(rankingGenreFilter, l.genrePublicID).String()
+}
+
+// resolveRankingGenre reads the genre a ranking request names. A genre the
+// tenant does not curate is not_found, as ListPublishedSeries answers it, so a
+// deleted genre's ranking page is the 404 its series list already is, and a
+// genre of another tenant reads as one that was never there.
+func (s *apiServer) resolveRankingGenre(ctx context.Context, tenantID uuid.UUID, publicID string) (uuid.NullUUID, error) {
+	if publicID == "" {
+		return uuid.NullUUID{}, nil
+	}
+	genreID, err := s.queriesFor(ctx).GetGenreIDByPublicIDForTenant(ctx, dbmodels.GetGenreIDByPublicIDForTenantParams{
+		TenantID: tenantID,
+		PublicID: publicID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+	}
+	if err != nil {
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to resolve the ranking genre", err, "tenant_id", tenantID.String())
+	}
+	return uuid.NullUUID{UUID: genreID, Valid: true}, nil
 }
 
 // readerMayListRanking refuses the ranking of a rating the tenant's age rule
@@ -146,6 +186,7 @@ func (s *apiServer) rankingSnapshotsForPage(
 		current, err := queries.GetContentRankingSnapshotByID(ctx, dbmodels.GetContentRankingSnapshotByIDParams{
 			TenantID:   tenantID,
 			ID:         pinned.UUID,
+			GenreID:    leaderboard.genreID,
 			Surface:    leaderboard.surface,
 			AgeRating:  leaderboard.ageRating,
 			RankingKey: leaderboard.rankingKey,
@@ -162,6 +203,7 @@ func (s *apiServer) rankingSnapshotsForPage(
 
 	rows, err := queries.ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:   tenantID,
+		GenreID:    leaderboard.genreID,
 		Surface:    leaderboard.surface,
 		AgeRating:  leaderboard.ageRating,
 		RankingKey: leaderboard.rankingKey,
@@ -193,6 +235,7 @@ func (s *apiServer) rankingSnapshotsPrecededBy(
 ) (rankingSnapshots, error) {
 	rows, err := s.queriesFor(ctx).ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:          tenantID,
+		GenreID:           leaderboard.genreID,
 		Surface:           leaderboard.surface,
 		AgeRating:         leaderboard.ageRating,
 		RankingKey:        leaderboard.rankingKey,
@@ -244,17 +287,17 @@ func (s *apiServer) rankPositions(ctx context.Context, snapshot dbmodels.Content
 	return positions
 }
 
-// The ListRankedSeries cursor carries the period and the age rating it was
-// built for and the snapshot it was built from, then the sort keys of the
-// scan: the position the row holds in that snapshot, and the series id that
-// keeps the key unique.
+// The ListRankedSeries cursor carries the period and the genre it was built
+// for (the leaderboard's list key), the age rating, and the snapshot it was
+// built from, then the sort keys of the scan: the position the row holds in
+// that snapshot, and the series id that keeps the key unique.
 //
 // The three leading keys refuse a token rather than reinterpret it, for the
 // same reason: a position means nothing without the ranking it counts in. The
-// period and the rating are checked first because a client sends them, and the
-// snapshot last because the batch changes it — the pinned id is also what keeps
-// the rest of a traversal inside the ranking it started in. Token rules:
-// proto/README.md.
+// period, the genre, and the rating are checked first because a client sends
+// them, and the snapshot last because the batch changes it — the pinned id is
+// also what keeps the rest of a traversal inside the ranking it started in.
+// Token rules: proto/README.md.
 func encodeRankedSeriesCursor(
 	direction pagination.Direction,
 	leaderboard rankingLeaderboard,
@@ -264,7 +307,7 @@ func encodeRankedSeriesCursor(
 ) string {
 	return pagination.Encode(
 		direction,
-		leaderboard.rankingKey,
+		leaderboard.listKey(),
 		leaderboard.ageRating,
 		snapshotID.String(),
 		strconv.FormatInt(int64(rank), 10),
@@ -282,7 +325,7 @@ func encodeRankedSeriesRecoveryToken(
 ) string {
 	return pagination.Encode(
 		direction,
-		leaderboard.rankingKey,
+		leaderboard.listKey(),
 		leaderboard.ageRating,
 		keys.snapshotID.UUID.String(),
 		strconv.FormatInt(int64(keys.rank.Int32), 10),
@@ -309,7 +352,10 @@ func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, leaderboard rankingL
 	if inclusive && cursor.Keys[5] != seriesInclusiveKey {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != leaderboard.rankingKey {
+	if cursor.Keys[0] != leaderboard.listKey() {
+		if rankingKey, _, _ := strings.Cut(cursor.Keys[0], "+"); rankingKey == leaderboard.rankingKey {
+			return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another genre"))
+		}
 		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another period"))
 	}
 	if cursor.Keys[1] != leaderboard.ageRating {
@@ -357,6 +403,7 @@ func (s *apiServer) rankedSeriesPageRows(
 		rows, err := queries.ListRankedSeriesIDsReversed(ctx, dbmodels.ListRankedSeriesIDsReversedParams{
 			Surface:         leaderboard.surface,
 			AgeRating:       leaderboard.ageRating,
+			GenreID:         leaderboard.genreID,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
 			CursorRank:      keys.rank,
@@ -377,6 +424,7 @@ func (s *apiServer) rankedSeriesPageRows(
 	rows, err := queries.ListRankedSeriesIDs(ctx, dbmodels.ListRankedSeriesIDsParams{
 		Surface:         leaderboard.surface,
 		AgeRating:       leaderboard.ageRating,
+		GenreID:         leaderboard.genreID,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
 		CursorRank:      keys.rank,
@@ -394,8 +442,9 @@ func (s *apiServer) rankedSeriesPageRows(
 	return page, nil
 }
 
-// ListRankedSeries pages through the latest ranking snapshot of one period and
-// one age rating, in the positions that snapshot recorded.
+// ListRankedSeries pages through the latest ranking snapshot of one period, one
+// age rating, and the tenant or one of its genres, in the positions that
+// snapshot recorded.
 //
 // This is the leaderboard, not the storefront's recommendation order: it shows
 // only what the batch ranked, at the positions it assigned, so a series that
@@ -422,7 +471,18 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("age_rating is unknown"))
 	}
-	leaderboard := rankingLeaderboard{surface: surface, rankingKey: rankingKey, ageRating: ageRating}
+	// The batch ranks a genre's all-ages series alone. Any other rating would
+	// find no snapshot and answer an empty chart, which a client cannot tell
+	// from a genre nobody has read yet.
+	if req.Msg.GenrePublicId != "" && ageRating != ageverification.RatingAll {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a genre is ranked for all ages only"))
+	}
+	leaderboard := rankingLeaderboard{
+		surface:       surface,
+		rankingKey:    rankingKey,
+		ageRating:     ageRating,
+		genrePublicID: req.Msg.GenrePublicId,
+	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
 	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
@@ -434,6 +494,10 @@ func (s *apiServer) ListRankedSeries(
 		if err != nil {
 			return nil, err
 		}
+	}
+	leaderboard.genreID, err = s.resolveRankingGenre(ctx, tenant.ID, req.Msg.GenrePublicId)
+	if err != nil {
+		return nil, err
 	}
 	private, err := s.readerMayListRanking(ctx, req, tenant, ageRating)
 	if err != nil {

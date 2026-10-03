@@ -772,9 +772,12 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 ORDER BY computed_at DESC
 LIMIT 1;
 
--- The newest computation of each period for one surface, age rating, and
--- ranking key, newest period first. A ranking screen takes two of them: the period to show, and the one
--- before it, which is where a position's previous rank comes from.
+-- The newest computation of each period for one genre, surface, age rating,
+-- and ranking key, newest period first. A ranking screen takes two of them:
+-- the period to show, and the one before it, which is where a position's
+-- previous rank comes from. A NULL genre_id is the tenant-wide ranking, so a
+-- genre's chart and its movement markers never borrow a period from the
+-- tenant-wide one or the other way round.
 --
 -- DISTINCT ON is what makes those two different periods. algorithm_version is
 -- part of the snapshot's unique key, so a bumped version files its
@@ -795,13 +798,19 @@ LIMIT 1;
 --
 -- No index serves the order.
 -- idx_content_ranking_snapshots_tenant_leaderboard_computed narrows the scan to
--- one tenant's surface, age rating, and ranking key, and what is left is the periods
--- purge-content-rankings has not yet dropped — a sort over days, not over rows.
+-- one tenant's genre, surface, age rating, and ranking key, and what is left is
+-- the periods purge-content-rankings has not yet dropped — a sort over days, not
+-- over rows. The genre predicate is spelled as two branches rather than IS NOT
+-- DISTINCT FROM, which no btree index serves; the planner drops the branch the
+-- bound value rules out.
 -- name: ListLatestContentRankingSnapshots :many
 SELECT DISTINCT ON (period_start, period_end) *
 FROM content_ranking_snapshots
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND genre_id IS NULL
+    AND (
+        (sqlc.narg('genre_id')::uuid IS NULL AND genre_id IS NULL)
+        OR genre_id = sqlc.narg('genre_id')::uuid
+    )
     AND surface = sqlc.arg('surface')::text
     AND age_rating = sqlc.arg('age_rating')::text
     AND ranking_key = sqlc.arg('ranking_key')
@@ -831,7 +840,7 @@ SELECT *
 FROM content_ranking_snapshots
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
-    AND genre_id IS NULL
+    AND genre_id IS NOT DISTINCT FROM sqlc.narg('genre_id')::uuid
     AND surface = sqlc.arg('surface')::text
     AND age_rating = sqlc.arg('age_rating')::text
     AND ranking_key = sqlc.arg('ranking_key')
@@ -839,15 +848,17 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- The keyset scan behind the ranking screen: one snapshot's items, in the
 -- positions it recorded, restricted to the series that are still published on
--- the surface and still carry the age rating the snapshot was cut for.
+-- the surface, still carry the age rating the snapshot was cut for, and, for a
+-- genre's snapshot, still belong to that genre.
 --
 -- Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
 -- than from the catalogue, so an unpublished series does not move the ones
 -- behind it: it drops out and leaves its position empty. The ranks are the
 -- snapshot's own and are never renumbered here. The snapshot was cut for the
--- surface and the rating, so only a series whose availability or rating
--- changed since the batch ran leaves such a gap. A series without a listing is
--- all-ages, as it is everywhere else.
+-- surface, the rating, and the genre, so only a series whose availability,
+-- rating, or genres changed since the batch ran leaves such a gap. A series
+-- without a listing is all-ages, as it is everywhere else. A NULL genre_id is
+-- the tenant-wide ranking, which asks for no genre.
 --
 -- Duplicate entity ids are folded with min() exactly as the recommendation
 -- scan folds them, which is also what makes entity_id unique in the result.
@@ -861,7 +872,8 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 --
 -- No index serves this: the sort key comes from the snapshot's JSONB. The scan
 -- is bounded by one snapshot's items (50 by default), each joined to one series
--- row by primary key.
+-- row by primary key, and for a genre to one series_genres row by
+-- series_genres_pkey.
 -- name: ListRankedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
@@ -883,6 +895,15 @@ WHERE s.is_published = true
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
             AND ss.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('genre_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_genres sg
+            WHERE sg.series_id = s.id
+                AND sg.genre_id = sqlc.narg('genre_id')::uuid
+        )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -927,6 +948,15 @@ WHERE s.is_published = true
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
             AND ss.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        sqlc.narg('genre_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_genres sg
+            WHERE sg.series_id = s.id
+                AND sg.genre_id = sqlc.narg('genre_id')::uuid
+        )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
