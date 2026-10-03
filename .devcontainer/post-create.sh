@@ -18,9 +18,5 @@ sudo chown vscode:vscode \
   /home/vscode/.gradle \
   /home/vscode/Android
 
-# The Android SDK in those volumes outlives the container; the settings that
-# point at it do not.
-bash mobile/scripts/android-install.sh --attach
-
 task setup
 task db:setup

@@ -57,7 +57,7 @@ services:
       # download across rebuilds: the JDK and the SDK, the AVD, and Gradle's
       # distributions and caches, about 12 GB that would otherwise be fetched
       # again and the SDK license accepted again. What that task sets up
-      # outside these paths is redone by post-create.sh.
+      # outside these paths is redone by the mobile tasks that need it.
       - android-sdk:/home/vscode/Android
       - android-user-home:/home/vscode/.android
       - gradle-user-home:/home/vscode/.gradle

@@ -202,8 +202,9 @@ install() {
 # ~/Android, ~/.android, and ~/.gradle are volumes in the Dev Container, so the
 # JDK, the SDK, the AVD, and the Gradle settings outlive a rebuild. Flutter's
 # configuration, the kvm group, and the adb link live in the container instead,
-# and post-create.sh calls this to redo them. A machine that has never run the
-# install has nothing to attach, and that is not an error.
+# and the tasks that boot the emulator or build the app call this to redo them.
+# A machine that has never run the install has nothing to attach, and that is
+# not an error.
 attach() {
   local jdk
   # The JDK install_jdk left. One Renovate has since moved past still builds,
