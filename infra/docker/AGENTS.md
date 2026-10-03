@@ -38,9 +38,11 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
 ## Implementation rules
 
 1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
-   - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
-   - publiractl: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
-   - server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
+   - Web / Node: `node:*-trixie-slim` → `gcr.io/distroless/nodejs*-debian13:nonroot`
+   - publiractl: `golang:*-trixie` → `gcr.io/distroless/static-debian13:nonroot`, never the unsuffixed `static` alias, which follows whichever Debian release distroless currently builds on
+   - server: `golang:*-trixie` + `libvips-dev` → `debian:13.*-slim` + `libvips42t64` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
+   - The build and runtime stages of one image share a Debian release, and move to a new one together. Web / Node copy `node_modules` with native addons such as `sharp` into the runner, and the server binary links libvips, so a glibc or shared-library mismatch fails at run time, not at build time.
+   - Shared-library package names follow the Debian release: Debian 13's 64-bit `time_t` transition renamed `libvips42` to `libvips42t64`.
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, as `web/Dockerfile` does:
 
@@ -57,7 +59,7 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
    - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 7. **publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
-8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
+8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42t64` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
 9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
 
 ## Verification after Dockerfile changes
