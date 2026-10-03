@@ -46,6 +46,7 @@ export const updatePlatformSecurityPolicyAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformSecurityPolicy(
       {
+        disposableEmailDomainsUrl: data.disposableEmailDomainsUrl,
         mailRequestsPerAddress: {
           perDay: data.mailPerAddressPerDay,
           perHour: data.mailPerAddressPerHour,

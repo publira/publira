@@ -4267,6 +4267,9 @@
         "store_purchase_per_minute": "每位讀者每分鐘應用程式內購買確認數",
         "store_purchase_per_day": "每位讀者每天應用程式內購買確認數",
         "mfa_required": "要求租戶管理員使用多重要素驗證",
+        "disposable_email_domains_url": "一次性郵件網域清單URL",
+        "disposable_email_domains_url_help": "每行一個網域的清單，每小時重新讀取一次。留空則不使用清單。",
+        "disposable_email_domains_url_invalid": "請為一次性郵件網域清單輸入http或https URL，或留空。",
         "save": "儲存安全性政策",
         "saved": "已儲存安全性政策。"
       },

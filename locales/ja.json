@@ -4267,6 +4267,9 @@
         "store_purchase_per_minute": "読者ごとのアプリ内課金の確定数（1分）",
         "store_purchase_per_day": "読者ごとのアプリ内課金の確定数（1日）",
         "mfa_required": "テナント管理者に多要素認証を必須にする",
+        "disposable_email_domains_url": "使い捨てメールドメインリストのURL",
+        "disposable_email_domains_url_help": "1行に1ドメインを記載したリストで、1時間ごとに読み直します。空欄にするとリストを使いません。",
+        "disposable_email_domains_url_invalid": "使い捨てメールドメインリストにはhttpまたはhttpsのURLを入力するか、空欄にしてください。",
         "save": "セキュリティポリシーを保存",
         "saved": "セキュリティポリシーを保存しました。"
       },

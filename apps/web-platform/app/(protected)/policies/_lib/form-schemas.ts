@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { boundedIntFormSchema, revisionFormSchema } from "#lib/form-schemas";
+import {
+  boundedIntFormSchema,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 /**
@@ -12,6 +16,34 @@ const MAX_LIMIT = 2_147_483_647;
 
 /** Mirrors `platformpolicy.MaxDuplicateCommentWindow` (one week). */
 const MAX_DUPLICATE_COMMENT_WINDOW_MINUTES = 10_080;
+
+/**
+ * Mirrors `platformpolicy.MaxDisposableEmailDomainsURLLength`, which Go counts
+ * in UTF-8 bytes rather than in the UTF-16 units a JavaScript string has.
+ */
+const MAX_LIST_URL_BYTES = 2048;
+
+/**
+ * The scheme and the start of the host, spelled out. The WHATWG parser behind
+ * `URL` also reads `https:host/path` and `https:///host/path` as having a host,
+ * where Go's `net/url` finds none, so the raw value is checked rather than the
+ * normalized one.
+ */
+const LIST_URL_START_RE = /^https?:\/\/[^/?#]/iu;
+
+/** A `%` that starts no escape, which `net/url` refuses and WHATWG keeps. */
+const BROKEN_ESCAPE_RE = /%(?![0-9a-f]{2})/iu;
+
+/** Mirrors `platformpolicy.validateListURL`: empty, or http(s) with a host. */
+const isListUrl = (value: string): boolean =>
+  value === "" ||
+  (LIST_URL_START_RE.test(value) &&
+    !BROKEN_ESCAPE_RE.test(value) &&
+    URL.canParse(value) &&
+    new URL(value).host !== "");
+
+const fitsListUrlBytes = (value: string): boolean =>
+  new TextEncoder().encode(value).length <= MAX_LIST_URL_BYTES;
 
 /** Mirrors `retention.MaxDays`. */
 const MAX_RETENTION_DAYS = 36_500;
@@ -47,6 +79,10 @@ const refineWindowPairs =
   };
 
 export const securityPolicyFormFields = {
+  disposableEmailDomainsUrl: {
+    kind: "value",
+    name: "disposable_email_domains_url",
+  },
   mailPerAddressPerDay: {
     kind: "value",
     name: "mail_requests_per_address_per_day",
@@ -93,8 +129,18 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const perSource = t("platform.policy.security.mail_per_source_legend");
   const storePurchase = t("platform.policy.security.store_purchase_title");
 
+  const listUrlInvalid = t(
+    "platform.policy.security.disposable_email_domains_url_invalid"
+  );
+
   return z
     .object({
+      disposableEmailDomainsUrl: optionalTrimmedString(
+        MAX_LIST_URL_BYTES,
+        listUrlInvalid
+      )
+        .refine(fitsListUrlBytes, listUrlInvalid)
+        .refine(isListUrl, listUrlInvalid),
       mailPerAddressPerDay: limitSchema(t, perAddress),
       mailPerAddressPerHour: limitSchema(t, perAddress),
       mailPerSourcePerDay: limitSchema(t, perSource),

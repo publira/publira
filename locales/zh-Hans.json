@@ -4267,6 +4267,9 @@
         "store_purchase_per_minute": "每位读者每分钟应用内购买确认数",
         "store_purchase_per_day": "每位读者每天应用内购买确认数",
         "mfa_required": "要求租户管理员使用多因素认证",
+        "disposable_email_domains_url": "一次性邮件域名列表URL",
+        "disposable_email_domains_url_help": "每行一个域名的列表，每小时重新读取一次。留空则不使用列表。",
+        "disposable_email_domains_url_invalid": "请为一次性邮件域名列表输入http或https URL，或留空。",
         "save": "保存安全策略",
         "saved": "已保存安全策略。"
       },

@@ -26,6 +26,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const emptyValues: PlatformSecurityPolicy = {
+  disposableEmailDomainsUrl: "",
   mailRequestsPerAddress: { perDay: 1, perHour: 1 },
   mailRequestsPerSource: { perDay: 1, perHour: 1 },
   mfaRequiredForTenantAdmin: false,
