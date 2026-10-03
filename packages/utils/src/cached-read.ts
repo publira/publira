@@ -75,6 +75,12 @@ export const dropFailedCacheEntry = (): void => {
  * message with a digest, so `Code` — and with it `rpcErrorDisposition()` and
  * `rpcErrorMessage()` — is gone by the time an outside `catch` sees it. Build
  * the message here, where the `ConnectError` is still intact.
+ *
+ * That is also why the failure carries a `message` rather than the error.
+ * React Flight encodes a returned `Error` value as a bare placeholder, which
+ * production re-creates with no `Code` and not even a digest; rethrown outside
+ * the scope, every such failure reaches the error screen and the server log
+ * as the same generic Server Components error under one digest.
  */
 export const cachedReadFailure = <TValue = never>(
   message: string
