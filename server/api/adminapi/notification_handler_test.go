@@ -129,23 +129,3 @@ func TestCountUnreadNotificationsSuccess(t *testing.T) {
 
 	assertExpectations(t, mock)
 }
-
-func TestListNotificationsRequiresTenantAdmin(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-
-	client := publiraadminv1connect.NewAdminNotificationServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListNotifications(context.Background(), newNotificationRequest(tenantID, sessionToken))
-	if connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ListNotifications code = %v, want permission_denied", connect.CodeOf(err))
-	}
-
-	assertExpectations(t, mock)
-}

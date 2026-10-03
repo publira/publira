@@ -10,30 +10,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
-	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
-
-func tenantAdminRoleRequiredError() error {
-	return connect.NewError(connect.CodePermissionDenied, errors.New("tenant admin role required"))
-}
-
-func (s *adminServer) requireTenantAdmin(ctx context.Context) (rpcmiddleware.SessionContext, error) {
-	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
-	if !ok {
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, errors.New("session context is unavailable"))
-	}
-	if sessionCtx.Role != auth.RoleTenantAdmin {
-		return rpcmiddleware.SessionContext{}, tenantAdminRoleRequiredError()
-	}
-	return sessionCtx, nil
-}
 
 func tenantEmailSettingsToProto(config dbmodels.TenantSmtpConfig) *publiraadminv1.TenantEmailSettings {
 	settings := &publiraadminv1.TenantEmailSettings{

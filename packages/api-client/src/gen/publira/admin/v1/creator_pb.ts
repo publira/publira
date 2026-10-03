@@ -397,6 +397,8 @@ export const UnlinkCreatorAccountResponseSchema: GenMessage<UnlinkCreatorAccount
  */
 export const AdminCreatorService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorService.ListCreators
    */
   listCreators: {
@@ -405,6 +407,8 @@ export const AdminCreatorService: GenService<{
     output: typeof ListCreatorsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorService.GetCreator
    */
   getCreator: {
@@ -413,6 +417,8 @@ export const AdminCreatorService: GenService<{
     output: typeof GetCreatorResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorService.CreateCreator
    */
   createCreator: {
@@ -421,6 +427,8 @@ export const AdminCreatorService: GenService<{
     output: typeof CreateCreatorResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorService.UpdateCreator
    */
   updateCreator: {
@@ -433,7 +441,9 @@ export const AdminCreatorService: GenService<{
    * creators and one creator to several accounts. Linking a pair that is
    * already linked changes nothing and records nothing. not_found for a
    * creator or an account of another tenant and for a staff account;
-   * failed_precondition for a reader who is not active. Tenant admins only.
+   * failed_precondition for a reader who is not active.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminCreatorService.LinkCreatorAccount
    */
@@ -444,8 +454,9 @@ export const AdminCreatorService: GenService<{
   },
   /**
    * Removes a link. Unlinking a pair that is not linked changes nothing and
-   * records nothing. not_found for a creator of another tenant. Tenant admins
-   * only.
+   * records nothing. not_found for a creator of another tenant.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount
    */

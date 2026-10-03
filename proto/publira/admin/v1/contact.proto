@@ -128,6 +128,8 @@ message UpdateContactMessageStaffNoteResponse {
 
 service AdminContactService {
   // Lists the messages readers sent the tenant, newest first.
+  //
+  // Minimum role: tenant_admin.
   rpc ListContactMessages(ListContactMessagesRequest) returns (ListContactMessagesResponse) {}
   // Reads one message in full.
   //
@@ -135,6 +137,8 @@ service AdminContactService {
   // already and a detail view is what a member of staff opens to answer from;
   // an inbox that has lost its page can reach one message without walking back
   // to it.
+  //
+  // Minimum role: tenant_admin.
   rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageResponse) {}
   // Marks one message dealt with, or puts it back among the ones waiting. A
   // message put back keeps its assignee, so it is in_progress again when it
@@ -142,6 +146,8 @@ service AdminContactService {
   //
   // Marking a message that is already in the state asked for succeeds and
   // leaves the recorded time alone, so a repeated press does not move it.
+  //
+  // Minimum role: tenant_admin.
   rpc MarkContactMessageHandled(MarkContactMessageHandledRequest) returns (MarkContactMessageHandledResponse) {}
   // Assigns one message to a member of staff, moves it to another, or clears
   // the assignment.
@@ -149,7 +155,11 @@ service AdminContactService {
   // The assignee is stated rather than toggled, and it is independent of the
   // handled flag: marking the message handled or reopening it keeps it, so a
   // reopened message that has an assignee is in_progress again.
+  //
+  // Minimum role: tenant_admin.
   rpc AssignContactMessage(AssignContactMessageRequest) returns (AssignContactMessageResponse) {}
   // Saves, replaces, or clears the internal note on one message.
+  //
+  // Minimum role: tenant_admin.
   rpc UpdateContactMessageStaffNote(UpdateContactMessageStaffNoteRequest) returns (UpdateContactMessageStaffNoteResponse) {}
 }

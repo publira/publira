@@ -15,6 +15,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -78,16 +79,16 @@ func newAnnouncementRequest(tenantID uuid.UUID, sessionToken string) *connect.Re
 	return req
 }
 
-func TestCreateAnnouncementRequiresTenantAdmin(t *testing.T) {
+func TestCreateAnnouncementRefusesATenantAuditor(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAuditor)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantAuditor)
 
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{

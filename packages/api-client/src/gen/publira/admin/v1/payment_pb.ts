@@ -717,6 +717,8 @@ export const ListTenantStoreProductsResponseSchema: GenMessage<ListTenantStorePr
  */
 export const AdminPaymentSettingsService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders
    */
   listPaymentProviders: {
@@ -725,6 +727,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof ListPaymentProvidersResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings
    */
   getTenantPaymentSettings: {
@@ -733,6 +737,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof GetTenantPaymentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings
    */
   updateTenantPaymentSettings: {
@@ -741,6 +747,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof UpdateTenantPaymentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings
    */
   getTenantStorePaymentSettings: {
@@ -749,6 +757,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof GetTenantStorePaymentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings
    */
   updateTenantStorePaymentSettings: {
@@ -757,6 +767,8 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof UpdateTenantStorePaymentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts
    */
   listTenantStoreProducts: {

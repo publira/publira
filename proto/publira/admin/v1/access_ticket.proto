@@ -85,7 +85,10 @@ message RevokeAccessTicketResponse {
 }
 
 service AdminAccessTicketService {
+  // Minimum role: tenant_admin.
   rpc ListAccessTickets(ListAccessTicketsRequest) returns (ListAccessTicketsResponse) {}
+  // Minimum role: tenant_admin.
   rpc IssueAccessTicket(IssueAccessTicketRequest) returns (IssueAccessTicketResponse) {}
+  // Minimum role: tenant_admin.
   rpc RevokeAccessTicket(RevokeAccessTicketRequest) returns (RevokeAccessTicketResponse) {}
 }

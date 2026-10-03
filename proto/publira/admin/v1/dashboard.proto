@@ -31,5 +31,6 @@ message GetDashboardResponse {
 }
 
 service AdminDashboardService {
+  // Minimum role: tenant_auditor.
   rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
 }

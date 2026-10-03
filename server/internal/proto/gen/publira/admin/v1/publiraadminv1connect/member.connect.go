@@ -59,12 +59,19 @@ const (
 // AdminTenantMemberServiceClient is a client for the publira.admin.v1.AdminTenantMemberService
 // service.
 type AdminTenantMemberServiceClient interface {
+	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
+	// Minimum role: tenant_admin.
 	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
+	// Minimum role: tenant_admin.
 	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
+	// Minimum role: tenant_admin.
 	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
 }
 
@@ -177,12 +184,19 @@ func (c *adminTenantMemberServiceClient) CancelTenantAdminInvitation(ctx context
 // AdminTenantMemberServiceHandler is an implementation of the
 // publira.admin.v1.AdminTenantMemberService service.
 type AdminTenantMemberServiceHandler interface {
+	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
+	// Minimum role: tenant_admin.
 	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
+	// Minimum role: tenant_admin.
 	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
+	// Minimum role: tenant_admin.
 	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
 }
 

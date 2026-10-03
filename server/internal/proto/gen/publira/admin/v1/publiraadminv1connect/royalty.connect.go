@@ -59,12 +59,18 @@ const (
 // AdminRoyaltyServiceClient is a client for the publira.admin.v1.AdminRoyaltyService service.
 type AdminRoyaltyServiceClient interface {
 	// Reads the close policy. Tenants that have not selected one read as manual.
+	//
+	// Minimum role: tenant_admin.
 	GetRoyaltyConfig(context.Context, *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error)
 	// Updates the close policy. Automatic closing requires a day from 1 through 28.
+	//
+	// Minimum role: tenant_admin.
 	UpdateRoyaltyConfig(context.Context, *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error)
 	// Computes a month that is not closed, exactly as closing it now would.
 	// failed_precondition for a month already closed, and for a month that has
 	// not started yet.
+	//
+	// Minimum role: tenant_admin.
 	PreviewRoyaltyStatement(context.Context, *connect.Request[v1.PreviewRoyaltyStatementRequest]) (*connect.Response[v1.PreviewRoyaltyStatementResponse], error)
 	// Closes a month into a statement that never changes afterwards: a later
 	// edit of a share, a creator or a catalog row, and a refund recorded after
@@ -72,15 +78,23 @@ type AdminRoyaltyServiceClient interface {
 	// a correction is a manual process outside Publira. already_exists for a
 	// month that is already closed, failed_precondition for a month that is not
 	// over yet.
+	//
+	// Minimum role: tenant_admin.
 	CloseRoyaltyStatement(context.Context, *connect.Request[v1.CloseRoyaltyStatementRequest]) (*connect.Response[v1.CloseRoyaltyStatementResponse], error)
 	// Lists the closed months, newest first.
+	//
+	// Minimum role: tenant_admin.
 	ListRoyaltyStatements(context.Context, *connect.Request[v1.ListRoyaltyStatementsRequest]) (*connect.Response[v1.ListRoyaltyStatementsResponse], error)
 	// Reads a closed month and a page of its lines. not_found for a month that
 	// is not closed.
+	//
+	// Minimum role: tenant_admin.
 	GetRoyaltyStatement(context.Context, *connect.Request[v1.GetRoyaltyStatementRequest]) (*connect.Response[v1.GetRoyaltyStatementResponse], error)
 	// Exports a closed month as CSV, built from the stored lines alone, so the
 	// same month exports the same bytes every time. failed_precondition for a
 	// month that is not closed; the console previews an open month instead.
+	//
+	// Minimum role: tenant_admin.
 	ExportRoyaltyStatement(context.Context, *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error)
 }
 
@@ -190,12 +204,18 @@ func (c *adminRoyaltyServiceClient) ExportRoyaltyStatement(ctx context.Context, 
 // service.
 type AdminRoyaltyServiceHandler interface {
 	// Reads the close policy. Tenants that have not selected one read as manual.
+	//
+	// Minimum role: tenant_admin.
 	GetRoyaltyConfig(context.Context, *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error)
 	// Updates the close policy. Automatic closing requires a day from 1 through 28.
+	//
+	// Minimum role: tenant_admin.
 	UpdateRoyaltyConfig(context.Context, *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error)
 	// Computes a month that is not closed, exactly as closing it now would.
 	// failed_precondition for a month already closed, and for a month that has
 	// not started yet.
+	//
+	// Minimum role: tenant_admin.
 	PreviewRoyaltyStatement(context.Context, *connect.Request[v1.PreviewRoyaltyStatementRequest]) (*connect.Response[v1.PreviewRoyaltyStatementResponse], error)
 	// Closes a month into a statement that never changes afterwards: a later
 	// edit of a share, a creator or a catalog row, and a refund recorded after
@@ -203,15 +223,23 @@ type AdminRoyaltyServiceHandler interface {
 	// a correction is a manual process outside Publira. already_exists for a
 	// month that is already closed, failed_precondition for a month that is not
 	// over yet.
+	//
+	// Minimum role: tenant_admin.
 	CloseRoyaltyStatement(context.Context, *connect.Request[v1.CloseRoyaltyStatementRequest]) (*connect.Response[v1.CloseRoyaltyStatementResponse], error)
 	// Lists the closed months, newest first.
+	//
+	// Minimum role: tenant_admin.
 	ListRoyaltyStatements(context.Context, *connect.Request[v1.ListRoyaltyStatementsRequest]) (*connect.Response[v1.ListRoyaltyStatementsResponse], error)
 	// Reads a closed month and a page of its lines. not_found for a month that
 	// is not closed.
+	//
+	// Minimum role: tenant_admin.
 	GetRoyaltyStatement(context.Context, *connect.Request[v1.GetRoyaltyStatementRequest]) (*connect.Response[v1.GetRoyaltyStatementResponse], error)
 	// Exports a closed month as CSV, built from the stored lines alone, so the
 	// same month exports the same bytes every time. failed_precondition for a
 	// month that is not closed; the console previews an open month instead.
+	//
+	// Minimum role: tenant_admin.
 	ExportRoyaltyStatement(context.Context, *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error)
 }
 

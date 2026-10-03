@@ -292,6 +292,8 @@ export const RevokeAccessTicketResponseSchema: GenMessage<RevokeAccessTicketResp
  */
 export const AdminAccessTicketService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminAccessTicketService.ListAccessTickets
    */
   listAccessTickets: {
@@ -300,6 +302,8 @@ export const AdminAccessTicketService: GenService<{
     output: typeof ListAccessTicketsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminAccessTicketService.IssueAccessTicket
    */
   issueAccessTicket: {
@@ -308,6 +312,8 @@ export const AdminAccessTicketService: GenService<{
     output: typeof IssueAccessTicketResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminAccessTicketService.RevokeAccessTicket
    */
   revokeAccessTicket: {

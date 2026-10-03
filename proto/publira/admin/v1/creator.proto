@@ -111,18 +111,25 @@ message UnlinkCreatorAccountResponse {
 }
 
 service AdminCreatorService {
+  // Minimum role: tenant_auditor.
   rpc ListCreators(ListCreatorsRequest) returns (ListCreatorsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetCreator(GetCreatorRequest) returns (GetCreatorResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateCreator(UpdateCreatorRequest) returns (UpdateCreatorResponse) {}
   // Links a reader account to a creator. One account may be linked to several
   // creators and one creator to several accounts. Linking a pair that is
   // already linked changes nothing and records nothing. not_found for a
   // creator or an account of another tenant and for a staff account;
-  // failed_precondition for a reader who is not active. Tenant admins only.
+  // failed_precondition for a reader who is not active.
+  //
+  // Minimum role: tenant_admin.
   rpc LinkCreatorAccount(LinkCreatorAccountRequest) returns (LinkCreatorAccountResponse) {}
   // Removes a link. Unlinking a pair that is not linked changes nothing and
-  // records nothing. not_found for a creator of another tenant. Tenant admins
-  // only.
+  // records nothing. not_found for a creator of another tenant.
+  //
+  // Minimum role: tenant_admin.
   rpc UnlinkCreatorAccount(UnlinkCreatorAccountRequest) returns (UnlinkCreatorAccountResponse) {}
 }

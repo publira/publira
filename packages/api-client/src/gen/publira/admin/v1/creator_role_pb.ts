@@ -271,6 +271,8 @@ export const DeleteCreatorRoleResponseSchema: GenMessage<DeleteCreatorRoleRespon
  */
 export const AdminCreatorRoleService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorRoleService.ListCreatorRoles
    */
   listCreatorRoles: {
@@ -279,6 +281,8 @@ export const AdminCreatorRoleService: GenService<{
     output: typeof ListCreatorRolesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorRoleService.CreateCreatorRole
    */
   createCreatorRole: {
@@ -287,6 +291,8 @@ export const AdminCreatorRoleService: GenService<{
     output: typeof CreateCreatorRoleResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorRoleService.UpdateCreatorRole
    */
   updateCreatorRole: {
@@ -295,6 +301,8 @@ export const AdminCreatorRoleService: GenService<{
     output: typeof UpdateCreatorRoleResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorRoleService.ReorderCreatorRoles
    */
   reorderCreatorRoles: {
@@ -303,6 +311,8 @@ export const AdminCreatorRoleService: GenService<{
     output: typeof ReorderCreatorRolesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCreatorRoleService.DeleteCreatorRole
    */
   deleteCreatorRole: {

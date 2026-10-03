@@ -488,6 +488,8 @@ export const CancelTenantAdminInvitationResponseSchema: GenMessage<CancelTenantA
  */
 export const AdminTenantMemberService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.ListTenantMembers
    */
   listTenantMembers: {
@@ -496,6 +498,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof ListTenantMembersResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole
    */
   updateTenantMemberRole: {
@@ -504,6 +508,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof UpdateTenantMemberRoleResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.RemoveTenantMember
    */
   removeTenantMember: {
@@ -512,6 +518,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof RemoveTenantMemberResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.ListTenantAdminInvitations
    */
   listTenantAdminInvitations: {
@@ -520,6 +528,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof ListTenantAdminInvitationsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.CreateTenantAdminInvitation
    */
   createTenantAdminInvitation: {
@@ -528,6 +538,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof CreateTenantAdminInvitationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.ResendTenantAdminInvitation
    */
   resendTenantAdminInvitation: {
@@ -536,6 +548,8 @@ export const AdminTenantMemberService: GenService<{
     output: typeof ResendTenantAdminInvitationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.CancelTenantAdminInvitation
    */
   cancelTenantAdminInvitation: {

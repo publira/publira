@@ -609,6 +609,8 @@ export const DeletePageTranslationResponseSchema: GenMessage<DeletePageTranslati
  */
 export const AdminPagesService: GenService<{
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.CreatePage
    */
   createPage: {
@@ -617,6 +619,8 @@ export const AdminPagesService: GenService<{
     output: typeof CreatePageResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.UpdatePage
    */
   updatePage: {
@@ -625,6 +629,8 @@ export const AdminPagesService: GenService<{
     output: typeof UpdatePageResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.ListPages
    */
   listPages: {
@@ -633,6 +639,8 @@ export const AdminPagesService: GenService<{
     output: typeof ListPagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.GetPage
    */
   getPage: {
@@ -641,6 +649,8 @@ export const AdminPagesService: GenService<{
     output: typeof GetPageResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.CreateVersion
    */
   createVersion: {
@@ -649,6 +659,8 @@ export const AdminPagesService: GenService<{
     output: typeof CreateVersionResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.ListVersions
    */
   listVersions: {
@@ -657,6 +669,8 @@ export const AdminPagesService: GenService<{
     output: typeof ListVersionsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.PublishVersion
    */
   publishVersion: {
@@ -668,6 +682,8 @@ export const AdminPagesService: GenService<{
    * Clears the page's published version. The versions themselves are kept, so
    * the page can go back up without its body being entered again.
    *
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.UnpublishPage
    */
   unpublishPage: {
@@ -676,6 +692,8 @@ export const AdminPagesService: GenService<{
     output: typeof UnpublishPageResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.RollbackToVersion
    */
   rollbackToVersion: {
@@ -684,6 +702,8 @@ export const AdminPagesService: GenService<{
     output: typeof RollbackToVersionResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.CreatePageTranslation
    */
   createPageTranslation: {
@@ -692,6 +712,8 @@ export const AdminPagesService: GenService<{
     output: typeof CreatePageTranslationResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminPagesService.ListPageTranslations
    */
   listPageTranslations: {
@@ -702,6 +724,8 @@ export const AdminPagesService: GenService<{
   /**
    * Deletes one translation with its versions. A page's last translation
    * cannot be deleted (failed_precondition).
+   *
+   * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminPagesService.DeletePageTranslation
    */

@@ -52,10 +52,15 @@ const (
 
 // AdminLabelServiceClient is a client for the publira.admin.v1.AdminLabelService service.
 type AdminLabelServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
+	// Minimum role: tenant_editor.
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
+	// Minimum role: tenant_editor.
 	UploadLabelEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error)
 }
 
@@ -140,10 +145,15 @@ func (c *adminLabelServiceClient) UploadLabelEyeCatchAspectImage(ctx context.Con
 
 // AdminLabelServiceHandler is an implementation of the publira.admin.v1.AdminLabelService service.
 type AdminLabelServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
+	// Minimum role: tenant_editor.
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
+	// Minimum role: tenant_editor.
 	UploadLabelEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadLabelEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadLabelEyeCatchAspectImageResponse], error)
 }
 

@@ -66,6 +66,8 @@ type AdminCommentServiceClient interface {
 	// Withdrawn comments are in it: the author's own deletion takes the comment
 	// away from every reader, but staff keep reading it for the retention window
 	// so a report or a dispute raised before the deletion can still be settled.
+	//
+	// Minimum role: tenant_auditor.
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
 	// Counts the comments waiting for approval across the tenant.
 	//
@@ -73,17 +75,23 @@ type AdminCommentServiceClient interface {
 	// of the queue without reading a page of it: the badge is on every screen,
 	// and a page of rows fetched to be counted and thrown away would be the most
 	// expensive thing the console does per navigation.
+	//
+	// Minimum role: tenant_auditor.
 	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
 	// what first makes a comment public and no other state is waiting for it.
+	//
+	// Minimum role: tenant_editor.
 	ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error)
 	// Removes one pending or published comment from every reader-facing response.
 	//
 	// The removal is silent: the comment keeps rendering to its author exactly as
 	// it was, so being removed does not itself become a public complaint. It is
 	// reversible through RestoreComment.
+	//
+	// Minimum role: tenant_editor.
 	HideComment(context.Context, *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error)
 	// Puts one removed comment back into the state the removal interrupted:
 	// public again when it had been published, back in the approval queue when it
@@ -92,12 +100,16 @@ type AdminCommentServiceClient interface {
 	// failed_precondition for anything but a hidden comment. A withdrawn one is
 	// not restorable at all — its author took it down, and staff putting it back
 	// would republish text its author deleted.
+	//
+	// Minimum role: tenant_editor.
 	RestoreComment(context.Context, *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error)
 	// Deletes one comment irreversibly, for content that must not be retained at
 	// all — a legal takedown, say.
 	//
 	// Separate from HideComment so the routine action stays reversible and the
 	// one that cannot be undone is asked for by name.
+	//
+	// Minimum role: tenant_editor.
 	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
 	// Lists the tenant's comment reports for review, newest first.
 	//
@@ -106,6 +118,8 @@ type AdminCommentServiceClient interface {
 	// and ResolveCommentReport settles them one at a time — so the same comment
 	// appears once per report it collected, with the open count on it saying how
 	// many of those are still waiting.
+	//
+	// Minimum role: tenant_auditor.
 	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
 	// Marks one open report resolved or rejected and records the decision.
 	//
@@ -117,6 +131,8 @@ type AdminCommentServiceClient interface {
 	//
 	// failed_precondition for a report that was already decided, and not_found
 	// for one of another tenant.
+	//
+	// Minimum role: tenant_editor.
 	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
 }
 
@@ -242,6 +258,8 @@ type AdminCommentServiceHandler interface {
 	// Withdrawn comments are in it: the author's own deletion takes the comment
 	// away from every reader, but staff keep reading it for the retention window
 	// so a report or a dispute raised before the deletion can still be settled.
+	//
+	// Minimum role: tenant_auditor.
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
 	// Counts the comments waiting for approval across the tenant.
 	//
@@ -249,17 +267,23 @@ type AdminCommentServiceHandler interface {
 	// of the queue without reading a page of it: the badge is on every screen,
 	// and a page of rows fetched to be counted and thrown away would be the most
 	// expensive thing the console does per navigation.
+	//
+	// Minimum role: tenant_auditor.
 	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
 	// what first makes a comment public and no other state is waiting for it.
+	//
+	// Minimum role: tenant_editor.
 	ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error)
 	// Removes one pending or published comment from every reader-facing response.
 	//
 	// The removal is silent: the comment keeps rendering to its author exactly as
 	// it was, so being removed does not itself become a public complaint. It is
 	// reversible through RestoreComment.
+	//
+	// Minimum role: tenant_editor.
 	HideComment(context.Context, *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error)
 	// Puts one removed comment back into the state the removal interrupted:
 	// public again when it had been published, back in the approval queue when it
@@ -268,12 +292,16 @@ type AdminCommentServiceHandler interface {
 	// failed_precondition for anything but a hidden comment. A withdrawn one is
 	// not restorable at all — its author took it down, and staff putting it back
 	// would republish text its author deleted.
+	//
+	// Minimum role: tenant_editor.
 	RestoreComment(context.Context, *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error)
 	// Deletes one comment irreversibly, for content that must not be retained at
 	// all — a legal takedown, say.
 	//
 	// Separate from HideComment so the routine action stays reversible and the
 	// one that cannot be undone is asked for by name.
+	//
+	// Minimum role: tenant_editor.
 	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
 	// Lists the tenant's comment reports for review, newest first.
 	//
@@ -282,6 +310,8 @@ type AdminCommentServiceHandler interface {
 	// and ResolveCommentReport settles them one at a time — so the same comment
 	// appears once per report it collected, with the open count on it saying how
 	// many of those are still waiting.
+	//
+	// Minimum role: tenant_auditor.
 	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
 	// Marks one open report resolved or rejected and records the decision.
 	//
@@ -293,6 +323,8 @@ type AdminCommentServiceHandler interface {
 	//
 	// failed_precondition for a report that was already decided, and not_found
 	// for one of another tenant.
+	//
+	// Minimum role: tenant_editor.
 	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
 }
 

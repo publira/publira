@@ -135,6 +135,9 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateEpisodeFreeWindowRequest],
 ) (*connect.Response[publiraadminv1.CreateEpisodeFreeWindowResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -224,6 +227,9 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateSeriesFreeWindowsRequest],
 ) (*connect.Response[publiraadminv1.CreateSeriesFreeWindowsResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -454,6 +460,9 @@ func (s *adminServer) ListEpisodeFreeWindows(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListEpisodeFreeWindowsRequest],
 ) (*connect.Response[publiraadminv1.ListEpisodeFreeWindowsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -517,6 +526,9 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteEpisodeFreeWindowRequest],
 ) (*connect.Response[publiraadminv1.DeleteEpisodeFreeWindowResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

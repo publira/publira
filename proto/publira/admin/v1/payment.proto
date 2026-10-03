@@ -208,10 +208,16 @@ message ListTenantStoreProductsResponse {
 }
 
 service AdminPaymentSettingsService {
+  // Minimum role: tenant_admin.
   rpc ListPaymentProviders(ListPaymentProvidersRequest) returns (ListPaymentProvidersResponse) {}
+  // Minimum role: tenant_admin.
   rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantStorePaymentSettings(UpdateTenantStorePaymentSettingsRequest) returns (UpdateTenantStorePaymentSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc ListTenantStoreProducts(ListTenantStoreProductsRequest) returns (ListTenantStoreProductsResponse) {}
 }

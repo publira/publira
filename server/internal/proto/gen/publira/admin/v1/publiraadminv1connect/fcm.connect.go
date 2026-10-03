@@ -47,8 +47,11 @@ const (
 // AdminFcmSettingsServiceClient is a client for the publira.admin.v1.AdminFcmSettingsService
 // service.
 type AdminFcmSettingsServiceClient interface {
+	// Minimum role: tenant_admin.
 	GetTenantFcmSettings(context.Context, *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	SaveTenantFcmCredentials(context.Context, *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantFcmCredentials(context.Context, *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error)
 }
 
@@ -110,8 +113,11 @@ func (c *adminFcmSettingsServiceClient) DeleteTenantFcmCredentials(ctx context.C
 // AdminFcmSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminFcmSettingsService service.
 type AdminFcmSettingsServiceHandler interface {
+	// Minimum role: tenant_admin.
 	GetTenantFcmSettings(context.Context, *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	SaveTenantFcmCredentials(context.Context, *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantFcmCredentials(context.Context, *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error)
 }
 

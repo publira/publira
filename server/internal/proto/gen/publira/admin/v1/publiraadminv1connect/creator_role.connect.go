@@ -53,10 +53,15 @@ const (
 // AdminCreatorRoleServiceClient is a client for the publira.admin.v1.AdminCreatorRoleService
 // service.
 type AdminCreatorRoleServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListCreatorRoles(context.Context, *connect.Request[v1.ListCreatorRolesRequest]) (*connect.Response[v1.ListCreatorRolesResponse], error)
+	// Minimum role: tenant_editor.
 	CreateCreatorRole(context.Context, *connect.Request[v1.CreateCreatorRoleRequest]) (*connect.Response[v1.CreateCreatorRoleResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateCreatorRole(context.Context, *connect.Request[v1.UpdateCreatorRoleRequest]) (*connect.Response[v1.UpdateCreatorRoleResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderCreatorRoles(context.Context, *connect.Request[v1.ReorderCreatorRolesRequest]) (*connect.Response[v1.ReorderCreatorRolesResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteCreatorRole(context.Context, *connect.Request[v1.DeleteCreatorRoleRequest]) (*connect.Response[v1.DeleteCreatorRoleResponse], error)
 }
 
@@ -141,10 +146,15 @@ func (c *adminCreatorRoleServiceClient) DeleteCreatorRole(ctx context.Context, r
 // AdminCreatorRoleServiceHandler is an implementation of the
 // publira.admin.v1.AdminCreatorRoleService service.
 type AdminCreatorRoleServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListCreatorRoles(context.Context, *connect.Request[v1.ListCreatorRolesRequest]) (*connect.Response[v1.ListCreatorRolesResponse], error)
+	// Minimum role: tenant_editor.
 	CreateCreatorRole(context.Context, *connect.Request[v1.CreateCreatorRoleRequest]) (*connect.Response[v1.CreateCreatorRoleResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateCreatorRole(context.Context, *connect.Request[v1.UpdateCreatorRoleRequest]) (*connect.Response[v1.UpdateCreatorRoleResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderCreatorRoles(context.Context, *connect.Request[v1.ReorderCreatorRolesRequest]) (*connect.Response[v1.ReorderCreatorRolesResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteCreatorRole(context.Context, *connect.Request[v1.DeleteCreatorRoleRequest]) (*connect.Response[v1.DeleteCreatorRoleResponse], error)
 }
 

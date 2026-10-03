@@ -85,9 +85,14 @@ message UploadLabelEyeCatchAspectImageResponse {
 }
 
 service AdminLabelService {
+  // Minimum role: tenant_auditor.
   rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetLabel(GetLabelRequest) returns (GetLabelResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
+  // Minimum role: tenant_editor.
   rpc UploadLabelEyeCatchAspectImage(UploadLabelEyeCatchAspectImageRequest) returns (UploadLabelEyeCatchAspectImageResponse) {}
 }

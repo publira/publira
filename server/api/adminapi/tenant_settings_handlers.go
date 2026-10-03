@@ -34,6 +34,9 @@ func (s *adminServer) GetTenantTimezone(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantTimezoneRequest],
 ) (*connect.Response[publiraadminv1.GetTenantTimezoneResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -94,6 +97,9 @@ func (s *adminServer) GetTenantDefaultLocale(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantDefaultLocaleRequest],
 ) (*connect.Response[publiraadminv1.GetTenantDefaultLocaleResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -208,6 +214,9 @@ func (s *adminServer) GetTenantCommentSettings(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantCommentSettingsRequest],
 ) (*connect.Response[publiraadminv1.GetTenantCommentSettingsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -317,6 +326,9 @@ func (s *adminServer) GetTenantAgeVerification(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantAgeVerificationRequest],
 ) (*connect.Response[publiraadminv1.GetTenantAgeVerificationResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

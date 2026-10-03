@@ -112,10 +112,16 @@ message UploadGenreEyeCatchAspectImageResponse {
 }
 
 service AdminGenreService {
+  // Minimum role: tenant_auditor.
   rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateGenre(CreateGenreRequest) returns (CreateGenreResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateGenre(UpdateGenreRequest) returns (UpdateGenreResponse) {}
+  // Minimum role: tenant_editor.
   rpc ReorderGenres(ReorderGenresRequest) returns (ReorderGenresResponse) {}
+  // Minimum role: tenant_editor.
   rpc DeleteGenre(DeleteGenreRequest) returns (DeleteGenreResponse) {}
+  // Minimum role: tenant_editor.
   rpc UploadGenreEyeCatchAspectImage(UploadGenreEyeCatchAspectImageRequest) returns (UploadGenreEyeCatchAspectImageResponse) {}
 }

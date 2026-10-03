@@ -470,6 +470,8 @@ export const DeleteReaderResponseSchema: GenMessage<DeleteReaderResponse> = /*@_
  */
 export const AdminUserService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminUserService.ListTenantUsers
    */
   listTenantUsers: {
@@ -479,6 +481,8 @@ export const AdminUserService: GenService<{
   },
   /**
    * Lists every account of the tenant, newest first, staff accounts included.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.ListReaders
    */
@@ -490,6 +494,8 @@ export const AdminUserService: GenService<{
   /**
    * Reads one account of the tenant, a staff account included. not_found for
    * an account of another tenant.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.GetReader
    */
@@ -504,6 +510,8 @@ export const AdminUserService: GenService<{
    * failed_precondition for the caller's own account, and, with the
    * LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminUserService.SuspendReader
    */
   suspendReader: {
@@ -516,6 +524,8 @@ export const AdminUserService: GenService<{
    * they have not confirmed their address yet. Sessions ended by the
    * suspension stay ended. A reader who is not suspended is left as they are.
    * not_found as GetReader.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.UnsuspendReader
    */
@@ -530,6 +540,8 @@ export const AdminUserService: GenService<{
    * age-gated read for the reader is decided on the new date. Writing the date
    * already stored changes nothing. not_found as GetReader.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminUserService.SetReaderBirthDate
    */
   setReaderBirthDate: {
@@ -542,6 +554,8 @@ export const AdminUserService: GenService<{
    * go with it. The tenant's audit entries keep the name and public ID of a
    * staff account they name, and its page versions stop naming it. not_found
    * as GetReader. failed_precondition as SuspendReader.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.DeleteReader
    */

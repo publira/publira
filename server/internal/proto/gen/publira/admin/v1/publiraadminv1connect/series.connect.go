@@ -106,28 +106,51 @@ const (
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
 type AdminSeriesServiceClient interface {
+	// Minimum role: tenant_editor.
 	CreateSeries(context.Context, *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateSeries(context.Context, *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
+	// Minimum role: tenant_editor.
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodePurchaseAvailability(context.Context, *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	// Minimum role: tenant_editor.
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	// Minimum role: tenant_editor.
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
 }
 
@@ -431,28 +454,51 @@ func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, 
 // AdminSeriesServiceHandler is an implementation of the publira.admin.v1.AdminSeriesService
 // service.
 type AdminSeriesServiceHandler interface {
+	// Minimum role: tenant_editor.
 	CreateSeries(context.Context, *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateSeries(context.Context, *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
+	// Minimum role: tenant_editor.
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodePurchaseAvailability(context.Context, *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
+	// Minimum role: tenant_editor.
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	// Minimum role: tenant_editor.
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	// Minimum role: tenant_editor.
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	// Minimum role: tenant_auditor.
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
 }
 

@@ -1060,6 +1060,8 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceGetTenantByDomainResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminAuthService.GetTenant
    */
   getTenant: {
@@ -1068,6 +1070,8 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceGetTenantResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminAuthService.GetTenantConfig
    */
   getTenantConfig: {
@@ -1092,6 +1096,8 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceAcceptTenantAdminInvitationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminAuthService.UpdateTenantConfig
    */
   updateTenantConfig: {

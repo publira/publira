@@ -59,8 +59,12 @@ message MarkAllNotificationsAsReadResponse {
 }
 
 service AdminNotificationService {
+  // Minimum role: tenant_auditor.
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc CountUnreadNotifications(CountUnreadNotificationsRequest) returns (CountUnreadNotificationsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc MarkNotificationAsRead(MarkNotificationAsReadRequest) returns (MarkNotificationAsReadResponse) {}
+  // Minimum role: tenant_auditor.
   rpc MarkAllNotificationsAsRead(MarkAllNotificationsAsReadRequest) returns (MarkAllNotificationsAsReadResponse) {}
 }

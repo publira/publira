@@ -301,6 +301,8 @@ export const UploadLabelEyeCatchAspectImageResponseSchema: GenMessage<UploadLabe
  */
 export const AdminLabelService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminLabelService.ListLabels
    */
   listLabels: {
@@ -309,6 +311,8 @@ export const AdminLabelService: GenService<{
     output: typeof ListLabelsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminLabelService.GetLabel
    */
   getLabel: {
@@ -317,6 +321,8 @@ export const AdminLabelService: GenService<{
     output: typeof GetLabelResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminLabelService.CreateLabel
    */
   createLabel: {
@@ -325,6 +331,8 @@ export const AdminLabelService: GenService<{
     output: typeof CreateLabelResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminLabelService.UpdateLabel
    */
   updateLabel: {
@@ -333,6 +341,8 @@ export const AdminLabelService: GenService<{
     output: typeof UpdateLabelResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminLabelService.UploadLabelEyeCatchAspectImage
    */
   uploadLabelEyeCatchAspectImage: {

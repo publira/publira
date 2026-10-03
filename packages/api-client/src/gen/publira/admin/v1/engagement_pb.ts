@@ -176,6 +176,8 @@ export const ListEpisodeReadThroughResponseSchema: GenMessage<ListEpisodeReadThr
  */
 export const AdminEngagementService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough
    */
   listEpisodeReadThrough: {

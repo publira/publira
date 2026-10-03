@@ -53,6 +53,8 @@ const (
 // AdminContactServiceClient is a client for the publira.admin.v1.AdminContactService service.
 type AdminContactServiceClient interface {
 	// Lists the messages readers sent the tenant, newest first.
+	//
+	// Minimum role: tenant_admin.
 	ListContactMessages(context.Context, *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error)
 	// Reads one message in full.
 	//
@@ -60,6 +62,8 @@ type AdminContactServiceClient interface {
 	// already and a detail view is what a member of staff opens to answer from;
 	// an inbox that has lost its page can reach one message without walking back
 	// to it.
+	//
+	// Minimum role: tenant_admin.
 	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
 	// Marks one message dealt with, or puts it back among the ones waiting. A
 	// message put back keeps its assignee, so it is in_progress again when it
@@ -67,6 +71,8 @@ type AdminContactServiceClient interface {
 	//
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
+	//
+	// Minimum role: tenant_admin.
 	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
 	// Assigns one message to a member of staff, moves it to another, or clears
 	// the assignment.
@@ -74,8 +80,12 @@ type AdminContactServiceClient interface {
 	// The assignee is stated rather than toggled, and it is independent of the
 	// handled flag: marking the message handled or reopening it keeps it, so a
 	// reopened message that has an assignee is in_progress again.
+	//
+	// Minimum role: tenant_admin.
 	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
 	// Saves, replaces, or clears the internal note on one message.
+	//
+	// Minimum role: tenant_admin.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
 }
 
@@ -162,6 +172,8 @@ func (c *adminContactServiceClient) UpdateContactMessageStaffNote(ctx context.Co
 // service.
 type AdminContactServiceHandler interface {
 	// Lists the messages readers sent the tenant, newest first.
+	//
+	// Minimum role: tenant_admin.
 	ListContactMessages(context.Context, *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error)
 	// Reads one message in full.
 	//
@@ -169,6 +181,8 @@ type AdminContactServiceHandler interface {
 	// already and a detail view is what a member of staff opens to answer from;
 	// an inbox that has lost its page can reach one message without walking back
 	// to it.
+	//
+	// Minimum role: tenant_admin.
 	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
 	// Marks one message dealt with, or puts it back among the ones waiting. A
 	// message put back keeps its assignee, so it is in_progress again when it
@@ -176,6 +190,8 @@ type AdminContactServiceHandler interface {
 	//
 	// Marking a message that is already in the state asked for succeeds and
 	// leaves the recorded time alone, so a repeated press does not move it.
+	//
+	// Minimum role: tenant_admin.
 	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
 	// Assigns one message to a member of staff, moves it to another, or clears
 	// the assignment.
@@ -183,8 +199,12 @@ type AdminContactServiceHandler interface {
 	// The assignee is stated rather than toggled, and it is independent of the
 	// handled flag: marking the message handled or reopening it keeps it, so a
 	// reopened message that has an assignee is in_progress again.
+	//
+	// Minimum role: tenant_admin.
 	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
 	// Saves, replaces, or clears the internal note on one message.
+	//
+	// Minimum role: tenant_admin.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
 }
 

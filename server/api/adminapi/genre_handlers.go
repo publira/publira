@@ -348,6 +348,9 @@ func (s *adminServer) ListGenres(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListGenresRequest],
 ) (*connect.Response[publiraadminv1.ListGenresResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -417,6 +420,9 @@ func (s *adminServer) CreateGenre(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateGenreRequest],
 ) (*connect.Response[publiraadminv1.CreateGenreResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -522,6 +528,9 @@ func (s *adminServer) UpdateGenre(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateGenreRequest],
 ) (*connect.Response[publiraadminv1.UpdateGenreResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -604,6 +613,9 @@ func (s *adminServer) ReorderGenres(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderGenresRequest],
 ) (*connect.Response[publiraadminv1.ReorderGenresResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -682,6 +694,9 @@ func (s *adminServer) DeleteGenre(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteGenreRequest],
 ) (*connect.Response[publiraadminv1.DeleteGenreResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

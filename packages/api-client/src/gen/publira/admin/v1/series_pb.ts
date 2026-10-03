@@ -2114,6 +2114,8 @@ export const EpisodeCreditUnchangedReasonSchema: GenEnum<EpisodeCreditUnchangedR
  */
 export const AdminSeriesService: GenService<{
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.CreateSeries
    */
   createSeries: {
@@ -2122,6 +2124,8 @@ export const AdminSeriesService: GenService<{
     output: typeof CreateSeriesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateSeries
    */
   updateSeries: {
@@ -2130,6 +2134,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UpdateSeriesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ListSeries
    */
   listSeries: {
@@ -2138,6 +2144,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ListSeriesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.GetSeries
    */
   getSeries: {
@@ -2146,6 +2154,8 @@ export const AdminSeriesService: GenService<{
     output: typeof GetSeriesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodes
    */
   listEpisodes: {
@@ -2154,6 +2164,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ListEpisodesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.GetEpisode
    */
   getEpisode: {
@@ -2162,6 +2174,8 @@ export const AdminSeriesService: GenService<{
     output: typeof GetEpisodeResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ReorderEpisodes
    */
   reorderEpisodes: {
@@ -2170,6 +2184,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ReorderEpisodesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.CreateEpisode
    */
   createEpisode: {
@@ -2178,6 +2194,8 @@ export const AdminSeriesService: GenService<{
     output: typeof CreateEpisodeResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UploadEpisodeImages
    */
   uploadEpisodeImages: {
@@ -2186,6 +2204,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UploadEpisodeImagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodeImages
    */
   listEpisodeImages: {
@@ -2194,6 +2214,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ListEpisodeImagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ReorderEpisodeImages
    */
   reorderEpisodeImages: {
@@ -2202,6 +2224,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ReorderEpisodeImagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule
    */
   updateEpisodePublishSchedule: {
@@ -2210,6 +2234,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UpdateEpisodePublishScheduleResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout
    */
   updateEpisodeLayout: {
@@ -2218,6 +2244,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UpdateEpisodeLayoutResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability
    */
   updateEpisodeAvailability: {
@@ -2226,6 +2254,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UpdateEpisodeAvailabilityResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability
    */
   updateEpisodePurchaseAvailability: {
@@ -2234,6 +2264,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UpdateEpisodePurchaseAvailabilityResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodeCredits
    */
   listEpisodeCredits: {
@@ -2242,6 +2274,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ListEpisodeCreditsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits
    */
   replaceEpisodeCredits: {
@@ -2250,6 +2284,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ReplaceEpisodeCreditsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits
    */
   bulkEditEpisodeCredits: {
@@ -2258,6 +2294,8 @@ export const AdminSeriesService: GenService<{
     output: typeof BulkEditEpisodeCreditsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage
    */
   uploadSeriesEyeCatchAspectImage: {
@@ -2266,6 +2304,8 @@ export const AdminSeriesService: GenService<{
     output: typeof UploadSeriesEyeCatchAspectImageResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow
    */
   createEpisodeFreeWindow: {
@@ -2274,6 +2314,8 @@ export const AdminSeriesService: GenService<{
     output: typeof CreateEpisodeFreeWindowResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows
    */
   createSeriesFreeWindows: {
@@ -2282,6 +2324,8 @@ export const AdminSeriesService: GenService<{
     output: typeof CreateSeriesFreeWindowsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows
    */
   listEpisodeFreeWindows: {
@@ -2290,6 +2334,8 @@ export const AdminSeriesService: GenService<{
     output: typeof ListEpisodeFreeWindowsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow
    */
   deleteEpisodeFreeWindow: {

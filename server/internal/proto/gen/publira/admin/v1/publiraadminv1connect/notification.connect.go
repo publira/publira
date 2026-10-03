@@ -50,9 +50,13 @@ const (
 // AdminNotificationServiceClient is a client for the publira.admin.v1.AdminNotificationService
 // service.
 type AdminNotificationServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
+	// Minimum role: tenant_auditor.
 	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
+	// Minimum role: tenant_auditor.
 	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
+	// Minimum role: tenant_auditor.
 	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
 }
 
@@ -127,9 +131,13 @@ func (c *adminNotificationServiceClient) MarkAllNotificationsAsRead(ctx context.
 // AdminNotificationServiceHandler is an implementation of the
 // publira.admin.v1.AdminNotificationService service.
 type AdminNotificationServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
+	// Minimum role: tenant_auditor.
 	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
+	// Minimum role: tenant_auditor.
 	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
+	// Minimum role: tenant_auditor.
 	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
 }
 

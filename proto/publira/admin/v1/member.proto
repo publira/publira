@@ -136,11 +136,18 @@ message CancelTenantAdminInvitationResponse {
 // The calling tenant's console members and administrator invitations. Every
 // RPC requires a tenant_admin session.
 service AdminTenantMemberService {
+  // Minimum role: tenant_admin.
   rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
+  // Minimum role: tenant_admin.
   rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}
+  // Minimum role: tenant_admin.
   rpc ListTenantAdminInvitations(ListTenantAdminInvitationsRequest) returns (ListTenantAdminInvitationsResponse) {}
+  // Minimum role: tenant_admin.
   rpc CreateTenantAdminInvitation(CreateTenantAdminInvitationRequest) returns (CreateTenantAdminInvitationResponse) {}
+  // Minimum role: tenant_admin.
   rpc ResendTenantAdminInvitation(ResendTenantAdminInvitationRequest) returns (ResendTenantAdminInvitationResponse) {}
+  // Minimum role: tenant_admin.
   rpc CancelTenantAdminInvitation(CancelTenantAdminInvitationRequest) returns (CancelTenantAdminInvitationResponse) {}
 }

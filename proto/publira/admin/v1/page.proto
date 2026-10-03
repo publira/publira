@@ -149,20 +149,34 @@ message DeletePageTranslationResponse {}
 // has, or the call is not_found, so an edit aimed at one language never lands
 // on another.
 service AdminPagesService {
+  // Minimum role: tenant_editor.
   rpc CreatePage(CreatePageRequest) returns (CreatePageResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdatePage(UpdatePageRequest) returns (UpdatePageResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListPages(ListPagesRequest) returns (ListPagesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetPage(GetPageRequest) returns (GetPageResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateVersion(CreateVersionRequest) returns (CreateVersionResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse) {}
+  // Minimum role: tenant_editor.
   rpc PublishVersion(PublishVersionRequest) returns (PublishVersionResponse) {}
   // Clears the page's published version. The versions themselves are kept, so
   // the page can go back up without its body being entered again.
+  //
+  // Minimum role: tenant_editor.
   rpc UnpublishPage(UnpublishPageRequest) returns (UnpublishPageResponse) {}
+  // Minimum role: tenant_editor.
   rpc RollbackToVersion(RollbackToVersionRequest) returns (RollbackToVersionResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreatePageTranslation(CreatePageTranslationRequest) returns (CreatePageTranslationResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListPageTranslations(ListPageTranslationsRequest) returns (ListPageTranslationsResponse) {}
   // Deletes one translation with its versions. A page's last translation
   // cannot be deleted (failed_precondition).
+  //
+  // Minimum role: tenant_editor.
   rpc DeletePageTranslation(DeletePageTranslationRequest) returns (DeletePageTranslationResponse) {}
 }

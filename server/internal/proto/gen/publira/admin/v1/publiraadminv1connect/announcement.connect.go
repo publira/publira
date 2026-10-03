@@ -47,8 +47,11 @@ const (
 // AdminAnnouncementServiceClient is a client for the publira.admin.v1.AdminAnnouncementService
 // service.
 type AdminAnnouncementServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
+	// Minimum role: tenant_editor.
 	CreateAnnouncement(context.Context, *connect.Request[v1.CreateAnnouncementRequest]) (*connect.Response[v1.CreateAnnouncementResponse], error)
+	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error)
 }
 
@@ -109,8 +112,11 @@ func (c *adminAnnouncementServiceClient) UnpinAnnouncement(ctx context.Context, 
 // AdminAnnouncementServiceHandler is an implementation of the
 // publira.admin.v1.AdminAnnouncementService service.
 type AdminAnnouncementServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
+	// Minimum role: tenant_editor.
 	CreateAnnouncement(context.Context, *connect.Request[v1.CreateAnnouncementRequest]) (*connect.Response[v1.CreateAnnouncementResponse], error)
+	// Minimum role: tenant_editor.
 	UnpinAnnouncement(context.Context, *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error)
 }
 

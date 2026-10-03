@@ -285,7 +285,7 @@ func (s *adminServer) CreatePage(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +361,7 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -438,7 +438,7 @@ func (s *adminServer) ListPages(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
@@ -495,7 +495,7 @@ func (s *adminServer) GetPage(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 	pageID, err := parsePageID(req.Msg.PageId)
@@ -519,7 +519,7 @@ func (s *adminServer) CreateVersion(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func (s *adminServer) ListVersions(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 	pageID, err := parsePageID(req.Msg.PageId)
@@ -607,7 +607,7 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +676,7 @@ func (s *adminServer) UnpublishPage(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -730,7 +730,7 @@ func (s *adminServer) RollbackToVersion(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -801,7 +801,7 @@ func (s *adminServer) CreatePageTranslation(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -860,7 +860,7 @@ func (s *adminServer) ListPageTranslations(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 	pageID, err := parsePageID(req.Msg.PageId)
@@ -894,7 +894,7 @@ func (s *adminServer) DeletePageTranslation(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}

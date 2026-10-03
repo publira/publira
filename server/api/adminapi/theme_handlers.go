@@ -248,7 +248,7 @@ func (s *adminServer) GetTenantTheme(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 

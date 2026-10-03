@@ -123,7 +123,7 @@ func (s *adminServer) ListAnnouncements(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
@@ -184,7 +184,7 @@ func (s *adminServer) CreateAnnouncement(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (s *adminServer) UnpinAnnouncement(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -380,24 +380,44 @@ message UpdateTenantCommunityLimitSettingsResponse {
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
+  // Minimum role: tenant_auditor.
   rpc GetTenantTimezone(GetTenantTimezoneRequest) returns (GetTenantTimezoneResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantDefaultLocale(GetTenantDefaultLocaleRequest) returns (GetTenantDefaultLocaleResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantDefaultLocale(UpdateTenantDefaultLocaleRequest) returns (UpdateTenantDefaultLocaleResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantCommentSettings(GetTenantCommentSettingsRequest) returns (GetTenantCommentSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantLegalPages(UpdateTenantLegalPagesRequest) returns (UpdateTenantLegalPagesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantMobileAppAssociation(UpdateTenantMobileAppAssociationRequest) returns (UpdateTenantMobileAppAssociationResponse) {}
+  // Minimum role: tenant_admin.
   rpc GetTenantSignInSettings(GetTenantSignInSettingsRequest) returns (GetTenantSignInSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantSignInSettings(UpdateTenantSignInSettingsRequest) returns (UpdateTenantSignInSettingsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantCommunityLimitSettings(UpdateTenantCommunityLimitSettingsRequest) returns (UpdateTenantCommunityLimitSettingsResponse) {}
 }

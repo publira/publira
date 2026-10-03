@@ -40,6 +40,7 @@ const (
 
 // AdminEngagementServiceClient is a client for the publira.admin.v1.AdminEngagementService service.
 type AdminEngagementServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListEpisodeReadThrough(context.Context, *connect.Request[v1.ListEpisodeReadThroughRequest]) (*connect.Response[v1.ListEpisodeReadThroughResponse], error)
 }
 
@@ -76,6 +77,7 @@ func (c *adminEngagementServiceClient) ListEpisodeReadThrough(ctx context.Contex
 // AdminEngagementServiceHandler is an implementation of the publira.admin.v1.AdminEngagementService
 // service.
 type AdminEngagementServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListEpisodeReadThrough(context.Context, *connect.Request[v1.ListEpisodeReadThroughRequest]) (*connect.Response[v1.ListEpisodeReadThroughResponse], error)
 }
 

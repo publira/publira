@@ -17,7 +17,6 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -193,23 +192,6 @@ func (s *adminServer) loadContactMessageByID(ctx context.Context, tenantID, mess
 	return contactMessageRow(row), nil
 }
 
-// contactMessageActionContext resolves the two things every contact message RPC
-// starts from: the tenant and the staff session acting.
-func (s *adminServer) contactMessageActionContext(
-	ctx context.Context,
-	tenantCtx *publirattypesv1.TenantContext,
-) (dbmodels.Tenant, rpcmiddleware.SessionContext, error) {
-	tenant, err := s.tenantByContext(ctx, tenantCtx)
-	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, err
-	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
-	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, err
-	}
-	return tenant, sessionCtx, nil
-}
-
 // requiredContactMessageField reads the identifier a request names, which is
 // required whichever of the two it is.
 func requiredContactMessageField(raw, field string) (string, error) {
@@ -332,7 +314,10 @@ func (s *adminServer) GetContactMessage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetContactMessageRequest],
 ) (*connect.Response[publiraadminv1.GetContactMessageResponse], error) {
-	tenant, _, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +342,11 @@ func (s *adminServer) MarkContactMessageHandled(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.MarkContactMessageHandledRequest],
 ) (*connect.Response[publiraadminv1.MarkContactMessageHandledResponse], error) {
-	tenant, sessionCtx, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +417,11 @@ func (s *adminServer) AssignContactMessage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AssignContactMessageRequest],
 ) (*connect.Response[publiraadminv1.AssignContactMessageResponse], error) {
-	tenant, sessionCtx, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +463,11 @@ func (s *adminServer) UpdateContactMessageStaffNote(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateContactMessageStaffNoteRequest],
 ) (*connect.Response[publiraadminv1.UpdateContactMessageStaffNoteResponse], error) {
-	tenant, sessionCtx, err := s.contactMessageActionContext(ctx, req.Msg.Tenant)
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}

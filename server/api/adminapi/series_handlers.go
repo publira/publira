@@ -610,6 +610,9 @@ func (s *adminServer) CreateSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateSeriesRequest],
 ) (*connect.Response[publiraadminv1.CreateSeriesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -803,6 +806,9 @@ func (s *adminServer) UpdateSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateSeriesRequest],
 ) (*connect.Response[publiraadminv1.UpdateSeriesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -1178,6 +1184,9 @@ func (s *adminServer) ListSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListSeriesRequest],
 ) (*connect.Response[publiraadminv1.ListSeriesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -1335,6 +1344,9 @@ func (s *adminServer) GetSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetSeriesRequest],
 ) (*connect.Response[publiraadminv1.GetSeriesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

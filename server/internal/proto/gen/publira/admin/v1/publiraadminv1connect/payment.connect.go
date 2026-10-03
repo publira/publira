@@ -57,11 +57,17 @@ const (
 // AdminPaymentSettingsServiceClient is a client for the
 // publira.admin.v1.AdminPaymentSettingsService service.
 type AdminPaymentSettingsServiceClient interface {
+	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantPaymentSettings(context.Context, *connect.Request[v1.GetTenantPaymentSettingsRequest]) (*connect.Response[v1.GetTenantPaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantStorePaymentSettings(context.Context, *connect.Request[v1.UpdateTenantStorePaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantStorePaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	ListTenantStoreProducts(context.Context, *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error)
 }
 
@@ -164,11 +170,17 @@ func (c *adminPaymentSettingsServiceClient) ListTenantStoreProducts(ctx context.
 // AdminPaymentSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminPaymentSettingsService service.
 type AdminPaymentSettingsServiceHandler interface {
+	// Minimum role: tenant_admin.
 	ListPaymentProviders(context.Context, *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantPaymentSettings(context.Context, *connect.Request[v1.GetTenantPaymentSettingsRequest]) (*connect.Response[v1.GetTenantPaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantStorePaymentSettings(context.Context, *connect.Request[v1.UpdateTenantStorePaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantStorePaymentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	ListTenantStoreProducts(context.Context, *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error)
 }
 

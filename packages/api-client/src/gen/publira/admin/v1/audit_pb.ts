@@ -161,6 +161,8 @@ export const ListAuditLogsResponseSchema: GenMessage<ListAuditLogsResponse> = /*
  */
 export const AdminAuditLogService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminAuditLogService.ListAuditLogs
    */
   listAuditLogs: {

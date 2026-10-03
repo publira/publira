@@ -511,7 +511,7 @@ func (s *adminServer) ListComments(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
@@ -641,7 +641,7 @@ func (s *adminServer) CountPendingComments(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
@@ -664,7 +664,11 @@ func (s *adminServer) ApproveComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ApproveCommentRequest],
 ) (*connect.Response[publiraadminv1.ApproveCommentResponse], error) {
-	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -728,7 +732,11 @@ func (s *adminServer) HideComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.HideCommentRequest],
 ) (*connect.Response[publiraadminv1.HideCommentResponse], error) {
-	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -792,7 +800,11 @@ func (s *adminServer) RestoreComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.RestoreCommentRequest],
 ) (*connect.Response[publiraadminv1.RestoreCommentResponse], error) {
-	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -872,7 +884,11 @@ func (s *adminServer) PurgeComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.PurgeCommentRequest],
 ) (*connect.Response[publiraadminv1.PurgeCommentResponse], error) {
-	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -937,7 +953,7 @@ func (s *adminServer) ListCommentReports(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1014,7 +1030,7 @@ func (s *adminServer) ResolveCommentReport(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1117,26 +1133,22 @@ func (s *adminServer) loadCommentReport(
 	return row, nil
 }
 
-// commentActionContext is the opening every moderation action shares: the
-// tenant, the tenant_admin session acting, and the comment being named.
+// commentActionContext is the opening every moderation action shares once its
+// level is checked: the tenant, and the comment being named.
 func (s *adminServer) commentActionContext(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
 	rawCommentID string,
-) (dbmodels.Tenant, rpcmiddleware.SessionContext, uuid.UUID, error) {
+) (dbmodels.Tenant, uuid.UUID, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
-	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
-	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
+		return dbmodels.Tenant{}, uuid.UUID{}, err
 	}
 	commentID, err := commentIDArg(rawCommentID)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
+		return dbmodels.Tenant{}, uuid.UUID{}, err
 	}
-	return tenant, sessionCtx, commentID, nil
+	return tenant, commentID, nil
 }
 
 // commentStateError refuses a transition the comment's current state does not

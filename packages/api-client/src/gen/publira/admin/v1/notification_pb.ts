@@ -234,6 +234,8 @@ export const MarkAllNotificationsAsReadResponseSchema: GenMessage<MarkAllNotific
  */
 export const AdminNotificationService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminNotificationService.ListNotifications
    */
   listNotifications: {
@@ -242,6 +244,8 @@ export const AdminNotificationService: GenService<{
     output: typeof ListNotificationsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminNotificationService.CountUnreadNotifications
    */
   countUnreadNotifications: {
@@ -250,6 +254,8 @@ export const AdminNotificationService: GenService<{
     output: typeof CountUnreadNotificationsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminNotificationService.MarkNotificationAsRead
    */
   markNotificationAsRead: {
@@ -258,6 +264,8 @@ export const AdminNotificationService: GenService<{
     output: typeof MarkNotificationAsReadResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminNotificationService.MarkAllNotificationsAsRead
    */
   markAllNotificationsAsRead: {
