@@ -138,7 +138,7 @@ Implementation:
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
-| `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
+| `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
 | `Docker / <target>` | `task docker:build:*`, then web/node/publiractl smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
