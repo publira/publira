@@ -1339,7 +1339,6 @@
       "delete_failed": "Could not delete the reader. Please try again later.",
       "own_account": "This is the account you are signed in with, so it cannot be suspended or deleted here.",
       "last_tenant_admin": "This account is the tenant's last active tenant admin. Make someone else a tenant admin before suspending or deleting it.",
-      "staff_history": "This account cannot be deleted while the audit log or page history still records what it did.",
       "validation": {
         "target_missing": "Could not tell which reader this applies to. Reload the page and try again.",
         "tenant_missing": "Could not tell which tenant this applies to. Reload the page and try again."

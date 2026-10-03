@@ -12,7 +12,6 @@ export {
 
 /** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
 export const RPC_ERROR_REASON = {
-  accountHasStaffHistory: "ACCOUNT_HAS_STAFF_HISTORY",
   archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
