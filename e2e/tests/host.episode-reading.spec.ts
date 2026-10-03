@@ -532,6 +532,20 @@ test.describe("web-host episode reading", () => {
     page,
   }) => {
     clearReadingPosition();
+    // Counted from before the episode opens, so the save of the first page is
+    // one of them. Playwright can report a save after the database already
+    // holds it, so a listener attached once the first page is in the database
+    // could still be handed that save, and a count read the moment a later save
+    // landed could still miss it. The counts are polled for that reason.
+    const saves: string[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        request.url().endsWith("/reading-position")
+      ) {
+        saves.push(request.url());
+      }
+    });
     await signInAsMember(
       page,
       SEED_MEMBER,
@@ -543,16 +557,11 @@ test.describe("web-host episode reading", () => {
     await expect
       .poll(savedPageIndex, { message: "the first page was saved on opening" })
       .toBe("0");
-
-    const saves: string[] = [];
-    page.on("request", (request) => {
-      if (
-        request.method() === "POST" &&
-        request.url().endsWith("/reading-position")
-      ) {
-        saves.push(request.url());
-      }
-    });
+    await expect
+      .poll(() => saves.length, {
+        message: "opening the episode sent one save",
+      })
+      .toBe(1);
 
     await revealViewerControls(page);
     await dragProgressTo(page, DRAG_TARGET_INDEX);
@@ -563,7 +572,7 @@ test.describe("web-host episode reading", () => {
       /^Pages? 6\b/u
     );
     await expect(target, "the pages follow the thumb").toBeInViewport();
-    expect(saves, "nothing is saved while the thumb is held").toHaveLength(0);
+    expect(saves, "nothing is saved while the thumb is held").toHaveLength(1);
 
     await page.mouse.up();
 
@@ -571,7 +580,9 @@ test.describe("web-host episode reading", () => {
     await expect
       .poll(savedPageIndex, { message: "the page let go on was saved" })
       .toBe(String(DRAG_TARGET_INDEX));
-    expect(saves, "the release saved one page").toHaveLength(1);
+    await expect
+      .poll(() => saves.length, { message: "the release saved one page" })
+      .toBe(2);
 
     const landedOn = await lastPageOnScreen(page);
     await page.reload();
