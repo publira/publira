@@ -80,9 +80,9 @@ type AdminUserServiceClient interface {
 	// already stored changes nothing. not_found as GetReader.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
-	// go with it. not_found as GetReader. failed_precondition as SuspendReader,
-	// and, with the ACCOUNT_HAS_STAFF_HISTORY reason, for an account that audit
-	// entries or page versions still name.
+	// go with it. The tenant's audit entries keep the name and public ID of a
+	// staff account they name, and its page versions stop naming it. not_found
+	// as GetReader. failed_precondition as SuspendReader.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 
@@ -212,9 +212,9 @@ type AdminUserServiceHandler interface {
 	// already stored changes nothing. not_found as GetReader.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
-	// go with it. not_found as GetReader. failed_precondition as SuspendReader,
-	// and, with the ACCOUNT_HAS_STAFF_HISTORY reason, for an account that audit
-	// entries or page versions still name.
+	// go with it. The tenant's audit entries keep the name and public ID of a
+	// staff account they name, and its page versions stop naming it. not_found
+	// as GetReader. failed_precondition as SuspendReader.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 

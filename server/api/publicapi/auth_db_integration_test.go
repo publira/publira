@@ -267,6 +267,50 @@ func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 	}
 }
 
+// A staff account closing itself on the storefront is deleted like any other,
+// even after it has acted in the console: the tenant's audit entries keep its
+// name and public ID, and the page versions it wrote stop naming it.
+func TestDBDeleteMeDeletesAStaffAccountTheRecordNames(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "staff@tenant-a.example.com", "Staff")
+	page := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "about", Title: "About", Published: true})
+	ctx := context.Background()
+	if _, err := env.PG.DB.ExecContext(ctx,
+		"UPDATE page_versions SET author_user_id = $2 WHERE id = $1", page.VersionID, staff.ID,
+	); err != nil {
+		t.Fatalf("name the staff account as the page version's author: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO audit_logs (id, tenant_id, actor_user_id, actor_role, action, target_type, target_id, outcome)
+		VALUES ($1, $2, $3, 'tenant_admin', 'page_version_published', 'page_version', $4, 'success')
+	`, uuid.Must(uuid.NewV7()), tenant.ID, staff.ID, page.VersionID.String()); err != nil {
+		t.Fatalf("file an audit entry under the staff account: %v", err)
+	}
+
+	if _, err := env.authClient().DeleteMe(ctx, newBearerRequest(
+		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
+		tokenFor(t, tenant, staff),
+	)); err != nil {
+		t.Fatalf("DeleteMe for a staff account the record names: %v", err)
+	}
+
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", staff.ID); count != 0 {
+		t.Fatalf("users rows for the deleted staff account = %d, want 0", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id IS NULL AND actor_public_id = $2 AND actor_name = $3",
+		tenant.ID, staff.PublicID, "Staff",
+	); count != 1 {
+		t.Fatalf("audit entries keeping the deleted staff account = %d, want 1", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM page_versions WHERE id = $1 AND author_user_id IS NULL", page.VersionID,
+	); count != 1 {
+		t.Fatalf("page versions left without their author = %d, want 1", count)
+	}
+}
+
 func assertPublicBadRequestField(t *testing.T, err error, wantField string) {
 	t.Helper()
 	rpcError, ok := err.(*connect.Error)

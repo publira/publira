@@ -110,12 +110,12 @@ SELECT a.id,
     a.reason,
     a.client_ip,
     a.created_at,
-    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, ''::text) AS actor_name
+    COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
 WHERE a.tenant_id = $1
-    AND ($2::text IS NULL OR actor_u.public_id = $2::text)
+    AND ($2::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = $2::text)
     AND ($3::text IS NULL OR a.action = $3::text)
     AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
     AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
@@ -221,12 +221,12 @@ SELECT a.id,
     a.reason,
     a.client_ip,
     a.created_at,
-    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, ''::text) AS actor_name
+    COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
 WHERE a.tenant_id = $1
-    AND ($2::text IS NULL OR actor_u.public_id = $2::text)
+    AND ($2::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = $2::text)
     AND ($3::text IS NULL OR a.action = $3::text)
     AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
     AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
@@ -277,6 +277,9 @@ type ListAuditLogsByTenantDescRow struct {
 // backward uses ASC so the index can be scanned in reverse. The handler flips
 // ASC rows back into display order. A parameterized ORDER BY cannot be read in
 // index order, so each scan direction gets its own query.
+// The actor is read through the account while it exists and from what the
+// entry kept of it once it is deleted, for the filter as for the columns, so a
+// deleted member's entries are still listed under their public ID.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAuditLogsByTenantDesc,

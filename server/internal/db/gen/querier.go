@@ -1006,6 +1006,9 @@ type Querier interface {
 	// backward uses ASC so the index can be scanned in reverse. The handler flips
 	// ASC rows back into display order. A parameterized ORDER BY cannot be read in
 	// index order, so each scan direction gets its own query.
+	// The actor is read through the account while it exists and from what the
+	// entry kept of it once it is deleted, for the filter as for the columns, so a
+	// deleted member's entries are still listed under their public ID.
 	// cursor rules: proto/README.md.
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
 	// Every tenant that chose automatic closing, for the maintenance pass that

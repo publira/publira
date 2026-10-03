@@ -46,17 +46,19 @@ type AnnouncementRead struct {
 }
 
 type AuditLog struct {
-	ID          uuid.UUID      `json:"id"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	ActorUserID uuid.NullUUID  `json:"actor_user_id"`
-	ActorRole   string         `json:"actor_role"`
-	Action      string         `json:"action"`
-	TargetType  sql.NullString `json:"target_type"`
-	TargetID    sql.NullString `json:"target_id"`
-	Outcome     string         `json:"outcome"`
-	Reason      sql.NullString `json:"reason"`
-	ClientIp    sql.NullString `json:"client_ip"`
-	CreatedAt   time.Time      `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
+	ActorRole     string         `json:"actor_role"`
+	Action        string         `json:"action"`
+	TargetType    sql.NullString `json:"target_type"`
+	TargetID      sql.NullString `json:"target_id"`
+	Outcome       string         `json:"outcome"`
+	Reason        sql.NullString `json:"reason"`
+	ClientIp      sql.NullString `json:"client_ip"`
+	CreatedAt     time.Time      `json:"created_at"`
+	ActorPublicID sql.NullString `json:"actor_public_id"`
+	ActorName     sql.NullString `json:"actor_name"`
 }
 
 type ContactMessage struct {

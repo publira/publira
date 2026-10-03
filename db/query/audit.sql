@@ -151,6 +151,9 @@ LIMIT sqlc.arg('limit');
 -- backward uses ASC so the index can be scanned in reverse. The handler flips
 -- ASC rows back into display order. A parameterized ORDER BY cannot be read in
 -- index order, so each scan direction gets its own query.
+-- The actor is read through the account while it exists and from what the
+-- entry kept of it once it is deleted, for the filter as for the columns, so a
+-- deleted member's entries are still listed under their public ID.
 -- cursor rules: proto/README.md.
 -- name: ListAuditLogsByTenantDesc :many
 SELECT a.id,
@@ -164,12 +167,12 @@ SELECT a.id,
     a.reason,
     a.client_ip,
     a.created_at,
-    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, ''::text) AS actor_name
+    COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
 WHERE a.tenant_id = sqlc.arg('tenant_id')
-    AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_u.public_id = sqlc.narg('filter_actor_user_public_id')::text)
+    AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
     AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
@@ -199,12 +202,12 @@ SELECT a.id,
     a.reason,
     a.client_ip,
     a.created_at,
-    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
-    COALESCE(actor_u.name, ''::text) AS actor_name
+    COALESCE(actor_u.public_id, a.actor_public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, a.actor_name, ''::text) AS actor_name
 FROM audit_logs a
     LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
 WHERE a.tenant_id = sqlc.arg('tenant_id')
-    AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_u.public_id = sqlc.narg('filter_actor_user_public_id')::text)
+    AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR COALESCE(actor_u.public_id, a.actor_public_id) = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
     AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
