@@ -6,6 +6,20 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// The credit a comment's author holds on the episode the comment is on.
+//
+// It is the same answer EpisodeCommentCreator gives a reader: decided per
+// episode, so the same account commenting on a work that does not credit it
+// carries none, and named by the credit that leads the episode's credit line
+// when the account holds several. A moderator reads it to know that the
+// comment they are about to hide is the author's own word on their work rather
+// than another reader's.
+message AdminCommentCreator {
+  string id = 1;
+  string public_id = 2;
+  string name = 3;
+}
+
 // One reader comment as tenant staff read it.
 //
 // The reader-facing EpisodeComment deliberately carries no state, because a
@@ -53,6 +67,10 @@ message AdminComment {
   bool author_is_staff = 17;
   // The comment's primary key, which every moderation request addresses it by.
   string id = 18;
+  // Set when the author is a creator this episode credits, and unset for
+  // every other comment. It changes nothing about how the comment is
+  // moderated.
+  AdminCommentCreator creator = 19;
 }
 
 // One reader's report on one comment, as the report queue reads it.

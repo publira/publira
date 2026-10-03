@@ -1081,9 +1081,9 @@ type Querier interface {
 	// of those are still waiting.
 	//
 	// The reported comment travels with the report, joined the same way
-	// ListEpisodeCommentsForModerationByCreatedAtDesc joins it: a report cannot be
-	// judged without the text it is about, and the queue offers the removal
-	// actions from the same row.
+	// ListEpisodeCommentsForModerationByCreatedAtDesc joins it, creator columns
+	// included: a report cannot be judged without the text it is about and who
+	// wrote it, and the queue offers the removal actions from the same row.
 	ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtDescRow, error)
 	// The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
 	ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentsForModerationByCreatedAtAscRow, error)
@@ -1096,6 +1096,10 @@ type Querier interface {
 	//
 	// The author and the episode are joined in because a comment cannot be judged
 	// from its text alone: staff need to know who wrote it and what it is about.
+	// Who wrote it includes the credit the author holds on this episode, which the
+	// creator columns carry through the same credited_creator_of_account the
+	// public list reads, so a moderator is told the comment is the author's in the
+	// same page query rather than a lookup per row.
 	ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error)
 	// Credits are presented in role priority first, so the leading role opens the
 	// list on every episode without anyone ordering it by hand. display_order

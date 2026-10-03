@@ -165,7 +165,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -177,6 +180,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND r.id = $2
 `
@@ -212,6 +216,9 @@ type GetEpisodeCommentReportForModerationByIDForTenantRow struct {
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
 	SeriesTitle      string         `json:"series_title"`
+	CreatorID        uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID  sql.NullString `json:"creator_public_id"`
+	CreatorName      sql.NullString `json:"creator_name"`
 }
 
 // One report in the shape the queue returns. A decision reads it before acting
@@ -246,6 +253,9 @@ func (q *Queries) GetEpisodeCommentReportForModerationByIDForTenant(ctx context.
 		&i.EpisodeTitle,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
+		&i.CreatorID,
+		&i.CreatorPublicID,
+		&i.CreatorName,
 	)
 	return i, err
 }
@@ -389,7 +399,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -401,6 +414,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND ($2::text IS NULL OR r.status = $2::text)
     AND (
@@ -460,6 +474,9 @@ type ListEpisodeCommentReportsForModerationByCreatedAtAscRow struct {
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
 	SeriesTitle      string         `json:"series_title"`
+	CreatorID        uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID  sql.NullString `json:"creator_public_id"`
+	CreatorName      sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
@@ -506,6 +523,9 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx conte
 			&i.EpisodeTitle,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}
@@ -549,7 +569,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -561,6 +584,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND ($2::text IS NULL OR r.status = $2::text)
     AND (
@@ -620,6 +644,9 @@ type ListEpisodeCommentReportsForModerationByCreatedAtDescRow struct {
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
 	SeriesTitle      string         `json:"series_title"`
+	CreatorID        uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID  sql.NullString `json:"creator_public_id"`
+	CreatorName      sql.NullString `json:"creator_name"`
 }
 
 // The report queue: one row per report rather than per reported comment,
@@ -628,9 +655,9 @@ type ListEpisodeCommentReportsForModerationByCreatedAtDescRow struct {
 // of those are still waiting.
 //
 // The reported comment travels with the report, joined the same way
-// ListEpisodeCommentsForModerationByCreatedAtDesc joins it: a report cannot be
-// judged without the text it is about, and the queue offers the removal
-// actions from the same row.
+// ListEpisodeCommentsForModerationByCreatedAtDesc joins it, creator columns
+// included: a report cannot be judged without the text it is about and who
+// wrote it, and the queue offers the removal actions from the same row.
 func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentReportsForModerationByCreatedAtDesc,
 		arg.TenantID,
@@ -673,6 +700,9 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx cont
 			&i.EpisodeTitle,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
+			&i.CreatorID,
+			&i.CreatorPublicID,
+			&i.CreatorName,
 		); err != nil {
 			return nil, err
 		}

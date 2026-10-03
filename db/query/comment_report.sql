@@ -175,9 +175,9 @@ RETURNING c.public_id;
 -- of those are still waiting.
 --
 -- The reported comment travels with the report, joined the same way
--- ListEpisodeCommentsForModerationByCreatedAtDesc joins it: a report cannot be
--- judged without the text it is about, and the queue offers the removal
--- actions from the same row.
+-- ListEpisodeCommentsForModerationByCreatedAtDesc joins it, creator columns
+-- included: a report cannot be judged without the text it is about and who
+-- wrote it, and the queue offers the removal actions from the same row.
 SELECT r.id AS report_id,
     r.reason,
     r.note,
@@ -206,7 +206,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -218,6 +221,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR r.status = sqlc.narg('status')::text)
     AND (
@@ -272,7 +276,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -284,6 +291,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR r.status = sqlc.narg('status')::text)
     AND (
@@ -339,7 +347,10 @@ SELECT r.id AS report_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comment_reports r
     JOIN episode_comments c ON c.tenant_id = r.tenant_id
         AND c.id = r.comment_id
@@ -351,6 +362,7 @@ FROM episode_comment_reports r
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.id = sqlc.arg('id');
 
