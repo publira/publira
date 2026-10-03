@@ -11,6 +11,12 @@
 # stopped, is never removed. Volumes are left alone: they may hold data
 # someone still needs.
 #
+# A volume first used by a daemon older than Docker 29 keeps the legacy image
+# store, where `until` compares against the config's `Created` instead. There
+# an upstream image released more than a week ago would be removed on every
+# start however recently it was pulled, so the prune is skipped; recreating
+# the `dind-var-lib-docker-*` volume moves the daemon to the containerd store.
+#
 # Runs on every start, when the docker-in-docker feature may still be bringing
 # `dockerd` up, so it waits for the daemon for a bounded time and never fails:
 # a skipped prune only postpones the cleanup to the next start.
@@ -30,6 +36,11 @@ until docker info > /dev/null 2>&1; do
   fi
   sleep 1
 done
+
+if ! docker info --format '{{json .DriverStatus}}' | grep -q 'io.containerd.snapshotter.v1'; then
+  echo "post-start: dockerd uses the legacy image store; skipping the image prune" >&2
+  exit 0
+fi
 
 if ! docker image prune --all --force --filter "until=${retention}"; then
   echo "post-start: docker image prune failed; the images stay until the next start" >&2
