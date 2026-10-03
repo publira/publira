@@ -140,6 +140,74 @@ func TestDBAdminLoginRejectsSuspendedUser(t *testing.T) {
 	}
 }
 
+// A reader of the tenant is an active account with a password that works, and
+// holds no tenant role. The console answers them exactly as it answers a wrong
+// password, so it confirms neither the address nor the password.
+func TestDBAdminLoginRejectsReaderWithoutATenantRole(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
+	client := env.authClient()
+	ctx := context.Background()
+
+	_, readerErr := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+		Tenant:   tenant.tenantContext(),
+		Email:    reader.Email,
+		Password: testutil.SeededPassword,
+	}))
+	_, wrongPasswordErr := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+		Tenant:   tenant.tenantContext(),
+		Email:    reader.Email,
+		Password: "not-the-password",
+	}))
+	if connect.CodeOf(readerErr) != connect.CodeUnauthenticated {
+		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(readerErr), readerErr)
+	}
+	if readerErr.Error() != wrongPasswordErr.Error() {
+		t.Fatalf("Login error = %q, want the wrong-password answer %q", readerErr, wrongPasswordErr)
+	}
+}
+
+// Roles are read on every request, so a member whose roles are taken away
+// loses the console session they already hold rather than keeping it until
+// the token expires.
+func TestDBAdminSessionEndsWhenTheMemberRolesAreRemoved(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
+	asEditor := tenant.as(editor)
+	client := env.authClient()
+	ctx := context.Background()
+
+	loggedIn, err := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+		Tenant:   tenant.tenantContext(),
+		Email:    editor.Email,
+		Password: testutil.SeededPassword,
+	}))
+	if err != nil {
+		t.Fatalf("Login: %v", err)
+	}
+	getMe := func() error {
+		req := connect.NewRequest(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: asEditor.tenantContext()})
+		req.Header().Set("Authorization", "Bearer "+loggedIn.Msg.AccessToken.GetToken())
+		_, err := client.GetMe(ctx, req)
+		return err
+	}
+	if err := getMe(); err != nil {
+		t.Fatalf("GetMe before removal: %v", err)
+	}
+
+	if _, err := env.tenantMemberClient().RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+		Tenant: tenant.tenantContext(), UserId: editor.ID.String(),
+	})); err != nil {
+		t.Fatalf("RemoveTenantMember: %v", err)
+	}
+
+	if err := getMe(); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("GetMe after removal code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
 func TestDBAdminSessionRejectsStaleCredentialsVersion(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")

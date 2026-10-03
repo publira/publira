@@ -2,10 +2,13 @@
 --
 -- Login / logout / missing-cookie cases use the shared dev seed accounts.
 -- credentials_version bumps must not race those accounts while other specs
--- hold a live session, so this file adds three isolated users. Password hashes
+-- hold a live session, so this file adds three isolated users. The fourth is a
+-- console member who is not an administrator: the dev seed tenant has none, and
+-- its member is a reader, whom the console refuses outright. Password hashes
 -- match the dev seed (`adminpass` / `memberpass` / `platformpass`).
 -- public_id values are hard-coded in e2e/src/scenarios/auth.ts.
 --   admin    ScenADMNAAA1
+--   editor   ScenEDTRAAA1
 --   member   ScenMMBRAAA1
 --   platform ScenPFUSAAA2
 
@@ -48,6 +51,47 @@ SELECT
     u.tenant_id
 FROM users u
 WHERE u.public_id = 'ScenADMNAAA1'
+ON CONFLICT (user_id, role) DO NOTHING;
+
+WITH editor_user_seed AS (
+    SELECT '018f0e91-1000-7000-8000-000000000001'::uuid AS id
+)
+INSERT INTO users (
+    id,
+    tenant_id,
+    public_id,
+    email,
+    password_hash,
+    name,
+    status,
+    email_verified_at
+)
+SELECT
+    eus.id,
+    t.id,
+    'ScenEDTRAAA1',
+    'auth-editor@example.com',
+    '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
+    'Auth E2E Editor',
+    'active',
+    NOW()
+FROM editor_user_seed eus
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    name = EXCLUDED.name,
+    status = EXCLUDED.status;
+
+INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
+SELECT
+    '018f0e92-1000-7000-8000-000000000001'::uuid,
+    u.id,
+    'tenant_editor',
+    u.tenant_id
+FROM users u
+WHERE u.public_id = 'ScenEDTRAAA1'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 WITH member_user_seed AS (

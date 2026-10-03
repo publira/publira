@@ -254,6 +254,12 @@ func (s *adminServer) authenticateSession(
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to list session user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
+	// The roles are read on every request rather than trusted from the token,
+	// so an account whose roles were all taken away loses the session it
+	// already holds instead of keeping it until the token expires.
+	if !auth.IsTenantStaff(roles) {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
 	tracing.SetEndUser(ctx, user.PublicID)
 	return rpcmiddleware.SessionContext{
 		Tenant: tenant,

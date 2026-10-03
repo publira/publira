@@ -118,10 +118,17 @@ func insertAdminOutboxEvent(
 	return err
 }
 
+// tenantRole is the role userID acts as in the console, or "" when the
+// account holds none of the tenant staff roles. An empty answer means the
+// account may hold no console session at all: a reader of the tenant has a
+// password and an active status too, and nothing else tells them apart.
 func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
 		return "", s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", userID.String())
+	}
+	if !auth.IsTenantStaff(roles) {
+		return "", nil
 	}
 	return auth.ResolveTenantRole(roles), nil
 }
@@ -167,6 +174,13 @@ func (s *adminServer) Login(
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
 		return nil, err
+	}
+	// Answered like a wrong password, and before an MFA challenge could say
+	// otherwise, so the console does not confirm which addresses are readers
+	// with a password that works.
+	if role == "" {
+		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "no_tenant_role")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 	if s.tokens == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
