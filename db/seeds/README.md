@@ -39,6 +39,7 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
   - `060_images.sql`: The image rows: an eye-catch for every series and label, an icon for every creator, and eight body pages for every episode
   - `070_follows.sql`: The member's series and author follows, which fill My Page's follow updates
   - `080_purchases.sql`: The member's purchases of the priced episode, one readable and one expired, which fill the purchase library
+  - `090_reading_signals.sql`: The member's views of two series over the last fortnight, and the `user_recommend_features` row the recommendation batch builds from them, so the member's Recommended shelf — on My Page, and on the storefront of a tenant with no ranking yet — opens on `Seed Series 090` instead of the order a guest gets. The views are dated relative to the tenant's own day when the file is applied, inside the batch's 28-day window, and the shelf's first row is all-ages. Constants are in `e2e/src/scenarios/reading-signals.ts`
 - `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` names
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 

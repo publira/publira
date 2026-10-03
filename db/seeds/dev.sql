@@ -17,4 +17,5 @@ BEGIN;
 \ir dev/060_images.sql
 \ir dev/070_follows.sql
 \ir dev/080_purchases.sql
+\ir dev/090_reading_signals.sql
 COMMIT;
