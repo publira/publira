@@ -45,7 +45,7 @@ task server:build
 ./server/bin/publira server
 ```
 
-Manael uses libvips, so building and running require `libvips-dev` (`libvips42` at runtime). The Dev Container includes them. The production image is [`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile).
+Manael uses libvips, so building and running require `libvips-dev` (at runtime, `libvips42t64` on Debian 13, which renamed it from `libvips42` in its 64-bit `time_t` transition). The Dev Container includes them. The production image is [`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile).
 
 ### Main environment variables
 

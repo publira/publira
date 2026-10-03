@@ -121,8 +121,8 @@ docker build -f infra/docker/node/Dockerfile \
 
 | Stage | Contents |
 | --- | --- |
-| Build | Debian-based image with the full toolchain (Node bookworm-slim / golang bookworm) |
-| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; publiractl: `static:nonroot`). The server image alone uses `debian:bookworm-slim` plus `libvips42` (CGO, for Manael). |
+| Build | Debian 13 (trixie) image with the full toolchain (`node:*-trixie-slim` / `golang:*-trixie`) |
+| Runtime | distroless on Debian 13 (Web / Node: `nodejs24-debian13:nonroot`; publiractl: `static-debian13:nonroot`). The server image alone uses `debian:13.*-slim` plus `libvips42t64` (CGO, for Manael). The build and runtime stages of an image always share a Debian release. |
 | Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
 | Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the form [`web/Dockerfile`](./web/Dockerfile) uses |
 
@@ -178,7 +178,7 @@ task docker:smoke:web APP_NAME=web-host PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. Server and publiractl runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
+`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. `smoke:publiractl` brings up its own PostgreSQL. The server image needs the database and object storage as well, so its runtime check is `task deploy:smoke` (see [`infra/deploy/README.md`](../deploy/README.md)), which runs every image together and has image delivery resize an image through libvips.
 
 ### All images (before release or after large Dockerfile changes)
 

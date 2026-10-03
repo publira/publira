@@ -2,7 +2,8 @@
 # smoke-deploy-compose.sh — Bring infra/deploy/compose.yaml up from the images
 # `task docker:verify:full` built, take it through the steps its README
 # documents, and check that the tenant site, the tenant console, and the
-# Platform Console answer through the edge.
+# Platform Console answer through the edge, and that image delivery resizes an
+# image through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -137,3 +138,57 @@ for service in server worker web-host web-admin web-platform email-renderer prox
   fi
 done
 echo "[deploy-smoke] ok: every long-lived process is running"
+
+# Image delivery converts and resizes through libvips, which the server binary
+# links with CGO, so a server image whose runtime libvips does not match the
+# one it was built against fails here and nowhere above. Manael answers with
+# the original bytes when a conversion fails, so the check is on the output:
+# a WebP at the requested width. The request is the one the apps' next/image
+# loader makes, `fit=scale-down` included.
+#
+# A 64×32 PNG, stored the way a tenant's logo upload stores one.
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAN0lEQVR42u3PQQkAAAgEsItjCPtjLDP4FAYrsEzXaxEQEBAQEBAQEBAQEBAQEBAQEBAQEBAQuFq5D2CIoSw0JwAAAABJRU5ErkJggg==' |
+  base64 -d > "${work}/logo.png"
+# shellcheck disable=SC2016 # expanded inside the container
+compose exec -T rustfs sh -c \
+  'curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user "$RUSTFS_ACCESS_KEY:$RUSTFS_SECRET_KEY" -H "Content-Type: image/png" --data-binary @- http://localhost:9000/publira/smoke/logo.png' \
+  < "${work}/logo.png" > /dev/null
+image_id="$(compose exec -T postgres psql -U postgres -d publira -v ON_ERROR_STOP=1 -qtA -c "
+  WITH image AS (
+    INSERT INTO tenant_images (id, tenant_id) SELECT gen_random_uuid(), id FROM tenants RETURNING id, tenant_id
+  )
+  INSERT INTO tenant_image_variants
+    (id, tenant_id, tenant_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+  SELECT gen_random_uuid(), tenant_id, id, 'logo-1x', 'logo', 's3', 'smoke/logo.png', 'image/png', $(wc -c < "${work}/logo.png"), 64, 32
+  FROM image
+  RETURNING tenant_image_id")"
+
+# Prints the width of a WebP file, from whichever of the three bitstream
+# headers it carries (lossy, lossless, extended), or nothing for anything else.
+webp_width() {
+  local file="$1" b
+  [ "$(head -c 4 "${file}")" = RIFF ] && [ "$(tail -c +9 "${file}" | head -c 4)" = WEBP ] || return 0
+  case "$(tail -c +13 "${file}" | head -c 4)" in
+    "VP8 ")
+      read -ra b <<< "$(od -An -tu1 -j26 -N2 "${file}")"
+      echo $(((b[0] | b[1] << 8) & 0x3fff))
+      ;;
+    VP8L)
+      read -ra b <<< "$(od -An -tu1 -j21 -N2 "${file}")"
+      echo $(((b[0] | (b[1] & 0x3f) << 8) + 1))
+      ;;
+    VP8X)
+      read -ra b <<< "$(od -An -tu1 -j24 -N3 "${file}")"
+      echo $(((b[0] | b[1] << 8 | b[2] << 16) + 1))
+      ;;
+  esac
+}
+
+answer="$(curl -sS -o "${work}/logo.webp" -w '%{http_code} %{content_type}' -H 'Accept: image/webp' \
+  --resolve "${domain}:${edge_port}:127.0.0.1" "http://${domain}:${edge_port}/images/tenants/${image_id}/logo?w=16&fit=scale-down" || true)"
+width="$(webp_width "${work}/logo.webp")"
+if [ "${answer}" != "200 image/webp" ] || [ "${width}" != 16 ]; then
+  echo "[deploy-smoke] ERROR: image delivery answered ${answer:-nothing} at width ${width:-unknown}, want 200 image/webp at width 16" >&2
+  exit 1
+fi
+echo "[deploy-smoke] ok: image delivery resized a 64px PNG to a 16px WebP"

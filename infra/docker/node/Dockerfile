@@ -19,7 +19,7 @@
 # dist/index.mjs. Next.js apps use infra/docker/web/Dockerfile instead.
 
 # -----------------------------------------------------------------------------
-FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS base
+FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
 ARG PNPM_VERSION=12.8.1
@@ -106,7 +106,11 @@ RUN if [ "${APP_NAME}" != "node" ]; then mv "apps/${APP_NAME}" apps/node; fi
 
 # -----------------------------------------------------------------------------
 # nonroot uid/gid 65532 (matches gcr.io/distroless/*:nonroot)
-FROM gcr.io/distroless/nodejs24-debian12:nonroot@sha256:14d42e2511532589a7c7e01a753667a74fcc96266e137e8125006b87b0c32d0a AS runner
+# distroless publishes no versioned tags, so the image name carries the Node.js
+# major and the Debian release, and the digest is the only further identifier.
+# The Debian release matches the base stage: node_modules built there, native
+# addons such as sharp included, run against this image's glibc.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e AS runner
 
 ARG PORT=8080
 

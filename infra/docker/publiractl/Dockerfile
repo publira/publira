@@ -17,7 +17,7 @@
 #   docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
 #   docker run --rm publira/publiractl:local job purge-content-events
 
-FROM golang:1.27-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS builder
+FROM golang:1.27.1-trixie@sha256:3b77fc618ec235a1ab412de7737f120dd507c57e8d87de4cbb7994fb94275ed5 AS builder
 
 WORKDIR /src
 
@@ -40,7 +40,11 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
   -ldflags="-s -w -X github.com/publira/publira/server/internal/buildinfo.version=${VERSION}" \
   -o /out/publiractl ./cmd/publiractl
 
-FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+# Named by its Debian release rather than the unsuffixed `static` alias, so a
+# new Debian release cannot change the runtime under an unchanged tag.
+# distroless publishes no versioned tags, so the digest is the only further
+# identifier.
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 
 WORKDIR /app
 

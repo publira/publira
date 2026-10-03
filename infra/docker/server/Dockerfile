@@ -21,7 +21,7 @@
 #   docker run --rm publira/publira:local          # publira server
 #   docker run --rm publira/publira:local worker   # publira worker
 
-FROM golang:1.27-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS builder
+FROM golang:1.27.1-trixie@sha256:3b77fc618ec235a1ab412de7737f120dd507c57e8d87de4cbb7994fb94275ed5 AS builder
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libvips-dev pkg-config \
@@ -43,10 +43,13 @@ RUN CGO_ENABLED=1 go build -trimpath \
   -ldflags="-s -w -X github.com/publira/publira/server/internal/buildinfo.version=${VERSION}" \
   -o /out/publira ./cmd/publira
 
-FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
+# The Debian release matches the builder's, because the binary is linked
+# against the libvips the builder installed. Debian 13's 64-bit time_t
+# transition renamed the runtime package to libvips42t64.
+FROM debian:13.7-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates libvips42 \
+ && apt-get install -y --no-install-recommends ca-certificates libvips42t64 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 65532 nonroot \
  && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot
