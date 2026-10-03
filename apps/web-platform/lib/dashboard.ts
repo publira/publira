@@ -3,7 +3,11 @@ import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife, cacheTag } from "next/cache";
 
-import { apiClient, withServiceHeaders } from "./api-client";
+import {
+  SHARED_READ_CACHE_LIFE,
+  apiClient,
+  withServiceHeaders,
+} from "./api-client";
 import { verifyPlatformSession } from "./auth-session";
 import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
@@ -47,10 +51,7 @@ const getPlatformDashboardSummaryForLocale = async (
   recentEventsLimit: number
 ): Promise<GetPlatformDashboardSummaryResult> => {
   "use cache";
-  // End users sign up and tenant consoles write the audit log without any
-  // Action here clearing the tag, so the entry is refreshed after a minute
-  // rather than kept for the default quarter of an hour.
-  cacheLife("minutes");
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformDashboardCacheTag);
 
   try {

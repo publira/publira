@@ -38,6 +38,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     policy: {
       getPlatformPolicy: mockGetPlatformPolicy,
@@ -83,6 +84,9 @@ describe("getPlatformPolicy", () => {
     expect(mockGetPlatformPolicy).toHaveBeenCalledWith({}, serviceHeaders);
     expect(platformPolicyCacheTag).toBe("platform:policy");
     expect(mockCacheTag).toHaveBeenCalledWith(platformPolicyCacheTag);
+    // Refreshed after a minute: `publiractl policy` writes the row straight
+    // to Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("leaves the API uncalled when the session is rejected", async () => {
@@ -137,6 +141,7 @@ describe("getPlatformRetentionDefaults", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       platformRetentionDefaultsCacheTag
     );
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("leaves the API uncalled when the session is rejected", async () => {

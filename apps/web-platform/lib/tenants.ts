@@ -13,6 +13,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -161,15 +162,6 @@ export const platformTenantsCacheTag = "platform:tenants";
 export const platformTenantCacheTag = (tenantId: string): string =>
   `platform:tenants:${tenantId}`;
 
-/**
- * How long a read of a tenant's members or admin invitations is kept. Tenant
- * admins change their members from their own console and invitees accept from
- * a link, neither of which an Action here sees, and an invitation's status
- * turns to expired with time, so the entry is refreshed after a minute rather
- * than kept for the default quarter of an hour.
- */
-const tenantPeopleCacheLife = "minutes";
-
 /** What {@link listPlatformTenantsForLocale} is keyed on besides the locale. */
 interface ListPlatformTenantsQuery {
   limit: number;
@@ -183,6 +175,7 @@ const listPlatformTenantsForLocale = async (
   query: ListPlatformTenantsQuery
 ): Promise<ListPlatformTenantsResult> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag);
 
   try {
@@ -271,6 +264,7 @@ const getPlatformTenantForLocale = async (
   publicId: string
 ): Promise<GetPlatformTenantResult> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag);
 
   try {
@@ -355,7 +349,7 @@ const listPlatformTenantMembersForLocale = async (
   query: TenantPageQuery
 ): Promise<ListPlatformTenantMembersResult> => {
   "use cache";
-  cacheLife(tenantPeopleCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag, platformTenantCacheTag(query.tenantId));
 
   try {
@@ -608,7 +602,7 @@ const listPlatformTenantAdminInvitationsForLocale = async (
   query: TenantPageQuery
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache";
-  cacheLife(tenantPeopleCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag, platformTenantCacheTag(query.tenantId));
 
   try {

@@ -16,6 +16,7 @@ import {
 } from "./email-settings";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetPlatformEmailSettings,
   mockGetPlatformLocale,
@@ -24,6 +25,7 @@ const {
   mockUpdatePlatformEmailSettings,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformEmailSettings: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
@@ -34,7 +36,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
-  cacheLife: vi.fn(),
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -47,6 +49,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     emailSettings: {
       getPlatformEmailSettings: mockGetPlatformEmailSettings,
@@ -333,5 +336,8 @@ describe("email settings cache tag", () => {
 
     expect(platformEmailSettingsCacheTag).toBe("platform:email-settings");
     expect(mockCacheTag).toHaveBeenCalledWith(platformEmailSettingsCacheTag);
+    // Refreshed after a minute: `publiractl` writes the row straight to
+    // Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 });

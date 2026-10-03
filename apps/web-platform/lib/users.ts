@@ -9,6 +9,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -151,14 +152,6 @@ const mergeTenantFilterOptions = (
  */
 export const platformEndUsersCacheTag = "platform:users";
 
-/**
- * How long an end-user read is kept. End users sign up, change their address,
- * and leave through the storefront, which no Action here sees, so the entry is
- * refreshed after a minute rather than kept for the default quarter of an
- * hour.
- */
-const endUsersCacheLife = "minutes";
-
 /** What {@link listPlatformEndUsersForLocale} is keyed on besides the locale. */
 interface ListPlatformEndUsersQuery {
   createdAfter: string;
@@ -175,7 +168,7 @@ const listPlatformEndUsersForLocale = async (
   query: ListPlatformEndUsersQuery
 ): Promise<ListPlatformEndUsersResult> => {
   "use cache";
-  cacheLife(endUsersCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformEndUsersCacheTag);
 
   try {
@@ -247,6 +240,7 @@ const searchPlatformTenantFilterOptionsForLocale = async (
   normalized: string
 ): Promise<SearchPlatformTenantFilterOptionsResult> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag);
 
   const headers = withServiceHeaders();
@@ -339,7 +333,7 @@ const getPlatformEndUserForLocale = async (
   publicId: string
 ): Promise<GetPlatformEndUserResult> => {
   "use cache";
-  cacheLife(endUsersCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformEndUsersCacheTag);
 
   try {

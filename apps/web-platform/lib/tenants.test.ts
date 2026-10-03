@@ -111,6 +111,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     operators: {
       listOperators: mockListOperators,
@@ -882,8 +883,9 @@ describe("tenant cache tags", () => {
     await listPlatformTenants();
 
     expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
-    // Only this console's Actions change a tenant, and they clear the tag.
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    // Refreshed after a minute: `publiractl tenant` writes tenants straight
+    // to Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("files a tenant's detail under the tenants tag and its internal ID's", async () => {

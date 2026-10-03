@@ -7,9 +7,10 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -78,6 +79,7 @@ const getPlatformSettingsForLocale = async (
   locale: Locale
 ): Promise<GetPlatformSettingsResult> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformSettingsCacheTag);
 
   try {
@@ -147,6 +149,7 @@ export const getPlatformSettings =
  */
 const readPlatformDefaultTimezone = async (): Promise<string | null> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformSettingsCacheTag);
 
   try {

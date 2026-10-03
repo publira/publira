@@ -34,6 +34,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     dashboard: {
       getDashboardSummary: mockGetDashboardSummary,

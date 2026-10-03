@@ -66,6 +66,19 @@ export const withServiceHeaders = (): CallOptions => ({
   headers: { Authorization: `Bearer ${resolveWebServiceToken()}` },
 });
 
+/**
+ * The `cacheLife` profile of every read signed with {@link withServiceHeaders}.
+ *
+ * None of what those reads answer changes only through this console's
+ * Actions, which clear its tags: `publiractl` writes the platform's settings,
+ * policies, tenants, and members straight to Postgres, tenant admins change
+ * their members from their own console, end users sign up on the storefront,
+ * and an invitation expires with time. `publira server` revalidates no
+ * platform tag for any of them, so each entry is refetched once it is a minute
+ * old rather than kept for the default quarter of an hour.
+ */
+export const SHARED_READ_CACHE_LIFE = "minutes";
+
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
 /**

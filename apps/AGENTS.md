@@ -119,7 +119,7 @@ A shared read says nothing about who is looking, so it cannot be what notices a 
 
 `web-platform` has no tenant segment, and its locale comes from a cookie a Server Action reads as well as a page, so one exported function serves both: `listPlatformTenants()` awaits `verifyPlatformSession()`, resolves the locale with `getPlatformLocale()`, and calls `listPlatformTenantsForLocale(locale, query)`.
 
-A shared entry is refreshed only when something clears its tag or its `cacheLife` runs out, and the default profile keeps it for a quarter of an hour. A read whose answer changes without a write through this app — an end user signing up on the storefront, a tenant admin changing their members, an invitation expiring — and whose tag `publira server` does not revalidate declares `cacheLife("minutes")`, so the entry is refetched once it is a minute old. A value only this app's Actions change keeps the default and relies on its tag.
+A shared entry is refreshed only when something clears its tag or its `cacheLife` runs out, and the default profile keeps it for a quarter of an hour. A read whose answer changes without a write through this app — `publiractl` writing a settings row or a tenant straight to Postgres, an end user signing up on the storefront, a tenant admin changing their members, an invitation expiring — and whose tag `publira server` does not revalidate declares `cacheLife("minutes")`, so the entry is refetched once it is a minute old. A value only this app's Actions change keeps the default and relies on its tag. In `web-platform` none does, so every read signed with `withServiceHeaders()` uses `SHARED_READ_CACHE_LIFE`.
 
 No lint covers this.
 

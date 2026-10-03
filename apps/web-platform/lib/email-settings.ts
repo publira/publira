@@ -10,9 +10,10 @@ import {
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -157,6 +158,7 @@ const getPlatformEmailSettingsForLocale = async (
   locale: Locale
 ): Promise<PlatformSmtpSettingsResult> => {
   "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformEmailSettingsCacheTag);
 
   try {

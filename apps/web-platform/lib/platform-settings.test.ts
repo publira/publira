@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetPlatformLocale,
   mockGetPlatformSettingsApi,
@@ -9,6 +10,7 @@ const {
   mockUpdatePlatformSettingsApi,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
@@ -18,7 +20,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
-  cacheLife: vi.fn(),
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -31,6 +33,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     settings: {
       getPlatformSettings: mockGetPlatformSettingsApi,
@@ -87,6 +90,9 @@ describe("platform-settings", () => {
       { headers: { Authorization: "Bearer service-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
+    // Refreshed after a minute: `publiractl platform set` writes the row
+    // straight to Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("leaves the API uncalled when the session is rejected", async () => {

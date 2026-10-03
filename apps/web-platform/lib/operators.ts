@@ -10,6 +10,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -102,20 +103,13 @@ const mapOperator = (
 /** The tag every operator read is filed under, and every operator write clears. */
 export const platformOperatorsCacheTag = "platform:operators";
 
-/**
- * How long an operator read is kept. An operator confirms a new email address
- * from a link, which no Action here sees, so the entry is refreshed after a
- * minute rather than kept for the default quarter of an hour.
- */
-const operatorsCacheLife = "minutes";
-
 const listPlatformOperatorsForLocale = async (
   locale: Locale,
   limit: number,
   token: string
 ): Promise<ListPlatformOperatorsResult> => {
   "use cache";
-  cacheLife(operatorsCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformOperatorsCacheTag);
 
   try {
@@ -249,7 +243,7 @@ const getPlatformOperatorForLocale = async (
   publicId: string
 ): Promise<GetPlatformOperatorResult> => {
   "use cache";
-  cacheLife(operatorsCacheLife);
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformOperatorsCacheTag);
 
   try {

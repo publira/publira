@@ -15,6 +15,7 @@ import {
 } from "./storage-settings-shared";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetPlatformLocale,
   mockGetPlatformStorageSettings,
@@ -23,6 +24,7 @@ const {
   mockUpdatePlatformStorageSettings,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetPlatformStorageSettings: vi.fn(),
@@ -33,7 +35,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
-  cacheLife: vi.fn(),
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -46,6 +48,7 @@ vi.mock("./locale", () => ({
 }));
 
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     storageSettings: {
       getPlatformStorageSettings: mockGetPlatformStorageSettings,
@@ -120,6 +123,9 @@ describe("getPlatformStorageSettings", () => {
     );
     expect(platformStorageSettingsCacheTag).toBe("platform:storage-settings");
     expect(mockCacheTag).toHaveBeenCalledWith(platformStorageSettingsCacheTag);
+    // Refreshed after a minute: `publiractl` writes the row straight to
+    // Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("reads a platform with nothing saved as revision 0", async () => {
