@@ -12,9 +12,12 @@ const LocaleContext = createContext<Promise<Locale> | null>(null);
 
 /**
  * The tenant's stored default locale, which decides whether a link needs a
- * prefix.
+ * prefix. It resolves to `null` while the tenant read is unavailable, and
+ * `withLocalePrefix` then keeps the prefix.
  */
-const TenantDefaultLocaleContext = createContext<Promise<Locale> | null>(null);
+const TenantDefaultLocaleContext = createContext<Promise<Locale | null> | null>(
+  null
+);
 
 export const LocaleContextProvider = ({
   children,
@@ -29,7 +32,7 @@ export const TenantDefaultLocaleContextProvider = ({
   defaultLocale,
 }: {
   children: ReactNode;
-  defaultLocale: Promise<Locale>;
+  defaultLocale: Promise<Locale | null>;
 }) => (
   <TenantDefaultLocaleContext value={defaultLocale}>
     {children}
@@ -52,10 +55,11 @@ export const useLocale = (): Locale => {
 };
 
 /**
- * The tenant's stored default locale. This suspends, so the caller needs a
- * `<Suspense>` above it — usually the one its section already has.
+ * The tenant's stored default locale, or `null` while it is unavailable. This
+ * suspends, so the caller needs a `<Suspense>` above it — usually the one its
+ * section already has.
  */
-export const useTenantDefaultLocale = (): Locale => {
+export const useTenantDefaultLocale = (): Locale | null => {
   const defaultLocale = use(TenantDefaultLocaleContext);
   if (!defaultLocale) {
     throw new Error(

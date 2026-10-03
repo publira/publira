@@ -302,6 +302,22 @@ describe("web-host pinned announcement", () => {
     await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
   });
 
+  it("reports an unexpected failure in the log rather than throwing", async () => {
+    const { getPinnedAnnouncement } = await importAnnouncements();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const failure = new ConnectError("handler panicked", Code.Internal);
+    mockGetPinnedAnnouncement.mockRejectedValueOnce(failure);
+
+    // The banner renders on every page, so a throw would take the site down;
+    // and past the cache boundary the failure could no longer be classified.
+    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      "[web-host] getPinnedAnnouncement failed",
+      failure
+    );
+    warn.mockRestore();
+  });
+
   it("asks for nothing when there is no tenant to ask about", async () => {
     const { getPinnedAnnouncement } = await importAnnouncements();
 
