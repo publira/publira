@@ -210,8 +210,9 @@ func (x *ListTenantUsersResponse) GetNextToken() string {
 	return ""
 }
 
-// A reader of the tenant's site: an account of the tenant that holds no staff
-// role.
+// An account of the tenant, as the readers screen lists and acts on it. Every
+// account reads the tenant's site, a staff member's included, so an account
+// holding a console role is one of these too.
 type AdminReader struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -225,8 +226,12 @@ type AdminReader struct {
 	// The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
 	// always empty in ListReaders: staff read it on one reader, to act on a
 	// reader who asks for it to be corrected.
-	BirthDate     string `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
-	Id            string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	BirthDate string `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	Id        string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	// The highest console role the account holds — tenant_admin, tenant_editor,
+	// or tenant_auditor — as TenantMember.role names it. Empty for an account
+	// with none.
+	Role          string `protobuf:"bytes,10,opt,name=role,proto3" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -313,6 +318,13 @@ func (x *AdminReader) GetBirthDate() string {
 func (x *AdminReader) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *AdminReader) GetRole() string {
+	if x != nil {
+		return x.Role
 	}
 	return ""
 }
@@ -981,7 +993,7 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2!.publira.admin.v1.AdminTenantUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xfc\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x90\x02\n" +
 	"\vAdminReader\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -992,7 +1004,9 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x11email_verified_at\x18\x06 \x01(\tR\x0femailVerifiedAt\x12\x1d\n" +
 	"\n" +
 	"birth_date\x18\b \x01(\tR\tbirthDate\x12\x0e\n" +
-	"\x02id\x18\t \x01(\tR\x02idJ\x04\b\a\x10\bR\x0ehas_birth_date\"\xa7\x01\n" +
+	"\x02id\x18\t \x01(\tR\x02id\x12\x12\n" +
+	"\x04role\x18\n" +
+	" \x01(\tR\x04roleJ\x04\b\a\x10\bR\x0ehas_birth_date\"\xa7\x01\n" +
 	"\x12ListReadersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +

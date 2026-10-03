@@ -179,11 +179,6 @@ const DeleteTenantReader = `-- name: DeleteTenantReader :one
 DELETE FROM users
 WHERE users.tenant_id = $1
     AND users.id = $2
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id
 `
@@ -198,8 +193,8 @@ type DeleteTenantReaderRow struct {
 	PublicID string    `json:"public_id"`
 }
 
-// Hard delete, as DeleteUserByID. A staff account and another tenant's are no
-// rows.
+// Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
+// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 func (q *Queries) DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error) {
 	row := q.db.QueryRowContext(ctx, DeleteTenantReader, arg.TenantID, arg.ID)
 	var i DeleteTenantReaderRow
@@ -236,15 +231,26 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    u.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = $1
     AND u.id = $2
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
 `
 
 type GetTenantReaderByIDParams struct {
@@ -261,10 +267,11 @@ type GetTenantReaderByIDRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
-// GetTenantReaderByPublicID keyed by the primary key. A staff account and an
-// account of another tenant are both no rows.
+// GetTenantReaderByPublicID keyed by the primary key. An account of another
+// tenant is no rows.
 func (q *Queries) GetTenantReaderByID(ctx context.Context, arg GetTenantReaderByIDParams) (GetTenantReaderByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, GetTenantReaderByID, arg.TenantID, arg.ID)
 	var i GetTenantReaderByIDRow
@@ -277,6 +284,7 @@ func (q *Queries) GetTenantReaderByID(ctx context.Context, arg GetTenantReaderBy
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.Role,
 	)
 	return i, err
 }
@@ -289,15 +297,26 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    u.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = $1
     AND u.public_id = $2
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
 `
 
 type GetTenantReaderByPublicIDParams struct {
@@ -314,10 +333,11 @@ type GetTenantReaderByPublicIDRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
-// One reader in the shape ListTenantReaders* returns. A staff account and an
-// account of another tenant are both no rows.
+// One account in the shape ListTenantReaders* returns. An account of another
+// tenant is no rows.
 func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, GetTenantReaderByPublicID, arg.TenantID, arg.PublicID)
 	var i GetTenantReaderByPublicIDRow
@@ -330,6 +350,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.Role,
 	)
 	return i, err
 }
@@ -1041,14 +1062,25 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    NULL::date AS birth_date
+    NULL::date AS birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = $1
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
     AND (
         $2::text IS NULL
         OR strpos(lower(u.name), lower($2::text)) > 0
@@ -1089,6 +1121,7 @@ type ListTenantReadersAscRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
 func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error) {
@@ -1117,6 +1150,7 @@ func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReader
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
 			&i.BirthDate,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1139,14 +1173,25 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    NULL::date AS birth_date
+    NULL::date AS birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = $1
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
     AND (
         $2::text IS NULL
         OR strpos(lower(u.name), lower($2::text)) > 0
@@ -1187,11 +1232,14 @@ type ListTenantReadersDescRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
-// Admin ListReaders lists the tenant's readers: its accounts that hold no
-// tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
-// through idx_users_tenant_created_at. Forward uses the DESC query; backward
+// Admin ListReaders lists every account of the tenant, staff included: a staff
+// member reads the storefront with the same account. role is the highest
+// console role the account holds, resolved as ListTenantMembers resolves it,
+// and ” for an account with none. (created_at, id) DESC, walked through
+// idx_users_tenant_created_at. Forward uses the DESC query; backward
 // uses ASC, and the handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 // The birth date is a NULL placeholder: a list has no use for it, so only the
@@ -1222,6 +1270,7 @@ func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReade
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
 			&i.BirthDate,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1530,11 +1579,6 @@ SET birth_date = $1::date
 WHERE users.tenant_id = $2
     AND users.id = $3
     AND users.birth_date IS DISTINCT FROM $1::date
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -1542,7 +1586,23 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 `
 
 type SetTenantReaderBirthDateParams struct {
@@ -1560,11 +1620,12 @@ type SetTenantReaderBirthDateRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
 // Sets or clears a reader's birth date past the written-once guard of
-// SetUserBirthDateByID. Writing the date already stored is no rows, like a
-// staff account and another tenant's.
+// SetUserBirthDateByID. Writing the date already stored is no rows, like
+// another tenant's account.
 func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error) {
 	row := q.db.QueryRowContext(ctx, SetTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.ID)
 	var i SetTenantReaderBirthDateRow
@@ -1577,6 +1638,7 @@ func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantRea
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.Role,
 	)
 	return i, err
 }
@@ -1624,11 +1686,6 @@ SET status = 'suspended',
 WHERE users.tenant_id = $1
     AND users.id = $2
     AND users.status <> 'suspended'
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -1636,7 +1693,23 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 `
 
 type SuspendTenantReaderParams struct {
@@ -1653,10 +1726,12 @@ type SuspendTenantReaderRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
-// Suspends a reader and invalidates the sessions they hold. A reader who is
-// already suspended is no rows, like a staff account and another tenant's.
+// Suspends an account and invalidates the sessions it holds. An account that
+// is already suspended is no rows, like another tenant's. Keeping the tenant an
+// active tenant_admin is the handler's, which checks before this runs.
 func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error) {
 	row := q.db.QueryRowContext(ctx, SuspendTenantReader, arg.TenantID, arg.ID)
 	var i SuspendTenantReaderRow
@@ -1669,6 +1744,7 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.Role,
 	)
 	return i, err
 }
@@ -1715,11 +1791,6 @@ SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'act
 WHERE users.tenant_id = $1
     AND users.id = $2
     AND users.status = 'suspended'
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -1727,7 +1798,23 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 `
 
 type UnsuspendTenantReaderParams struct {
@@ -1744,6 +1831,7 @@ type UnsuspendTenantReaderRow struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
 	BirthDate       sql.NullTime `json:"birth_date"`
+	Role            string       `json:"role"`
 }
 
 // A reader who never confirmed their address goes back to inactive, the state
@@ -1760,6 +1848,7 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.Role,
 	)
 	return i, err
 }

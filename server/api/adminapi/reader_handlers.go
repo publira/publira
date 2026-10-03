@@ -15,12 +15,14 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -29,8 +31,9 @@ const (
 	maxReaderListLimit     = int32(100)
 )
 
-// readerRow is the single shape every reader the console reads arrives in: the
-// list queries and the single read select the same columns in the same order.
+// readerRow is the single shape every account the readers screen reads arrives
+// in: the list queries and the single read select the same columns in the same
+// order. A staff account is one of them, with the role it holds.
 type readerRow = dbmodels.GetTenantReaderByPublicIDRow
 
 // normalizeReaderStatusFilter accepts the three stored account states and
@@ -76,6 +79,7 @@ func adminReader(row readerRow) *publiraadminv1.AdminReader {
 		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
 		EmailVerifiedAt: formatOptionalTime(row.EmailVerifiedAt),
 		BirthDate:       formatOptionalBirthDate(row.BirthDate),
+		Role:            row.Role,
 	}
 }
 
@@ -129,8 +133,9 @@ func (s *adminServer) readerPage(
 	return mapped, nil
 }
 
-// ListReaders returns the tenant's readers, newest first. The rows carry each
-// reader's email, so only a tenant admin may read them.
+// ListReaders returns every account of the tenant, staff included, newest
+// first. The rows carry each account's email, so only a tenant admin may read
+// them.
 func (s *adminServer) ListReaders(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListReadersRequest],
@@ -202,7 +207,7 @@ func (s *adminServer) ListReaders(
 	return connect.NewResponse(res), nil
 }
 
-// GetReader reads one reader of the tenant, gated like ListReaders.
+// GetReader reads one account of the tenant, gated like ListReaders.
 func (s *adminServer) GetReader(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetReaderRequest],
@@ -292,7 +297,7 @@ func (s *adminServer) changeReader(
 	sessionCtx rpcmiddleware.SessionContext,
 	action string,
 	readerID uuid.UUID,
-	write func(queries *dbmodels.Queries) (string, error),
+	write func(tx *sql.Tx, queries *dbmodels.Queries) (string, error),
 ) error {
 	tenantID := sessionCtx.Tenant.ID.String()
 	tx, err := s.beginTenantTx(ctx)
@@ -302,8 +307,12 @@ func (s *adminServer) changeReader(
 	defer tx.Rollback() //nolint:errcheck
 
 	queries := dbmodels.New(tx)
-	readerPublicID, err := write(queries)
+	readerPublicID, err := write(tx, queries)
 	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return connectErr
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			return errReaderUnchanged
 		}
@@ -327,9 +336,40 @@ func (s *adminServer) changeReader(
 	return nil
 }
 
-// SuspendReader suspends a reader of the tenant. The credentials_version bump
+// refuseOwnAccount refuses an administrator suspending or deleting the account
+// they are signed in with: the session it ends or the account it removes is
+// the one making the request.
+func refuseOwnAccount(sessionCtx rpcmiddleware.SessionContext, readerID uuid.UUID) error {
+	if readerID != sessionCtx.User.ID {
+		return nil
+	}
+	return rpcerrors.NewErrorInfoError(
+		connect.CodeFailedPrecondition,
+		errors.New("an administrator cannot suspend or delete their own account"),
+		rpcerrors.ReasonOwnAccount,
+	)
+}
+
+// keepAnAdmin refuses taking away the tenant's last active tenant_admin, which
+// the members screen refuses the same way. Hiding staff from the readers
+// screen used to keep them out of reach; now that they are listed, this is what
+// keeps the tenant from being locked out.
+func keepAnAdmin(ctx context.Context, tx *sql.Tx, tenantID, readerID uuid.UUID) error {
+	err := tenantmembers.KeepAnAdminBeside(ctx, tx, tenantID, readerID)
+	if errors.Is(err, tenantmembers.ErrLastAdmin) {
+		return rpcerrors.NewErrorInfoError(
+			connect.CodeFailedPrecondition,
+			errors.New("the tenant's last active tenant_admin cannot be suspended or deleted"),
+			rpcerrors.ReasonLastTenantAdmin,
+		)
+	}
+	return err
+}
+
+// SuspendReader suspends an account of the tenant. The credentials_version bump
 // in the same statement is what keeps a token issued before the suspension
-// refused after UnsuspendReader.
+// refused after UnsuspendReader. Neither the caller's own account nor the
+// tenant's last active tenant_admin can be suspended.
 func (s *adminServer) SuspendReader(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.SuspendReaderRequest],
@@ -347,8 +387,15 @@ func (s *adminServer) SuspendReader(
 		return nil, err
 	}
 
+	if err := refuseOwnAccount(sessionCtx, readerID); err != nil {
+		return nil, err
+	}
+
 	var updated dbmodels.SuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", readerID, func(queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
+			return "", err
+		}
 		updated, err = queries.SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
@@ -389,7 +436,7 @@ func (s *adminServer) UnsuspendReader(
 	}
 
 	var updated dbmodels.UnsuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", readerID, func(queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
@@ -447,7 +494,7 @@ func (s *adminServer) SetReaderBirthDate(
 	}
 
 	var updated dbmodels.SetTenantReaderBirthDateRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, action, readerID, func(queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
 			BirthDate: birthDate,
 			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -482,9 +529,12 @@ func (s *adminServer) tenantToday(ctx context.Context, tenant dbmodels.Tenant) (
 	return ageverification.Today(time.Now(), location), nil
 }
 
-// DeleteReader deletes a reader of the tenant with the same statement DeleteMe
-// ends in, so the rows that go with the account are decided by the same
-// foreign keys.
+// DeleteReader deletes an account of the tenant with the same statement
+// DeleteMe ends in, so the rows that go with the account are decided by the
+// same foreign keys: a staff account's roles go with it. It is refused for the
+// caller's own account and the tenant's last active tenant_admin, as
+// SuspendReader is, and for an account the tenant's audit entries or page
+// versions name, whose foreign keys keep it.
 func (s *adminServer) DeleteReader(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteReaderRequest],
@@ -502,8 +552,15 @@ func (s *adminServer) DeleteReader(
 		return nil, err
 	}
 
+	if err := refuseOwnAccount(sessionCtx, readerID); err != nil {
+		return nil, err
+	}
+
 	var deleted dbmodels.DeleteTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", readerID, func(queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
+			return "", err
+		}
 		// Queued before the delete takes the links with the account; a reader
 		// the delete does not find rolls the queue back with it.
 		if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, queries, tenant.ID, readerID); err != nil {
@@ -513,6 +570,17 @@ func (s *adminServer) DeleteReader(
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
 		})
+		if dberr.IsForeignKeyViolation(err) {
+			// audit_logs and page_versions name the staff member who acted and
+			// keep the account they name, so what the tenant's record says
+			// stays attributable. Suspending the account is what remains
+			// until #3494 decides what the record keeps without it.
+			return "", rpcerrors.NewErrorInfoError(
+				connect.CodeFailedPrecondition,
+				errors.New("the tenant's audit entries or page versions name this account"),
+				rpcerrors.ReasonAccountHasStaffHistory,
+			)
+		}
 		return deleted.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {

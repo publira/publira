@@ -41,6 +41,7 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 				Status:          row.Status,
 				CreatedAt:       row.CreatedAt,
 				EmailVerifiedAt: row.EmailVerifiedAt,
+				Role:            row.Role,
 			}),
 			LinkedAt: row.LinkedAt.UTC().Format(time.RFC3339),
 		})
@@ -137,6 +138,11 @@ func (s *adminServer) LinkCreatorAccount(
 		reader, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return "", err
+		}
+		// The readers screen lists staff accounts too, but a link is a
+		// reader's: a staff account answers as one of another tenant does.
+		if reader.Role != "" {
+			return "", readerNotFoundError()
 		}
 		if reader.Status != "active" {
 			return "", rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("reader is not active"), "reader_id")

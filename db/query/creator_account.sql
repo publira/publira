@@ -8,6 +8,22 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
     ca.created_at AS linked_at
 FROM creator_accounts ca
     JOIN users u ON u.id = ca.user_id

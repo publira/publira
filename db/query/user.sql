@@ -348,9 +348,11 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
 ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
--- Admin ListReaders lists the tenant's readers: its accounts that hold no
--- tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
--- through idx_users_tenant_created_at. Forward uses the DESC query; backward
+-- Admin ListReaders lists every account of the tenant, staff included: a staff
+-- member reads the storefront with the same account. role is the highest
+-- console role the account holds, resolved as ListTenantMembers resolves it,
+-- and '' for an account with none. (created_at, id) DESC, walked through
+-- idx_users_tenant_created_at. Forward uses the DESC query; backward
 -- uses ASC, and the handler flips ASC rows back into display order.
 -- cursor rules: proto/README.md.
 -- The birth date is a NULL placeholder: a list has no use for it, so only the
@@ -363,14 +365,25 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    NULL::date AS birth_date
+    NULL::date AS birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
     AND (
         sqlc.narg('query')::text IS NULL
         OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
@@ -399,14 +412,25 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    NULL::date AS birth_date
+    NULL::date AS birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
     AND (
         sqlc.narg('query')::text IS NULL
         OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
@@ -428,8 +452,8 @@ ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: GetTenantReaderByPublicID :one
--- One reader in the shape ListTenantReaders* returns. A staff account and an
--- account of another tenant are both no rows.
+-- One account in the shape ListTenantReaders* returns. An account of another
+-- tenant is no rows.
 SELECT u.id,
     u.public_id,
     u.name,
@@ -437,19 +461,30 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    u.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
-    AND u.public_id = sqlc.arg('public_id')
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    );
+    AND u.public_id = sqlc.arg('public_id');
 
 -- name: GetTenantReaderByID :one
--- GetTenantReaderByPublicID keyed by the primary key. A staff account and an
--- account of another tenant are both no rows.
+-- GetTenantReaderByPublicID keyed by the primary key. An account of another
+-- tenant is no rows.
 SELECT u.id,
     u.public_id,
     u.name,
@@ -457,30 +492,37 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    u.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
-    AND u.id = sqlc.arg('id')
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    );
+    AND u.id = sqlc.arg('id');
 
 -- name: SuspendTenantReader :one
--- Suspends a reader and invalidates the sessions they hold. A reader who is
--- already suspended is no rows, like a staff account and another tenant's.
+-- Suspends an account and invalidates the sessions it holds. An account that
+-- is already suspended is no rows, like another tenant's. Keeping the tenant an
+-- active tenant_admin is the handler's, which checks before this runs.
 UPDATE users
 SET status = 'suspended',
     credentials_version = credentials_version + 1
 WHERE users.tenant_id = sqlc.arg('tenant_id')
     AND users.id = sqlc.arg('id')
     AND users.status <> 'suspended'
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -488,7 +530,23 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date;
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role;
 
 -- name: UnsuspendTenantReader :one
 -- A reader who never confirmed their address goes back to inactive, the state
@@ -498,11 +556,6 @@ SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'act
 WHERE users.tenant_id = sqlc.arg('tenant_id')
     AND users.id = sqlc.arg('id')
     AND users.status = 'suspended'
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -510,22 +563,33 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date;
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role;
 
 -- name: SetTenantReaderBirthDate :one
 -- Sets or clears a reader's birth date past the written-once guard of
--- SetUserBirthDateByID. Writing the date already stored is no rows, like a
--- staff account and another tenant's.
+-- SetUserBirthDateByID. Writing the date already stored is no rows, like
+-- another tenant's account.
 UPDATE users
 SET birth_date = sqlc.narg('birth_date')::date
 WHERE users.tenant_id = sqlc.arg('tenant_id')
     AND users.id = sqlc.arg('id')
     AND users.birth_date IS DISTINCT FROM sqlc.narg('birth_date')::date
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id,
     users.name,
@@ -533,19 +597,30 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    users.birth_date;
+    users.birth_date,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = users.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role;
 
 -- name: DeleteTenantReader :one
--- Hard delete, as DeleteUserByID. A staff account and another tenant's are no
--- rows.
+-- Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
+-- account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 DELETE FROM users
 WHERE users.tenant_id = sqlc.arg('tenant_id')
     AND users.id = sqlc.arg('id')
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = users.id
-    )
 RETURNING users.id,
     users.public_id;
 

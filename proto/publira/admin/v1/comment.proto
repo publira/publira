@@ -49,8 +49,7 @@ message AdminComment {
   // rather than of reports ever made, so deciding on one lowers it.
   int32 open_report_count = 16;
   // Whether the author holds a staff role on this tenant. A staff account can
-  // post from the storefront too, but it is not a reader, so GetReader does not
-  // answer for it.
+  // post from the storefront too, and GetReader reads it like any other.
   bool author_is_staff = 17;
   // The comment's primary key, which every moderation request addresses it by.
   string id = 18;

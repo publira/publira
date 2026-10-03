@@ -59,13 +59,15 @@ const (
 // AdminUserServiceClient is a client for the publira.admin.v1.AdminUserService service.
 type AdminUserServiceClient interface {
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
-	// Lists the tenant's readers, newest first. Staff accounts are never in it.
+	// Lists every account of the tenant, newest first, staff accounts included.
 	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
-	// Reads one reader. not_found for a staff account and for an account of
-	// another tenant.
+	// Reads one account of the tenant, a staff account included. not_found for
+	// an account of another tenant.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
-	// Suspends a reader and ends every session they hold. Suspending a reader
-	// who is already suspended changes nothing. not_found as GetReader.
+	// Suspends an account and ends every session it holds. Suspending an account
+	// that is already suspended changes nothing. not_found as GetReader.
+	// failed_precondition for the caller's own account, and, with the
+	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
 	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
 	// Lifts a suspension. The reader returns to active, or to inactive when
 	// they have not confirmed their address yet. Sessions ended by the
@@ -77,8 +79,10 @@ type AdminUserServiceClient interface {
 	// age-gated read for the reader is decided on the new date. Writing the date
 	// already stored changes nothing. not_found as GetReader.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
-	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
-	// as GetReader.
+	// Deletes an account the way its own DeleteMe does; a staff account's roles
+	// go with it. not_found as GetReader. failed_precondition as SuspendReader,
+	// and, with the ACCOUNT_HAS_STAFF_HISTORY reason, for an account that audit
+	// entries or page versions still name.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 
@@ -187,13 +191,15 @@ func (c *adminUserServiceClient) DeleteReader(ctx context.Context, req *connect.
 // AdminUserServiceHandler is an implementation of the publira.admin.v1.AdminUserService service.
 type AdminUserServiceHandler interface {
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
-	// Lists the tenant's readers, newest first. Staff accounts are never in it.
+	// Lists every account of the tenant, newest first, staff accounts included.
 	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
-	// Reads one reader. not_found for a staff account and for an account of
-	// another tenant.
+	// Reads one account of the tenant, a staff account included. not_found for
+	// an account of another tenant.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
-	// Suspends a reader and ends every session they hold. Suspending a reader
-	// who is already suspended changes nothing. not_found as GetReader.
+	// Suspends an account and ends every session it holds. Suspending an account
+	// that is already suspended changes nothing. not_found as GetReader.
+	// failed_precondition for the caller's own account, and, with the
+	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
 	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
 	// Lifts a suspension. The reader returns to active, or to inactive when
 	// they have not confirmed their address yet. Sessions ended by the
@@ -205,8 +211,10 @@ type AdminUserServiceHandler interface {
 	// age-gated read for the reader is decided on the new date. Writing the date
 	// already stored changes nothing. not_found as GetReader.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
-	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
-	// as GetReader.
+	// Deletes an account the way its own DeleteMe does; a staff account's roles
+	// go with it. not_found as GetReader. failed_precondition as SuspendReader,
+	// and, with the ACCOUNT_HAS_STAFF_HISTORY reason, for an account that audit
+	// entries or page versions still name.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 

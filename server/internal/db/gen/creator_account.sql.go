@@ -73,6 +73,22 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
     ca.created_at AS linked_at
 FROM creator_accounts ca
     JOIN users u ON u.id = ca.user_id
@@ -95,6 +111,7 @@ type ListCreatorAccountsByCreatorIDRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	Role            string       `json:"role"`
 	LinkedAt        time.Time    `json:"linked_at"`
 }
 
@@ -117,6 +134,7 @@ func (q *Queries) ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCr
 			&i.Status,
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
+			&i.Role,
 			&i.LinkedAt,
 		); err != nil {
 			return nil, err

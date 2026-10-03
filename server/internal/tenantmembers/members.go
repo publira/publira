@@ -265,6 +265,23 @@ func findMember(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID, raw
 	return member, nil
 }
 
+// KeepAnAdminBeside refuses with [ErrLastAdmin] when userID is the tenant's
+// last active tenant_admin, for an action that takes the account itself away —
+// suspending or deleting it — rather than its role. It takes the tenant's
+// administrator lock first, as [UpdateRole] and [Remove] do, so two
+// administrators suspending each other at once cannot both see the other one
+// left. An account that holds no tenant_admin role is never refused.
+func KeepAnAdminBeside(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID) error {
+	if err := tenantlock.Take(ctx, tx, "tenant-admins:"+tenantID.String()); err != nil {
+		return err
+	}
+	roles, err := dbmodels.New(tx).ListTenantUserRoles(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("list tenant user roles: %w", err)
+	}
+	return refuseLastAdmin(ctx, tx, tenantID, Member{UserID: userID, Role: auth.ResolveTenantRole(roles)})
+}
+
 func refuseLastAdmin(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, member Member) error {
 	if member.Role != auth.RoleTenantAdmin {
 		return nil

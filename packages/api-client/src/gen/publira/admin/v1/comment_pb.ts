@@ -134,8 +134,7 @@ export type AdminComment = Message<"publira.admin.v1.AdminComment"> & {
 
   /**
    * Whether the author holds a staff role on this tenant. A staff account can
-   * post from the storefront too, but it is not a reader, so GetReader does not
-   * answer for it.
+   * post from the storefront too, and GetReader reads it like any other.
    *
    * @generated from field: bool author_is_staff = 17;
    */
