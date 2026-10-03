@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/emailrejection"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -377,9 +378,14 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
 	}
-	if _, err := mail.ParseAddress(email); err != nil {
+	address, err := mail.ParseAddress(email)
+	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if reason, err := s.refuseEmail(ctx, tenant.ID, address.Address, "email"); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
+		return nil, err
 	}
 
 	// A form that did not ask sends nothing, and the account is created without
@@ -449,6 +455,27 @@ func (s *apiServer) CreateUser(
 
 	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, "", "requested")
 	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+}
+
+// refuseEmail answers the invalid_argument that refuses address on field when
+// the tenant does not accept it, with the audit reason to record, and a nil
+// error when it does. The refusal depends on the address alone, never on
+// whether it has an account, so a form that answers uniformly can still give
+// it: it tells the caller nothing about who is registered.
+func (s *apiServer) refuseEmail(ctx context.Context, tenantID uuid.UUID, address, field string) (string, error) {
+	verdict, err := emailrejection.Check(ctx, s.queriesFor(ctx), s.disposable, tenantID, address)
+	if err != nil {
+		return "email_rejection_check_failed", s.internalDBError(ctx, "failed to check the address against the tenant's email rejection settings", err, "tenant_id", tenantID.String())
+	}
+	switch verdict {
+	case emailrejection.Listed:
+		return "email_refused", rpcerrors.NewFieldViolationErrorWithReason(
+			connect.CodeInvalidArgument, errors.New("this email address is not accepted"), field, rpcerrors.FieldReasonEmailRefused)
+	case emailrejection.Disposable:
+		return "email_disposable_domain", rpcerrors.NewFieldViolationErrorWithReason(
+			connect.CodeInvalidArgument, errors.New("addresses from disposable email services are not accepted"), field, rpcerrors.FieldReasonEmailDisposableDomain)
+	}
+	return "", nil
 }
 
 // signupConsents checks the page versions a sign-up agreed to against the
@@ -645,7 +672,8 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
 	}
-	if _, err := mail.ParseAddress(newEmail); err != nil {
+	newAddress, err := mail.ParseAddress(newEmail)
+	if err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
@@ -656,6 +684,10 @@ func (s *apiServer) RequestEmailChange(
 	if strings.EqualFold(newEmail, user.Email) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+	}
+	if reason, err := s.refuseEmail(ctx, tenant.ID, newAddress.Address, "new_email"); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
+		return nil, err
 	}
 	var identityClaims signin.Claims
 	if withPassword {

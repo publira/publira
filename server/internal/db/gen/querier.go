@@ -309,6 +309,7 @@ type Querier interface {
 	// `publiractl job purge-orphan-images`.
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
+	DeleteTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// Hard delete, as DeleteUserByID. Another tenant's account is no rows. A staff
@@ -700,6 +701,9 @@ type Querier interface {
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as the
+	// disposable-domain list off.
+	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
 	// Returns no rows for a tenant that has no Firebase credentials, which is the
 	// whole "mobile push is disabled" state.
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
@@ -913,6 +917,8 @@ type Querier interface {
 	// array parameter per column cannot carry.
 	InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error
 	InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
+	// The entries arrive validated, lowercased, and without duplicates.
+	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
@@ -1812,6 +1818,7 @@ type Querier interface {
 	// The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	ListTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) ([]string, error)
 	// The theme carries the icon and the logo together, so both images' variants
 	// are read in one statement rather than one query per slot.
 	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)
@@ -2479,6 +2486,7 @@ type Querier interface {
 	// tenant who changed both with one of the two stored when the second write
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
+	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
 	UpsertTenantGoogleSignInConfig(ctx context.Context, arg UpsertTenantGoogleSignInConfigParams) (TenantGoogleSignInConfig, error)

@@ -66,6 +66,15 @@ const (
 	// the public site answers the page slug's path before it looks at pages.
 	FieldReasonPageSlugUnreachable = "PAGE_SLUG_UNREACHABLE"
 
+	// FieldReasonEmailDisposableDomain is a BadRequest field-violation reason:
+	// the address is on a domain the disposable-domain list names, and the
+	// tenant has the list switched on.
+	FieldReasonEmailDisposableDomain = "EMAIL_DISPOSABLE_DOMAIN"
+
+	// FieldReasonEmailRefused is a BadRequest field-violation reason: the
+	// address matches an address or a domain the tenant refuses.
+	FieldReasonEmailRefused = "EMAIL_REFUSED"
+
 	// MetadataCreditCount is the ErrorInfo metadata key for how many credits
 	// still name a creator role that cannot be deleted. The value is a decimal
 	// integer in decimal digits, with no sign or thousands separator.
@@ -95,8 +104,6 @@ func FromFieldError(err error) *connect.Error {
 	return nil
 }
 
-// NewErrorInfoError reports a stable reason for a failure that is not tied to a
-// single invalid request field.
 // NewFieldViolationErrorWithReason is NewFieldViolationError with the
 // violation's reason set, for a field that can be refused for more than one cause.
 func NewFieldViolationErrorWithReason(code connect.Code, err error, field, reason string) *connect.Error {
@@ -105,6 +112,8 @@ func NewFieldViolationErrorWithReason(code connect.Code, err error, field, reaso
 	})
 }
 
+// NewErrorInfoError reports a stable reason for a failure that is not tied to a
+// single invalid request field.
 func NewErrorInfoError(code connect.Code, err error, reason string) *connect.Error {
 	return NewErrorInfoErrorWithMetadata(code, err, reason, nil)
 }

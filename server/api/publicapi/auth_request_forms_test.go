@@ -45,6 +45,18 @@ func newRequestFormClient(t *testing.T) (publirav1connect.AuthServiceClient, sql
 	return publirav1connect.NewAuthServiceClient(server.Client(), server.URL), mock
 }
 
+// expectNoEmailRejection answers a tenant that refuses no address. The sign-up
+// reads what the tenant refuses, which is the tenant's setting and says nothing
+// about whether the address has an account.
+func expectNoEmailRejection(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantEmailRejectionSettings)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantEmailRejectionEntries)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"entry"}))
+}
+
 func expectReaderAuthRequest(mock sqlmock.Sqlmock, tenantID uuid.UUID, eventType string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), eventType, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
@@ -60,6 +72,7 @@ func TestCreateUserRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
 	client, mock := newRequestFormClient(t)
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	expectNoEmailRejection(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
 		WithArgs("ja", tenantID).
 		WillReturnError(sql.ErrNoRows)

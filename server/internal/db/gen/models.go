@@ -936,6 +936,19 @@ type TenantConfig struct {
 	AppPurchaseRoute               string         `json:"app_purchase_route"`
 }
 
+type TenantEmailRejectionEntry struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Entry     string    `json:"entry"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type TenantEmailRejectionSetting struct {
+	TenantID                uuid.UUID `json:"tenant_id"`
+	RejectDisposableDomains bool      `json:"reject_disposable_domains"`
+	CreatedAt               time.Time `json:"created_at"`
+	UpdatedAt               time.Time `json:"updated_at"`
+}
+
 type TenantFcmConfig struct {
 	TenantID                    uuid.UUID `json:"tenant_id"`
 	ProjectID                   string    `json:"project_id"`
