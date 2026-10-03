@@ -140,6 +140,37 @@ func TestPolicySetNamesTheFlagOfARefusedValue(t *testing.T) {
 	}
 }
 
+// The list URL is saved and cleared like any other value, and a URL the
+// server could not read the list from is refused under its own flag.
+func TestPolicySetSavesTheDisposableEmailDomainListURL(t *testing.T) {
+	pg := startPlatformDB(t)
+	ctx := context.Background()
+	server := platformpolicy.NewResolver(dbmodels.New(pg.OpenPublicDB(t)), 0, slog.Default())
+
+	if got := showLine(t, mustPolicyCommand(t, "show"), "Disposable email domain list"); got != "none" {
+		t.Fatalf("show's list with nothing saved = %q, want none", got)
+	}
+
+	code, _, stderr := policyCommand(t, "set", "--disposable-email-domains-url", "file:///etc/disposable.conf")
+	if want := "publiractl: --disposable-email-domains-url: "; code != 1 || !strings.HasPrefix(stderr, want) {
+		t.Fatalf("set with a file URL = exit %d, %q; want exit 1 beginning %q", code, stderr, want)
+	}
+
+	const list = "https://lists.example.com/disposable.conf"
+	mustPolicyCommand(t, "set", "--disposable-email-domains-url", list)
+	if got, err := server.Policy(ctx); err != nil || got.DisposableEmailDomainsURL != list {
+		t.Fatalf("the server's list after set = %q, %v; want %q", got.DisposableEmailDomainsURL, err, list)
+	}
+	if got := showLine(t, mustPolicyCommand(t, "show"), "Disposable email domain list"); got != list {
+		t.Fatalf("show's list = %q, want %q", got, list)
+	}
+
+	mustPolicyCommand(t, "set", "--disposable-email-domains-url", "")
+	if got, err := server.Policy(ctx); err != nil || got.DisposableEmailDomainsURL != "" {
+		t.Fatalf("the server's list after clearing it = %q, %v; want none", got.DisposableEmailDomainsURL, err)
+	}
+}
+
 // With no flag there is nothing to change, and saving the values read would
 // pin the built-in defaults as though an operator had chosen them.
 func TestPolicySetWithNoFlagWritesNothing(t *testing.T) {
@@ -174,7 +205,7 @@ func messageLeaves(md protoreflect.MessageDescriptor, prefix string) []string {
 // A field added to the policy is one publiractl policy set has to be able to
 // change as well.
 func TestPolicyFlagsCoverEveryPolicyField(t *testing.T) {
-	flags := map[string]bool{"mfa_required_for_tenant_admin": true}
+	flags := map[string]bool{"mfa_required_for_tenant_admin": true, platformpolicy.FieldDisposableEmailDomainsURL: true}
 	for _, field := range policyFlags {
 		flags[field.field] = true
 	}

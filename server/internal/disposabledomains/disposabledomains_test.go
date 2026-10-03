@@ -2,12 +2,15 @@ package disposabledomains
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/publira/publira/server/internal/platformpolicy"
 )
 
 // listServer serves body with status, and counts the requests it answers.
@@ -56,24 +59,106 @@ func (c *clock) advance(d time.Duration) {
 	c.now = c.now.Add(d)
 }
 
-// newRemoteList returns a List refreshing from a server answering status and
-// body, on a clock the test moves.
+// policySource answers a policy naming url, or err, and lets a test change
+// either between lookups.
+type policySource struct {
+	mu  sync.Mutex
+	url string
+	err error
+}
+
+func (s *policySource) set(url string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.url, s.err = url, err
+}
+
+func (s *policySource) Policy(context.Context) (platformpolicy.Policy, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return platformpolicy.Policy{}, s.err
+	}
+	policy := platformpolicy.Defaults()
+	policy.DisposableEmailDomainsURL = s.url
+	return policy, nil
+}
+
+// newRemoteList returns a List whose policy names a server answering status
+// and body, on a clock the test moves.
 func newRemoteList(t *testing.T, status int, body string) (*List, *listServer, *clock) {
+	t.Helper()
+	list, server, _, c := newListWithPolicy(t, status, body)
+	return list, server, c
+}
+
+func newListWithPolicy(t *testing.T, status int, body string) (*List, *listServer, *policySource, *clock) {
 	t.Helper()
 	server := &listServer{status: status, body: body}
 	ts := httptest.NewServer(server)
 	t.Cleanup(ts.Close)
-	list := New(Config{URL: ts.URL, HTTPClient: ts.Client()})
+	source := &policySource{url: ts.URL}
+	list := New(source, ts.Client(), nil)
 	c := &clock{now: time.Unix(0, 0)}
-	list.remote.Now = c.Now
-	return list, server, c
+	list.Now = c.Now
+	return list, server, source, c
+}
+
+// isDisposable is IsDisposable for a policy that answers.
+func isDisposable(t *testing.T, list *List, domain string) bool {
+	t.Helper()
+	disposable, err := list.IsDisposable(context.Background(), domain)
+	if err != nil {
+		t.Fatalf("IsDisposable(%q): %v", domain, err)
+	}
+	return disposable
 }
 
 func TestIsDisposableNamesNothingWithNoURL(t *testing.T) {
 	t.Parallel()
 
-	if New(Config{}).IsDisposable(context.Background(), "mailinator.com") {
+	list := New(platformpolicy.Fixed(platformpolicy.Defaults()), nil, nil)
+	if isDisposable(t, list, "mailinator.com") {
 		t.Fatal("IsDisposable(mailinator.com) = true with no URL, want no list")
+	}
+}
+
+// A policy that cannot be read is the caller's to report: answering "not
+// disposable" would quietly switch the list off for every tenant.
+func TestIsDisposableReportsAPolicyItCannotRead(t *testing.T) {
+	t.Parallel()
+
+	list, server, source, _ := newListWithPolicy(t, http.StatusOK, "first.test\n")
+	source.set("", errors.New("database is down"))
+	if _, err := list.IsDisposable(context.Background(), "first.test"); err == nil {
+		t.Fatal("IsDisposable with an unreadable policy = nil error, want the policy's")
+	}
+	if got := server.count(); got != 0 {
+		t.Fatalf("requests = %d, want no list read without a policy", got)
+	}
+}
+
+// A URL saved in place of another is read at once, and the list read from
+// the old one stops answering.
+func TestIsDisposableReadsANewURLAtOnce(t *testing.T) {
+	t.Parallel()
+
+	list, _, source, _ := newListWithPolicy(t, http.StatusOK, "first.test\n")
+	if !isDisposable(t, list, "first.test") {
+		t.Fatal("IsDisposable(first.test) = false, want the first URL's list")
+	}
+
+	second := &listServer{status: http.StatusOK, body: "second.test\n"}
+	ts := httptest.NewServer(second)
+	t.Cleanup(ts.Close)
+	source.set(ts.URL, nil)
+	if !isDisposable(t, list, "second.test") || isDisposable(t, list, "first.test") {
+		t.Fatal("after the URL changed, want the new URL's list alone within the same interval")
+	}
+
+	source.set("", nil)
+	if isDisposable(t, list, "second.test") {
+		t.Fatal("IsDisposable(second.test) = true after the URL was cleared, want no list")
 	}
 }
 
@@ -81,7 +166,6 @@ func TestIsDisposableMatchesTheDomainAndItsSubdomains(t *testing.T) {
 	t.Parallel()
 
 	list, _, _ := newRemoteList(t, http.StatusOK, "# a comment\n\nthrowaway.test\nShouting.Test.\n")
-	ctx := context.Background()
 	for domain, want := range map[string]bool{
 		"throwaway.test":         true,
 		"mx.throwaway.test":      true,
@@ -94,7 +178,7 @@ func TestIsDisposableMatchesTheDomainAndItsSubdomains(t *testing.T) {
 		"test":                   false,
 		"":                       false,
 	} {
-		if got := list.IsDisposable(ctx, domain); got != want {
+		if got := isDisposable(t, list, domain); got != want {
 			t.Errorf("IsDisposable(%q) = %v, want %v", domain, got, want)
 		}
 	}
@@ -106,7 +190,7 @@ func TestIsDisposableComparesAUnicodeDomainInItsASCIIForm(t *testing.T) {
 	t.Parallel()
 
 	list, _, _ := newRemoteList(t, http.StatusOK, "xn--bcher-kva.test\n")
-	if !list.IsDisposable(context.Background(), "mail.Bücher.test") {
+	if !isDisposable(t, list, "mail.Bücher.test") {
 		t.Fatal("IsDisposable(mail.Bücher.test) = false, want the entry for xn--bcher-kva.test to match")
 	}
 }
@@ -115,18 +199,17 @@ func TestIsDisposableAnswersFromTheFetchedListOnceItLoads(t *testing.T) {
 	t.Parallel()
 
 	list, server, c := newRemoteList(t, http.StatusOK, "first.test\n")
-	ctx := context.Background()
-	if !list.IsDisposable(ctx, "first.test") {
+	if !isDisposable(t, list, "first.test") {
 		t.Fatal("IsDisposable(first.test) = false, want the fetched list's answer")
 	}
 
 	server.set(http.StatusOK, "second.test\n")
 	c.advance(refreshInterval - time.Second)
-	if !list.IsDisposable(ctx, "first.test") || server.count() != 1 {
+	if !isDisposable(t, list, "first.test") || server.count() != 1 {
 		t.Fatalf("within the interval: requests = %d, want the first list served without a fetch", server.count())
 	}
 	c.advance(time.Second)
-	if !list.IsDisposable(ctx, "second.test") || list.IsDisposable(ctx, "first.test") {
+	if !isDisposable(t, list, "second.test") || isDisposable(t, list, "first.test") {
 		t.Fatal("past the interval, want the list fetched again and replaced wholesale")
 	}
 }
@@ -148,17 +231,16 @@ func TestIsDisposableKeepsTheLastGoodCopyWhileAFetchFails(t *testing.T) {
 			t.Parallel()
 
 			list, server, c := newRemoteList(t, http.StatusOK, "first.test\n")
-			ctx := context.Background()
-			if !list.IsDisposable(ctx, "first.test") {
+			if !isDisposable(t, list, "first.test") {
 				t.Fatal("IsDisposable(first.test) = false before the failure")
 			}
 
 			server.set(failure.status, failure.body)
 			c.advance(refreshInterval)
-			if !list.IsDisposable(ctx, "first.test") {
+			if !isDisposable(t, list, "first.test") {
 				t.Fatal("IsDisposable(first.test) = false, want the last good copy while the fetch fails")
 			}
-			if list.IsDisposable(ctx, "com") {
+			if isDisposable(t, list, "com") {
 				t.Fatal("IsDisposable(com) = true, want a refused list never to answer")
 			}
 			if got := server.count(); got != 2 {
@@ -167,7 +249,7 @@ func TestIsDisposableKeepsTheLastGoodCopyWhileAFetchFails(t *testing.T) {
 
 			server.set(http.StatusOK, "second.test\n")
 			c.advance(refreshInterval)
-			if !list.IsDisposable(ctx, "second.test") {
+			if !isDisposable(t, list, "second.test") {
 				t.Fatal("IsDisposable(second.test) = false, want the list that loads after the failure")
 			}
 		})
@@ -180,9 +262,8 @@ func TestIsDisposableNamesNothingUntilTheFirstFetchSucceeds(t *testing.T) {
 	t.Parallel()
 
 	list, server, c := newRemoteList(t, http.StatusBadGateway, "")
-	ctx := context.Background()
 	for range 2 {
-		if list.IsDisposable(ctx, "first.test") {
+		if isDisposable(t, list, "first.test") {
 			t.Fatal("IsDisposable(first.test) = true, want no list before a read succeeds")
 		}
 	}
@@ -192,7 +273,7 @@ func TestIsDisposableNamesNothingUntilTheFirstFetchSucceeds(t *testing.T) {
 
 	server.set(http.StatusOK, "first.test\n")
 	c.advance(refreshInterval)
-	if !list.IsDisposable(ctx, "first.test") {
+	if !isDisposable(t, list, "first.test") {
 		t.Fatal("IsDisposable(first.test) = false, want the list once it loads")
 	}
 }
@@ -205,31 +286,7 @@ func TestIsDisposableFinishesTheFetchForACanceledCaller(t *testing.T) {
 	list, _, _ := newRemoteList(t, http.StatusOK, "first.test\n")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if !list.IsDisposable(ctx, "first.test") {
-		t.Fatal("IsDisposable(first.test) = false, want the fetch to load despite the canceled context")
-	}
-}
-
-func TestConfigFromEnv(t *testing.T) {
-	for name, tc := range map[string]struct {
-		value   string
-		wantURL string
-		wantErr bool
-	}{
-		"unset":           {value: "", wantURL: ""},
-		"an https URL":    {value: " https://lists.example.com/disposable.conf ", wantURL: "https://lists.example.com/disposable.conf"},
-		"a relative path": {value: "lists/disposable.conf", wantErr: true},
-		"another scheme":  {value: "file:///etc/disposable.conf", wantErr: true},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Setenv("PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL", tc.value)
-			cfg, err := ConfigFromEnv()
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("ConfigFromEnv() error = %v, want an error: %v", err, tc.wantErr)
-			}
-			if cfg.URL != tc.wantURL {
-				t.Fatalf("ConfigFromEnv().URL = %q, want %q", cfg.URL, tc.wantURL)
-			}
-		})
+	if disposable, err := list.IsDisposable(ctx, "first.test"); err != nil || !disposable {
+		t.Fatalf("IsDisposable(first.test) = %v, %v; want the fetch to load despite the canceled context", disposable, err)
 	}
 }

@@ -1,11 +1,13 @@
 // Package disposabledomains answers whether an email domain belongs to a
 // service made for throwaway addresses.
 //
-// The list is read from the URL in PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL, in the
-// format of the disposable-email-domains project's blocklist
+// The list is read from the URL the platform policy names
+// (platformpolicy.Policy.DisposableEmailDomainsURL, saved through
+// PlatformPolicyService or publiractl policy set), in the format of the
+// disposable-email-domains project's blocklist
 // (https://github.com/disposable-email-domains/disposable-email-domains). No
-// copy ships with the server, so a process without the URL, or one whose read
-// has never succeeded, names no domain disposable.
+// copy ships with the server, so a platform that names no URL, or one whose
+// read has never succeeded, has no domain disposable.
 package disposabledomains
 
 import (
@@ -17,13 +19,13 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/idna"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ttlcache"
 )
 
@@ -42,72 +44,56 @@ const (
 
 type domainSet map[string]struct{}
 
-// Config builds a [List]. The zero value names no domain disposable.
-type Config struct {
-	// URL names the list: one domain per line, blank lines and lines starting
-	// with # ignored.
-	URL        string
-	HTTPClient *http.Client
-	Logger     *slog.Logger
-}
-
-// ConfigFromEnv reads PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL. Unset, there is no
-// list.
-func ConfigFromEnv() (Config, error) {
-	const name = "PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL"
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return Config{}, nil
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return Config{}, fmt.Errorf("%s must be an absolute http or https URL", name)
-	}
-	return Config{URL: raw}, nil
-}
-
-// List answers whether a domain is disposable.
+// List answers whether a domain is disposable, from the list at the URL the
+// platform policy names.
 type List struct {
-	// remote is nil when no URL is configured.
-	remote *ttlcache.Value[domainSet]
+	policy     platformpolicy.Source
+	httpClient *http.Client
+	logger     *slog.Logger
+
+	// Now is the clock the refresh interval is measured on, replaceable by
+	// tests before the first lookup.
+	Now func() time.Time
+
+	mu sync.Mutex
+	// url is the URL list is read from, and list is nil until a lookup finds
+	// the policy naming one.
+	url  string
+	list *ttlcache.Value[domainSet]
 }
 
-func New(cfg Config) *List {
-	if cfg.URL == "" {
-		return &List{}
-	}
-	httpClient := cfg.HTTPClient
+// New returns a List that reads the URL from policy on every lookup, so a
+// saved change reaches it as soon as policy answers it. A nil httpClient reads
+// with a client of its own.
+func New(policy platformpolicy.Source, httpClient *http.Client, logger *slog.Logger) *List {
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: fetchTimeout}
 	}
-	remote := ttlcache.New(func(ctx context.Context) (domainSet, error) {
-		// A reader who gives up on the sign-up must not leave the list unread
-		// for another interval; the client's timeout bounds the read.
-		return fetch(context.WithoutCancel(ctx), httpClient, cfg.URL)
-	}, refreshInterval, cfg.Logger, "disposable email domain list")
-	// An empty list stands in until the first read succeeds, so a remote that
-	// is down from the start is asked once an interval like one that went
-	// down later, rather than on every sign-up.
-	remote.Seed(domainSet{})
-	return &List{remote: remote}
+	return &List{policy: policy, httpClient: httpClient, logger: logger, Now: time.Now}
 }
 
 // IsDisposable reports whether domain, or a domain it is a subdomain of, is on
 // the list. A domain in Unicode is compared in its ASCII form, which is the
-// form the list is written in.
+// form the list is written in. The error is the policy's: the list itself
+// never fails a lookup, and answers from the last copy that loaded, or from
+// no list until one has.
 //
 // The first call past each refresh interval reads the list, and the calls
 // behind it wait for that read.
-func (l *List) IsDisposable(ctx context.Context, domain string) bool {
-	if l.remote == nil {
-		return false
+func (l *List) IsDisposable(ctx context.Context, domain string) (bool, error) {
+	policy, err := l.policy.Policy(ctx)
+	if err != nil {
+		return false, err
+	}
+	if policy.DisposableEmailDomainsURL == "" {
+		return false, nil
 	}
 	// A seeded value never fails to answer.
-	set, _ := l.remote.Get(ctx)
+	set, _ := l.listAt(policy.DisposableEmailDomainsURL).Get(ctx)
 	name := normalize(domain)
 	for name != "" {
 		if _, ok := set[name]; ok {
-			return true
+			return true, nil
 		}
 		_, parent, found := strings.Cut(name, ".")
 		if !found {
@@ -115,7 +101,31 @@ func (l *List) IsDisposable(ctx context.Context, domain string) bool {
 		}
 		name = parent
 	}
-	return false
+	return false, nil
+}
+
+// listAt answers the list read from listURL. A URL other than the last one
+// starts over from no list and reads at once: what was read from the old URL
+// is not the list the operator now names.
+func (l *List) listAt(listURL string) *ttlcache.Value[domainSet] {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.list != nil && l.url == listURL {
+		return l.list
+	}
+	list := ttlcache.New(func(ctx context.Context) (domainSet, error) {
+		// A reader who gives up on the sign-up must not leave the list unread
+		// for another interval; the client's timeout bounds the read.
+		return fetch(context.WithoutCancel(ctx), l.httpClient, listURL)
+	}, refreshInterval, l.logger, "disposable email domain list")
+	list.Now = l.Now
+	// An empty list stands in until the first read succeeds, so a list that
+	// is down from the start is asked once an interval like one that went
+	// down later, rather than on every sign-up.
+	list.Seed(domainSet{})
+	l.url, l.list = listURL, list
+	return list
 }
 
 func normalize(domain string) string {

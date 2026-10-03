@@ -561,6 +561,7 @@ type PlatformPolicyConfig struct {
 	UpdatedAt                            time.Time `json:"updated_at"`
 	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
 	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
+	DisposableEmailDomainsUrl            string    `json:"disposable_email_domains_url"`
 }
 
 type PlatformRetentionConfig struct {

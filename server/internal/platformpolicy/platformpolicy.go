@@ -13,6 +13,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,11 +58,22 @@ type Policy struct {
 	// StorePurchaseConfirmation bounds the store transactions one reader may
 	// hand the server, each of which it verifies with the store.
 	StorePurchaseConfirmation MinuteDay
+	// DisposableEmailDomainsURL is where the list of disposable email domains
+	// is read from. Empty means there is no list: none ships with the server.
+	DisposableEmailDomainsURL string
 }
 
 // FieldDuplicateCommentWindow is the one field of the PlatformPolicy message
 // that is not half of a limit.
 const FieldDuplicateCommentWindow = "community_limit_defaults.duplicate_comment_window_minutes"
+
+// FieldDisposableEmailDomainsURL is the field of the PlatformPolicy message
+// that names where the disposable email domain list is read from.
+const FieldDisposableEmailDomainsURL = "disposable_email_domains_url"
+
+// MaxDisposableEmailDomainsURLLength bounds the URL of the disposable email
+// domain list, as the column's check constraint does.
+const MaxDisposableEmailDomainsURLLength = 2048
 
 // MaxDuplicateCommentWindow bounds the duplicate-comment window. Past a week
 // the refusal stops reading as "you just said that".
@@ -124,6 +137,25 @@ func (p Policy) Validate() error {
 			Err:   fmt.Errorf("%s must be a whole number of minutes from 1 to %d, got %s", FieldDuplicateCommentWindow, int(MaxDuplicateCommentWindow/time.Minute), window),
 		}
 	}
+	if err := validateListURL(p.DisposableEmailDomainsURL); err != nil {
+		return &fielderr.Invalid{Field: FieldDisposableEmailDomainsURL, Err: err}
+	}
+	return nil
+}
+
+// validateListURL accepts no URL, or an absolute http or https one: the
+// server reads the list with a plain GET and follows nothing else.
+func validateListURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	if len(raw) > MaxDisposableEmailDomainsURLLength {
+		return fmt.Errorf("%s must be at most %d bytes", FieldDisposableEmailDomainsURL, MaxDisposableEmailDomainsURLLength)
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || strings.TrimSpace(raw) != raw {
+		return fmt.Errorf("%s must be an absolute http or https URL", FieldDisposableEmailDomainsURL)
+	}
 	return nil
 }
 
@@ -144,6 +176,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: int(config.ViewerPreferencesLimitPerMinute), PerDay: int(config.ViewerPreferencesLimitPerDay)},
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: int(config.StorePurchaseConfirmLimitPerMinute), PerDay: int(config.StorePurchaseConfirmLimitPerDay)},
+		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
 	}
 }
 
@@ -175,6 +208,7 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ViewerPreferencesLimitPerDay:         int32(community.ViewerPreferencesUpdate.PerDay),
 		StorePurchaseConfirmLimitPerMinute:   int32(policy.StorePurchaseConfirmation.PerMinute),
 		StorePurchaseConfirmLimitPerDay:      int32(policy.StorePurchaseConfirmation.PerDay),
+		DisposableEmailDomainsUrl:            policy.DisposableEmailDomainsURL,
 	}
 }
 

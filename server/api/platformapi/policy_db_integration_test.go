@@ -41,6 +41,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 4, PerDay: 12}
 	policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 7, PerDay: 70}
 	policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 8, PerDay: 80}
+	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
 	return policy
 }
 
@@ -199,6 +200,12 @@ func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 				p.CommunityLimitDefaults.DuplicateCommentWindowMinutes = 7*24*60 + 1
 			},
 			"policy.community_limit_defaults.duplicate_comment_window_minutes",
+		},
+		"a list URL that is not http": {
+			func(p *publirasplatformv1.PlatformPolicy) {
+				p.DisposableEmailDomainsUrl = "file:///etc/disposable.conf"
+			},
+			"policy.disposable_email_domains_url",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

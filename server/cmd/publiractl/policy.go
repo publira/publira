@@ -49,8 +49,9 @@ func hourDayFlags(field, flag, what string, community bool, limit func(*policySe
 	}
 }
 
-// policyFlags are the numeric fields of the PlatformPolicy message.
-// --mfa-required-for-tenant-admin is the one other, and is a boolean.
+// policyFlags are the numeric fields of the PlatformPolicy message. The two
+// others are --mfa-required-for-tenant-admin, a boolean, and
+// --disposable-email-domains-url, a URL.
 var policyFlags = slices.Concat(
 	minuteDayFlags("password_verification", "password-verification", "password verifications of one account", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PasswordVerification }),
@@ -91,6 +92,13 @@ func setupPolicySet(f *commandFlags) func(context.Context, *commandEnv) error {
 				return err
 			}
 			flags.edit(func(p *policySettings) { p.MFARequiredForTenantAdmin = required })
+			return nil
+		})
+	flags.flags[platformpolicy.FieldDisposableEmailDomainsURL] = "--disposable-email-domains-url"
+	f.Func("disposable-email-domains-url",
+		"the http or https `URL` the list of disposable email domains is read from, one domain per line; an empty value leaves no list",
+		func(v string) error {
+			flags.edit(func(p *policySettings) { p.DisposableEmailDomainsURL = v })
 			return nil
 		})
 	return func(ctx context.Context, env *commandEnv) error {
@@ -147,6 +155,11 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "In-app purchase confirmations per reader:\t%s\n", perMinute(p.StorePurchaseConfirmation))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))
 		fmt.Fprintf(&b, "Email requests per source:\t%s\n", perHour(p.MailRequestsPerSource))
+		list := p.DisposableEmailDomainsURL
+		if list == "" {
+			list = "none"
+		}
+		fmt.Fprintf(&b, "Disposable email domain list:\t%s\n", list)
 		fmt.Fprintf(&b, "Community limit defaults:\t\n")
 		fmt.Fprintf(&b, "  Comment posts:\t%s\n", perMinute(community.CommentPost))
 		fmt.Fprintf(&b, "  Comment reports:\t%s\n", perMinute(community.CommentReport))

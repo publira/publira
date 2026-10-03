@@ -41,6 +41,7 @@ INSERT INTO platform_policy_config (
         viewer_preferences_limit_per_day,
         store_purchase_confirm_limit_per_minute,
         store_purchase_confirm_limit_per_day,
+        disposable_email_domains_url,
         updated_at
     )
 VALUES (
@@ -67,6 +68,7 @@ VALUES (
         sqlc.arg('viewer_preferences_limit_per_day'),
         sqlc.arg('store_purchase_confirm_limit_per_minute'),
         sqlc.arg('store_purchase_confirm_limit_per_day'),
+        sqlc.arg('disposable_email_domains_url'),
         NOW()
     )
 RETURNING *;
@@ -97,6 +99,7 @@ SET mfa_required_for_tenant_admin = sqlc.arg('mfa_required_for_tenant_admin'),
     viewer_preferences_limit_per_day = sqlc.arg('viewer_preferences_limit_per_day'),
     store_purchase_confirm_limit_per_minute = sqlc.arg('store_purchase_confirm_limit_per_minute'),
     store_purchase_confirm_limit_per_day = sqlc.arg('store_purchase_confirm_limit_per_day'),
+    disposable_email_domains_url = sqlc.arg('disposable_email_domains_url'),
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE
