@@ -2,6 +2,7 @@ import {
   Code,
   isMissingResourceRpcError,
   isRpcError,
+  isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
@@ -12,6 +13,7 @@ import {
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
 import type {
+  ListMyRecommendedSeriesResponse,
   ListRankedSeriesResponse,
   ListRecommendedSeriesResponse,
   ListRelatedSeriesResponse,
@@ -1059,6 +1061,93 @@ export const listRecommendedSeries = async (
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
       series: (response.series ?? []).map(toSeriesListItem),
+    },
+  };
+};
+
+/**
+ * {@link listRecommendedSeries} as the server orders it for one signed-in
+ * reader, or `signed_out` when there is no reader to order it for.
+ */
+export type MyRecommendedSeriesPage =
+  | { access: "signed_in"; page: SeriesListPage }
+  | { access: "signed_out" };
+
+/**
+ * Published series ordered for the signed-in reader from what they read,
+ * bought, rated, favourited, and commented on in the last 28 days. A reader the
+ * recommendation batch has no features for gets exactly what
+ * {@link listRecommendedSeries} answers, so the two never disagree about a new
+ * account.
+ *
+ * Private, because the order is this reader's alone: a shared entry would hand
+ * one reader's history to the next. `accessToken` is an argument so the private
+ * cache key includes the session. A guest skips the RPC, and a session the API
+ * rejects is reported the same way, so a stale cookie leaves the caller on the
+ * shared shelf rather than on a failure.
+ *
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`. A token carries which of the two orders it was built in,
+ * so one minted before the batch wrote or dropped the reader's features is
+ * rejected and the caller starts again at the first page.
+ */
+export const listMyRecommendedSeries = async (
+  tenantId: string,
+  accessToken: string,
+  {
+    limit = 6,
+    locale,
+    token = "",
+  }: { limit?: number; locale: Locale; token?: string }
+): Promise<CachedReadResult<MyRecommendedSeriesPage>> => {
+  "use cache: private";
+  try {
+    cacheLife({ stale: 30 });
+  } catch {
+    // Unit tests run without the Next.js cache runtime, same as applyCacheTag.
+  }
+
+  const normalizedTenantId = tenantId.trim();
+  // The tags `listRecommendedSeries` carries, for the same reason: they cover
+  // which series exist and are published. The features are rebuilt by a batch
+  // that never calls back here, so they arrive with the cache profile's own
+  // revalidation.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
+
+  const sessionId = accessToken.trim();
+  if (!sessionId) {
+    return { ok: true, value: { access: "signed_out" } };
+  }
+
+  let response: ListMyRecommendedSeriesResponse;
+  try {
+    response = await apiClient.catalog.listMyRecommendedSeries(
+      {
+        limit,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: normalizedTenantId },
+        token,
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      return { ok: true, value: { access: "signed_out" } };
+    }
+    return localizedReadFailure(error, locale, "host.top.recommended_failed");
+  }
+
+  return {
+    ok: true,
+    value: {
+      access: "signed_in",
+      page: {
+        nextToken: response.nextToken ?? "",
+        previousToken: response.previousToken ?? "",
+        series: (response.series ?? []).map(toSeriesListItem),
+      },
     },
   };
 };

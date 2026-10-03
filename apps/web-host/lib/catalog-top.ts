@@ -4,9 +4,11 @@ import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import type { RestrictedAgeRating } from "./age-rating";
+import { resolveAccessToken } from "./api-client";
 import { applyCacheTag, tenantTodayTag } from "./cache-tags";
 import {
   getSeriesDetail,
+  listMyRecommendedSeries,
   listPublishedLabels,
   listPublishedSeries,
   listRankedSeries,
@@ -218,6 +220,42 @@ export const getCatalogTopRecommendedSeries = async (
 };
 
 /**
+ * The recommendation slot as the reader in front of it gets it: ordered from
+ * their own reading when they are signed in, and the shared shelf of
+ * {@link getCatalogTopRecommendedSeries} when they are not.
+ *
+ * Uncached here because which of the two applies is a question about the
+ * session, and the session is read outside every cache scope. The signed-in
+ * half is a private entry keyed on the session and the guest half is the
+ * shared one every visitor reads, so neither reader's shelf is ever served to
+ * the other. A session the API rejects is a guest's too: a stale cookie should
+ * not cost a reader the shelf a signed-out visitor would have seen.
+ */
+export const getCatalogTopReaderRecommendedSeries = async (
+  tenantId: string,
+  { locale, maxRecommended = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<SeriesListItem[]>> => {
+  const accessToken = await resolveAccessToken();
+  if (accessToken) {
+    const mine = await listMyRecommendedSeries(tenantId, accessToken, {
+      limit: maxRecommended,
+      locale,
+    });
+    if (!mine.ok) {
+      return mine;
+    }
+    if (mine.value.access === "signed_in") {
+      return { ok: true, value: mine.value.page.series };
+    }
+  }
+
+  return await getCatalogTopRecommendedSeries(tenantId, {
+    locale,
+    maxRecommended,
+  });
+};
+
+/**
  * The free-to-read slot: published series a reader can start without paying,
  * newest first.
  *
@@ -328,13 +366,16 @@ export const getCatalogTopWeeklySchedule = async (
  * A tenant with no snapshot is the cold start every tenant begins in: the
  * batch runs daily, and until it has, `ListRecommendedSeries` is the same
  * newest-first shelf the page showed before rankings existed.
+ *
+ * The recommendation order is the reader's own, so this is not one cache
+ * entry: the chart is the same for everyone and stays a shared read, and only
+ * a tenant without one goes on to ask who is looking. That keeps a ranked
+ * tenant's module free of the session altogether.
  */
 export const getCatalogTopPopularSeries = async (
   tenantId: string,
   { locale, maxRanked = 10, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopPopularSeries>> => {
-  "use cache";
-
   const ranking = await listRankedSeries(tenantId, {
     ageRating: "all",
     limit: maxRanked,
@@ -342,7 +383,7 @@ export const getCatalogTopPopularSeries = async (
     period: "weekly",
   });
   if (!ranking.ok) {
-    return cachedReadFailure(ranking.message);
+    return ranking;
   }
 
   if (ranking.value.rankedSeries.length > 0) {
@@ -352,12 +393,12 @@ export const getCatalogTopPopularSeries = async (
     };
   }
 
-  const recommended = await getCatalogTopRecommendedSeries(tenantId, {
+  const recommended = await getCatalogTopReaderRecommendedSeries(tenantId, {
     locale,
     maxRecommended,
   });
   if (!recommended.ok) {
-    return cachedReadFailure(recommended.message);
+    return recommended;
   }
 
   return {
