@@ -36,10 +36,7 @@ const continueSignUpFormSchema = async (locale: Locale) => {
 
   return z
     .object({
-      agreedPageVersionIds: z
-        .array(z.string().trim().min(1))
-        .max(2)
-        .refine((ids) => new Set(ids).size === ids.length),
+      agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
       birthDate,
       consent: z.string().optional(),
       locale: localeFormSchema,

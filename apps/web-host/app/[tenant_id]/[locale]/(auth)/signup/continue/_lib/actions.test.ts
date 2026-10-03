@@ -151,7 +151,11 @@ describe("continueSignUpAction", () => {
 
     const state = await submit(data);
 
-    expect(state?.ok).toBe(false);
+    expect(state).toEqual({
+      message:
+        "The pages to agree to have been updated. Read them and agree again.",
+      ok: false,
+    });
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
   });
 

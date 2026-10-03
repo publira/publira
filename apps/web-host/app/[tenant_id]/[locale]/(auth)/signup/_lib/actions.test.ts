@@ -153,6 +153,27 @@ describe("signupAction", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
+  it("refuses a version sent twice in place of two pages", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce([
+      "terms-v1",
+      "privacy-v2",
+    ]);
+    const data = formData({ ...validSignupFields, consent: "on" });
+    data.append("agreedPageVersionIds", "terms-v1");
+    data.append("agreedPageVersionIds", "terms-v1");
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction({ message: "", ok: false }, data);
+
+    expect(result).toEqual({
+      message:
+        "The pages to agree to have been updated. Read them and agree again.",
+      ok: false,
+    });
+    expect(mockSignupPublic).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
   it("asks for consent when the tenant named a page after the form rendered", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-v1"]);
 
