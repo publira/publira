@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  appleAndroidCallbackUrl,
   signInCallbackUrl,
   storefrontOrigin,
   tenantWebhookUrl,
@@ -66,5 +67,19 @@ describe("signInCallbackUrl", () => {
 
   it("is absent when the tenant has no domain", () => {
     expect(signInCallbackUrl("", "apple")).toBeUndefined();
+  });
+});
+
+describe("appleAndroidCallbackUrl", () => {
+  it("names the Android app's Apple callback on the storefront origin", () => {
+    vi.stubEnv("PUBLIRA_TENANT_URL_SCHEME", "");
+
+    expect(appleAndroidCallbackUrl("comics.example")).toBe(
+      "https://comics.example/api/v1/auth/apple/callback/android"
+    );
+  });
+
+  it("is absent when the tenant has no domain", () => {
+    expect(appleAndroidCallbackUrl("")).toBeUndefined();
   });
 });

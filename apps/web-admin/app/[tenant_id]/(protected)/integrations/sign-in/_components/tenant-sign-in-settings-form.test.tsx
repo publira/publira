@@ -269,6 +269,40 @@ describe("TenantSignInSettingsForm", () => {
     );
   });
 
+  it("shows the Android app's Apple callback URL beside the storefront's", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    await renderForm(
+      <TenantSignInSettingsForm
+        callbackUrls={{
+          apple: "https://comics.example/api/v1/auth/apple/callback",
+          appleAndroid:
+            "https://comics.example/api/v1/auth/apple/callback/android",
+        }}
+        canEdit={false}
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.getByText("Android app callback URL")).toBeDefined();
+    expect(
+      screen.getByText(
+        "https://comics.example/api/v1/auth/apple/callback/android"
+      )
+    ).toBeDefined();
+
+    const [, androidCopy] = screen.getAllByRole<HTMLButtonElement>("button", {
+      name: "Copy the callback URL",
+    });
+    await act(() => {
+      fireEvent.click(androidCopy as HTMLButtonElement);
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      "https://comics.example/api/v1/auth/apple/callback/android"
+    );
+  });
+
   it("leaves the callback URL out while the tenant has no domain", async () => {
     await renderForm(
       <TenantSignInSettingsForm

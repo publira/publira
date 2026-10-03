@@ -17,7 +17,10 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { signInCallbackUrl } from "#lib/storefront-url";
+import {
+  appleAndroidCallbackUrl,
+  signInCallbackUrl,
+} from "#lib/storefront-url";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantSignInSettings } from "#lib/tenant-sign-in-settings";
@@ -64,6 +67,7 @@ const SignInSettingsSection = async () => {
     <TenantSignInSettingsForm
       callbackUrls={{
         apple: signInCallbackUrl(domain, "apple"),
+        appleAndroid: appleAndroidCallbackUrl(domain),
         google: signInCallbackUrl(domain, "google"),
       }}
       canEdit={isTenantAdminRole(

@@ -542,6 +542,11 @@
       "exception": "The operating system reads them to open the app; the app is the other end of them rather than a reader of them."
     },
     {
+      "name": "The return that hands Apple's answer to the Android app",
+      "web": { "routes": ["api/v1/auth/[provider]/callback/android"] },
+      "exception": "Apple posts the Android app's sign-in here and the site hands it on to the app; the app is the other end of it rather than a reader of it."
+    },
+    {
       "name": "The sitemap that lists the storefront's pages for search engines",
       "web": { "rpcs": ["ListSitemapEntries"] },
       "exception": "Search engines read it to index the storefront's URLs; no reader reaches it, and the app has no URLs of its own for a crawler to list."

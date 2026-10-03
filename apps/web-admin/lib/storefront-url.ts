@@ -28,3 +28,14 @@ export const signInCallbackUrl = (
   const origin = storefrontOrigin(domain);
   return origin ? `${origin}/api/v1/auth/${provider}/callback` : undefined;
 };
+
+/**
+ * Where Apple posts the answer to the Android app's sign-in, which runs Apple's
+ * web flow with the storefront's Services ID. The storefront hands the answer
+ * on to the app, and Apple refuses this address too unless it is registered as
+ * a Return URL beside {@link signInCallbackUrl}'s.
+ */
+export const appleAndroidCallbackUrl = (domain: string): string | undefined => {
+  const callback = signInCallbackUrl(domain, "apple");
+  return callback ? `${callback}/android` : undefined;
+};
