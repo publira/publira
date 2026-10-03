@@ -37,6 +37,91 @@ WHERE w.tenant_id = $1
     AND w.id = $2
 LIMIT 1;
 
+-- Admin ListEpisodeFreeWindows is (starts_at, id) DESC: the window furthest
+-- ahead first, then the open one, then the ones already over, which are kept
+-- until someone deletes them. Forward uses the DESC query; backward uses ASC,
+-- and the handler flips its rows back into display order. The handler sets
+-- exactly one of episode_id and series_id. On one episode the exclusion
+-- constraint already makes starts_at unique, so
+-- idx_episode_free_windows_episode_period serves the order on its own; a
+-- series sorts the windows of its episodes, which are few.
+-- cursor rules: proto/README.md.
+-- name: ListEpisodeFreeWindowsForTenantDesc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR w.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR e.series_id = sqlc.narg('series_id')::uuid
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (w.starts_at, w.id) <= (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (w.starts_at, w.id) < (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY w.starts_at DESC,
+    w.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodeFreeWindowsForTenantAsc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR w.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR e.series_id = sqlc.narg('series_id')::uuid
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (w.starts_at, w.id) >= (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (w.starts_at, w.id) > (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY w.starts_at ASC,
+    w.id ASC
+LIMIT sqlc.arg('limit');
+
 -- name: DeleteEpisodeFreeWindowByIDForTenant :one
 -- Returns the deleted row so a concurrent second delete is told apart from a
 -- window that never existed. What the caller audits and revalidates comes
