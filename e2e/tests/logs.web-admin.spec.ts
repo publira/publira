@@ -7,11 +7,20 @@ import { unexpectedServerLogLines } from "../src/server-log";
  * renders the console while the API is down: a request finds nothing listening,
  * or is refused by the GOAWAY the API sends while it shuts down. An operator
  * navigated away mid-stream closes the response React is still rendering into.
+ *
+ * `Unexpected end of form` is not provoked on purpose; it is a Next.js 16.3
+ * defect (vercel/next.js#96519). A Server Action that lands on a page whose
+ * cached entry has gone stale schedules a background revalidation with the
+ * action's own request, and that render reads the already consumed body a
+ * second time. The action itself succeeds, so the line is all a passing run
+ * shows of it, and whether the suite reaches a stale entry depends on timing.
+ * Remove the pattern once Next.js ships the fix: #3566.
  */
 const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
   /^⨯ Error \[ConnectError\]: \[internal\] Stream closed with error code NGHTTP2_REFUSED_STREAM$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
+  /^⨯ Error: Unexpected end of form$/u,
 ];
 
 test.describe("web-admin server log", () => {
