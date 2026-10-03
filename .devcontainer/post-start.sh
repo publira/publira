@@ -23,7 +23,7 @@ readonly timeout_seconds=60
 readonly retention=168h
 
 deadline=$((SECONDS + timeout_seconds))
-until docker info >/dev/null 2>&1; do
+until docker info > /dev/null 2>&1; do
   if ((SECONDS >= deadline)); then
     echo "post-start: dockerd did not answer within ${timeout_seconds}s; skipping the image prune" >&2
     exit 0
