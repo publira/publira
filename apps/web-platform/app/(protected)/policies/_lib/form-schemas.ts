@@ -120,6 +120,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "store_purchase_confirmation_per_minute",
   },
+  waitFreeTicketUsePerDay: {
+    kind: "value",
+    name: "wait_free_ticket_use_per_day",
+  },
+  waitFreeTicketUsePerMinute: {
+    kind: "value",
+    name: "wait_free_ticket_use_per_minute",
+  },
 } as const;
 
 export const securityPolicyFormSchema = async (locale: Locale) => {
@@ -128,6 +136,9 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const perAddress = t("platform.policy.security.mail_per_address_legend");
   const perSource = t("platform.policy.security.mail_per_source_legend");
   const storePurchase = t("platform.policy.security.store_purchase_title");
+  const waitFreeTicketUse = t(
+    "platform.policy.security.wait_free_ticket_use_title"
+  );
 
   const listUrlInvalid = t(
     "platform.policy.security.disposable_email_domains_url_invalid"
@@ -154,6 +165,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       storePurchaseConfirmationPerDay: limitSchema(t, storePurchase),
       storePurchaseConfirmationPerMinute: limitSchema(t, storePurchase),
+      waitFreeTicketUsePerDay: limitSchema(t, waitFreeTicketUse),
+      waitFreeTicketUsePerMinute: limitSchema(t, waitFreeTicketUse),
     })
     .superRefine(
       refineWindowPairs([
@@ -178,6 +191,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: storePurchase,
           }),
           short: "storePurchaseConfirmationPerMinute",
+        },
+        {
+          day: "waitFreeTicketUsePerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: waitFreeTicketUse,
+          }),
+          short: "waitFreeTicketUsePerMinute",
         },
       ])
     );

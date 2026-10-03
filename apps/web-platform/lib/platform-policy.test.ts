@@ -203,6 +203,7 @@ describe("savePlatformPolicy", () => {
         mfaRequiredForTenantAdmin: false,
         passwordVerification: { perDay: 50, perMinute: 5 },
         storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+        waitFreeTicketUse: { perDay: 100, perMinute: 10 },
       },
       4n,
       "en"
