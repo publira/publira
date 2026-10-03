@@ -143,9 +143,8 @@ echo "[deploy-smoke] ok: every long-lived process is running"
 # links with CGO, so a server image whose runtime libvips does not match the
 # one it was built against fails here and nowhere above. Manael answers with
 # the original bytes when a conversion fails, so the check is on the output:
-# a WebP, no wider than the requested width. Not exactly that width: the
-# scaling Manael asks libvips for rounds, and a 64px image asked for 16px can
-# come back 15px wide.
+# a WebP at the requested width. The request is the one the apps' next/image
+# loader makes, `fit=scale-down` included.
 #
 # A 64×32 PNG, stored the way a tenant's logo upload stores one.
 printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAN0lEQVR42u3PQQkAAAgEsItjCPtjLDP4FAYrsEzXaxEQEBAQEBAQEBAQEBAQEBAQEBAQEBAQuFq5D2CIoSw0JwAAAABJRU5ErkJggg==' |
@@ -186,10 +185,10 @@ webp_width() {
 }
 
 answer="$(curl -sS -o "${work}/logo.webp" -w '%{http_code} %{content_type}' -H 'Accept: image/webp' \
-  --resolve "${domain}:${edge_port}:127.0.0.1" "http://${domain}:${edge_port}/images/tenants/${image_id}/logo?w=16" || true)"
+  --resolve "${domain}:${edge_port}:127.0.0.1" "http://${domain}:${edge_port}/images/tenants/${image_id}/logo?w=16&fit=scale-down" || true)"
 width="$(webp_width "${work}/logo.webp")"
-if [ "${answer}" != "200 image/webp" ] || [ -z "${width}" ] || [ "${width}" -lt 1 ] || [ "${width}" -gt 16 ]; then
-  echo "[deploy-smoke] ERROR: image delivery answered ${answer:-nothing} at width ${width:-unknown}, want 200 image/webp at most 16px wide" >&2
+if [ "${answer}" != "200 image/webp" ] || [ "${width}" != 16 ]; then
+  echo "[deploy-smoke] ERROR: image delivery answered ${answer:-nothing} at width ${width:-unknown}, want 200 image/webp at width 16" >&2
   exit 1
 fi
-echo "[deploy-smoke] ok: image delivery resized a 64px PNG to a ${width}px WebP"
+echo "[deploy-smoke] ok: image delivery resized a 64px PNG to a 16px WebP"
