@@ -3690,6 +3690,7 @@
       "body_placeholder": "分享您對這一章的感想",
       "body_required": "請先輸入內容再發表。",
       "body_too_long": "留言最多{$max}個字元。",
+      "creator_badge": "作者",
       "delete": "刪除",
       "delete_aria": "刪除您在{$date}發表的留言",
       "delete_failed": "無法刪除留言。請稍後再試。",

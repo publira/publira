@@ -74,6 +74,41 @@ void main() {
     expect(comment.awaitingApproval, isFalse);
   });
 
+  test('a comment by a credited creator carries the credited name', () async {
+    server.episodeComments = {
+      episodeId: [
+        {
+          'publicId': 'SeedCMNTAAA3',
+          'body': 'Thank you for reading.',
+          'createdAt': '2026-09-08T10:45:00Z',
+          'authorPublicId': 'SeedMMBRCCC3',
+          'authorName': 'Sample Member',
+          'creator': {
+            'id': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            'publicId': 'SeedCRTRAAA1',
+            'name': 'Sample Author',
+          },
+        },
+        {
+          'publicId': 'SeedCMNTAAA1',
+          'body': 'The first one.',
+          'createdAt': '2026-09-08T10:30:00Z',
+          'authorPublicId': 'SeedMMBRBBB2',
+          'authorName': 'Another Member',
+        },
+      ],
+    };
+
+    final [creator, reader] = (await repository().listComments(
+      episodeInternalId,
+    )).comments;
+    expect(creator.authorName, 'Sample Member');
+    expect(creator.creatorName, 'Sample Author');
+    expect(creator.displayName, 'Sample Author');
+    expect(reader.creatorName, isEmpty);
+    expect(reader.displayName, 'Another Member');
+  });
+
   test('the public list is asked for without the reader session', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
@@ -114,6 +149,35 @@ void main() {
       expect(comment.id, ConnectFixtureServer.internalIdOf('SeedCMNTAAA2'));
       expect(comment.awaitingApproval, isTrue);
       expect(comment.authorName, isEmpty);
+      expect(comment.creatorName, isEmpty);
+    },
+  );
+
+  test(
+    'the reader own comments keep the credit the episode gives them',
+    () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myEpisodeComments = {
+        episodeId: [
+          {
+            'publicId': 'SeedCMNTAAA2',
+            'body': 'Thank you for reading.',
+            'createdAt': '2026-09-08T11:00:00Z',
+            'awaitingApproval': true,
+            'creator': {
+              'id': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              'publicId': 'SeedCRTRAAA1',
+              'name': 'Sample Author',
+            },
+          },
+        ],
+      };
+
+      final comment = (await repository().listMyComments(
+        episodeInternalId,
+      )).single.byAuthor(id: 'SeedMMBRCCC3', name: 'Sample Member');
+      expect(comment.creatorName, 'Sample Author');
+      expect(comment.displayName, 'Sample Author');
     },
   );
 

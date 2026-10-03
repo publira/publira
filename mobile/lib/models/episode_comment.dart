@@ -59,6 +59,7 @@ class EpisodeComment {
     required this.createdAt,
     this.authorId = '',
     this.authorName = '',
+    this.creatorName = '',
     this.awaitingApproval = false,
   });
 
@@ -75,7 +76,21 @@ class EpisodeComment {
   final String authorId;
   final String authorName;
 
+  /// The name this episode credits the author as, and empty on every comment
+  /// whose author it does not credit.
+  ///
+  /// The server decides it per episode, so the same account reads as a
+  /// creator on their own work and as a reader anywhere else. It arrives on
+  /// the caller's own rows too, which is what keeps their comment marked
+  /// before it is published.
+  final String creatorName;
+
   final bool awaitingApproval;
+
+  /// The name the comment is shown under: the credited name for a creator,
+  /// because that is the name a reader knows the work by, and the account's
+  /// otherwise.
+  String get displayName => creatorName.isNotEmpty ? creatorName : authorName;
 
   /// The same comment credited to the reader who wrote it.
   ///
@@ -89,6 +104,7 @@ class EpisodeComment {
       createdAt: createdAt,
       authorId: id,
       authorName: name,
+      creatorName: creatorName,
       awaitingApproval: awaitingApproval,
     );
   }

@@ -637,9 +637,18 @@ class _CommentTileState extends State<_CommentTile> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AutospacedText(
-                        comment.authorName,
-                        style: theme.textTheme.titleSmall,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          AutospacedText(
+                            comment.displayName,
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          if (comment.creatorName.isNotEmpty)
+                            const _CreatorBadge(),
+                        ],
                       ),
                       if (at.isNotEmpty)
                         AutospacedText(
@@ -708,9 +717,39 @@ class _CommentTileState extends State<_CommentTile> {
         semanticsLabel: at.isEmpty
             ? null
             : messages.commentsReportAria(
-                author: widget.comment.authorName,
+                author: widget.comment.displayName,
                 date: at,
               ),
+      ),
+    );
+  }
+}
+
+/// The mark beside a comment by a creator the episode credits.
+///
+/// It says so in words rather than in colour alone, so a reader who cannot
+/// tell the colour apart still reads it, and a screen reader announces it
+/// after the name it follows.
+class _CreatorBadge extends StatelessWidget {
+  const _CreatorBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      key: const ValueKey('comment-creator-badge'),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: AutospacedText(
+          AppMessages.of(context).commentsCreatorBadge,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSecondaryContainer,
+          ),
+        ),
       ),
     );
   }

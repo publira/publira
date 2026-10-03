@@ -209,6 +209,7 @@ class HttpCommentRepository implements CommentRepository {
       createdAt: _readInstant(json, 'createdAt'),
       authorId: _readString(json, 'authorPublicId'),
       authorName: _readString(json, 'authorName'),
+      creatorName: _creatorName(json),
     );
   }
 
@@ -219,8 +220,17 @@ class HttpCommentRepository implements CommentRepository {
       id: _readString(json, 'id'),
       body: _readString(json, 'body'),
       createdAt: _readInstant(json, 'createdAt'),
+      creatorName: _creatorName(json),
       awaitingApproval: _readBool(json, 'awaitingApproval'),
     );
+  }
+
+  /// The name the episode credits the comment's author as, empty when it
+  /// credits them as nothing: protojson omits the unset `creator` message
+  /// every other comment carries.
+  String _creatorName(Map<String, Object?> json) {
+    final creator = json['creator'];
+    return creator is Map ? _readString(creator.cast(), 'name') : '';
   }
 
   List<EpisodeComment> _comments(
