@@ -17,22 +17,33 @@ const MAX_LIMIT = 2_147_483_647;
 /** Mirrors `platformpolicy.MaxDuplicateCommentWindow` (one week). */
 const MAX_DUPLICATE_COMMENT_WINDOW_MINUTES = 10_080;
 
-/** Mirrors `platformpolicy.MaxDisposableEmailDomainsURLLength`. */
-const MAX_LIST_URL_LENGTH = 2048;
+/**
+ * Mirrors `platformpolicy.MaxDisposableEmailDomainsURLLength`, which Go counts
+ * in UTF-8 bytes rather than in the UTF-16 units a JavaScript string has.
+ */
+const MAX_LIST_URL_BYTES = 2048;
+
+/**
+ * The scheme and the start of the host, spelled out. The WHATWG parser behind
+ * `URL` also reads `https:host/path` and `https:///host/path` as having a host,
+ * where Go's `net/url` finds none, so the raw value is checked rather than the
+ * normalized one.
+ */
+const LIST_URL_START_RE = /^https?:\/\/[^/?#]/iu;
+
+/** A `%` that starts no escape, which `net/url` refuses and WHATWG keeps. */
+const BROKEN_ESCAPE_RE = /%(?![0-9a-f]{2})/iu;
 
 /** Mirrors `platformpolicy.validateListURL`: empty, or http(s) with a host. */
-const isListUrl = (value: string): boolean => {
-  if (!value) {
-    return true;
-  }
-  if (!URL.canParse(value)) {
-    return false;
-  }
-  const url = new URL(value);
-  return (
-    (url.protocol === "http:" || url.protocol === "https:") && url.host !== ""
-  );
-};
+const isListUrl = (value: string): boolean =>
+  value === "" ||
+  (LIST_URL_START_RE.test(value) &&
+    !BROKEN_ESCAPE_RE.test(value) &&
+    URL.canParse(value) &&
+    new URL(value).host !== "");
+
+const fitsListUrlBytes = (value: string): boolean =>
+  new TextEncoder().encode(value).length <= MAX_LIST_URL_BYTES;
 
 /** Mirrors `retention.MaxDays`. */
 const MAX_RETENTION_DAYS = 36_500;
@@ -125,9 +136,11 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   return z
     .object({
       disposableEmailDomainsUrl: optionalTrimmedString(
-        MAX_LIST_URL_LENGTH,
+        MAX_LIST_URL_BYTES,
         listUrlInvalid
-      ).refine(isListUrl, listUrlInvalid),
+      )
+        .refine(fitsListUrlBytes, listUrlInvalid)
+        .refine(isListUrl, listUrlInvalid),
       mailPerAddressPerDay: limitSchema(t, perAddress),
       mailPerAddressPerHour: limitSchema(t, perAddress),
       mailPerSourcePerDay: limitSchema(t, perSource),

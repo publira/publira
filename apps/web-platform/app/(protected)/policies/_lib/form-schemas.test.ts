@@ -83,6 +83,15 @@ describe("securityPolicyFormSchema", () => {
     ["a relative path", "lists/disposable.conf"],
     ["another scheme", "file:///etc/disposable.conf"],
     ["a URL past 2048 bytes", `https://lists.example.com/${"a".repeat(2048)}`],
+    // 700 characters, but 2100 bytes in UTF-8, which is what the server counts.
+    [
+      "a URL past 2048 bytes in UTF-8",
+      `https://lists.example.com/${"あ".repeat(700)}`,
+    ],
+    // The WHATWG parser finds a host in both; Go's net/url finds none.
+    ["a URL with no slashes after the scheme", "https:lists.example.com/file"],
+    ["a URL with three slashes", "https:///lists.example.com/file"],
+    ["a URL with a broken escape", "https://lists.example.com/%zz.conf"],
   ])("refuses %s as the list URL", async (_name, value) => {
     const result = await parseSecurity({ disposable_email_domains_url: value });
 
