@@ -140,7 +140,7 @@ Every container image in the repository — each `FROM` line and `# syntax=` fro
 
 The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`, the runtime contributors run, and Renovate raises that version and the `node` image tags on one branch.
 
-Two publishers offer nothing more to name, and each such line says so in a comment:
+Two publishers offer nothing more to name:
 
 - **distroless** publishes no versioned tags. The image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias), and the digest is the only further identifier.
 - **caddy** publishes no Alpine-versioned tags, so `caddy:<version>-alpine` keeps a bare `-alpine`.
