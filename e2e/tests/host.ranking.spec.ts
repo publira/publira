@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
-import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
+import {
+  MISSING_PUBLIC_ID,
+  MULTI_TENANT_SCENARIO,
+} from "../src/scenarios/multi-tenant";
 import {
   RANKED_GENRE,
   RANKING_COMPUTED_ON,
@@ -24,6 +27,14 @@ import { hostPath, WEB_HOST_OTHER_TENANT_BASE_URL } from "../src/urls";
  * not ranked keeps the recommendation shelf — and that is the Boundary Tenant,
  * which nothing ranks.
  */
+
+/**
+ * The rows of the chart on screen. A page reached by a client navigation keeps
+ * the one it came from in the document, hidden, so a count of every `ol > li`
+ * would include the screen the reader has left.
+ */
+const visibleChartRows = (page: Page) =>
+  page.locator("main ol > li").filter({ visible: true });
 
 /** One row of the chart, found by the work it is about. */
 const chartRow = (page: Page, title: string) =>
@@ -164,6 +175,78 @@ test.describe("web-host ranking", () => {
     expect(imageIds).toEqual(
       RANKED_GENRE.coverSeriesNumbers.map(seedSeriesImageId)
     );
+  });
+
+  test("a genre page opens on its weekly leaders and leads to the genre's own chart", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/genres"));
+    await page
+      .locator("main")
+      .getByRole("link", { name: RANKED_GENRE.name })
+      .first()
+      .click();
+
+    const leaders = page.getByRole("region", { name: "Popular this week" });
+    await expect(leaders.getByRole("listitem")).toHaveCount(
+      RANKED_GENRE.rankedSeriesTitles.length
+    );
+    await expect(leaders.getByRole("listitem")).toHaveText(
+      RANKED_GENRE.rankedSeriesTitles.map(
+        (title, index) => new RegExp(`No\\. ${index + 1}.*${title}`, "u")
+      )
+    );
+
+    await leaders.getByRole("link", { name: "See the ranking" }).click();
+
+    await expect(page).toHaveURL(/genre=[^&]+&period=weekly/u);
+    await expect(page).toHaveTitle(
+      new RegExp(`${RANKED_GENRE.name} ranking`, "u")
+    );
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: `${RANKED_GENRE.name} ranking`,
+      })
+    ).toBeVisible();
+    const genres = page.getByRole("navigation", { name: "Ranking genre" });
+    await expect(
+      genres.getByRole("link", { name: RANKED_GENRE.name })
+    ).toHaveAttribute("aria-current", "page");
+    await expect(visibleChartRows(page)).toHaveCount(
+      RANKED_GENRE.rankedSeriesTitles.length
+    );
+    await expect(visibleChartRows(page)).toHaveText(
+      RANKED_GENRE.rankedSeriesTitles.map(
+        (title, index) => new RegExp(`No\\. ${index + 1}.*${title}`, "u")
+      )
+    );
+
+    // The period tab keeps the genre: the seed ranks a genre's week alone, so
+    // its day is a chart nobody has computed.
+    await page.getByRole("link", { name: "Daily" }).click();
+    await expect(page).toHaveURL(/genre=[^&]+$/u);
+    await expect(
+      page.getByText("No ranking has been computed yet.")
+    ).toBeVisible();
+
+    await genres.getByRole("link", { name: "All genres" }).click();
+    await expect(page).not.toHaveURL(/genre=/u);
+    await expect(visibleChartRows(page)).toHaveCount(RANKING_ENTRY_COUNT);
+  });
+
+  test("a ranking URL naming a genre the tenant does not curate is not found", async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      hostPath(`/ranking?genre=${MISSING_PUBLIC_ID}`)
+    );
+
+    // 200 rather than 404, for the reason `catalog.not-found.spec.ts` gives.
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
   });
 
   test("a tenant the batch has not ranked keeps the recommendation shelf", async ({

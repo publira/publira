@@ -48,4 +48,15 @@ describe("rankingHref", () => {
       "/ranking"
     );
   });
+
+  it("carries a genre's token beside the genre and period it was issued for", () => {
+    expect(
+      rankingHref({
+        genre: "GENRE0000001",
+        period: "daily",
+        rating: "all",
+        token: "djF8Zg",
+      })
+    ).toBe("/ranking?genre=GENRE0000001&token=djF8Zg");
+  });
 });

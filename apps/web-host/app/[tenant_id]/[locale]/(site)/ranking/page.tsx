@@ -16,6 +16,7 @@ import { cn, formatDateTime } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -31,6 +32,7 @@ import {
   AgeRatingGateHeading,
   AgeRatingGateTitle,
 } from "#components/age-rating-gate";
+import { CHIP } from "#components/chip";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import type { EyeCatchVariant } from "#components/eye-catch-picture";
@@ -44,8 +46,13 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { ageVerificationCovers } from "#lib/age-rating";
 import { resolveAccessToken } from "#lib/api-client";
-import { listRankedSeries, listReaderRankedSeries } from "#lib/catalog";
+import {
+  listPublishedGenres,
+  listRankedSeries,
+  listReaderRankedSeries,
+} from "#lib/catalog";
 import type {
+  PublishedGenreItem,
   RankedSeriesPage,
   RankingAgeRatingName,
   RankingPeriodName,
@@ -65,7 +72,10 @@ import { getTenantId } from "#lib/tenant-id";
 import { RankingAgeGate } from "./_components/ranking-age-gate";
 import { rankMovement } from "./_lib/rank-movement";
 import { rankingAgeRatingsFor } from "./_lib/ranking-age-ratings";
-import { parseRankingSearchParams } from "./_lib/search-params";
+import {
+  parseRankingSearchParams,
+  rankingGenreFor,
+} from "./_lib/search-params";
 
 const RANKING_PAGE_SIZE = 20;
 
@@ -75,17 +85,56 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 /**
+ * The genre a chart URL names, or `null` when it names none of this tenant's.
+ * The genre list is the whole classification and is read under the same
+ * arguments by the metadata, the title, the tabs, and the chart, so all of
+ * them share one `"use cache"` entry and one RPC.
+ */
+const findRankingGenre = (
+  genres: readonly PublishedGenreItem[],
+  genreId: string
+): PublishedGenreItem | null =>
+  genres.find((genre) => genre.publicId === genreId) ?? null;
+
+/**
  * A rated chart is its own page rather than a duplicate of the all-ages one,
  * and what a crawler reads there is the age gate, so it stays out of the index.
  */
 export const generateMetadata = async ({
   searchParams,
 }: RankingPageProps): Promise<Metadata> => {
-  const { rating } = parseRankingSearchParams(await searchParams);
-  const [t, alternates] = await Promise.all([
-    getMessages(),
-    getPageAlternates(rankingHref({ period: DEFAULT_RANKING_PERIOD, rating })),
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
   ]);
+  const { genre: genreId, rating } =
+    parseRankingSearchParams(resolvedSearchParams);
+  const [t, alternates, genres] = await Promise.all([
+    getMessages(),
+    getPageAlternates(
+      rankingHref({ genre: genreId, period: DEFAULT_RANKING_PERIOD, rating })
+    ),
+    genreId
+      ? listPublishedGenres(tenantId, locale)
+      : { ok: true as const, value: [] },
+  ]);
+
+  if (genreId) {
+    // An unavailable genre reads as "not found" for the `<title>` alone; the
+    // chart below says what actually happened.
+    const genre =
+      genres.ok && rankingGenreFor(rating, genreId)
+        ? findRankingGenre(genres.value, genreId)
+        : null;
+
+    return genre
+      ? {
+          alternates,
+          title: t("host.ranking.list_title_genre", { genre: genre.name }),
+        }
+      : { title: t("host.genres.not_found_title") };
+  }
 
   if (rating === "all") {
     return { alternates, title: t("host.ranking.list_title") };
@@ -219,6 +268,13 @@ const rankingTabClassName = (isCurrent: boolean): string =>
   );
 
 /**
+ * A genre chip, marked the way the current period tab is when it is the chart
+ * on screen.
+ */
+const rankingGenreChipClassName = (isCurrent: boolean): string =>
+  cn(CHIP, isCurrent && "border-primary bg-primary/10 text-primary");
+
+/**
  * The ratings this reader may open. The session is read only where the
  * tenant's rule covers a rating, since that is the only case it decides.
  */
@@ -238,7 +294,11 @@ const getReaderRankingAgeRatings = async (
  *
  * The ratings come first, because each is a chart of its own with both
  * periods, and they are drawn only where the reader has more than all-ages to
- * choose from.
+ * choose from. A rated chart is tenant-wide, so its tab leaves the genre out.
+ *
+ * The genres follow the periods, on the all-ages chart alone since that is the
+ * only one a genre has. Changing genre drops the token and starts at the top
+ * of the chart it switches to, the way a tab does.
  */
 const RankingTabs = async ({
   searchParams,
@@ -250,59 +310,92 @@ const RankingTabs = async ({
     getTenantId(),
     getLocale(),
   ]);
-  const { period, rating } = parseRankingSearchParams(resolvedSearchParams);
-  const [t, ratings] = await Promise.all([
+  const { genre, period, rating } =
+    parseRankingSearchParams(resolvedSearchParams);
+  const [t, ratings, genres] = await Promise.all([
     getMessagesFor(locale),
     getReaderRankingAgeRatings(tenantId),
+    listPublishedGenres(tenantId, locale),
   ]);
+  // The genres are a way into the chart rather than the chart itself, so a
+  // failed read leaves the row out and the tabs above it standing.
+  const genreItems = genres.ok ? genres.value : [];
 
   return (
-    <div className="flex flex-wrap gap-x-6 gap-y-3">
-      {ratings.length > 1 ? (
-        <nav aria-label={t("host.ranking.rating_nav")} className="flex gap-2">
+    <div className="grid gap-4">
+      <div className="flex flex-wrap gap-x-6 gap-y-3">
+        {ratings.length > 1 ? (
+          <nav aria-label={t("host.ranking.rating_nav")} className="flex gap-2">
+            <LocaleLink
+              aria-current={rating === "all" ? "page" : undefined}
+              className={rankingTabClassName(rating === "all")}
+              href={rankingHref({ genre, period, rating: "all" })}
+            >
+              {t("host.ranking.rating_all")}
+            </LocaleLink>
+            {ratings.includes("r15") ? (
+              <LocaleLink
+                aria-current={rating === "r15" ? "page" : undefined}
+                className={rankingTabClassName(rating === "r15")}
+                href={rankingHref({ period, rating: "r15" })}
+              >
+                {t("host.common.age_rating_r15")}
+              </LocaleLink>
+            ) : null}
+            {ratings.includes("r18") ? (
+              <LocaleLink
+                aria-current={rating === "r18" ? "page" : undefined}
+                className={rankingTabClassName(rating === "r18")}
+                href={rankingHref({ period, rating: "r18" })}
+              >
+                {t("host.common.age_rating_r18")}
+              </LocaleLink>
+            ) : null}
+          </nav>
+        ) : null}
+        <nav aria-label={t("host.ranking.period_nav")} className="flex gap-2">
           <LocaleLink
-            aria-current={rating === "all" ? "page" : undefined}
-            className={rankingTabClassName(rating === "all")}
-            href={rankingHref({ period, rating: "all" })}
+            aria-current={period === "daily" ? "page" : undefined}
+            className={rankingTabClassName(period === "daily")}
+            href={rankingHref({ genre, period: "daily", rating })}
           >
-            {t("host.ranking.rating_all")}
+            {t("host.ranking.period_daily")}
           </LocaleLink>
-          {ratings.includes("r15") ? (
-            <LocaleLink
-              aria-current={rating === "r15" ? "page" : undefined}
-              className={rankingTabClassName(rating === "r15")}
-              href={rankingHref({ period, rating: "r15" })}
-            >
-              {t("host.common.age_rating_r15")}
-            </LocaleLink>
-          ) : null}
-          {ratings.includes("r18") ? (
-            <LocaleLink
-              aria-current={rating === "r18" ? "page" : undefined}
-              className={rankingTabClassName(rating === "r18")}
-              href={rankingHref({ period, rating: "r18" })}
-            >
-              {t("host.common.age_rating_r18")}
-            </LocaleLink>
-          ) : null}
+          <LocaleLink
+            aria-current={period === "weekly" ? "page" : undefined}
+            className={rankingTabClassName(period === "weekly")}
+            href={rankingHref({ genre, period: "weekly", rating })}
+          >
+            {t("host.ranking.period_weekly")}
+          </LocaleLink>
+        </nav>
+      </div>
+      {rating === "all" && genreItems.length > 0 ? (
+        <nav aria-label={t("host.ranking.genre_nav")}>
+          <ul className="flex flex-wrap gap-2">
+            <li>
+              <LocaleLink
+                aria-current={genre === "" ? "page" : undefined}
+                className={rankingGenreChipClassName(genre === "")}
+                href={rankingHref({ period, rating })}
+              >
+                {t("host.ranking.genre_all")}
+              </LocaleLink>
+            </li>
+            {genreItems.map((item) => (
+              <li key={item.publicId}>
+                <LocaleLink
+                  aria-current={genre === item.publicId ? "page" : undefined}
+                  className={rankingGenreChipClassName(genre === item.publicId)}
+                  href={rankingHref({ genre: item.publicId, period, rating })}
+                >
+                  {item.name}
+                </LocaleLink>
+              </li>
+            ))}
+          </ul>
         </nav>
       ) : null}
-      <nav aria-label={t("host.ranking.period_nav")} className="flex gap-2">
-        <LocaleLink
-          aria-current={period === "daily" ? "page" : undefined}
-          className={rankingTabClassName(period === "daily")}
-          href={rankingHref({ period: "daily", rating })}
-        >
-          {t("host.ranking.period_daily")}
-        </LocaleLink>
-        <LocaleLink
-          aria-current={period === "weekly" ? "page" : undefined}
-          className={rankingTabClassName(period === "weekly")}
-          href={rankingHref({ period: "weekly", rating })}
-        >
-          {t("host.ranking.period_weekly")}
-        </LocaleLink>
-      </nav>
     </div>
   );
 };
@@ -324,11 +417,13 @@ const RankingPaginationNav = async ({ children }: { children: ReactNode }) => {
 
 /** The two directions, written once for both places this screen shows them. */
 const RankingPagination = ({
+  genre,
   nextToken,
   period,
   previousToken,
   rating,
 }: {
+  genre: string;
   nextToken: string;
   period: RankingPeriodName;
   previousToken: string;
@@ -339,7 +434,7 @@ const RankingPagination = ({
       <ListPaginationStep
         href={
           previousToken
-            ? rankingHref({ period, rating, token: previousToken })
+            ? rankingHref({ genre, period, rating, token: previousToken })
             : ""
         }
       >
@@ -349,7 +444,9 @@ const RankingPagination = ({
       </ListPaginationStep>
       <ListPaginationStep
         href={
-          nextToken ? rankingHref({ period, rating, token: nextToken }) : ""
+          nextToken
+            ? rankingHref({ genre, period, rating, token: nextToken })
+            : ""
         }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -362,12 +459,14 @@ const RankingPagination = ({
 
 /** One page of a chart, or what stands in its place. */
 const RankingChart = async ({
+  genre,
   locale,
   period,
   rating,
   result,
   tenantId,
 }: {
+  genre: string;
   locale: Locale;
   period: RankingPeriodName;
   rating: RankingAgeRatingName;
@@ -419,7 +518,7 @@ const RankingChart = async ({
             <p>
               <LocaleLink
                 className="text-sm text-primary underline-offset-4 hover:underline"
-                href={rankingHref({ period, rating })}
+                href={rankingHref({ genre, period, rating })}
               >
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                   <Message message="host.ranking.first_page" />
@@ -430,6 +529,7 @@ const RankingChart = async ({
         </div>
         {previousToken || nextToken ? (
           <RankingPagination
+            genre={genre}
             nextToken={nextToken}
             period={period}
             previousToken={previousToken}
@@ -508,6 +608,7 @@ const RankingChart = async ({
       </div>
 
       <RankingPagination
+        genre={genre}
         nextToken={nextToken}
         period={period}
         previousToken={previousToken}
@@ -575,7 +676,7 @@ const RankingList = async ({
     getTenantId(),
     getLocale(),
   ]);
-  const { period, rating, token } =
+  const { genre, period, rating, token } =
     parseRankingSearchParams(resolvedSearchParams);
   const query = {
     ageRating: rating,
@@ -585,13 +686,43 @@ const RankingList = async ({
     token,
   };
 
+  if (genre) {
+    if (!rankingGenreFor(rating, genre)) {
+      notFound();
+    }
+
+    // A failed read is a value, not a throw: a `"use cache"` fill that throws
+    // fails the whole request, so no boundary would get to render anything.
+    const genres = await listPublishedGenres(tenantId, locale);
+    if (!genres.ok) {
+      return (
+        <RankingChart
+          genre={genre}
+          locale={locale}
+          period={period}
+          rating={rating}
+          result={genres}
+          tenantId={tenantId}
+        />
+      );
+    }
+
+    if (!findRankingGenre(genres.value, genre)) {
+      notFound();
+    }
+  }
+
   if (rating === "all") {
     return (
       <RankingChart
+        genre={genre}
         locale={locale}
         period={period}
         rating={rating}
-        result={await listRankedSeries(tenantId, query)}
+        result={await listRankedSeries(tenantId, {
+          ...query,
+          genrePublicId: genre,
+        })}
         tenantId={tenantId}
       />
     );
@@ -633,6 +764,7 @@ const RankingList = async ({
       <RankingAgeRatingConfirmation period={period} rating={rating} />
       <AgeRatingGateContent>
         <RankingChart
+          genre=""
           locale={locale}
           period={period}
           rating={rating}
@@ -644,11 +776,44 @@ const RankingList = async ({
   );
 };
 
+/**
+ * The page heading, which names the genre when the chart is one genre's. A
+ * genre that cannot be resolved keeps the plain heading: the chart below is
+ * what says it is missing.
+ */
+const RankingTitle = async ({
+  searchParams,
+}: {
+  searchParams: RankingPageProps["searchParams"];
+}) => {
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+  const { genre: genreId } = parseRankingSearchParams(resolvedSearchParams);
+
+  if (genreId) {
+    const genres = await listPublishedGenres(tenantId, locale);
+    const genre = genres.ok ? findRankingGenre(genres.value, genreId) : null;
+    if (genre) {
+      return (
+        <Message
+          message="host.ranking.list_title_genre"
+          values={{ genre: genre.name }}
+        />
+      );
+    }
+  }
+
+  return <Message message="host.ranking.list_title" />;
+};
+
 const RankingPage = ({ searchParams }: RankingPageProps) => (
   <div className="mx-auto max-w-4xl px-6 py-12">
     <h1 className="mb-2 font-serif text-4xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-40" />}>
-        <Message message="host.ranking.list_title" />
+        <RankingTitle searchParams={searchParams} />
       </Suspense>
     </h1>
     <p className="mb-6 text-muted-foreground">
