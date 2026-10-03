@@ -28,7 +28,10 @@ message LoginWithIdTokenRequest {
   publira.types.v1.TenantContext tenant = 1;
   IdentityProvider provider = 2;
   // The ID token the provider issued to one of the client IDs GetTenant
-  // answers for it.
+  // answers for it. A token whose address an account already holds under
+  // another sub-address tag (john+shop@ for john@, or the other way round) is
+  // failed_precondition: it neither opens a second account for that inbox nor
+  // links the one there, which the reader signs in to with its own address.
   string id_token = 3;
   // The nonce the client generated for this sign-in, as generated: the token
   // carries it either as it is or as its SHA-256 in hex, which is what the
@@ -122,7 +125,10 @@ message CreateUserResponse {
   reserved "user", "access_token";
   // Every accepted sign-up answers the same way, whether it created an account
   // or found the address taken. Naming the account here would tell a stranger
-  // which of the two happened.
+  // which of the two happened. An address is taken when an account holds the
+  // inbox it reaches under any sub-address tag: a sign-up as john+2@ with
+  // john@ registered opens nothing, and the notice a taken address gets goes
+  // to john+2@.
   bool accepted = 3;
 }
 
@@ -150,7 +156,10 @@ message RequestEmailVerificationResponse {
 message RequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string current_email = 2;
-  // Refused on new_email for the reasons CreateUserRequest.email is.
+  // Refused on new_email for the reasons CreateUserRequest.email is, and
+  // already_exists when another account holds the inbox it reaches under any
+  // sub-address tag. A move between tags of the reader's own inbox is not
+  // refused.
   string new_email = 3;
   // The account's password. An account without one confirms with a fresh
   // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest

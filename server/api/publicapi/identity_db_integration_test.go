@@ -291,6 +291,53 @@ func TestDBLoginWithIdTokenLinksTheAccountHoldingTheVouchedAddress(t *testing.T)
 	}
 }
 
+// An address that differs from the stored one only by case is the same one, so
+// the provider's sign-in links that account rather than opening another.
+func TestDBLoginWithIdTokenLinksTheAccountWhateverTheCaseOfTheAddress(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "Member@Tenant-A.example.com", "Member")
+
+	resp := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "member@tenant-a.example.com", "nonce-1"), "nonce-1")
+	if resp.AccountCreated || resp.User.PublicId != member.PublicID {
+		t.Fatalf("sign-in = %+v, want the existing account %s", resp, member.PublicID)
+	}
+}
+
+// An address that differs from an account's only by its sub-address tag
+// reaches the same inbox, so a sign-in vouching for it opens no second account.
+// Nor does it link the one there: the provider vouched for its own address, and
+// the reader signs in with the account's to link the provider from there.
+func TestDBLoginWithIdTokenRefusesAnInboxAnAccountHoldsUnderAnotherTag(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		stored  string
+		vouched string
+	}{
+		{name: "the vouched address carries a tag", stored: "member@tenant-a.example.com", vouched: "member+shop@tenant-a.example.com"},
+		{name: "the stored address carries a tag", stored: "member+shop@tenant-a.example.com", vouched: "Member@tenant-a.example.com"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newIdentityDBEnv(t)
+			env.enableProviders(t)
+			member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", tc.stored, "Member")
+
+			_, err := env.signIn(publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+				env.googleToken(t, "google-subject", tc.vouched, "nonce-1"), "nonce-1")
+			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Fatalf("LoginWithIdToken code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+			}
+			if accounts := countRows(t, env.publicDBEnv, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); accounts != 1 {
+				t.Fatalf("accounts = %d, want only the one already there", accounts)
+			}
+			if links := countRows(t, env.publicDBEnv, `SELECT count(*) FROM user_identities WHERE user_id = $1`, member.ID); links != 0 {
+				t.Fatalf("identities linked to the account = %d, want none", links)
+			}
+		})
+	}
+}
+
 // Whoever registered an address nobody confirmed may not own it, so the
 // provider's owner takes the account over and the password set for it goes.
 func TestDBLoginWithIdTokenTakesOverAnAccountNobodyConfirmed(t *testing.T) {

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -196,6 +198,117 @@ func TestReaderSignupRequestForAnAddressAnotherRequestJustTookSendsTheNotice(t *
 	}
 	if notices := env.count(t, `SELECT count(*) FROM outbox_events WHERE event_type = 'reader_signup_attempt_notice_email'`); notices != 1 {
 		t.Fatalf("queued notices = %d, want 1", notices)
+	}
+}
+
+// A tagged variant of an account's address reaches the same inbox, so a
+// sign-up with one opens nothing and is answered the way a sign-up with the
+// account's own address is: by a notice, sent to the address typed.
+func TestReaderSignupRequestForATaggedVariantOfARegisteredAddressSendsTheNotice(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	member := env.pg.SeedEndUser(t, env.tenant.ID, "READERREQU01", "john@reader-request.example.com", "John")
+	event := env.signupEvent(t, outbox.ReaderSignupRequestPayload{Email: "John+2@Reader-Request.example.com"})
+
+	env.process(t, outbox.NewReaderSignupRequestHandler(env.cfg), event)
+
+	if accounts := env.count(t, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); accounts != 1 {
+		t.Fatalf("accounts = %d, want only the one already there", accounts)
+	}
+	if notices := env.count(t, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type = 'reader_signup_attempt_notice_email'
+			AND payload ->> 'user_id' = $1
+			AND payload ->> 'email' = 'John+2@Reader-Request.example.com'
+	`, member.ID.String()); notices != 1 {
+		t.Fatalf("queued notices to the typed address = %d, want 1", notices)
+	}
+	if mails := env.count(t, `SELECT count(*) FROM outbox_events WHERE event_type = 'reader_email_verification_email'`); mails != 0 {
+		t.Fatalf("queued verification mails = %d, want none", mails)
+	}
+}
+
+// A tag is only a reason to look for the inbox, not a reason to refuse: with no
+// account holding it, the account opens with the address stored as typed.
+func TestReaderSignupRequestForATaggedAddressOfAFreeInboxOpensTheAccountAsTyped(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	userID := uuid.Must(uuid.NewV7())
+	event := env.signupEvent(t, outbox.ReaderSignupRequestPayload{UserID: userID.String(), Email: "jane+news@reader-request.example.com"})
+
+	env.process(t, outbox.NewReaderSignupRequestHandler(env.cfg), event)
+
+	var email string
+	if err := env.pg.DB.QueryRow(`SELECT email FROM users WHERE id = $1`, userID).Scan(&email); err != nil {
+		t.Fatalf("read the new account: %v", err)
+	}
+	if email != "jane+news@reader-request.example.com" {
+		t.Fatalf("stored email = %q, want the address as typed", email)
+	}
+	if mails := env.count(t, `
+		SELECT count(*) FROM outbox_events event
+		JOIN user_email_verification_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
+		WHERE event.event_type = 'reader_email_verification_email' AND token.user_id = $1
+	`, userID); mails != 1 {
+		t.Fatalf("queued verification mails = %d, want 1", mails)
+	}
+}
+
+// Accounts that already share an inbox stay as they are: a sign-up for either
+// address, or for a third tag of it, opens nothing and removes nothing.
+func TestReaderSignupRequestLeavesAccountsThatAlreadyShareAnInbox(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	plain := env.pg.SeedEndUser(t, env.tenant.ID, "READERREQU01", "john@reader-request.example.com", "John")
+	tagged := env.pg.SeedEndUser(t, env.tenant.ID, "READERREQU02", "john+a@reader-request.example.com", "John A")
+	handler := outbox.NewReaderSignupRequestHandler(env.cfg)
+
+	env.process(t, handler, env.signupEvent(t, outbox.ReaderSignupRequestPayload{Email: tagged.Email}))
+	env.process(t, handler, env.signupEvent(t, outbox.ReaderSignupRequestPayload{Email: "john+b@reader-request.example.com"}))
+
+	if accounts := env.count(t, `SELECT count(*) FROM users WHERE id IN ($1, $2)`, plain.ID, tagged.ID); accounts != 2 {
+		t.Fatalf("accounts left = %d, want both", accounts)
+	}
+	if accounts := env.count(t, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); accounts != 2 {
+		t.Fatalf("accounts = %d, want no new one", accounts)
+	}
+	// The address the tenant holds exactly is the account a sign-up with it
+	// collided with; a tag neither holds falls to the older account.
+	for _, want := range []struct {
+		user  uuid.UUID
+		email string
+	}{
+		{user: tagged.ID, email: tagged.Email},
+		{user: plain.ID, email: "john+b@reader-request.example.com"},
+	} {
+		if notices := env.count(t, `
+			SELECT count(*) FROM outbox_events
+			WHERE event_type = 'reader_signup_attempt_notice_email'
+				AND payload ->> 'user_id' = $1 AND payload ->> 'email' = $2
+		`, want.user.String(), want.email); notices != 1 {
+			t.Fatalf("notices to %s for %s = %d, want 1", want.email, want.user, notices)
+		}
+	}
+}
+
+// Sign-ups for different tags of one free inbox handled at once open one
+// account between them, which the unique index on the address alone could not
+// guarantee.
+func TestReaderSignupRequestsForTagsOfOneInboxOpenOneAccountUnderConcurrentProcessing(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	handler := outbox.NewReaderSignupRequestHandler(env.cfg)
+	events := make([]dbmodels.OutboxEvent, testutil.ConcurrentRequests)
+	for i := range events {
+		events[i] = env.signupEvent(t, outbox.ReaderSignupRequestPayload{Email: fmt.Sprintf("newcomer+%d@reader-request.example.com", i)})
+	}
+	var next atomic.Int32
+
+	testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
+		return handler(context.Background(), events[next.Add(1)-1])
+	})
+
+	if accounts := env.count(t, `SELECT count(*) FROM users WHERE tenant_id = $1`, env.tenant.ID); accounts != 1 {
+		t.Fatalf("accounts = %d, want 1", accounts)
+	}
+	if notices := env.count(t, `SELECT count(*) FROM outbox_events WHERE event_type = 'reader_signup_attempt_notice_email'`); notices != testutil.ConcurrentRequests-1 {
+		t.Fatalf("queued notices = %d, want %d", notices, testutil.ConcurrentRequests-1)
 	}
 }
 

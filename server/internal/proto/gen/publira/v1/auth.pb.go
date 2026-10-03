@@ -189,7 +189,10 @@ type LoginWithIdTokenRequest struct {
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	Provider IdentityProvider       `protobuf:"varint,2,opt,name=provider,proto3,enum=publira.v1.IdentityProvider" json:"provider,omitempty"`
 	// The ID token the provider issued to one of the client IDs GetTenant
-	// answers for it.
+	// answers for it. A token whose address an account already holds under
+	// another sub-address tag (john+shop@ for john@, or the other way round) is
+	// failed_precondition: it neither opens a second account for that inbox nor
+	// links the one there, which the reader signs in to with its own address.
 	IdToken string `protobuf:"bytes,3,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`
 	// The nonce the client generated for this sign-in, as generated: the token
 	// carries it either as it is or as its SHA-256 in hex, which is what the
@@ -728,7 +731,10 @@ type CreateUserResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Every accepted sign-up answers the same way, whether it created an account
 	// or found the address taken. Naming the account here would tell a stranger
-	// which of the two happened.
+	// which of the two happened. An address is taken when an account holds the
+	// inbox it reaches under any sub-address tag: a sign-up as john+2@ with
+	// john@ registered opens nothing, and the notice a taken address gets goes
+	// to john+2@.
 	Accepted      bool `protobuf:"varint,3,opt,name=accepted,proto3" json:"accepted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -970,7 +976,10 @@ type RequestEmailChangeRequest struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	CurrentEmail string                 `protobuf:"bytes,2,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
-	// Refused on new_email for the reasons CreateUserRequest.email is.
+	// Refused on new_email for the reasons CreateUserRequest.email is, and
+	// already_exists when another account holds the inbox it reaches under any
+	// sub-address tag. A move between tags of the reader's own inbox is not
+	// refused.
 	NewEmail string `protobuf:"bytes,3,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
 	// The account's password. An account without one confirms with a fresh
 	// sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest

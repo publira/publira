@@ -233,7 +233,9 @@ func refuse(reason string, code connect.Code, message string) signInRefusal {
 
 // resolveSignIn finds the account a verified token signs in to: the one
 // already linked to the provider account, else the one holding the address
-// the provider vouches for, else a new one. The account row is locked.
+// the provider vouches for, else a new one. An account holding the same inbox
+// under another sub-address tag refuses the sign-in rather than becoming
+// either. The account row is locked.
 func (s *apiServer) resolveSignIn(
 	ctx context.Context,
 	tx *sql.Tx,
@@ -265,12 +267,28 @@ func (s *apiServer) resolveSignIn(
 		return signInResult{}, refuse("email_not_verified", connect.CodeFailedPrecondition, "the provider does not vouch for an email address")
 	}
 
+	// The lock orders this against a sign-up or an email change giving another
+	// account the same inbox under a different sub-address tag.
+	if err := txq.LockCanonicalEmailForTenant(ctx, dbmodels.LockCanonicalEmailForTenantParams{
+		TenantID: tenant.ID,
+		Email:    claims.Email,
+	}); err != nil {
+		return signInResult{}, err
+	}
 	result := signInResult{outcome: "identity_linked"}
-	existing, err := txq.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	existing, err := txq.GetUserByCanonicalEmailForTenant(ctx, dbmodels.GetUserByCanonicalEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    claims.Email,
 	})
 	switch {
+	case err == nil && !strings.EqualFold(existing.Email, claims.Email):
+		// An account holds the inbox under another tag. A second account for it
+		// is what the canonical comparison exists to refuse, and linking is not
+		// safe either: the provider vouched for its address, not for the one the
+		// account was opened with, and at a mail domain that does not deliver
+		// tags to one inbox those are two people. The reader signs in with the
+		// account's own address and links the provider from there.
+		return signInResult{}, refuse("email_held_under_another_tag", connect.CodeFailedPrecondition, "an account holds this inbox under another address")
 	case err == nil:
 		result.user, err = s.linkExistingAccount(ctx, txq, tenant.ID, provider, existing.ID)
 		if err != nil {

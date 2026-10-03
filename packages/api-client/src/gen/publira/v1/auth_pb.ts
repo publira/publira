@@ -79,7 +79,10 @@ export type LoginWithIdTokenRequest = Message<"publira.v1.LoginWithIdTokenReques
 
   /**
    * The ID token the provider issued to one of the client IDs GetTenant
-   * answers for it.
+   * answers for it. A token whose address an account already holds under
+   * another sub-address tag (john+shop@ for john@, or the other way round) is
+   * failed_precondition: it neither opens a second account for that inbox nor
+   * links the one there, which the reader signs in to with its own address.
    *
    * @generated from field: string id_token = 3;
    */
@@ -355,7 +358,10 @@ export type CreateUserResponse = Message<"publira.v1.CreateUserResponse"> & {
   /**
    * Every accepted sign-up answers the same way, whether it created an account
    * or found the address taken. Naming the account here would tell a stranger
-   * which of the two happened.
+   * which of the two happened. An address is taken when an account holds the
+   * inbox it reaches under any sub-address tag: a sign-up as john+2@ with
+   * john@ registered opens nothing, and the notice a taken address gets goes
+   * to john+2@.
    *
    * @generated from field: bool accepted = 3;
    */
@@ -466,7 +472,10 @@ export type RequestEmailChangeRequest = Message<"publira.v1.RequestEmailChangeRe
   currentEmail: string;
 
   /**
-   * Refused on new_email for the reasons CreateUserRequest.email is.
+   * Refused on new_email for the reasons CreateUserRequest.email is, and
+   * already_exists when another account holds the inbox it reaches under any
+   * sub-address tag. A move between tags of the reader's own inbox is not
+   * refused.
    *
    * @generated from field: string new_email = 3;
    */

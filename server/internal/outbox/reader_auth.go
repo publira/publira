@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailaddress"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
@@ -81,6 +82,11 @@ type ReaderPasswordChangedNoticeEmailPayload struct {
 type ReaderSignupAttemptNoticeEmailPayload struct {
 	TenantID string `json:"tenant_id"`
 	UserID   string `json:"user_id"`
+	// Email is the address the sign-up typed, which the notice is sent to. It
+	// reaches the account's inbox but may carry a sub-address tag the account's
+	// own address does not. An event queued before the field existed has none
+	// and goes to the account's address.
+	Email string `json:"email,omitempty"`
 }
 
 // NewReaderEmailVerificationEmailHandler sends a new reader the link that
@@ -472,13 +478,28 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return fmt.Errorf("build reader signup attempt notice url: %w", err)
 		}
 
-		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+		recipient := reader.Email
+		if payload.Email != "" {
+			// An account that moved to another inbox since the attempt no longer
+			// holds the address typed, and the notice would tell whoever does
+			// now where the account went.
+			if emailaddress.Canonical(payload.Email) != emailaddress.Canonical(reader.Email) {
+				cfg.logDroppedAuthEmail(ctx, event, "", "email_moved")
+				return nil
+			}
+			recipient = payload.Email
+		}
+		// The body names the address the mail goes to, never the account's own
+		// when the two differ: a mail domain that does not deliver tags to one
+		// inbox makes the recipient someone else, who must not learn the address
+		// the account was opened with.
+		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
 				"account_state": accountState,
 				"action_url":    actionURL,
-				"email":         reader.Email,
+				"email":         recipient,
 				"tenant_name":   delivery.tenantName,
 			},
 			TimeZone: delivery.timeZone,

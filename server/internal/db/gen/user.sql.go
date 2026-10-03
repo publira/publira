@@ -54,6 +54,31 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 	return i, err
 }
 
+const CanonicalEmailHeldByAnotherUserForTenant = `-- name: CanonicalEmailHeldByAnotherUserForTenant :one
+SELECT EXISTS (
+    SELECT 1
+    FROM users
+    WHERE tenant_id = $1
+        AND canonical_email(email) = canonical_email($2::text)
+        AND id <> $3
+)
+`
+
+type CanonicalEmailHeldByAnotherUserForTenantParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	Email    string        `json:"email"`
+	UserID   uuid.UUID     `json:"user_id"`
+}
+
+// Whether an account of the tenant other than the one named already holds the
+// inbox an address reaches, under any tag.
+func (q *Queries) CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, arg CanonicalEmailHeldByAnotherUserForTenantParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, CanonicalEmailHeldByAnotherUserForTenant, arg.TenantID, arg.Email, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const CountOtherActiveTenantAdmins = `-- name: CountOtherActiveTenantAdmins :one
 SELECT COUNT(*)::int
 FROM users u
@@ -351,6 +376,43 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
 		&i.Role,
+	)
+	return i, err
+}
+
+const GetUserByCanonicalEmailForTenant = `-- name: GetUserByCanonicalEmailForTenant :one
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
+FROM users
+WHERE tenant_id = $1
+    AND canonical_email(email) = canonical_email($2::text)
+ORDER BY email = $2::text DESC, created_at ASC, id ASC
+LIMIT 1
+`
+
+type GetUserByCanonicalEmailForTenantParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	Email    string        `json:"email"`
+}
+
+// The account of the tenant that holds the inbox an address reaches, whether
+// or not it holds it under the same tag. A tenant may already hold several
+// such accounts; the one holding the address exactly as given answers first,
+// and the oldest among the rest after it.
+func (q *Queries) GetUserByCanonicalEmailForTenant(ctx context.Context, arg GetUserByCanonicalEmailForTenantParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, GetUserByCanonicalEmailForTenant, arg.TenantID, arg.Email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1571,6 +1633,34 @@ func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDe
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockCanonicalEmailForTenant = `-- name: LockCanonicalEmailForTenant :exec
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'canonical_email:'
+        || $1::uuid::text
+        || ':'
+        || canonical_email($2::text),
+        0
+    )
+)
+`
+
+type LockCanonicalEmailForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Email    string    `json:"email"`
+}
+
+// Serialises, for the rest of the transaction, every attempt to give an account
+// of the tenant the inbox an address reaches. The unique index on users only
+// refuses the same address twice, so two sign-ups as john@ and john+2@ arriving
+// at once would otherwise both find the inbox free and both create an account.
+// The lock is taken on the inbox rather than on a row, so it holds before any
+// account has it.
+func (q *Queries) LockCanonicalEmailForTenant(ctx context.Context, arg LockCanonicalEmailForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, LockCanonicalEmailForTenant, arg.TenantID, arg.Email)
+	return err
 }
 
 const SetTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one

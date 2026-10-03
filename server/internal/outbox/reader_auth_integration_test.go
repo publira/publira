@@ -669,7 +669,7 @@ func TestReaderPasswordChangedNoticeEmailRejectsAnAccountOfAnotherTenant(t *test
 }
 
 // The sign-up that produced this event was answered as if the address were
-// free, so the mail is the only report of it, and the account's own address is
+// free, so the mail is the only report of it, and the account's own inbox is
 // the only place it may go.
 func TestReaderSignupAttemptNoticeEmailGoesToTheAccountOwner(t *testing.T) {
 	pg, tenant, encryptor := newReaderEmailEnv(t)
@@ -708,6 +708,61 @@ func TestReaderSignupAttemptNoticeEmailGoesToTheAccountOwner(t *testing.T) {
 	}
 	if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
 		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)
+	}
+}
+
+// A sign-up for a tagged variant of an account's address is answered like one
+// for the address itself, so the notice goes to the address it typed, which
+// reaches the same inbox. It names that address and not the account's own: at
+// a mail domain that does not deliver tags to one inbox the recipient is
+// someone else, who must not learn the address the account was opened with.
+func TestReaderSignupAttemptNoticeEmailGoesToTheTaggedAddressTheSignupTyped(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB12", "reader@example.com", "Reader")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderSignupAttemptNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	attemptID := uuid.Must(uuid.NewV7())
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignupAttemptNoticeEmail,
+		outbox.ReaderSignupAttemptNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: reader.ID.String(), Email: "Reader+2@example.com"},
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != "Reader+2@example.com" {
+		t.Fatalf("recipients = %v, want [Reader+2@example.com]", mailer.recipients)
+	}
+	if len(renderer.requests) != 1 || renderer.requests[0].Data["email"] != "Reader+2@example.com" {
+		t.Fatalf("render requests = %+v, want one naming Reader+2@example.com", renderer.requests)
+	}
+}
+
+// An account that moved to another inbox after the attempt no longer holds the
+// address the sign-up typed, so whoever holds that address now hears nothing
+// about where the account went.
+func TestReaderSignupAttemptNoticeEmailIsDroppedOnceTheAccountMovedInbox(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB12", "moved@example.com", "Reader")
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderSignupAttemptNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	attemptID := uuid.Must(uuid.NewV7())
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignupAttemptNoticeEmail,
+		outbox.ReaderSignupAttemptNoticeEmailPayload{TenantID: tenant.ID.String(), UserID: reader.ID.String(), Email: "reader+2@example.com"},
+		"reader_signup_attempt_notice_email:"+attemptID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(mailer.recipients) != 0 {
+		t.Fatalf("recipients = %v, want none", mailer.recipients)
 	}
 }
 

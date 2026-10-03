@@ -92,6 +92,9 @@ type Querier interface {
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
+	// Whether an account of the tenant other than the one named already holds the
+	// inbox an address reaches, under any tag.
+	CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, arg CanonicalEmailHeldByAnotherUserForTenantParams) (bool, error)
 	// Claim the next due pending rows. SKIP LOCKED lets concurrent workers
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
@@ -730,6 +733,11 @@ type Querier interface {
 	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
+	// The account of the tenant that holds the inbox an address reaches, whether
+	// or not it holds it under the same tag. A tenant may already hold several
+	// such accounts; the one holding the address exactly as given answers first,
+	// and the oldest among the rest after it.
+	GetUserByCanonicalEmailForTenant(ctx context.Context, arg GetUserByCanonicalEmailForTenantParams) (User, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByIDForTenant(ctx context.Context, arg GetUserByIDForTenantParams) (GetUserByIDForTenantRow, error)
@@ -1912,6 +1920,13 @@ type Querier interface {
 	// The creator columns are the ones the public list carries, so the author's
 	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
+	// Serialises, for the rest of the transaction, every attempt to give an account
+	// of the tenant the inbox an address reaches. The unique index on users only
+	// refuses the same address twice, so two sign-ups as john@ and john+2@ arriving
+	// at once would otherwise both find the inbox free and both create an account.
+	// The lock is taken on the inbox rather than on a row, so it holds before any
+	// account has it.
+	LockCanonicalEmailForTenant(ctx context.Context, arg LockCanonicalEmailForTenantParams) error
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
