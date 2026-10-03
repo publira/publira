@@ -1,8 +1,11 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
+  ConnectError,
   isExpectedNullableRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { AnnouncementItem } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
@@ -124,8 +127,15 @@ const emptyListPage = {
   previousToken: "",
 };
 
+/**
+ * What crosses the cache boundary is a verdict, never the caught error: an
+ * error that leaves a `"use cache"` scope is re-created by React Flight, and a
+ * production build withholds its message and drops its `Code`, so past the
+ * boundary every failure would classify as unexpected — an unreachable API
+ * included.
+ */
 type CachedListMyAnnouncementsResult = ListMyAnnouncementsResult & {
-  error?: unknown;
+  unexpected: boolean;
 };
 
 const readAnnouncementList = async (
@@ -144,14 +154,15 @@ const readAnnouncementList = async (
       nextToken: response.nextToken ?? "",
       ok: true,
       previousToken: response.previousToken ?? "",
+      unexpected: false,
     };
   } catch (error) {
     dropFailedCacheEntry();
     return {
       ...emptyListPage,
-      error,
       message: await mapErrorToMessage(error, options.locale),
       ok: false,
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -161,13 +172,13 @@ export const listMyAnnouncements = async (
   sessionId: string | undefined,
   options: ListMyAnnouncementsOptions
 ): Promise<ListMyAnnouncementsResult> => {
-  const { error, ...result } = await readAnnouncementList(
+  const { unexpected, ...result } = await readAnnouncementList(
     tenantId,
     await resolveAccessToken(sessionId),
     options
   );
-  if (error !== undefined) {
-    rethrowUnclassifiedRpcError(error);
+  if (unexpected && !result.ok) {
+    throw new Error(result.message);
   }
   return result;
 };
@@ -177,10 +188,15 @@ const getMyAnnouncementInputSchema = z.object({
   tenantId: tenantIdSchema,
 });
 
-interface CachedGetMyAnnouncementResult {
-  error?: unknown;
-  value: MemberAnnouncementItem | null;
-}
+/**
+ * Like the list read, this hands a verdict across the cache boundary rather
+ * than the caught error. `"unauthenticated"` is kept apart from a bug so the
+ * caller can send the reader back through sign-in instead of to an error
+ * screen.
+ */
+type CachedGetMyAnnouncementResult =
+  | { failure: "unauthenticated" | "unexpected" }
+  | { value: MemberAnnouncementItem | null };
 
 const readMyAnnouncement = async (
   tenantId: string,
@@ -209,12 +225,24 @@ const readMyAnnouncement = async (
     return { value: mapAnnouncementItem(response.announcement) };
   } catch (error) {
     dropFailedCacheEntry();
-    return { error, value: null };
+    if (isUnauthenticatedRpcError(error)) {
+      return { failure: "unauthenticated" };
+    }
+    if (rpcErrorDisposition(error) === "unexpected") {
+      return { failure: "unexpected" };
+    }
+    // A missing row, and any other failure the API classified, both answer
+    // "nothing to open": the action that asked simply does not navigate.
+    return { value: null };
   }
 };
 
 /**
  * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
+ *
+ * A session the API rejects is thrown as an `Unauthenticated` `ConnectError`,
+ * rebuilt here outside the cache scope, so `withPublicSessionReauth` sends the
+ * reader to sign in again; an unexpected failure is thrown as a plain error.
  */
 export const getMyAnnouncement = async (
   tenantId: string,
@@ -235,10 +263,16 @@ export const getMyAnnouncement = async (
     parsed.data.announcementId,
     await resolveAccessToken(sessionId)
   );
-  if (result.error !== undefined) {
-    rethrowUnclassifiedRpcError(result.error);
+  if ("value" in result) {
+    return result.value;
   }
-  return result.value;
+  if (result.failure === "unauthenticated") {
+    throw new ConnectError(
+      "announcement read rejected the session",
+      Code.Unauthenticated
+    );
+  }
+  throw new Error("Could not read the announcement.");
 };
 
 export const markAnnouncementAsRead = async (

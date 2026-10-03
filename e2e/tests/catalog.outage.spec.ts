@@ -119,6 +119,27 @@ test.describe("web-host public API outage", () => {
       await expect(
         page.getByText("Could not show the series list")
       ).toBeVisible();
+
+      // The announcement inbox reads under `"use cache: private"`, so its
+      // failure has to be classified before it crosses that boundary: past it,
+      // this production build has stripped the `Code`, and the section would
+      // fall through to its error boundary — the one with a "Try again"
+      // button — instead of the message the read already built.
+      await page.goto(hostPath("/announcements"));
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Announcements" })
+      ).toBeVisible();
+      const inbox = page
+        .locator("section")
+        .filter({ hasText: "Could not display the announcements" });
+      await expect(
+        inbox.getByText(
+          "Could not connect to the server. Please try again later."
+        )
+      ).toBeVisible();
+      await expect(
+        inbox.getByRole("button", { name: "Try again" })
+      ).toHaveCount(0);
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.

@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  isUnauthenticatedRpcError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -114,14 +118,54 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("listMyAnnouncements: Uncategorized RPC errors propagate", async () => {
+  it("listMyAnnouncements: reports an unreachable API as the section's message", async () => {
+    const { listMyAnnouncements } = await importAnnouncements();
+    mockListAnnouncements.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(
+      listMyAnnouncements("TENANT001", undefined, { locale: "en" })
+    ).resolves.toEqual({
+      announcements: [],
+      message: "Could not connect to the server. Please try again later.",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+
+  it("listMyAnnouncements: reports a rejected session as the section's message", async () => {
+    const { listMyAnnouncements } = await importAnnouncements();
+    mockListAnnouncements.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    await expect(
+      listMyAnnouncements("TENANT001", undefined, { locale: "en" })
+    ).resolves.toMatchObject({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+    });
+  });
+
+  it("listMyAnnouncements: throws a failure it cannot explain without handing out the caught error", async () => {
     const { listMyAnnouncements } = await importAnnouncements();
     const error = new ConnectError("boom", Code.Internal);
     mockListAnnouncements.mockRejectedValueOnce(error);
 
+    // The error the cache scope caught never leaves it, so what is thrown is
+    // built outside from the scope's verdict alone — the same thing a
+    // production build sees once the boundary has stripped the `Code`.
     await expect(
       listMyAnnouncements("TENANT001", undefined, { locale: "en" })
-    ).rejects.toBe(error);
+    ).rejects.toSatisfy(
+      (thrown: unknown) =>
+        thrown !== error &&
+        thrown instanceof Error &&
+        thrown.message ===
+          "Could not load the announcements. Please try again later."
+    );
   });
 
   it("getMyAnnouncement: Return 1 approved", async () => {
@@ -218,13 +262,37 @@ describe("web-host announcements", () => {
     ).resolves.toBeNull();
   });
 
-  it("getMyAnnouncement: Uncategorized RPC errors propagate", async () => {
+  it("getMyAnnouncement: null when the API cannot be reached", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(
+      getMyAnnouncement(tenantId, announcementId)
+    ).resolves.toBeNull();
+  });
+
+  it("getMyAnnouncement: a rejected session is thrown as unauthenticated, not as a bug", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+    const error = new ConnectError("session expired", Code.Unauthenticated);
+    mockGetAnnouncement.mockRejectedValueOnce(error);
+
+    // Rebuilt outside the cache scope from its verdict, so the `Code` that
+    // sends the reader back through sign-in survives a production build.
+    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toSatisfy(
+      (thrown: unknown) => thrown !== error && isUnauthenticatedRpcError(thrown)
+    );
+  });
+
+  it("getMyAnnouncement: throws a failure it cannot explain without handing out the caught error", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     const error = new ConnectError("boom", Code.Internal);
     mockGetAnnouncement.mockRejectedValueOnce(error);
 
-    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toBe(
-      error
+    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toSatisfy(
+      (thrown: unknown) =>
+        thrown instanceof Error && !(thrown instanceof ConnectError)
     );
   });
 
