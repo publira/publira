@@ -17,8 +17,9 @@ const SEED_READER = {
 /**
  * Finding a reader from the console's readers list.
  *
- * The seed tenant's member is the reader looked up. Its administrator holds a
- * staff role on the same tenant, which is what keeps that account off the list.
+ * The seed tenant's member is the reader looked up. The list holds every
+ * account of the tenant, its administrator included, so the member is found by
+ * searching rather than by scanning the first page.
  */
 test.describe("web-admin readers", () => {
   test("staff open the list from the navigation, search by email, and filter by status", async ({
@@ -31,7 +32,6 @@ test.describe("web-admin readers", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Readers" })
     ).toBeVisible();
-    await expect(page.getByText("admin@example.com")).toHaveCount(0);
 
     await page
       .getByRole("searchbox", { name: "Name or email" })
