@@ -30,6 +30,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import {
@@ -65,7 +66,8 @@ type ReaderCommentsProps = CursorPageHrefs & {
  * The comments one reader wrote, with the moderation controls the comment
  * list offers, so a decision about the reader and about what they wrote can be
  * made without leaving the page. The commenter column is left out because
- * every row names the same person.
+ * every row names the same person; the credit they hold differs per episode,
+ * so it stays on the row it is about.
  */
 export const ReaderComments = async ({
   comments,
@@ -185,7 +187,12 @@ export const ReaderComments = async ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+                  <div className="grid gap-1">
+                    <p className="text-sm whitespace-pre-wrap">
+                      {comment.body}
+                    </p>
+                    <CommentCreatorMark creator={comment.creator} />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="grid gap-0.5">

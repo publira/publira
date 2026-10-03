@@ -33,6 +33,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import {
@@ -281,6 +282,7 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
         />
       </Suspense>
     </span>
+    <CommentCreatorMark creator={report.comment.creator} />
     <ReportedCommentNotes report={report} />
   </div>
 );

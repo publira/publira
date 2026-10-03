@@ -399,6 +399,7 @@
       "status_published": "Published",
       "status_hidden": "Removed",
       "status_withdrawn": "Deleted by the commenter",
+      "creator_badge": "Author",
       "hidden_by_staff": "Removed by a moderator.",
       "hidden_by_reports": "Removed automatically once the reports passed the threshold.",
       "hidden_author_notice": "The commenter still sees it exactly as they posted it — they are never told about a removal.",

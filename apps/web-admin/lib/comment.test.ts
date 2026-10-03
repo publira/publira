@@ -84,6 +84,7 @@ const mappedComment = {
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
   createdAt: "2026-06-01T00:00:00Z",
+  creator: null,
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   hiddenAt: "2026-06-02T00:00:00Z",
@@ -142,6 +143,30 @@ describe("comment lib", () => {
       ok: true,
       previousToken: "",
     });
+  });
+
+  it("carries the credit a creator holds on the episode, and nothing for anyone else", async () => {
+    mockListComments.mockResolvedValue({
+      comments: [
+        {
+          ...adminComment,
+          creator: {
+            id: "018f0f80-0003-7000-8000-000000000001",
+            name: "Sample Author",
+            publicId: "CREATOR001",
+          },
+        },
+        adminComment,
+      ],
+    });
+
+    const { listComments } = await import("./comment");
+    const result = await listComments("TENANT001", "en");
+
+    expect(result.comments.map((comment) => comment.creator)).toEqual([
+      { name: "Sample Author", publicId: "CREATOR001" },
+      null,
+    ]);
   });
 
   it("reads a state this build does not know as one still awaiting a decision", async () => {

@@ -11,6 +11,7 @@ import {
   COMMENT_STATUSES,
 } from "../app/[tenant_id]/(protected)/comments/comment-types";
 import type {
+  CommentCreator,
   CommentHiddenReason,
   CommentItem,
   CommentReportItem,
@@ -99,6 +100,7 @@ type RawComment = Pick<
   | "authorPublicId"
   | "body"
   | "createdAt"
+  | "creator"
   | "episodePublicId"
   | "episodeTitle"
   | "hiddenAt"
@@ -152,12 +154,21 @@ const toCommentReportReason = (raw: string): CommentReportReason => {
   return "unknown";
 };
 
+/** An unset `creator` is every comment no credited creator wrote. */
+const toCommentCreator = (
+  creator: RawComment["creator"]
+): CommentCreator | null =>
+  creator
+    ? { name: creator.name ?? "", publicId: creator.publicId ?? "" }
+    : null;
+
 const mapComment = (item: RawComment): CommentItem => ({
   authorIsStaff: item.authorIsStaff ?? false,
   authorName: item.authorName ?? "",
   authorPublicId: item.authorPublicId ?? "",
   body: item.body ?? "",
   createdAt: item.createdAt ?? "",
+  creator: toCommentCreator(item.creator),
   episodePublicId: item.episodePublicId ?? "",
   episodeTitle: item.episodeTitle ?? "",
   hiddenAt: item.hiddenAt ?? "",
@@ -186,6 +197,7 @@ const missingReportedComment: CommentItem = {
   authorPublicId: "",
   body: "",
   createdAt: "",
+  creator: null,
   episodePublicId: "",
   episodeTitle: "",
   hiddenAt: "",

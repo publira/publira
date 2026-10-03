@@ -399,6 +399,7 @@
       "status_published": "已公开",
       "status_hidden": "已移除",
       "status_withdrawn": "评论者已删除",
+      "creator_badge": "作者",
       "hidden_by_staff": "已由审核人员移除。",
       "hidden_by_reports": "举报数达到阈值后已自动移除。",
       "hidden_author_notice": "评论者看到的仍然是他们发表时的样子——他们不会收到任何移除通知。",

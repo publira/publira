@@ -399,6 +399,7 @@
       "status_published": "공개 중",
       "status_hidden": "숨김",
       "status_withdrawn": "작성자가 삭제",
+      "creator_badge": "작가",
       "hidden_by_staff": "운영자가 숨겼습니다.",
       "hidden_by_reports": "신고가 기준을 넘어 자동으로 숨겨졌습니다.",
       "hidden_author_notice": "작성자에게는 작성한 그대로 계속 보이며, 숨김 처리는 작성자에게 알리지 않습니다.",

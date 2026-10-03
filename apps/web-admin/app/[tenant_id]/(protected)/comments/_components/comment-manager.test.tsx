@@ -74,6 +74,7 @@ const comment = (
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
   createdAt: "2026-06-01T00:00:00Z",
+  creator: null,
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   hiddenAt: "",
@@ -291,5 +292,40 @@ describe("CommentManager", () => {
 
     expect(screen.getByText("Editor")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Editor" })).toBeNull();
+  });
+
+  it("marks a comment by the episode's author with the badge and the credited name", async () => {
+    render(
+      await CommentManager({
+        comments: [
+          comment("published", {
+            creator: { name: "Sample Author", publicId: "CREATOR001" },
+          }),
+        ],
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.getByText("Author")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Sample Author" }).getAttribute("href")
+    ).toBe("/creators/CREATOR001");
+  });
+
+  it("leaves every other comment unmarked", async () => {
+    render(
+      await CommentManager({
+        comments: [comment("published")],
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.queryByText("Author")).toBeNull();
   });
 });

@@ -60,6 +60,15 @@ export type CommentReportReason =
   | "spoiler"
   | "unknown";
 
+/**
+ * The credit a comment's author holds on the episode the comment is on, as
+ * `AdminCommentCreator` carries it.
+ */
+export interface CommentCreator {
+  name: string;
+  publicId: string;
+}
+
 export interface CommentItem {
   /** A staff account has no reader page, so its name is not linked there. */
   authorIsStaff: boolean;
@@ -67,6 +76,11 @@ export interface CommentItem {
   authorPublicId: string;
   body: string;
   createdAt: string;
+  /**
+   * Set when the author is a creator the episode credits, and `null` for every
+   * other comment. It informs the moderator and changes no action on the row.
+   */
+  creator: CommentCreator | null;
   episodePublicId: string;
   episodeTitle: string;
   /** Empty in every state but `hidden`. */

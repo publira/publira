@@ -31,6 +31,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import {
@@ -368,6 +369,7 @@ const CommentListBody = ({
                 <span className="text-xs text-muted-foreground">
                   {comment.authorPublicId}
                 </span>
+                <CommentCreatorMark creator={comment.creator} />
               </div>
             </TableCell>
             <TableCell>
