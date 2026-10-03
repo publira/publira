@@ -23,6 +23,7 @@ type AccessTicket struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
+	Source          string         `json:"source"`
 }
 
 type Announcement struct {
@@ -808,6 +809,15 @@ type SeriesTag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SeriesWaitFreeSetting struct {
+	TenantID            uuid.UUID `json:"tenant_id"`
+	SeriesID            uuid.UUID `json:"series_id"`
+	Enabled             bool      `json:"enabled"`
+	RechargeHours       int32     `json:"recharge_hours"`
+	AccessHours         int32     `json:"access_hours"`
+	ExcludedLatestCount int32     `json:"excluded_latest_count"`
+}
+
 type SignInNonce struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	NonceHash string    `json:"nonce_hash"`
@@ -1238,4 +1248,11 @@ type UserViewerPreference struct {
 	UserID            uuid.UUID `json:"user_id"`
 	WideViewerEnabled bool      `json:"wide_viewer_enabled"`
 	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type WaitFreeTicketState struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	UserID          uuid.UUID `json:"user_id"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	NextAvailableAt time.Time `json:"next_available_at"`
 }

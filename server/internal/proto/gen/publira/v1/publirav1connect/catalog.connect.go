@@ -33,6 +33,8 @@ const (
 	ContentViewServiceName = "publira.v1.ContentViewService"
 	// PurchaseServiceName is the fully-qualified name of the PurchaseService service.
 	PurchaseServiceName = "publira.v1.PurchaseService"
+	// WaitFreeServiceName is the fully-qualified name of the WaitFreeService service.
+	WaitFreeServiceName = "publira.v1.WaitFreeService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -158,6 +160,12 @@ const (
 	// PurchaseServiceProcessAppStoreNotificationProcedure is the fully-qualified name of the
 	// PurchaseService's ProcessAppStoreNotification RPC.
 	PurchaseServiceProcessAppStoreNotificationProcedure = "/publira.v1.PurchaseService/ProcessAppStoreNotification"
+	// WaitFreeServiceGetMyTicketStateProcedure is the fully-qualified name of the WaitFreeService's
+	// GetMyTicketState RPC.
+	WaitFreeServiceGetMyTicketStateProcedure = "/publira.v1.WaitFreeService/GetMyTicketState"
+	// WaitFreeServiceUseTicketProcedure is the fully-qualified name of the WaitFreeService's UseTicket
+	// RPC.
+	WaitFreeServiceUseTicketProcedure = "/publira.v1.WaitFreeService/UseTicket"
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -1800,4 +1808,134 @@ func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context,
 
 func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessAppStoreNotification is not implemented"))
+}
+
+// WaitFreeServiceClient is a client for the publira.v1.WaitFreeService service.
+type WaitFreeServiceClient interface {
+	GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error)
+	// Spends the reader's ticket on the episode's series and opens the episode
+	// for the series' access period, through an access ticket the episode's
+	// access then reports as EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET.
+	//
+	// Refused, without spending the ticket, with:
+	// - already_exists when the reader can already open the episode: bought, an
+	//   access ticket that has not expired (a repeated call included), or a
+	//   credit on it.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_FREE when the
+	//   episode is free to everyone right now.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_EXCLUDED for
+	//   one of WaitFreeRule.excluded_episode_ids.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_NOT_RECHARGED while
+	//   the next ticket is not ready; its metadata next_available_at is the
+	//   RFC3339 instant it will be.
+	// - permission_denied when the tenant's age rule stops this reader from
+	//   opening the series.
+	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
+}
+
+// NewWaitFreeServiceClient constructs a client for the publira.v1.WaitFreeService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewWaitFreeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WaitFreeServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	waitFreeServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods()
+	return &waitFreeServiceClient{
+		getMyTicketState: connect.NewClient[v1.GetMyTicketStateRequest, v1.GetMyTicketStateResponse](
+			httpClient,
+			baseURL+WaitFreeServiceGetMyTicketStateProcedure,
+			connect.WithSchema(waitFreeServiceMethods.ByName("GetMyTicketState")),
+			connect.WithClientOptions(opts...),
+		),
+		useTicket: connect.NewClient[v1.UseTicketRequest, v1.UseTicketResponse](
+			httpClient,
+			baseURL+WaitFreeServiceUseTicketProcedure,
+			connect.WithSchema(waitFreeServiceMethods.ByName("UseTicket")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// waitFreeServiceClient implements WaitFreeServiceClient.
+type waitFreeServiceClient struct {
+	getMyTicketState *connect.Client[v1.GetMyTicketStateRequest, v1.GetMyTicketStateResponse]
+	useTicket        *connect.Client[v1.UseTicketRequest, v1.UseTicketResponse]
+}
+
+// GetMyTicketState calls publira.v1.WaitFreeService.GetMyTicketState.
+func (c *waitFreeServiceClient) GetMyTicketState(ctx context.Context, req *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error) {
+	return c.getMyTicketState.CallUnary(ctx, req)
+}
+
+// UseTicket calls publira.v1.WaitFreeService.UseTicket.
+func (c *waitFreeServiceClient) UseTicket(ctx context.Context, req *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error) {
+	return c.useTicket.CallUnary(ctx, req)
+}
+
+// WaitFreeServiceHandler is an implementation of the publira.v1.WaitFreeService service.
+type WaitFreeServiceHandler interface {
+	GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error)
+	// Spends the reader's ticket on the episode's series and opens the episode
+	// for the series' access period, through an access ticket the episode's
+	// access then reports as EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET.
+	//
+	// Refused, without spending the ticket, with:
+	// - already_exists when the reader can already open the episode: bought, an
+	//   access ticket that has not expired (a repeated call included), or a
+	//   credit on it.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_FREE when the
+	//   episode is free to everyone right now.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_EXCLUDED for
+	//   one of WaitFreeRule.excluded_episode_ids.
+	// - failed_precondition with ErrorInfo reason WAIT_FREE_NOT_RECHARGED while
+	//   the next ticket is not ready; its metadata next_available_at is the
+	//   RFC3339 instant it will be.
+	// - permission_denied when the tenant's age rule stops this reader from
+	//   opening the series.
+	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
+}
+
+// NewWaitFreeServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewWaitFreeServiceHandler(svc WaitFreeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	waitFreeServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods()
+	waitFreeServiceGetMyTicketStateHandler := connect.NewUnaryHandler(
+		WaitFreeServiceGetMyTicketStateProcedure,
+		svc.GetMyTicketState,
+		connect.WithSchema(waitFreeServiceMethods.ByName("GetMyTicketState")),
+		connect.WithHandlerOptions(opts...),
+	)
+	waitFreeServiceUseTicketHandler := connect.NewUnaryHandler(
+		WaitFreeServiceUseTicketProcedure,
+		svc.UseTicket,
+		connect.WithSchema(waitFreeServiceMethods.ByName("UseTicket")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/publira.v1.WaitFreeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case WaitFreeServiceGetMyTicketStateProcedure:
+			waitFreeServiceGetMyTicketStateHandler.ServeHTTP(w, r)
+		case WaitFreeServiceUseTicketProcedure:
+			waitFreeServiceUseTicketHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedWaitFreeServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedWaitFreeServiceHandler struct{}
+
+func (UnimplementedWaitFreeServiceHandler) GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.WaitFreeService.GetMyTicketState is not implemented"))
+}
+
+func (UnimplementedWaitFreeServiceHandler) UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.WaitFreeService.UseTicket is not implemented"))
 }

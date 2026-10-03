@@ -99,6 +99,14 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	// Spends the reader's ticket on the series and starts the next recharge, when
+	// one is ready. No row means none was: the update's condition failed on a row
+	// whose instant is still ahead.
+	//
+	// The upsert takes the row lock, so a second claim at the same moment waits
+	// for the first to commit and then finds the instant it set, ahead of NOW().
+	// Two first claims meet on the primary key the same way.
+	ClaimWaitFreeTicket(ctx context.Context, arg ClaimWaitFreeTicketParams) (time.Time, error)
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
 	// that was down over one still catches up instead of collecting it.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
@@ -279,6 +287,10 @@ type Querier interface {
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
+	// The grant a spent ticket opens. It is an access_tickets row so every read
+	// that decides access sees it through episode_content_grants, and it expires
+	// by the series' access period from the same clock.
+	CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error)
 	// A pair that is not linked is no rows. The account's public_id is what the
 	// audit entry names it by.
 	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
@@ -514,8 +526,10 @@ type Querier interface {
 	// as ListPublishedEpisodeNeighborsForTenant, and is no row when the rest of the
 	// series has no such episode.
 	GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg GetNextPublishedFreeEpisodeForTenantParams) (GetNextPublishedFreeEpisodeForTenantRow, error)
-	// Non-revoked ticket for a user+episode pair (may already be expired).
-	// Used for idempotent issue under the unique partial index on non-revoked rows.
+	// Non-revoked staff ticket for a user+episode pair (may already be expired).
+	// Used for idempotent issue under the unique partial index on non-revoked
+	// staff rows. A wait-for-free ticket the reader used is theirs, not one staff
+	// issued, so it neither stands in for a staff ticket nor blocks one.
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
@@ -681,6 +695,9 @@ type Querier interface {
 	// reactions — a reaction given today reaches the aggregates with the next run,
 	// and a series shows nothing at all until it does.
 	GetSeriesRating(ctx context.Context, arg GetSeriesRatingParams) (GetSeriesRatingRow, error)
+	// One series' wait-for-free rule. No row means the rule was never configured,
+	// which the caller answers with the column defaults: off.
+	GetSeriesWaitFreeSettings(ctx context.Context, arg GetSeriesWaitFreeSettingsParams) (GetSeriesWaitFreeSettingsRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
@@ -757,6 +774,22 @@ type Querier interface {
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
+	// A published episode of a published series, both shown on the calling
+	// surface, with what UseTicket decides from. free_to_everyone reads
+	// published_free_episodes, so an episode a free window has opened needs no
+	// ticket.
+	//
+	// later_episode_count is how many published episodes on the surface follow
+	// this one in the order GetSeriesDetail lists them, (order_index, id). An
+	// episode with fewer than the series' excluded_latest_count after it is one of
+	// the latest the rule keeps a ticket off, and GetSeriesDetail marks the same
+	// episodes by taking that many off the end of its own list.
+	GetWaitFreeEpisode(ctx context.Context, arg GetWaitFreeEpisodeParams) (GetWaitFreeEpisodeRow, error)
+	// When the reader's next ticket on the series is ready, and whether that is
+	// still ahead. charging is decided by the database's clock, the one the
+	// claim below and the grants view compare against. No row means the reader
+	// has never used a ticket here, and one is ready.
+	GetWaitFreeTicketState(ctx context.Context, arg GetWaitFreeTicketStateParams) (GetWaitFreeTicketStateRow, error)
 	// A signed-in reader's own recommendation list, ordered from the features the
 	// daily batch writes for them. The tenant-wide list every reader shares stays
 	// with the other engagement reads in engagement.sql; this file is the half
@@ -1418,6 +1451,9 @@ type Querier interface {
 	// flips ASC rows back into display order. Do not parameterize ORDER BY.
 	// cursor rules: proto/README.md.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
+	// The reader's wait-for-free tickets on the series that still open their
+	// episode, soonest to close first.
+	ListOpenWaitFreeTicketsInSeries(ctx context.Context, arg ListOpenWaitFreeTicketsInSeriesParams) ([]ListOpenWaitFreeTicketsInSeriesRow, error)
 	// Empty only for a page the tenant does not have, since a page always keeps at
 	// least one translation.
 	ListPageTranslationsForTenant(ctx context.Context, arg ListPageTranslationsForTenantParams) ([]PageTranslation, error)
@@ -2475,6 +2511,7 @@ type Querier interface {
 	// setup finish on a platform whose settings row outlived its operators;
 	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
+	UpsertSeriesWaitFreeSettings(ctx context.Context, arg UpsertSeriesWaitFreeSettingsParams) (UpsertSeriesWaitFreeSettingsRow, error)
 	// Resolves one tag name the series form carried, creating the tag when this is
 	// its first use.
 	//

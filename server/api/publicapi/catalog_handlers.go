@@ -1125,6 +1125,18 @@ func (s *apiServer) GetSeriesDetail(
 		res.Msg.Episodes = append(res.Msg.Episodes, item)
 	}
 
+	waitFree, offersWaitFree, err := s.seriesWaitFreeRule(ctx, tenant.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	if offersWaitFree {
+		episodeIDs := make([]string, 0, len(res.Msg.Episodes))
+		for _, episode := range res.Msg.Episodes {
+			episodeIDs = append(episodeIDs, episode.Id)
+		}
+		res.Msg.WaitFree = waitFreeRuleFor(waitFree, episodeIDs)
+	}
+
 	return res, nil
 }
 

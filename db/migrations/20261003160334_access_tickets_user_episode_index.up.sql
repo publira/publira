@@ -1,0 +1,12 @@
+-- INDEX: idx_access_tickets_user_episode
+-- The lookup episode_content_grants makes for one reader and one episode,
+-- across every source. The unique index that used to answer it is about to
+-- cover staff tickets alone, and a reader's wait-for-free tickets would then be
+-- found by a scan.
+--
+-- Not unique: a reader keeps one row per wait-for-free use, and a ticket that
+-- has expired is still not revoked.
+--
+-- CONCURRENTLY, so building it does not block the tickets staff keep issuing,
+-- which is also why this statement is the whole file.
+CREATE INDEX CONCURRENTLY idx_access_tickets_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);

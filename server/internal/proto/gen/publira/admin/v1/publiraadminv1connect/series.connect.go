@@ -102,6 +102,12 @@ const (
 	// AdminSeriesServiceDeleteEpisodeFreeWindowProcedure is the fully-qualified name of the
 	// AdminSeriesService's DeleteEpisodeFreeWindow RPC.
 	AdminSeriesServiceDeleteEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeFreeWindow"
+	// AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure is the fully-qualified name of the
+	// AdminSeriesService's GetSeriesWaitFreeSettings RPC.
+	AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings"
+	// AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure is the fully-qualified name of the
+	// AdminSeriesService's UpdateSeriesWaitFreeSettings RPC.
+	AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeriesWaitFreeSettings"
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
@@ -152,6 +158,8 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
@@ -303,6 +311,18 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
 			connect.WithClientOptions(opts...),
 		),
+		getSeriesWaitFreeSettings: connect.NewClient[v1.GetSeriesWaitFreeSettingsRequest, v1.GetSeriesWaitFreeSettingsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeriesWaitFreeSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSeriesWaitFreeSettings: connect.NewClient[v1.UpdateSeriesWaitFreeSettingsRequest, v1.UpdateSeriesWaitFreeSettingsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeriesWaitFreeSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -331,6 +351,8 @@ type adminSeriesServiceClient struct {
 	createSeriesFreeWindows           *connect.Client[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse]
 	listEpisodeFreeWindows            *connect.Client[v1.ListEpisodeFreeWindowsRequest, v1.ListEpisodeFreeWindowsResponse]
 	deleteEpisodeFreeWindow           *connect.Client[v1.DeleteEpisodeFreeWindowRequest, v1.DeleteEpisodeFreeWindowResponse]
+	getSeriesWaitFreeSettings         *connect.Client[v1.GetSeriesWaitFreeSettingsRequest, v1.GetSeriesWaitFreeSettingsResponse]
+	updateSeriesWaitFreeSettings      *connect.Client[v1.UpdateSeriesWaitFreeSettingsRequest, v1.UpdateSeriesWaitFreeSettingsResponse]
 }
 
 // CreateSeries calls publira.admin.v1.AdminSeriesService.CreateSeries.
@@ -451,6 +473,17 @@ func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, 
 	return c.deleteEpisodeFreeWindow.CallUnary(ctx, req)
 }
 
+// GetSeriesWaitFreeSettings calls publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings.
+func (c *adminSeriesServiceClient) GetSeriesWaitFreeSettings(ctx context.Context, req *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error) {
+	return c.getSeriesWaitFreeSettings.CallUnary(ctx, req)
+}
+
+// UpdateSeriesWaitFreeSettings calls
+// publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings.
+func (c *adminSeriesServiceClient) UpdateSeriesWaitFreeSettings(ctx context.Context, req *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error) {
+	return c.updateSeriesWaitFreeSettings.CallUnary(ctx, req)
+}
+
 // AdminSeriesServiceHandler is an implementation of the publira.admin.v1.AdminSeriesService
 // service.
 type AdminSeriesServiceHandler interface {
@@ -500,6 +533,8 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
 }
 
 // NewAdminSeriesServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -647,6 +682,18 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceGetSeriesWaitFreeSettingsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure,
+		svc.GetSeriesWaitFreeSettings,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeriesWaitFreeSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminSeriesServiceUpdateSeriesWaitFreeSettingsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
+		svc.UpdateSeriesWaitFreeSettings,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeriesWaitFreeSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminSeriesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminSeriesServiceCreateSeriesProcedure:
@@ -695,6 +742,10 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceListEpisodeFreeWindowsHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceDeleteEpisodeFreeWindowProcedure:
 			adminSeriesServiceDeleteEpisodeFreeWindowHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure:
+			adminSeriesServiceGetSeriesWaitFreeSettingsHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure:
+			adminSeriesServiceUpdateSeriesWaitFreeSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -794,4 +845,12 @@ func (UnimplementedAdminSeriesServiceHandler) ListEpisodeFreeWindows(context.Con
 
 func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings is not implemented"))
 }

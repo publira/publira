@@ -108,6 +108,21 @@ message GetSeriesDetailRequest {
   publira.types.v1.ClientSurface surface = 3;
 }
 
+// A series' wait-for-free rule as a reader is told it: a signed-in reader may
+// open one priced episode of the series for access_hours, and the next ticket
+// is ready recharge_hours after using one. Whether this reader has a ticket
+// ready is WaitFreeService.GetMyTicketState.
+message WaitFreeRule {
+  int32 recharge_hours = 1;
+  int32 access_hours = 2;
+  // How many of the latest episodes the rule keeps a ticket off.
+  int32 excluded_latest_count = 3;
+  // The episodes it keeps a ticket off, by Episode.id: the last
+  // excluded_latest_count of GetSeriesDetailResponse.episodes, resolved here so
+  // a client marks them without counting. UseTicket refuses exactly these.
+  repeated string excluded_episode_ids = 4;
+}
+
 message GetSeriesDetailResponse {
   publira.types.v1.Series series = 1;
   repeated publira.types.v1.Episode episodes = 2;
@@ -130,6 +145,9 @@ message GetSeriesDetailResponse {
   // tenant setting that always names a mode, and a stored value naming none
   // fails this RPC.
   publira.types.v1.CommentMode comment_mode = 4;
+  // The series' wait-for-free rule, and unset when the series does not offer
+  // one. Like the rest of this response it says nothing about the reader.
+  WaitFreeRule wait_free = 5;
 }
 
 message GetSeriesEpisodeAccessRequest {
@@ -1582,4 +1600,69 @@ service PurchaseService {
   rpc StartStorePurchase(StartStorePurchaseRequest) returns (StartStorePurchaseResponse) {}
   rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}
   rpc ProcessAppStoreNotification(ProcessAppStoreNotificationRequest) returns (ProcessAppStoreNotificationResponse) {}
+}
+
+message GetMyTicketStateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 3;
+}
+
+// An episode a wait-for-free ticket opened and that is still open.
+message WaitFreeTicket {
+  string episode_id = 1;
+  // RFC3339 instant the episode locks again.
+  string expires_at = 2;
+}
+
+message GetMyTicketStateResponse {
+  // RFC3339 instant the reader's next ticket on the series is ready, and empty
+  // when one is ready now.
+  string next_available_at = 1;
+  // The reader's tickets on this series that still open their episode,
+  // soonest to close first.
+  repeated WaitFreeTicket open_tickets = 2;
+}
+
+message UseTicketRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // The client making the request. Unspecified is answered as the web
+  // storefront. It decides which episodes count as the latest ones, as it
+  // decides which episodes GetSeriesDetail lists.
+  publira.types.v1.ClientSurface surface = 3;
+}
+
+message UseTicketResponse {
+  WaitFreeTicket ticket = 1;
+  // RFC3339 instant the reader's next ticket on the series is ready.
+  string next_available_at = 2;
+}
+
+// Wait-for-free: the reader's own tickets on a series that offers the rule
+// GetSeriesDetailResponse.wait_free describes. Both RPCs need a session, and
+// both answer not_found for a series or episode the calling surface does not
+// show and failed_precondition with ErrorInfo reason WAIT_FREE_NOT_OFFERED for
+// a series whose rule is off.
+service WaitFreeService {
+  rpc GetMyTicketState(GetMyTicketStateRequest) returns (GetMyTicketStateResponse) {}
+  // Spends the reader's ticket on the episode's series and opens the episode
+  // for the series' access period, through an access ticket the episode's
+  // access then reports as EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET.
+  //
+  // Refused, without spending the ticket, with:
+  // - already_exists when the reader can already open the episode: bought, an
+  //   access ticket that has not expired (a repeated call included), or a
+  //   credit on it.
+  // - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_FREE when the
+  //   episode is free to everyone right now.
+  // - failed_precondition with ErrorInfo reason WAIT_FREE_EPISODE_EXCLUDED for
+  //   one of WaitFreeRule.excluded_episode_ids.
+  // - failed_precondition with ErrorInfo reason WAIT_FREE_NOT_RECHARGED while
+  //   the next ticket is not ready; its metadata next_available_at is the
+  //   RFC3339 instant it will be.
+  // - permission_denied when the tenant's age rule stops this reader from
+  //   opening the series.
+  rpc UseTicket(UseTicketRequest) returns (UseTicketResponse) {}
 }

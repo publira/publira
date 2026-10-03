@@ -204,6 +204,10 @@ func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
 	return publirav1connect.NewRatingServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) waitFreeClient() publirav1connect.WaitFreeServiceClient {
+	return publirav1connect.NewWaitFreeServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) commentClient() publirav1connect.CommentServiceClient {
 	return publirav1connect.NewCommentServiceClient(e.Server.Client(), e.Server.URL)
 }

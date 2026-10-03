@@ -127,6 +127,11 @@ var publicDataTables = []struct {
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
 	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
+	// A series' wait-for-free rule, which the series page reads, and one
+	// reader's wait for their next ticket, which spending one writes on this
+	// connection.
+	{name: "series_wait_free_settings", count: "SELECT count(*) FROM series_wait_free_settings"},
+	{name: "wait_free_ticket_states", count: "SELECT count(*) FROM wait_free_ticket_states"},
 	{name: "content_ranking_snapshots", count: "SELECT count(*) FROM content_ranking_snapshots"},
 	{name: "content_events", count: "SELECT count(*) FROM content_events"},
 	// The features the daily batch builds per reader and per series, which a
@@ -323,6 +328,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("held store refund", "INSERT INTO unapplied_store_refunds (tenant_id, store, store_transaction_id) VALUES ($1, 'app_store', $2)", first.ID, "2000000000000001")
 	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount) VALUES ($1, 'stripe', $2, $3)", first.ID, "pi_rls_held", 500)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
+	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
+	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)
 	seed("content event", "INSERT INTO content_events (id, tenant_id, event_type, user_id, series_id, debounce_bucket) VALUES ($1, $2, 'series_view', $3, $4, 0)", uuid.Must(uuid.NewV7()), first.ID, member.ID, series.ID)
 	seed("episode read", "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID)
 	seed("reading position", "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID)

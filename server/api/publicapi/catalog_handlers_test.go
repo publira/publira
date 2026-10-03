@@ -707,6 +707,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	seriesImageID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
@@ -733,7 +734,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				[]byte(`[{"name":"Creator A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"GENRE00001","name":"Fantasy","slug":"fantasy"}]`),
 				[]byte(`[{"name":"Swordplay","slug":"swordplay"}]`),
-				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z","purchase_availability":"app"}]`),
+				[]byte(`[{"id":"`+episodeID.String()+`","public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z","purchase_availability":"app"}]`),
 			))
 	// The series carries a rating, so the tenant's age rule is read; this one
 	// verifies nothing, so the series asks no age of anyone.
@@ -743,6 +744,12 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
+	// The series offers wait-for-free and keeps its latest episode back, which
+	// with one episode published is that episode.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesWaitFreeSettings)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "enabled", "recharge_hours", "access_hours", "excluded_latest_count"}).
+			AddRow(seriesID, true, int32(23), int32(72), int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -793,6 +800,16 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	if resp.Msg.Series.RatingAverage != 4.2 || resp.Msg.Series.RatingCount != 128 {
 		t.Fatalf("series rating = %v over %d readers, want 4.2 over 128",
 			resp.Msg.Series.RatingAverage, resp.Msg.Series.RatingCount)
+	}
+	waitFree := resp.Msg.WaitFree
+	if waitFree == nil {
+		t.Fatalf("wait_free is unset, want the series' rule")
+	}
+	if waitFree.RechargeHours != 23 || waitFree.AccessHours != 72 || waitFree.ExcludedLatestCount != 1 {
+		t.Fatalf("wait_free = %+v, want 23h recharge, 72h access, 1 excluded", waitFree)
+	}
+	if want := []string{episodeID.String()}; !slices.Equal(waitFree.ExcludedEpisodeIds, want) {
+		t.Fatalf("wait_free excluded_episode_ids = %v, want %v", waitFree.ExcludedEpisodeIds, want)
 	}
 
 	assertPublicExpectations(t, mock)

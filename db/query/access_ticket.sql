@@ -19,7 +19,8 @@ RETURNING id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at;
+    created_at,
+    source;
 
 -- name: GetAccessTicketForTenant :one
 SELECT at.id,
@@ -38,7 +39,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -69,7 +71,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -125,7 +128,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -179,11 +183,14 @@ RETURNING id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at;
+    created_at,
+    source;
 
 -- name: GetNonRevokedAccessTicketForUserEpisode :one
--- Non-revoked ticket for a user+episode pair (may already be expired).
--- Used for idempotent issue under the unique partial index on non-revoked rows.
+-- Non-revoked staff ticket for a user+episode pair (may already be expired).
+-- Used for idempotent issue under the unique partial index on non-revoked
+-- staff rows. A wait-for-free ticket the reader used is theirs, not one staff
+-- issued, so it neither stands in for a staff ticket nor blocks one.
 SELECT id,
     tenant_id,
     public_id,
@@ -193,12 +200,14 @@ SELECT id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at
+    created_at,
+    source
 FROM access_tickets
 WHERE tenant_id = $1
     AND user_id = $2
     AND episode_id = $3
     AND revoked_at IS NULL
+    AND source = 'staff'
 ORDER BY created_at DESC,
     id DESC
 LIMIT 1;
