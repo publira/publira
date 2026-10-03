@@ -20,7 +20,7 @@
 FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
-ARG PNPM_VERSION=12.8.1
+ARG PNPM_VERSION=12.8.2
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
