@@ -33,6 +33,13 @@ import {
   toEpisodePurchaseSurface,
 } from "./catalog";
 
+const { mockCacheTag } = vi.hoisted(() => ({ mockCacheTag: vi.fn() }));
+
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
+  cacheTag: mockCacheTag,
+}));
+
 const {
   mockGetEpisodeDetail,
   mockGetSeriesDetail,
@@ -1865,7 +1872,29 @@ describe("catalog.listReaderRankedSeries", () => {
 
 describe("catalog.listMyRecommendedSeries", () => {
   beforeEach(() => {
+    mockCacheTag.mockReset();
     mockListMyRecommendedSeries.mockReset();
+  });
+
+  /**
+   * The private entry follows the catalogue the way the shared shelf does: a
+   * series published, unpublished, or re-credited has to reach the reader's
+   * own order without waiting out the cache profile.
+   */
+  it("Carries the series list and creators tags, guest or not", async () => {
+    mockListMyRecommendedSeries.mockResolvedValueOnce({});
+
+    await listMyRecommendedSeries(" TENANT_001 ", "SESSION_1", {
+      locale: "en",
+    });
+    await listMyRecommendedSeries("TENANT_001", "", { locale: "en" });
+
+    expect(mockCacheTag.mock.calls.map((call) => call[0])).toEqual([
+      "tenant:TENANT_001:series:list",
+      "tenant:TENANT_001:creators",
+      "tenant:TENANT_001:series:list",
+      "tenant:TENANT_001:creators",
+    ]);
   });
 
   it("Asks for the reader's own order with their session and keeps it", async () => {
