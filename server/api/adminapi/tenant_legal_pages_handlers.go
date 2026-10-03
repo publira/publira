@@ -58,6 +58,9 @@ func (s *adminServer) GetTenantLegalPages(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantLegalPagesRequest],
 ) (*connect.Response[publiraadminv1.GetTenantLegalPagesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

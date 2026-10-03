@@ -145,7 +145,7 @@ func (s *adminServer) ListNotifications(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantAuditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (s *adminServer) CountUnreadNotifications(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantAuditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *adminServer) MarkNotificationAsRead(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantAuditor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (s *adminServer) MarkAllNotificationsAsRead(
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
+	sessionCtx, err := s.requireTenantAuditor(ctx)
 	if err != nil {
 		return nil, err
 	}

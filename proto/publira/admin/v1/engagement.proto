@@ -57,5 +57,6 @@ message ListEpisodeReadThroughResponse {
 }
 
 service AdminEngagementService {
+  // Minimum role: tenant_auditor.
   rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
 }

@@ -121,6 +121,9 @@ func (s *adminServer) GetTenantMobileAppAssociation(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantMobileAppAssociationRequest],
 ) (*connect.Response[publiraadminv1.GetTenantMobileAppAssociationResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

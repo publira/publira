@@ -371,6 +371,8 @@ export const UploadGenreEyeCatchAspectImageResponseSchema: GenMessage<UploadGenr
  */
 export const AdminGenreService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.ListGenres
    */
   listGenres: {
@@ -379,6 +381,8 @@ export const AdminGenreService: GenService<{
     output: typeof ListGenresResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.CreateGenre
    */
   createGenre: {
@@ -387,6 +391,8 @@ export const AdminGenreService: GenService<{
     output: typeof CreateGenreResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.UpdateGenre
    */
   updateGenre: {
@@ -395,6 +401,8 @@ export const AdminGenreService: GenService<{
     output: typeof UpdateGenreResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.ReorderGenres
    */
   reorderGenres: {
@@ -403,6 +411,8 @@ export const AdminGenreService: GenService<{
     output: typeof ReorderGenresResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.DeleteGenre
    */
   deleteGenre: {
@@ -411,6 +421,8 @@ export const AdminGenreService: GenService<{
     output: typeof DeleteGenreResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage
    */
   uploadGenreEyeCatchAspectImage: {

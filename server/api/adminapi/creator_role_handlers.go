@@ -156,6 +156,9 @@ func (s *adminServer) ListCreatorRoles(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListCreatorRolesRequest],
 ) (*connect.Response[publiraadminv1.ListCreatorRolesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -218,6 +221,9 @@ func (s *adminServer) CreateCreatorRole(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateCreatorRoleRequest],
 ) (*connect.Response[publiraadminv1.CreateCreatorRoleResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -289,6 +295,9 @@ func (s *adminServer) UpdateCreatorRole(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateCreatorRoleRequest],
 ) (*connect.Response[publiraadminv1.UpdateCreatorRoleResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -331,6 +340,9 @@ func (s *adminServer) ReorderCreatorRoles(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderCreatorRolesRequest],
 ) (*connect.Response[publiraadminv1.ReorderCreatorRolesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -398,6 +410,9 @@ func (s *adminServer) DeleteCreatorRole(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteCreatorRoleRequest],
 ) (*connect.Response[publiraadminv1.DeleteCreatorRoleResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

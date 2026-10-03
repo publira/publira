@@ -92,3 +92,44 @@ func TestIsTenantStaff(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantRoleAtLeast(t *testing.T) {
+	roles := []string{RoleTenantAuditor, RoleTenantEditor, RoleTenantAdmin}
+	tests := []struct {
+		name  string
+		role  string
+		level string
+		want  bool
+	}{
+		{name: "an admin meets the admin level", role: RoleTenantAdmin, level: RoleTenantAdmin, want: true},
+		{name: "an admin meets the editor level", role: RoleTenantAdmin, level: RoleTenantEditor, want: true},
+		{name: "an admin meets the auditor level", role: RoleTenantAdmin, level: RoleTenantAuditor, want: true},
+		{name: "an editor falls short of the admin level", role: RoleTenantEditor, level: RoleTenantAdmin, want: false},
+		{name: "an editor meets the editor level", role: RoleTenantEditor, level: RoleTenantEditor, want: true},
+		{name: "an editor meets the auditor level", role: RoleTenantEditor, level: RoleTenantAuditor, want: true},
+		{name: "an auditor falls short of the admin level", role: RoleTenantAuditor, level: RoleTenantAdmin, want: false},
+		{name: "an auditor falls short of the editor level", role: RoleTenantAuditor, level: RoleTenantEditor, want: false},
+		{name: "an auditor meets the auditor level", role: RoleTenantAuditor, level: RoleTenantAuditor, want: true},
+		{name: "an empty role falls short of the auditor level", role: "", level: RoleTenantAuditor, want: false},
+		{name: "an unknown role falls short of the auditor level", role: "custom", level: RoleTenantAuditor, want: false},
+		{name: "a platform role falls short of the auditor level", role: RolePlatformSuperAdmin, level: RoleTenantAuditor, want: false},
+	}
+	for _, level := range []string{"", "custom"} {
+		for _, role := range roles {
+			tests = append(tests, struct {
+				name  string
+				role  string
+				level string
+				want  bool
+			}{name: role + " meets no unknown level " + level, role: role, level: level, want: false})
+		}
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := TenantRoleAtLeast(tt.role, tt.level); got != tt.want {
+				t.Fatalf("TenantRoleAtLeast(%q, %q) = %v, want %v", tt.role, tt.level, got, tt.want)
+			}
+		})
+	}
+}

@@ -97,25 +97,45 @@ const (
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
 type TenantSettingsServiceClient interface {
+	// Minimum role: tenant_auditor.
 	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
 }
 
@@ -390,25 +410,45 @@ func (c *tenantSettingsServiceClient) UpdateTenantCommunityLimitSettings(ctx con
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
 }
 

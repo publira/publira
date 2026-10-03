@@ -40,6 +40,7 @@ const (
 
 // AdminAuditLogServiceClient is a client for the publira.admin.v1.AdminAuditLogService service.
 type AdminAuditLogServiceClient interface {
+	// Minimum role: tenant_admin.
 	ListAuditLogs(context.Context, *connect.Request[v1.ListAuditLogsRequest]) (*connect.Response[v1.ListAuditLogsResponse], error)
 }
 
@@ -76,6 +77,7 @@ func (c *adminAuditLogServiceClient) ListAuditLogs(ctx context.Context, req *con
 // AdminAuditLogServiceHandler is an implementation of the publira.admin.v1.AdminAuditLogService
 // service.
 type AdminAuditLogServiceHandler interface {
+	// Minimum role: tenant_admin.
 	ListAuditLogs(context.Context, *connect.Request[v1.ListAuditLogsRequest]) (*connect.Response[v1.ListAuditLogsResponse], error)
 }
 

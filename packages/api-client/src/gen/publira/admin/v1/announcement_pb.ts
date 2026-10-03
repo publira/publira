@@ -238,6 +238,8 @@ export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementRespon
  */
 export const AdminAnnouncementService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminAnnouncementService.ListAnnouncements
    */
   listAnnouncements: {
@@ -246,6 +248,8 @@ export const AdminAnnouncementService: GenService<{
     output: typeof ListAnnouncementsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminAnnouncementService.CreateAnnouncement
    */
   createAnnouncement: {
@@ -254,6 +258,8 @@ export const AdminAnnouncementService: GenService<{
     output: typeof CreateAnnouncementResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement
    */
   unpinAnnouncement: {

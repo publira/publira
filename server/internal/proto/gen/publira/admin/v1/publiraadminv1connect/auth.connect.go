@@ -97,10 +97,13 @@ type AdminAuthServiceClient interface {
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error)
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
@@ -367,10 +370,13 @@ type AdminAuthServiceHandler interface {
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
+	// Minimum role: tenant_auditor.
 	GetTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error)
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)

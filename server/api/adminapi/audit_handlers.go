@@ -144,6 +144,9 @@ func (s *adminServer) ListAuditLogs(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListAuditLogsRequest],
 ) (*connect.Response[publiraadminv1.ListAuditLogsResponse], error) {
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

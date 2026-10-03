@@ -104,6 +104,9 @@ func (s *adminServer) ListTenantUsers(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListTenantUsersRequest],
 ) (*connect.Response[publiraadminv1.ListTenantUsersResponse], error) {
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

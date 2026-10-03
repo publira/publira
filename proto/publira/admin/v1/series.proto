@@ -672,27 +672,50 @@ message DeleteEpisodeFreeWindowRequest {
 message DeleteEpisodeFreeWindowResponse {}
 
 service AdminSeriesService {
+  // Minimum role: tenant_editor.
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {}
+  // Minimum role: tenant_editor.
   rpc ReorderEpisodes(ReorderEpisodesRequest) returns (ReorderEpisodesResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
+  // Minimum role: tenant_editor.
   rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
+  // Minimum role: tenant_editor.
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateEpisodeAvailability(UpdateEpisodeAvailabilityRequest) returns (UpdateEpisodeAvailabilityResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateEpisodePurchaseAvailability(UpdateEpisodePurchaseAvailabilityRequest) returns (UpdateEpisodePurchaseAvailabilityResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
+  // Minimum role: tenant_editor.
   rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
+  // Minimum role: tenant_editor.
   rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}
+  // Minimum role: tenant_editor.
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}
+  // Minimum role: tenant_auditor.
   rpc ListEpisodeFreeWindows(ListEpisodeFreeWindowsRequest) returns (ListEpisodeFreeWindowsResponse) {}
+  // Minimum role: tenant_editor.
   rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
 }

@@ -358,10 +358,15 @@ func (s *adminServer) GetTenant(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	ctx, err := s.withOperatorSession(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	session, err := s.requireTenantAuditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant := session.Tenant
 
 	adminDomain := ""
 	if tenant.AdminDomain.Valid {
@@ -417,10 +422,15 @@ func (s *adminServer) GetTenantConfig(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantConfigRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantConfigResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	ctx, err := s.withOperatorSession(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	session, err := s.requireTenantAuditor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant := session.Tenant
 
 	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
 	if err != nil {
@@ -448,10 +458,15 @@ func (s *adminServer) UpdateTenantConfig(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	ctx, err := s.withOperatorSession(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant := session.Tenant
 
 	copyrightText := sql.NullString{String: req.Msg.CopyrightText, Valid: strings.TrimSpace(req.Msg.CopyrightText) != ""}
 	siteDescription := sql.NullString{String: req.Msg.SiteDescription, Valid: strings.TrimSpace(req.Msg.SiteDescription) != ""}

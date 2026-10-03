@@ -55,11 +55,17 @@ const (
 
 // AdminGenreServiceClient is a client for the publira.admin.v1.AdminGenreService service.
 type AdminGenreServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
+	// Minimum role: tenant_editor.
 	CreateGenre(context.Context, *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateGenre(context.Context, *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderGenres(context.Context, *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteGenre(context.Context, *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error)
+	// Minimum role: tenant_editor.
 	UploadGenreEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error)
 }
 
@@ -156,11 +162,17 @@ func (c *adminGenreServiceClient) UploadGenreEyeCatchAspectImage(ctx context.Con
 
 // AdminGenreServiceHandler is an implementation of the publira.admin.v1.AdminGenreService service.
 type AdminGenreServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
+	// Minimum role: tenant_editor.
 	CreateGenre(context.Context, *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateGenre(context.Context, *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error)
+	// Minimum role: tenant_editor.
 	ReorderGenres(context.Context, *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error)
+	// Minimum role: tenant_editor.
 	DeleteGenre(context.Context, *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error)
+	// Minimum role: tenant_editor.
 	UploadGenreEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error)
 }
 

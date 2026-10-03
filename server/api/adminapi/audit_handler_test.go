@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -14,6 +13,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -70,7 +71,7 @@ func newAuditLogClient(
 	testServer, mock := newTestAdminServer(t)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantAdmin)
 	return publiraadminv1connect.NewAdminAuditLogServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
 }
 
@@ -292,7 +293,7 @@ func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 			}
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
-			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantAdmin)
 			recoveryRows := auditLogColumns()
 			if test.direction == pagination.Forward {
 				recoveryRows = addAuditLogRow(recoveryRows, boundaryID, tenantID, userID, "boundary", "success", now)

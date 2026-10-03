@@ -45,5 +45,6 @@ message ListAuditLogsResponse {
 }
 
 service AdminAuditLogService {
+  // Minimum role: tenant_admin.
   rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {}
 }

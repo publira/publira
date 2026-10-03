@@ -53,34 +53,39 @@ func IsTenantStaff(roles []string) bool {
 	}
 }
 
+// tenantRoleRank orders the tenant staff roles by how much each may do, from
+// tenant_auditor up to tenant_admin. Any other string ranks below all three.
+func tenantRoleRank(role string) int {
+	switch role {
+	case RoleTenantAdmin:
+		return 3
+	case RoleTenantEditor:
+		return 2
+	case RoleTenantAuditor:
+		return 1
+	default:
+		return 0
+	}
+}
+
 func ResolveTenantRole(roles []string) string {
 	bestPriority := -1
 	bestRole := ""
 	for _, role := range roles {
 		normalized := strings.TrimSpace(role)
-		// Every branch below assigns, default included, so no initial value is read.
-		var (
-			priority     int
-			resolvedRole string
-		)
-		switch normalized {
-		case RoleTenantAdmin:
-			priority = 3
-			resolvedRole = RoleTenantAdmin
-		case RoleTenantEditor:
-			priority = 2
-			resolvedRole = RoleTenantEditor
-		case RoleTenantAuditor:
-			priority = 1
-			resolvedRole = RoleTenantAuditor
-		default:
-			priority = 0
-			resolvedRole = normalized
-		}
-		if priority > bestPriority {
+		if priority := tenantRoleRank(normalized); priority > bestPriority {
 			bestPriority = priority
-			bestRole = resolvedRole
+			bestRole = normalized
 		}
 	}
 	return bestRole
+}
+
+// TenantRoleAtLeast reports whether role may do everything level may, by the
+// ranking ResolveTenantRole picks the strongest of an account's roles with:
+// tenant_admin covers tenant_editor, which covers tenant_auditor. A level that
+// is not one of the three is met by no role.
+func TenantRoleAtLeast(role, level string) bool {
+	required := tenantRoleRank(level)
+	return required > 0 && tenantRoleRank(role) >= required
 }

@@ -457,6 +457,9 @@ func (s *adminServer) ListCreators(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListCreatorsRequest],
 ) (*connect.Response[publiraadminv1.ListCreatorsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -518,6 +521,9 @@ func (s *adminServer) GetCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetCreatorRequest],
 ) (*connect.Response[publiraadminv1.GetCreatorResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -553,6 +559,9 @@ func (s *adminServer) ListLabels(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListLabelsRequest],
 ) (*connect.Response[publiraadminv1.ListLabelsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -627,6 +636,9 @@ func (s *adminServer) GetLabel(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetLabelRequest],
 ) (*connect.Response[publiraadminv1.GetLabelResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -670,6 +682,9 @@ func (s *adminServer) CreateCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateCreatorRequest],
 ) (*connect.Response[publiraadminv1.CreateCreatorResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -763,6 +778,9 @@ func (s *adminServer) UpdateCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateCreatorRequest],
 ) (*connect.Response[publiraadminv1.UpdateCreatorResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -868,6 +886,9 @@ func (s *adminServer) CreateLabel(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateLabelRequest],
 ) (*connect.Response[publiraadminv1.CreateLabelResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -957,6 +978,9 @@ func (s *adminServer) UpdateLabel(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateLabelRequest],
 ) (*connect.Response[publiraadminv1.UpdateLabelResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

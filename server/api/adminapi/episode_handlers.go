@@ -270,6 +270,9 @@ func (s *adminServer) ListEpisodes(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListEpisodesRequest],
 ) (*connect.Response[publiraadminv1.ListEpisodesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -341,6 +344,9 @@ func (s *adminServer) GetEpisode(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetEpisodeRequest],
 ) (*connect.Response[publiraadminv1.GetEpisodeResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -455,6 +461,9 @@ func (s *adminServer) ReorderEpisodes(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderEpisodesRequest],
 ) (*connect.Response[publiraadminv1.ReorderEpisodesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -538,6 +547,9 @@ func (s *adminServer) CreateEpisode(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateEpisodeRequest],
 ) (*connect.Response[publiraadminv1.CreateEpisodeResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -739,6 +751,9 @@ func (s *adminServer) UploadEpisodeImages(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UploadEpisodeImagesRequest],
 ) (*connect.Response[publiraadminv1.UploadEpisodeImagesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -775,6 +790,9 @@ func (s *adminServer) ListEpisodeImages(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListEpisodeImagesRequest],
 ) (*connect.Response[publiraadminv1.ListEpisodeImagesResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -810,6 +828,9 @@ func (s *adminServer) ReorderEpisodeImages(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderEpisodeImagesRequest],
 ) (*connect.Response[publiraadminv1.ReorderEpisodeImagesResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -930,6 +951,9 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateEpisodePublishScheduleRequest],
 ) (*connect.Response[publiraadminv1.UpdateEpisodePublishScheduleResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -989,6 +1013,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateEpisodeLayoutRequest],
 ) (*connect.Response[publiraadminv1.UpdateEpisodeLayoutResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -1086,6 +1113,9 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateEpisodeAvailabilityRequest],
 ) (*connect.Response[publiraadminv1.UpdateEpisodeAvailabilityResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -1149,6 +1179,9 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest],
 ) (*connect.Response[publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

@@ -58,31 +58,44 @@ const (
 
 // AdminUserServiceClient is a client for the publira.admin.v1.AdminUserService service.
 type AdminUserServiceClient interface {
+	// Minimum role: tenant_admin.
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
 	// Lists every account of the tenant, newest first, staff accounts included.
+	//
+	// Minimum role: tenant_admin.
 	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
 	// Reads one account of the tenant, a staff account included. not_found for
 	// an account of another tenant.
+	//
+	// Minimum role: tenant_admin.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
 	// Suspends an account and ends every session it holds. Suspending an account
 	// that is already suspended changes nothing. not_found as GetReader.
 	// failed_precondition for the caller's own account, and, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
+	//
+	// Minimum role: tenant_admin.
 	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
 	// Lifts a suspension. The reader returns to active, or to inactive when
 	// they have not confirmed their address yet. Sessions ended by the
 	// suspension stay ended. A reader who is not suspended is left as they are.
 	// not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
 	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
 	// Sets or clears a reader's birth date. A reader cannot rewrite their own
 	// once it is recorded, so this is how a wrong date gets corrected. The next
 	// age-gated read for the reader is decided on the new date. Writing the date
 	// already stored changes nothing. not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
 	// go with it. The tenant's audit entries keep the name and public ID of a
 	// staff account they name, and its page versions stop naming it. not_found
 	// as GetReader. failed_precondition as SuspendReader.
+	//
+	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 
@@ -190,31 +203,44 @@ func (c *adminUserServiceClient) DeleteReader(ctx context.Context, req *connect.
 
 // AdminUserServiceHandler is an implementation of the publira.admin.v1.AdminUserService service.
 type AdminUserServiceHandler interface {
+	// Minimum role: tenant_admin.
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
 	// Lists every account of the tenant, newest first, staff accounts included.
+	//
+	// Minimum role: tenant_admin.
 	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
 	// Reads one account of the tenant, a staff account included. not_found for
 	// an account of another tenant.
+	//
+	// Minimum role: tenant_admin.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
 	// Suspends an account and ends every session it holds. Suspending an account
 	// that is already suspended changes nothing. not_found as GetReader.
 	// failed_precondition for the caller's own account, and, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
+	//
+	// Minimum role: tenant_admin.
 	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
 	// Lifts a suspension. The reader returns to active, or to inactive when
 	// they have not confirmed their address yet. Sessions ended by the
 	// suspension stay ended. A reader who is not suspended is left as they are.
 	// not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
 	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
 	// Sets or clears a reader's birth date. A reader cannot rewrite their own
 	// once it is recorded, so this is how a wrong date gets corrected. The next
 	// age-gated read for the reader is decided on the new date. Writing the date
 	// already stored changes nothing. not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
 	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
 	// go with it. The tenant's audit entries keep the name and public ID of a
 	// staff account they name, and its page versions stop naming it. not_found
 	// as GetReader. failed_precondition as SuspendReader.
+	//
+	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 

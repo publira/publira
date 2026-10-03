@@ -47,8 +47,11 @@ const (
 // AdminAccessTicketServiceClient is a client for the publira.admin.v1.AdminAccessTicketService
 // service.
 type AdminAccessTicketServiceClient interface {
+	// Minimum role: tenant_admin.
 	ListAccessTickets(context.Context, *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error)
+	// Minimum role: tenant_admin.
 	IssueAccessTicket(context.Context, *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error)
+	// Minimum role: tenant_admin.
 	RevokeAccessTicket(context.Context, *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error)
 }
 
@@ -109,8 +112,11 @@ func (c *adminAccessTicketServiceClient) RevokeAccessTicket(ctx context.Context,
 // AdminAccessTicketServiceHandler is an implementation of the
 // publira.admin.v1.AdminAccessTicketService service.
 type AdminAccessTicketServiceHandler interface {
+	// Minimum role: tenant_admin.
 	ListAccessTickets(context.Context, *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error)
+	// Minimum role: tenant_admin.
 	IssueAccessTicket(context.Context, *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error)
+	// Minimum role: tenant_admin.
 	RevokeAccessTicket(context.Context, *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error)
 }
 

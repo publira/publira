@@ -65,6 +65,9 @@ func (s *adminServer) GetTenantPurchaseSettings(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetTenantPurchaseSettingsRequest],
 ) (*connect.Response[publiraadminv1.GetTenantPurchaseSettingsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

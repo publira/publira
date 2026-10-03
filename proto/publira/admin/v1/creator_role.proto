@@ -83,9 +83,14 @@ message DeleteCreatorRoleRequest {
 message DeleteCreatorRoleResponse {}
 
 service AdminCreatorRoleService {
+  // Minimum role: tenant_auditor.
   rpc ListCreatorRoles(ListCreatorRolesRequest) returns (ListCreatorRolesResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateCreatorRole(CreateCreatorRoleRequest) returns (CreateCreatorRoleResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateCreatorRole(UpdateCreatorRoleRequest) returns (UpdateCreatorRoleResponse) {}
+  // Minimum role: tenant_editor.
   rpc ReorderCreatorRoles(ReorderCreatorRolesRequest) returns (ReorderCreatorRolesResponse) {}
+  // Minimum role: tenant_editor.
   rpc DeleteCreatorRole(DeleteCreatorRoleRequest) returns (DeleteCreatorRoleResponse) {}
 }

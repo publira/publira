@@ -78,7 +78,10 @@ message SendTenantSmtpTestEmailResponse {
 }
 
 service AdminEmailSettingsService {
+  // Minimum role: tenant_admin.
   rpc GetTenantEmailSettings(GetTenantEmailSettingsRequest) returns (GetTenantEmailSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantEmailSettings(UpdateTenantEmailSettingsRequest) returns (UpdateTenantEmailSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc SendTenantSmtpTestEmail(SendTenantSmtpTestEmailRequest) returns (SendTenantSmtpTestEmailResponse) {}
 }

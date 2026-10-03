@@ -181,21 +181,34 @@ func TestDBGetPageOfAnotherTenantReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestDBCreatePageRequiresTenantAdmin(t *testing.T) {
+func TestDBCreatePageRequiresTenantEditor(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
+	auditor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER03", "auditor@tenant-a.example.com", "Tenant A Auditor", auth.RoleTenantAuditor)
+	client := env.pagesClient()
 
-	_, err := env.pagesClient().CreatePage(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.CreatePageRequest{
+	_, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant.as(auditor), &publiraadminv1.CreatePageRequest{
+		Tenant: tenant.tenantContext(),
+		Slug:   "/auditor-page",
+		Title:  "Auditor Page",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("CreatePage as auditor code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM pages"); count != 0 {
+		t.Fatalf("page rows after an auditor's attempt = %d, want 0", count)
+	}
+
+	if _, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.CreatePageRequest{
 		Tenant: tenant.tenantContext(),
 		Slug:   "/editor-page",
 		Title:  "Editor Page",
-	}))
-	if connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("CreatePage as editor code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	})); err != nil {
+		t.Fatalf("CreatePage as editor: %v", err)
 	}
-	if count := env.countRows(t, "SELECT count(*) FROM pages"); count != 0 {
-		t.Fatalf("page rows = %d, want 0", count)
+	if count := env.countRows(t, "SELECT count(*) FROM pages"); count != 1 {
+		t.Fatalf("page rows after an editor's page = %d, want 1", count)
 	}
 }
 

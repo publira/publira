@@ -48,8 +48,11 @@ const (
 // AdminEmailSettingsServiceClient is a client for the publira.admin.v1.AdminEmailSettingsService
 // service.
 type AdminEmailSettingsServiceClient interface {
+	// Minimum role: tenant_admin.
 	GetTenantEmailSettings(context.Context, *connect.Request[v1.GetTenantEmailSettingsRequest]) (*connect.Response[v1.GetTenantEmailSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *connect.Request[v1.UpdateTenantEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	SendTenantSmtpTestEmail(context.Context, *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error)
 }
 
@@ -111,8 +114,11 @@ func (c *adminEmailSettingsServiceClient) SendTenantSmtpTestEmail(ctx context.Co
 // AdminEmailSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminEmailSettingsService service.
 type AdminEmailSettingsServiceHandler interface {
+	// Minimum role: tenant_admin.
 	GetTenantEmailSettings(context.Context, *connect.Request[v1.GetTenantEmailSettingsRequest]) (*connect.Response[v1.GetTenantEmailSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *connect.Request[v1.UpdateTenantEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	SendTenantSmtpTestEmail(context.Context, *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error)
 }
 

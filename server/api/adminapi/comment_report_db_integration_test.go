@@ -485,7 +485,9 @@ func TestDBAdminCommentReportsRejectInvalidArguments(t *testing.T) {
 	}
 }
 
-func TestDBAdminCommentReportsRequireTheAdminRole(t *testing.T) {
+// Deciding a report is an editor's work: an auditor reads the reports and
+// cannot settle one.
+func TestDBAdminCommentReportsRequireTheEditorRole(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RRO", "report-role.example.com")
 	comment := fixture.seedComment(t, "RROREPORTED1", "published")
@@ -493,20 +495,32 @@ func TestDBAdminCommentReportsRequireTheAdminRole(t *testing.T) {
 		comment.ID,
 		fixture.seedReporter(t, "RROREPORT001", "rro-reporter@report-role.example.com", "Reader"),
 		"spam", "")
-	editor := env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "RROEDITOR001", "editor@report-role.example.com", "Editor", auth.RoleTenantEditor)
-	asEditor := fixture.admin.as(editor)
+	editor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "RROEDITOR001", "editor@report-role.example.com", "Editor", auth.RoleTenantEditor))
+	auditor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "RROAUDITOR01", "auditor@report-role.example.com", "Auditor", auth.RoleTenantAuditor))
 	client := env.commentClient()
 
-	if _, err := client.ListCommentReports(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ListCommentReportsRequest{
-		Tenant: asEditor.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ListCommentReports as an editor error = %v, want permission_denied", err)
+	listed, err := client.ListCommentReports(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ListCommentReportsRequest{
+		Tenant: auditor.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListCommentReports as an auditor: %v", err)
 	}
-	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ResolveCommentReportRequest{
-		Tenant:     asEditor.tenantContext(),
+	if got := len(listed.Msg.Reports); got != 1 {
+		t.Fatalf("reports listed to an auditor = %d, want 1", got)
+	}
+	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ResolveCommentReportRequest{
+		Tenant:     auditor.tenantContext(),
 		ReportId:   reportID.String(),
 		Resolution: "resolved",
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ResolveCommentReport as an editor error = %v, want permission_denied", err)
+		t.Fatalf("ResolveCommentReport as an auditor error = %v, want permission_denied", err)
+	}
+
+	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(editor, &publiraadminv1.ResolveCommentReportRequest{
+		Tenant:     editor.tenantContext(),
+		ReportId:   reportID.String(),
+		Resolution: "resolved",
+	})); err != nil {
+		t.Fatalf("ResolveCommentReport as an editor: %v", err)
 	}
 }

@@ -55,19 +55,26 @@ const (
 
 // AdminCreatorServiceClient is a client for the publira.admin.v1.AdminCreatorService service.
 type AdminCreatorServiceClient interface {
+	// Minimum role: tenant_auditor.
 	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
+	// Minimum role: tenant_editor.
 	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
 	// creator or an account of another tenant and for a staff account;
-	// failed_precondition for a reader who is not active. Tenant admins only.
+	// failed_precondition for a reader who is not active.
+	//
+	// Minimum role: tenant_admin.
 	LinkCreatorAccount(context.Context, *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error)
 	// Removes a link. Unlinking a pair that is not linked changes nothing and
-	// records nothing. not_found for a creator of another tenant. Tenant admins
-	// only.
+	// records nothing. not_found for a creator of another tenant.
+	//
+	// Minimum role: tenant_admin.
 	UnlinkCreatorAccount(context.Context, *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error)
 }
 
@@ -164,19 +171,26 @@ func (c *adminCreatorServiceClient) UnlinkCreatorAccount(ctx context.Context, re
 // AdminCreatorServiceHandler is an implementation of the publira.admin.v1.AdminCreatorService
 // service.
 type AdminCreatorServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	// Minimum role: tenant_auditor.
 	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
+	// Minimum role: tenant_editor.
 	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
 	// creator or an account of another tenant and for a staff account;
-	// failed_precondition for a reader who is not active. Tenant admins only.
+	// failed_precondition for a reader who is not active.
+	//
+	// Minimum role: tenant_admin.
 	LinkCreatorAccount(context.Context, *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error)
 	// Removes a link. Unlinking a pair that is not linked changes nothing and
-	// records nothing. not_found for a creator of another tenant. Tenant admins
-	// only.
+	// records nothing. not_found for a creator of another tenant.
+	//
+	// Minimum role: tenant_admin.
 	UnlinkCreatorAccount(context.Context, *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error)
 }
 

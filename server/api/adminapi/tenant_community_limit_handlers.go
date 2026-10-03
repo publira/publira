@@ -162,7 +162,7 @@ func (s *adminServer) GetTenantCommunityLimitSettings(ctx context.Context, req *
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
 	policy, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))

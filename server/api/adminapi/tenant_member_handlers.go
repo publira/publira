@@ -81,20 +81,6 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 	}
 }
 
-// tenantAdminSession resolves the calling tenant and refuses any session that
-// is not its tenant_admin.
-func (s *adminServer) tenantAdminSession(ctx context.Context, req tenantScopedRequest) (dbmodels.Tenant, rpcmiddleware.SessionContext, error) {
-	tenant, err := s.tenantByContext(ctx, req.GetTenant())
-	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, err
-	}
-	sessionCtx, err := s.requireTenantAdmin(ctx)
-	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, err
-	}
-	return tenant, sessionCtx, nil
-}
-
 func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -127,7 +113,10 @@ func (s *adminServer) ListTenantMembers(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListTenantMembersRequest],
 ) (*connect.Response[publiraadminv1.ListTenantMembersResponse], error) {
-	tenant, _, err := s.tenantAdminSession(ctx, req.Msg)
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +163,11 @@ func (s *adminServer) UpdateTenantMemberRole(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateTenantMemberRoleRequest],
 ) (*connect.Response[publiraadminv1.UpdateTenantMemberRoleResponse], error) {
-	tenant, session, err := s.tenantAdminSession(ctx, req.Msg)
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +205,11 @@ func (s *adminServer) RemoveTenantMember(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.RemoveTenantMemberRequest],
 ) (*connect.Response[publiraadminv1.RemoveTenantMemberResponse], error) {
-	tenant, session, err := s.tenantAdminSession(ctx, req.Msg)
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +259,10 @@ func (s *adminServer) ListTenantAdminInvitations(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListTenantAdminInvitationsRequest],
 ) (*connect.Response[publiraadminv1.ListTenantAdminInvitationsResponse], error) {
-	tenant, _, err := s.tenantAdminSession(ctx, req.Msg)
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +310,11 @@ func (s *adminServer) CreateTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateTenantAdminInvitationRequest],
 ) (*connect.Response[publiraadminv1.CreateTenantAdminInvitationResponse], error) {
-	tenant, session, err := s.tenantAdminSession(ctx, req.Msg)
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +351,11 @@ func (s *adminServer) ResendTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ResendTenantAdminInvitationRequest],
 ) (*connect.Response[publiraadminv1.ResendTenantAdminInvitationResponse], error) {
-	tenant, session, err := s.tenantAdminSession(ctx, req.Msg)
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +393,11 @@ func (s *adminServer) CancelTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CancelTenantAdminInvitationRequest],
 ) (*connect.Response[publiraadminv1.CancelTenantAdminInvitationResponse], error) {
-	tenant, session, err := s.tenantAdminSession(ctx, req.Msg)
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}

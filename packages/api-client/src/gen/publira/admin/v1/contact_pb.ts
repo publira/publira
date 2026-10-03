@@ -405,6 +405,8 @@ export const AdminContactService: GenService<{
   /**
    * Lists the messages readers sent the tenant, newest first.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminContactService.ListContactMessages
    */
   listContactMessages: {
@@ -419,6 +421,8 @@ export const AdminContactService: GenService<{
    * already and a detail view is what a member of staff opens to answer from;
    * an inbox that has lost its page can reach one message without walking back
    * to it.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminContactService.GetContactMessage
    */
@@ -435,6 +439,8 @@ export const AdminContactService: GenService<{
    * Marking a message that is already in the state asked for succeeds and
    * leaves the recorded time alone, so a repeated press does not move it.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminContactService.MarkContactMessageHandled
    */
   markContactMessageHandled: {
@@ -450,6 +456,8 @@ export const AdminContactService: GenService<{
    * handled flag: marking the message handled or reopening it keeps it, so a
    * reopened message that has an assignee is in_progress again.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminContactService.AssignContactMessage
    */
   assignContactMessage: {
@@ -459,6 +467,8 @@ export const AdminContactService: GenService<{
   },
   /**
    * Saves, replaces, or clears the internal note on one message.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote
    */

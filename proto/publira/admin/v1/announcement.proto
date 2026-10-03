@@ -76,7 +76,10 @@ message UnpinAnnouncementRequest {
 message UnpinAnnouncementResponse {}
 
 service AdminAnnouncementService {
+  // Minimum role: tenant_auditor.
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
+  // Minimum role: tenant_editor.
   rpc CreateAnnouncement(CreateAnnouncementRequest) returns (CreateAnnouncementResponse) {}
+  // Minimum role: tenant_editor.
   rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
 }

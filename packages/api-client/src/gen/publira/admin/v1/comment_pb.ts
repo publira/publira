@@ -709,6 +709,8 @@ export const AdminCommentService: GenService<{
    * away from every reader, but staff keep reading it for the retention window
    * so a report or a dispute raised before the deletion can still be settled.
    *
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminCommentService.ListComments
    */
   listComments: {
@@ -724,6 +726,8 @@ export const AdminCommentService: GenService<{
    * and a page of rows fetched to be counted and thrown away would be the most
    * expensive thing the console does per navigation.
    *
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminCommentService.CountPendingComments
    */
   countPendingComments: {
@@ -736,6 +740,8 @@ export const AdminCommentService: GenService<{
    *
    * failed_precondition for a comment in any other state, because approving is
    * what first makes a comment public and no other state is waiting for it.
+   *
+   * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminCommentService.ApproveComment
    */
@@ -750,6 +756,8 @@ export const AdminCommentService: GenService<{
    * The removal is silent: the comment keeps rendering to its author exactly as
    * it was, so being removed does not itself become a public complaint. It is
    * reversible through RestoreComment.
+   *
+   * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminCommentService.HideComment
    */
@@ -767,6 +775,8 @@ export const AdminCommentService: GenService<{
    * not restorable at all — its author took it down, and staff putting it back
    * would republish text its author deleted.
    *
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminCommentService.RestoreComment
    */
   restoreComment: {
@@ -780,6 +790,8 @@ export const AdminCommentService: GenService<{
    *
    * Separate from HideComment so the routine action stays reversible and the
    * one that cannot be undone is asked for by name.
+   *
+   * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminCommentService.PurgeComment
    */
@@ -796,6 +808,8 @@ export const AdminCommentService: GenService<{
    * and ResolveCommentReport settles them one at a time — so the same comment
    * appears once per report it collected, with the open count on it saying how
    * many of those are still waiting.
+   *
+   * Minimum role: tenant_auditor.
    *
    * @generated from rpc publira.admin.v1.AdminCommentService.ListCommentReports
    */
@@ -815,6 +829,8 @@ export const AdminCommentService: GenService<{
    *
    * failed_precondition for a report that was already decided, and not_found
    * for one of another tenant.
+   *
+   * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminCommentService.ResolveCommentReport
    */

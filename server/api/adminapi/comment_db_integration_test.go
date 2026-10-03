@@ -752,29 +752,50 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 	}
 }
 
-func TestDBAdminCommentModerationRequiresTheAdminRole(t *testing.T) {
+// Moderating comments is an editor's work: an auditor reads the queue and
+// cannot act on it.
+func TestDBAdminCommentModerationRequiresTheEditorRole(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "ROL", "role.example.com")
-	editor := env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "ROLEDITOR001", "editor@role.example.com", "Editor", auth.RoleTenantEditor)
+	editor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "ROLEDITOR001", "editor@role.example.com", "Editor", auth.RoleTenantEditor))
+	auditor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "ROLAUDITOR01", "auditor@role.example.com", "Auditor", auth.RoleTenantAuditor))
 	comment := fixture.seedComment(t, "ROLPENDING01", "pending")
 	client := env.commentClient()
 
-	asEditor := fixture.admin.as(editor)
-	if _, err := client.ListComments(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ListCommentsRequest{
-		Tenant: asEditor.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ListComments as an editor error = %v, want permission_denied", err)
+	listed, err := client.ListComments(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ListCommentsRequest{
+		Tenant: auditor.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListComments as an auditor: %v", err)
 	}
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ApproveCommentRequest{
-		Tenant:    asEditor.tenantContext(),
+	if got := len(listed.Msg.Comments); got != 1 {
+		t.Fatalf("comments listed to an auditor = %d, want 1", got)
+	}
+	counted, err := client.CountPendingComments(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.CountPendingCommentsRequest{
+		Tenant: auditor.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("CountPendingComments as an auditor: %v", err)
+	}
+	if counted.Msg.PendingCount != 1 {
+		t.Fatalf("pending comments counted for an auditor = %d, want 1", counted.Msg.PendingCount)
+	}
+	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ApproveCommentRequest{
+		Tenant:    auditor.tenantContext(),
 		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ApproveComment as an editor error = %v, want permission_denied", err)
+		t.Fatalf("ApproveComment as an auditor error = %v, want permission_denied", err)
 	}
-	if _, err := client.CountPendingComments(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.CountPendingCommentsRequest{
-		Tenant: asEditor.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("CountPendingComments as an editor error = %v, want permission_denied", err)
+
+	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(editor, &publiraadminv1.ApproveCommentRequest{
+		Tenant:    editor.tenantContext(),
+		CommentId: comment.ID.String(),
+	}))
+	if err != nil {
+		t.Fatalf("ApproveComment as an editor: %v", err)
+	}
+	if approved.Msg.Comment.Status != "published" {
+		t.Fatalf("status after an editor's approval = %q, want published", approved.Msg.Comment.Status)
 	}
 }
 

@@ -1398,6 +1398,8 @@ export const UpdateTenantCommunityLimitSettingsResponseSchema: GenMessage<Update
  */
 export const TenantSettingsService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantTimezone
    */
   getTenantTimezone: {
@@ -1406,6 +1408,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantTimezoneResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantTimezone
    */
   updateTenantTimezone: {
@@ -1414,6 +1418,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantTimezoneResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale
    */
   getTenantDefaultLocale: {
@@ -1422,6 +1428,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantDefaultLocaleResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale
    */
   updateTenantDefaultLocale: {
@@ -1430,6 +1438,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantDefaultLocaleResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantCommentSettings
    */
   getTenantCommentSettings: {
@@ -1438,6 +1448,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantCommentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings
    */
   updateTenantCommentSettings: {
@@ -1446,6 +1458,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantCommentSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantAgeVerification
    */
   getTenantAgeVerification: {
@@ -1454,6 +1468,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantAgeVerificationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification
    */
   updateTenantAgeVerification: {
@@ -1462,6 +1478,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantAgeVerificationResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings
    */
   getTenantPurchaseSettings: {
@@ -1470,6 +1488,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantPurchaseSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings
    */
   updateTenantPurchaseSettings: {
@@ -1478,6 +1498,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantPurchaseSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantLegalPages
    */
   getTenantLegalPages: {
@@ -1486,6 +1508,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantLegalPagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages
    */
   updateTenantLegalPages: {
@@ -1494,6 +1518,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantLegalPagesResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation
    */
   getTenantMobileAppAssociation: {
@@ -1502,6 +1528,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantMobileAppAssociationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation
    */
   updateTenantMobileAppAssociation: {
@@ -1510,6 +1538,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantMobileAppAssociationResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantSignInSettings
    */
   getTenantSignInSettings: {
@@ -1518,6 +1548,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantSignInSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings
    */
   updateTenantSignInSettings: {
@@ -1526,6 +1558,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantSignInSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings
    */
   getTenantRetentionSettings: {
@@ -1534,6 +1568,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantRetentionSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings
    */
   updateTenantRetentionSettings: {
@@ -1542,6 +1578,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantRetentionSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings
    */
   getTenantCommunityLimitSettings: {
@@ -1550,6 +1588,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantCommunityLimitSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings
    */
   updateTenantCommunityLimitSettings: {

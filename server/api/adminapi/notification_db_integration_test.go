@@ -112,17 +112,33 @@ func TestDBAdminNotificationsHideOtherTenantAndUserRows(t *testing.T) {
 	}
 }
 
-func TestDBAdminNotificationsRequireTenantAdmin(t *testing.T) {
+// Every member of staff gets a bell, so the least of the three roles reads its
+// own notifications and marks them read.
+func TestDBAdminNotificationsReachATenantAuditor(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "ADMINA000001", "admin@tenant-a.example.com")
-	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "EDITORA00001", "editor@tenant-a.example.com", "Editor", auth.RoleTenantEditor)
-	insertAdminNotification(t, env, admin.Tenant.ID, editor.ID, "episode_published", "episode:editor", `{"episode_id":"editor"}`)
+	auditor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "AUDITORA0001", "auditor@tenant-a.example.com", "Auditor", auth.RoleTenantAuditor)
+	notificationID := insertAdminNotification(t, env, admin.Tenant.ID, auditor.ID, "episode_published", "episode:auditor", `{"episode_id":"auditor"}`)
+	client := env.notificationClient()
 
-	_, err := env.notificationClient().ListNotifications(context.Background(), newAdminDBRequest(admin.as(editor), &publiraadminv1.ListNotificationsRequest{
+	listed, err := client.ListNotifications(context.Background(), newAdminDBRequest(admin.as(auditor), &publiraadminv1.ListNotificationsRequest{
 		Tenant: admin.tenantContext(),
 	}))
-	if connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("ListNotifications as editor code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	if err != nil {
+		t.Fatalf("ListNotifications as an auditor: %v", err)
+	}
+	if got := len(listed.Msg.Notifications); got != 1 || listed.Msg.Notifications[0].Id != notificationID.String() {
+		t.Fatalf("notifications listed to an auditor = %v, want only %s", listed.Msg.Notifications, notificationID)
+	}
+	marked, err := client.MarkNotificationAsRead(context.Background(), newAdminDBRequest(admin.as(auditor), &publiraadminv1.MarkNotificationAsReadRequest{
+		Tenant:         admin.tenantContext(),
+		NotificationId: notificationID.String(),
+	}))
+	if err != nil {
+		t.Fatalf("MarkNotificationAsRead as an auditor: %v", err)
+	}
+	if !marked.Msg.Marked {
+		t.Fatal("MarkNotificationAsRead as an auditor marked nothing")
 	}
 }
 

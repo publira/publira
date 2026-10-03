@@ -27,6 +27,9 @@ func (s *adminServer) ListEpisodeCredits(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListEpisodeCreditsRequest],
 ) (*connect.Response[publiraadminv1.ListEpisodeCreditsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -62,6 +65,9 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReplaceEpisodeCreditsRequest],
 ) (*connect.Response[publiraadminv1.ReplaceEpisodeCreditsResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

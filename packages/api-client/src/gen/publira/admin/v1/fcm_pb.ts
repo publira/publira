@@ -188,6 +188,8 @@ export const DeleteTenantFcmCredentialsResponseSchema: GenMessage<DeleteTenantFc
  */
 export const AdminFcmSettingsService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminFcmSettingsService.GetTenantFcmSettings
    */
   getTenantFcmSettings: {
@@ -196,6 +198,8 @@ export const AdminFcmSettingsService: GenService<{
     output: typeof GetTenantFcmSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminFcmSettingsService.SaveTenantFcmCredentials
    */
   saveTenantFcmCredentials: {
@@ -204,6 +208,8 @@ export const AdminFcmSettingsService: GenService<{
     output: typeof SaveTenantFcmCredentialsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminFcmSettingsService.DeleteTenantFcmCredentials
    */
   deleteTenantFcmCredentials: {

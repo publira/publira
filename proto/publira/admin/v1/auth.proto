@@ -253,10 +253,13 @@ service AdminAuthService {
   rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetTenantConfig(AdminAuthServiceGetTenantConfigRequest) returns (AdminAuthServiceGetTenantConfigResponse) {}
   rpc GetTenantAdminInvitationState(AdminAuthServiceGetTenantAdminInvitationStateRequest) returns (AdminAuthServiceGetTenantAdminInvitationStateResponse) {}
   rpc AcceptTenantAdminInvitation(AdminAuthServiceAcceptTenantAdminInvitationRequest) returns (AdminAuthServiceAcceptTenantAdminInvitationResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
   rpc RequestEmailChange(AdminAuthServiceRequestEmailChangeRequest) returns (AdminAuthServiceRequestEmailChangeResponse) {}
   rpc ConfirmEmailChange(AdminAuthServiceConfirmEmailChangeRequest) returns (AdminAuthServiceConfirmEmailChangeResponse) {}

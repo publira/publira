@@ -127,6 +127,8 @@ export const GetDashboardResponseSchema: GenMessage<GetDashboardResponse> = /*@_
  */
 export const AdminDashboardService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminDashboardService.GetDashboard
    */
   getDashboard: {

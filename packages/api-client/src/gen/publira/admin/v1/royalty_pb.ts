@@ -638,6 +638,8 @@ export const AdminRoyaltyService: GenService<{
   /**
    * Reads the close policy. Tenants that have not selected one read as manual.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig
    */
   getRoyaltyConfig: {
@@ -647,6 +649,8 @@ export const AdminRoyaltyService: GenService<{
   },
   /**
    * Updates the close policy. Automatic closing requires a day from 1 through 28.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig
    */
@@ -659,6 +663,8 @@ export const AdminRoyaltyService: GenService<{
    * Computes a month that is not closed, exactly as closing it now would.
    * failed_precondition for a month already closed, and for a month that has
    * not started yet.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement
    */
@@ -675,6 +681,8 @@ export const AdminRoyaltyService: GenService<{
    * month that is already closed, failed_precondition for a month that is not
    * over yet.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement
    */
   closeRoyaltyStatement: {
@@ -684,6 +692,8 @@ export const AdminRoyaltyService: GenService<{
   },
   /**
    * Lists the closed months, newest first.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements
    */
@@ -696,6 +706,8 @@ export const AdminRoyaltyService: GenService<{
    * Reads a closed month and a page of its lines. not_found for a month that
    * is not closed.
    *
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement
    */
   getRoyaltyStatement: {
@@ -707,6 +719,8 @@ export const AdminRoyaltyService: GenService<{
    * Exports a closed month as CSV, built from the stored lines alone, so the
    * same month exports the same bytes every time. failed_precondition for a
    * month that is not closed; the console previews an open month instead.
+   *
+   * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement
    */

@@ -98,6 +98,9 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UploadSeriesEyeCatchAspectImageRequest],
 ) (*connect.Response[publiraadminv1.UploadSeriesEyeCatchAspectImageResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -266,6 +269,9 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UploadLabelEyeCatchAspectImageRequest],
 ) (*connect.Response[publiraadminv1.UploadLabelEyeCatchAspectImageResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -426,6 +432,9 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UploadGenreEyeCatchAspectImageRequest],
 ) (*connect.Response[publiraadminv1.UploadGenreEyeCatchAspectImageResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

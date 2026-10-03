@@ -42,6 +42,9 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.BulkEditEpisodeCreditsRequest],
 ) (*connect.Response[publiraadminv1.BulkEditEpisodeCreditsResponse], error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err

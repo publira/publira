@@ -254,6 +254,8 @@ export const DeleteTenantLogoResponseSchema: GenMessage<DeleteTenantLogoResponse
  */
 export const TenantThemeService: GenService<{
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.GetTenantTheme
    */
   getTenantTheme: {
@@ -262,6 +264,8 @@ export const TenantThemeService: GenService<{
     output: typeof GetTenantThemeResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.UpsertTenantTheme
    */
   upsertTenantTheme: {
@@ -270,6 +274,8 @@ export const TenantThemeService: GenService<{
     output: typeof UpsertTenantThemeResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.UploadTenantIcon
    */
   uploadTenantIcon: {
@@ -278,6 +284,8 @@ export const TenantThemeService: GenService<{
     output: typeof UploadTenantIconResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.DeleteTenantIcon
    */
   deleteTenantIcon: {
@@ -286,6 +294,8 @@ export const TenantThemeService: GenService<{
     output: typeof DeleteTenantIconResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.UploadTenantLogo
    */
   uploadTenantLogo: {
@@ -294,6 +304,8 @@ export const TenantThemeService: GenService<{
     output: typeof UploadTenantLogoResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantThemeService.DeleteTenantLogo
    */
   deleteTenantLogo: {

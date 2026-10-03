@@ -345,6 +345,8 @@ export const TestEmailRecipientTypeSchema: GenEnum<TestEmailRecipientType> = /*@
  */
 export const AdminEmailSettingsService: GenService<{
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSettings
    */
   getTenantEmailSettings: {
@@ -353,6 +355,8 @@ export const AdminEmailSettingsService: GenService<{
     output: typeof GetTenantEmailSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings
    */
   updateTenantEmailSettings: {
@@ -361,6 +365,8 @@ export const AdminEmailSettingsService: GenService<{
     output: typeof UpdateTenantEmailSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail
    */
   sendTenantSmtpTestEmail: {

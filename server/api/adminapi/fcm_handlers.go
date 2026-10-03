@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/fcmsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func (s *adminServer) fcmStore(ctx context.Context) *fcmsettings.Store {
@@ -43,17 +44,13 @@ func mapFcmSettingsSaveError(err error) error {
 	}
 }
 
-func (s *adminServer) fcmAuditMeta(ctx context.Context, req connect.AnyRequest, tenantPublicID string) (fcmsettings.AuditMeta, error) {
-	sessionCtx, err := s.requireTenantAdmin(ctx)
-	if err != nil {
-		return fcmsettings.AuditMeta{}, err
-	}
+func fcmAuditMeta(sessionCtx rpcmiddleware.SessionContext, req connect.AnyRequest, tenantPublicID string) fcmsettings.AuditMeta {
 	return fcmsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		TargetID:    tenantPublicID,
-	}, nil
+	}
 }
 
 func (s *adminServer) GetTenantFcmSettings(
@@ -81,14 +78,15 @@ func (s *adminServer) SaveTenantFcmCredentials(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.SaveTenantFcmCredentialsRequest],
 ) (*connect.Response[publiraadminv1.SaveTenantFcmCredentialsResponse], error) {
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	audit, err := s.fcmAuditMeta(ctx, req, tenant.PublicID)
-	if err != nil {
-		return nil, err
-	}
+	audit := fcmAuditMeta(sessionCtx, req, tenant.PublicID)
 
 	settings, err := s.fcmStore(ctx).Save(ctx, tenant.ID, req.Msg.ProjectId, req.Msg.ServiceAccountJson, audit)
 	if err != nil {
@@ -106,14 +104,15 @@ func (s *adminServer) DeleteTenantFcmCredentials(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteTenantFcmCredentialsRequest],
 ) (*connect.Response[publiraadminv1.DeleteTenantFcmCredentialsResponse], error) {
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	audit, err := s.fcmAuditMeta(ctx, req, tenant.PublicID)
-	if err != nil {
-		return nil, err
-	}
+	audit := fcmAuditMeta(sessionCtx, req, tenant.PublicID)
 
 	if err := s.fcmStore(ctx).Delete(ctx, tenant.ID, audit); err != nil {
 		return nil, s.internalDBError(ctx, "failed to delete tenant fcm credentials", err, "tenant_id", tenant.ID.String())

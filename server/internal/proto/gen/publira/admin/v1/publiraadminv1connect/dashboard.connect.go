@@ -40,6 +40,7 @@ const (
 
 // AdminDashboardServiceClient is a client for the publira.admin.v1.AdminDashboardService service.
 type AdminDashboardServiceClient interface {
+	// Minimum role: tenant_auditor.
 	GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error)
 }
 
@@ -76,6 +77,7 @@ func (c *adminDashboardServiceClient) GetDashboard(ctx context.Context, req *con
 // AdminDashboardServiceHandler is an implementation of the publira.admin.v1.AdminDashboardService
 // service.
 type AdminDashboardServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error)
 }
 

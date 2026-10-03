@@ -55,11 +55,17 @@ const (
 
 // TenantThemeServiceClient is a client for the publira.admin.v1.TenantThemeService service.
 type TenantThemeServiceClient interface {
+	// Minimum role: tenant_auditor.
 	GetTenantTheme(context.Context, *connect.Request[v1.GetTenantThemeRequest]) (*connect.Response[v1.GetTenantThemeResponse], error)
+	// Minimum role: tenant_admin.
 	UpsertTenantTheme(context.Context, *connect.Request[v1.UpsertTenantThemeRequest]) (*connect.Response[v1.UpsertTenantThemeResponse], error)
+	// Minimum role: tenant_admin.
 	UploadTenantIcon(context.Context, *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantIcon(context.Context, *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error)
+	// Minimum role: tenant_admin.
 	UploadTenantLogo(context.Context, *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantLogo(context.Context, *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error)
 }
 
@@ -156,11 +162,17 @@ func (c *tenantThemeServiceClient) DeleteTenantLogo(ctx context.Context, req *co
 // TenantThemeServiceHandler is an implementation of the publira.admin.v1.TenantThemeService
 // service.
 type TenantThemeServiceHandler interface {
+	// Minimum role: tenant_auditor.
 	GetTenantTheme(context.Context, *connect.Request[v1.GetTenantThemeRequest]) (*connect.Response[v1.GetTenantThemeResponse], error)
+	// Minimum role: tenant_admin.
 	UpsertTenantTheme(context.Context, *connect.Request[v1.UpsertTenantThemeRequest]) (*connect.Response[v1.UpsertTenantThemeResponse], error)
+	// Minimum role: tenant_admin.
 	UploadTenantIcon(context.Context, *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantIcon(context.Context, *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error)
+	// Minimum role: tenant_admin.
 	UploadTenantLogo(context.Context, *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error)
+	// Minimum role: tenant_admin.
 	DeleteTenantLogo(context.Context, *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error)
 }
 

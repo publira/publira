@@ -64,10 +64,16 @@ message DeleteTenantLogoResponse {
 }
 
 service TenantThemeService {
+  // Minimum role: tenant_auditor.
   rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpsertTenantTheme(UpsertTenantThemeRequest) returns (UpsertTenantThemeResponse) {}
+  // Minimum role: tenant_admin.
   rpc UploadTenantIcon(UploadTenantIconRequest) returns (UploadTenantIconResponse) {}
+  // Minimum role: tenant_admin.
   rpc DeleteTenantIcon(DeleteTenantIconRequest) returns (DeleteTenantIconResponse) {}
+  // Minimum role: tenant_admin.
   rpc UploadTenantLogo(UploadTenantLogoRequest) returns (UploadTenantLogoResponse) {}
+  // Minimum role: tenant_admin.
   rpc DeleteTenantLogo(DeleteTenantLogoRequest) returns (DeleteTenantLogoResponse) {}
 }

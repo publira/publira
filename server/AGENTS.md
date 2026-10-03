@@ -57,6 +57,24 @@ A template is therefore two halves added together: the React component under `pa
 
 No lint covers this — nothing can compare a React component against a list of message keys. `TestEmailCopyCoversEveryTemplateInEveryLocale` is what fails when a catalog is missing one of them.
 
+## Every admin RPC names the weakest tenant role it admits
+
+A tenant's console staff hold one of three roles, ranked the way `auth.ResolveTenantRole` ranks them, and every `publira.admin.v1` RPC is placed at one of them as its level: the weakest role it admits, every stronger role included.
+
+| Level | Helper | What is placed there |
+| --- | --- | --- |
+| `tenant_admin` | `requireTenantAdmin` | Members and invitations; every write to a tenant setting, the site settings and the branding included; email, payment, push and sign-in integrations, reads and writes alike; reader accounts and anything that shows their addresses, the contact inbox among them; access tickets; royalties and their exports; the audit log |
+| `tenant_editor` | `requireTenantEditor` | Every write to the catalogue (series, episodes, credits, free windows, creators, labels, genres, creator roles), to pages, and to announcements, and the moderation of comments |
+| `tenant_auditor` | `requireTenantAuditor` | Every read an editor needs for that work, which a tenant_auditor may make too: the catalogue, pages, announcements, comments and their reports, the dashboard and engagement, and the tenant's own settings, which every member of staff may see but only a tenant_admin change |
+
+Place a new RPC by asking these in order. Does it read or write something only a tenant_admin may see — a credential, a reader's account or address, money, the staff list, the audit log — or change how the whole tenant behaves? Then it is `tenant_admin`, whether it reads or writes. Otherwise, does it write anything? Then `tenant_editor`. Otherwise it is `tenant_auditor`. Marking one's own notifications read is the one write at `tenant_auditor`: the bell belongs to the person it rings for, and every member of staff gets one.
+
+The handler calls its level's helper itself, exactly once, rather than through a helper of its own, and the RPC's proto comment ends with the same level as `Minimum role: tenant_<level>.`. `TestEveryAdminRPCRequiresItsLevel` reads both and fails on an RPC that calls none, calls more than one, or disagrees with its proto; `TestDBEveryAdminRPCRefusesTheRolesBelowItsLevel` calls every RPC as each role against a database. `AdminAuthService` RPCs that run before a session exists or act on the caller's own account — signing in, the password, the address, MFA — carry no level and are listed in that test; the ones in it that touch the tenant's data have a level like any other.
+
+`requireTenantAuditor` is also the one helper the web apps' service credential passes. Which procedures that credential may call is decided before any handler, by `serviceProcedures`, and `TestServiceProceduresAreAuditorReads` keeps every one of them a `tenant_auditor` read.
+
+A level gates the RPC, not what is in the answer: an RPC may still leave a field out for a weaker role, the way `GetCreator` answers the reader accounts linked to a creator to a tenant_admin alone.
+
 ## A role variable resolves on its own, and no one else's
 
 Each connection is made with the dedicated PostgreSQL login named for the work it does, read from that role's own `PUBLIRA_*_DB_URL` and falling back to its development URL. `PUBLIRA_DB_URL` is not a link in that chain: it is the migration tooling's connection and the superuser locally, so a process that falls back to it runs with more privilege than the role it was given, in exactly the deployment where the variable was forgotten. Failing to authenticate on a development password is the better outcome, and it is what every server already does.

@@ -73,21 +73,35 @@ const (
 
 // AdminPagesServiceClient is a client for the publira.admin.v1.AdminPagesService service.
 type AdminPagesServiceClient interface {
+	// Minimum role: tenant_editor.
 	CreatePage(context.Context, *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error)
+	// Minimum role: tenant_editor.
 	UpdatePage(context.Context, *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error)
+	// Minimum role: tenant_auditor.
 	ListPages(context.Context, *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetPage(context.Context, *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error)
+	// Minimum role: tenant_editor.
 	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
+	// Minimum role: tenant_auditor.
 	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
+	// Minimum role: tenant_editor.
 	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
 	// Clears the page's published version. The versions themselves are kept, so
 	// the page can go back up without its body being entered again.
+	//
+	// Minimum role: tenant_editor.
 	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
+	// Minimum role: tenant_editor.
 	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
+	// Minimum role: tenant_editor.
 	CreatePageTranslation(context.Context, *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error)
+	// Minimum role: tenant_auditor.
 	ListPageTranslations(context.Context, *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error)
 	// Deletes one translation with its versions. A page's last translation
 	// cannot be deleted (failed_precondition).
+	//
+	// Minimum role: tenant_editor.
 	DeletePageTranslation(context.Context, *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error)
 }
 
@@ -255,21 +269,35 @@ func (c *adminPagesServiceClient) DeletePageTranslation(ctx context.Context, req
 
 // AdminPagesServiceHandler is an implementation of the publira.admin.v1.AdminPagesService service.
 type AdminPagesServiceHandler interface {
+	// Minimum role: tenant_editor.
 	CreatePage(context.Context, *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error)
+	// Minimum role: tenant_editor.
 	UpdatePage(context.Context, *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error)
+	// Minimum role: tenant_auditor.
 	ListPages(context.Context, *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error)
+	// Minimum role: tenant_auditor.
 	GetPage(context.Context, *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error)
+	// Minimum role: tenant_editor.
 	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
+	// Minimum role: tenant_auditor.
 	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
+	// Minimum role: tenant_editor.
 	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
 	// Clears the page's published version. The versions themselves are kept, so
 	// the page can go back up without its body being entered again.
+	//
+	// Minimum role: tenant_editor.
 	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
+	// Minimum role: tenant_editor.
 	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
+	// Minimum role: tenant_editor.
 	CreatePageTranslation(context.Context, *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error)
+	// Minimum role: tenant_auditor.
 	ListPageTranslations(context.Context, *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error)
 	// Deletes one translation with its versions. A page's last translation
 	// cannot be deleted (failed_precondition).
+	//
+	// Minimum role: tenant_editor.
 	DeletePageTranslation(context.Context, *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error)
 }
 
