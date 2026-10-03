@@ -8,16 +8,24 @@ import {
 } from "./auth";
 import { PLATFORM_SESSION_CACHE_TAG } from "./auth-shared";
 
-const { mockCacheTag, mockGetMe, mockLogin, mockLogout, mockResolveSessionId } =
-  vi.hoisted(() => ({
-    mockCacheTag: vi.fn(),
-    mockGetMe: vi.fn(),
-    mockLogin: vi.fn(),
-    mockLogout: vi.fn(),
-    mockResolveSessionId: vi.fn(),
-  }));
+const {
+  mockCacheLife,
+  mockCacheTag,
+  mockGetMe,
+  mockLogin,
+  mockLogout,
+  mockResolveSessionId,
+} = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
+  mockCacheTag: vi.fn(),
+  mockGetMe: vi.fn(),
+  mockLogin: vi.fn(),
+  mockLogout: vi.fn(),
+  mockResolveSessionId: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -130,6 +138,17 @@ describe("getPlatformCurrentOperator", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(PLATFORM_SESSION_CACHE_TAG);
   });
 
+  it("keeps the operator for five minutes", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
+    });
+
+    await getPlatformCurrentOperator();
+    // The stale time is how long a browser keeps a console route before it
+    // asks again whether the session still stands.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+  });
+
   it("returns role from the API unchanged", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "Admin", publicId: "usr_1", role: "super-admin" },
@@ -156,6 +175,13 @@ describe("getPlatformCurrentOperator", () => {
     await expect(getPlatformCurrentOperator()).resolves.toEqual({
       ok: false,
       requiresSignIn: false,
+    });
+    // Not kept, so an operator the API comes to know again is not sent back
+    // to the login screen for the rest of the entry's life.
+    expect(mockCacheLife).toHaveBeenLastCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
     });
   });
 

@@ -10,26 +10,40 @@ import {
 } from "./users";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetEndUser,
+  mockGetPlatformLocale,
   mockGetTenant,
   mockListEndUsers,
   mockListTenants,
-  mockResolveSessionId,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetEndUser: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListEndUsers: vi.fn(),
   mockListTenants: vi.fn(),
-  mockResolveSessionId: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     tenants: {
       getTenant: mockGetTenant,
@@ -40,21 +54,28 @@ vi.mock("./api-client", () => ({
       listEndUsers: mockListEndUsers,
     },
   },
-  buildSessionHeaders: (sessionId: string) => ({
-    headers: { Authorization: `Bearer ${sessionId}` },
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
   }),
-  resolveAccessToken: mockResolveSessionId,
 }));
 
-const sessionHeaders = {
-  headers: { Authorization: "Bearer sess_abc" },
+const serviceHeaders = {
+  headers: { Authorization: "Bearer service-token" },
+};
+
+/** What every test starts from: a confirmed operator reading in English. */
+const resetMocks = () => {
+  vi.resetAllMocks();
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 };
 
 describe("listPlatformEndUsers", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mockResolveSessionId.mockResolvedValue("sess_abc");
-  });
+  beforeEach(resetMocks);
 
   it("returns the ListEndUsers response unchanged without scanning tenants", async () => {
     mockListEndUsers.mockResolvedValueOnce({
@@ -72,9 +93,7 @@ describe("listPlatformEndUsers", () => {
       ],
     });
 
-    await expect(
-      listPlatformEndUsers({ limit: 20, locale: "en" })
-    ).resolves.toEqual({
+    await expect(listPlatformEndUsers({ limit: 20 })).resolves.toEqual({
       nextToken: "",
       ok: true,
       previousToken: "",
@@ -103,7 +122,7 @@ describe("listPlatformEndUsers", () => {
         token: "",
         userIds: [],
       },
-      sessionHeaders
+      serviceHeaders
     );
     expect(mockListTenants).not.toHaveBeenCalled();
   });
@@ -126,7 +145,6 @@ describe("listPlatformEndUsers", () => {
     await expect(
       listPlatformEndUsers({
         limit: 20,
-        locale: "en",
         tenantId: "tenant_a",
       })
     ).resolves.toEqual({
@@ -157,7 +175,7 @@ describe("listPlatformEndUsers", () => {
         token: "",
         userIds: [],
       },
-      sessionHeaders
+      serviceHeaders
     );
     expect(mockListTenants).not.toHaveBeenCalled();
   });
@@ -178,7 +196,7 @@ describe("listPlatformEndUsers", () => {
     });
 
     await expect(
-      listPlatformEndUsers({ limit: 10, locale: "en", token: "page-2" })
+      listPlatformEndUsers({ limit: 10, token: "page-2" })
     ).resolves.toMatchObject({
       ok: true,
       users: [{ publicId: "USER000002" }],
@@ -194,21 +212,73 @@ describe("listPlatformEndUsers", () => {
         token: "page-2",
         userIds: [],
       },
-      sessionHeaders
+      serviceHeaders
     );
+  });
+
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
+
+    await expect(listPlatformEndUsers()).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockListEndUsers).not.toHaveBeenCalled();
+  });
+});
+
+describe("getPlatformEndUser", () => {
+  beforeEach(resetMocks);
+
+  it("reads the end user with the service credential", async () => {
+    mockGetEndUser.mockResolvedValueOnce({
+      user: {
+        createdAt: "2026-03-02T00:00:00Z",
+        email: "alice@example.com",
+        name: "Alice",
+        publicId: "USER000001",
+        status: "active",
+        tenantIds: ["tenant_a"],
+        tenantName: "Tenant A",
+      },
+    });
+
+    await expect(getPlatformEndUser(" USER000001 ")).resolves.toMatchObject({
+      ok: true,
+      user: { publicId: "USER000001" },
+    });
+    expect(mockGetEndUser).toHaveBeenCalledWith(
+      { publicId: "USER000001" },
+      serviceHeaders
+    );
+  });
+
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
+
+    await expect(getPlatformEndUser("USER000001")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockGetEndUser).not.toHaveBeenCalled();
+  });
+
+  it("returns a failure as a value instead of throwing inside the cache scope", async () => {
+    mockGetEndUser.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPlatformEndUser("USER000001")).resolves.toMatchObject({
+      ok: false,
+    });
   });
 });
 
 describe("searchPlatformTenantFilterOptions", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mockResolveSessionId.mockResolvedValue("sess_abc");
-  });
+  beforeEach(resetMocks);
 
   it("does not call RPC for an empty search query", async () => {
-    await expect(
-      searchPlatformTenantFilterOptions("   ", "en")
-    ).resolves.toEqual({
+    await expect(searchPlatformTenantFilterOptions("   ")).resolves.toEqual({
       hasMore: false,
       ok: true,
       tenants: [],
@@ -227,9 +297,7 @@ describe("searchPlatformTenantFilterOptions", () => {
       ],
     });
 
-    await expect(
-      searchPlatformTenantFilterOptions("Tenant", "en")
-    ).resolves.toEqual({
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
       hasMore: true,
       ok: true,
       tenants: [
@@ -246,7 +314,7 @@ describe("searchPlatformTenantFilterOptions", () => {
         status: "",
         token: "",
       },
-      sessionHeaders
+      serviceHeaders
     );
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
@@ -264,7 +332,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl", "en")
+      searchPlatformTenantFilterOptions("abcdefghijkl")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -277,7 +345,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     expect(mockListTenants).toHaveBeenCalledTimes(1);
     expect(mockGetTenant).toHaveBeenCalledWith(
       { publicId: "abcdefghijkl" },
-      sessionHeaders
+      serviceHeaders
     );
   });
 
@@ -291,7 +359,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl", "en")
+      searchPlatformTenantFilterOptions("abcdefghijkl")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -309,7 +377,7 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl", "en")
+      searchPlatformTenantFilterOptions("abcdefghijkl")
     ).resolves.toEqual({
       hasMore: false,
       ok: true,
@@ -317,35 +385,16 @@ describe("searchPlatformTenantFilterOptions", () => {
     });
   });
 
-  it("returns an error without calling RPC when there is no session", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(
-      searchPlatformTenantFilterOptions("Tenant", "en")
-    ).resolves.toEqual({
-      hasMore: false,
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-      tenants: [],
-    });
-
+    await expect(searchPlatformTenantFilterOptions("Tenant")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockListTenants).not.toHaveBeenCalled();
     expect(mockGetTenant).not.toHaveBeenCalled();
-  });
-
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
-
-    await expect(
-      searchPlatformTenantFilterOptions("Tenant", "ja")
-    ).resolves.toEqual({
-      hasMore: false,
-      message: "セッションが無効です。再ログインしてください。",
-      ok: false,
-      requiresSignIn: true,
-      tenants: [],
-    });
   });
 
   it("does not return candidates when ListTenants is rejected", async () => {
@@ -353,14 +402,11 @@ describe("searchPlatformTenantFilterOptions", () => {
       new ConnectError("permission denied", Code.PermissionDenied)
     );
 
-    await expect(
-      searchPlatformTenantFilterOptions("Tenant", "en")
-    ).resolves.toEqual({
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
       hasMore: false,
       message:
         "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
-      requiresSignIn: false,
       tenants: [],
     });
   });
@@ -375,17 +421,16 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl", "en")
+      searchPlatformTenantFilterOptions("abcdefghijkl")
     ).resolves.toEqual({
       hasMore: false,
       message: "Could not connect to the server. Please try again later.",
       ok: false,
-      requiresSignIn: false,
       tenants: [],
     });
   });
 
-  it("rethrows unclassified GetTenant errors", async () => {
+  it("returns an unclassified GetTenant failure as a value instead of throwing inside the cache scope", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],
@@ -395,34 +440,34 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
 
     await expect(
-      searchPlatformTenantFilterOptions("abcdefghijkl", "en")
-    ).rejects.toMatchObject({ code: Code.Internal });
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toMatchObject({ ok: false, tenants: [] });
   });
 });
 
 describe("end-user cache tags", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mockResolveSessionId.mockResolvedValue("sess_abc");
-  });
+  beforeEach(resetMocks);
 
   it("files the end-user list and an end user's detail under the end-users tag", async () => {
     mockListEndUsers.mockResolvedValueOnce({ users: [] });
     mockGetEndUser.mockResolvedValueOnce({ user: undefined });
 
-    await listPlatformEndUsers({ locale: "en" });
-    await getPlatformEndUser("USER00000001", "en");
+    await listPlatformEndUsers();
+    await getPlatformEndUser("USER00000001");
 
     expect(platformEndUsersCacheTag).toBe("platform:users");
     expect(mockCacheTag).toHaveBeenCalledTimes(2);
     expect(mockCacheTag).toHaveBeenNthCalledWith(1, platformEndUsersCacheTag);
     expect(mockCacheTag).toHaveBeenNthCalledWith(2, platformEndUsersCacheTag);
+    // Refreshed after a minute: end users sign up and leave through the
+    // storefront, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("files the tenant filter candidates under the tenants tag, since they are tenant names", async () => {
     mockListTenants.mockResolvedValueOnce({ nextToken: "", tenants: [] });
 
-    await searchPlatformTenantFilterOptions("Maple", "en");
+    await searchPlatformTenantFilterOptions("Maple");
 
     expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
   });

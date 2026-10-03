@@ -10,18 +10,19 @@ import {
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export {
@@ -73,12 +74,6 @@ export type PlatformSmtpSettingsResult =
       fieldErrors?: { username?: string };
       message: string;
       ok: false;
-      /**
-       * The API rejected the session while reading the settings — the page
-       * raises the login redirect. The update path throws instead, so only
-       * {@link getPlatformEmailSettings} ever sets it.
-       */
-      requiresSignIn?: boolean;
     };
 
 export type PlatformSmtpTestResult =
@@ -159,47 +154,43 @@ const toPlatformSmtpSettings = (
 /** The tag the SMTP settings read is filed under, and their save clears. */
 export const platformEmailSettingsCacheTag = "platform:email-settings";
 
-const getPlatformEmailSettingsForSession = async (
-  locale: Locale,
-  sessionId: string
+const getPlatformEmailSettingsForLocale = async (
+  locale: Locale
 ): Promise<PlatformSmtpSettingsResult> => {
-  "use cache: private";
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformEmailSettingsCacheTag);
-
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.emailSettings.getPlatformEmailSettings(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
     return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the settings come back as
+    // soon as the API does.
     dropFailedCacheEntry();
     return {
       message: await parseErrorMessage(error, locale),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getPlatformEmailSettings = async (
-  locale: Locale
-): Promise<PlatformSmtpSettingsResult> =>
-  getPlatformEmailSettingsForSession(locale, await resolveAccessToken());
+/**
+ * The SMTP settings, for their screen and the setup checklist. The password
+ * itself never leaves the API: the answer says only whether one is set.
+ *
+ * Read with the service credential: the settings are the same for every
+ * operator, so one entry serves all of them.
+ */
+export const getPlatformEmailSettings =
+  async (): Promise<PlatformSmtpSettingsResult> => {
+    await verifyPlatformSession();
+    return getPlatformEmailSettingsForLocale(await getPlatformLocale());
+  };
 
 export const updatePlatformEmailSettings = async (
   input: UpdatePlatformSmtpSettingsInput

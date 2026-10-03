@@ -9,17 +9,18 @@ import type {
 } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { PlatformStorageSettings } from "./storage-settings-shared";
@@ -40,7 +41,7 @@ export interface PlatformStorageInput {
 
 export type GetPlatformStorageSettingsResult =
   | { ok: true; settings: PlatformStorageSettings }
-  | { message: string; ok: false; requiresSignIn: boolean };
+  | { message: string; ok: false };
 
 export type UpdatePlatformStorageSettingsResult =
   | { ok: true; settings: PlatformStorageSettings }
@@ -212,33 +213,23 @@ const writeFailure = async (
   };
 };
 
-const getPlatformStorageSettingsForSession = async (
-  locale: Locale,
-  sessionId: string
+const getPlatformStorageSettingsForLocale = async (
+  locale: Locale
 ): Promise<GetPlatformStorageSettingsResult> => {
-  "use cache: private";
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformStorageSettingsCacheTag);
-
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.storageSettings.getPlatformStorageSettings(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
     return { ok: true, settings: toPlatformStorageSettings(response.settings) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it
-    // after the API recovers.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the settings come back as
+    // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
     return {
@@ -246,15 +237,22 @@ const getPlatformStorageSettingsForSession = async (
         locale,
       }),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getPlatformStorageSettings = async (
-  locale: Locale
-): Promise<GetPlatformStorageSettingsResult> =>
-  getPlatformStorageSettingsForSession(locale, await resolveAccessToken());
+/**
+ * The storage settings, for their screen and the setup checklist. The secret
+ * access key never leaves the API: the answer says only whether one is set.
+ *
+ * Read with the service credential: the settings are the same for every
+ * operator, so one entry serves all of them.
+ */
+export const getPlatformStorageSettings =
+  async (): Promise<GetPlatformStorageSettingsResult> => {
+    await verifyPlatformSession();
+    return getPlatformStorageSettingsForLocale(await getPlatformLocale());
+  };
 
 /**
  * Save the storage settings. `expectedRevision` is the revision the screen was

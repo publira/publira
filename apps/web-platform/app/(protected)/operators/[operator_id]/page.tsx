@@ -9,6 +9,13 @@ import {
   ConfirmDialogTitle,
 } from "@publira/ui-components/dialog";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import {
+  SectionError,
+  SectionErrorActions,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
@@ -41,8 +48,7 @@ import {
   PlatformSectionHeading,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import { getPlatformCurrentOperator } from "#lib/auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { verifyPlatformSession } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -95,6 +101,32 @@ const OperatorDetailSkeleton = () => (
   </PlatformPageContent>
 );
 
+/**
+ * A read that failed is not an operator that is missing. Collapsing the two
+ * into `notFound()` would tell the operator to stop looking for an account
+ * that is still there, so an outage keeps the console's own wording and a way
+ * back.
+ */
+const OperatorLoadError = ({ message }: { message: string }) => (
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="platform.operators.load_one_failed" />
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+    <SectionErrorActions>
+      <LinkButton render={<Link href="/operators" />} variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="platform.common.back_to_list" />
+        </Suspense>
+      </LinkButton>
+    </SectionErrorActions>
+  </SectionError>
+);
+
 const OperatorDetailContent = async ({
   params,
 }: Pick<OperatorDetailPageProps, "params">) => {
@@ -108,26 +140,24 @@ const OperatorDetailContent = async ({
   const { operator_id: operatorPublicId } = parsedParams;
 
   const locale = await getPlatformLocale();
-  const [t, operator, currentOperatorResult, timeZone] = await Promise.all([
+  const [t, operatorResult, currentOperator, timeZone] = await Promise.all([
     getMessagesFor(locale),
-    getPlatformOperator(operatorPublicId, locale),
-    getPlatformCurrentOperator(),
+    getPlatformOperator(operatorPublicId),
+    verifyPlatformSession(),
     getPlatformDisplayTimeZone(),
   ]);
 
-  // Before `notFound()`: a rejected session reads every record as missing, and
-  // a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(currentOperatorResult);
+  if (!operatorResult.ok) {
+    return <OperatorLoadError message={operatorResult.message} />;
+  }
 
+  const { operator } = operatorResult;
   if (!operator) {
     notFound();
   }
 
-  const currentOperator = currentOperatorResult.ok
-    ? currentOperatorResult.operator
-    : null;
-  const isSelf = currentOperator?.publicId === operator.publicId;
-  const isSuperAdmin = isPlatformSuperAdmin(currentOperator?.role);
+  const isSelf = currentOperator.publicId === operator.publicId;
+  const isSuperAdmin = isPlatformSuperAdmin(currentOperator.role);
   const isDeactivated = operator.status === "inactive";
   const canModify = isSuperAdmin && !isSelf && !isDeactivated;
   const canSuspend = isSuperAdmin && !isSelf && operator.status === "active";

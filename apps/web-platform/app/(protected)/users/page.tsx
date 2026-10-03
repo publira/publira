@@ -41,7 +41,6 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -477,10 +476,10 @@ const UsersContent = async ({
   const [t, tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
     getMessagesFor(locale),
     filters.tenantQuery
-      ? searchPlatformTenantFilterOptions(filters.tenantQuery, locale)
+      ? searchPlatformTenantFilterOptions(filters.tenantQuery)
       : Promise.resolve(emptyTenantSearch),
     filters.tenantId
-      ? getPlatformTenant(filters.tenantId, locale)
+      ? getPlatformTenant(filters.tenantId)
       : Promise.resolve(emptySelectedTenant),
     getPlatformDisplayTimeZone(),
   ]);
@@ -519,17 +518,10 @@ const UsersContent = async ({
         createdAfter: createdRangeStart(filters.createdFrom, timeZone),
         createdBefore: createdRangeEnd(filters.createdTo, timeZone),
         limit: filters.limit,
-        locale,
         status: filters.status || undefined,
         tenantId: tenantId || undefined,
         token: filters.token || undefined,
       });
-
-  await redirectToLoginIfSessionRejected(
-    tenantSearch,
-    selectedTenantResult,
-    result
-  );
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(

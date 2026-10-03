@@ -114,6 +114,15 @@ export const WEB_PLATFORM_BASE_URL = envUrl(
   withHostname(WEB_HOST_BASE_URL, "platform.localhost")
 );
 
+/**
+ * web-platform as a Node-side request reaches it, for the cache tags
+ * `src/revalidate.ts` posts — the same address `publira server` revalidates.
+ */
+export const WEB_PLATFORM_INTERNAL_URL = envUrl(
+  "PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
+  WEB_PLATFORM_BASE_URL
+);
+
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */
 export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_HOST_OTHER_TENANT_BASE_URL",

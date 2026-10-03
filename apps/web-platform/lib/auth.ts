@@ -4,7 +4,7 @@ import {
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -74,10 +74,20 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
   }
 };
 
+/**
+ * `GetMe` for one session.
+ *
+ * Every console route awaits it — the chrome names the operator, and
+ * `verifyPlatformSession` gates each shared read on it — so its `stale` is how
+ * long a browser keeps a route before asking again whether the session still
+ * stands. Five minutes is the shortest that still lets the routes keep their
+ * prefetched App Shell.
+ */
 const getPlatformCurrentOperatorForSession = async (
   sid: string
 ): Promise<GetPlatformCurrentOperatorResult> => {
   "use cache: private";
+  cacheLife("minutes");
   cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
   if (!sid) {
@@ -88,6 +98,7 @@ const getPlatformCurrentOperatorForSession = async (
     const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
     const { user } = response;
     if (!user) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: false };
     }
     return {

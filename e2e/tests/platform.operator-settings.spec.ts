@@ -8,6 +8,11 @@ import {
   signInAsPlatformOperator,
 } from "../src/platform";
 import {
+  platformEmailSettingsTag,
+  platformOperatorsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
+import {
   PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL,
   PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL,
   PLATFORM_OPERATOR_SETTINGS_OPERATOR,
@@ -59,6 +64,47 @@ const smtpReplyTo = (): string =>
     FROM platform_smtp_config
     WHERE singleton;
   `);
+
+const smtpRevision = (): string =>
+  querySql(`
+    SELECT revision
+    FROM platform_smtp_config
+    WHERE singleton;
+  `);
+
+/**
+ * Put the suite's scenario back and drop what web-platform holds of it. The
+ * SMTP settings and the operators are shared `"use cache"` reads, and the
+ * scenario writes their rows straight to Postgres.
+ */
+const resetScenario = async (): Promise<void> => {
+  applyScenarioSql(PLATFORM_OPERATOR_SETTINGS_SCENARIO);
+  await revalidatePlatformTags([
+    platformEmailSettingsTag,
+    platformOperatorsTag,
+  ]);
+};
+
+/**
+ * Open the email settings screen until it shows the stored row. Revalidation
+ * serves the stale entry once while the refresh runs behind it, and a form
+ * opened on an older revision is refused on save.
+ */
+const openCurrentEmailSettings = async (page: Page): Promise<void> => {
+  const revision = page.locator('input[name="revision"]');
+  await expect
+    .poll(
+      async () => {
+        await page.goto(platformUrl("/services/email"));
+        return await revision.inputValue();
+      },
+      {
+        message: "/services/email never caught up with the stored row",
+        timeout: 30_000,
+      }
+    )
+    .toBe(smtpRevision());
+};
 
 const emailChangeTokenCount = (newEmail?: string): string => {
   const emailFilter =
@@ -131,7 +177,7 @@ test.describe("web-platform operator settings", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeAll(async () => {
-    applyScenarioSql(PLATFORM_OPERATOR_SETTINGS_SCENARIO);
+    await resetScenario();
     await Promise.all([
       clearMessagesTo(PLATFORM_OPERATOR_SETTINGS_OPERATOR.email),
       clearMessagesTo(PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL),
@@ -139,8 +185,8 @@ test.describe("web-platform operator settings", () => {
     ]);
   });
 
-  test.afterAll(() => {
-    applyScenarioSql(PLATFORM_OPERATOR_SETTINGS_SCENARIO);
+  test.afterAll(async () => {
+    await resetScenario();
   });
 
   for (const settingsPath of SETTINGS_PATHS) {
@@ -296,6 +342,7 @@ test.describe("web-platform operator settings", () => {
       },
       "/services/email"
     );
+    await openCurrentEmailSettings(page);
 
     await expect(
       page.getByRole("heading", { level: 1, name: "Email delivery" })

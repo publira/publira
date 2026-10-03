@@ -8,6 +8,7 @@ import {
   switchConsoleLocale,
 } from "../src/locale";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import { platformSettingsTag, revalidatePlatformTags } from "../src/revalidate";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const platformUrl = (pathname: string): string =>
@@ -61,10 +62,13 @@ const expectConsoleName = async (page: Page, name: string): Promise<void> => {
 test.describe.configure({ mode: "serial" });
 
 test.describe("web-platform display language", () => {
-  test.afterAll(() => {
+  test.afterAll(async () => {
     runSql(
       "UPDATE platform_config SET default_locale = 'en', updated_at = NOW() WHERE singleton;"
     );
+    // The General settings are a shared `"use cache"` read, which a write
+    // straight to Postgres does not clear.
+    await revalidatePlatformTags([platformSettingsTag]);
   });
 
   test("the header switcher stores the choice and re-renders the console in it", async ({

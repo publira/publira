@@ -3,6 +3,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { resolveAccessToken } from "./api-client";
+import { getPlatformCurrentOperator } from "./auth";
+import type { PlatformCurrentOperator } from "./auth";
 import {
   buildLoginPath,
   isUnauthenticatedError,
@@ -72,6 +74,29 @@ export const redirectToLoginIfSessionRejected = async (
     await redirectToLogin();
   }
 };
+
+/**
+ * The signed-in operator, or the redirect to `/login`.
+ *
+ * Every read the console makes with the service credential awaits this before
+ * its cached body: that credential answers whoever asks, so the read itself is
+ * what makes sure an operator is looking — a page cannot render the answer
+ * unchecked, and neither can a Server Action. `GetMe` answers for this session
+ * alone, so it stays private, and its own `stale` is what lets a session
+ * revoked elsewhere be noticed on a later navigation.
+ *
+ * A `GetMe` that names nobody goes to `/login` too, as the console chrome
+ * already sends it.
+ */
+export const verifyPlatformSession =
+  async (): Promise<PlatformCurrentOperator> => {
+    const result = await getPlatformCurrentOperator();
+    if (!result.ok) {
+      await redirectToLoginIfSessionRejected(result);
+      redirect("/login");
+    }
+    return result.operator;
+  };
 
 /**
  * Resolve the session for work that must not run without one.

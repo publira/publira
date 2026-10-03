@@ -10,17 +10,18 @@ import type {
 } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { PlatformMessageAccessor } from "./messages";
 
@@ -50,7 +51,6 @@ export interface PlatformTenantSummary {
 
 export interface ListPlatformTenantsInput {
   limit?: number;
-  locale: Locale;
   name?: string;
   status?: string;
   token?: string;
@@ -72,13 +72,10 @@ export interface PlatformTenantDetail {
  *
  * `tenant: null` is the missing / invisible record the caller turns into
  * `notFound()`; `ok: false` is a read that failed, which a 404 would misreport.
- * A rejected session used to leave here as a throw, and a `"use cache"` fill
- * that throws fails the whole request (`apps/AGENTS.md`), so it now travels as
- * `requiresSignIn` and the page raises the redirect outside the cache scope.
  */
 export type GetPlatformTenantResult =
   | { ok: true; tenant: PlatformTenantDetail | null }
-  | { message: string; ok: false; requiresSignIn: boolean };
+  | { message: string; ok: false };
 
 export interface PlatformTenantMemberSummary {
   createdAt: string;
@@ -101,7 +98,6 @@ export interface PlatformTenantAdminInvitation {
 
 export interface ListPlatformTenantAdminInvitationsInput {
   limit?: number;
-  locale: Locale;
   /** The tenant's internal ID. */
   tenantId: string;
   token?: string;
@@ -120,8 +116,6 @@ export type ListPlatformTenantAdminInvitationsResult =
       nextToken: string;
       ok: false;
       previousToken: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
     };
 
 export interface CreatePlatformTenantInput {
@@ -154,8 +148,6 @@ export type ListPlatformTenantsResult =
       nextToken: string;
       ok: false;
       previousToken: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
       tenants: PlatformTenantSummary[];
     };
 
@@ -170,35 +162,26 @@ export const platformTenantsCacheTag = "platform:tenants";
 export const platformTenantCacheTag = (tenantId: string): string =>
   `platform:tenants:${tenantId}`;
 
-const listPlatformTenantsForSession = async (
-  input: ListPlatformTenantsInput,
-  sid: string
-): Promise<ListPlatformTenantsResult> => {
-  "use cache: private";
-  cacheTag(platformTenantsCacheTag);
+/** What {@link listPlatformTenantsForLocale} is keyed on besides the locale. */
+interface ListPlatformTenantsQuery {
+  limit: number;
+  name: string;
+  status: string;
+  token: string;
+}
 
-  if (!sid) {
-    dropFailedCacheEntry();
-    const { t } = await loadTenantCopy(input.locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-      tenants: [],
-    };
-  }
+const listPlatformTenantsForLocale = async (
+  locale: Locale,
+  query: ListPlatformTenantsQuery
+): Promise<ListPlatformTenantsResult> => {
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
+  cacheTag(platformTenantsCacheTag);
 
   try {
     const response = await apiClient.tenants.listTenants(
-      {
-        limit: input.limit ?? 20,
-        name: input.name ?? "",
-        status: input.status ?? "",
-        token: input.token ?? "",
-      },
-      buildSessionHeaders(sid)
+      query,
+      withServiceHeaders()
     );
     return {
       nextToken: response.nextToken ?? "",
@@ -214,12 +197,11 @@ const listPlatformTenantsForSession = async (
       })),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the list comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
-    const { locale, t } = await loadTenantCopy(input.locale);
+    const { t } = await loadTenantCopy(locale);
     return {
       message: rpcErrorMessage(error, t("platform.tenants.list_failed"), {
         locale,
@@ -227,16 +209,28 @@ const listPlatformTenantsForSession = async (
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
     };
   }
 };
 
+/**
+ * One page of the platform's tenants, filtered as the tenant list asks.
+ *
+ * Read with the service credential: the list is the same for every operator,
+ * so one entry per filter serves all of them.
+ */
 export const listPlatformTenants = async (
-  input: ListPlatformTenantsInput
-): Promise<ListPlatformTenantsResult> =>
-  listPlatformTenantsForSession(input, await resolveAccessToken());
+  input: ListPlatformTenantsInput = {}
+): Promise<ListPlatformTenantsResult> => {
+  await verifyPlatformSession();
+  return listPlatformTenantsForLocale(await getPlatformLocale(), {
+    limit: input.limit ?? 20,
+    name: input.name ?? "",
+    status: input.status ?? "",
+    token: input.token ?? "",
+  });
+};
 
 /**
  * The generated `Tenant` fields {@link mapTenant} reads. Naming them against
@@ -265,54 +259,39 @@ const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
   };
 };
 
-const getPlatformTenantForSession = async (
-  publicId: string,
+const getPlatformTenantForLocale = async (
   locale: Locale,
-  sid: string
+  publicId: string
 ): Promise<GetPlatformTenantResult> => {
-  "use cache: private";
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag);
-
-  if (!sid) {
-    const { t } = await loadTenantCopy(locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
-  if (!publicId.trim()) {
-    return { ok: true, tenant: null };
-  }
 
   try {
     const response = await apiClient.tenants.getTenant(
       { publicId },
-      buildSessionHeaders(sid)
+      withServiceHeaders()
     );
     if (response.tenant) {
       cacheTag(platformTenantCacheTag(response.tenant.id));
     }
     return { ok: true, tenant: mapTenant(response.tenant) };
   } catch (error) {
-    // The caller turns `tenant: null` into `notFound()`. A rejected session is
-    // not a missing tenant, so it stays a failure and reaches the
-    // re-authentication path instead of showing a 404.
+    // The caller turns `tenant: null` into `notFound()`. Anything else is not
+    // a missing tenant, so it stays a failure instead of showing a 404.
     if (isMissingResourceRpcError(error)) {
       return { ok: true, tenant: null };
     }
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the tenant comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
-    const { locale: resolvedLocale, t } = await loadTenantCopy(locale);
+    const { t } = await loadTenantCopy(locale);
     return {
       message: rpcErrorMessage(error, t("platform.tenants.get_failed"), {
-        locale: resolvedLocale,
+        locale,
       }),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -320,16 +299,24 @@ const getPlatformTenantForSession = async (
 /**
  * Resolves the tenant a URL names by its public ID. Everything else about the
  * tenant is addressed by the internal ID this returns.
+ *
+ * Read with the service credential, like {@link listPlatformTenants}.
  */
 export const getPlatformTenant = async (
-  publicId: string,
-  locale: Locale
-): Promise<GetPlatformTenantResult> =>
-  getPlatformTenantForSession(publicId, locale, await resolveAccessToken());
+  publicId: string
+): Promise<GetPlatformTenantResult> => {
+  await verifyPlatformSession();
+
+  const normalized = publicId.trim();
+  if (!normalized) {
+    return { ok: true, tenant: null };
+  }
+
+  return getPlatformTenantForLocale(await getPlatformLocale(), normalized);
+};
 
 export interface ListPlatformTenantMembersInput {
   limit?: number;
-  locale: Locale;
   /** The tenant's internal ID. */
   tenantId: string;
   token?: string;
@@ -348,39 +335,27 @@ export type ListPlatformTenantMembersResult =
       nextToken: string;
       ok: false;
       previousToken: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
     };
 
-const listPlatformTenantMembersForSession = async (
-  input: ListPlatformTenantMembersInput,
-  sid: string
+/** What a page of a tenant's members or admin invitations is keyed on. */
+interface TenantPageQuery {
+  limit: number;
+  tenantId: string;
+  token: string;
+}
+
+const listPlatformTenantMembersForLocale = async (
+  locale: Locale,
+  query: TenantPageQuery
 ): Promise<ListPlatformTenantMembersResult> => {
-  "use cache: private";
-  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
-
-  const tenantId = input.tenantId.trim();
-  if (!tenantId || !sid) {
-    dropFailedCacheEntry();
-    const { t } = await loadTenantCopy(input.locale);
-    return {
-      members: [],
-      message: t("errors.rpc.unauthenticated"),
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: !sid,
-    };
-  }
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
+  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(query.tenantId));
 
   try {
     const response = await apiClient.tenants.listTenantMembers(
-      {
-        limit: input.limit ?? 20,
-        tenantId,
-        token: input.token ?? "",
-      },
-      buildSessionHeaders(sid)
+      query,
+      withServiceHeaders()
     );
     return {
       members: (response.members ?? []).map((member) => ({
@@ -396,9 +371,11 @@ const listPlatformTenantMembersForSession = async (
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the members come back as
+    // soon as the API does.
     dropFailedCacheEntry();
-    const { locale, t } = await loadTenantCopy(input.locale);
+    const { t } = await loadTenantCopy(locale);
     return {
       members: [],
       message: rpcErrorMessage(
@@ -409,15 +386,26 @@ const listPlatformTenantMembersForSession = async (
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
+/**
+ * One page of a tenant's members.
+ *
+ * Read with the service credential: the list is the same for every operator,
+ * so one entry per page serves all of them.
+ */
 export const listPlatformTenantMembers = async (
   input: ListPlatformTenantMembersInput
-): Promise<ListPlatformTenantMembersResult> =>
-  listPlatformTenantMembersForSession(input, await resolveAccessToken());
+): Promise<ListPlatformTenantMembersResult> => {
+  await verifyPlatformSession();
+  return listPlatformTenantMembersForLocale(await getPlatformLocale(), {
+    limit: input.limit ?? 20,
+    tenantId: input.tenantId.trim(),
+    token: input.token ?? "",
+  });
+};
 
 export const suspendPlatformTenant = async (
   tenantId: string
@@ -609,35 +597,18 @@ const mapInvitation = (
   status: invitation.status,
 });
 
-const listPlatformTenantAdminInvitationsForSession = async (
-  input: ListPlatformTenantAdminInvitationsInput,
-  sid: string
+const listPlatformTenantAdminInvitationsForLocale = async (
+  locale: Locale,
+  query: TenantPageQuery
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
-  "use cache: private";
-  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
-
-  const { locale, t } = await loadTenantCopy(input.locale);
-  const tenantId = input.tenantId.trim();
-  if (!tenantId || !sid) {
-    dropFailedCacheEntry();
-    return {
-      invitations: [],
-      message: t("errors.rpc.unauthenticated"),
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: !sid,
-    };
-  }
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
+  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(query.tenantId));
 
   try {
     const response = await apiClient.tenants.listTenantAdminInvitations(
-      {
-        limit: input.limit ?? 20,
-        tenantId,
-        token: input.token ?? "",
-      },
-      buildSessionHeaders(sid)
+      query,
+      withServiceHeaders()
     );
     return {
       invitations: (response.invitations ?? []).map((invitation) =>
@@ -648,11 +619,11 @@ const listPlatformTenantAdminInvitationsForSession = async (
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the invitations come back as
+    // soon as the API does.
     dropFailedCacheEntry();
+    const { t } = await loadTenantCopy(locale);
     return {
       invitations: [],
       message: rpcErrorMessage(
@@ -663,18 +634,27 @@ const listPlatformTenantAdminInvitationsForSession = async (
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
+/**
+ * One page of a tenant's admin invitations, read with the service credential
+ * like {@link listPlatformTenantMembers}.
+ */
 export const listPlatformTenantAdminInvitations = async (
   input: ListPlatformTenantAdminInvitationsInput
-): Promise<ListPlatformTenantAdminInvitationsResult> =>
-  listPlatformTenantAdminInvitationsForSession(
-    input,
-    await resolveAccessToken()
+): Promise<ListPlatformTenantAdminInvitationsResult> => {
+  await verifyPlatformSession();
+  return listPlatformTenantAdminInvitationsForLocale(
+    await getPlatformLocale(),
+    {
+      limit: input.limit ?? 20,
+      tenantId: input.tenantId.trim(),
+      token: input.token ?? "",
+    }
   );
+};
 
 export const createPlatformTenantAdminInvitation = async (
   tenantId: string,

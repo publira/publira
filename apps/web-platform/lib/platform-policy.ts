@@ -9,17 +9,18 @@ import type {
 } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export interface MinuteDay {
@@ -69,7 +70,7 @@ export interface PlatformRetentionDefaults {
  */
 export type GetPlatformSettingsRowResult<T> =
   | { ok: true; revision: string; values: T }
-  | { message: string; ok: false; requiresSignIn: boolean };
+  | { message: string; ok: false };
 
 export type SavePlatformSettingsRowResult =
   | { ok: true }
@@ -156,10 +157,15 @@ export const toPlatformRetentionDefaults = (
   withdrawnCommentDays: periods?.withdrawnCommentDays ?? 0,
 });
 
+/**
+ * A failed read, as a value: a `"use cache"` scope cannot rethrow, because the
+ * fill would fail the whole request. The entry is dropped instead, so the
+ * screen comes back as soon as the API does.
+ */
 const readFailure = async (
   error: unknown,
   locale: Locale
-): Promise<{ message: string; ok: false; requiresSignIn: boolean }> => {
+): Promise<{ message: string; ok: false }> => {
   dropFailedCacheEntry();
   const t = await getMessagesFor(locale);
   return {
@@ -167,38 +173,20 @@ const readFailure = async (
       locale,
     }),
     ok: false,
-    requiresSignIn: isUnauthenticatedError(error),
   };
 };
 
-const noSession = async (
+const getPlatformPolicyForLocale = async (
   locale: Locale
-): Promise<{ message: string; ok: false; requiresSignIn: true }> => {
-  dropFailedCacheEntry();
-  const t = await getMessagesFor(locale);
-  return {
-    message: t("errors.rpc.unauthenticated"),
-    ok: false,
-    requiresSignIn: true,
-  };
-};
-
-const getPlatformPolicyForSession = async (
-  locale: Locale,
-  sessionId: string
 ): Promise<GetPlatformSettingsRowResult<PlatformPolicy>> => {
-  "use cache: private";
-
-  if (!sessionId) {
-    return noSession(locale);
-  }
-
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformPolicyCacheTag);
 
   try {
     const response = await apiClient.policy.getPlatformPolicy(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
     return {
       ok: true,
@@ -206,32 +194,34 @@ const getPlatformPolicyForSession = async (
       values: toPlatformPolicy(response.policy),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     return readFailure(error, locale);
   }
 };
 
-export const getPlatformPolicy = async (
+/**
+ * The platform policy, for the security and community screens.
+ *
+ * Read with the service credential: the policy is the same for every
+ * operator, so one entry serves all of them.
+ */
+export const getPlatformPolicy = async (): Promise<
+  GetPlatformSettingsRowResult<PlatformPolicy>
+> => {
+  await verifyPlatformSession();
+  return getPlatformPolicyForLocale(await getPlatformLocale());
+};
+
+const getPlatformRetentionDefaultsForLocale = async (
   locale: Locale
-): Promise<GetPlatformSettingsRowResult<PlatformPolicy>> =>
-  getPlatformPolicyForSession(locale, await resolveAccessToken());
-
-const getPlatformRetentionDefaultsForSession = async (
-  locale: Locale,
-  sessionId: string
 ): Promise<GetPlatformSettingsRowResult<PlatformRetentionDefaults>> => {
-  "use cache: private";
-
-  if (!sessionId) {
-    return noSession(locale);
-  }
-
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformRetentionDefaultsCacheTag);
 
   try {
     const response = await apiClient.policy.getPlatformRetentionDefaults(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
     return {
       ok: true,
@@ -239,15 +229,20 @@ const getPlatformRetentionDefaultsForSession = async (
       values: toPlatformRetentionDefaults(response.defaults),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     return readFailure(error, locale);
   }
 };
 
-export const getPlatformRetentionDefaults = async (
-  locale: Locale
-): Promise<GetPlatformSettingsRowResult<PlatformRetentionDefaults>> =>
-  getPlatformRetentionDefaultsForSession(locale, await resolveAccessToken());
+/**
+ * The platform's retention defaults, read with the service credential like
+ * {@link getPlatformPolicy}.
+ */
+export const getPlatformRetentionDefaults = async (): Promise<
+  GetPlatformSettingsRowResult<PlatformRetentionDefaults>
+> => {
+  await verifyPlatformSession();
+  return getPlatformRetentionDefaultsForLocale(await getPlatformLocale());
+};
 
 /**
  * The screens mirror every rule the server enforces, so an `invalid-argument`

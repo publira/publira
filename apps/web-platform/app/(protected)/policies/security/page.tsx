@@ -12,7 +12,6 @@ import {
   PlatformPageTitle,
   PlatformSection,
 } from "#components/platform-page";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformPolicy } from "#lib/platform-policy";
@@ -43,9 +42,7 @@ const FormSkeleton = () => (
 );
 
 const Content = async () => {
-  const locale = await getPlatformLocale();
-  const result = await getPlatformPolicy(locale);
-  await redirectToLoginIfSessionRejected(result);
+  const result = await getPlatformPolicy();
   return (
     <SecurityPolicyForm
       loadErrorMessage={result.ok ? undefined : result.message}

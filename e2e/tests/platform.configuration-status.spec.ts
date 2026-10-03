@@ -7,6 +7,11 @@ import {
   snapshotPlatformSettingsRow,
 } from "../src/db";
 import { STACK_STORAGE, signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import {
+  platformStorageSettingsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
+import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const NEEDS_SETUP_SUMMARY =
   "Some settings the platform needs aren't set up yet. Open each item marked Needs setup to finish it.";
@@ -36,7 +41,7 @@ test.describe("web-platform setup status", () => {
   let storageSnapshot = "";
   let webPushSnapshot = "";
 
-  test.beforeAll(() => {
+  test.beforeAll(async () => {
     storageSnapshot = snapshotPlatformSettingsRow("platform_storage_config");
     webPushSnapshot = snapshotPlatformSettingsRow("platform_webpush_config");
     runSql(`
@@ -44,11 +49,15 @@ test.describe("web-platform setup status", () => {
       UPDATE platform_webpush_config
       SET subject = NULL, revision = revision + 1, updated_at = NOW();
     `);
+    // The storage settings are a shared `"use cache"` read, which a write
+    // straight to Postgres does not clear. The Web Push settings are private.
+    await revalidatePlatformTags([platformStorageSettingsTag]);
   });
 
-  test.afterAll(() => {
+  test.afterAll(async () => {
     if (storageSnapshot) {
       restorePlatformSettingsRow("platform_storage_config", storageSnapshot);
+      await revalidatePlatformTags([platformStorageSettingsTag]);
     }
     if (webPushSnapshot) {
       restorePlatformSettingsRow("platform_webpush_config", webPushSnapshot);
@@ -59,12 +68,27 @@ test.describe("web-platform setup status", () => {
     page,
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/");
+    const storage = areaRow(page, "Image storage");
+    // Revalidation serves the stale entry once while the refresh runs behind
+    // it, so the Dashboard is read again until it has the emptied row.
+    await expect
+      .poll(
+        async () => {
+          await page.goto(`${WEB_PLATFORM_BASE_URL}/`);
+          await expect(storage).toBeVisible();
+          return await storage.textContent();
+        },
+        {
+          message: "the Dashboard never caught up with the emptied row",
+          timeout: 30_000,
+        }
+      )
+      .toContain("Needs setup");
     await expect(
       page.getByRole("heading", { level: 2, name: "Setup status" })
     ).toBeVisible();
 
     await expect(page.getByText(NEEDS_SETUP_SUMMARY)).toBeVisible();
-    const storage = areaRow(page, "Image storage");
     await expect(storage).toContainText("Required");
     await expect(storage).toContainText("Needs setup");
     await expect(storage).toContainText(STORAGE_UNCONFIGURED);

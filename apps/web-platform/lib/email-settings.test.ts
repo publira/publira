@@ -16,24 +16,40 @@ import {
 } from "./email-settings";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetPlatformEmailSettings,
+  mockGetPlatformLocale,
   mockResolveSessionId,
   mockSendPlatformSmtpTestEmail,
   mockUpdatePlatformEmailSettings,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformEmailSettings: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockSendPlatformSmtpTestEmail: vi.fn(),
   mockUpdatePlatformEmailSettings: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     emailSettings: {
       getPlatformEmailSettings: mockGetPlatformEmailSettings,
@@ -45,6 +61,9 @@ vi.mock("./api-client", () => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
   resolveAccessToken: mockResolveSessionId,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
 
 const smtpAuthenticationError = () =>
@@ -66,6 +85,12 @@ const smtpAuthenticationError = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 });
 
 describe("getPlatformEmailSettings", () => {
@@ -83,7 +108,7 @@ describe("getPlatformEmailSettings", () => {
       },
     });
 
-    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
+    await expect(getPlatformEmailSettings()).resolves.toEqual({
       ok: true,
       settings: {
         encryption: "starttls",
@@ -96,35 +121,36 @@ describe("getPlatformEmailSettings", () => {
         username: "mailer",
       },
     });
+    expect(mockGetPlatformEmailSettings).toHaveBeenCalledWith(
+      {},
+      { headers: { Authorization: "Bearer service-token" } }
+    );
   });
 
   it("answers revision 0 when nothing has been saved yet", async () => {
     mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: {} });
 
-    const result = await getPlatformEmailSettings("en");
+    const result = await getPlatformEmailSettings();
 
     expect(result.ok && result.settings.revision).toBe("0");
   });
 
-  it("returns a failure without calling the API when sessionId is empty", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(getPlatformEmailSettings("en")).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
-
+    await expect(getPlatformEmailSettings()).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();
   });
 
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("returns a failure as a value instead of throwing inside the cache scope", async () => {
+    mockGetPlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
 
-    await expect(getPlatformEmailSettings("ja")).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+    await expect(getPlatformEmailSettings()).resolves.toMatchObject({
       ok: false,
-      requiresSignIn: true,
     });
   });
 });
@@ -306,9 +332,12 @@ describe("email settings cache tag", () => {
   it("files the SMTP settings under the email-settings tag", async () => {
     mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: undefined });
 
-    await getPlatformEmailSettings("en");
+    await getPlatformEmailSettings();
 
     expect(platformEmailSettingsCacheTag).toBe("platform:email-settings");
     expect(mockCacheTag).toHaveBeenCalledWith(platformEmailSettingsCacheTag);
+    // Refreshed after a minute: `publiractl` writes the row straight to
+    // Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 });

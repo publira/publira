@@ -33,7 +33,6 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -91,12 +90,9 @@ const OperatorsContent = async ({
     getMessagesFor(locale),
     listPlatformOperators({
       limit: pageSize,
-      locale,
       token,
     }),
   ]);
-
-  await redirectToLoginIfSessionRejected(result);
 
   const previousHref = result.previousToken
     ? buildOperatorsPath({ token: result.previousToken })

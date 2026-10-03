@@ -3,24 +3,23 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { negotiateInitialLocale, parseLocale } from "@publira/i18n";
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
-import { headers } from "next/headers";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
-import { readSetupDefaultLocale } from "./setup-status";
 
 export type GetPlatformSettingsResult =
   | { defaultLocale: Locale; defaultTimezone: string; ok: true }
@@ -33,13 +32,6 @@ export type GetPlatformSettingsResult =
       defaultTimezone: string;
       message: string;
       ok: false;
-      /**
-       * The API rejected the session — the settings screen raises the login
-       * redirect. {@link getPlatformDisplayTimeZone} ignores it on purpose: a
-       * date rendered in the fallback zone is not worth interrupting a page
-       * whose own read will report the same rejection.
-       */
-      requiresSignIn: boolean;
     };
 
 export type UpdatePlatformDefaultTimezoneResult =
@@ -56,14 +48,6 @@ export type UpdatePlatformDefaultLocaleResult =
  * the console screens that format their timestamps with it.
  */
 export const platformSettingsCacheTag = "platform:settings";
-
-/**
- * The last locale {@link getPlatformDisplayLocale} resolved, for this server
- * process. `undefined` while it has never resolved one — a freshly started
- * instance, or one that has only ever seen the API down. The same shape
- * `resolveSetupState` uses to keep routing through an outage.
- */
-let lastConfirmedDisplayLocale: Locale | undefined;
 
 /**
  * The server rejects an unknown IANA name with `invalid_argument` and names the
@@ -91,29 +75,17 @@ const parseErrorMessage = (
   });
 };
 
-const getPlatformSettingsForSession = async (
-  locale: Locale,
-  sessionId: string
+const getPlatformSettingsForLocale = async (
+  locale: Locale
 ): Promise<GetPlatformSettingsResult> => {
-  "use cache: private";
-
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(locale);
-    return {
-      defaultTimezone: DEFAULT_TIME_ZONE,
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
-
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformSettingsCacheTag);
 
   try {
     const response = await apiClient.settings.getPlatformSettings(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
 
     const defaultLocale = parseLocale(response.settings?.defaultLocale.trim());
@@ -127,7 +99,6 @@ const getPlatformSettingsForSession = async (
         defaultTimezone: DEFAULT_TIME_ZONE,
         message: t("platform.settings.load_failed"),
         ok: false,
-        requiresSignIn: false,
       };
     }
 
@@ -138,10 +109,10 @@ const getPlatformSettingsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read stands in with the fallback zone, so it must not be
-    // cached: the console would keep formatting timestamps with the stand-in
-    // after the API recovers.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. A failed read stands in with the fallback zone, so the entry is
+    // dropped too: the console would keep formatting timestamps with the
+    // stand-in after the API recovers.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
     return {
@@ -152,57 +123,42 @@ const getPlatformSettingsForSession = async (
         locale
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
-export const getPlatformSettings = async (
-  locale: Locale
-): Promise<GetPlatformSettingsResult> =>
-  getPlatformSettingsForSession(locale, await resolveAccessToken());
+/**
+ * The saved platform settings, for the General settings screen and the setup
+ * checklist.
+ *
+ * Read with the service credential: the settings are the same for every
+ * operator, so one entry serves all of them.
+ */
+export const getPlatformSettings =
+  async (): Promise<GetPlatformSettingsResult> => {
+    await verifyPlatformSession();
+    return getPlatformSettingsForLocale(await getPlatformLocale());
+  };
 
 /**
- * The saved row with no copy attached, so reading it needs no locale.
+ * The saved display zone, with no copy attached so reading it needs no locale.
  *
- * {@link getPlatformSettings} words its failures, which makes it useless to
- * {@link getPlatformDisplayLocale}: resolving the locale would need the locale
- * the copy is in. This read answers the stored values or `null`, and each
- * display helper decides for itself what a missing answer means.
+ * {@link getPlatformSettings} words its failures, which a caller after the
+ * zone alone has no use for: this read answers the stored zone or `null`, and
+ * {@link getPlatformDisplayTimeZone} decides what a missing answer means.
  */
-const readPlatformSettings = async (
-  sessionId: string
-): Promise<{
-  defaultLocale: Locale;
-  defaultTimezone: string;
-} | null> => {
-  "use cache: private";
-
-  if (!sessionId) {
-    dropFailedCacheEntry();
-    return null;
-  }
-
+const readPlatformDefaultTimezone = async (): Promise<string | null> => {
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformSettingsCacheTag);
 
   try {
     const response = await apiClient.settings.getPlatformSettings(
       {},
-      buildSessionHeaders(sessionId)
+      withServiceHeaders()
     );
-    const defaultLocale = parseLocale(response.settings?.defaultLocale.trim());
-    if (defaultLocale === undefined) {
-      dropFailedCacheEntry();
-      return null;
-    }
-
-    return {
-      defaultLocale,
-      defaultTimezone:
-        response.settings?.defaultTimezone.trim() || DEFAULT_TIME_ZONE,
-    };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    return response.settings?.defaultTimezone.trim() || DEFAULT_TIME_ZONE;
+  } catch {
     dropFailedCacheEntry();
     return null;
   }
@@ -214,48 +170,8 @@ const readPlatformSettings = async (
  * the host's zone, so the wall clock never depends on where the container runs.
  */
 export const getPlatformDisplayTimeZone = async (): Promise<string> => {
-  const settings = await readPlatformSettings(await resolveAccessToken());
-  return settings?.defaultTimezone ?? DEFAULT_TIME_ZONE;
-};
-
-/**
- * Display locale for the platform console itself when the operator has not
- * chosen one in the `publira_locale` cookie.
- *
- * The saved setting is the answer, and it stays the answer without a session:
- * `GetPlatformSettings` needs one, but `CheckSetupStatus` does not and reports
- * the same value, so the login screen renders in the language the platform
- * saved rather than one guessed for whoever is looking at it.
- *
- * When neither read answers, {@link lastConfirmedDisplayLocale} carries the
- * console through: an outage does not change what the platform saved, and the
- * operator reading the error screen it produces should not watch the console
- * change language on them.
- *
- * Only a platform that has saved nothing — before setup, or a process that has
- * never had an answer at all — falls through to `Accept-Language`, where the
- * browser's preference is the one thing that says anything about the operator
- * about to choose a language.
- */
-export const getPlatformDisplayLocale = async (): Promise<Locale> => {
-  const settings = await readPlatformSettings(await resolveAccessToken());
-  if (settings) {
-    lastConfirmedDisplayLocale = settings.defaultLocale;
-    return settings.defaultLocale;
-  }
-
-  const saved = await readSetupDefaultLocale();
-  if (saved) {
-    lastConfirmedDisplayLocale = saved;
-    return saved;
-  }
-
-  if (lastConfirmedDisplayLocale) {
-    return lastConfirmedDisplayLocale;
-  }
-
-  const requestHeaders = await headers();
-  return negotiateInitialLocale(requestHeaders.get("accept-language"));
+  await verifyPlatformSession();
+  return (await readPlatformDefaultTimezone()) ?? DEFAULT_TIME_ZONE;
 };
 
 interface StoredPlatformSettings {

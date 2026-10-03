@@ -29,7 +29,6 @@ import {
   PlatformPageTitle,
   PlatformSection,
 } from "#components/platform-page";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -68,7 +67,7 @@ export const generateMetadata = async ({
     return { title: t("platform.tenants.members_heading") };
   }
 
-  const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
+  const tenantResult = await getPlatformTenant(parsedParams.tenant_id);
   const name =
     tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
 
@@ -129,16 +128,12 @@ const TenantMembersContent = async ({
   }
   const { tenant_id: tenantId } = parsedParams;
   const pageFilters = parseMemberInvitationFilters(await searchParams);
-  const locale = await getPlatformLocale();
 
-  const [tenantResult, timeZone] = await Promise.all([
-    getPlatformTenant(tenantId, locale),
+  const [locale, tenantResult, timeZone] = await Promise.all([
+    getPlatformLocale(),
+    getPlatformTenant(tenantId),
     getPlatformDisplayTimeZone(),
   ]);
-
-  // Before both branches below: a rejected session reads the tenant as missing,
-  // and a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(tenantResult);
 
   if (!tenantResult.ok) {
     return <TenantMembersLoadError message={tenantResult.message} />;
@@ -151,18 +146,15 @@ const TenantMembersContent = async ({
 
   const [membersResult, invitationsResult] = await Promise.all([
     listPlatformTenantMembers({
-      locale,
       tenantId: tenant.id,
       token: pageFilters.membersToken || undefined,
     }),
     listPlatformTenantAdminInvitations({
       limit: invitationPageSize,
-      locale,
       tenantId: tenant.id,
       token: pageFilters.token || undefined,
     }),
   ]);
-  await redirectToLoginIfSessionRejected(membersResult, invitationsResult);
 
   const previousHref = invitationsResult.previousToken
     ? buildMemberInvitationsPath(tenant.publicId, {

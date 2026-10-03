@@ -1,5 +1,3 @@
-import type { Locale } from "@publira/i18n";
-
 import { getPlatformEmailSettings } from "./email-settings";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
 import { getPlatformStorageSettings } from "./storage-settings";
@@ -51,23 +49,22 @@ export type RequiredConfigurationState = "needs_setup" | "ready" | "unknown";
 
 /**
  * Whether email and storage, the two settings the platform cannot work
- * without, are both saved. A rejected session is left to the caller's own
- * reads, which raise the login redirect.
+ * without, are both saved. A rejected session never gets this far: each read
+ * raises the login redirect before it answers.
  */
-export const getRequiredConfigurationState = async (
-  locale: Locale
-): Promise<RequiredConfigurationState> => {
-  const [email, storage] = await Promise.all([
-    getPlatformEmailSettings(locale),
-    getPlatformStorageSettings(locale),
-  ]);
+export const getRequiredConfigurationState =
+  async (): Promise<RequiredConfigurationState> => {
+    const [email, storage] = await Promise.all([
+      getPlatformEmailSettings(),
+      getPlatformStorageSettings(),
+    ]);
 
-  if (
-    (email.ok && emailConfigurationState(email.settings) === "needs_setup") ||
-    (storage.ok &&
-      storageConfigurationState(storage.settings) === "needs_setup")
-  ) {
-    return "needs_setup";
-  }
-  return email.ok && storage.ok ? "ready" : "unknown";
-};
+    if (
+      (email.ok && emailConfigurationState(email.settings) === "needs_setup") ||
+      (storage.ok &&
+        storageConfigurationState(storage.settings) === "needs_setup")
+    ) {
+      return "needs_setup";
+    }
+    return email.ok && storage.ok ? "ready" : "unknown";
+  };

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPlatformStorageSettings,
+  platformStorageSettingsCacheTag,
   storageTestFailureMessage,
   testPlatformStorageConnection,
   updatePlatformStorageSettings,
@@ -14,24 +15,40 @@ import {
 } from "./storage-settings-shared";
 
 const {
+  mockCacheLife,
   mockCacheTag,
+  mockGetPlatformLocale,
   mockGetPlatformStorageSettings,
   mockResolveSessionId,
   mockTestPlatformStorageConnection,
   mockUpdatePlatformStorageSettings,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
   mockGetPlatformStorageSettings: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockTestPlatformStorageConnection: vi.fn(),
   mockUpdatePlatformStorageSettings: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     storageSettings: {
       getPlatformStorageSettings: mockGetPlatformStorageSettings,
@@ -43,6 +60,9 @@ vi.mock("./api-client", () => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
   resolveAccessToken: mockResolveSessionId,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
 
 const storedSettings = {
@@ -70,6 +90,12 @@ const input: PlatformStorageInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 });
 
 describe("getPlatformStorageSettings", () => {
@@ -78,7 +104,7 @@ describe("getPlatformStorageSettings", () => {
       settings: storedSettings,
     });
 
-    await expect(getPlatformStorageSettings("en")).resolves.toEqual({
+    await expect(getPlatformStorageSettings()).resolves.toEqual({
       ok: true,
       settings: {
         accessKeyId: "AKIAEXAMPLE",
@@ -91,12 +117,21 @@ describe("getPlatformStorageSettings", () => {
         revision: "3",
       },
     });
+    expect(mockGetPlatformStorageSettings).toHaveBeenCalledWith(
+      {},
+      { headers: { Authorization: "Bearer service-token" } }
+    );
+    expect(platformStorageSettingsCacheTag).toBe("platform:storage-settings");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformStorageSettingsCacheTag);
+    // Refreshed after a minute: `publiractl` writes the row straight to
+    // Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("reads a platform with nothing saved as revision 0", async () => {
     mockGetPlatformStorageSettings.mockResolvedValueOnce({ settings: {} });
 
-    const result = await getPlatformStorageSettings("en");
+    const result = await getPlatformStorageSettings();
 
     expect(result).toMatchObject({
       ok: true,
@@ -104,14 +139,25 @@ describe("getPlatformStorageSettings", () => {
     });
   });
 
-  it("asks for a sign-in without calling the API when there is no session", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(getPlatformStorageSettings("en")).resolves.toMatchObject({
-      ok: false,
-      requiresSignIn: true,
-    });
+    await expect(getPlatformStorageSettings()).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockGetPlatformStorageSettings).not.toHaveBeenCalled();
+  });
+
+  it("returns a failure as a value instead of throwing inside the cache scope", async () => {
+    mockGetPlatformStorageSettings.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPlatformStorageSettings()).resolves.toMatchObject({
+      ok: false,
+    });
   });
 });
 

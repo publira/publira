@@ -1,6 +1,7 @@
 import {
   createForwardedForInterceptor,
   FORWARDED_FOR_HEADER,
+  serviceCallContextValues,
 } from "@publira/api-client/forwarded-for";
 import { createPlatformApiClient } from "@publira/api-client/platform/client";
 import {
@@ -16,6 +17,7 @@ import {
   PLATFORM_SESSION_CACHE_TAG,
   PLATFORM_SESSION_COOKIE_NAME,
 } from "./auth-shared";
+import { resolveWebServiceToken } from "./web-service-token";
 
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
@@ -45,6 +47,37 @@ export const buildClientAddressHeaders = async () => {
 
 export const buildSessionHeaders = (accessToken: string) =>
   buildBearerHeaders(accessToken);
+
+type CallOptions = NonNullable<Parameters<(typeof apiClient.auth)["getMe"]>[1]>;
+
+/**
+ * Call options for a read the console makes as itself: one of the platform
+ * API's platform-level reads, whose answer is the same for every operator and
+ * is therefore cached once for all of them in a `"use cache"` scope. The API
+ * refuses this credential on everything else.
+ *
+ * It says nothing about who is looking, so the exported read awaits
+ * `verifyPlatformSession` before the cached function it signs. The context
+ * value keeps the forwarded-for interceptor from reading `headers()`, which a
+ * shared cache scope may not do.
+ */
+export const withServiceHeaders = (): CallOptions => ({
+  contextValues: serviceCallContextValues(),
+  headers: { Authorization: `Bearer ${resolveWebServiceToken()}` },
+});
+
+/**
+ * The `cacheLife` profile of every read signed with {@link withServiceHeaders}.
+ *
+ * None of what those reads answer changes only through this console's
+ * Actions, which clear its tags: `publiractl` writes the platform's settings,
+ * policies, tenants, and members straight to Postgres, tenant admins change
+ * their members from their own console, end users sign up on the storefront,
+ * and an invitation expires with time. `publira server` revalidates no
+ * platform tag for any of them, so each entry is refetched once it is a minute
+ * old rather than kept for the default quarter of an hour.
+ */
+export const SHARED_READ_CACHE_LIFE = "minutes";
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 

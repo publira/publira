@@ -53,8 +53,7 @@ import {
   PlatformSectionHeading,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import { getPlatformCurrentOperator } from "#lib/auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { verifyPlatformSession } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -138,16 +137,12 @@ const UserDetailContent = async ({
   }
   const { user_id: userPublicId } = parsedParams;
   const locale = await getPlatformLocale();
-  const [t, userResult, currentOperatorResult, timeZone] = await Promise.all([
+  const [t, userResult, currentOperator, timeZone] = await Promise.all([
     getMessagesFor(locale),
-    getPlatformEndUser(userPublicId, locale),
-    getPlatformCurrentOperator(),
+    getPlatformEndUser(userPublicId),
+    verifyPlatformSession(),
     getPlatformDisplayTimeZone(),
   ]);
-
-  // Before both branches below: a rejected session reads every record as
-  // missing, and a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(userResult, currentOperatorResult);
 
   if (!userResult.ok) {
     return (
@@ -163,9 +158,7 @@ const UserDetailContent = async ({
   if (!user) {
     notFound();
   }
-  const canManage = canManageEndUsers(
-    currentOperatorResult.ok ? currentOperatorResult.operator.role : undefined
-  );
+  const canManage = canManageEndUsers(currentOperator.role);
   const canSuspend = canManage && user.status === "active";
   const canUnsuspend = canManage && user.status === "suspended";
   const canDelete = canManage;

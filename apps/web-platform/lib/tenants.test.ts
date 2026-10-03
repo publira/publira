@@ -52,9 +52,11 @@ const createListTenantsResponse = ({
 const {
   mockAddTenantMember,
   mockBuildSessionHeaders,
+  mockCacheLife,
   mockCacheTag,
   mockCreateTenant,
   mockCreateTenantAdminInvitation,
+  mockGetPlatformLocale,
   mockGetTenant,
   mockListTenantAdminInvitations,
   mockListTenantMembers,
@@ -69,13 +71,16 @@ const {
   mockUpdateTenant,
   mockUpdateTenantMemberRole,
   mockCancelTenantAdminInvitation,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockAddTenantMember: vi.fn(),
   mockBuildSessionHeaders: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCancelTenantAdminInvitation: vi.fn(),
   mockCreateTenant: vi.fn(),
   mockCreateTenantAdminInvitation: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListOperators: vi.fn(),
   mockListTenantAdminInvitations: vi.fn(),
@@ -89,13 +94,24 @@ const {
   mockSuspendTenant: vi.fn(),
   mockUpdateTenant: vi.fn(),
   mockUpdateTenantMemberRole: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     operators: {
       listOperators: mockListOperators,
@@ -122,7 +138,12 @@ vi.mock("./api-client", () => ({
   },
   buildSessionHeaders: mockBuildSessionHeaders,
   resolveAccessToken: mockResolveSessionId,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
+
+const serviceHeaders = { headers: { Authorization: "Bearer service-token" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -130,6 +151,12 @@ beforeEach(() => {
   mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }));
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 });
 
 describe("listPlatformTenants", () => {
@@ -152,7 +179,7 @@ describe("listPlatformTenants", () => {
       })
     );
 
-    await expect(listPlatformTenants({ locale: "en" })).resolves.toEqual({
+    await expect(listPlatformTenants()).resolves.toEqual({
       nextToken: "next-page",
       ok: true,
       previousToken: "",
@@ -170,7 +197,7 @@ describe("listPlatformTenants", () => {
 
     expect(mockListTenants).toHaveBeenCalledWith(
       { limit: 20, name: "", status: "", token: "" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
@@ -186,7 +213,6 @@ describe("listPlatformTenants", () => {
     await expect(
       listPlatformTenants({
         limit: 50,
-        locale: "en",
         name: "Test",
         status: "active",
         token: "current-page",
@@ -205,36 +231,17 @@ describe("listPlatformTenants", () => {
         status: "active",
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
-  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(listPlatformTenants({ locale: "en" })).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-      tenants: [],
-    });
-
+    await expect(listPlatformTenants()).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockListTenants).not.toHaveBeenCalled();
-  });
-
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
-
-    await expect(listPlatformTenants({ locale: "ja" })).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-      tenants: [],
-    });
   });
 
   it("returns a shared message for unavailable errors", async () => {
@@ -242,22 +249,29 @@ describe("listPlatformTenants", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformTenants({ locale: "en" })).resolves.toEqual({
+    await expect(listPlatformTenants()).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: false,
       tenants: [],
     });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  it("returns an unclassified failure as a value instead of throwing inside the cache scope", async () => {
     mockListTenants.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformTenants({ locale: "en" })).rejects.toThrow("boom");
+    await expect(listPlatformTenants()).resolves.toMatchObject({
+      ok: false,
+      tenants: [],
+    });
+    expect(mockCacheLife).toHaveBeenLastCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 
@@ -442,7 +456,7 @@ describe("createPlatformTenant", () => {
       },
     });
 
-    await expect(getPlatformTenant("tenant_bluemaple", "en")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_bluemaple")).resolves.toEqual({
       ok: true,
       tenant: {
         adminDomain: "admin.example.com",
@@ -457,7 +471,7 @@ describe("createPlatformTenant", () => {
 
     expect(mockGetTenant).toHaveBeenCalledWith(
       { publicId: "tenant_bluemaple" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
@@ -466,7 +480,7 @@ describe("createPlatformTenant", () => {
       new ConnectError("tenant not found", Code.NotFound)
     );
 
-    await expect(getPlatformTenant("tenant_missing", "en")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_missing")).resolves.toEqual({
       ok: true,
       tenant: null,
     });
@@ -479,24 +493,21 @@ describe("createPlatformTenant", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformTenant("tenant_bluemaple", "en")).resolves.toEqual({
+    await expect(getPlatformTenant("tenant_bluemaple")).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
-      requiresSignIn: false,
     });
   });
 
-  it("requires reauthentication when loading fails for an expired session", async () => {
-    mockGetTenant.mockRejectedValueOnce(
-      new ConnectError("invalid token", Code.Unauthenticated)
+  it("leaves GetTenant uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
     );
 
-    await expect(
-      getPlatformTenant("tenant_bluemaple", "en")
-    ).resolves.toMatchObject({
-      ok: false,
-      requiresSignIn: true,
-    });
+    await expect(getPlatformTenant("tenant_bluemaple")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockGetTenant).not.toHaveBeenCalled();
   });
 
   it("fetches tenant members", async () => {
@@ -513,9 +524,7 @@ describe("createPlatformTenant", () => {
       ],
     });
 
-    await expect(
-      listPlatformTenantMembers({ locale: "en", tenantId })
-    ).resolves.toEqual({
+    await expect(listPlatformTenantMembers({ tenantId })).resolves.toEqual({
       members: [
         {
           createdAt: "2026-03-02T00:00:00Z",
@@ -533,8 +542,19 @@ describe("createPlatformTenant", () => {
 
     expect(mockListTenantMembers).toHaveBeenCalledWith(
       { limit: 20, tenantId, token: "" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
+  });
+
+  it("leaves ListTenantMembers uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
+
+    await expect(listPlatformTenantMembers({ tenantId })).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockListTenantMembers).not.toHaveBeenCalled();
   });
 
   it("calls the suspend or resume API as appropriate", async () => {
@@ -671,10 +691,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      listPlatformTenantAdminInvitations({
-        locale: "en",
-        tenantId,
-      })
+      listPlatformTenantAdminInvitations({ tenantId })
     ).resolves.toEqual({
       invitations: [
         {
@@ -698,7 +715,7 @@ describe("tenant admin invitations", () => {
         tenantId,
         token: "",
       },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
@@ -712,7 +729,6 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         limit: 50,
-        locale: "en",
         tenantId,
         token: "current-page",
       })
@@ -729,27 +745,18 @@ describe("tenant admin invitations", () => {
         tenantId,
         token: "current-page",
       },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
-  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
     await expect(
-      listPlatformTenantAdminInvitations({
-        locale: "en",
-        tenantId,
-      })
-    ).resolves.toEqual({
-      invitations: [],
-      message: "Your session is no longer valid. Please sign in again.",
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-    });
-
+      listPlatformTenantAdminInvitations({ tenantId })
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockListTenantAdminInvitations).not.toHaveBeenCalled();
   });
 
@@ -759,31 +766,24 @@ describe("tenant admin invitations", () => {
     );
 
     await expect(
-      listPlatformTenantAdminInvitations({
-        locale: "en",
-        tenantId,
-      })
+      listPlatformTenantAdminInvitations({ tenantId })
     ).resolves.toEqual({
       invitations: [],
       message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: false,
     });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  it("returns an unclassified failure as a value instead of throwing inside the cache scope", async () => {
     mockListTenantAdminInvitations.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
     await expect(
-      listPlatformTenantAdminInvitations({
-        locale: "en",
-        tenantId,
-      })
-    ).rejects.toThrow("boom");
+      listPlatformTenantAdminInvitations({ tenantId })
+    ).resolves.toMatchObject({ invitations: [], ok: false });
   });
 
   it("creates an invitation", async () => {
@@ -880,9 +880,12 @@ describe("tenant cache tags", () => {
   it("files the tenant list under the tenants tag", async () => {
     mockListTenants.mockResolvedValueOnce(createListTenantsResponse({}));
 
-    await listPlatformTenants({ locale: "en" });
+    await listPlatformTenants();
 
     expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
+    // Refreshed after a minute: `publiractl tenant` writes tenants straight
+    // to Postgres, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("files a tenant's detail under the tenants tag and its internal ID's", async () => {
@@ -890,7 +893,7 @@ describe("tenant cache tags", () => {
       tenant: { id: tenantId, publicId: "tenant_bluemaple" },
     });
 
-    await getPlatformTenant("tenant_bluemaple", "en");
+    await getPlatformTenant("tenant_bluemaple");
 
     expect(mockCacheTag).toHaveBeenCalledWith("platform:tenants");
     expect(mockCacheTag).toHaveBeenCalledWith(`platform:tenants:${tenantId}`);
@@ -899,28 +902,28 @@ describe("tenant cache tags", () => {
   it("files a tenant's members under the tenants tag and the tenant's own", async () => {
     mockListTenantMembers.mockResolvedValueOnce({ members: [] });
 
-    await listPlatformTenantMembers({
-      locale: "en",
-      tenantId,
-    });
+    await listPlatformTenantMembers({ tenantId });
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       platformTenantsCacheTag,
       platformTenantCacheTag(tenantId)
     );
+    // Refreshed after a minute: tenant admins change their members from
+    // their own console, which clears no tag here.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 
   it("files a tenant's invitations under the tenants tag and the tenant's own", async () => {
     mockListTenantAdminInvitations.mockResolvedValueOnce({ invitations: [] });
 
-    await listPlatformTenantAdminInvitations({
-      locale: "en",
-      tenantId,
-    });
+    await listPlatformTenantAdminInvitations({ tenantId });
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       platformTenantsCacheTag,
       platformTenantCacheTag(tenantId)
     );
+    // Refreshed after a minute: an invitee accepts from a link, and a
+    // pending invitation expires with time.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 });

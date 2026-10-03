@@ -7,38 +7,53 @@ import {
 } from "./dashboard";
 
 const {
-  mockBuildSessionHeaders,
+  mockCacheLife,
   mockCacheTag,
   mockGetDashboardSummary,
-  mockResolveSessionId,
+  mockGetPlatformLocale,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
-  mockBuildSessionHeaders: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetDashboardSummary: vi.fn(),
-  mockResolveSessionId: vi.fn(),
+  mockGetPlatformLocale: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     dashboard: {
       getDashboardSummary: mockGetDashboardSummary,
     },
   },
-  buildSessionHeaders: mockBuildSessionHeaders,
-  resolveAccessToken: mockResolveSessionId,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
-  mockResolveSessionId.mockResolvedValue("sess_dashboard");
-  mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
-    headers: { Authorization: `Bearer ${sessionId}` },
-  }));
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 });
 
 afterEach(() => {
@@ -64,7 +79,7 @@ describe("getPlatformDashboardSummary", () => {
     });
 
     await expect(
-      getPlatformDashboardSummary({ locale: "en", recentEventsLimit: 6 })
+      getPlatformDashboardSummary({ recentEventsLimit: 6 })
     ).resolves.toEqual({
       ok: true,
       summary: {
@@ -86,7 +101,7 @@ describe("getPlatformDashboardSummary", () => {
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 6 },
-      { headers: { Authorization: "Bearer sess_dashboard" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
   });
 
@@ -99,37 +114,34 @@ describe("getPlatformDashboardSummary", () => {
       totalTenants: 0,
     });
 
-    await getPlatformDashboardSummary({ locale: "en", recentEventsLimit: 999 });
+    await getPlatformDashboardSummary({ recentEventsLimit: 999 });
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 50 },
-      { headers: { Authorization: "Bearer sess_dashboard" } }
+      { headers: { Authorization: "Bearer service-token" } }
     );
   });
 
-  it("returns an error without calling the API when sessionId cannot be resolved", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(
-      getPlatformDashboardSummary({ locale: "en" })
-    ).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      ok: false,
-      requiresSignIn: true,
-    });
-
+    await expect(getPlatformDashboardSummary()).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
   });
 
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveSessionId.mockResolvedValueOnce("");
+  it("words a failure in the operator's locale, so ja is Japanese", async () => {
+    mockGetPlatformLocale.mockResolvedValueOnce("ja");
+    mockGetDashboardSummary.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
 
-    await expect(
-      getPlatformDashboardSummary({ locale: "ja" })
-    ).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
+    await expect(getPlatformDashboardSummary()).resolves.toEqual({
+      message: expect.stringMatching(/サーバー/u),
       ok: false,
-      requiresSignIn: true,
     });
   });
 
@@ -138,23 +150,26 @@ describe("getPlatformDashboardSummary", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(
-      getPlatformDashboardSummary({ locale: "en" })
-    ).resolves.toEqual({
+    await expect(getPlatformDashboardSummary()).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
-      requiresSignIn: false,
     });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  it("returns an unclassified failure as a value instead of throwing inside the cache scope", async () => {
     mockGetDashboardSummary.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformDashboardSummary({ locale: "en" })).rejects.toThrow(
-      "boom"
-    );
+    await expect(getPlatformDashboardSummary()).resolves.toMatchObject({
+      ok: false,
+    });
+    // Dropped, so the dashboard comes back as soon as the API does.
+    expect(mockCacheLife).toHaveBeenLastCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 
@@ -162,9 +177,12 @@ describe("dashboard cache tag", () => {
   it("files the dashboard under the dashboard tag", async () => {
     mockGetDashboardSummary.mockResolvedValueOnce({ recentEvents: [] });
 
-    await getPlatformDashboardSummary({ locale: "en" });
+    await getPlatformDashboardSummary();
 
     expect(platformDashboardCacheTag).toBe("platform:dashboard");
     expect(mockCacheTag).toHaveBeenCalledWith(platformDashboardCacheTag);
+    // Refreshed after a minute: sign-ups and tenant consoles change it
+    // without clearing the tag.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 });

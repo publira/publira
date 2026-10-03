@@ -6,17 +6,18 @@ import {
 import type { EndUser, Tenant } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
+  SHARED_READ_CACHE_LIFE,
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
+  withServiceHeaders,
 } from "./api-client";
-import {
-  isUnauthenticatedError,
-  rethrowUnauthenticatedRpcError,
-} from "./auth-shared";
+import { verifyPlatformSession } from "./auth-session";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import { getPlatformLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import { platformTenantsCacheTag } from "./tenants";
 
@@ -41,7 +42,6 @@ export interface ListPlatformEndUsersInput {
   createdAfter?: string;
   createdBefore?: string;
   limit?: number;
-  locale: Locale;
   status?: string;
   tenantId?: string;
   token?: string;
@@ -60,8 +60,6 @@ export type ListPlatformEndUsersResult =
       message: string;
       nextToken: string;
       previousToken: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
       users: PlatformEndUserSummary[];
     };
 
@@ -154,38 +152,29 @@ const mergeTenantFilterOptions = (
  */
 export const platformEndUsersCacheTag = "platform:users";
 
-const listPlatformEndUsersForSession = async (
-  input: ListPlatformEndUsersInput,
-  sid: string
-): Promise<ListPlatformEndUsersResult> => {
-  "use cache: private";
-  cacheTag(platformEndUsersCacheTag);
+/** What {@link listPlatformEndUsersForLocale} is keyed on besides the locale. */
+interface ListPlatformEndUsersQuery {
+  createdAfter: string;
+  createdBefore: string;
+  limit: number;
+  status: string;
+  tenantPublicId: string;
+  token: string;
+  userIds: string[];
+}
 
-  if (!sid) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      nextToken: "",
-      ok: false,
-      previousToken: "",
-      requiresSignIn: true,
-      users: [],
-    };
-  }
+const listPlatformEndUsersForLocale = async (
+  locale: Locale,
+  query: ListPlatformEndUsersQuery
+): Promise<ListPlatformEndUsersResult> => {
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
+  cacheTag(platformEndUsersCacheTag);
 
   try {
     const response = await apiClient.users.listEndUsers(
-      {
-        createdAfter: input.createdAfter ?? "",
-        createdBefore: input.createdBefore ?? "",
-        limit: Math.max(1, input.limit ?? 20),
-        status: input.status ?? "",
-        tenantPublicId: normalizeTenantId(input),
-        token: input.token ?? "",
-        userIds: normalizeUserIds(input),
-      },
-      buildSessionHeaders(sid)
+      query,
+      withServiceHeaders()
     );
 
     return {
@@ -195,29 +184,43 @@ const listPlatformEndUsersForSession = async (
       users: (response.users ?? []).map((user) => mapEndUser(user)),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the list comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
-    const t = await getMessagesFor(input.locale);
+    const t = await getMessagesFor(locale);
     return {
       message: rpcErrorMessage(error, t("platform.users.list_failed"), {
-        locale: input.locale,
+        locale,
       }),
       nextToken: "",
       ok: false,
       previousToken: "",
-      requiresSignIn: isUnauthenticatedError(error),
       users: [],
     };
   }
 };
 
+/**
+ * One page of the platform's end users, filtered as the users screen asks.
+ *
+ * Read with the service credential: the list is the same for every operator,
+ * so one entry per filter serves all of them.
+ */
 export const listPlatformEndUsers = async (
-  input: ListPlatformEndUsersInput
-): Promise<ListPlatformEndUsersResult> =>
-  listPlatformEndUsersForSession(input, await resolveAccessToken());
+  input: ListPlatformEndUsersInput = {}
+): Promise<ListPlatformEndUsersResult> => {
+  await verifyPlatformSession();
+  return listPlatformEndUsersForLocale(await getPlatformLocale(), {
+    createdAfter: input.createdAfter ?? "",
+    createdBefore: input.createdBefore ?? "",
+    limit: Math.max(1, input.limit ?? 20),
+    status: input.status ?? "",
+    tenantPublicId: normalizeTenantId(input),
+    token: input.token ?? "",
+    userIds: normalizeUserIds(input),
+  });
+};
 
 export type SearchPlatformTenantFilterOptionsResult =
   | {
@@ -229,37 +232,18 @@ export type SearchPlatformTenantFilterOptionsResult =
       hasMore: false;
       message: string;
       ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
       tenants: [];
     };
 
-const searchPlatformTenantFilterOptionsForSession = async (
-  query: string,
+const searchPlatformTenantFilterOptionsForLocale = async (
   locale: Locale,
-  sid: string
+  normalized: string
 ): Promise<SearchPlatformTenantFilterOptionsResult> => {
-  "use cache: private";
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformTenantsCacheTag);
 
-  const normalized = query.trim();
-  if (!normalized) {
-    return { hasMore: false, ok: true, tenants: [] };
-  }
-
-  if (!sid) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(locale);
-    return {
-      hasMore: false,
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-      tenants: [],
-    };
-  }
-
-  const headers = buildSessionHeaders(sid);
+  const headers = withServiceHeaders();
 
   const lookupExactTenant = async () => {
     if (normalized.length !== publicIdLength) {
@@ -302,10 +286,9 @@ const searchPlatformTenantFilterOptionsForSession = async (
       ]),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the suggestions come back as
+    // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
     return {
@@ -316,68 +299,56 @@ const searchPlatformTenantFilterOptionsForSession = async (
         { locale }
       ),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
     };
   }
 };
 
+/**
+ * The tenants the users screen's tenant filter suggests for what the operator
+ * typed, read with the service credential like the tenant list itself.
+ */
 export const searchPlatformTenantFilterOptions = async (
-  query: string,
-  locale: Locale
-): Promise<SearchPlatformTenantFilterOptionsResult> =>
-  searchPlatformTenantFilterOptionsForSession(
-    query,
-    locale,
-    await resolveAccessToken()
+  query: string
+): Promise<SearchPlatformTenantFilterOptionsResult> => {
+  await verifyPlatformSession();
+
+  const normalized = query.trim();
+  if (!normalized) {
+    return { hasMore: false, ok: true, tenants: [] };
+  }
+
+  return searchPlatformTenantFilterOptionsForLocale(
+    await getPlatformLocale(),
+    normalized
   );
+};
 
 export type GetPlatformEndUserResult =
   | { ok: true; user: PlatformEndUserSummary | null }
-  | {
-      ok: false;
-      message: string;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
+  | { ok: false; message: string };
 
-const getPlatformEndUserForSession = async (
-  publicId: string,
+const getPlatformEndUserForLocale = async (
   locale: Locale,
-  sid: string
+  publicId: string
 ): Promise<GetPlatformEndUserResult> => {
-  "use cache: private";
+  "use cache";
+  cacheLife(SHARED_READ_CACHE_LIFE);
   cacheTag(platformEndUsersCacheTag);
-
-  const normalizedPublicId = normalizePublicId(publicId);
-  if (!normalizedPublicId) {
-    return { ok: true, user: null };
-  }
-
-  if (!sid) {
-    dropFailedCacheEntry();
-    const t = await getMessagesFor(locale);
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-    };
-  }
 
   try {
     const response = await apiClient.users.getEndUser(
-      { publicId: normalizedPublicId },
-      buildSessionHeaders(sid)
+      { publicId },
+      withServiceHeaders()
     );
     return {
       ok: true,
       user: response.user ? mapEndUser(response.user) : null,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the client router would replay it after
-    // the API recovers, and a cached `requiresSignIn` would bounce the operator
-    // back to /login even once they have signed in again.
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. The entry is dropped instead, so the user comes back as soon
+    // as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
     return {
@@ -385,16 +356,29 @@ const getPlatformEndUserForSession = async (
         locale,
       }),
       ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
 
+/**
+ * One end user, read with the service credential like
+ * {@link listPlatformEndUsers}.
+ */
 export const getPlatformEndUser = async (
-  publicId: string,
-  locale: Locale
-): Promise<GetPlatformEndUserResult> =>
-  getPlatformEndUserForSession(publicId, locale, await resolveAccessToken());
+  publicId: string
+): Promise<GetPlatformEndUserResult> => {
+  await verifyPlatformSession();
+
+  const normalizedPublicId = normalizePublicId(publicId);
+  if (!normalizedPublicId) {
+    return { ok: true, user: null };
+  }
+
+  return getPlatformEndUserForLocale(
+    await getPlatformLocale(),
+    normalizedPublicId
+  );
+};
 
 export const suspendPlatformEndUser = async (
   userId: string

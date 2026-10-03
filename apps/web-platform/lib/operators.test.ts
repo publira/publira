@@ -51,40 +51,57 @@ const createGetOperatorResponse = (
 });
 
 const {
-  mockBuildSessionHeaders,
+  mockCacheLife,
   mockCacheTag,
   mockGetOperator,
+  mockGetPlatformLocale,
   mockListOperators,
-  mockResolveAccessToken,
+  mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
-  mockBuildSessionHeaders: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetOperator: vi.fn<GetOperatorMethod>(),
+  mockGetPlatformLocale: vi.fn(),
   mockListOperators: vi.fn<ListOperatorsMethod>(),
-  mockResolveAccessToken: vi.fn(),
+  mockVerifyPlatformSession: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("./auth-session", () => ({
+  verifyPlatformSession: mockVerifyPlatformSession,
+}));
+
+vi.mock("./locale", () => ({
+  getPlatformLocale: mockGetPlatformLocale,
+}));
+
 vi.mock("./api-client", () => ({
+  SHARED_READ_CACHE_LIFE: "minutes",
   apiClient: {
     operators: {
       getOperator: mockGetOperator,
       listOperators: mockListOperators,
     },
   },
-  buildSessionHeaders: mockBuildSessionHeaders,
-  resolveAccessToken: mockResolveAccessToken,
+  withServiceHeaders: () => ({
+    headers: { Authorization: "Bearer service-token" },
+  }),
 }));
+
+const serviceHeaders = { headers: { Authorization: "Bearer service-token" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockResolveAccessToken.mockResolvedValue("sess_abc");
-  mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
-    headers: { Authorization: `Bearer ${sessionId}` },
-  }));
+  mockGetPlatformLocale.mockResolvedValue("en");
+  mockVerifyPlatformSession.mockResolvedValue({
+    name: "Admin",
+    publicId: "usr_1",
+    role: "platform_super_admin",
+  });
 });
 
 describe("listPlatformOperators", () => {
@@ -98,7 +115,7 @@ describe("listPlatformOperators", () => {
     );
 
     await expect(
-      listPlatformOperators({ limit: 50, locale: "en", token: "current-page" })
+      listPlatformOperators({ limit: 50, token: "current-page" })
     ).resolves.toEqual({
       nextToken: "next-page",
       ok: true,
@@ -117,35 +134,17 @@ describe("listPlatformOperators", () => {
     });
     expect(mockListOperators).toHaveBeenCalledWith(
       { limit: 50, token: "current-page" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
-  it("returns an error without calling the API when the session cannot be resolved", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("");
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
 
-    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
-      message: "Your session is no longer valid. Please sign in again.",
-      nextToken: "",
-      ok: false,
-      operators: [],
-      previousToken: "",
-      requiresSignIn: true,
-    });
+    await expect(listPlatformOperators()).rejects.toThrow(/NEXT_REDIRECT/u);
     expect(mockListOperators).not.toHaveBeenCalled();
-  });
-
-  it("words the session error in the requested locale, so locale=ja is Japanese", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("");
-
-    await expect(listPlatformOperators({ locale: "ja" })).resolves.toEqual({
-      message: "セッションが無効です。再ログインしてください。",
-      nextToken: "",
-      ok: false,
-      operators: [],
-      previousToken: "",
-      requiresSignIn: true,
-    });
   });
 
   it("returns a shared message for classified RPC errors", async () => {
@@ -153,32 +152,45 @@ describe("listPlatformOperators", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(listPlatformOperators({ locale: "en" })).resolves.toEqual({
+    await expect(listPlatformOperators()).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       nextToken: "",
       ok: false,
       operators: [],
       previousToken: "",
-      requiresSignIn: false,
     });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  it("returns an unclassified failure as a value instead of throwing inside the cache scope", async () => {
     mockListOperators.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(listPlatformOperators({ locale: "en" })).rejects.toThrow(
-      "boom"
-    );
+    await expect(listPlatformOperators()).resolves.toMatchObject({
+      ok: false,
+      operators: [],
+    });
   });
 });
 
 describe("getPlatformOperator", () => {
-  it("returns null without calling RPC for invalid input", async () => {
-    await expect(getPlatformOperator("   ", "en")).resolves.toBeNull();
+  it("answers no operator without calling RPC for invalid input", async () => {
+    await expect(getPlatformOperator("   ")).resolves.toEqual({
+      ok: true,
+      operator: null,
+    });
     expect(mockGetOperator).not.toHaveBeenCalled();
-    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("leaves the API uncalled when the session is rejected", async () => {
+    mockVerifyPlatformSession.mockRejectedValueOnce(
+      new Error("NEXT_REDIRECT:/login")
+    );
+
+    await expect(getPlatformOperator("OPERATOR001")).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+    expect(mockGetOperator).not.toHaveBeenCalled();
   });
 
   it("trims whitespace before passing input to GetOperator", async () => {
@@ -186,14 +198,12 @@ describe("getPlatformOperator", () => {
       createGetOperatorResponse(createOperator())
     );
 
-    await expect(
-      getPlatformOperator("  OPERATOR001  ", "en")
-    ).resolves.toMatchObject({
-      publicId: "OPERATOR001",
-    });
+    await expect(getPlatformOperator("  OPERATOR001  ")).resolves.toMatchObject(
+      { ok: true, operator: { publicId: "OPERATOR001" } }
+    );
     expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
       { publicId: "OPERATOR001" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
   });
 
@@ -208,46 +218,60 @@ describe("getPlatformOperator", () => {
       )
     );
 
-    await expect(getPlatformOperator("OPERATOR101", "en")).resolves.toEqual({
-      createdAt: "2026-08-01T00:00:00Z",
-      email: "second@example.com",
-      id: "0199a3c0-0000-7000-8000-000000000001",
-      name: "Jordan Blake",
-      publicId: "OPERATOR101",
-      role: "platform_operator",
-      status: "active",
+    await expect(getPlatformOperator("OPERATOR101")).resolves.toEqual({
+      ok: true,
+      operator: {
+        createdAt: "2026-08-01T00:00:00Z",
+        email: "second@example.com",
+        id: "0199a3c0-0000-7000-8000-000000000001",
+        name: "Jordan Blake",
+        publicId: "OPERATOR101",
+        role: "platform_operator",
+        status: "active",
+      },
     });
     expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
       { publicId: "OPERATOR101" },
-      { headers: { Authorization: "Bearer sess_abc" } }
+      serviceHeaders
     );
     expect(mockListOperators).not.toHaveBeenCalled();
   });
 
-  it("returns null when the operator does not exist", async () => {
+  it("answers no operator when the operator does not exist", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("operator not found", Code.NotFound)
     );
 
-    await expect(getPlatformOperator("UNKNOWN", "en")).resolves.toBeNull();
+    await expect(getPlatformOperator("UNKNOWN")).resolves.toEqual({
+      ok: true,
+      operator: null,
+    });
   });
 
-  it("returns null for classified RPC errors", async () => {
+  it("reports a failed read instead of a missing operator", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    await expect(getPlatformOperator("OPERATOR001", "en")).resolves.toBeNull();
+    await expect(getPlatformOperator("OPERATOR001")).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+    expect(mockCacheLife).toHaveBeenLastCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  it("returns an unclassified failure as a value instead of throwing inside the cache scope", async () => {
     mockGetOperator.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPlatformOperator("OPERATOR001", "en")).rejects.toThrow(
-      "boom"
-    );
+    await expect(getPlatformOperator("OPERATOR001")).resolves.toMatchObject({
+      ok: false,
+    });
   });
 });
 
@@ -256,12 +280,15 @@ describe("operator cache tags", () => {
     mockListOperators.mockResolvedValueOnce(createListOperatorsResponse({}));
     mockGetOperator.mockResolvedValueOnce(createGetOperatorResponse());
 
-    await listPlatformOperators({ locale: "en" });
-    await getPlatformOperator("OPERATOR001", "en");
+    await listPlatformOperators();
+    await getPlatformOperator("OPERATOR001");
 
     expect(platformOperatorsCacheTag).toBe("platform:operators");
     expect(mockCacheTag).toHaveBeenCalledTimes(2);
     expect(mockCacheTag).toHaveBeenNthCalledWith(1, platformOperatorsCacheTag);
     expect(mockCacheTag).toHaveBeenNthCalledWith(2, platformOperatorsCacheTag);
+    // Refreshed after a minute: an email change is confirmed from a link,
+    // which clears no tag.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
   });
 });

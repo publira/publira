@@ -114,9 +114,9 @@ describe("policyConfigurationState", () => {
 
 describe("getRequiredConfigurationState", () => {
   it("is ready once email and storage are both saved", async () => {
-    await expect(getRequiredConfigurationState("en")).resolves.toBe("ready");
-    expect(mockGetPlatformEmailSettings).toHaveBeenCalledWith("en");
-    expect(mockGetPlatformStorageSettings).toHaveBeenCalledWith("en");
+    await expect(getRequiredConfigurationState()).resolves.toBe("ready");
+    expect(mockGetPlatformEmailSettings).toHaveBeenCalledOnce();
+    expect(mockGetPlatformStorageSettings).toHaveBeenCalledOnce();
   });
 
   it("needs setup while storage has never been saved", async () => {
@@ -125,9 +125,7 @@ describe("getRequiredConfigurationState", () => {
       settings: { revision: "0" },
     });
 
-    await expect(getRequiredConfigurationState("en")).resolves.toBe(
-      "needs_setup"
-    );
+    await expect(getRequiredConfigurationState()).resolves.toBe("needs_setup");
   });
 
   it("needs setup when one read shows a gap even though the other failed", async () => {
@@ -138,21 +136,17 @@ describe("getRequiredConfigurationState", () => {
     mockGetPlatformStorageSettings.mockResolvedValueOnce({
       message: "Could not load the storage settings.",
       ok: false,
-      requiresSignIn: false,
     });
 
-    await expect(getRequiredConfigurationState("en")).resolves.toBe(
-      "needs_setup"
-    );
+    await expect(getRequiredConfigurationState()).resolves.toBe("needs_setup");
   });
 
   it("claims neither answer when a read failed and the other shows no gap", async () => {
     mockGetPlatformEmailSettings.mockResolvedValueOnce({
-      message: "Unauthenticated.",
+      message: "Could not load the email settings.",
       ok: false,
-      requiresSignIn: true,
     });
 
-    await expect(getRequiredConfigurationState("en")).resolves.toBe("unknown");
+    await expect(getRequiredConfigurationState()).resolves.toBe("unknown");
   });
 });
