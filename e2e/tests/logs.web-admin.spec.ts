@@ -12,13 +12,8 @@ const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
   /^⨯ Error \[ConnectError\]: \[internal\] Stream closed with error code NGHTTP2_REFUSED_STREAM$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
-  // Not provoked on purpose: a Next.js 16.3 defect (vercel/next.js#96519). A
-  // Server Action that lands on a page whose cached entry has gone stale
-  // schedules a background revalidation with the action's own request, and
-  // that render reads the already consumed body a second time. The action
-  // itself succeeds, so the line is all a passing run shows of it, and whether
-  // the suite reaches a stale entry depends on timing. Remove this pattern
-  // once Next.js ships the fix: #3566.
+  // A Next.js 16.3 defect, not provoked on purpose (vercel/next.js#96519).
+  // Remove once Next.js ships the fix: #3566.
   /^⨯ Error: Unexpected end of form$/u,
 ];
 
