@@ -145,7 +145,18 @@ func processReaderSignup(ctx context.Context, db *sql.DB, event dbmodels.OutboxE
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
 
-	existing, err := queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	// An address that differs from an account's only by its sub-address tag
+	// reaches the same inbox, so it is that account's address too: a receiver
+	// collecting one account per tag would otherwise collect every per-account
+	// allowance once per tag. The lock keeps a concurrent sign-up for another
+	// tag of the same inbox from finding it free as well.
+	if err := queries.LockCanonicalEmailForTenant(ctx, dbmodels.LockCanonicalEmailForTenantParams{
+		TenantID: signup.tenantID,
+		Email:    signup.email,
+	}); err != nil {
+		return "", fmt.Errorf("lock the inbox of a reader signup: %w", err)
+	}
+	existing, err := queries.GetUserByCanonicalEmailForTenant(ctx, dbmodels.GetUserByCanonicalEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: signup.tenantID, Valid: true},
 		Email:    signup.email,
 	})
@@ -154,9 +165,11 @@ func processReaderSignup(ctx context.Context, db *sql.DB, event dbmodels.OutboxE
 			return "already_processed", nil
 		}
 		// One notice per attempt, keyed by the request: a reader targeted again
-		// months later has to hear about it too.
+		// months later has to hear about it too. It goes to the address the
+		// sign-up typed, which reaches the inbox the account already holds, so
+		// the answer to the sign-up stays the one a free address gets.
 		if _, err := queueTenantEvent(ctx, queries, signup.tenantID, EventTypeReaderSignupAttemptNoticeEmail,
-			ReaderSignupAttemptNoticeEmailPayload{TenantID: signup.tenantID.String(), UserID: existing.ID.String()},
+			ReaderSignupAttemptNoticeEmailPayload{TenantID: signup.tenantID.String(), UserID: existing.ID.String(), Email: signup.email},
 			EventTypeReaderSignupAttemptNoticeEmail+":"+event.ID.String(),
 		); err != nil {
 			return "", err

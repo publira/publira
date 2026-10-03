@@ -5,11 +5,11 @@
 //
 // An entry with an @ is an address and any other is a domain. A domain entry
 // refuses the domain and every subdomain of it. An address entry is compared
-// after the sub-address tag, the + and whatever follows it in the local part,
-// is dropped from both the entry and the address being checked, so a refused
-// mailbox cannot come back with a tag added. The tag is dropped for the
-// comparison only: the address a reader signs up with is stored and mailed as
-// typed. Provider-specific rules, such as Gmail ignoring dots, are not applied.
+// with the address being checked in the form emailaddress.Canonical answers for
+// both, the one that also decides whether an account already holds an inbox,
+// so a refused mailbox cannot come back with a sub-address tag added. The form
+// is for the comparison only: the address a reader signs up with is stored and
+// mailed as typed.
 package emailrejection
 
 import (
@@ -26,6 +26,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/disposabledomains"
+	"github.com/publira/publira/server/internal/emailaddress"
 )
 
 const (
@@ -174,15 +175,14 @@ func Check(ctx context.Context, q Querier, list DisposableList, tenantID uuid.UU
 // Matches reports whether address matches one of entries, which are
 // normalized as NormalizeEntries leaves them.
 func Matches(entries []string, address string) bool {
-	local, domain, ok := cutAddress(strings.ToLower(address))
+	mailbox, domain, ok := cutAddress(emailaddress.Canonical(address))
 	if !ok {
 		return false
 	}
-	mailbox := dropTag(local)
 	host := asciiDomain(domain)
 	for _, entry := range entries {
-		if entryLocal, entryDomain, isAddress := cutAddress(entry); isAddress {
-			if dropTag(entryLocal) == mailbox && asciiDomain(entryDomain) == host {
+		if entryMailbox, entryDomain, isAddress := cutAddress(emailaddress.Canonical(entry)); isAddress {
+			if entryMailbox == mailbox && asciiDomain(entryDomain) == host {
 				return true
 			}
 			continue
@@ -265,12 +265,6 @@ func cutAddress(address string) (local, domain string, ok bool) {
 		return "", "", false
 	}
 	return address[:at], address[at+1:], true
-}
-
-// dropTag drops the sub-address tag from a local part.
-func dropTag(local string) string {
-	mailbox, _, _ := strings.Cut(local, "+")
-	return mailbox
 }
 
 // validLocal accepts a local part written as a dot-atom: atext characters, or

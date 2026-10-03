@@ -713,17 +713,21 @@ func (s *apiServer) RequestEmailChange(
 		}
 	}
 
-	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	// Another account holding the same inbox under a different sub-address tag
+	// holds this address too. The caller's own account is left out, so a reader
+	// may move between tags of the inbox they already have.
+	held, err := s.queriesFor(ctx).CanonicalEmailHeldByAnotherUserForTenant(ctx, dbmodels.CanonicalEmailHeldByAnotherUserForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    newEmail,
+		UserID:   user.ID,
 	})
-	if err == nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if held {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 	}
 
 	// The session says who is asking, not that the address they named is
@@ -925,6 +929,29 @@ func (s *apiServer) ConfirmEmailChange(
 		}), nil
 	}
 
+	// The request checked the inbox when it was made, and another account may
+	// have taken it since; the lock orders this against a sign-up for any tag
+	// of the same inbox, so the check below is the one that holds.
+	if err := txq.LockCanonicalEmailForTenant(ctx, dbmodels.LockCanonicalEmailForTenantParams{
+		TenantID: tenant.ID,
+		Email:    changeToken.NewEmail,
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the inbox of an email change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	held, err := txq.CanonicalEmailHeldByAnotherUserForTenant(ctx, dbmodels.CanonicalEmailHeldByAnotherUserForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    changeToken.NewEmail,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
+		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if held {
+		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+	}
 	if _, err := txq.UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
 		ID:    user.ID,
 		Email: changeToken.NewEmail,

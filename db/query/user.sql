@@ -11,6 +11,46 @@ WHERE tenant_id = $1
     AND email = $2
 LIMIT 1;
 
+-- name: GetUserByCanonicalEmailForTenant :one
+-- The account of the tenant that holds the inbox an address reaches, whether
+-- or not it holds it under the same tag. A tenant may already hold several
+-- such accounts; the one holding the address exactly as given answers first,
+-- and the oldest among the rest after it.
+SELECT *
+FROM users
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND canonical_email(email) = canonical_email(sqlc.arg('email')::text)
+ORDER BY email = sqlc.arg('email')::text DESC, created_at ASC, id ASC
+LIMIT 1;
+
+-- name: CanonicalEmailHeldByAnotherUserForTenant :one
+-- Whether an account of the tenant other than the one named already holds the
+-- inbox an address reaches, under any tag.
+SELECT EXISTS (
+    SELECT 1
+    FROM users
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND canonical_email(email) = canonical_email(sqlc.arg('email')::text)
+        AND id <> sqlc.arg('user_id')
+);
+
+-- name: LockCanonicalEmailForTenant :exec
+-- Serialises, for the rest of the transaction, every attempt to give an account
+-- of the tenant the inbox an address reaches. The unique index on users only
+-- refuses the same address twice, so two sign-ups as john@ and john+2@ arriving
+-- at once would otherwise both find the inbox free and both create an account.
+-- The lock is taken on the inbox rather than on a row, so it holds before any
+-- account has it.
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'canonical_email:'
+        || sqlc.arg('tenant_id')::uuid::text
+        || ':'
+        || canonical_email(sqlc.arg('email')::text),
+        0
+    )
+);
+
 -- name: GetUserByID :one
 SELECT *
 FROM users
