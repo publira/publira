@@ -411,11 +411,14 @@ One consequence to know about, rather than to work around with the escape hatch:
 | The record is missing / not visible | Return the "nothing" value (`null`, `[]`) — that is an answer, and it is cacheable |
 | The fetch failed | `return cachedReadFailure(rpcErrorMessage(error, fallback))` from `@publira/utils/cached-read` |
 | The fetch failed and the caller has nothing to say about it (site chrome) | `dropFailedCacheEntry()`, then return the default (`null`) |
+| The fetch failed and the caller tells failures apart | Classify here and return the verdict — a message, a flag, a string union — never the caught error or an object holding it |
 | Anything at all | Never `throw`, and never `notFound()` — raise those in the caller, outside the cache scope |
 
 `cachedReadFailure` marks the entry unstorable (`cacheLife({ expire: 0, revalidate: 0, stale: 0 })`), so the **failure is never cached**: a recovered API serves real content on the very next request instead of a fallback pinned for the cache's lifetime. Full API and rationale: `packages/utils/README.md`.
 
 Classification stays inside the cache scope for a second reason. Next.js re-creates an error that crossed a `"use cache"` boundary from its name and message, and production replaces the message with a digest — so `Code`, and with it `rpcErrorDisposition()` / `rpcErrorMessage()`, is gone by the time an outside `catch` runs. Build the message where the `ConnectError` is still intact.
+
+Returning the caught error instead of throwing it loses even the digest. React Flight encodes an `Error` value as a bare placeholder, which production re-creates with React's generic message, no `Code`, and no digest, so classifying it outside answers `"unexpected"` for every failure. Rethrown from there, it reaches Next.js with nothing that names its origin, and Next.js digests the placeholder's own text: every such error, whatever failed, is logged as `An error occurred in the Server Components render` and shown on the error screen under one Error ID, `265885447` for as long as React words that message the same.
 
 ### NG (do not)
 
