@@ -72,6 +72,7 @@ const reportedComment = (
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
   createdAt: "2026-06-01T00:00:00Z",
+  creator: null,
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   hiddenAt: "",
@@ -224,5 +225,30 @@ describe("CommentReportQueue", () => {
     expect(
       screen.getByText("hide 018f0f80-0002-7000-8000-000000000001")
     ).toBeTruthy();
+  });
+
+  it("marks a reported comment by the episode's author before the moderator acts on it", async () => {
+    await renderQueue([
+      report("open", {
+        comment: reportedComment({
+          creator: { name: "Sample Author", publicId: "CREATOR001" },
+        }),
+      }),
+    ]);
+
+    expect(screen.getByText("Author")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Sample Author" }).getAttribute("href")
+    ).toBe("/creators/CREATOR001");
+    // The mark informs the decision; it takes no control away.
+    expect(
+      screen.getByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+  });
+
+  it("leaves a reported comment by anyone else unmarked", async () => {
+    await renderQueue([report("open")]);
+
+    expect(screen.queryByText("Author")).toBeNull();
   });
 });

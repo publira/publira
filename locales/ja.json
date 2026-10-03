@@ -399,6 +399,7 @@
       "status_published": "公開中",
       "status_hidden": "非表示",
       "status_withdrawn": "投稿者が削除",
+      "creator_badge": "著者",
       "hidden_by_staff": "運営が非表示にしました。",
       "hidden_by_reports": "通報がしきい値を超えたため自動で非表示になりました。",
       "hidden_author_notice": "投稿者には投稿時のまま表示され続けます。非表示にしたことは投稿者に通知されません。",

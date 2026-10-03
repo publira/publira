@@ -44,6 +44,7 @@ import { getMessagesFor } from "#lib/messages";
 
 import type { CommentItem } from "../comment-types";
 import { CommentActionButton } from "./comment-action-button";
+import { CommentCreatorMark } from "./comment-creator-mark";
 import { CommentReasonDialog } from "./comment-reason-dialog";
 import {
   commentStatusTone,
@@ -368,6 +369,7 @@ const CommentListBody = ({
                 <span className="text-xs text-muted-foreground">
                   {comment.authorPublicId}
                 </span>
+                <CommentCreatorMark creator={comment.creator} />
               </div>
             </TableCell>
             <TableCell>

@@ -46,6 +46,7 @@ import { getMessagesFor } from "#lib/messages";
 
 import type { CommentReportItem, CommentReportStatus } from "../comment-types";
 import { CommentActionButton } from "./comment-action-button";
+import { CommentCreatorMark } from "./comment-creator-mark";
 import { CommentReasonDialog } from "./comment-reason-dialog";
 import { CommentReportDecisionButton } from "./comment-report-decision-button";
 import {
@@ -281,6 +282,7 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
         />
       </Suspense>
     </span>
+    <CommentCreatorMark creator={report.comment.creator} />
     <ReportedCommentNotes report={report} />
   </div>
 );
