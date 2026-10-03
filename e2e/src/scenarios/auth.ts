@@ -25,6 +25,16 @@ export const SCENARIO_AUTH_ADMIN = {
   publicId: "ScenADMNAAA1",
 } as const;
 
+/**
+ * Isolated tenant editor: a console member who is not an administrator.
+ * Password hash is the same as `adminpass`.
+ */
+export const SCENARIO_AUTH_EDITOR = {
+  email: "auth-editor@example.com",
+  password: "adminpass",
+  publicId: "ScenEDTRAAA1",
+} as const;
+
 /** Isolated member. Password hash is the same as `memberpass`. */
 export const SCENARIO_AUTH_MEMBER = {
   email: "auth-member@example.com",

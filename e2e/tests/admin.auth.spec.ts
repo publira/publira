@@ -5,6 +5,7 @@ import { applyScenarioSql } from "../src/db";
 import {
   AUTH_E2E_SCENARIO,
   SCENARIO_AUTH_ADMIN,
+  SCENARIO_AUTH_EDITOR,
   SEED_ADMIN,
   SEED_ADMIN_PUBLIC_ID,
   SEED_MEMBER,
@@ -36,10 +37,10 @@ const currentSession = async (
  * Login / logout / session rejection for web-admin.
  *
  * GET /logout must stay a 404, so a forced-logout link cannot end a session.
- * Role denial uses the seed member, who can sign in to the console but cannot
- * edit tenant settings. credentials_version bumps use a dedicated scenario
- * admin so they cannot invalidate `admin.publish-flow` /
- * `admin.access-tickets` mid-run.
+ * Role denial uses a dedicated scenario editor, who can sign in to the console
+ * but cannot edit tenant settings; the seed member is a reader and cannot sign
+ * in at all. credentials_version bumps use a dedicated scenario admin so they
+ * cannot invalidate `admin.publish-flow` / `admin.access-tickets` mid-run.
  */
 test.describe("web-admin auth", () => {
   test("valid credentials return to the series list", async ({ page }) => {
@@ -60,6 +61,15 @@ test.describe("web-admin auth", () => {
       email: SEED_ADMIN.email,
       password: "wrong-password",
     });
+
+    await expectLoginPage(page);
+    await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
+    expect(await currentSession(page)).toBeUndefined();
+  });
+
+  test("a reader is refused like a wrong password", async ({ page }) => {
+    await page.goto(adminUrl("/login?next=%2Fseries"));
+    await fillLoginForm(page, SEED_MEMBER);
 
     await expectLoginPage(page);
     await expect(page.getByRole("status")).toContainText(LOGIN_FAILED_MESSAGE);
@@ -175,10 +185,11 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("a member can enter the console but settings stay read-only", async ({
+  test("an editor can enter the console but settings stay read-only", async ({
     page,
   }) => {
-    await signInAsAdmin(page, SEED_MEMBER, "/integrations/email");
+    applyScenarioSql(AUTH_E2E_SCENARIO);
+    await signInAsAdmin(page, SCENARIO_AUTH_EDITOR, "/integrations/email");
 
     await expect(page).toHaveURL(/\/integrations\/email/u);
     await expect(
@@ -197,10 +208,11 @@ test.describe("web-admin auth", () => {
     await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  test("a member sees payment settings read-only with a permission error", async ({
+  test("an editor sees payment settings read-only with a permission error", async ({
     page,
   }) => {
-    await signInAsAdmin(page, SEED_MEMBER, "/integrations/payment");
+    applyScenarioSql(AUTH_E2E_SCENARIO);
+    await signInAsAdmin(page, SCENARIO_AUTH_EDITOR, "/integrations/payment");
 
     await expect(page).toHaveURL(/\/integrations\/payment/u);
     await expect(
@@ -216,7 +228,7 @@ test.describe("web-admin auth", () => {
         "Only a tenant administrator can change this setting. You have read-only access."
       )
     ).toHaveCount(3);
-    // The API refuses a member the payment settings, the store settings, and
+    // The API refuses an editor the payment settings, the store settings, and
     // the store products alike.
     await expect(
       page.getByText(
