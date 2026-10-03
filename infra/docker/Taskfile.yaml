@@ -109,10 +109,13 @@ tasks:
         docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true
         # Omit --rm so `docker logs` still works if the process exits before smoke finishes.
         # Empty host port lets Docker pick a free port (avoids collisions with local :3000 etc.).
+        # web-admin and web-platform refuse to start without PUBLIRA_WEB_SERVICE_TOKEN;
+        # /livez never reaches the server, so any value lets them come up.
         docker run -d \
           --name "{{.CONTAINER_NAME}}" \
           -p "127.0.0.1::{{.PORT}}" \
           -e PNCH_REDIS_URL=disabled \
+          -e PUBLIRA_WEB_SERVICE_TOKEN=smoke \
           "publira/{{.APP_NAME}}:local"
         cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
         trap cleanup EXIT
