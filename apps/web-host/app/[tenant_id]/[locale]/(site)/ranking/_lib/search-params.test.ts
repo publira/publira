@@ -81,6 +81,20 @@ describe("parseRankingSearchParams", () => {
     );
   });
 
+  it("keeps a genre repeated with different values as one that names nothing, so the page can answer not found", () => {
+    const { genre } = parseRankingSearchParams({
+      genre: ["GENRE0000001", "GENRE0000002"],
+    });
+
+    expect(genre).not.toBe("");
+    expect(genre).not.toBe("GENRE0000001");
+    expect(genre).not.toBe("GENRE0000002");
+  });
+
+  it("reads an empty genre as the tenant-wide chart", () => {
+    expect(parseRankingSearchParams({ genre: " " }).genre).toBe("");
+  });
+
   it("reads a genre repeated with the same value as that genre", () => {
     expect(
       parseRankingSearchParams({ genre: ["GENRE0000001", "GENRE0000001"] })

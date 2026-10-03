@@ -23,12 +23,26 @@ export const RANKING_AGE_RATINGS = [
   "r18",
 ] as const satisfies readonly RankingAgeRatingName[];
 
+/**
+ * The genre a URL names, kept as written: a value that names no genre of the
+ * tenant is a page that does not exist, which only the genre list can tell, so
+ * this boundary must not turn it into the tenant-wide chart. Only an absent or
+ * empty value is that chart.
+ *
+ * So an over-long value is cut down rather than dropped, and a key repeated
+ * with different values, which `searchParamString` would read as no value at
+ * all, is joined into one string that no `public_id` can equal.
+ */
+const rankingGenreSchema = z.preprocess(
+  (value) =>
+    Array.isArray(value) && value.some((entry) => entry !== value[0])
+      ? value.join(",")
+      : value,
+  searchParamString({ fallback: "", truncate: true })
+);
+
 const rankingSearchParamsSchema = z.object({
-  // Kept as written, cut down rather than dropped when over-long: a value that
-  // names no genre of the tenant is a page that does not exist, which only the
-  // genre list can tell, so this boundary must not turn it into the
-  // tenant-wide chart.
-  genre: searchParamString({ fallback: "", truncate: true }),
+  genre: rankingGenreSchema,
   period: searchParamEnum(rankingPeriods, {
     fallback: DEFAULT_RANKING_PERIOD,
   }),
