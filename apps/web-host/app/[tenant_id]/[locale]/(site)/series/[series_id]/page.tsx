@@ -48,6 +48,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { SeriesRating, MySeriesRating } from "#components/series-rating";
 import { ShareControl } from "#components/share-control";
 import { ShareMenuSkeleton } from "#components/share-menu";
+import { adultContentMetadata } from "#lib/age-rating";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
 import { breadcrumbJsonLd, seriesJsonLd } from "#lib/json-ld";
@@ -119,6 +120,7 @@ export const generateMetadata = async (
     : undefined;
 
   return {
+    ...adultContentMetadata(series.ageRating),
     alternates,
     description,
     openGraph: {

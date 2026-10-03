@@ -2,6 +2,7 @@ import { SeriesAgeRating } from "@publira/api-client/public/types";
 import { describe, expect, it } from "vitest";
 
 import {
+  adultContentMetadata,
   ageRatingSatisfiedBy,
   ageVerificationCovers,
   provenAgeRating,
@@ -90,5 +91,26 @@ describe("withRestrictedAgeRating", () => {
     expect(
       withRestrictedAgeRating({ publicId: "SERIES_1" }, SeriesAgeRating.ALL)
     ).toEqual({ publicId: "SERIES_1" });
+  });
+});
+
+describe("adultContentMetadata", () => {
+  it("Labels an R15 work as adult content", () => {
+    expect(adultContentMetadata("r15")).toStrictEqual({
+      other: { rating: "adult" },
+    });
+  });
+
+  it("Labels an R18 work as adult content", () => {
+    expect(adultContentMetadata("r18")).toStrictEqual({
+      other: { rating: "adult" },
+    });
+  });
+
+  it("Leaves an all-ages or unrated work without a rating", () => {
+    expect(
+      adultContentMetadata(toRestrictedAgeRating(SeriesAgeRating.ALL))
+    ).toStrictEqual({});
+    expect(adultContentMetadata()).toStrictEqual({});
   });
 });
