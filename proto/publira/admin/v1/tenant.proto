@@ -458,6 +458,8 @@ service TenantSettingsService {
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantCommunityLimitSettings(UpdateTenantCommunityLimitSettingsRequest) returns (UpdateTenantCommunityLimitSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc GetTenantEmailRejectionSettings(GetTenantEmailRejectionSettingsRequest) returns (GetTenantEmailRejectionSettingsResponse) {}
+  // Minimum role: tenant_admin.
   rpc UpdateTenantEmailRejectionSettings(UpdateTenantEmailRejectionSettingsRequest) returns (UpdateTenantEmailRejectionSettingsResponse) {}
 }

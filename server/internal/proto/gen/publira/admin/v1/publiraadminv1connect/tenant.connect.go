@@ -143,7 +143,9 @@ type TenantSettingsServiceClient interface {
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
 }
 
@@ -484,7 +486,9 @@ type TenantSettingsServiceHandler interface {
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
 }
 

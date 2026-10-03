@@ -1722,6 +1722,8 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantCommunityLimitSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings
    */
   getTenantEmailRejectionSettings: {
@@ -1730,6 +1732,8 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantEmailRejectionSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_admin.
+   *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings
    */
   updateTenantEmailRejectionSettings: {
