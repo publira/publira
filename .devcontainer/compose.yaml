@@ -59,6 +59,12 @@ services:
       # writes this file, so a new daemon option goes into daemon.json here.
       # Docker Hub pulls go to Google's cache first, so only an image missing
       # from it counts against the anonymous rate limit.
+      # The build cache is capped at 10 GB: BuildKit's default limits are
+      # sized from the host disk (hundreds of GB), and the daemon's volume
+      # lives on the host's root filesystem and outlives rebuilds. A rule's
+      # retention goes in an `unused-for=` filter, because dockerd silently
+      # ignores a `keepDuration` key there. Old images are pruned by
+      # post-start.sh, since Docker Engine never removes one by itself.
       - ./.devcontainer/daemon.json:/etc/docker/daemon.json:ro
     depends_on:
       - db
