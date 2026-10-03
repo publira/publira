@@ -752,6 +752,9 @@ abstract class AppMessages {
   /// `mobile.delete_account.failed`
   String get deleteAccountFailed;
 
+  /// `mobile.delete_account.last_tenant_admin`
+  String get deleteAccountLastTenantAdmin;
+
   /// `mobile.delete_account.load_failed`
   String get deleteAccountLoadFailed;
 
@@ -2770,6 +2773,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get deleteAccountFailed {
     return '退会処理に失敗しました。入力内容をご確認ください。';
+  }
+
+  @override
+  String get deleteAccountLastTenantAdmin {
+    return 'このアカウントはこのサイトで最後のテナント管理者のため、削除できません。先にほかのメンバーをテナント管理者にしてください。';
   }
 
   @override
@@ -5391,6 +5399,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get deleteAccountLastTenantAdmin {
+    return 'This account is the last tenant admin of this site, so it cannot be deleted. Make another member a tenant admin first.';
+  }
+
+  @override
   String get deleteAccountLoadFailed {
     return 'Could not check how to confirm the deletion.';
   }
@@ -8006,6 +8019,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get deleteAccountFailed {
     return '계정을 삭제하지 못했습니다. 입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get deleteAccountLastTenantAdmin {
+    return '이 계정은 이 사이트의 마지막 테넌트 관리자이므로 삭제할 수 없습니다. 먼저 다른 멤버를 테넌트 관리자로 지정하세요.';
   }
 
   @override
@@ -10627,6 +10645,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get deleteAccountLastTenantAdmin {
+    return '此账户是本站最后一位租户管理员，因此无法删除。请先将其他成员设为租户管理员。';
+  }
+
+  @override
   String get deleteAccountLoadFailed {
     return '无法加载注销账户的确认方式。';
   }
@@ -13242,6 +13265,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get deleteAccountFailed {
     return '無法刪除您的帳戶。請檢查您輸入的內容。';
+  }
+
+  @override
+  String get deleteAccountLastTenantAdmin {
+    return '此帳戶是本站最後一位租戶管理員，因此無法刪除。請先將其他成員設為租戶管理員。';
   }
 
   @override

@@ -580,6 +580,37 @@ void main() {
       expect(store.session, isNotNull);
     });
 
+    testWidgets('the last tenant admin is told why the account stays', (
+      tester,
+    ) async {
+      repository.accountFailure = const AuthFailure(
+        AuthFailureKind.lastTenantAdmin,
+      );
+      await openFromAccount(
+        tester,
+        'account-delete',
+        'delete-account-password',
+      );
+
+      await submitPassword(tester);
+      await tester.tap(
+        find.byKey(const ValueKey('delete-account-confirm-delete')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('delete-account-error')),
+      );
+
+      expect(
+        find.text(
+          'This account is the last tenant admin of this site, so it cannot '
+          'be deleted. Make another member a tenant admin first.',
+        ),
+        findsOneWidget,
+      );
+      expect(auth.isSignedIn, isTrue);
+    });
+
     testWidgets('an empty password never opens the confirmation', (
       tester,
     ) async {

@@ -2,9 +2,11 @@ import {
   isExpectedNullableRpcError,
   isRejectedRequestRpcError,
   isUnauthenticatedRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
 import type { LinkedIdentity } from "@publira/api-client/public/auth";
@@ -711,15 +713,22 @@ export const updateMe = async (
   }
 };
 
+/**
+ * What became of an account deletion. `last_tenant_admin` is the tenant's last
+ * active tenant admin, whom the API keeps so someone can still sign in to the
+ * console; every other refusal is `failed`.
+ */
+export type DeleteMeOutcome = "deleted" | "failed" | "last_tenant_admin";
+
 /** Delete the signed-in reader's account. */
 export const deleteMe = async (
   tenantId: string,
   confirmation: AccountConfirmation,
   accessToken?: string
-): Promise<boolean> => {
+): Promise<DeleteMeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
   if (!sid) {
-    return false;
+    return "failed";
   }
 
   try {
@@ -733,13 +742,19 @@ export const deleteMe = async (
       buildSessionHeaders(sid)
     );
 
-    return true;
+    return "deleted";
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
     rethrowUnclassifiedRpcError(error);
-    return false;
+    if (
+      rpcErrorDisposition(error) === "precondition" &&
+      rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)
+    ) {
+      return "last_tenant_admin";
+    }
+    return "failed";
   }
 };
 

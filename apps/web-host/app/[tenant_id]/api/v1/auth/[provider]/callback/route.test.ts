@@ -293,7 +293,7 @@ describe("Apple and Google sign-in round trip", () => {
       intent: "delete",
       returnTo: "/settings",
     });
-    mockDeleteMe.mockResolvedValueOnce(true);
+    mockDeleteMe.mockResolvedValueOnce("deleted");
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
@@ -401,7 +401,7 @@ describe("Apple and Google sign-in round trip", () => {
       returnTo: "/settings",
     });
     cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
-    mockDeleteMe.mockResolvedValueOnce(false);
+    mockDeleteMe.mockResolvedValueOnce("failed");
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
@@ -416,6 +416,31 @@ describe("Apple and Google sign-in round trip", () => {
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
       "Could not delete your account. Please check what you entered."
+    );
+    expect(cookieJar.get(PUBLIC_SESSION_COOKIE_NAME)).toBe("sealed-session");
+  });
+
+  it("tells the last tenant admin why the account stays", async () => {
+    const authorization = await startSignIn({
+      intent: "delete",
+      returnTo: "/settings",
+    });
+    cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
+    mockDeleteMe.mockResolvedValueOnce("last_tenant_admin");
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings");
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.get("message")).toBe(
+      "This account is the last tenant admin of this site, so it cannot be deleted. Make another member a tenant admin first."
     );
     expect(cookieJar.get(PUBLIC_SESSION_COOKIE_NAME)).toBe("sealed-session");
   });

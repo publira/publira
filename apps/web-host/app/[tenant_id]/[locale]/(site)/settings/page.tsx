@@ -60,18 +60,22 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   );
   // A wrong `password` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
-  const deleted = await withPublicSessionReauth(
+  const outcome = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
     () => deleteMe(tenantId, { password }, accessToken),
     tenantId
   );
-  if (!deleted) {
+  if (outcome !== "deleted") {
     const errorPath = await buildSettingsPath(
       locale,
       tenantId,
       "error",
-      t("host.settings.delete_failed")
+      t(
+        outcome === "last_tenant_admin"
+          ? "host.settings.delete_last_tenant_admin"
+          : "host.settings.delete_failed"
+      )
     );
     redirect(errorPath);
   }

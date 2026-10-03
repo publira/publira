@@ -50,6 +50,11 @@ enum AuthFailureKind {
   /// so it stays linked.
   lastSignInMethod,
 
+  /// The account is the tenant's last active tenant admin, which the API keeps
+  /// so someone can still sign in to the console. Another member is made a
+  /// tenant admin before it is deleted.
+  lastTenantAdmin,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

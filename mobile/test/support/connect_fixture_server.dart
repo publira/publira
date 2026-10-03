@@ -711,6 +711,10 @@ class ConnectFixtureServer {
   /// neither sign in nor use the token they held.
   var memberDeleted = false;
 
+  /// Whether the member is the tenant's last active tenant admin, whom
+  /// `DeleteMe` refuses.
+  var memberIsLastTenantAdmin = false;
+
   /// The accounts `CreateUser` has opened here, keyed by address: what
   /// `Login` then accepts, and whether the address has been confirmed.
   final signups = <String, FixtureSignup>{};
@@ -2750,7 +2754,8 @@ class ConnectFixtureServer {
   }
 
   /// `DeleteMe` as the API answers it: the password has to be the member's,
-  /// and the account is then gone along with every token it held.
+  /// the tenant's last active tenant admin is refused, and the account is
+  /// then gone along with every token it held.
   Future<void> _writeDeleteMe(
     HttpRequest request,
     Map<String, Object?> body,
@@ -2764,6 +2769,14 @@ class ConnectFixtureServer {
       }
     } else if (_trimmed(body['password']) != memberCurrentPassword) {
       await _writeInvalidArgument(request, 'invalid password');
+      return;
+    }
+    if (memberIsLastTenantAdmin) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'the last tenant admin cannot be deleted',
+        'details': [errorInfoDetail('LAST_TENANT_ADMIN')],
+      });
       return;
     }
     memberDeleted = true;

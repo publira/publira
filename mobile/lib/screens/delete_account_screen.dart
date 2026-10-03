@@ -334,6 +334,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     return switch (failure) {
       AuthFailureKind.network => messages.errorsRpcUnavailable,
       AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
+      AuthFailureKind.lastTenantAdmin => messages.deleteAccountLastTenantAdmin,
       _ => messages.deleteAccountFailed,
     };
   }

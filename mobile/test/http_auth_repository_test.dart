@@ -741,6 +741,19 @@ void main() {
     expect(server.memberDeleted, isFalse);
   });
 
+  test('deleteAccount maps the last tenant admin to lastTenantAdmin', () async {
+    server.memberIsLastTenantAdmin = true;
+
+    await expectLater(
+      () => auth.deleteAccount(
+        stored,
+        password: ConnectFixtureServer.memberPassword,
+      ),
+      failsWith(AuthFailureKind.lastTenantAdmin),
+    );
+    expect(server.memberDeleted, isFalse);
+  });
+
   test(
     'signOut sends Logout for the tenant with the token being dropped',
     () async {
