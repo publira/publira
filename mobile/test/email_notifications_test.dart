@@ -73,6 +73,39 @@ void main() {
     );
   });
 
+  testWidgets('a row of its own, apart from the birth date row', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await showRow(tester, emailSwitch);
+
+    // Both rows start over for another reader, but each by a key of its own:
+    // two siblings of one list sharing a key would be told apart by neither.
+    expect(find.byKey(ValueKey(fakeSession.userPublicId)), findsOneWidget);
+  });
+
+  testWidgets('another reader signing in reads their own setting', (
+    tester,
+  ) async {
+    repository.emailNotifications = false;
+    await pumpApp(tester);
+    await showRow(tester, emailSwitch);
+    expect(switchValue(tester), isFalse);
+
+    await auth.signOut();
+    repository
+      ..session = fakeSession.withUser(
+        userPublicId: 'OtherRDRAAA1',
+        userName: 'Other Reader',
+      )
+      ..emailNotifications = true;
+    await auth.signIn(email: 'other@example.com', password: 'password');
+    await tester.pump();
+    await showRow(tester, emailSwitch);
+
+    expect(switchValue(tester), isTrue);
+  });
+
   testWidgets('turning the switch off writes it to the account', (
     tester,
   ) async {

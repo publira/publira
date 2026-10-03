@@ -110,7 +110,14 @@ class AccountScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   const _NotificationSwitch(),
-                  _EmailNotificationSwitch(key: ValueKey(session.userPublicId)),
+                  // Keyed by the reader as well, under a name of its own so
+                  // it does not share a key with the birth date row.
+                  _EmailNotificationSwitch(
+                    key: ValueKey((
+                      'email-notifications',
+                      session.userPublicId,
+                    )),
+                  ),
                   const _ContactEntry(),
                   Padding(
                     padding: const EdgeInsets.all(24),
