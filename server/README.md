@@ -260,12 +260,12 @@ On the platform API it runs as a service principal with no operator and no platf
 
 ## Disposable email domains
 
-`internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. The list is the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, embedded in the binary with its CC0 dedication beside it, so a process that reaches nothing outside answers from that snapshot. `task server:update-disposable-domains` replaces the snapshot with the upstream list, and the `Disposable Domains Update` workflow runs it weekly and opens a pull request when it changed.
+`internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. No list ships with the server: it is read from a URL, and without one no domain is disposable.
 
 - `PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL`
-  - A remote copy of the list in the same format, one domain per line, which replaces the snapshot once it loads and is read again every six hours
+  - A list of domains, one per line, with blank lines and lines starting with `#` ignored — the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist. It is read on first use and again every hour
   - Example: `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
-  - A read that fails, or that answers something other than a list of domains, keeps the last copy that loaded, or the snapshot when none has. When unset, the snapshot is the list
+  - A read that fails, or that answers something other than a list of domains, keeps the last list that loaded. When unset, or until a read first succeeds, there is no list
 
 ## Mobile push (Firebase Cloud Messaging)
 

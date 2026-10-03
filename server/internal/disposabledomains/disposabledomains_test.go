@@ -69,34 +69,11 @@ func newRemoteList(t *testing.T, status int, body string) (*List, *listServer, *
 	return list, server, c
 }
 
-// A domain the upstream list has carried for years, and one it never will.
-const (
-	snapshotDomain = "mailinator.com"
-	ordinaryDomain = "example.com"
-)
-
-func TestTheEmbeddedSnapshotParses(t *testing.T) {
+func TestIsDisposableNamesNothingWithNoURL(t *testing.T) {
 	t.Parallel()
 
-	set := embedded()
-	if len(set) < 1000 {
-		t.Fatalf("the snapshot names %d domains, want the upstream list", len(set))
-	}
-	if _, ok := set[snapshotDomain]; !ok {
-		t.Fatalf("the snapshot does not name %s", snapshotDomain)
-	}
-}
-
-func TestIsDisposableAnswersFromTheSnapshotWithNoURL(t *testing.T) {
-	t.Parallel()
-
-	list := New(Config{})
-	ctx := context.Background()
-	if !list.IsDisposable(ctx, snapshotDomain) {
-		t.Errorf("IsDisposable(%q) = false, want the snapshot's answer", snapshotDomain)
-	}
-	if list.IsDisposable(ctx, ordinaryDomain) {
-		t.Errorf("IsDisposable(%q) = true, want false", ordinaryDomain)
+	if New(Config{}).IsDisposable(context.Background(), "mailinator.com") {
+		t.Fatal("IsDisposable(mailinator.com) = true with no URL, want no list")
 	}
 }
 
@@ -141,9 +118,6 @@ func TestIsDisposableAnswersFromTheFetchedListOnceItLoads(t *testing.T) {
 	ctx := context.Background()
 	if !list.IsDisposable(ctx, "first.test") {
 		t.Fatal("IsDisposable(first.test) = false, want the fetched list's answer")
-	}
-	if list.IsDisposable(ctx, snapshotDomain) {
-		t.Fatalf("IsDisposable(%q) = true, want the fetched list to replace the snapshot", snapshotDomain)
 	}
 
 	server.set(http.StatusOK, "second.test\n")
@@ -200,19 +174,26 @@ func TestIsDisposableKeepsTheLastGoodCopyWhileAFetchFails(t *testing.T) {
 	}
 }
 
-func TestIsDisposableAnswersFromTheSnapshotUntilTheFirstFetchSucceeds(t *testing.T) {
+// Until the first read succeeds there is no list, and a failed read waits an
+// interval before the next one rather than costing every sign-up a request.
+func TestIsDisposableNamesNothingUntilTheFirstFetchSucceeds(t *testing.T) {
 	t.Parallel()
 
 	list, server, c := newRemoteList(t, http.StatusBadGateway, "")
 	ctx := context.Background()
-	if !list.IsDisposable(ctx, snapshotDomain) {
-		t.Fatalf("IsDisposable(%q) = false, want the snapshot while the remote copy has never loaded", snapshotDomain)
+	for range 2 {
+		if list.IsDisposable(ctx, "first.test") {
+			t.Fatal("IsDisposable(first.test) = true, want no list before a read succeeds")
+		}
+	}
+	if got := server.count(); got != 1 {
+		t.Fatalf("requests = %d, want the failed fetch to wait an interval before the next", got)
 	}
 
 	server.set(http.StatusOK, "first.test\n")
 	c.advance(refreshInterval)
 	if !list.IsDisposable(ctx, "first.test") {
-		t.Fatal("IsDisposable(first.test) = false, want the remote copy once it loads")
+		t.Fatal("IsDisposable(first.test) = false, want the list once it loads")
 	}
 }
 

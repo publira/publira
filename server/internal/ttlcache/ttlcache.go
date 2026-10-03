@@ -36,9 +36,9 @@ func New[T any](load func(ctx context.Context) (T, error), ttl time.Duration, lo
 	return &Value[T]{load: load, ttl: ttl, logger: logger, what: what, Now: time.Now}
 }
 
-// Seed gives the Value an answer before anything is read, for a value that
-// has a copy of its own to serve until the first read succeeds. The next Get
-// still reads, and serves the seed when that read fails.
+// Seed gives the Value an answer before anything is read. The next Get still
+// reads, and serves the seed when that read fails, so a source that is down
+// from the start waits a TTL between reads like one that went down later.
 func (c *Value[T]) Seed(value T) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

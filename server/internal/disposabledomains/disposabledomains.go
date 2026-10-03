@@ -1,20 +1,17 @@
 // Package disposabledomains answers whether an email domain belongs to a
 // service made for throwaway addresses.
 //
-// The answer comes from a snapshot of the disposable-email-domains project's
-// blocklist (https://github.com/disposable-email-domains/disposable-email-domains),
-// embedded in the binary under the CC0 dedication in LICENSE.txt beside it, so
-// an install that reaches nothing outside answers all the same. A remote copy
-// in the same format, named by PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL, replaces
-// it once it loads. `task server:update-disposable-domains` replaces the
-// snapshot itself.
+// The list is read from the URL in PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL, in the
+// format of the disposable-email-domains project's blocklist
+// (https://github.com/disposable-email-domains/disposable-email-domains). No
+// copy ships with the server, so a process without the URL, or one whose read
+// has never succeeded, names no domain disposable.
 package disposabledomains
 
 import (
 	"bufio"
 	"bytes"
 	"context"
-	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -23,7 +20,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/net/idna"
@@ -32,44 +28,31 @@ import (
 )
 
 const (
-	// refreshInterval is how long a list answers before the remote copy is read
-	// again, and how long a failed read waits before the next one. The upstream
-	// list changes about once a day, so a few hours behind it is current
-	// enough, and a remote that is down is asked four times a day.
-	refreshInterval = 6 * time.Hour
+	// refreshInterval is how long a list answers before it is read again, and
+	// how long a failed read waits before the next one. With no copy shipped,
+	// a read that fails at start leaves no list until the next one, so the
+	// interval is kept to an hour; a list of a few hundred kilobytes read
+	// hourly costs nothing worth trading that gap for.
+	refreshInterval = time.Hour
 	fetchTimeout    = 10 * time.Second
-	// maxListBytes bounds what a remote copy may weigh. The maintained lists
-	// run to a few megabytes at the most, so a body past this is not one.
+	// maxListBytes bounds what a list may weigh. The maintained lists run to a
+	// few megabytes at the most, so a body past this is not one.
 	maxListBytes = 16 << 20
 )
 
-//go:embed disposable_email_blocklist.conf
-var snapshot []byte
-
-// embedded is the snapshot parsed on first use, so a process that never asks
-// pays nothing for it.
-var embedded = sync.OnceValue(func() domainSet {
-	set, err := parse(bytes.NewReader(snapshot))
-	if err != nil {
-		// The snapshot is part of the binary, and a test parses it.
-		panic(fmt.Sprintf("disposabledomains: embedded snapshot: %v", err))
-	}
-	return set
-})
-
 type domainSet map[string]struct{}
 
-// Config builds a [List]. The zero value answers from the embedded snapshot.
+// Config builds a [List]. The zero value names no domain disposable.
 type Config struct {
-	// URL names a remote copy of the list to refresh from: one domain per
-	// line, blank lines and lines starting with # ignored.
+	// URL names the list: one domain per line, blank lines and lines starting
+	// with # ignored.
 	URL        string
 	HTTPClient *http.Client
 	Logger     *slog.Logger
 }
 
-// ConfigFromEnv reads PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL. Unset, the list is
-// the embedded snapshot alone.
+// ConfigFromEnv reads PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL. Unset, there is no
+// list.
 func ConfigFromEnv() (Config, error) {
 	const name = "PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL"
 	raw := strings.TrimSpace(os.Getenv(name))
@@ -98,13 +81,14 @@ func New(cfg Config) *List {
 		httpClient = &http.Client{Timeout: fetchTimeout}
 	}
 	remote := ttlcache.New(func(ctx context.Context) (domainSet, error) {
-		// A reader who gives up on the sign-up must not leave the stale list
-		// in place for another interval; the client's timeout bounds the read.
+		// A reader who gives up on the sign-up must not leave the list unread
+		// for another interval; the client's timeout bounds the read.
 		return fetch(context.WithoutCancel(ctx), httpClient, cfg.URL)
 	}, refreshInterval, cfg.Logger, "disposable email domain list")
-	// Until the remote copy loads, and for as long as it never does, the
-	// snapshot is the last good copy.
-	remote.Seed(embedded())
+	// An empty list stands in until the first read succeeds, so a remote that
+	// is down from the start is asked once an interval like one that went
+	// down later, rather than on every sign-up.
+	remote.Seed(domainSet{})
 	return &List{remote: remote}
 }
 
@@ -112,14 +96,14 @@ func New(cfg Config) *List {
 // the list. A domain in Unicode is compared in its ASCII form, which is the
 // form the list is written in.
 //
-// With a remote copy configured, the first call past each refresh interval
-// reads it, and the calls behind it wait for that read.
+// The first call past each refresh interval reads the list, and the calls
+// behind it wait for that read.
 func (l *List) IsDisposable(ctx context.Context, domain string) bool {
-	set := embedded()
-	if l.remote != nil {
-		// A seeded value never fails to answer.
-		set, _ = l.remote.Get(ctx)
+	if l.remote == nil {
+		return false
 	}
+	// A seeded value never fails to answer.
+	set, _ := l.remote.Get(ctx)
 	name := normalize(domain)
 	for name != "" {
 		if _, ok := set[name]; ok {

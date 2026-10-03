@@ -4,7 +4,6 @@
 | --- | --- | --- |
 | `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
 | `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
-| `Disposable Domains Update` | [`disposable-domains-update.yml`](./disposable-domains-update.yml) | Weekly pull requests that update the embedded disposable email domain list. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 | `Review` | [`review.yml`](./review.yml) | Review-support automation. |
 | `Regenerate` | [`regenerate.yml`](./regenerate.yml) | Stacked pull requests that regenerate output for a generator version bump. |
