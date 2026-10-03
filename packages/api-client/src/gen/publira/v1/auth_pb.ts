@@ -1480,6 +1480,10 @@ export const AuthService: GenService<{
     output: typeof UpdateMeResponseSchema;
   },
   /**
+   * Deletes the caller's account. A staff account is deleted too; the tenant's
+   * audit entries keep its name and public ID. failed_precondition, with the
+   * LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
+   *
    * @generated from rpc publira.v1.AuthService.DeleteMe
    */
   deleteMe: {

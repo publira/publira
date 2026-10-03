@@ -29,6 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -1335,6 +1336,21 @@ func (s *apiServer) DeleteMe(
 			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
 			return nil, err
 		}
+	}
+	// A staff account closes itself here too, and the tenant's last active
+	// tenant_admin taking itself away would leave nobody to sign in to the
+	// console, so it is refused as DeleteReader refuses it.
+	if err := tenantmembers.KeepAnAdminBeside(ctx, tx, tenant.ID, user.ID); err != nil {
+		if errors.Is(err, tenantmembers.ErrLastAdmin) {
+			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_tenant_admin")
+			return nil, rpcerrors.NewErrorInfoError(
+				connect.CodeFailedPrecondition,
+				errors.New("the tenant's last active tenant_admin cannot be deleted"),
+				rpcerrors.ReasonLastTenantAdmin,
+			)
+		}
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_admin_check_failed")
+		return nil, s.internalDBError(ctx, "failed to check the tenant's remaining administrators", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := txq.BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
