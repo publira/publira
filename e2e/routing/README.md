@@ -65,7 +65,7 @@ e2e/routing/
 ├── compose.echo.yaml       # The echo backends, for the proxies with no environment of their own
 ├── compose.nginx.yaml      # nginx in front of them
 ├── compose.caddy.yaml      # Caddy in front of them
-├── echo.py                 # Returns JSON on 3000 / 4000 / 4100 / 8000
+├── echo.ts                 # Returns JSON on 3000 / 4000 / 4100 / 8000
 ├── Taskfile.yaml
 └── scripts/
     ├── lib.sh
