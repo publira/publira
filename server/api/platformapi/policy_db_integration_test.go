@@ -41,6 +41,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 4, PerDay: 12}
 	policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 7, PerDay: 70}
 	policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 8, PerDay: 80}
+	policy.WaitFreeTicketUse = platformpolicy.MinuteDay{PerMinute: 9, PerDay: 90}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
 	return policy
 }

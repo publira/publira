@@ -67,6 +67,10 @@ message PlatformPolicy {
   // starting with # ignored. Empty means there is no list, and no domain is
   // disposable; no list ships with the server.
   string disposable_email_domains_url = 7;
+  // How often one reader may ask WaitFreeService.UseTicket to spend a
+  // wait-for-free ticket. A spent ticket is bounded by the series' recharge
+  // interval already; this bounds the requests that are refused.
+  MinuteDayLimit wait_free_ticket_use = 8;
 }
 
 message GetPlatformPolicyRequest {}

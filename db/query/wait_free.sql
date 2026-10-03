@@ -164,16 +164,28 @@ RETURNING id,
 
 -- name: ListOpenWaitFreeTicketsInSeries :many
 -- The reader's wait-for-free tickets on the series that still open their
--- episode, soonest to close first.
+-- episode, soonest to close first. A ticket on an episode that has since been
+-- taken down, or that the calling surface does not show, is left out: the
+-- reader could not open it there, so it is not one to show them.
 SELECT at.episode_id,
     at.expires_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
+    JOIN episode_listings el ON el.episode_id = e.id
 WHERE at.tenant_id = sqlc.arg('tenant_id')
     AND at.user_id = sqlc.arg('user_id')
     AND e.series_id = sqlc.arg('series_id')
     AND at.source = 'wait_free'
     AND at.revoked_at IS NULL
     AND at.expires_at > NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
 ORDER BY at.expires_at ASC,
     at.id ASC;

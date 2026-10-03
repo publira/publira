@@ -1830,6 +1830,10 @@ type WaitFreeServiceClient interface {
 	//   RFC3339 instant it will be.
 	// - permission_denied when the tenant's age rule stops this reader from
 	//   opening the series.
+	//
+	// Every request, refused or not, spends the reader's allowance in the
+	// platform policy's wait_free_ticket_use first, and one past it is
+	// resource_exhausted with Retry-After.
 	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
 }
 
@@ -1895,6 +1899,10 @@ type WaitFreeServiceHandler interface {
 	//   RFC3339 instant it will be.
 	// - permission_denied when the tenant's age rule stops this reader from
 	//   opening the series.
+	//
+	// Every request, refused or not, spends the reader's allowance in the
+	// platform policy's wait_free_ticket_use first, and one past it is
+	// resource_exhausted with Retry-After.
 	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
 }
 

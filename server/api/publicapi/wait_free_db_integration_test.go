@@ -13,6 +13,8 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/platformpolicy"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
@@ -123,8 +125,12 @@ type waitFreeFixture struct {
 // reader, with no rule configured yet.
 func newWaitFreeFixture(t *testing.T, episodeCount int) waitFreeFixture {
 	t.Helper()
+	return newWaitFreeFixtureOn(t, newPublicDBEnv(t), episodeCount)
+}
 
-	env := newPublicDBEnv(t)
+func newWaitFreeFixtureOn(t *testing.T, env *publicDBEnv, episodeCount int) waitFreeFixture {
+	t.Helper()
+
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
 	episodes := make([]testutil.Episode, 0, episodeCount)
@@ -506,5 +512,71 @@ func TestDBWaitFreeRuleIsSilentWhileOff(t *testing.T) {
 	}
 	if err := stateErr(); err != nil {
 		t.Fatalf("GetMyTicketState with the rule on: %v", err)
+	}
+}
+
+// Every request charges the reader's allowance before anything is read, so a
+// reader cycling through episodes the rule refuses runs out like any other.
+func TestDBUseTicketChargesTheSharedFloodControl(t *testing.T) {
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.WaitFreeTicketUse = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
+	}))
+	f := newWaitFreeFixtureOn(t, env, 2)
+	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 1)
+
+	for range 2 {
+		_, err := f.useTicket(f.episodes[1].ID)
+		assertWaitFreeRefusal(t, err, connect.CodeFailedPrecondition, rpcerrors.ReasonWaitFreeEpisodeExcluded)
+	}
+	_, err := f.useTicket(f.episodes[0].ID)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a request past the allowance: code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	if got := countWaitFreeTickets(t, f.env, f.reader.ID, f.episodes[0].ID); got != 0 {
+		t.Fatalf("wait-free tickets = %d, want none", got)
+	}
+}
+
+// The open tickets are the ones the reader can open where they are asking: an
+// episode taken down since, or one the calling surface does not show, is not
+// listed even while its ticket runs.
+func TestDBGetMyTicketStateListsOnlyEpisodesTheSurfaceShows(t *testing.T) {
+	f := newWaitFreeFixture(t, 3)
+	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
+	for _, episode := range f.episodes {
+		if _, err := f.useTicket(episode.ID); err != nil {
+			t.Fatalf("UseTicket on %s: %v", episode.PublicID, err)
+		}
+		rechargeWaitFree(t, f.env, f.reader.ID, f.series.ID)
+	}
+
+	execSQL(t, f.env, "UPDATE episode_listings SET status = 'draft' WHERE episode_id = $1", f.episodes[1].ID)
+	execSQL(t, f.env, "UPDATE episodes SET availability = 'app' WHERE id = $1", f.episodes[2].ID)
+
+	state := f.ticketState(t)
+	if len(state.OpenTickets) != 1 || state.OpenTickets[0].EpisodeId != f.episodes[0].ID.String() {
+		t.Fatalf("open tickets on the web = %v, want only %s", state.OpenTickets, f.episodes[0].ID)
+	}
+
+	resp, err := f.env.waitFreeClient().GetMyTicketState(context.Background(), newBearerRequest(
+		&publirav1.GetMyTicketStateRequest{
+			Tenant:   tenantContext(f.tenant),
+			SeriesId: f.series.ID.String(),
+			Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+		},
+		f.token,
+	))
+	if err != nil {
+		t.Fatalf("GetMyTicketState in the app: %v", err)
+	}
+	var got []string
+	for _, ticket := range resp.Msg.OpenTickets {
+		got = append(got, ticket.EpisodeId)
+	}
+	slices.Sort(got)
+	want := []string{f.episodes[0].ID.String(), f.episodes[2].ID.String()}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("open tickets in the app = %v, want %v", got, want)
 	}
 }

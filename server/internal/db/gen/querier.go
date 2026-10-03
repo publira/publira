@@ -1452,7 +1452,9 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// The reader's wait-for-free tickets on the series that still open their
-	// episode, soonest to close first.
+	// episode, soonest to close first. A ticket on an episode that has since been
+	// taken down, or that the calling surface does not show, is left out: the
+	// reader could not open it there, so it is not one to show them.
 	ListOpenWaitFreeTicketsInSeries(ctx context.Context, arg ListOpenWaitFreeTicketsInSeriesParams) ([]ListOpenWaitFreeTicketsInSeriesRow, error)
 	// Empty only for a page the tenant does not have, since a page always keeps at
 	// least one translation.

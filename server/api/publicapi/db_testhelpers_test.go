@@ -110,6 +110,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerClient = openHourly
 	policy.Community.ViewerPreferencesUpdate = open
 	policy.StorePurchaseConfirmation = open
+	policy.WaitFreeTicketUse = open
 	return policy
 }
 

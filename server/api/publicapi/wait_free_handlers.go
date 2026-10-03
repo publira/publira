@@ -111,6 +111,7 @@ func (s *apiServer) GetMyTicketState(
 	}
 
 	open, err := s.queriesFor(ctx).ListOpenWaitFreeTicketsInSeries(ctx, dbmodels.ListOpenWaitFreeTicketsInSeriesParams{
+		Surface:  surface,
 		TenantID: tenant.ID,
 		UserID:   user.ID,
 		SeriesID: series.ID,
@@ -129,10 +130,6 @@ func (s *apiServer) GetMyTicketState(
 }
 
 // UseTicket spends the reader's wait-for-free ticket on one episode.
-//
-// It does not charge the shared flood control: what it writes is bounded by
-// the recharge interval itself, one ticket per series per interval, and every
-// refusal writes nothing.
 func (s *apiServer) UseTicket(
 	ctx context.Context,
 	req *connect.Request[publirav1.UseTicketRequest],
@@ -147,6 +144,11 @@ func (s *apiServer) UseTicket(
 	}
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
+		return nil, err
+	}
+	// Charged before anything is read: a spent ticket is bounded by the
+	// recharge interval, but a refused request is not.
+	if err := s.chargeReaderAction(ctx, actionUseWaitFreeTicket, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 	episode, err := s.queriesFor(ctx).GetWaitFreeEpisode(ctx, dbmodels.GetWaitFreeEpisodeParams{

@@ -565,6 +565,8 @@ type PlatformPolicyConfig struct {
 	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
 	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
 	DisposableEmailDomainsUrl            string    `json:"disposable_email_domains_url"`
+	WaitFreeTicketUseLimitPerMinute      int32     `json:"wait_free_ticket_use_limit_per_minute"`
+	WaitFreeTicketUseLimitPerDay         int32     `json:"wait_free_ticket_use_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

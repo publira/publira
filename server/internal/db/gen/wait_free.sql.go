@@ -278,12 +278,22 @@ SELECT at.episode_id,
     at.expires_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
+    JOIN episode_listings el ON el.episode_id = e.id
 WHERE at.tenant_id = $1
     AND at.user_id = $2
     AND e.series_id = $3
     AND at.source = 'wait_free'
     AND at.revoked_at IS NULL
     AND at.expires_at > NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $4::text
+    )
 ORDER BY at.expires_at ASC,
     at.id ASC
 `
@@ -292,6 +302,7 @@ type ListOpenWaitFreeTicketsInSeriesParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
 	SeriesID uuid.UUID `json:"series_id"`
+	Surface  string    `json:"surface"`
 }
 
 type ListOpenWaitFreeTicketsInSeriesRow struct {
@@ -300,9 +311,16 @@ type ListOpenWaitFreeTicketsInSeriesRow struct {
 }
 
 // The reader's wait-for-free tickets on the series that still open their
-// episode, soonest to close first.
+// episode, soonest to close first. A ticket on an episode that has since been
+// taken down, or that the calling surface does not show, is left out: the
+// reader could not open it there, so it is not one to show them.
 func (q *Queries) ListOpenWaitFreeTicketsInSeries(ctx context.Context, arg ListOpenWaitFreeTicketsInSeriesParams) ([]ListOpenWaitFreeTicketsInSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListOpenWaitFreeTicketsInSeries, arg.TenantID, arg.UserID, arg.SeriesID)
+	rows, err := q.db.QueryContext(ctx, ListOpenWaitFreeTicketsInSeries,
+		arg.TenantID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.Surface,
+	)
 	if err != nil {
 		return nil, err
 	}
