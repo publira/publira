@@ -255,15 +255,16 @@ func normalizeEntry(raw string) (string, error) {
 	return entry, nil
 }
 
-// cutAddress splits an address at its @. A string without one, or with more
-// than one, is not an address here: a quoted local part may hold an @, and no
-// entry or bare address the server stores is written that way.
+// cutAddress splits an address at its last @. A quoted local part may hold an
+// @ of its own, and mail.ParseAddress accepts one, so the domain is what
+// follows the last: splitting at the first would leave a domain no rule
+// matches and let such an address past every one of them.
 func cutAddress(address string) (local, domain string, ok bool) {
-	local, domain, ok = strings.Cut(address, "@")
-	if !ok || strings.Contains(domain, "@") {
+	at := strings.LastIndexByte(address, '@')
+	if at < 0 {
 		return "", "", false
 	}
-	return local, domain, true
+	return address[:at], address[at+1:], true
 }
 
 // dropTag drops the sub-address tag from a local part.

@@ -84,6 +84,8 @@ func TestDBCreateUserRefusesAnAddressOrDomainTheTenantLists(t *testing.T) {
 		"john+2@example.com",
 		"reader@blocked.example",
 		"reader@mail.blocked.example",
+		// A quoted local part holding an @ is still on the listed domain.
+		`"a@b"@blocked.example`,
 	} {
 		t.Run(email, func(t *testing.T) {
 			assertEmailRefused(t, env.signUp(tenant, email), "email", rpcerrors.FieldReasonEmailRefused)

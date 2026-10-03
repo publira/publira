@@ -37,6 +37,10 @@ func TestMatches(t *testing.T) {
 		{"reader@xn--r8jz45g.jp", true},
 		{"reader@mail.例え.jp", true},
 		{"+tag@example.com", false},
+		// A quoted local part may hold an @, which mail.ParseAddress keeps in
+		// the bare address it answers. The domain follows the last one.
+		{"a@b@blocked.example", true},
+		{"john@x@example.com", false},
 		{"not-an-address", false},
 	}
 	for _, tt := range tests {
