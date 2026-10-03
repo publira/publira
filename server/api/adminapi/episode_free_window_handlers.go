@@ -13,11 +13,17 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+)
+
+const (
+	defaultFreeWindowListLimit int32 = 20
+	maxFreeWindowListLimit     int32 = 100
 )
 
 // freeWindowPeriod is a validated request period, in UTC.
@@ -326,6 +332,187 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	return connect.NewResponse(&publiraadminv1.CreateSeriesFreeWindowsResponse{FreeWindows: windows}), nil
 }
 
+// freeWindowListScope is the one episode or series ListEpisodeFreeWindows
+// lists, and the key its tokens are bound to. Exactly one of the two ids is set.
+type freeWindowListScope struct {
+	episodeID uuid.NullUUID
+	seriesID  uuid.NullUUID
+	listKey   pagination.ListKey
+}
+
+func parseFreeWindowListScope(req *publiraadminv1.ListEpisodeFreeWindowsRequest) (freeWindowListScope, error) {
+	listKey := pagination.NewListKey("starts_at_desc")
+	switch scope := req.Scope.(type) {
+	case *publiraadminv1.ListEpisodeFreeWindowsRequest_EpisodeId:
+		id, err := parseRecordID(scope.EpisodeId, "episode_id")
+		if err != nil {
+			return freeWindowListScope{}, err
+		}
+		return freeWindowListScope{
+			episodeID: uuid.NullUUID{UUID: id, Valid: true},
+			listKey:   listKey.Value("episode_id", id.String()),
+		}, nil
+	case *publiraadminv1.ListEpisodeFreeWindowsRequest_SeriesId:
+		id, err := parseRecordID(scope.SeriesId, "series_id")
+		if err != nil {
+			return freeWindowListScope{}, err
+		}
+		return freeWindowListScope{
+			seriesID: uuid.NullUUID{UUID: id, Valid: true},
+			listKey:  listKey.Value("series_id", id.String()),
+		}, nil
+	default:
+		// A list of every window of the tenant is not something the console
+		// shows, so the scope is required rather than optional.
+		return freeWindowListScope{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_id or series_id is required"))
+	}
+}
+
+// freeWindowListRow is a row of any of the ListEpisodeFreeWindows* queries,
+// which all select the same columns.
+type freeWindowListRow dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescRow
+
+func freeWindowListRows[T any](rows []T, convert func(T) freeWindowListRow) []freeWindowListRow {
+	mapped := make([]freeWindowListRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, convert(row))
+	}
+	return mapped
+}
+
+// freeWindowPage runs the keyset query for one page. Each scope has queries of
+// its own, so neither is planned around a filter it does not use. The list
+// reads latest start first, so a backward page is scanned by the ascending
+// query and put back into display order by pagination.Page.
+func (s *adminServer) freeWindowPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	scope freeWindowListScope,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]freeWindowListRow, error) {
+	queries := s.queriesFor(ctx)
+	cursorID := uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid}
+	cursorStartsAt := sql.NullTime{Time: keys.Time, Valid: keys.Valid}
+	backward := direction == pagination.Backward
+
+	if scope.episodeID.Valid {
+		if backward {
+			rows, err := queries.ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx, dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantAscParams{
+				TenantID:        tenantID,
+				EpisodeID:       scope.episodeID.UUID,
+				CursorID:        cursorID,
+				CursorInclusive: keys.Inclusive,
+				CursorStartsAt:  cursorStartsAt,
+				Limit:           limit,
+			})
+			return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantAscRow) freeWindowListRow {
+				return freeWindowListRow(row)
+			}), err
+		}
+		rows, err := queries.ListEpisodeFreeWindowsByEpisodeForTenantDesc(ctx, dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescParams{
+			TenantID:        tenantID,
+			EpisodeID:       scope.episodeID.UUID,
+			CursorID:        cursorID,
+			CursorInclusive: keys.Inclusive,
+			CursorStartsAt:  cursorStartsAt,
+			Limit:           limit,
+		})
+		return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescRow) freeWindowListRow {
+			return freeWindowListRow(row)
+		}), err
+	}
+
+	if backward {
+		rows, err := queries.ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx, dbmodels.ListEpisodeFreeWindowsBySeriesForTenantAscParams{
+			TenantID:        tenantID,
+			SeriesID:        scope.seriesID.UUID,
+			CursorID:        cursorID,
+			CursorInclusive: keys.Inclusive,
+			CursorStartsAt:  cursorStartsAt,
+			Limit:           limit,
+		})
+		return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsBySeriesForTenantAscRow) freeWindowListRow {
+			return freeWindowListRow(row)
+		}), err
+	}
+	rows, err := queries.ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx, dbmodels.ListEpisodeFreeWindowsBySeriesForTenantDescParams{
+		TenantID:        tenantID,
+		SeriesID:        scope.seriesID.UUID,
+		CursorID:        cursorID,
+		CursorInclusive: keys.Inclusive,
+		CursorStartsAt:  cursorStartsAt,
+		Limit:           limit,
+	})
+	return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsBySeriesForTenantDescRow) freeWindowListRow {
+		return freeWindowListRow(row)
+	}), err
+}
+
+func (s *adminServer) ListEpisodeFreeWindows(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListEpisodeFreeWindowsRequest],
+) (*connect.Response[publiraadminv1.ListEpisodeFreeWindowsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	scope, err := parseFreeWindowListScope(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultFreeWindowListLimit, maxFreeWindowListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = scope.listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, rpcerrors.NewPageTokenError(err)
+		}
+	}
+
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.freeWindowPage(ctx, tenant.ID, scope, keys, cursor.Direction, limit+1)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode free windows", err, "tenant_id", tenant.ID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
+	windows := make([]*publiraadminv1.AdminEpisodeFreeWindow, 0, len(rows))
+	for _, row := range rows {
+		windows = append(windows, freeWindowFromListRow(row))
+	}
+
+	res := &publiraadminv1.ListEpisodeFreeWindowsResponse{FreeWindows: windows}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = scope.listKey.EncodeTimeUUID(pagination.Backward, rows[0].StartsAt, rows[0].ID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = scope.listKey.EncodeTimeUUID(pagination.Forward, last.StartsAt, last.ID)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = scope.listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = scope.listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
+}
+
 func (s *adminServer) DeleteEpisodeFreeWindow(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteEpisodeFreeWindowRequest],
@@ -377,6 +564,21 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 }
 
 func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {
+	return &publiraadminv1.AdminEpisodeFreeWindow{
+		Id:              row.ID.String(),
+		PublicId:        row.PublicID,
+		EpisodeId:       row.EpisodeID.String(),
+		EpisodePublicId: row.EpisodePublicID,
+		EpisodeTitle:    row.EpisodeTitle,
+		SeriesId:        row.SeriesID.String(),
+		SeriesPublicId:  row.SeriesPublicID,
+		StartsAt:        row.StartsAt.UTC().Format(time.RFC3339),
+		EndsAt:          row.EndsAt.UTC().Format(time.RFC3339),
+		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
+	}
+}
+
+func freeWindowFromListRow(row freeWindowListRow) *publiraadminv1.AdminEpisodeFreeWindow {
 	return &publiraadminv1.AdminEpisodeFreeWindow{
 		Id:              row.ID.String(),
 		PublicId:        row.PublicID,

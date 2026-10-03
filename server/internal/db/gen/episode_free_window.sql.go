@@ -259,6 +259,422 @@ func (q *Queries) ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]Lis
 	return items, nil
 }
 
+const ListEpisodeFreeWindowsByEpisodeForTenantAsc = `-- name: ListEpisodeFreeWindowsByEpisodeForTenantAsc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = $1
+    AND w.episode_id = $2
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (w.starts_at, w.id) >= ($5::timestamptz, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (w.starts_at, w.id) > ($5::timestamptz, $3::uuid)
+        )
+    )
+ORDER BY w.starts_at ASC,
+    w.id ASC
+LIMIT $6
+`
+
+type ListEpisodeFreeWindowsByEpisodeForTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorStartsAt  sql.NullTime  `json:"cursor_starts_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListEpisodeFreeWindowsByEpisodeForTenantAscRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+}
+
+func (q *Queries) ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsByEpisodeForTenantAscParams) ([]ListEpisodeFreeWindowsByEpisodeForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFreeWindowsByEpisodeForTenantAsc,
+		arg.TenantID,
+		arg.EpisodeID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorStartsAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeFreeWindowsByEpisodeForTenantAscRow
+	for rows.Next() {
+		var i ListEpisodeFreeWindowsByEpisodeForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CreatedAt,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesID,
+			&i.SeriesPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodeFreeWindowsByEpisodeForTenantDesc = `-- name: ListEpisodeFreeWindowsByEpisodeForTenantDesc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = $1
+    AND w.episode_id = $2
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (w.starts_at, w.id) <= ($5::timestamptz, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (w.starts_at, w.id) < ($5::timestamptz, $3::uuid)
+        )
+    )
+ORDER BY w.starts_at DESC,
+    w.id DESC
+LIMIT $6
+`
+
+type ListEpisodeFreeWindowsByEpisodeForTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorStartsAt  sql.NullTime  `json:"cursor_starts_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListEpisodeFreeWindowsByEpisodeForTenantDescRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+}
+
+// Admin ListEpisodeFreeWindows is (starts_at, id) DESC: the window furthest
+// ahead first, then the open one, then the ones already over, which are kept
+// until someone deletes them. Forward uses the DESC queries; backward uses ASC,
+// and the handler flips its rows back into display order.
+//
+// Each scope has queries of its own rather than one with optional filters, so
+// every scan is bounded by the page and not by how much history the episodes
+// have collected. On one episode the exclusion constraint makes starts_at
+// unique, so idx_episode_free_windows_episode_period yields the whole order and
+// the scan stops after one page. A series has no column on the window to index,
+// so it takes at most one page from each of its episodes by that same index and
+// sorts only those: the work grows with the number of episodes, never with the
+// windows that are over.
+// cursor rules: proto/README.md.
+func (q *Queries) ListEpisodeFreeWindowsByEpisodeForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsByEpisodeForTenantDescParams) ([]ListEpisodeFreeWindowsByEpisodeForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFreeWindowsByEpisodeForTenantDesc,
+		arg.TenantID,
+		arg.EpisodeID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorStartsAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeFreeWindowsByEpisodeForTenantDescRow
+	for rows.Next() {
+		var i ListEpisodeFreeWindowsByEpisodeForTenantDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CreatedAt,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesID,
+			&i.SeriesPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodeFreeWindowsBySeriesForTenantAsc = `-- name: ListEpisodeFreeWindowsBySeriesForTenantAsc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM series s
+    JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL (
+        SELECT fw.id,
+            fw.public_id,
+            fw.starts_at,
+            fw.ends_at,
+            fw.created_at
+        FROM episode_free_windows fw
+        WHERE fw.episode_id = e.id
+            AND (
+                $1::uuid IS NULL
+                OR (
+                    $2::boolean
+                    AND (fw.starts_at, fw.id) >= ($3::timestamptz, $1::uuid)
+                )
+                OR (
+                    NOT $2::boolean
+                    AND (fw.starts_at, fw.id) > ($3::timestamptz, $1::uuid)
+                )
+            )
+        ORDER BY fw.starts_at ASC,
+            fw.id ASC
+        LIMIT $4
+    ) w
+WHERE s.tenant_id = $5
+    AND s.id = $6
+ORDER BY w.starts_at ASC,
+    w.id ASC
+LIMIT $4
+`
+
+type ListEpisodeFreeWindowsBySeriesForTenantAscParams struct {
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorStartsAt  sql.NullTime  `json:"cursor_starts_at"`
+	Limit           int32         `json:"limit"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+}
+
+type ListEpisodeFreeWindowsBySeriesForTenantAscRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+}
+
+func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantAscParams) ([]ListEpisodeFreeWindowsBySeriesForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFreeWindowsBySeriesForTenantAsc,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorStartsAt,
+		arg.Limit,
+		arg.TenantID,
+		arg.SeriesID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeFreeWindowsBySeriesForTenantAscRow
+	for rows.Next() {
+		var i ListEpisodeFreeWindowsBySeriesForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CreatedAt,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesID,
+			&i.SeriesPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodeFreeWindowsBySeriesForTenantDesc = `-- name: ListEpisodeFreeWindowsBySeriesForTenantDesc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM series s
+    JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL (
+        SELECT fw.id,
+            fw.public_id,
+            fw.starts_at,
+            fw.ends_at,
+            fw.created_at
+        FROM episode_free_windows fw
+        WHERE fw.episode_id = e.id
+            AND (
+                $1::uuid IS NULL
+                OR (
+                    $2::boolean
+                    AND (fw.starts_at, fw.id) <= ($3::timestamptz, $1::uuid)
+                )
+                OR (
+                    NOT $2::boolean
+                    AND (fw.starts_at, fw.id) < ($3::timestamptz, $1::uuid)
+                )
+            )
+        ORDER BY fw.starts_at DESC,
+            fw.id DESC
+        LIMIT $4
+    ) w
+WHERE s.tenant_id = $5
+    AND s.id = $6
+ORDER BY w.starts_at DESC,
+    w.id DESC
+LIMIT $4
+`
+
+type ListEpisodeFreeWindowsBySeriesForTenantDescParams struct {
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorStartsAt  sql.NullTime  `json:"cursor_starts_at"`
+	Limit           int32         `json:"limit"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+}
+
+type ListEpisodeFreeWindowsBySeriesForTenantDescRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+}
+
+func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantDescParams) ([]ListEpisodeFreeWindowsBySeriesForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFreeWindowsBySeriesForTenantDesc,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorStartsAt,
+		arg.Limit,
+		arg.TenantID,
+		arg.SeriesID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodeFreeWindowsBySeriesForTenantDescRow
+	for rows.Next() {
+		var i ListEpisodeFreeWindowsBySeriesForTenantDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.CreatedAt,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesID,
+			&i.SeriesPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const MarkEpisodeFreeWindowEndRevalidated = `-- name: MarkEpisodeFreeWindowEndRevalidated :exec
 UPDATE episode_free_windows
 SET end_revalidated_at = NOW()

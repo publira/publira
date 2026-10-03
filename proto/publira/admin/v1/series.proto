@@ -633,6 +633,33 @@ message CreateSeriesFreeWindowsResponse {
   repeated AdminEpisodeFreeWindow free_windows = 1;
 }
 
+// Lists the windows scheduled on one episode, or on every episode of one
+// series, so a campaign set up in an earlier session can be reviewed and
+// removed with DeleteEpisodeFreeWindow. A window that is already over is listed
+// too, until it is deleted.
+message ListEpisodeFreeWindowsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Exactly one is required. An id naming nothing of this tenant lists nothing.
+  oneof scope {
+    string episode_id = 2;
+    string series_id = 3;
+  }
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // is bound to the scope it was issued for.
+  string token = 5;
+}
+
+message ListEpisodeFreeWindowsResponse {
+  // Latest starts_at first.
+  repeated AdminEpisodeFreeWindow free_windows = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 // Removes a scheduled window. Removing one that is currently open ends the
 // campaign immediately: the episode is priced again as soon as the caches drop.
 message DeleteEpisodeFreeWindowRequest {
@@ -666,5 +693,6 @@ service AdminSeriesService {
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
   rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
   rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}
+  rpc ListEpisodeFreeWindows(ListEpisodeFreeWindowsRequest) returns (ListEpisodeFreeWindowsResponse) {}
   rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
 }

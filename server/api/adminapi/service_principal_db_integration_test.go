@@ -104,6 +104,13 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 			_, err := seriesClient.ListEpisodeCredits(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodeCreditsRequest{Tenant: tenantCtx, EpisodeId: episode.ID.String()}))
 			return err
 		},
+		publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure: func(ctx context.Context) error {
+			_, err := seriesClient.ListEpisodeFreeWindows(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+				Tenant: tenantCtx,
+				Scope:  &publiraadminv1.ListEpisodeFreeWindowsRequest_SeriesId{SeriesId: series.ID.String()},
+			}))
+			return err
+		},
 		publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure: func(ctx context.Context) error {
 			_, err := dashboardClient.GetDashboard(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetDashboardRequest{Tenant: tenantCtx}))
 			return err
