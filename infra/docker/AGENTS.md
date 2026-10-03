@@ -43,7 +43,11 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
    - server: `golang:*-trixie` + `libvips-dev` → `debian:13.*-slim` + `libvips42t64` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
    - The build and runtime stages of one image share a Debian release, and move to a new one together. Web / Node copy `node_modules` with native addons such as `sharp` into the runner, and the server binary links libvips, so a glibc or shared-library mismatch fails at run time, not at build time.
    - Shared-library package names follow the Debian release: Debian 13's 64-bit `time_t` transition renamed `libvips42` to `libvips42t64`.
-2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
+2. **Pin base images by digest, and tag them with what the digest is** (`image:tag@sha256:…`). The rule covers every `FROM` line, every `# syntax=` frontend, and every compose `image:` in the repository, not only the Dockerfiles here.
+   - The digest is the pin. The tag names the image's full version and its OS release, so a Renovate pull request shows in its diff and title which version the image moves from and to: `node:24.21.0-trixie-slim`, `golang:1.27.1-trixie`, `debian:13.7-slim`, `valkey/valkey:9.1.2-alpine3.24`. Never a tag that names only a line (`node:24-trixie-slim`, `golang:1.27-trixie`, `debian:trixie-slim`) or a bare `-alpine`, which follows whichever Alpine release the publisher currently builds on.
+   - The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`. Renovate raises both, and the `node` images in the compose files, on one branch.
+   - Exceptions, each stated in a comment at its line: distroless publishes no versioned tags, so its image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias) and the digest is the only further identifier; caddy publishes no Alpine-versioned tags, so it stays on `-alpine`.
+   - Moving to a new OS release (Alpine 3.24 → 3.25, Debian 13 → 14) is an edit by hand. Renovate's Docker versioning treats the part of the tag after the version as a compatibility marker and never changes it, so its pull requests move the version and the digest within the OS release the tag names.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, as `web/Dockerfile` does:
 
    ```dockerfile
