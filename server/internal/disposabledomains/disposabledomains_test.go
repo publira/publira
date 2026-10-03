@@ -278,6 +278,41 @@ func TestIsDisposableNamesNothingUntilTheFirstFetchSucceeds(t *testing.T) {
 	}
 }
 
+// A list that accepts the request and never answers costs the lookups one
+// fetch timeout, even on a client with no timeout of its own, and is then
+// treated as a failed read.
+func TestIsDisposableGivesUpOnAListThatNeverAnswers(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(ts.Close)
+	t.Cleanup(func() { close(release) })
+	client := ts.Client()
+	client.Timeout = 0
+	list := New(&policySource{url: ts.URL}, client, nil)
+	list.fetchTimeout = 50 * time.Millisecond
+
+	done := make(chan bool, 1)
+	go func() {
+		disposable, _ := list.IsDisposable(context.Background(), "first.test")
+		done <- disposable
+	}()
+	select {
+	case disposable := <-done:
+		if disposable {
+			t.Fatal("IsDisposable(first.test) = true, want no list from a read that timed out")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("IsDisposable is still waiting on a list that never answers")
+	}
+}
+
 // A sign-up whose reader gave up must not cut the read short, or the stale
 // list would stay in place for another whole interval.
 func TestIsDisposableFinishesTheFetchForACanceledCaller(t *testing.T) {

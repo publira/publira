@@ -262,7 +262,7 @@ On the platform API it runs as a service principal with no operator and no platf
 
 `internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. No list ships with the server: it is read from the URL in the platform policy's `disposable_email_domains_url`, saved through `PlatformPolicyService` or `publiractl policy set --disposable-email-domains-url`, and a platform that names none has no domain disposable.
 
-The list has one domain per line, with blank lines and lines starting with `#` ignored — the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, whose `disposable_email_blocklist.conf` can be named directly. It is read on first use and again every hour, and a URL saved in place of another is read at once. A read that fails, or that answers something other than a list of domains, keeps the last list that loaded, or no list until one has.
+The list has one domain per line, with blank lines and lines starting with `#` ignored — the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, whose `disposable_email_blocklist.conf` can be named directly.
 
 ## Mobile push (Firebase Cloud Messaging)
 

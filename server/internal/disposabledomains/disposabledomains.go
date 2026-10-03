@@ -36,7 +36,9 @@ const (
 	// interval is kept to an hour; a list of a few hundred kilobytes read
 	// hourly costs nothing worth trading that gap for.
 	refreshInterval = time.Hour
-	fetchTimeout    = 10 * time.Second
+	// fetchTimeout bounds one read of the list. Every lookup behind the read
+	// waits for it, so it is bounded whatever client the List was given.
+	fetchTimeout = 10 * time.Second
 	// maxListBytes bounds what a list may weigh. The maintained lists run to a
 	// few megabytes at the most, so a body past this is not one.
 	maxListBytes = 16 << 20
@@ -47,9 +49,10 @@ type domainSet map[string]struct{}
 // List answers whether a domain is disposable, from the list at the URL the
 // platform policy names.
 type List struct {
-	policy     platformpolicy.Source
-	httpClient *http.Client
-	logger     *slog.Logger
+	policy       platformpolicy.Source
+	httpClient   *http.Client
+	logger       *slog.Logger
+	fetchTimeout time.Duration
 
 	// Now is the clock the refresh interval is measured on, replaceable by
 	// tests before the first lookup.
@@ -64,12 +67,12 @@ type List struct {
 
 // New returns a List that reads the URL from policy on every lookup, so a
 // saved change reaches it as soon as policy answers it. A nil httpClient reads
-// with a client of its own.
+// with http.DefaultClient.
 func New(policy platformpolicy.Source, httpClient *http.Client, logger *slog.Logger) *List {
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: fetchTimeout}
+		httpClient = http.DefaultClient
 	}
-	return &List{policy: policy, httpClient: httpClient, logger: logger, Now: time.Now}
+	return &List{policy: policy, httpClient: httpClient, logger: logger, fetchTimeout: fetchTimeout, Now: time.Now}
 }
 
 // IsDisposable reports whether domain, or a domain it is a subdomain of, is on
@@ -116,8 +119,11 @@ func (l *List) listAt(listURL string) *ttlcache.Value[domainSet] {
 	}
 	list := ttlcache.New(func(ctx context.Context) (domainSet, error) {
 		// A reader who gives up on the sign-up must not leave the list unread
-		// for another interval; the client's timeout bounds the read.
-		return fetch(context.WithoutCancel(ctx), l.httpClient, listURL)
+		// for another interval, so the read drops the caller's cancellation
+		// and takes a deadline of its own instead.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), l.fetchTimeout)
+		defer cancel()
+		return fetch(ctx, l.httpClient, listURL)
 	}, refreshInterval, l.logger, "disposable email domain list")
 	list.Now = l.Now
 	// An empty list stands in until the first read succeeds, so a list that
