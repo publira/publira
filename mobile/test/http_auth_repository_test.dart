@@ -767,6 +767,69 @@ void main() {
     },
   );
 
+  group('email notifications', () {
+    test('reads the setting the account holds', () async {
+      expect(await auth.readEmailNotifications(stored), isTrue);
+
+      server.memberEmailNotifications = false;
+
+      expect(await auth.readEmailNotifications(stored), isFalse);
+    });
+
+    test(
+      'writes the setting and reports what the account then holds',
+      () async {
+        expect(
+          await auth.updateEmailNotifications(stored, enabled: false),
+          isFalse,
+        );
+        expect(server.memberEmailNotifications, isFalse);
+
+        final request = server.requestsTo('UpdateNotificationSettings').single;
+        expect(
+          request.headers['authorization'],
+          'Bearer ${stored.accessToken}',
+        );
+        expect(request.body, {
+          'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
+          'emailNotificationsEnabled': false,
+        });
+
+        expect(
+          await auth.updateEmailNotifications(stored, enabled: true),
+          isTrue,
+        );
+        expect(server.memberEmailNotifications, isTrue);
+      },
+    );
+
+    test('maps a rejected token to sessionExpired', () async {
+      server.activeAccessToken = 'another-token';
+
+      await expectLater(
+        () => auth.readEmailNotifications(stored),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+      await expectLater(
+        () => auth.updateEmailNotifications(stored, enabled: false),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+    });
+
+    test('maps an unreachable API to network', () async {
+      final closedBaseUrl = server.baseUrl;
+      await server.close();
+      final offline = HttpAuthRepository(
+        config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
+      );
+
+      await expectLater(
+        () => offline.updateEmailNotifications(stored, enabled: false),
+        failsWith(AuthFailureKind.network),
+      );
+    });
+  });
+
   test('signOut maps an unreachable API to network', () async {
     final closedBaseUrl = server.baseUrl;
     await server.close();

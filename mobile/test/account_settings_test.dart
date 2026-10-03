@@ -418,7 +418,7 @@ void main() {
         );
         await pumpUntilFound(
           tester,
-          find.byKey(const ValueKey('account-sign-out')),
+          find.byKey(const ValueKey('account-name')),
         );
       });
     }

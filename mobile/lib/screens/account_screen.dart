@@ -110,6 +110,7 @@ class AccountScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   const _NotificationSwitch(),
+                  _EmailNotificationSwitch(key: ValueKey(session.userPublicId)),
                   const _ContactEntry(),
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -252,6 +253,153 @@ class _NotificationSwitch extends StatelessWidget {
         const Divider(height: 1),
       ],
     );
+  }
+}
+
+/// Notification email, which the account holds rather than the device, so the
+/// storefront's notification settings read and write the same setting.
+///
+/// Keyed by the reader, so another account signing in reads its own setting
+/// rather than showing the last one's.
+class _EmailNotificationSwitch extends StatefulWidget {
+  const _EmailNotificationSwitch({super.key});
+
+  @override
+  State<_EmailNotificationSwitch> createState() =>
+      _EmailNotificationSwitchState();
+}
+
+class _EmailNotificationSwitchState extends State<_EmailNotificationSwitch> {
+  late Future<bool?> _future;
+  var _started = false;
+
+  /// The setting the switch shows once it has been read, which a change the
+  /// reader makes moves at once and a refused one moves back.
+  bool? _enabled;
+  var _saving = false;
+  String? _failure;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) {
+      return;
+    }
+    _started = true;
+    _future = AuthScope.of(context).readEmailNotifications();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = AuthScope.of(context).readEmailNotifications();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return FutureBuilder<bool?>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return _section(
+            ListTile(
+              key: const ValueKey('account-email-notifications-loading'),
+              title: AutospacedText(messages.accountEmailNotifications),
+              trailing: const SizedBox.square(
+                dimension: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return _section(
+            ListTile(
+              key: const ValueKey('account-email-notifications-error'),
+              title: AutospacedText(messages.accountEmailNotifications),
+              subtitle: AutospacedText(
+                messages.accountEmailNotificationsLoadFailed,
+              ),
+              trailing: TextButton(
+                key: const ValueKey('account-email-notifications-retry'),
+                onPressed: _reload,
+                child: AutospacedText(messages.commonRetry),
+              ),
+            ),
+          );
+        }
+        final stored = snapshot.data;
+        if (stored == null) {
+          return const SizedBox.shrink();
+        }
+        return _section(
+          SwitchListTile(
+            key: const ValueKey('account-email-notifications'),
+            title: AutospacedText(messages.accountEmailNotifications),
+            subtitle: AutospacedText(
+              messages.accountEmailNotificationsDescription,
+            ),
+            value: _enabled ?? stored,
+            onChanged: _saving ? null : (value) => unawaited(_update(value)),
+          ),
+          failure: _failure,
+        );
+      },
+    );
+  }
+
+  Widget _section(Widget row, {String? failure}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        row,
+        if (failure != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: AutospacedText(
+              failure,
+              key: const ValueKey('account-email-notifications-failure'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+
+  Future<void> _update(bool enabled) async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    final previous = _enabled;
+    setState(() {
+      _enabled = enabled;
+      _saving = true;
+      _failure = null;
+    });
+    try {
+      final stored = await auth.updateEmailNotifications(enabled: enabled);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _enabled = stored;
+        _saving = false;
+      });
+    } on AuthFailure catch (failure) {
+      if (!mounted) {
+        return;
+      }
+      // The switch goes back to what the account still holds, so trying again
+      // is the same tap as the first one.
+      setState(() {
+        _enabled = previous;
+        _saving = false;
+        _failure = failure.kind == AuthFailureKind.network
+            ? messages.errorsRpcUnavailable
+            : messages.accountEmailNotificationsUpdateFailed;
+      });
+    }
   }
 }
 

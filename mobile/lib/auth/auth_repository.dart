@@ -138,6 +138,21 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<String> readEmail(AuthSession session);
 
+  /// Whether the account behind [session] takes notification email, the
+  /// setting the storefront's notification settings read and write as well.
+  ///
+  /// Throws [AuthFailure].
+  Future<bool> readEmailNotifications(AuthSession session);
+
+  /// Turns notification email on or off for the account behind [session] and
+  /// returns what the account then holds.
+  ///
+  /// Throws [AuthFailure].
+  Future<bool> updateEmailNotifications(
+    AuthSession session, {
+    required bool enabled,
+  });
+
   /// Writes [birthDate] to the account behind [session] and returns the date
   /// the account then holds, as `YYYY-MM-DD`.
   ///

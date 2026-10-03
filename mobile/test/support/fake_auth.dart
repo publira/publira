@@ -91,6 +91,25 @@ class FakeAuthRepository implements AuthRepository {
   String email;
   AuthFailure? emailFailure;
 
+  /// Whether the account takes notification email, which
+  /// [updateEmailNotifications] writes.
+  var emailNotifications = true;
+
+  /// Thrown by [readEmailNotifications], standing in for a setting that
+  /// cannot be read.
+  AuthFailure? emailNotificationsFailure;
+
+  /// Thrown by [updateEmailNotifications], standing in for an API that
+  /// refuses the change.
+  AuthFailure? updateEmailNotificationsFailure;
+
+  /// Held open by a test that needs to act while [updateEmailNotifications]
+  /// is in flight.
+  Completer<void>? updateEmailNotificationsGate;
+
+  /// What [updateEmailNotifications] has been asked to write, in order.
+  final emailNotificationUpdates = <bool>[];
+
   /// Held open by a test that needs to act while [readEmail] is in flight.
   Completer<void>? emailGate;
 
@@ -392,6 +411,29 @@ class FakeAuthRepository implements AuthRepository {
       throw failure;
     }
     return email;
+  }
+
+  @override
+  Future<bool> readEmailNotifications(AuthSession session) async {
+    final failure = emailNotificationsFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return emailNotifications;
+  }
+
+  @override
+  Future<bool> updateEmailNotifications(
+    AuthSession session, {
+    required bool enabled,
+  }) async {
+    emailNotificationUpdates.add(enabled);
+    await updateEmailNotificationsGate?.future;
+    final failure = updateEmailNotificationsFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return emailNotifications = enabled;
   }
 
   @override
