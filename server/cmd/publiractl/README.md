@@ -126,7 +126,7 @@ Environment variables:
 
 ## policy
 
-Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the in-app purchase confirmation limit, the mail limits, and the community limits every tenant starts from and may loosen up to. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -155,6 +155,7 @@ go run ./server/cmd/publiractl policy show
 | `--contact-message-per-client-per-hour`, `--contact-message-per-client-per-day` | Contact messages one client may send across every account and tenant |
 | `--viewer-preferences-per-minute`, `--viewer-preferences-per-day` | Times one reader may save the viewer layout |
 | `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes |
+| `--disposable-email-domains-url` | The absolute http or https URL the list of disposable email domains is read from. An empty value leaves no list |
 
 Every limit is a whole number of at least 1, and its daily value is at least its per-minute or per-hour one. Running servers reread the policy within `platformpolicy.CacheTTL`, so a save reaches them without a restart. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,13 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 		"duplicate window off the minute": func(p *Policy) {
 			p.Community.DuplicateCommentWindow = 90 * time.Second
 		},
+		"list URL with no scheme":    func(p *Policy) { p.DisposableEmailDomainsURL = "lists.example.com/disposable.conf" },
+		"list URL on another scheme": func(p *Policy) { p.DisposableEmailDomainsURL = "file:///etc/disposable.conf" },
+		"list URL with no host":      func(p *Policy) { p.DisposableEmailDomainsURL = "https:///disposable.conf" },
+		"list URL padded":            func(p *Policy) { p.DisposableEmailDomainsURL = " https://lists.example.com/disposable.conf" },
+		"list URL past the length": func(p *Policy) {
+			p.DisposableEmailDomainsURL = "https://lists.example.com/" + strings.Repeat("a", MaxDisposableEmailDomainsURLLength)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			policy := Defaults()
@@ -78,11 +86,26 @@ func TestValidateAcceptsTheBounds(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsAListURL(t *testing.T) {
+	for _, url := range []string{
+		"",
+		"http://lists.internal:8080/disposable.conf",
+		"https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf",
+	} {
+		policy := Defaults()
+		policy.DisposableEmailDomainsURL = url
+		if err := policy.Validate(); err != nil {
+			t.Errorf("Validate() with %q = %v, want nil", url, err)
+		}
+	}
+}
+
 func TestConfigParamsRoundTripThroughTheRow(t *testing.T) {
 	policy := Defaults()
 	policy.MFARequiredForTenantAdmin = true
 	policy.Community.DuplicateCommentWindow = 45 * time.Minute
 	policy.Community.ContactMessagePerClient = HourDay{PerHour: 7, PerDay: 70}
+	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
 
 	row := rowFromParams(policy.ConfigParams())
 	if got := FromConfig(row); got != policy {
@@ -127,6 +150,7 @@ func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.Pl
 		ViewerPreferencesLimitPerDay:         params.ViewerPreferencesLimitPerDay,
 		StorePurchaseConfirmLimitPerMinute:   params.StorePurchaseConfirmLimitPerMinute,
 		StorePurchaseConfirmLimitPerDay:      params.StorePurchaseConfirmLimitPerDay,
+		DisposableEmailDomainsUrl:            params.DisposableEmailDomainsUrl,
 	}
 }
 
@@ -272,8 +296,9 @@ func TestSaveParamsValidateNamesTheRequestField(t *testing.T) {
 		"policy.community_limit_defaults.contact_message_per_client.per_day": func(p *SaveParams) {
 			p.Policy.Community.ContactMessagePerClient.PerDay = p.Policy.Community.ContactMessagePerClient.PerHour - 1
 		},
-		"policy." + FieldDuplicateCommentWindow: func(p *SaveParams) { p.Policy.Community.DuplicateCommentWindow = 0 },
-		FieldExpectedRevision:                   func(p *SaveParams) { p.ExpectedRevision = new(int64(-1)) },
+		"policy." + FieldDuplicateCommentWindow:    func(p *SaveParams) { p.Policy.Community.DuplicateCommentWindow = 0 },
+		"policy." + FieldDisposableEmailDomainsURL: func(p *SaveParams) { p.Policy.DisposableEmailDomainsURL = "ftp://lists.example.com" },
+		FieldExpectedRevision:                      func(p *SaveParams) { p.ExpectedRevision = new(int64(-1)) },
 	} {
 		t.Run(want, func(t *testing.T) {
 			params := SaveParams{Policy: Defaults()}

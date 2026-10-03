@@ -62,6 +62,11 @@ message PlatformPolicy {
   // ConfirmStorePurchase, each of which the server verifies with the App Store
   // or Google Play on the tenant's credentials and quota.
   MinuteDayLimit store_purchase_confirmation = 6;
+  // Where the list of disposable email domains is read from: an absolute http
+  // or https URL of a list with one domain per line, blank lines and lines
+  // starting with # ignored. Empty means there is no list, and no domain is
+  // disposable; no list ships with the server.
+  string disposable_email_domains_url = 7;
 }
 
 message GetPlatformPolicyRequest {}

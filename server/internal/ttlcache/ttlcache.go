@@ -36,6 +36,16 @@ func New[T any](load func(ctx context.Context) (T, error), ttl time.Duration, lo
 	return &Value[T]{load: load, ttl: ttl, logger: logger, what: what, Now: time.Now}
 }
 
+// Seed gives the Value an answer before anything is read. The next Get still
+// reads, and serves the seed when that read fails, so a source that is down
+// from the start waits a TTL between reads like one that went down later.
+func (c *Value[T]) Seed(value T) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.value, c.hasValue, c.nextReadAt = value, true, time.Time{}
+}
+
 // Get answers the kept value, reading it again once the TTL has passed. load
 // runs under the Value's lock, so it may keep state of its own between reads.
 func (c *Value[T]) Get(ctx context.Context) (T, error) {

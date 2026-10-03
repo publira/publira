@@ -75,3 +75,35 @@ func TestGetMeasuresTheTTLFromTheEndOfTheRead(t *testing.T) {
 		})
 	}
 }
+
+// A seed is served while the reads fail, and replaced by the first one that
+// succeeds; a failure waits a TTL either way, so an outage from the start costs
+// no more queries than one that comes later.
+func TestGetServesTheSeedUntilAReadSucceeds(t *testing.T) {
+	t.Parallel()
+
+	c := &clock{now: time.Unix(0, 0)}
+	loads := 0
+	value := New(func(context.Context) (int, error) {
+		loads++
+		if loads == 1 {
+			return 0, errors.New("not reachable yet")
+		}
+		return 7, nil
+	}, time.Minute, nil, "test value")
+	value.Now = c.Now
+	value.Seed(3)
+
+	for range 2 {
+		if got, err := value.Get(context.Background()); err != nil || got != 3 {
+			t.Fatalf("Get = (%d, %v), want the seed", got, err)
+		}
+	}
+	if loads != 1 {
+		t.Fatalf("loads = %d, want one read before the TTL passes", loads)
+	}
+	c.now = c.now.Add(time.Minute)
+	if got, err := value.Get(context.Background()); err != nil || got != 7 {
+		t.Fatalf("Get past the TTL = (%d, %v), want the read value", got, err)
+	}
+}

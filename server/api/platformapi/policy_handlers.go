@@ -37,6 +37,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 			ContactMessagePerClient:       hourDayToProto(community.ContactMessagePerClient),
 			ViewerPreferences:             minuteDayToProto(community.ViewerPreferencesUpdate),
 		},
+		DisposableEmailDomainsUrl: policy.DisposableEmailDomainsURL,
 	}
 }
 
@@ -67,6 +68,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 			ContactMessagePerClient:  hourDayFromProto(community.GetContactMessagePerClient()),
 			ViewerPreferencesUpdate:  minuteDayFromProto(community.GetViewerPreferences()),
 		},
+		DisposableEmailDomainsURL: policy.GetDisposableEmailDomainsUrl(),
 	}
 }
 

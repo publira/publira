@@ -258,6 +258,12 @@ On the platform API it runs as a service principal with no operator and no platf
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, the worker delivers text-only mail. There is no default URL
 
+## Disposable email domains
+
+`internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. No list ships with the server: it is read from the URL in the platform policy's `disposable_email_domains_url`, saved through `PlatformPolicyService` or `publiractl policy set --disposable-email-domains-url`, and a platform that names none has no domain disposable.
+
+The list has one domain per line, with blank lines and lines starting with `#` ignored — the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, whose `disposable_email_blocklist.conf` can be named directly.
+
 ## Mobile push (Firebase Cloud Messaging)
 
 The worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.

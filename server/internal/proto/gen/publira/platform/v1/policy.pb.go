@@ -255,6 +255,11 @@ type PlatformPolicy struct {
 	// ConfirmStorePurchase, each of which the server verifies with the App Store
 	// or Google Play on the tenant's credentials and quota.
 	StorePurchaseConfirmation *MinuteDayLimit `protobuf:"bytes,6,opt,name=store_purchase_confirmation,json=storePurchaseConfirmation,proto3" json:"store_purchase_confirmation,omitempty"`
+	// Where the list of disposable email domains is read from: an absolute http
+	// or https URL of a list with one domain per line, blank lines and lines
+	// starting with # ignored. Empty means there is no list, and no domain is
+	// disposable; no list ships with the server.
+	DisposableEmailDomainsUrl string `protobuf:"bytes,7,opt,name=disposable_email_domains_url,json=disposableEmailDomainsUrl,proto3" json:"disposable_email_domains_url,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -329,6 +334,13 @@ func (x *PlatformPolicy) GetStorePurchaseConfirmation() *MinuteDayLimit {
 		return x.StorePurchaseConfirmation
 	}
 	return nil
+}
+
+func (x *PlatformPolicy) GetDisposableEmailDomainsUrl() string {
+	if x != nil {
+		return x.DisposableEmailDomainsUrl
+	}
+	return ""
 }
 
 type GetPlatformPolicyRequest struct {
@@ -754,14 +766,15 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x0eepisode_rating\x18\x04 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\repisodeRating\x12`\n" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
-	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\xb2\x04\n" +
+	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\xf3\x04\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
 	"\x19mail_requests_per_address\x18\x03 \x01(\v2!.publira.platform.v1.HourDayLimitR\x16mailRequestsPerAddress\x12Z\n" +
 	"\x18mail_requests_per_source\x18\x04 \x01(\v2!.publira.platform.v1.HourDayLimitR\x15mailRequestsPerSource\x12e\n" +
 	"\x18community_limit_defaults\x18\x05 \x01(\v2+.publira.platform.v1.CommunityLimitDefaultsR\x16communityLimitDefaults\x12c\n" +
-	"\x1bstore_purchase_confirmation\x18\x06 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x19storePurchaseConfirmation\"\x1a\n" +
+	"\x1bstore_purchase_confirmation\x18\x06 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x19storePurchaseConfirmation\x12?\n" +
+	"\x1cdisposable_email_domains_url\x18\a \x01(\tR\x19disposableEmailDomainsUrl\"\x1a\n" +
 	"\x18GetPlatformPolicyRequest\"t\n" +
 	"\x19GetPlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +
