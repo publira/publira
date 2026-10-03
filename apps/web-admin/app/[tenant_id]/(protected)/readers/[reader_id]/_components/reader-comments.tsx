@@ -30,6 +30,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import {
@@ -41,7 +42,6 @@ import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 
-import { CommentCreatorMark } from "../../../comments/_components/comment-creator-mark";
 import {
   CommentRowActions,
   CommentStateNotes,

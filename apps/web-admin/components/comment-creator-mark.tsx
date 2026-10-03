@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import type { CommentCreator } from "../comment-types";
+import type { CommentCreator } from "../app/[tenant_id]/(protected)/comments/comment-types";
 
 /**
  * Marks a comment written by a creator the episode credits, under the name the

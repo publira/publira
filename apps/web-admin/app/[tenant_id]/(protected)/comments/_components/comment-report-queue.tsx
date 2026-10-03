@@ -33,6 +33,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import {
@@ -46,7 +47,6 @@ import { getMessagesFor } from "#lib/messages";
 
 import type { CommentReportItem, CommentReportStatus } from "../comment-types";
 import { CommentActionButton } from "./comment-action-button";
-import { CommentCreatorMark } from "./comment-creator-mark";
 import { CommentReasonDialog } from "./comment-reason-dialog";
 import { CommentReportDecisionButton } from "./comment-report-decision-button";
 import {
