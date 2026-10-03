@@ -318,7 +318,7 @@ func issueTestAdminToken(tenantID, userPublicID, role string) string {
 }
 
 func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time) {
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, "", now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, "", now, auth.RoleTenantEditor)
 }
 
 func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time, role string) {

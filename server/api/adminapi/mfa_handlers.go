@@ -192,6 +192,9 @@ func (s *adminServer) actorFromChallenge(
 	if err != nil {
 		return mfaActor{}, err
 	}
+	if role == "" {
+		return mfaActor{}, invalidSessionError()
+	}
 	return mfaActor{
 		Tenant:             tenant,
 		User:               user,

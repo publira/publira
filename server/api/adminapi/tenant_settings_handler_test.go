@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -32,7 +33,7 @@ func TestGetTenantTimezoneReturnsConfiguredValue(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "America/Los_Angeles")
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantTimezoneRequest{
@@ -54,7 +55,7 @@ func TestGetTenantTimezoneFallsBackToDefault(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "")
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantTimezoneRequest{
@@ -211,7 +212,7 @@ func TestUpdateTenantTimezoneRequiresTenantAdmin(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	_, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
@@ -254,7 +255,7 @@ func TestGetTenantDefaultLocaleReturnsConfiguredValue(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "en")
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
@@ -290,7 +291,7 @@ func TestGetTenantDefaultLocaleFailsOnAnUnusableStoredValue(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 			expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, tt.stored)
-			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 			_, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
@@ -380,7 +381,7 @@ func TestUpdateTenantDefaultLocaleRequiresTenantAdmin(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	_, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
@@ -463,7 +464,7 @@ func TestGetTenantCommentSettingsReturnsTheStoredValues(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
-			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 			expectTenantConfigWithCommentSettings(mock, tenantID, now, tt.mode, tt.threshold)
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
@@ -493,7 +494,7 @@ func TestGetTenantCommentSettingsReportsTheColumnDefaultsWithoutAConfigRow(t *te
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -523,7 +524,7 @@ func TestGetTenantCommentSettingsFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 	expectTenantConfigWithCommentSettings(mock, tenantID, now, "members_only", 3)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
@@ -655,7 +656,7 @@ func TestUpdateTenantCommentSettingsRequiresTenantAdmin(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
@@ -710,7 +711,7 @@ func TestGetTenantAgeVerificationReturnsTheStoredRule(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
-			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.stored))
@@ -739,7 +740,7 @@ func TestGetTenantAgeVerificationReportsNoneWithoutAConfigRow(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -767,7 +768,7 @@ func TestGetTenantAgeVerificationFailsOnAnUnsupportedStoredRule(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, "everything"))
@@ -860,7 +861,7 @@ func TestUpdateTenantAgeVerificationRequiresTenantAdmin(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	_, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
