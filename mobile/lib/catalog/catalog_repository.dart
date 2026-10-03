@@ -88,13 +88,20 @@ abstract class CatalogRepository {
   /// refuses a token whose snapshot the retention purge has dropped since, and
   /// the way on from there is the first page of the current ranking.
   ///
-  /// Empty for a tenant the ranking batch has not run for yet, which is an
-  /// answer rather than a failure: nothing has been computed.
+  /// [genreId] narrows the ranking to the genre with that public id, whose
+  /// positions are counted within the genre. A genre is ranked for all ages
+  /// alone, so it goes with [SeriesAgeRating.all]. Empty is the tenant-wide
+  /// ranking.
+  ///
+  /// Empty for a tenant the ranking batch has not run for yet, or a genre it
+  /// has not ranked, which is an answer rather than a failure: nothing has
+  /// been computed.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<RankedSeriesPage> listRankedSeries({
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String genreId,
     String token,
   });
 

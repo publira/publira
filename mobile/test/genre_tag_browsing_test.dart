@@ -86,6 +86,13 @@ const taggedSeries = SeriesItem(
   tags: [SeriesTag(slug: 'time-travel', name: 'Time travel')],
 );
 
+/// The fantasy genre's week, ranked within the genre. The positions run 1 and
+/// 3 because they are a snapshot's own.
+final fantasyChart = [
+  const RankedSeriesItem(rank: 1, series: taggedSeries),
+  RankedSeriesItem(rank: 3, series: fixtureSeries.first),
+];
+
 void main() {
   late GoRouter router;
   late FakeCatalogRepository catalog;
@@ -127,6 +134,16 @@ void main() {
 
   Finder tileOf(String seriesId) =>
       find.byKey(ValueKey('series-tile-$seriesId'));
+
+  /// The genres a chart was read for, leaving out the tenant-wide reads of
+  /// the catalog the genre screen is pushed over.
+  List<String> genreChartReads() => [
+    for (final genre in catalog.rankedSeriesGenres)
+      if (genre.isNotEmpty) genre,
+  ];
+
+  Finder rankedCardOf(String seriesId) =>
+      find.byKey(ValueKey('genre-ranking-$seriesId'));
 
   Finder genreTileOf(String genreId) =>
       find.byKey(ValueKey('genre-tile-$genreId'));
@@ -513,6 +530,114 @@ void main() {
         tester.getBottomLeft(cover).dy,
         lessThan(tester.getTopLeft(find.text('2 published series')).dy),
       );
+    });
+
+    testWidgets('opens on the leaders of its week, above the filters', (
+      tester,
+    ) async {
+      catalog.genreRankedSeries = {fantasy.id: fantasyChart};
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genre-ranking')));
+
+      expect(find.text('Popular this week'), findsOneWidget);
+      final leader = rankedCardOf(taggedSeries.id);
+      expect(
+        find.descendant(of: leader, matching: find.text('1')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: rankedCardOf(fixtureSeries.first.id),
+          matching: find.text('3'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getBottomLeft(find.text('2 published series')).dy,
+        lessThan(tester.getTopLeft(leader).dy),
+      );
+      expect(
+        tester.getBottomLeft(leader).dy,
+        lessThanOrEqualTo(
+          tester
+              .getTopLeft(find.byKey(const ValueKey('series-filter-order')))
+              .dy,
+        ),
+      );
+      // The genre's own chart, which is an all-ages weekly one. The catalog
+      // under the screen reads the tenant's chart, which names no genre.
+      expect(genreChartReads(), [fantasy.id]);
+      expect(catalog.rankedSeriesPeriods.last, RankingPeriod.weekly);
+      expect(catalog.rankedSeriesAgeRatings.last, SeriesAgeRating.all);
+      // The row sits over the list rather than in place of it.
+      expect(tileOf(taggedSeries.id), findsOneWidget);
+    });
+
+    testWidgets('opens as it did before for a genre with no chart', (
+      tester,
+    ) async {
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, tileOf(taggedSeries.id));
+      await tester.pumpAndSettle();
+
+      expect(genreChartReads(), [fantasy.id]);
+      expect(find.byKey(const ValueKey('genre-ranking')), findsNothing);
+      expect(find.byKey(const ValueKey('genre-ranking-loading')), findsNothing);
+      expect(find.text('Popular this week'), findsNothing);
+    });
+
+    testWidgets('opens a series from the leaders of its week', (tester) async {
+      catalog.genreRankedSeries = {fantasy.id: fantasyChart};
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, rankedCardOf(taggedSeries.id));
+
+      await tester.tap(rankedCardOf(taggedSeries.id));
+
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('series-detail-body')),
+      );
+      expect(find.text(taggedSeries.title), findsWidgets);
+    });
+
+    testWidgets('keeps the leaders of its week under a changed filter', (
+      tester,
+    ) async {
+      catalog.genreRankedSeries = {fantasy.id: fantasyChart};
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, rankedCardOf(taggedSeries.id));
+
+      await tester.tap(find.byKey(const ValueKey('series-filter-status')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Completed').last);
+      await pumpUntilRouteSettled(tester, tileOf(taggedSeries.id));
+
+      expect(rankedCardOf(taggedSeries.id), findsOneWidget);
+      // A filter narrows the list, not the genre's chart.
+      expect(genreChartReads(), [fantasy.id]);
+    });
+
+    testWidgets('retries the leaders of its week where they stand', (
+      tester,
+    ) async {
+      catalog
+        ..genreRankedSeries = {fantasy.id: fantasyChart}
+        ..rankedSeriesError = const CatalogFailure(CatalogFailureKind.network);
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('genre-ranking-error')),
+      );
+
+      expect(find.text('Popular this week'), findsOneWidget);
+      // The list under the row is untouched.
+      expect(tileOf(taggedSeries.id), findsOneWidget);
+
+      catalog.rankedSeriesError = null;
+      await tester.tap(find.byKey(const ValueKey('genre-ranking-retry')));
+      await pumpUntilFound(tester, rankedCardOf(taggedSeries.id));
+
+      expect(find.byKey(const ValueKey('genre-ranking-error')), findsNothing);
     });
 
     testWidgets('pages its series as the reader reaches the end of them', (

@@ -70,6 +70,7 @@ class ClassifiedSeriesView extends StatefulWidget {
     required this.seriesEmptyMessage,
     required this.readClassification,
     required this.readSeries,
+    this.lead,
   });
 
   /// Names the screen's states: `<sectionKey>-body`, `-loading`, `-error`,
@@ -88,6 +89,11 @@ class ClassifiedSeriesView extends StatefulWidget {
 
   final ClassificationReader readClassification;
   final ClassifiedSeriesReader readSeries;
+
+  /// What stands between the name and the controls, such as a genre's
+  /// ranking. It reads what it shows by itself, and stays where it is under a
+  /// changed filter, which narrows only the list under the controls.
+  final Widget? lead;
 
   @override
   State<ClassifiedSeriesView> createState() => _ClassifiedSeriesViewState();
@@ -238,6 +244,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
             classification: classification,
           ),
         ),
+        if (widget.lead case final lead?) SliverToBoxAdapter(child: lead),
         SliverToBoxAdapter(
           child: SeriesFilterBar(filter: _filter, onChanged: _changeFilter),
         ),

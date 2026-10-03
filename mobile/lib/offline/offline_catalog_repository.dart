@@ -151,11 +151,13 @@ class OfflineCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String genreId = '',
     String token = '',
   }) => _origin.listRankedSeries(
     limit: limit,
     period: period,
     ageRating: ageRating,
+    genreId: genreId,
     token: token,
   );
 

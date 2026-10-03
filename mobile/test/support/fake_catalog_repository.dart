@@ -17,6 +17,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.newestSeries = const [],
     this.rankedSeries = const [],
     this.dailyRankedSeries,
+    this.genreRankedSeries = const {},
     this.rankedSeriesPageSize = 20,
     this.details = const {},
     this.episodes = const {},
@@ -153,6 +154,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// `null`.
   List<RankedSeriesItem>? dailyRankedSeries;
 
+  /// What [listRankedSeries] answers for a genre's chart, by the genre's
+  /// public id. A genre missing here is one the batch has not ranked.
+  Map<String, List<RankedSeriesItem>> genreRankedSeries;
+
   /// The most positions one page of [listRankedSeries] holds, whatever limit
   /// it is asked for, so a test can page a chart with only a few positions.
   int rankedSeriesPageSize;
@@ -273,6 +278,10 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// Age ratings [listRankedSeries] was called with, in order.
   final List<SeriesAgeRating> rankedSeriesAgeRatings = <SeriesAgeRating>[];
+
+  /// Genres [listRankedSeries] was called with, in order, empty for the
+  /// tenant-wide chart.
+  final List<String> rankedSeriesGenres = <String>[];
 
   /// Every page [listRankedSeries] was asked for, in order.
   final List<({RankingPeriod period, int limit, String token})>
@@ -525,10 +534,12 @@ class FakeCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String genreId = '',
     String token = '',
   }) async {
     rankedSeriesPeriods.add(period);
     rankedSeriesAgeRatings.add(ageRating);
+    rankedSeriesGenres.add(genreId);
     rankedSeriesRequests.add((period: period, limit: limit, token: token));
     final error = token.isEmpty
         ? rankedSeriesError
@@ -537,7 +548,9 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     final (page, nextToken) = _page(
-      period == RankingPeriod.daily
+      genreId.isNotEmpty
+          ? genreRankedSeries[genreId] ?? const <RankedSeriesItem>[]
+          : period == RankingPeriod.daily
           ? dailyRankedSeries ?? rankedSeries
           : rankedSeries,
       token,

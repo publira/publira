@@ -550,6 +550,37 @@ void main() {
       });
     });
 
+    testApp('a genre opens on the leaders of its week', (tester) async {
+      server.genreRankedSeries = {
+        'SeedGENRAAA1': ConnectFixtureServer.populatedRankedSeries(),
+      };
+      await withFailureScreenshot(tester, 'fixture-genre-ranking', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.genreDetailPath('SeedGENRAAA1'),
+        );
+        final leader = find.byKey(
+          const ValueKey('genre-ranking-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        await pumpUntilRouteSettled(tester, leader);
+
+        expect(find.byKey(const ValueKey('genre-ranking-error')), findsNothing);
+        final request = server
+            .requestsTo('ListRankedSeries')
+            .lastWhere((request) => request.body['genrePublicId'] != null);
+        expect(request.body['genrePublicId'], 'SeedGENRAAA1');
+        expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
+        expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+
+        await tapVisible(tester, leader);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
+      });
+    });
+
     testApp('a tag on a series lists the series carrying it', (tester) async {
       await withFailureScreenshot(tester, 'fixture-tag', () async {
         await pumpApp(
@@ -2526,6 +2557,31 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
         expect(find.byKey(const ValueKey('creator-error')), findsNothing);
+      });
+    });
+
+    testApp('the seed genre chart reaches the genre screen on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-genre-ranking', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.genreDetailPath('SeedGENRAAA3'),
+        );
+        // `db/seeds/scenarios/170_ranking.sql` puts Seed Series 063 at the
+        // top of the third genre's week. The first genre's leader is rated
+        // R18, which a genre's all-ages chart leaves out of what it answers.
+        final leader = find.byKey(const ValueKey('genre-ranking-SeedSERSAA63'));
+        await pumpUntilRouteSettled(
+          tester,
+          leader,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.descendant(of: leader, matching: find.text('1')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('genre-ranking-error')), findsNothing);
       });
     });
 

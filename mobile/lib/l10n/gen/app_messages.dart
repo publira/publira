@@ -908,6 +908,12 @@ abstract class AppMessages {
   /// `mobile.genre.not_found`
   String genreNotFound({required String id});
 
+  /// `mobile.genre.ranking_failed`
+  String get genreRankingFailed;
+
+  /// `mobile.genre.ranking_heading`
+  String get genreRankingHeading;
+
   /// `mobile.genre.series_empty`
   String get genreSeriesEmpty;
 
@@ -3033,6 +3039,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String genreNotFound({required String id}) {
     return 'ジャンルが見つかりません ($id)';
+  }
+
+  @override
+  String get genreRankingFailed {
+    return 'このジャンルのランキングを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get genreRankingHeading {
+    return '今週の人気作品';
   }
 
   @override
@@ -5659,6 +5675,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get genreRankingFailed {
+    return 'Could not show this genre\'s ranking. Try again.';
+  }
+
+  @override
+  String get genreRankingHeading {
+    return 'Popular this week';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return 'No published series carry this genre yet.';
   }
@@ -8279,6 +8305,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String genreNotFound({required String id}) {
     return '장르를 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get genreRankingFailed {
+    return '이 장르의 랭킹을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get genreRankingHeading {
+    return '이번 주 인기 작품';
   }
 
   @override
@@ -10905,6 +10941,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get genreRankingFailed {
+    return '无法显示该类型的排行榜。请重试。';
+  }
+
+  @override
+  String get genreRankingHeading {
+    return '本周热门作品';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return '尚无属于该类型的已发布系列。';
   }
@@ -13525,6 +13571,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String genreNotFound({required String id}) {
     return '找不到該類型（$id）';
+  }
+
+  @override
+  String get genreRankingFailed {
+    return '無法顯示該類型的排行榜。請重試。';
+  }
+
+  @override
+  String get genreRankingHeading {
+    return '本週熱門作品';
   }
 
   @override
