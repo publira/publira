@@ -3,6 +3,8 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+	"net/http/httptest"
 	"slices"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -751,9 +754,92 @@ func TestDBAdminSuspendAndDeleteReaderKeepAnActiveTenantAdmin(t *testing.T) {
 	}
 }
 
-// An account the tenant's audit entries name as the one who acted stays, so
-// the record keeps saying who did what; suspending it is what remains.
-func TestDBAdminDeleteReaderRefusesAnAccountTheAuditLogNames(t *testing.T) {
+// heldAuditQueries holds every tenant entry the async recorder writes until
+// release is closed, so a test can delete the actor while its entry is still
+// queued.
+type heldAuditQueries struct {
+	auditlog.Querier
+	held    chan struct{}
+	release chan struct{}
+}
+
+func (q heldAuditQueries) InsertAuditLog(ctx context.Context, arg dbmodels.InsertAuditLogParams) error {
+	select {
+	case q.held <- struct{}{}:
+	default:
+	}
+	<-q.release
+	return q.Querier.InsertAuditLog(ctx, arg)
+}
+
+// An entry the async recorder writes after the request answered can land once
+// its actor is already deleted. It is filed under the public ID and name the
+// session carried rather than refused by the foreign key and dropped.
+func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenAdminDB(t)
+	queries := heldAuditQueries{Querier: dbmodels.New(pg.DB), held: make(chan struct{}, 1), release: make(chan struct{})}
+	recorder := auditlog.NewAsyncWithConfig(queries, nil, slog.Default(), auditlog.AsyncConfig{})
+	t.Cleanup(recorder.Close)
+	released := false
+	release := func() {
+		if !released {
+			released = true
+			close(queries.release)
+		}
+	}
+	t.Cleanup(release)
+	api, err := newAPI(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, recorder, openMailGuard())
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	server := httptest.NewServer(handlerFromServer(api.server))
+	t.Cleanup(server.Close)
+	env := &adminDBEnv{Server: server, PG: pg}
+
+	admin := env.seedTenantWithAdmin(t, "RAQTENANT001", "reader-queued.example.com", "Queued", "RAQADMIN0001", "admin@reader-queued.example.com")
+	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAQADMIN0002", "second@reader-queued.example.com", "Second"))
+	ctx := context.Background()
+
+	page, err := env.pagesClient().CreatePage(ctx, newAdminDBRequest(second, &publiraadminv1.CreatePageRequest{
+		Tenant: second.tenantContext(),
+		Slug:   "queued",
+		Title:  "Queued",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage by the second administrator: %v", err)
+	}
+	select {
+	case <-queries.held:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the page's audit entry never reached the recorder")
+	}
+	if _, err := env.userClient().DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: second.User.ID.String(),
+	})); err != nil {
+		t.Fatalf("DeleteReader while the account's entry is queued: %v", err)
+	}
+	release()
+	if err := recorder.Shutdown(ctx); err != nil {
+		t.Fatalf("drain the recorder: %v", err)
+	}
+
+	if count := env.countRows(t, `
+		SELECT count(*) FROM audit_logs
+		WHERE tenant_id = $1 AND action = 'page_created' AND target_id = $2
+			AND actor_user_id IS NULL AND actor_public_id = $3 AND actor_name = $4
+	`, admin.Tenant.ID, page.Msg.Page.Id, second.User.PublicID, "Second"); count != 1 {
+		t.Fatalf("queued entries kept under the deleted administrator = %d, want 1", count)
+	}
+}
+
+// A staff account that has acted in the console can be deleted. Its audit
+// entries keep its name and public ID, so the record still says who did what
+// and can still be filtered by them, and the page versions it wrote stay
+// without naming it.
+func TestDBAdminDeleteReaderKeepsTheRecordOfAStaffAccount(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RAHTENANT001", "reader-history.example.com", "History", "RAHADMIN0001", "admin@reader-history.example.com")
 	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAHADMIN0002", "second@reader-history.example.com", "Second"))
@@ -767,23 +853,46 @@ func TestDBAdminDeleteReaderRefusesAnAccountTheAuditLogNames(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("SuspendReader by the second administrator: %v", err)
 	}
+	pageID := createDBPage(t, env, second, "history", "History", true)
 
-	_, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
-		Tenant:   admin.tenantContext(),
-		ReaderId: second.User.ID.String(),
-	}))
-	requireReaderRefusal(t, err, rpcerrors.ReasonAccountHasStaffHistory)
-	if count := env.countRows(t, "SELECT count(*) FROM tenant_user_roles WHERE user_id = $1 AND role = $2", second.User.ID, auth.RoleTenantAdmin); count != 1 {
-		t.Fatal("the refused deletion took the account's role")
-	}
-	if logs := env.readerAuditLogs(t, admin); len(logs) != 1 {
-		t.Fatalf("audit log count = %d, want only the suspension (%+v)", len(logs), logs)
-	}
-
-	if _, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+	if _, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: second.User.ID.String(),
 	})); err != nil {
-		t.Fatalf("SuspendReader for the account the audit log names: %v", err)
+		t.Fatalf("DeleteReader for the account the audit log names: %v", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", second.User.ID); count != 0 {
+		t.Fatal("the account the audit log names is still there")
+	}
+
+	res, err := env.auditClient().ListAuditLogs(ctx, newAdminDBRequest(admin, &publiraadminv1.ListAuditLogsRequest{
+		Tenant:            admin.tenantContext(),
+		ActorUserPublicId: second.User.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs by the deleted actor: %v", err)
+	}
+	if len(res.Msg.AuditLogs) == 0 {
+		t.Fatal("no audit entries are filed under the deleted actor")
+	}
+	var suspension *publiraadminv1.AdminAuditLog
+	for _, entry := range res.Msg.AuditLogs {
+		if entry.ActorUserPublicId != second.User.PublicID || entry.ActorName != "Second" || entry.ActorRole != auth.RoleTenantAdmin {
+			t.Fatalf("entry %s names (%q, %q, %q), want the deleted administrator", entry.Action, entry.ActorUserPublicId, entry.ActorName, entry.ActorRole)
+		}
+		if entry.Action == "reader_suspended" {
+			suspension = entry
+		}
+	}
+	if suspension == nil {
+		t.Fatalf("the deleted administrator's suspension is missing from %+v", res.Msg.AuditLogs)
+	}
+	assertReaderAuditLog(t, suspension, "reader_suspended", second, reader.PublicID)
+
+	if count := env.countRows(t, "SELECT count(*) FROM page_versions WHERE page_id = $1 AND author_user_id IS NULL", pageID); count != 1 {
+		t.Fatalf("page versions left without an author = %d, want the one the deleted account wrote", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM page_translations WHERE page_id = $1 AND published_version_id IS NOT NULL", pageID); count != 1 {
+		t.Fatal("the page the deleted account published is no longer published")
 	}
 }

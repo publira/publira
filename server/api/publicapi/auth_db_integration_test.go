@@ -2,6 +2,8 @@ package publicapi
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -264,6 +267,83 @@ func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 	}
 	if len(library.Msg.Purchases) != 0 {
 		t.Fatalf("purchases in another reader's library = %d, want 0", len(library.Msg.Purchases))
+	}
+}
+
+// A staff account closing itself on the storefront is deleted like any other,
+// even after it has acted in the console: the tenant's audit entries keep its
+// name and public ID, and the page versions it wrote stop naming it. Another
+// administrator stays, so the tenant still has someone to run its console.
+func TestDBDeleteMeDeletesAStaffAccountTheRecordNames(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "staff@tenant-a.example.com", "Staff")
+	env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000002", "other@tenant-a.example.com", "Other")
+	page := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "about", Title: "About", Published: true})
+	ctx := context.Background()
+	if _, err := env.PG.DB.ExecContext(ctx,
+		"UPDATE page_versions SET author_user_id = $2 WHERE id = $1", page.VersionID, staff.ID,
+	); err != nil {
+		t.Fatalf("name the staff account as the page version's author: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO audit_logs (id, tenant_id, actor_user_id, actor_role, action, target_type, target_id, outcome)
+		VALUES ($1, $2, $3, 'tenant_admin', 'page_version_published', 'page_version', $4, 'success')
+	`, uuid.Must(uuid.NewV7()), tenant.ID, staff.ID, page.VersionID.String()); err != nil {
+		t.Fatalf("file an audit entry under the staff account: %v", err)
+	}
+
+	if _, err := env.authClient().DeleteMe(ctx, newBearerRequest(
+		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
+		tokenFor(t, tenant, staff),
+	)); err != nil {
+		t.Fatalf("DeleteMe for a staff account the record names: %v", err)
+	}
+
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", staff.ID); count != 0 {
+		t.Fatalf("users rows for the deleted staff account = %d, want 0", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id IS NULL AND actor_public_id = $2 AND actor_name = $3",
+		tenant.ID, staff.PublicID, "Staff",
+	); count != 1 {
+		t.Fatalf("audit entries keeping the deleted staff account = %d, want 1", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM page_versions WHERE id = $1 AND author_user_id IS NULL", page.VersionID,
+	); count != 1 {
+		t.Fatalf("page versions left without their author = %d, want 1", count)
+	}
+}
+
+// The tenant's last active tenant_admin cannot close its own account, as
+// DeleteReader cannot delete it: nobody would be left to sign in to the
+// console. The refusal leaves the account and its role as they were.
+func TestDBDeleteMeRefusesTheLastTenantAdmin(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	admin := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "admin@tenant-a.example.com", "Admin")
+	env.PG.SeedTenantUser(t, tenant.ID, "STAFFA000002", "editor@tenant-a.example.com", "Editor", auth.RoleTenantEditor)
+
+	_, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(
+		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
+		tokenFor(t, tenant, admin),
+	))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("DeleteMe for the last tenant_admin code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) || !slices.ContainsFunc(connectErr.Details(), func(detail *connect.ErrorDetail) bool {
+		value, valueErr := detail.Value()
+		info, ok := value.(*errdetails.ErrorInfo)
+		return valueErr == nil && ok && info.GetReason() == rpcerrors.ReasonLastTenantAdmin
+	}) {
+		t.Fatalf("missing %s ErrorInfo on %v", rpcerrors.ReasonLastTenantAdmin, err)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM tenant_user_roles WHERE user_id = $1 AND role = $2", admin.ID, auth.RoleTenantAdmin,
+	); count != 1 {
+		t.Fatal("the refused deletion took the last tenant_admin's account or role")
 	}
 }
 

@@ -539,9 +539,9 @@ export const AdminUserService: GenService<{
   },
   /**
    * Deletes an account the way its own DeleteMe does; a staff account's roles
-   * go with it. not_found as GetReader. failed_precondition as SuspendReader,
-   * and, with the ACCOUNT_HAS_STAFF_HISTORY reason, for an account that audit
-   * entries or page versions still name.
+   * go with it. The tenant's audit entries keep the name and public ID of a
+   * staff account they name, and its page versions stop naming it. not_found
+   * as GetReader. failed_precondition as SuspendReader.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.DeleteReader
    */

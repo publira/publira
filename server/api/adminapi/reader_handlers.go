@@ -15,7 +15,6 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
@@ -531,10 +530,10 @@ func (s *adminServer) tenantToday(ctx context.Context, tenant dbmodels.Tenant) (
 
 // DeleteReader deletes an account of the tenant with the same statement
 // DeleteMe ends in, so the rows that go with the account are decided by the
-// same foreign keys: a staff account's roles go with it. It is refused for the
-// caller's own account and the tenant's last active tenant_admin, as
-// SuspendReader is, and for an account the tenant's audit entries or page
-// versions name, whose foreign keys keep it.
+// same foreign keys: a staff account's roles go with it, and the audit entries
+// and page versions that name it stay with what the schema keeps of it. It is
+// refused for the caller's own account and the tenant's last active
+// tenant_admin, as SuspendReader is.
 func (s *adminServer) DeleteReader(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.DeleteReaderRequest],
@@ -570,17 +569,6 @@ func (s *adminServer) DeleteReader(
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
 		})
-		if dberr.IsForeignKeyViolation(err) {
-			// audit_logs and page_versions name the staff member who acted and
-			// keep the account they name, so what the tenant's record says
-			// stays attributable. Suspending the account is what remains
-			// until #3494 decides what the record keeps without it.
-			return "", rpcerrors.NewErrorInfoError(
-				connect.CodeFailedPrecondition,
-				errors.New("the tenant's audit entries or page versions name this account"),
-				rpcerrors.ReasonAccountHasStaffHistory,
-			)
-		}
 		return deleted.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {

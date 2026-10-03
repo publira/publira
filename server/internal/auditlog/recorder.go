@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantconn"
 )
 
@@ -79,13 +80,19 @@ type TenantEntry struct {
 	// RoleSystem, which is the only value the stored row accepts without an
 	// account beside it.
 	ActorUserID uuid.UUID
-	ActorRole   string
-	Action      string
-	TargetType  string // e.g. "series", "episode", "creator", "label"
-	TargetID    string // ID of the affected resource
-	Outcome     string // "success" or "failure"
-	Reason      string // why the action was taken, or why it failed
-	ClientIP    string
+	// What the entry keeps of the actor if the account is deleted before the
+	// row lands, which the async recorder makes possible: it writes after the
+	// request has answered. Left empty, they are taken from the request's
+	// session when that session is the actor's, which is every console action.
+	ActorPublicID string
+	ActorName     string
+	ActorRole     string
+	Action        string
+	TargetType    string // e.g. "series", "episode", "creator", "label"
+	TargetID      string // ID of the affected resource
+	Outcome       string // "success" or "failure"
+	Reason        string // why the action was taken, or why it failed
+	ClientIP      string
 }
 
 // Recorder records structured audit log entries without affecting the caller's
@@ -186,23 +193,43 @@ func logTenantEntry(ctx context.Context, logger *slog.Logger, e TenantEntry) {
 }
 
 // tenantEntryParams is the row one tenant entry becomes.
-func tenantEntryParams(e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
+func tenantEntryParams(ctx context.Context, e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return dbmodels.InsertAuditLogParams{}, err
 	}
+	e = withSessionActor(ctx, e)
 	return dbmodels.InsertAuditLogParams{
-		ID:          id,
-		TenantID:    e.TenantID,
-		ActorUserID: uuid.NullUUID{UUID: e.ActorUserID, Valid: e.ActorUserID != uuid.Nil},
-		ActorRole:   e.ActorRole,
-		Action:      e.Action,
-		TargetType:  sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
-		TargetID:    sql.NullString{String: e.TargetID, Valid: e.TargetID != ""},
-		Outcome:     e.Outcome,
-		Reason:      sql.NullString{String: e.Reason, Valid: e.Reason != ""},
-		ClientIp:    sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
+		ID:            id,
+		TenantID:      e.TenantID,
+		ActorUserID:   uuid.NullUUID{UUID: e.ActorUserID, Valid: e.ActorUserID != uuid.Nil},
+		ActorPublicID: sql.NullString{String: e.ActorPublicID, Valid: e.ActorPublicID != ""},
+		ActorName:     sql.NullString{String: e.ActorName, Valid: e.ActorPublicID != ""},
+		ActorRole:     e.ActorRole,
+		Action:        e.Action,
+		TargetType:    sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
+		TargetID:      sql.NullString{String: e.TargetID, Valid: e.TargetID != ""},
+		Outcome:       e.Outcome,
+		Reason:        sql.NullString{String: e.Reason, Valid: e.Reason != ""},
+		ClientIp:      sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
 	}, nil
+}
+
+// withSessionActor fills what an entry keeps of its actor from the request's
+// session when the caller left it out and the session is the actor's. Every
+// console handler files its entries under the signed-in member, so this is
+// what keeps a new call site from forgetting it.
+func withSessionActor(ctx context.Context, e TenantEntry) TenantEntry {
+	if e.ActorPublicID != "" || e.ActorUserID == uuid.Nil {
+		return e
+	}
+	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if !ok || session.User.ID != e.ActorUserID {
+		return e
+	}
+	e.ActorPublicID = session.User.PublicID
+	e.ActorName = session.User.Name
+	return e
 }
 
 // WriteTenant persists one tenant entry on the supplied querier and reports
@@ -218,7 +245,7 @@ func WriteTenant(ctx context.Context, queries Querier, logger *slog.Logger, e Te
 	}
 	logTenantEntry(ctx, logger, e)
 
-	params, err := tenantEntryParams(e)
+	params, err := tenantEntryParams(ctx, e)
 	if err != nil {
 		return err
 	}
@@ -398,7 +425,7 @@ func (r *AsyncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 func (r *AsyncRecorder) RecordTenant(ctx context.Context, e TenantEntry) {
 	logTenantEntry(ctx, r.logger, e)
 
-	params, err := tenantEntryParams(e)
+	params, err := tenantEntryParams(ctx, e)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
 		return

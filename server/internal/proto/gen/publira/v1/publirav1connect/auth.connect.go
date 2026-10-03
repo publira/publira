@@ -121,6 +121,9 @@ type AuthServiceClient interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	// Deletes the caller's account. A staff account is deleted too; the tenant's
+	// audit entries keep its name and public ID. failed_precondition, with the
+	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
@@ -468,6 +471,9 @@ type AuthServiceHandler interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	// Deletes the caller's account. A staff account is deleted too; the tenant's
+	// audit entries keep its name and public ID. failed_precondition, with the
+	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)

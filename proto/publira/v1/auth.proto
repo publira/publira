@@ -389,6 +389,9 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
   rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
+  // Deletes the caller's account. A staff account is deleted too; the tenant's
+  // audit entries keep its name and public ID. failed_precondition, with the
+  // LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
