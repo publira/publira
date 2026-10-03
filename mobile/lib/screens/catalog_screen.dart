@@ -6,6 +6,7 @@ import 'package:publira/announcements/pinned_announcement_banner.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/creator_tile.dart';
@@ -164,15 +165,6 @@ const _newArrivalsLimit = 10;
 /// scrolls the same distance.
 const _directoryShelfLimit = 10;
 
-/// Width of one card on a shelf, and the shape its cover is cut to.
-const _shelfCardWidth = 132.0;
-const _shelfCardAspectRatio = 3 / 4;
-
-/// The cover plus the two lines under it, which is what a card is allowed to
-/// grow to before its text starts to ellipsize. Every shelf reserves it,
-/// loading or loaded, so a row arriving does not move the ones below it.
-const _shelfHeight = _shelfCardWidth / _shelfCardAspectRatio + 80;
-
 /// The reader's own continue-reading row, at the top of the catalog.
 ///
 /// A reader who is signed out has nothing here to ask for, and one in the
@@ -188,7 +180,7 @@ class _ContinueReadingShelf extends StatelessWidget {
     // The row is one reader's own history, so a sign-in or a sign-out asks
     // again rather than showing what the reader before them was reading.
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
-    return _CatalogShelf<RecentSeriesItem>(
+    return CatalogShelf<RecentSeriesItem>(
       sectionKey: 'continue-reading',
       heading: messages.catalogContinueHeading,
       failureMessage: messages.catalogContinueFailed,
@@ -202,7 +194,7 @@ class _ContinueReadingShelf extends StatelessWidget {
         );
         return page.series;
       },
-      cardBuilder: (context, item) => _ShelfCard(
+      cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('continue-reading-${item.series.id}'),
         series: item.series,
         subtitle: item.episode.title.isEmpty
@@ -230,7 +222,7 @@ class _RankingShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return _CatalogShelf<RankedSeriesItem>(
+    return CatalogShelf<RankedSeriesItem>(
       sectionKey: 'catalog-ranking',
       heading: messages.catalogRankingHeading,
       failureMessage: messages.catalogRankingFailed,
@@ -249,7 +241,7 @@ class _RankingShelf extends StatelessWidget {
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
       )).rankedSeries,
-      cardBuilder: (context, item) => _ShelfCard(
+      cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('catalog-ranking-${item.series.id}'),
         series: item.series,
         subtitle: item.series.creators.isEmpty
@@ -272,13 +264,13 @@ class _NewArrivalsShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return _CatalogShelf<SeriesItem>(
+    return CatalogShelf<SeriesItem>(
       sectionKey: 'catalog-new-arrivals',
       heading: messages.catalogNewArrivalsHeading,
       failureMessage: messages.catalogNewArrivalsFailed,
       reloadToken: '$refreshes',
       load: (catalog) => catalog.listNewestSeries(limit: _newArrivalsLimit),
-      cardBuilder: (context, item) => _ShelfCard(
+      cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('catalog-new-arrivals-${item.id}'),
         series: item,
         subtitle: item.creators.isEmpty
@@ -302,7 +294,7 @@ class _LabelsShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return _CatalogShelf<PublishedLabel>(
+    return CatalogShelf<PublishedLabel>(
       sectionKey: 'catalog-labels',
       heading: messages.catalogLabelsHeading,
       failureMessage: messages.catalogLabelsFailed,
@@ -349,7 +341,7 @@ class _CreatorsShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return _CatalogShelf<PublishedCreator>(
+    return CatalogShelf<PublishedCreator>(
       sectionKey: 'catalog-creators',
       heading: messages.catalogCreatorsHeading,
       failureMessage: messages.catalogCreatorsFailed,
@@ -392,7 +384,8 @@ const _nameCardWidth = 112.0;
 const _nameArtworkSize = 96.0;
 
 /// The artwork plus the lines under it — a name of up to two lines, and the
-/// author's count under that — reserved for the reason [_shelfHeight] is.
+/// author's count under that — reserved for the reason a cover shelf's own
+/// height is.
 const _labelShelfHeight = _nameArtworkSize + 56;
 const _creatorShelfHeight = _nameArtworkSize + 80;
 
@@ -502,7 +495,7 @@ class _NameShelfSkeleton extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _SkeletonLine(color: color, width: 72),
+              SkeletonLine(color: color, width: 72),
             ],
           ),
         ),
@@ -526,7 +519,7 @@ class _GenresShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return _CatalogShelf<PublishedGenre>(
+    return CatalogShelf<PublishedGenre>(
       sectionKey: 'catalog-genres',
       heading: messages.catalogGenresHeading,
       failureMessage: messages.catalogGenresFailed,
@@ -570,384 +563,6 @@ class _GenreRowSkeleton extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One horizontal shelf: a heading, and a row of cards under it.
-///
-/// An empty answer takes the heading with it. A shelf is a way into part of
-/// the catalog, and a tenant with no chart or nothing in the middle of reading
-/// is not a tenant with an empty chart.
-class _CatalogShelf<T> extends StatefulWidget {
-  const _CatalogShelf({
-    required this.sectionKey,
-    required this.heading,
-    required this.failureMessage,
-    required this.load,
-    required this.cardBuilder,
-    required this.reloadToken,
-    this.rowHeight = _shelfHeight,
-    this.skeleton,
-    this.action,
-  });
-
-  /// Names this section on screen, and its loading, failure, and retry states.
-  final String sectionKey;
-
-  final String heading;
-
-  /// What the shelf says about a failure it has no closer words for. A request
-  /// that could not reach the API is reported as that instead.
-  final String failureMessage;
-
-  final Future<List<T>> Function(CatalogRepository catalog) load;
-
-  final Widget Function(BuildContext context, T item) cardBuilder;
-
-  /// Reloads the shelf whenever it changes: it names the reader the row is
-  /// answered for and the pulls to refresh behind it.
-  final String reloadToken;
-
-  /// How tall the row of cards stands, which its skeleton reserves as well.
-  final double rowHeight;
-
-  /// What stands in the row while it is read. Cover-sized cards when `null`.
-  final Widget? skeleton;
-
-  /// A way out of the shelf beside its heading, shown once it has cards.
-  final Widget? action;
-
-  @override
-  State<_CatalogShelf<T>> createState() => _CatalogShelfState<T>();
-}
-
-class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
-  /// What the API answered, and `null` while a read is still in flight.
-  List<T>? _items;
-  CatalogFailure? _failure;
-
-  CatalogRepository? _catalog;
-
-  /// Counts the reads this shelf has started, so an answer to one it has
-  /// stopped waiting for — a retry, or a reader who signed out meanwhile —
-  /// cannot land on the screen.
-  var _reads = 0;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
-      return;
-    }
-    _catalog = catalog;
-    _load();
-  }
-
-  @override
-  void didUpdateWidget(covariant _CatalogShelf<T> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.reloadToken != oldWidget.reloadToken) {
-      _load();
-    }
-  }
-
-  void _load() {
-    _items = null;
-    _failure = null;
-    unawaited(_read(++_reads, _catalog!));
-  }
-
-  Future<void> _read(int read, CatalogRepository catalog) async {
-    List<T>? items;
-    CatalogFailure? failure;
-    try {
-      items = await widget.load(catalog);
-    } on CatalogFailure catch (error) {
-      failure = error;
-    }
-    if (!mounted || read != _reads) {
-      return;
-    }
-    setState(() {
-      _items = items;
-      _failure = failure;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    final failure = _failure;
-    if (failure != null) {
-      return _ShelfFrame(
-        heading: widget.heading,
-        child: RetryRow(
-          sectionKey: widget.sectionKey,
-          message: catalogFailureCopy(messages, failure, widget.failureMessage),
-          onRetry: () => setState(_load),
-        ),
-      );
-    }
-    final items = _items;
-    if (items == null) {
-      return _ShelfFrame(
-        heading: widget.heading,
-        child: widget.skeleton ?? _ShelfSkeleton(sectionKey: widget.sectionKey),
-      );
-    }
-    if (items.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    // The section is named only once it is showing its cards, so a screen that
-    // has it and a screen still waiting on it are told apart by the same key.
-    return _ShelfFrame(
-      key: ValueKey(widget.sectionKey),
-      heading: widget.heading,
-      action: widget.action,
-      child: SizedBox(
-        height: widget.rowHeight,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: items.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 12),
-          itemBuilder: (context, index) =>
-              widget.cardBuilder(context, items[index]),
-        ),
-      ),
-    );
-  }
-}
-
-/// The heading every state of a shelf stands under.
-class _ShelfFrame extends StatelessWidget {
-  const _ShelfFrame({
-    super.key,
-    required this.heading,
-    required this.child,
-    this.action,
-  });
-
-  final String heading;
-  final Widget child;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final action = this.action;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (action == null)
-          _SectionHeading(heading)
-        else
-          Row(
-            children: [
-              Expanded(child: _SectionHeading(heading)),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: 8, top: 8),
-                child: action,
-              ),
-            ],
-          ),
-        child,
-      ],
-    );
-  }
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: AutospacedText(
-        text,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-    );
-  }
-}
-
-/// What a shelf shows while its page is still in flight: cards the size the
-/// real ones will be.
-class _ShelfSkeleton extends StatelessWidget {
-  const _ShelfSkeleton({required this.sectionKey});
-
-  final String sectionKey;
-
-  /// Enough to reach the edge of a phone, which is what tells the reader the
-  /// row scrolls before it holds anything.
-  static const _cardCount = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return SizedBox(
-      key: ValueKey('$sectionKey-loading'),
-      height: _shelfHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        // Nothing here is reachable, and the row under it is the one the
-        // reader will scroll.
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _cardCount,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => SizedBox(
-          width: _shelfCardWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: _shelfCardAspectRatio,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _SkeletonLine(color: colors.surfaceContainerHighest, width: 108),
-              const SizedBox(height: 8),
-              _SkeletonLine(color: colors.surfaceContainerHighest, width: 72),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonLine extends StatelessWidget {
-  const _SkeletonLine({required this.color, required this.width});
-
-  final Color color;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: 10,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-}
-
-/// One card of a shelf: the cover of a series, its title, and one line under
-/// it.
-class _ShelfCard extends StatelessWidget {
-  const _ShelfCard({
-    super.key,
-    required this.series,
-    this.subtitle,
-    required this.onTap,
-    this.rank,
-  });
-
-  final SeriesItem series;
-
-  /// The second line: the episode a reader would continue from, or who the
-  /// series is credited to. `null` leaves the line off.
-  final Widget? subtitle;
-
-  final VoidCallback onTap;
-
-  /// The position a ranking snapshot gave the series, drawn over its cover.
-  /// `null` on a shelf that is not a chart.
-  final int? rank;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final rank = this.rank;
-    final subtitle = this.subtitle;
-    return SizedBox(
-      width: _shelfCardWidth,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                EyeCatchCover(
-                  kind: 'series',
-                  id: series.id,
-                  variants: series.eyeCatchVariants,
-                  requestHeaders: series.imageRequestHeaders,
-                  preferredTypes: const [eyeCatchPortrait],
-                  aspectRatio: _shelfCardAspectRatio,
-                ),
-                if (rank != null) _RankBadge(rank),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: AutospacedText(
-                series.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-            if (subtitle != null)
-              Flexible(
-                child: DefaultTextStyle.merge(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  child: subtitle,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The position a chart gave a series, in the corner of its cover.
-class _RankBadge extends StatelessWidget {
-  const _RankBadge(this.rank);
-
-  final int rank;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Positioned(
-      top: 4,
-      left: 4,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: AutospacedText(
-            AppMessages.of(context).formatInteger(rank),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onPrimary,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -1087,7 +702,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
-          child: _SectionHeading(messages.catalogAllSeriesHeading),
+          child: SectionHeading(messages.catalogAllSeriesHeading),
         ),
         _list(messages),
       ],

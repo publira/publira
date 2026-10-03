@@ -3830,6 +3830,8 @@
     "genre": {
       "load_failed": "無法顯示該類型。請重試。",
       "not_found": "找不到該類型（{$id}）",
+      "ranking_failed": "無法顯示該類型的排行榜。請重試。",
+      "ranking_heading": "本週熱門作品",
       "series_empty": "尚無屬於該類型的已發布系列。",
       "title": "類型"
     },

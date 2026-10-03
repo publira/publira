@@ -256,6 +256,81 @@ void main() {
     );
   });
 
+  test('listRankedSeries names the genre a chart is narrowed to', () async {
+    server
+      ..genres = ConnectFixtureServer.populatedGenres()
+      ..genreRankedSeries = {
+        'SeedGENRAAA1': [ConnectFixtureServer.populatedRankedSeries().last],
+      };
+
+    final ranked = await catalog.listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+      genreId: 'SeedGENRAAA1',
+    );
+
+    expect(
+      [for (final item in ranked.rankedSeries) item.series.id],
+      ['series-kitchen'],
+    );
+    expect(
+      server.requestsTo('ListRankedSeries').single.body['genrePublicId'],
+      'SeedGENRAAA1',
+    );
+  });
+
+  test('listRankedSeries names no genre for the tenant-wide chart', () async {
+    await catalog.listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+    );
+
+    // protojson omits an empty string, so the tenant-wide chart sends none.
+    expect(
+      server
+          .requestsTo('ListRankedSeries')
+          .single
+          .body
+          .containsKey('genrePublicId'),
+      isFalse,
+    );
+  });
+
+  test('a genre the batch has not ranked reads as an empty chart', () async {
+    server.genres = ConnectFixtureServer.populatedGenres();
+
+    final ranked = await catalog.listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+      genreId: 'SeedGENRAAA2',
+    );
+
+    expect(ranked.rankedSeries, isEmpty);
+  });
+
+  test('a chart of a genre the tenant does not curate is refused', () async {
+    server.genres = ConnectFixtureServer.populatedGenres();
+
+    expect(
+      () => catalog.listRankedSeries(
+        limit: 10,
+        period: RankingPeriod.weekly,
+        ageRating: SeriesAgeRating.all,
+        genreId: 'missing',
+      ),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.refused,
+          'refused',
+          isTrue,
+        ),
+      ),
+    );
+  });
+
   test('a tenant with no snapshot reads as an empty chart', () async {
     server.rankedSeries = const [];
 

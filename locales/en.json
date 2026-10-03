@@ -3830,6 +3830,8 @@
     "genre": {
       "load_failed": "Could not show the genre. Try again.",
       "not_found": "Genre not found ({$id})",
+      "ranking_failed": "Could not show this genre's ranking. Try again.",
+      "ranking_heading": "Popular this week",
       "series_empty": "No published series carry this genre yet.",
       "title": "Genre"
     },

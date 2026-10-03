@@ -270,6 +270,7 @@ class HttpCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    String genreId = '',
     String token = '',
   }) async {
     try {
@@ -285,6 +286,7 @@ class HttpCatalogRepository implements CatalogRepository {
             'names no ranking',
           ),
         },
+        if (genreId.isNotEmpty) 'genrePublicId': genreId,
         'limit': limit,
         'period': switch (period) {
           RankingPeriod.daily => 'RANKING_PERIOD_DAILY',

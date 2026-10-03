@@ -19,6 +19,7 @@ class ConnectFixtureServer {
     this.seriesPageSize = 0,
     this.seriesAvailability = const {},
     this.rankedSeries = const [],
+    this.genreRankedSeries = const {},
     this.rankedSeriesPageSize = 0,
     this.genres = const [],
     this.details = const {},
@@ -508,6 +509,12 @@ class ConnectFixtureServer {
   /// is asked for. Empty acts out a tenant the ranking batch has not run for.
   List<Map<String, Object?>> rankedSeries;
 
+  /// `RankedSeries` entries `ListRankedSeries` answers a request naming a
+  /// genre with, by the genre's public id. A genre of [genres] missing here is
+  /// one the batch has not ranked, and a genre missing from [genres] is
+  /// answered `not_found`.
+  Map<String, List<Map<String, Object?>>> genreRankedSeries;
+
   /// The most positions one page of `ListRankedSeries` holds, under the
   /// request's own `limit`, with the token written the way [followsPageSize]
   /// writes one. `0` leaves the request's `limit` alone.
@@ -951,8 +958,29 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/ListRankedSeries')) {
+      final genre = body['genrePublicId'] as String? ?? '';
+      if (genre.isNotEmpty &&
+          !genres.any((item) => item['publicId'] == genre)) {
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'genre not found',
+        });
+        return;
+      }
+      // A genre is ranked for all ages alone, and the API refuses any other
+      // rating beside it rather than answering an empty chart.
+      if (genre.isNotEmpty && body['ageRating'] != 'SERIES_AGE_RATING_ALL') {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'invalid_argument',
+          'message': 'a genre is ranked for all ages alone',
+        });
+        return;
+      }
       final shown = [
-        for (final entry in rankedSeries)
+        for (final entry
+            in genre.isEmpty
+                ? rankedSeries
+                : genreRankedSeries[genre] ?? const [])
           if (_shows(body, (entry['series'] as Map?)?['publicId'])) entry,
       ];
       final limit = body['limit'] as int? ?? 0;

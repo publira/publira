@@ -808,4 +808,20 @@ void main() {
     expect(origin.rankedSeriesAgeRatings, [SeriesAgeRating.all]);
     expect(origin.rankedSeriesRequests.single.token, '0');
   });
+
+  test("a genre's ranking is answered by the API alone", () async {
+    origin.genreRankedSeries = {
+      'SeedGENRAAA1': [RankedSeriesItem(rank: 2, series: origin.series.single)],
+    };
+
+    final ranked = await build().listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
+      genreId: 'SeedGENRAAA1',
+    );
+
+    expect(ranked.rankedSeries.single.rank, 2);
+    expect(origin.rankedSeriesGenres, ['SeedGENRAAA1']);
+  });
 }
