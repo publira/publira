@@ -152,7 +152,8 @@
           "GetMySeriesProgress",
           "GetMySeriesRating",
           "ListRelatedSeries",
-          "ListRecommendedSeries"
+          "ListRecommendedSeries",
+          "ListMyRecommendedSeries"
         ]
       },
       "exception": "Not in the app yet: #2827."

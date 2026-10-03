@@ -16,7 +16,7 @@ import { Message } from "#components/message";
 import { SeriesShelf } from "#components/series-shelf";
 import {
   getCatalogTopFeaturedCreators,
-  getCatalogTopRecommendedSeries,
+  getCatalogTopReaderRecommendedSeries,
 } from "#lib/catalog-top";
 import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -61,13 +61,15 @@ export const RecommendedCreatorsSkeleton = ({
 /**
  * What to read next, for a reader who has caught up with what they follow.
  *
- * It is the storefront's own recommendation order rather than one computed for
- * this reader, so the shelf is the shared cached read the home page already
- * fills — a reader arriving at My Page pays no round trip for it.
+ * The order is computed from this reader's own last 28 days, so two readers of
+ * one tenant see different shelves, and a reader the recommendation batch has
+ * not reached yet sees the storefront's own order instead. The page is already
+ * behind a session; a session the API rejects here still gets that shared
+ * shelf, and the section above is what sends the reader back to sign in.
  */
 export const RecommendedSeriesSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const result = await getCatalogTopRecommendedSeries(tenantId, {
+  const result = await getCatalogTopReaderRecommendedSeries(tenantId, {
     locale,
     maxRecommended,
   });

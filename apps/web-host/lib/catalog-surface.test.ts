@@ -7,6 +7,7 @@ import {
   getEpisodeDetail,
   getEpisodeViewer,
   getSeriesDetail,
+  listMyRecommendedSeries,
   listPublishedGenres,
   listPublishedSeries,
   listRankedSeries,
@@ -27,6 +28,7 @@ const catalog = vi.hoisted(() => ({
   getPublishedCreatorDetail: vi.fn(),
   getPublishedLabelDetail: vi.fn(),
   getSeriesDetail: vi.fn(),
+  listMyRecommendedSeries: vi.fn(),
   listPublishedCreators: vi.fn(),
   listPublishedGenres: vi.fn(),
   listPublishedSeries: vi.fn(),
@@ -134,6 +136,15 @@ describe("storefront catalog reads", () => {
     await getEpisodeViewer("TENANT_1", "SERIES_1", "EP_1", "SESSION_1", "en");
 
     expect(catalog.getEpisodeDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ surface: ClientSurface.WEB }),
+      expect.anything()
+    );
+  });
+
+  it("names the web surface on the reader's own recommendation read", async () => {
+    await listMyRecommendedSeries("TENANT_1", "SESSION_1", { locale: "en" });
+
+    expect(catalog.listMyRecommendedSeries).toHaveBeenCalledWith(
       expect.objectContaining({ surface: ClientSurface.WEB }),
       expect.anything()
     );

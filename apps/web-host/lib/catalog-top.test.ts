@@ -7,6 +7,7 @@ import {
   getCatalogTopFreeSeries,
   getCatalogTopNewEpisodes,
   getCatalogTopPopularSeries,
+  getCatalogTopReaderRecommendedSeries,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
   getCatalogTopWeeklySchedule,
@@ -16,14 +17,20 @@ const { mockListPublishedCreators } = vi.hoisted(() => ({
   mockListPublishedCreators: vi.fn(),
 }));
 
+const { mockResolveAccessToken } = vi.hoisted(() => ({
+  mockResolveAccessToken: vi.fn(),
+}));
+
 const {
   mockGetSeriesDetail,
+  mockListMyRecommendedSeries,
   mockListPublishedLabels,
   mockListPublishedSeries,
   mockListRankedSeries,
   mockListRecommendedSeries,
 } = vi.hoisted(() => ({
   mockGetSeriesDetail: vi.fn(),
+  mockListMyRecommendedSeries: vi.fn(),
   mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
   mockListRankedSeries: vi.fn(),
@@ -34,12 +41,17 @@ vi.mock("./creators", () => ({
   listPublishedCreators: mockListPublishedCreators,
 }));
 
+vi.mock("./api-client", () => ({
+  resolveAccessToken: mockResolveAccessToken,
+}));
+
 vi.mock("./catalog", async (importOriginal) => {
   const original = await importOriginal<Record<string, unknown>>();
 
   return {
     ...original,
     getSeriesDetail: mockGetSeriesDetail,
+    listMyRecommendedSeries: mockListMyRecommendedSeries,
     listPublishedLabels: mockListPublishedLabels,
     listPublishedSeries: mockListPublishedSeries,
     listRankedSeries: mockListRankedSeries,
@@ -124,6 +136,10 @@ describe("catalog-top section loaders", () => {
     mockListPublishedSeries.mockReset();
     mockListRankedSeries.mockReset();
     mockListRecommendedSeries.mockReset();
+    mockListMyRecommendedSeries.mockReset();
+    mockResolveAccessToken.mockReset();
+    // A guest, unless a test signs a reader in.
+    mockResolveAccessToken.mockResolvedValue("");
   });
 
   it("getCatalogTopPopularSeries shows the weekly chart when the batch has ranked the tenant", async () => {
@@ -154,6 +170,9 @@ describe("catalog-top section loaders", () => {
       period: "weekly",
     });
     expect(mockListRecommendedSeries).not.toHaveBeenCalled();
+    // The chart is everyone's, so a ranked tenant's module never asks who is
+    // looking and stays out of the session altogether.
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
     expect(result).toEqual({
       ok: true,
       value: {
@@ -197,6 +216,46 @@ describe("catalog-top section loaders", () => {
       value: {
         kind: "recommended",
         series: [seriesFixture[0], seriesFixture[1]],
+      },
+    });
+  });
+
+  it("getCatalogTopPopularSeries orders the cold-start shelf for a signed-in reader", async () => {
+    mockListRankedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        computedAt: "",
+        nextToken: "",
+        periodEnd: "",
+        periodStart: "",
+        previousToken: "",
+        rankedSeries: [],
+      },
+    });
+    mockResolveAccessToken.mockResolvedValue("SESSION_1");
+    mockListMyRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        access: "signed_in",
+        page: {
+          nextToken: "",
+          previousToken: "",
+          series: [seriesFixture[1], seriesFixture[0]],
+        },
+      },
+    });
+
+    const result = await getCatalogTopPopularSeries("TENANT_001", {
+      locale: "en",
+      maxRecommended: 6,
+    });
+
+    expect(mockListRecommendedSeries).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        kind: "recommended",
+        series: [seriesFixture[1], seriesFixture[0]],
       },
     });
   });
@@ -259,6 +318,107 @@ describe("catalog-top section loaders", () => {
       message: "Could not load the recommended works. Please try again later.",
       ok: false,
     });
+  });
+
+  it("getCatalogTopReaderRecommendedSeries puts the series a signed-in reader's features name first", async () => {
+    mockResolveAccessToken.mockResolvedValue("SESSION_1");
+    mockListMyRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        access: "signed_in",
+        page: {
+          nextToken: "NEXT",
+          previousToken: "",
+          series: [seriesFixture[1], seriesFixture[0]],
+        },
+      },
+    });
+
+    const result = await getCatalogTopReaderRecommendedSeries("TENANT_001", {
+      locale: "en",
+      maxRecommended: 2,
+    });
+
+    expect(mockListMyRecommendedSeries).toHaveBeenCalledWith(
+      "TENANT_001",
+      "SESSION_1",
+      { limit: 2, locale: "en" }
+    );
+    // The shared shelf is every visitor's entry; a signed-in reader's answer
+    // must not be read from it or written into it.
+    expect(mockListRecommendedSeries).not.toHaveBeenCalled();
+    expect(result.ok && result.value.map((item) => item.publicId)).toEqual([
+      "SERIES_2",
+      "SERIES_1",
+    ]);
+  });
+
+  it("getCatalogTopReaderRecommendedSeries keeps a guest on the tenant-wide shelf", async () => {
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0], seriesFixture[1]],
+      },
+    });
+
+    const result = await getCatalogTopReaderRecommendedSeries("TENANT_001", {
+      locale: "en",
+      maxRecommended: 6,
+    });
+
+    expect(mockListMyRecommendedSeries).not.toHaveBeenCalled();
+    expect(mockListRecommendedSeries).toHaveBeenCalledWith("TENANT_001", {
+      limit: 6,
+      locale: "en",
+    });
+    expect(result.ok && result.value.map((item) => item.publicId)).toEqual([
+      "SERIES_1",
+      "SERIES_2",
+    ]);
+  });
+
+  it("getCatalogTopReaderRecommendedSeries gives a rejected session the guest's shelf", async () => {
+    mockResolveAccessToken.mockResolvedValue("EXPIRED_SESSION");
+    mockListMyRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: { access: "signed_out" },
+    });
+    mockListRecommendedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0]],
+      },
+    });
+
+    await expect(
+      getCatalogTopReaderRecommendedSeries("TENANT_001", {
+        locale: "en",
+        maxRecommended: 6,
+      })
+    ).resolves.toEqual({ ok: true, value: [seriesFixture[0]] });
+  });
+
+  it("getCatalogTopReaderRecommendedSeries reports a failed read of the reader's own order", async () => {
+    mockResolveAccessToken.mockResolvedValue("SESSION_1");
+    mockListMyRecommendedSeries.mockResolvedValue({
+      message: "Could not load the recommended works. Please try again later.",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopReaderRecommendedSeries("TENANT_001", {
+        locale: "en",
+        maxRecommended: 6,
+      })
+    ).resolves.toEqual({
+      message: "Could not load the recommended works. Please try again later.",
+      ok: false,
+    });
+    expect(mockListRecommendedSeries).not.toHaveBeenCalled();
   });
 
   /**

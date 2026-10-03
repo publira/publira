@@ -210,9 +210,10 @@ const maxContinueReading = 6;
  *
  * It owns its heading rather than receiving one from the page, because a guest
  * and a reader who is in the middle of nothing must see the home page they
- * have always seen — heading included. Everything around it stays on the
- * shared cache: this is the one section here that reads the session, and it
- * reads it inside its own `<Suspense>` so the static shell is unaffected.
+ * have always seen — heading included. It reads the session inside its own
+ * `<Suspense>` so the static shell is unaffected, which is the same footing the
+ * popularity shelf below stands on when it has a reader's recommendations to
+ * show.
  */
 const ContinueReadingSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -700,6 +701,10 @@ const PopularSeriesShelf = ({
  * and leads to `/ranking`, a cold-start shelf keeps the wording and the
  * destination the page has always had. A failed read is the cold-start shape
  * too: `/series` is a list that always exists.
+ *
+ * The cold-start shelf is ordered for the signed-in reader and shared only
+ * with guests, so on a tenant the ranking batch has not reached this section
+ * reads the session; a ranked tenant's chart never does.
  */
 const PopularSeriesSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);

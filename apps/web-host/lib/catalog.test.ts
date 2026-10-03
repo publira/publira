@@ -23,6 +23,7 @@ import {
   isPublicEpisodeBody,
   listPublishedGenres,
   listPublishedLabels,
+  listMyRecommendedSeries,
   listPublishedSeries,
   listRankedSeries,
   listReaderRankedSeries,
@@ -32,9 +33,17 @@ import {
   toEpisodePurchaseSurface,
 } from "./catalog";
 
+const { mockCacheTag } = vi.hoisted(() => ({ mockCacheTag: vi.fn() }));
+
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
+  cacheTag: mockCacheTag,
+}));
+
 const {
   mockGetEpisodeDetail,
   mockGetSeriesDetail,
+  mockListMyRecommendedSeries,
   mockListPublishedGenres,
   mockListPublishedLabels,
   mockListPublishedSeries,
@@ -44,6 +53,7 @@ const {
 } = vi.hoisted(() => ({
   mockGetEpisodeDetail: vi.fn(),
   mockGetSeriesDetail: vi.fn(),
+  mockListMyRecommendedSeries: vi.fn(),
   mockListPublishedGenres: vi.fn(),
   mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
@@ -57,6 +67,7 @@ vi.mock("./api-client", () => ({
     catalog: {
       getEpisodeDetail: mockGetEpisodeDetail,
       getSeriesDetail: mockGetSeriesDetail,
+      listMyRecommendedSeries: mockListMyRecommendedSeries,
       listPublishedGenres: mockListPublishedGenres,
       listPublishedLabels: mockListPublishedLabels,
       listPublishedSeries: mockListPublishedSeries,
@@ -1852,6 +1863,112 @@ describe("catalog.listReaderRankedSeries", () => {
         locale: "en",
         period: "weekly",
       })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listMyRecommendedSeries", () => {
+  beforeEach(() => {
+    mockCacheTag.mockReset();
+    mockListMyRecommendedSeries.mockReset();
+  });
+
+  /**
+   * The private entry follows the catalogue the way the shared shelf does: a
+   * series published, unpublished, or re-credited has to reach the reader's
+   * own order without waiting out the cache profile.
+   */
+  it("Carries the series list and creators tags, guest or not", async () => {
+    mockListMyRecommendedSeries.mockResolvedValueOnce({});
+
+    await listMyRecommendedSeries(" TENANT_001 ", "SESSION_1", {
+      locale: "en",
+    });
+    await listMyRecommendedSeries("TENANT_001", "", { locale: "en" });
+
+    expect(mockCacheTag.mock.calls.map((call) => call[0])).toEqual([
+      "tenant:TENANT_001:series:list",
+      "tenant:TENANT_001:creators",
+      "tenant:TENANT_001:series:list",
+      "tenant:TENANT_001:creators",
+    ]);
+  });
+
+  it("Asks for the reader's own order with their session and keeps it", async () => {
+    mockListMyRecommendedSeries.mockResolvedValueOnce({
+      nextToken: "next-token",
+      previousToken: "",
+      series: [
+        {
+          creators: [],
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+        {
+          creators: [],
+          publicId: "SERIES_1",
+          synopsis: "S1",
+          title: "Series 1",
+        },
+      ],
+    });
+
+    const result = await listMyRecommendedSeries("TENANT_001", "SESSION_1", {
+      limit: 6,
+      locale: "en",
+    });
+
+    expect(mockListMyRecommendedSeries).toHaveBeenCalledWith(
+      {
+        limit: 6,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "TENANT_001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer SESSION_1" } }
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        access: "signed_in",
+        page: { nextToken: "next-token", previousToken: "" },
+      },
+    });
+    expect(
+      result.ok &&
+        result.value.access === "signed_in" &&
+        result.value.page.series.map((series) => series.publicId)
+    ).toEqual(["SERIES_2", "SERIES_1"]);
+  });
+
+  it("Answers a guest as signed out without asking the server", async () => {
+    await expect(
+      listMyRecommendedSeries("TENANT_001", " ", { locale: "en" })
+    ).resolves.toEqual({ ok: true, value: { access: "signed_out" } });
+    expect(mockListMyRecommendedSeries).not.toHaveBeenCalled();
+  });
+
+  it("Reads a rejected session as signed out rather than as a failure", async () => {
+    mockListMyRecommendedSeries.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    await expect(
+      listMyRecommendedSeries("TENANT_001", "SESSION_1", { locale: "en" })
+    ).resolves.toEqual({ ok: true, value: { access: "signed_out" } });
+  });
+
+  it("Returns any other error as a failure value", async () => {
+    mockListMyRecommendedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listMyRecommendedSeries("TENANT_001", "SESSION_1", { locale: "en" })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
