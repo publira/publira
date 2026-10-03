@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/models/episode_comment.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -42,7 +43,20 @@ void main() {
     );
   }
 
+  /// A published comment by a member the episode credits as a creator.
+  EpisodeComment creatorComment({String id = 'comment-creator'}) {
+    return EpisodeComment(
+      id: id,
+      body: 'Thank you for reading.',
+      createdAt: DateTime.utc(2026, 9, 8, 10, 45),
+      authorId: 'SeedMMBRCCC3',
+      authorName: 'Sample Member',
+      creatorName: 'Sample Author',
+    );
+  }
+
   final submit = find.byKey(const ValueKey('comment-submit'));
+  final creatorBadge = find.byKey(const ValueKey('comment-creator-badge'));
   final formMessage = find.byKey(const ValueKey('comment-form-message'));
 
   late FakeCatalogRepository catalog;
@@ -87,6 +101,111 @@ void main() {
     // The route names the episode by its public id; the API is sent its id.
     expect(comments.episodeIds, [fixtureInternalId(episodeId)]);
   });
+
+  testWidgets(
+    "a creator's comment is marked and shown under the credited name",
+    (tester) async {
+      comments.pages = {
+        '': EpisodeCommentPage(comments: [creatorComment(), otherReader()]),
+      };
+      await pumpComments(tester);
+
+      final creatorTile = find.byKey(
+        const ValueKey('comment-tile-comment-creator'),
+      );
+      final readerTile = find.byKey(
+        const ValueKey('comment-tile-comment-other'),
+      );
+      await pumpUntilFound(tester, creatorTile);
+      expect(
+        find.descendant(of: creatorTile, matching: find.text('Sample Author')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: creatorTile, matching: find.text('Author')),
+        findsOneWidget,
+      );
+      expect(find.text('Sample Member'), findsNothing);
+      expect(
+        find.descendant(of: readerTile, matching: find.text('Another Member')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: readerTile, matching: creatorBadge),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    "the reader's own comment is marked when the episode credits them",
+    (tester) async {
+      comments
+        ..mode = CommentMode.approvalRequired
+        ..own = [
+          EpisodeComment(
+            id: 'comment-pending',
+            body: 'Thank you for reading.',
+            createdAt: DateTime.utc(2026, 9, 8, 12),
+            creatorName: 'Sample Author',
+            awaitingApproval: true,
+          ),
+        ];
+      await pumpComments(tester, session: fakeSession);
+
+      await pumpUntilFound(tester, creatorBadge);
+      expect(find.text('Sample Author'), findsOneWidget);
+      expect(find.text(fakeSession.userName), findsNothing);
+      // Still the reader's own row, which they take down rather than report.
+      expect(
+        find.byKey(const ValueKey('comment-delete-comment-pending')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets("a creator's comment is reported by the credited name", (
+    tester,
+  ) async {
+    comments.pages = {
+      '': EpisodeCommentPage(comments: [creatorComment()]),
+    };
+    await pumpComments(tester, session: fakeSession);
+
+    final report = find.byKey(const ValueKey('comment-report-comment-creator'));
+    await pumpUntilRouteSettled(tester, report);
+    final label = tester
+        .widget<AutospacedText>(
+          find.descendant(of: report, matching: find.byType(AutospacedText)),
+        )
+        .semanticsLabel;
+    expect(label, startsWith('Report the comment Sample Author posted on '));
+  });
+
+  // The word is the one each locale gives the person a work is credited to,
+  // which is not the one it gives the writer of a comment.
+  for (final (locale, word) in const [
+    (Locale('ja'), '著者'),
+    (Locale('en'), 'Author'),
+    (Locale('ko'), '작가'),
+    (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'), '作者'),
+    (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), '作者'),
+  ]) {
+    testWidgets('the badge reads ${locale.toLanguageTag()}', (tester) async {
+      tester.platformDispatcher.localesTestValue = [locale];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      comments.pages = {
+        '': EpisodeCommentPage(comments: [creatorComment()]),
+      };
+      await pumpComments(tester);
+
+      await pumpUntilFound(tester, creatorBadge);
+      expect(
+        find.descendant(of: creatorBadge, matching: find.text(word)),
+        findsOneWidget,
+      );
+    });
+  }
 
   testWidgets('an episode nobody has commented on says so', (tester) async {
     await pumpComments(tester);

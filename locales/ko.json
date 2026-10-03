@@ -3690,6 +3690,7 @@
       "body_placeholder": "이 에피소드를 읽은 소감을 남겨 주세요",
       "body_required": "댓글을 입력해 주세요.",
       "body_too_long": "댓글은 {$max}자 이내로 입력해 주세요.",
+      "creator_badge": "작가",
       "delete": "삭제",
       "delete_aria": "{$date}에 작성한 댓글 삭제",
       "delete_failed": "댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",

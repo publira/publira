@@ -443,6 +443,9 @@ abstract class AppMessages {
   /// `mobile.comments.body_too_long`
   String commentsBodyTooLong({required String max});
 
+  /// `mobile.comments.creator_badge`
+  String get commentsCreatorBadge;
+
   /// `mobile.comments.delete`
   String get commentsDelete;
 
@@ -2252,6 +2255,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String commentsBodyTooLong({required String max}) {
     return 'コメントは$max文字以内で入力してください。';
+  }
+
+  @override
+  String get commentsCreatorBadge {
+    return '著者';
   }
 
   @override
@@ -4868,6 +4876,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get commentsCreatorBadge {
+    return 'Author';
+  }
+
+  @override
   String get commentsDelete {
     return 'Delete';
   }
@@ -7478,6 +7491,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String commentsBodyTooLong({required String max}) {
     return '댓글은 $max자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get commentsCreatorBadge {
+    return '작가';
   }
 
   @override
@@ -10094,6 +10112,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get commentsCreatorBadge {
+    return '作者';
+  }
+
+  @override
   String get commentsDelete {
     return '删除';
   }
@@ -12704,6 +12727,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String commentsBodyTooLong({required String max}) {
     return '留言最多$max個字元。';
+  }
+
+  @override
+  String get commentsCreatorBadge {
+    return '作者';
   }
 
   @override
