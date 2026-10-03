@@ -247,6 +247,10 @@ WHERE cc.id = credited_creator_of_account(
 --
 -- The author and the episode are joined in because a comment cannot be judged
 -- from its text alone: staff need to know who wrote it and what it is about.
+-- Who wrote it includes the credit the author holds on this episode, which the
+-- creator columns carry through the same credited_creator_of_account the
+-- public list reads, so a moderator is told the comment is the author's in the
+-- same page query rather than a lookup per row.
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
@@ -258,7 +262,10 @@ SELECT c.*,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
@@ -266,6 +273,7 @@ FROM episode_comments c
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
     AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
@@ -305,7 +313,10 @@ SELECT c.*,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
@@ -313,6 +324,7 @@ FROM episode_comments c
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
     AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
@@ -364,7 +376,10 @@ SELECT c.*,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    s.title AS series_title,
+    cc.id AS creator_id,
+    cc.public_id AS creator_public_id,
+    cc.name AS creator_name
 FROM episode_comments c
     JOIN users u ON u.tenant_id = c.tenant_id
         AND u.id = c.user_id
@@ -372,6 +387,7 @@ FROM episode_comments c
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('id');
 

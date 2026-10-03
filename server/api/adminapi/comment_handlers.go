@@ -270,6 +270,9 @@ type commentProjection struct {
 	episodeTitle    string
 	seriesPublicID  string
 	seriesTitle     string
+	creatorID       uuid.NullUUID
+	creatorPublicID sql.NullString
+	creatorName     sql.NullString
 }
 
 func commentProjectionOf(row moderationCommentRow) commentProjection {
@@ -291,6 +294,9 @@ func commentProjectionOf(row moderationCommentRow) commentProjection {
 		episodeTitle:    row.EpisodeTitle,
 		seriesPublicID:  row.SeriesPublicID,
 		seriesTitle:     row.SeriesTitle,
+		creatorID:       row.CreatorID,
+		creatorPublicID: row.CreatorPublicID,
+		creatorName:     row.CreatorName,
 	}
 }
 
@@ -313,6 +319,9 @@ func commentProjectionOfReport(row commentReportRow) commentProjection {
 		episodeTitle:    row.EpisodeTitle,
 		seriesPublicID:  row.SeriesPublicID,
 		seriesTitle:     row.SeriesTitle,
+		creatorID:       row.CreatorID,
+		creatorPublicID: row.CreatorPublicID,
+		creatorName:     row.CreatorName,
 	}
 }
 
@@ -351,11 +360,27 @@ func adminComment(row commentProjection, periods retention.Periods) *publiraadmi
 		SeriesPublicId:  row.seriesPublicID,
 		SeriesTitle:     row.seriesTitle,
 		OpenReportCount: row.openReportCount,
+		Creator:         adminCommentCreator(row),
 	}
 	if row.withdrawnAt.Valid {
 		comment.PurgeDueAt = periods.WithdrawnCommentPurgeDueAt(row.withdrawnAt.Time).Format(time.RFC3339)
 	}
 	return comment
+}
+
+// adminCommentCreator projects the credit a comment's author holds on its
+// episode, which the moderation queries read through
+// credited_creator_of_account. A NULL id is a comment by anyone the episode
+// does not credit, and leaves the message unset.
+func adminCommentCreator(row commentProjection) *publiraadminv1.AdminCommentCreator {
+	if !row.creatorID.Valid {
+		return nil
+	}
+	return &publiraadminv1.AdminCommentCreator{
+		Id:       row.creatorID.UUID.String(),
+		PublicId: row.creatorPublicID.String,
+		Name:     row.creatorName.String,
+	}
 }
 
 // adminCommentReport projects one stored report, with the comment it is about.
