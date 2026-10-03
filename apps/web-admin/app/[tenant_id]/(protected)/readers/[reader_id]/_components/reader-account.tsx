@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { StatusChip } from "@publira/ui-components/badge";
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 import {
   Identifier,
   IdentifierCopy,
@@ -17,12 +17,14 @@ import { Suspense } from "react";
 import {
   AdminSection,
   AdminSectionActions,
+  AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantRoleLabel } from "#lib/role-labels";
 
 import {
   ReaderStatusMessage,
@@ -36,6 +38,11 @@ import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 
 interface ReaderAccountProps {
   locale: Locale;
+  /**
+   * The account the signed-in administrator is using, which the API refuses
+   * to suspend or delete.
+   */
+  ownAccount: boolean;
   reader: ReaderDetail;
   tenantId: string;
   timeZone: string;
@@ -46,6 +53,7 @@ const valueClassName = cn("min-w-0 text-sm");
 
 export const ReaderAccount = async ({
   locale,
+  ownAccount,
   reader,
   tenantId,
   timeZone,
@@ -61,6 +69,13 @@ export const ReaderAccount = async ({
               <Message message="admin.readers.account_title" />
             </Suspense>
           </AdminSectionTitle>
+          {ownAccount ? (
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.readers.own_account" />
+              </Suspense>
+            </AdminSectionDescription>
+          ) : null}
         </AdminSectionHeading>
         <AdminSectionActions>
           {reader.status === "suspended" ? (
@@ -69,20 +84,23 @@ export const ReaderAccount = async ({
               readerId={reader.id}
               tenantId={tenantId}
             />
-          ) : (
+          ) : null}
+          {reader.status !== "suspended" && !ownAccount ? (
             <SuspendReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}
               readerId={reader.id}
               tenantId={tenantId}
             />
+          ) : null}
+          {ownAccount ? null : (
+            <DeleteReaderButton
+              name={reader.name || reader.email}
+              publicId={reader.publicId}
+              readerId={reader.id}
+              tenantId={tenantId}
+            />
           )}
-          <DeleteReaderButton
-            name={reader.name || reader.email}
-            publicId={reader.publicId}
-            readerId={reader.id}
-            tenantId={tenantId}
-          />
         </AdminSectionActions>
       </AdminSectionHeader>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
@@ -128,12 +146,17 @@ export const ReaderAccount = async ({
             <Message message="admin.readers.columns.status" />
           </Suspense>
         </dt>
-        <dd className={valueClassName}>
+        <dd className={cn(valueClassName, "flex flex-wrap items-center gap-2")}>
           <StatusChip status={readerStatusTone(reader.status)}>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <ReaderStatusMessage status={reader.status} />
             </Suspense>
           </StatusChip>
+          {reader.role ? (
+            <Badge tone="info">
+              {await getTenantRoleLabel(reader.role, locale)}
+            </Badge>
+          ) : null}
         </dd>
 
         <dt className={labelClassName}>

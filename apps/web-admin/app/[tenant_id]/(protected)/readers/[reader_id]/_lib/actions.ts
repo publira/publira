@@ -4,6 +4,7 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ import {
 import { getMessagesFor } from "#lib/messages";
 import { moderateReader, setReaderBirthDate } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
+import { tenantMembersCacheTag } from "#lib/tenant-members";
 
 /**
  * The reader an action addresses (`reader_id`), and the public ID its page is
@@ -79,6 +81,9 @@ const moderate = async (
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };
   }
+  // The account may be a staff member's, whose state and presence the members
+  // screen lists.
+  updateTag(tenantMembersCacheTag(tenantId));
 
   return { publicId: parsed.data.publicId };
 };

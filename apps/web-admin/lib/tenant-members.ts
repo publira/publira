@@ -29,6 +29,8 @@ import { getAccessToken } from "./session";
 
 export interface TenantMemberItem {
   userId: string;
+  /** The public ID the member's reader page is found at. */
+  publicId: string;
   name: string;
   email: string;
   role: string;
@@ -98,13 +100,14 @@ export const tenantAdminInvitationsCacheTag = (tenantId: string): string =>
 
 type RawTenantMember = Pick<
   TenantMember,
-  "createdAt" | "email" | "name" | "role" | "status" | "userId"
+  "createdAt" | "email" | "name" | "role" | "status" | "userId" | "userPublicId"
 >;
 
 const mapTenantMember = (member: RawTenantMember): TenantMemberItem => ({
   createdAt: member.createdAt ?? "",
   email: member.email ?? "",
   name: member.name ?? "",
+  publicId: member.userPublicId ?? "",
   role: member.role ?? "",
   status: member.status ?? "",
   userId: member.userId ?? "",

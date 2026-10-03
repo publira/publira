@@ -2,7 +2,9 @@ import type { AdminReader } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 
@@ -46,7 +48,7 @@ const toReaderStatus = (raw: string): ReaderStatus =>
 /** The generated `AdminReader` fields {@link mapReader} reads (see `series.ts`). */
 type RawReader = Pick<
   AdminReader,
-  "createdAt" | "email" | "id" | "name" | "publicId" | "status"
+  "createdAt" | "email" | "id" | "name" | "publicId" | "role" | "status"
 >;
 
 export const mapReader = (item: RawReader): ReaderItem => ({
@@ -55,6 +57,7 @@ export const mapReader = (item: RawReader): ReaderItem => ({
   id: item.id ?? "",
   name: item.name ?? "",
   publicId: item.publicId ?? "",
+  role: item.role ?? "",
   status: toReaderStatus(item.status ?? ""),
 });
 
@@ -227,6 +230,31 @@ const readerModerationFailedMessage = async (
   }
 };
 
+/**
+ * The wording of a suspend or delete the API refused for a reason staff can do
+ * something about. The page withholds both actions on the signed-in
+ * administrator's own account, and the last active administrator is refused
+ * only when two administrators act on each other at once, so the first two
+ * reasons reach here only when the account changed after the page was drawn.
+ * Any other failed precondition keeps the operation's own fallback.
+ */
+const readerModerationRefusal = async (
+  error: unknown,
+  locale: Locale
+): Promise<string | undefined> => {
+  const t = await getMessagesFor(locale);
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.ownAccount)) {
+    return t("admin.readers.own_account");
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)) {
+    return t("admin.readers.last_tenant_admin");
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.accountHasStaffHistory)) {
+    return t("admin.readers.staff_history");
+  }
+  return undefined;
+};
+
 export interface SetReaderBirthDateInput {
   /** `YYYY-MM-DD`, or empty to clear the stored date. */
   birthDate: string;
@@ -302,7 +330,12 @@ export const moderateReader = async (
       message: rpcErrorMessage(
         error,
         await readerModerationFailedMessage(input.action, locale),
-        { locale }
+        {
+          locale,
+          overrides: {
+            precondition: await readerModerationRefusal(error, locale),
+          },
+        }
       ),
       ok: false,
     };

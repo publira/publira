@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDate } from "@publira/utils";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -200,7 +201,16 @@ const MemberTable = ({
     <TableBody>
       {members.map((member) => (
         <TableRow key={member.userId}>
-          <TableCell className="font-medium">{member.name}</TableCell>
+          <TableCell>
+            {/* A member is an account of the tenant like any reader, and
+              their reader page is where the account is suspended or deleted. */}
+            <Link
+              className="font-medium underline-offset-4 hover:underline"
+              href={`/readers/${member.publicId}`}
+            >
+              {member.name || member.publicId}
+            </Link>
+          </TableCell>
           <TableCell>{member.email}</TableCell>
           <TableCell>
             <MemberRoleForm member={member} tenantId={tenantId} />

@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { StatusChip } from "@publira/ui-components/badge";
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 import {
   EmptyStateDescription,
   EmptyStateHeading,
@@ -35,6 +35,7 @@ import {
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantRoleLabel } from "#lib/role-labels";
 
 import type { ReaderItem } from "../reader-types";
 import { ReaderStatusMessage, readerStatusTone } from "./reader-status-label";
@@ -49,13 +50,19 @@ type ReaderManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
+/** A reader with the name of their console role, empty for one with none. */
+interface ReaderRow {
+  reader: ReaderItem;
+  roleLabel: string;
+}
+
 const ReaderListBody = ({
   filtered,
   hasPageLinks,
   itemLabel,
   listErrorMessage,
   locale,
-  readers,
+  rows,
   timeZone,
 }: {
   filtered: boolean;
@@ -63,7 +70,7 @@ const ReaderListBody = ({
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
-  readers: ReaderItem[];
+  rows: ReaderRow[];
   timeZone: string;
 }) => {
   if (listErrorMessage) {
@@ -81,7 +88,7 @@ const ReaderListBody = ({
     );
   }
 
-  if (readers.length === 0) {
+  if (rows.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
         <EmptyStateHeading>
@@ -120,6 +127,11 @@ const ReaderListBody = ({
           </TableHead>
           <TableHead className="w-36">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.readers.columns.role" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-36">
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.readers.columns.status" />
             </Suspense>
           </TableHead>
@@ -131,7 +143,7 @@ const ReaderListBody = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {readers.map((reader) => (
+        {rows.map(({ reader, roleLabel }) => (
           <TableRow key={reader.publicId}>
             <TableCell>
               <Link
@@ -142,6 +154,9 @@ const ReaderListBody = ({
               </Link>
             </TableCell>
             <TableCell>{reader.email}</TableCell>
+            <TableCell>
+              {roleLabel ? <Badge tone="info">{roleLabel}</Badge> : null}
+            </TableCell>
             <TableCell>
               <StatusChip status={readerStatusTone(reader.status)}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -171,7 +186,17 @@ export const ReaderManager = async ({
   readers,
   timeZone,
 }: ReaderManagerProps) => {
-  const t = await getMessagesFor(locale);
+  const [t, rows] = await Promise.all([
+    getMessagesFor(locale),
+    Promise.all(
+      readers.map(async (reader): Promise<ReaderRow> => ({
+        reader,
+        roleLabel: reader.role
+          ? await getTenantRoleLabel(reader.role, locale)
+          : "",
+      }))
+    ),
+  ]);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (readers.length > 0 || hasPageLinks);
@@ -184,7 +209,7 @@ export const ReaderManager = async ({
         itemLabel={t("admin.readers.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
-        readers={readers}
+        rows={rows}
         timeZone={timeZone}
       />
 

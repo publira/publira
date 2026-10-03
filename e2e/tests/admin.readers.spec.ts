@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { selectOption, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
+import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import {
   READER_MODERATION_DELETE,
   READER_MODERATION_SCENARIO,
@@ -13,6 +14,12 @@ const SEED_READER = {
   name: "Sample Member",
   publicId: "SeedMMBRAAA1",
 } as const;
+
+/** The seed tenant administrator every test here signs in as. */
+const SEED_ADMIN_PUBLIC_ID = "SeedADMNAAA1";
+
+const OWN_ACCOUNT_REASON =
+  "This is the account you are signed in with, so it cannot be suspended or deleted here.";
 
 /**
  * Finding a reader from the console's readers list.
@@ -102,6 +109,67 @@ test.describe("web-admin readers", () => {
     await expect(
       page.getByRole("heading", { exact: true, level: 2, name: "Comments" })
     ).toBeVisible();
+  });
+
+  test("the list badges the administrator with their role and a reader with none", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, `/readers?q=${SEED_ADMIN.email}`);
+
+    // Other specs add accounts whose address ends in the same text, so the
+    // row is picked by an exact email cell.
+    const adminRow = page.getByRole("row").filter({
+      has: page.getByRole("cell", { exact: true, name: SEED_ADMIN.email }),
+    });
+    await expect(adminRow).toHaveCount(1);
+    await expect(
+      adminRow.getByText("Tenant admin", { exact: true })
+    ).toBeVisible();
+
+    await page
+      .getByRole("searchbox", { name: "Name or email" })
+      .fill(SEED_READER.email);
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page).toHaveURL(/[?&]q=member%40example\.com/u);
+    const readerRow = page.getByRole("row").filter({
+      has: page.getByRole("cell", { exact: true, name: SEED_READER.email }),
+    });
+    await expect(readerRow).toHaveCount(1);
+    await expect(readerRow.getByText("Active")).toBeVisible();
+    await expect(
+      readerRow.getByText("Tenant admin", { exact: true })
+    ).toHaveCount(0);
+  });
+
+  test("a member opens their reader page from the members screen, which withholds suspend and delete on their own account", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/members");
+
+    await page
+      .getByRole("row")
+      .filter({
+        has: page.getByRole("cell", { exact: true, name: SEED_ADMIN.email }),
+      })
+      .getByRole("link", { name: SEED_ADMIN.name })
+      .click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/readers/${SEED_ADMIN_PUBLIC_ID}$`, "u")
+    );
+    const account = page.getByRole("definition");
+    // The seed administrator is named "Tenant Admin", so only an exact match
+    // tells the badge from the name.
+    await expect(
+      account.getByText("Tenant admin", { exact: true })
+    ).toBeVisible();
+    await expect(page.getByText(OWN_ACCOUNT_REASON)).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: "Suspend" })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { exact: true, name: "Delete" })
+    ).toHaveCount(0);
   });
 
   test.describe("moderation", () => {

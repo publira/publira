@@ -37,6 +37,7 @@ const reader = (overrides: Partial<ReaderItem> = {}): ReaderItem => ({
   id: "01920000-0000-7000-8000-000000000001",
   name: "Reader One",
   publicId: "READER00001",
+  role: "",
   status: "active",
   ...overrides,
 });
@@ -64,6 +65,27 @@ describe("ReaderManager", () => {
     expect(screen.getByText("Suspended")).toBeTruthy();
     // 2026-06-01T20:00Z is already 2 June in Asia/Seoul.
     expect(screen.getByText(/Jun 2, 2026/u)).toBeTruthy();
+  });
+
+  it("badges a staff account with its role and leaves a reader without one", async () => {
+    render(
+      await ReaderManager({
+        filtered: false,
+        locale: "en",
+        pageSize: 20,
+        readers: [
+          reader({ name: "Avery Admin", role: "tenant_admin" }),
+          reader({ name: "Reader Two", publicId: "READER00002" }),
+        ],
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const [, adminRow, readerRow] = screen.getAllByRole("row");
+    expect(adminRow?.textContent).toContain("Tenant admin");
+    expect(readerRow?.textContent).not.toMatch(
+      /Tenant admin|Editor|Auditor|No role/u
+    );
   });
 
   it("links a reader without a name by their public_id", async () => {

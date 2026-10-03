@@ -19,6 +19,11 @@ export interface ReaderItem {
   id: string;
   name: string;
   publicId: string;
+  /**
+   * The highest console role the account holds, as the API names it
+   * (`tenant_admin`, …). Empty for an account with none.
+   */
+  role: string;
   status: ReaderStatus;
 }
 
@@ -46,8 +51,8 @@ export interface ReaderDetail extends ReaderItem {
 }
 
 /**
- * `notFound` covers a missing account, a staff account, and another tenant's
- * reader alike: the API never tells them apart, so neither does the page.
+ * `notFound` covers a missing account and another tenant's reader alike: the
+ * API never tells them apart, so neither does the page.
  */
 export type GetReaderResult =
   | { ok: true; reader: ReaderDetail }

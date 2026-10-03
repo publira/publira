@@ -53,6 +53,7 @@ const account = (
   linkedAt: "2026-09-01T00:00:00Z",
   name: "Reader One",
   publicId: "READER001",
+  role: "",
   status: "active",
   ...overrides,
 });

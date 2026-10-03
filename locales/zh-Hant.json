@@ -1279,6 +1279,7 @@
       "columns": {
         "name": "姓名",
         "email": "電子郵件",
+        "role": "角色",
         "status": "狀態",
         "created_at": "註冊時間"
       },
@@ -1336,6 +1337,9 @@
       "delete_confirm_description": "帳號將以與讀者自行註銷相同的方式刪除。此操作無法復原。",
       "delete_confirm_action": "刪除",
       "delete_failed": "無法刪除此讀者。請稍後再試。",
+      "own_account": "這是你目前登入的帳號，因此無法在此暫停或刪除。",
+      "last_tenant_admin": "此帳號是該租戶最後一位有效的租戶管理員。請先將其他人設為租戶管理員，再暫停或刪除此帳號。",
+      "staff_history": "稽核記錄或頁面歷程中仍記錄著此帳號的操作，因此無法刪除。",
       "validation": {
         "target_missing": "無法確定要操作的讀者。請重新整理頁面後再試。",
         "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。"
