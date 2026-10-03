@@ -232,11 +232,11 @@ const readerModerationFailedMessage = async (
 
 /**
  * The wording of a suspend or delete the API refused for a reason staff can do
- * something about. The page already hides both buttons on the signed-in
- * administrator's own account and on the last active administrator, so those
- * two reach here only when the account changed after the page was drawn — a
- * second administrator suspended or demoted at the same moment. Any other
- * failed precondition keeps the operation's own fallback.
+ * something about. The page withholds both actions on the signed-in
+ * administrator's own account, and the last active administrator is refused
+ * only when two administrators act on each other at once, so the first two
+ * reasons reach here only when the account changed after the page was drawn.
+ * Any other failed precondition keeps the operation's own fallback.
  */
 const readerModerationRefusal = async (
   error: unknown,

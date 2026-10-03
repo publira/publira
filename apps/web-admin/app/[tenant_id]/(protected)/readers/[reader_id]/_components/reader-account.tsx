@@ -31,7 +31,6 @@ import {
   readerStatusTone,
 } from "../../_components/reader-status-label";
 import type { ReaderDetail } from "../../reader-types";
-import type { ReaderModerationRefusals } from "../_lib/moderation-refusals";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 import { DeleteReaderButton } from "./delete-reader-button";
 import { SuspendReaderButton } from "./suspend-reader-button";
@@ -39,8 +38,12 @@ import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 
 interface ReaderAccountProps {
   locale: Locale;
+  /**
+   * The account the signed-in administrator is using, which the API refuses
+   * to suspend or delete.
+   */
+  ownAccount: boolean;
   reader: ReaderDetail;
-  refusals: ReaderModerationRefusals;
   tenantId: string;
   timeZone: string;
 }
@@ -50,14 +53,12 @@ const valueClassName = cn("min-w-0 text-sm");
 
 export const ReaderAccount = async ({
   locale,
+  ownAccount,
   reader,
-  refusals,
   tenantId,
   timeZone,
 }: ReaderAccountProps) => {
   const t = await getMessagesFor(locale);
-  // Suspend and delete share both guards, so one flag hides the two buttons.
-  const refused = refusals.ownAccount || refusals.lastTenantAdmin;
 
   return (
     <AdminSection>
@@ -68,16 +69,10 @@ export const ReaderAccount = async ({
               <Message message="admin.readers.account_title" />
             </Suspense>
           </AdminSectionTitle>
-          {refused ? (
+          {ownAccount ? (
             <AdminSectionDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-                {refusals.ownAccount ? (
-                  <Message message="admin.readers.own_account" />
-                ) : null}
-                {refusals.ownAccount && refusals.lastTenantAdmin ? " " : null}
-                {refusals.lastTenantAdmin ? (
-                  <Message message="admin.readers.last_tenant_admin" />
-                ) : null}
+                <Message message="admin.readers.own_account" />
               </Suspense>
             </AdminSectionDescription>
           ) : null}
@@ -90,7 +85,7 @@ export const ReaderAccount = async ({
               tenantId={tenantId}
             />
           ) : null}
-          {reader.status !== "suspended" && !refused ? (
+          {reader.status !== "suspended" && !ownAccount ? (
             <SuspendReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}
@@ -98,7 +93,7 @@ export const ReaderAccount = async ({
               tenantId={tenantId}
             />
           ) : null}
-          {refused ? null : (
+          {ownAccount ? null : (
             <DeleteReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}

@@ -214,60 +214,6 @@ export const listTenantMembers = async (
     await getAccessToken()
   );
 
-export type HasOtherActiveTenantAdminResult =
-  | { ok: true; value: boolean }
-  | {
-      message: string;
-      ok: false;
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
-
-/**
- * Members asked for per page while looking for another administrator, the
- * most the API answers in one page.
- */
-const ADMIN_SEARCH_PAGE_SIZE = 100;
-
-/**
- * Whether the tenant has an active `tenant_admin` other than `userId` — the
- * question the API asks before it suspends or deletes an administrator's
- * account. The member list has no role filter, so this pages through it from
- * `token` and stops at the first one found.
- */
-export const hasOtherActiveTenantAdmin = async (
-  tenantId: string,
-  locale: Locale,
-  userId: string,
-  token = ""
-): Promise<HasOtherActiveTenantAdminResult> => {
-  const page = await listTenantMembers(tenantId, locale, {
-    limit: ADMIN_SEARCH_PAGE_SIZE,
-    token,
-  });
-  if (!page.ok) {
-    return {
-      message: page.message,
-      ok: false,
-      requiresSignIn: page.requiresSignIn,
-    };
-  }
-  if (
-    page.members.some(
-      (member) =>
-        member.userId !== userId &&
-        member.role === "tenant_admin" &&
-        member.status === "active"
-    )
-  ) {
-    return { ok: true, value: true };
-  }
-  if (!page.nextToken) {
-    return { ok: true, value: false };
-  }
-  return hasOtherActiveTenantAdmin(tenantId, locale, userId, page.nextToken);
-};
-
 const listTenantAdminInvitationsForSession = async (
   tenantId: string,
   locale: Locale,

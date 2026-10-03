@@ -45,7 +45,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ReaderAccount } from "./_components/reader-account";
 import { ReaderComments } from "./_components/reader-comments";
-import { readerModerationRefusals } from "./_lib/moderation-refusals";
+import { isOwnAccount } from "./_lib/own-account";
 
 type ReaderDetailPageProps = PageProps<"/[tenant_id]/readers/[reader_id]">;
 
@@ -126,17 +126,13 @@ const ReaderAccountContent = async ({
     );
   }
 
-  const refusals = await readerModerationRefusals(
-    tenantId,
-    locale,
-    result.reader
-  );
+  const ownAccount = await isOwnAccount(tenantId, result.reader.publicId);
 
   return (
     <ReaderAccount
       locale={locale}
       reader={result.reader}
-      refusals={refusals}
+      ownAccount={ownAccount}
       tenantId={tenantId}
       timeZone={timeZone}
     />
