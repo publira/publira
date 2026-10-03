@@ -34,6 +34,8 @@ export interface HourDay {
 }
 
 export interface PlatformSecurityPolicy {
+  /** Where the disposable email domain list is read from; empty for none. */
+  disposableEmailDomainsUrl: string;
   mailRequestsPerAddress: HourDay;
   mailRequestsPerSource: HourDay;
   mfaRequiredForTenantAdmin: boolean;
@@ -99,6 +101,7 @@ type RawCommunityLimitDefaults = Pick<
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
   | "communityLimitDefaults"
+  | "disposableEmailDomainsUrl"
   | "mailRequestsPerAddress"
   | "mailRequestsPerSource"
   | "mfaRequiredForTenantAdmin"
@@ -140,6 +143,7 @@ export const toPlatformPolicy = (
 ): PlatformPolicy => ({
   community: toCommunityLimits(policy?.communityLimitDefaults),
   security: {
+    disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     mailRequestsPerAddress: toHourDay(policy?.mailRequestsPerAddress),
     mailRequestsPerSource: toHourDay(policy?.mailRequestsPerSource),
     mfaRequiredForTenantAdmin: policy?.mfaRequiredForTenantAdmin ?? false,

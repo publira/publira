@@ -6,7 +6,10 @@ import {
   getPlatformRetentionDefaults,
   platformPolicyCacheTag,
   platformRetentionDefaultsCacheTag,
+  updatePlatformCommunityLimits,
+  updatePlatformSecurityPolicy,
 } from "./platform-policy";
+import type { PlatformCommunityLimits } from "./platform-policy";
 
 const {
   mockCacheLife,
@@ -14,6 +17,8 @@ const {
   mockGetPlatformLocale,
   mockGetPlatformPolicy,
   mockGetPlatformRetentionDefaults,
+  mockResolveAccessToken,
+  mockUpdatePlatformPolicy,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -21,6 +26,8 @@ const {
   mockGetPlatformLocale: vi.fn(),
   mockGetPlatformPolicy: vi.fn(),
   mockGetPlatformRetentionDefaults: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
+  mockUpdatePlatformPolicy: vi.fn(),
   mockVerifyPlatformSession: vi.fn(),
 }));
 
@@ -43,12 +50,13 @@ vi.mock("./api-client", () => ({
     policy: {
       getPlatformPolicy: mockGetPlatformPolicy,
       getPlatformRetentionDefaults: mockGetPlatformRetentionDefaults,
+      updatePlatformPolicy: mockUpdatePlatformPolicy,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveAccessToken: vi.fn(),
+  resolveAccessToken: mockResolveAccessToken,
   withServiceHeaders: () => ({
     headers: { Authorization: "Bearer service-token" },
   }),
@@ -116,6 +124,96 @@ describe("getPlatformPolicy", () => {
       message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
+  });
+
+  it("reads the disposable email domain list URL as part of the security policy", async () => {
+    mockGetPlatformPolicy.mockResolvedValueOnce({
+      policy: { disposableEmailDomainsUrl: "https://lists.example.com/d.conf" },
+      revision: 2n,
+    });
+
+    await expect(getPlatformPolicy()).resolves.toMatchObject({
+      values: {
+        security: {
+          disposableEmailDomainsUrl: "https://lists.example.com/d.conf",
+        },
+      },
+    });
+  });
+});
+
+const listUrl = "https://lists.example.com/disposable.conf";
+
+/** A stored policy that names a list, as `GetPlatformPolicy` answers it. */
+const storedPolicy = {
+  communityLimitDefaults: {
+    commentPost: { perDay: 100, perMinute: 10 },
+    duplicateCommentWindowMinutes: 10,
+  },
+  disposableEmailDomainsUrl: listUrl,
+  mfaRequiredForTenantAdmin: true,
+  passwordVerification: { perDay: 50, perMinute: 5 },
+};
+
+const community: PlatformCommunityLimits = {
+  commentPost: { perDay: 40, perMinute: 4 },
+  commentReport: { perDay: 50, perMinute: 10 },
+  contactMessagePerAccount: { perDay: 10, perHour: 3 },
+  contactMessagePerClient: { perDay: 30, perHour: 10 },
+  duplicateCommentWindowMinutes: 10,
+  episodeRating: { perDay: 300, perMinute: 30 },
+  viewerPreferences: { perDay: 300, perMinute: 30 },
+};
+
+describe("savePlatformPolicy", () => {
+  beforeEach(() => {
+    mockResolveAccessToken.mockResolvedValue("session-1");
+    mockGetPlatformPolicy.mockResolvedValue({
+      policy: storedPolicy,
+      revision: 4n,
+    });
+    mockUpdatePlatformPolicy.mockResolvedValue({});
+  });
+
+  // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
+  // not edit has to be sent back as read, or the save would clear it.
+  it("keeps the stored list URL when the community limits are saved", async () => {
+    await expect(
+      updatePlatformCommunityLimits(community, 4n, "en")
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedRevision: 4n,
+        policy: expect.objectContaining({
+          disposableEmailDomainsUrl: listUrl,
+          mfaRequiredForTenantAdmin: true,
+        }),
+      }),
+      { headers: { Authorization: "Bearer session-1" } }
+    );
+  });
+
+  it("sends the list URL the security screen saves", async () => {
+    await updatePlatformSecurityPolicy(
+      {
+        disposableEmailDomainsUrl: "",
+        mailRequestsPerAddress: { perDay: 20, perHour: 5 },
+        mailRequestsPerSource: { perDay: 150, perHour: 30 },
+        mfaRequiredForTenantAdmin: false,
+        passwordVerification: { perDay: 50, perMinute: 5 },
+        storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+      },
+      4n,
+      "en"
+    );
+
+    expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policy: expect.objectContaining({ disposableEmailDomainsUrl: "" }),
+      }),
+      expect.anything()
+    );
   });
 });
 

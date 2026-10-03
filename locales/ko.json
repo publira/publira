@@ -4262,6 +4262,9 @@
         "store_purchase_per_minute": "독자당 1분 인앱 결제 확정 수",
         "store_purchase_per_day": "독자당 1일 인앱 결제 확정 수",
         "mfa_required": "테넌트 관리자에게 다단계 인증 필수",
+        "disposable_email_domains_url": "일회용 메일 도메인 목록 URL",
+        "disposable_email_domains_url_help": "한 줄에 도메인 하나씩 적힌 목록이며, 1시간마다 다시 읽습니다. 비워 두면 목록을 사용하지 않습니다.",
+        "disposable_email_domains_url_invalid": "일회용 메일 도메인 목록에는 http 또는 https URL을 입력하거나 비워 두세요.",
         "save": "보안 정책 저장",
         "saved": "보안 정책을 저장했습니다."
       },

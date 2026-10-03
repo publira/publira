@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { boundedIntFormSchema, revisionFormSchema } from "#lib/form-schemas";
+import {
+  boundedIntFormSchema,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 /**
@@ -12,6 +16,23 @@ const MAX_LIMIT = 2_147_483_647;
 
 /** Mirrors `platformpolicy.MaxDuplicateCommentWindow` (one week). */
 const MAX_DUPLICATE_COMMENT_WINDOW_MINUTES = 10_080;
+
+/** Mirrors `platformpolicy.MaxDisposableEmailDomainsURLLength`. */
+const MAX_LIST_URL_LENGTH = 2048;
+
+/** Mirrors `platformpolicy.validateListURL`: empty, or http(s) with a host. */
+const isListUrl = (value: string): boolean => {
+  if (!value) {
+    return true;
+  }
+  if (!URL.canParse(value)) {
+    return false;
+  }
+  const url = new URL(value);
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") && url.host !== ""
+  );
+};
 
 /** Mirrors `retention.MaxDays`. */
 const MAX_RETENTION_DAYS = 36_500;
@@ -47,6 +68,10 @@ const refineWindowPairs =
   };
 
 export const securityPolicyFormFields = {
+  disposableEmailDomainsUrl: {
+    kind: "value",
+    name: "disposable_email_domains_url",
+  },
   mailPerAddressPerDay: {
     kind: "value",
     name: "mail_requests_per_address_per_day",
@@ -93,8 +118,16 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const perSource = t("platform.policy.security.mail_per_source_legend");
   const storePurchase = t("platform.policy.security.store_purchase_title");
 
+  const listUrlInvalid = t(
+    "platform.policy.security.disposable_email_domains_url_invalid"
+  );
+
   return z
     .object({
+      disposableEmailDomainsUrl: optionalTrimmedString(
+        MAX_LIST_URL_LENGTH,
+        listUrlInvalid
+      ).refine(isListUrl, listUrlInvalid),
       mailPerAddressPerDay: limitSchema(t, perAddress),
       mailPerAddressPerHour: limitSchema(t, perAddress),
       mailPerSourcePerDay: limitSchema(t, perSource),

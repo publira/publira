@@ -3,8 +3,14 @@ import {
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Fragment, Suspense } from "react";
 
@@ -138,6 +144,29 @@ export const SecurityPolicyForm = ({
               <Message message="platform.policy.security.mfa_required" />
             </Suspense>
           </FieldLabel>
+        </Field>
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="platform.policy.security.disposable_email_domains_url" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="off"
+              defaultValue={values.disposableEmailDomainsUrl}
+              disabled={Boolean(loadErrorMessage)}
+              name="disposable_email_domains_url"
+              placeholder="https://example.com/disposable_email_blocklist.conf"
+              spellCheck={false}
+              type="url"
+            />
+          </FieldContent>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
+              <Message message="platform.policy.security.disposable_email_domains_url_help" />
+            </Suspense>
+          </FieldDescription>
         </Field>
       </Fragment>
       {loadErrorMessage ? (
