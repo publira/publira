@@ -95,6 +95,11 @@ message UnlinkIdentityResponse {}
 message CreateUserRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
+  // An address the tenant refuses is invalid_argument on email, with the field
+  // violation's reason EMAIL_DISPOSABLE_DOMAIN for a domain on the disposable
+  // list and EMAIL_REFUSED for one the tenant listed. The refusal depends on
+  // the address alone and never on whether it is registered, so it is not
+  // folded into the uniform accepted answer.
   string email = 3;
   string password = 4;
   // The reader's birth date as YYYY-MM-DD, and empty from a form that did not
@@ -145,6 +150,7 @@ message RequestEmailVerificationResponse {
 message RequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string current_email = 2;
+  // Refused on new_email for the reasons CreateUserRequest.email is.
   string new_email = 3;
   // The account's password. An account without one confirms with a fresh
   // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest

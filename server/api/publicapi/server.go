@@ -16,6 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/disposabledomains"
+	"github.com/publira/publira/server/internal/emailrejection"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
@@ -57,6 +59,9 @@ type apiServer struct {
 	search catalogsearch.Backend
 	// idTokens verifies the ID tokens readers sign in with Apple and Google.
 	idTokens idTokenVerifier
+	// disposable answers whether an address's domain is on the disposable list
+	// the platform policy names, for a tenant that refuses those.
+	disposable emailrejection.DisposableList
 }
 
 type webPushPublicKeySource interface {
@@ -160,7 +165,8 @@ type API struct {
 // New builds the public API over db, which must be the pool connected as
 // publira_public: the row-level security every handler here relies on is that
 // role's. Both flood controls read their limits from the platform policy
-// through that same pool. reval sends the cache tags its writes leave stale; a
+// through that same pool, and so does the disposable-domain list a tenant may
+// refuse sign-ups against. reval sends the cache tags its writes leave stale; a
 // nil one turns revalidation off. search answers the catalog searches; a nil one
 // is the SQL backend over queries. idTokens says where the ID tokens a reader
 // signs in with are checked against.
@@ -201,6 +207,7 @@ func newAPIServer(
 	if search == nil {
 		search = sqlbackend.New(queries)
 	}
+	guards = guards.withDefaults()
 	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
 		Client:  reval,
 		Queries: queries,
@@ -213,7 +220,7 @@ func newAPIServer(
 		encryptor:        encryptor,
 		tokens:           tokens,
 		logger:           logger,
-		guards:           guards.withDefaults(),
+		guards:           guards,
 		mail:             mail,
 		reval:            revalidator,
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
@@ -221,6 +228,7 @@ func newAPIServer(
 		stores:           defaultStoreClients(),
 		search:           search,
 		idTokens:         signin.NewVerifier(signin.VerifierConfig{}),
+		disposable:       disposabledomains.New(guards.policy, nil, logger),
 	}
 }
 

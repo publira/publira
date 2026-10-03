@@ -377,6 +377,44 @@ message UpdateTenantCommunityLimitSettingsResponse {
   int64 revision = 4;
 }
 
+// What a tenant refuses at reader sign-up and at a reader's email change. An
+// address that matches is refused with invalid_argument on email.
+message TenantEmailRejectionSettings {
+  // Whether the disposable-domain list the platform policy names applies. Off
+  // until the tenant turns it on.
+  bool reject_disposable_domains = 1;
+  // Addresses and domains the tenant refuses, lowercased and in lexical order.
+  // An entry with an @ is an address, compared with the + tag dropped from the
+  // local part on both sides; any other entry is a domain, which also refuses
+  // every subdomain of it.
+  repeated string entries = 2;
+}
+
+message GetTenantEmailRejectionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantEmailRejectionSettingsResponse {
+  TenantEmailRejectionSettings settings = 1;
+  // Whether the platform policy names a disposable-domain list. While it does
+  // not, reject_disposable_domains is stored and refuses nothing.
+  bool disposable_domain_list_available = 2;
+}
+
+message UpdateTenantEmailRejectionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required: the whole setting is written, so the entries are replaced by the
+  // ones sent. Each entry is trimmed and lowercased, and duplicates are
+  // dropped; one that is neither an address nor a domain of two labels or
+  // more is invalid_argument on entries, and so is a list longer than 1000.
+  TenantEmailRejectionSettings settings = 2;
+}
+
+message UpdateTenantEmailRejectionSettingsResponse {
+  TenantEmailRejectionSettings settings = 1;
+  bool disposable_domain_list_available = 2;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -420,4 +458,8 @@ service TenantSettingsService {
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantCommunityLimitSettings(UpdateTenantCommunityLimitSettingsRequest) returns (UpdateTenantCommunityLimitSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetTenantEmailRejectionSettings(GetTenantEmailRejectionSettingsRequest) returns (GetTenantEmailRejectionSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantEmailRejectionSettings(UpdateTenantEmailRejectionSettingsRequest) returns (UpdateTenantEmailRejectionSettingsResponse) {}
 }

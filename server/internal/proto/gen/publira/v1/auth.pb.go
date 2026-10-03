@@ -625,11 +625,16 @@ func (*UnlinkIdentityResponse) Descriptor() ([]byte, []int) {
 }
 
 type CreateUserRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Email    string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	Password string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// An address the tenant refuses is invalid_argument on email, with the field
+	// violation's reason EMAIL_DISPOSABLE_DOMAIN for a domain on the disposable
+	// list and EMAIL_REFUSED for one the tenant listed. The refusal depends on
+	// the address alone and never on whether it is registered, so it is not
+	// folded into the uniform accepted answer.
+	Email    string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
 	// The reader's birth date as YYYY-MM-DD, and empty from a form that did not
 	// ask. It is accepted here rather than only after the first sign-in because
 	// a tenant that verifies ages asks for it on the sign-up form: collecting it
@@ -965,7 +970,8 @@ type RequestEmailChangeRequest struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	CurrentEmail string                 `protobuf:"bytes,2,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
-	NewEmail     string                 `protobuf:"bytes,3,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	// Refused on new_email for the reasons CreateUserRequest.email is.
+	NewEmail string `protobuf:"bytes,3,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
 	// The account's password. An account without one confirms with a fresh
 	// sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
 	// takes them, from a provider linked to the account.

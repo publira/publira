@@ -264,6 +264,8 @@ On the platform API it runs as a service principal with no operator and no platf
 
 The list has one domain per line, with blank lines and lines starting with `#` ignored — the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, whose `disposable_email_blocklist.conf` can be named directly.
 
+A tenant applies the list to reader sign-up (`CreateUser`) and to a reader's email change (`RequestEmailChange`) by switching it on through the Admin API's `TenantSettingsService.UpdateTenantEmailRejectionSettings`, which also stores the addresses and domains the tenant refuses itself; `internal/emailrejection` holds the matching rules. The switch is off until the tenant turns it on, and `GetTenantEmailRejectionSettings` answers whether the platform names a list, since a switch with no list behind it refuses nothing. A refused address is `invalid_argument` on the address field, with the field violation's reason `EMAIL_DISPOSABLE_DOMAIN` or `EMAIL_REFUSED`.
+
 ## Mobile push (Firebase Cloud Messaging)
 
 The worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.

@@ -93,6 +93,12 @@ const (
 	// TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure is the fully-qualified name of
 	// the TenantSettingsService's UpdateTenantCommunityLimitSettings RPC.
 	TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommunityLimitSettings"
+	// TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantEmailRejectionSettings RPC.
+	TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantEmailRejectionSettings"
+	// TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure is the fully-qualified name of
+	// the TenantSettingsService's UpdateTenantEmailRejectionSettings RPC.
+	TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantEmailRejectionSettings"
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
@@ -137,6 +143,10 @@ type TenantSettingsServiceClient interface {
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
+	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	// Minimum role: tenant_admin.
+	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -270,6 +280,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommunityLimitSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantEmailRejectionSettings: connect.NewClient[v1.GetTenantEmailRejectionSettingsRequest, v1.GetTenantEmailRejectionSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantEmailRejectionSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantEmailRejectionSettings: connect.NewClient[v1.UpdateTenantEmailRejectionSettingsRequest, v1.UpdateTenantEmailRejectionSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantEmailRejectionSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -295,6 +317,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
 	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
 	updateTenantCommunityLimitSettings *connect.Client[v1.UpdateTenantCommunityLimitSettingsRequest, v1.UpdateTenantCommunityLimitSettingsResponse]
+	getTenantEmailRejectionSettings    *connect.Client[v1.GetTenantEmailRejectionSettingsRequest, v1.GetTenantEmailRejectionSettingsResponse]
+	updateTenantEmailRejectionSettings *connect.Client[v1.UpdateTenantEmailRejectionSettingsRequest, v1.UpdateTenantEmailRejectionSettingsResponse]
 }
 
 // GetTenantTimezone calls publira.admin.v1.TenantSettingsService.GetTenantTimezone.
@@ -407,6 +431,18 @@ func (c *tenantSettingsServiceClient) UpdateTenantCommunityLimitSettings(ctx con
 	return c.updateTenantCommunityLimitSettings.CallUnary(ctx, req)
 }
 
+// GetTenantEmailRejectionSettings calls
+// publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings.
+func (c *tenantSettingsServiceClient) GetTenantEmailRejectionSettings(ctx context.Context, req *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error) {
+	return c.getTenantEmailRejectionSettings.CallUnary(ctx, req)
+}
+
+// UpdateTenantEmailRejectionSettings calls
+// publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings.
+func (c *tenantSettingsServiceClient) UpdateTenantEmailRejectionSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error) {
+	return c.updateTenantEmailRejectionSettings.CallUnary(ctx, req)
+}
+
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
@@ -450,6 +486,10 @@ type TenantSettingsServiceHandler interface {
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	// Minimum role: tenant_admin.
+	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	// Minimum role: tenant_admin.
+	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
 }
 
 // NewTenantSettingsServiceHandler builds an HTTP handler from the service implementation. It
@@ -579,6 +619,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommunityLimitSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantEmailRejectionSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure,
+		svc.GetTenantEmailRejectionSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantEmailRejectionSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantEmailRejectionSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
+		svc.UpdateTenantEmailRejectionSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantEmailRejectionSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.TenantSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TenantSettingsServiceGetTenantTimezoneProcedure:
@@ -621,6 +673,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantCommunityLimitSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure:
 			tenantSettingsServiceUpdateTenantCommunityLimitSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure:
+			tenantSettingsServiceGetTenantEmailRejectionSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure:
+			tenantSettingsServiceUpdateTenantEmailRejectionSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -708,4 +764,12 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantCommunityLimitSettings
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings is not implemented"))
 }

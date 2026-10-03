@@ -177,7 +177,7 @@ func parse(r io.Reader) (domainSet, error) {
 			continue
 		}
 		entry = strings.TrimSuffix(strings.ToLower(entry), ".")
-		if !isDomain(entry) {
+		if !IsDomain(entry) {
 			return nil, fmt.Errorf("line %d is not a domain: %q", line, entry)
 		}
 		set[entry] = struct{}{}
@@ -191,9 +191,9 @@ func parse(r io.Reader) (domainSet, error) {
 	return set, nil
 }
 
-// isDomain accepts an ASCII host name of two labels or more, each made of
+// IsDomain accepts an ASCII host name of two labels or more, each made of
 // letters, digits, and hyphens and neither starting nor ending with a hyphen.
-func isDomain(name string) bool {
+func IsDomain(name string) bool {
 	if len(name) > 253 {
 		return false
 	}

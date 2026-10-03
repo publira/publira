@@ -302,6 +302,12 @@ export type CreateUserRequest = Message<"publira.v1.CreateUserRequest"> & {
   name: string;
 
   /**
+   * An address the tenant refuses is invalid_argument on email, with the field
+   * violation's reason EMAIL_DISPOSABLE_DOMAIN for a domain on the disposable
+   * list and EMAIL_REFUSED for one the tenant listed. The refusal depends on
+   * the address alone and never on whether it is registered, so it is not
+   * folded into the uniform accepted answer.
+   *
    * @generated from field: string email = 3;
    */
   email: string;
@@ -460,6 +466,8 @@ export type RequestEmailChangeRequest = Message<"publira.v1.RequestEmailChangeRe
   currentEmail: string;
 
   /**
+   * Refused on new_email for the reasons CreateUserRequest.email is.
+   *
    * @generated from field: string new_email = 3;
    */
   newEmail: string;

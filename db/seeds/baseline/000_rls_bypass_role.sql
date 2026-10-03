@@ -235,6 +235,16 @@ REVOKE DELETE ON tenant_community_limit_overrides FROM publira_admin;
 GRANT SELECT ON tenant_community_limit_overrides TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_community_limit_overrides TO publira_admin;
 
+-- What a tenant refuses at reader sign-up is the tenant console's to set. The
+-- storefront reads it on every sign-up and email change and must not be able
+-- to switch it off or empty the list: RLS confines it to its own tenant, which
+-- is exactly the tenant whose rule it would be lifting.
+REVOKE INSERT, UPDATE, DELETE ON tenant_email_rejection_settings, tenant_email_rejection_entries FROM publira_public;
+REVOKE DELETE ON tenant_email_rejection_settings FROM publira_admin;
+GRANT SELECT ON tenant_email_rejection_settings, tenant_email_rejection_entries TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_email_rejection_settings TO publira_admin;
+GRANT SELECT, INSERT, DELETE ON tenant_email_rejection_entries TO publira_admin;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write
