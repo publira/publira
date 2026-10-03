@@ -148,8 +148,8 @@ echo "[deploy-smoke] ok: every long-lived process is running"
 # come back 15px wide.
 #
 # A 64×32 PNG, stored the way a tenant's logo upload stores one.
-printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAN0lEQVR42u3PQQkAAAgEsItjCPtjLDP4FAYrsEzXaxEQEBAQEBAQEBAQEBAQEBAQEBAQEBAQuFq5D2CIoSw0JwAAAABJRU5ErkJggg==' \
-  | base64 -d > "${work}/logo.png"
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAN0lEQVR42u3PQQkAAAgEsItjCPtjLDP4FAYrsEzXaxEQEBAQEBAQEBAQEBAQEBAQEBAQEBAQuFq5D2CIoSw0JwAAAABJRU5ErkJggg==' |
+  base64 -d > "${work}/logo.png"
 # shellcheck disable=SC2016 # expanded inside the container
 compose exec -T rustfs sh -c \
   'curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user "$RUSTFS_ACCESS_KEY:$RUSTFS_SECRET_KEY" -H "Content-Type: image/png" --data-binary @- http://localhost:9000/publira/smoke/logo.png' \
