@@ -258,6 +258,15 @@ On the platform API it runs as a service principal with no operator and no platf
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, the worker delivers text-only mail. There is no default URL
 
+## Disposable email domains
+
+`internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. The list is the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) blocklist, embedded in the binary with its CC0 dedication beside it, so a process that reaches nothing outside answers from that snapshot. `task server:update-disposable-domains` replaces the snapshot with the upstream list, and the `Disposable Domains Update` workflow runs it weekly and opens a pull request when it changed.
+
+- `PUBLIRA_DISPOSABLE_EMAIL_DOMAINS_URL`
+  - A remote copy of the list in the same format, one domain per line, which replaces the snapshot once it loads and is read again every six hours
+  - Example: `https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf`
+  - A read that fails, or that answers something other than a list of domains, keeps the last copy that loaded, or the snapshot when none has. When unset, the snapshot is the list
+
 ## Mobile push (Firebase Cloud Messaging)
 
 The worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.

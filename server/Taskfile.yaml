@@ -66,3 +66,18 @@ tasks:
     desc: Sync and clean up Go module dependencies
     cmds:
       - go mod tidy
+
+  update-disposable-domains:
+    desc: Replace the embedded disposable email domain list with the upstream one
+    vars:
+      UPSTREAM: https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main
+      DIR: internal/disposabledomains
+    cmds:
+      # Downloaded beside the snapshot and renamed over it, so a failed
+      # download leaves the snapshot as it was.
+      - defer: rm -f {{.DIR}}/disposable_email_blocklist.conf.tmp {{.DIR}}/LICENSE.txt.tmp
+      - curl -fsSL --retry 3 -o {{.DIR}}/disposable_email_blocklist.conf.tmp {{.UPSTREAM}}/disposable_email_blocklist.conf
+      - curl -fsSL --retry 3 -o {{.DIR}}/LICENSE.txt.tmp {{.UPSTREAM}}/LICENSE.txt
+      - mv {{.DIR}}/disposable_email_blocklist.conf.tmp {{.DIR}}/disposable_email_blocklist.conf
+      - mv {{.DIR}}/LICENSE.txt.tmp {{.DIR}}/LICENSE.txt
+      - go test ./{{.DIR}}/
