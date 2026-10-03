@@ -408,6 +408,9 @@ export const getTenantDisplayTimeZone = async (
  * read carries `tenant:<id>:site`, which the admin API revalidates when the
  * default locale is saved (`tenantDefaultLocaleRevalidateTags`), so a change
  * reaches the site without waiting for the cache to age out.
+ *
+ * A caller that only decides whether a link carries a prefix chooses no
+ * language, and uses {@link getTenantLinkDefaultLocale} instead.
  */
 export const getTenantDefaultLocale = async (
   tenantId: string
@@ -418,6 +421,25 @@ export const getTenantDefaultLocale = async (
   }
 
   return tenant.defaultLocale;
+};
+
+/**
+ * The tenant's default UI locale for deciding whether a link carries a locale
+ * prefix, or `null` while the tenant read is unavailable — which
+ * `withLocalePrefix` answers by keeping the prefix.
+ *
+ * Unlike {@link getTenantDefaultLocale}, an unavailable read does not throw.
+ * The site chrome builds every one of its links from this, and it renders on
+ * every page under `(site)`, where a throw replaces the whole site with the
+ * locale segment's error screen. A link that keeps the reader's own locale
+ * names no language the reader did not choose, so not knowing the default
+ * costs one redirect rather than the page.
+ */
+export const getTenantLinkDefaultLocale = async (
+  tenantId: string
+): Promise<Locale | null> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.defaultLocale ?? null;
 };
 
 /**

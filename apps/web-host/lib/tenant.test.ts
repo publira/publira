@@ -8,6 +8,7 @@ import {
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
   getTenantLegalPages,
+  getTenantLinkDefaultLocale,
   getTenantPublicOrigin,
   getTenantSignInClients,
   getTenantSiteInfo,
@@ -416,5 +417,21 @@ describe("tenant", () => {
     await expect(getTenantDefaultLocale("TENANT_001")).rejects.toThrow(
       "tenant default locale is unavailable"
     );
+  });
+
+  it("Return tenant settings as the default a link is built against", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantLinkDefaultLocale("TENANT_001")).resolves.toBe("en");
+  });
+
+  it("Build links against no default while the tenant cannot be obtained", async () => {
+    // The site chrome builds its links from this on every page, so a throw
+    // here would replace the whole site with an error screen during an outage.
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantLinkDefaultLocale("TENANT_001")).resolves.toBeNull();
   });
 });

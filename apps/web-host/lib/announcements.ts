@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  isExpectedNullableRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
@@ -304,11 +305,6 @@ export interface PinnedAnnouncement {
   linkUrl: string;
 }
 
-interface CachedPinnedAnnouncementResult {
-  error?: unknown;
-  value: PinnedAnnouncement | null;
-}
-
 /**
  * The announcement the tenant has pinned right now, or null when it has none.
  *
@@ -320,16 +316,23 @@ interface CachedPinnedAnnouncementResult {
  *
  * A read that fails answers null: the banner is an addition to the page rather
  * than part of it, and a site that cannot say what is pinned should show the
- * page rather than an apology above it.
+ * page rather than an apology above it — an unexpected failure included,
+ * which is reported in the log rather than thrown.
+ *
+ * The failure is classified here, inside the cache scope, and never handed out.
+ * An error that leaves a `"use cache"` scope loses its `Code` and has its
+ * message withheld in production, so past this point an unreachable API reads
+ * as unexpected too — and the banner renders on every page under `(site)`,
+ * where a throw replaces the whole site with the locale segment's error screen.
  */
-const readPinnedAnnouncement = async (
+export const getPinnedAnnouncement = async (
   tenantId: string
-): Promise<CachedPinnedAnnouncementResult> => {
+): Promise<PinnedAnnouncement | null> => {
   "use cache: remote";
 
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId) {
-    return { value: null };
+    return null;
   }
   applyCacheTag(tenantPinnedAnnouncementTag(normalizedTenantId));
 
@@ -338,23 +341,16 @@ const readPinnedAnnouncement = async (
       tenant: { tenantId: normalizedTenantId },
     });
     if (!response.announcement) {
-      return { value: null };
+      return null;
     }
 
     const { body, id, linkUrl, title } = response.announcement;
-    return { value: { body, id, linkUrl, title } };
+    return { body, id, linkUrl, title };
   } catch (error) {
+    if (!isExpectedNullableRpcError(error)) {
+      console.warn("[web-host] getPinnedAnnouncement failed", error);
+    }
     dropFailedCacheEntry();
-    return { error, value: null };
+    return null;
   }
-};
-
-export const getPinnedAnnouncement = async (
-  tenantId: string
-): Promise<PinnedAnnouncement | null> => {
-  const result = await readPinnedAnnouncement(tenantId);
-  if (result.error !== undefined) {
-    rethrowUnclassifiedRpcError(result.error);
-  }
-  return result.value;
 };

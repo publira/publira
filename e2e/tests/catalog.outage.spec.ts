@@ -80,7 +80,9 @@ test.describe("web-host public API outage", () => {
     // a healthy API and assert it before the outage starts. A URL that matches
     // no published page and no route is still resolved to the tenant by
     // `proxy` before it answers "not found", and fills no catalog cache entry,
-    // which is what keeps the reads below cold.
+    // which is what keeps the reads below cold. It renders no site chrome
+    // either, so the chrome below answers from whatever the run cached before
+    // or degrades to the tenant's defaults — and both have to keep its links.
     startServer();
     const warmup = await page.goto(hostPath("/no-such-page-in-any-spec"));
     expect(warmup?.status(), await page.content()).toBe(404);

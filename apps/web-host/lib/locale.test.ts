@@ -1,20 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockNotFound, mockRootLocale, mockTenantId, mockTenantLocalePath } =
-  vi.hoisted(() => ({
-    mockNotFound: vi.fn(() => {
-      throw new Error("NEXT_NOT_FOUND");
-    }),
-    mockRootLocale: vi.fn(),
-    mockTenantId: vi.fn(),
-    mockTenantLocalePath: vi.fn(),
-  }));
+const {
+  mockGetTenantLinkDefaultLocale,
+  mockNotFound,
+  mockRootLocale,
+  mockTenantId,
+} = vi.hoisted(() => ({
+  mockGetTenantLinkDefaultLocale: vi.fn(),
+  mockNotFound: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+  mockRootLocale: vi.fn(),
+  mockTenantId: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({ notFound: mockNotFound }));
 vi.mock("next/root-params", () => ({ locale: mockRootLocale }));
 vi.mock("./tenant-id", () => ({ getTenantId: mockTenantId }));
-vi.mock("./tenant-locale-path", () => ({
-  tenantLocalePath: mockTenantLocalePath,
+vi.mock("./tenant", () => ({
+  getTenantLinkDefaultLocale: mockGetTenantLinkDefaultLocale,
 }));
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -54,32 +58,33 @@ describe("localePath", () => {
     vi.clearAllMocks();
   });
 
-  // The prefix is decided against the tenant's saved default, so the href this
-  // returns can never be built without that stored value.
-  it("prefixes the href through the tenant's stored default locale", async () => {
+  it("prefixes the href with a locale other than the tenant's stored default", async () => {
     mockRootLocale.mockResolvedValue("en");
     mockTenantId.mockResolvedValue(TENANT_ID);
-    mockTenantLocalePath.mockResolvedValue("/en/series");
+    mockGetTenantLinkDefaultLocale.mockResolvedValue("ja");
     const { localePath } = await import("./locale");
 
     await expect(localePath("/series")).resolves.toBe("/en/series");
-    expect(mockTenantLocalePath).toHaveBeenCalledWith(
-      TENANT_ID,
-      "en",
-      "/series"
-    );
+    expect(mockGetTenantLinkDefaultLocale).toHaveBeenCalledWith(TENANT_ID);
   });
 
-  it("propagates an unreadable tenant instead of naming a locale", async () => {
+  it("leaves the href bare in the tenant's stored default", async () => {
     mockRootLocale.mockResolvedValue("en");
     mockTenantId.mockResolvedValue(TENANT_ID);
-    mockTenantLocalePath.mockRejectedValue(
-      new Error(`tenant default locale is unavailable: ${TENANT_ID}`)
-    );
+    mockGetTenantLinkDefaultLocale.mockResolvedValue("en");
     const { localePath } = await import("./locale");
 
-    await expect(localePath("/series")).rejects.toThrow(
-      "tenant default locale is unavailable"
-    );
+    await expect(localePath("/series")).resolves.toBe("/series");
+  });
+
+  // The site header's search form takes its action from here, so a throw would
+  // take the whole site chrome down while the tenant read is unavailable.
+  it("keeps the prefix while the tenant's stored default is unavailable", async () => {
+    mockRootLocale.mockResolvedValue("en");
+    mockTenantId.mockResolvedValue(TENANT_ID);
+    mockGetTenantLinkDefaultLocale.mockResolvedValue(null);
+    const { localePath } = await import("./locale");
+
+    await expect(localePath("/series")).resolves.toBe("/en/series");
   });
 });

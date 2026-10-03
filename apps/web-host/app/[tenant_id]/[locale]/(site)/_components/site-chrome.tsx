@@ -88,7 +88,7 @@ import { getMessagesFor } from "#lib/messages";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import {
-  getTenantDefaultLocale,
+  getTenantLinkDefaultLocale,
   getTenantSiteInfo,
   getTenantSiteLabel,
 } from "#lib/tenant";
@@ -103,7 +103,7 @@ const notificationMenuLimit = 5;
 const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [defaultLocale, list, unread] = await Promise.all([
-    getTenantDefaultLocale(tenantId),
+    getTenantLinkDefaultLocale(tenantId),
     listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     countUnreadNotifications(tenantId, locale),
   ]);
@@ -237,7 +237,7 @@ const HeaderActions = async () => {
     getTenantId(),
     getLocale(),
   ]);
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  const defaultLocale = await getTenantLinkDefaultLocale(tenantId);
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
@@ -325,7 +325,7 @@ const HeaderActions = async () => {
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [defaultLocale, links, t] = await Promise.all([
-    getTenantDefaultLocale(tenantId),
+    getTenantLinkDefaultLocale(tenantId),
     listPublishedPageLinks(tenantId, locale),
     getMessagesFor(locale),
   ]);

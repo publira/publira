@@ -47,6 +47,14 @@ describe("withLocalePrefix", () => {
     expect(withLocalePrefix("ja", "en", "/settings")).toBe("/ja/settings");
   });
 
+  it("Keep the prefix of every locale while the tenant default is unknown", () => {
+    expect(withLocalePrefix("ja", null, "/series")).toBe("/ja/series");
+    expect(withLocalePrefix("en", null, "/")).toBe("/en");
+    expect(withLocalePrefix("ja", null, "https://example.com/series")).toBe(
+      "https://example.com/series"
+    );
+  });
+
   it("Return hrefs that go outside the app as is", () => {
     expect(withLocalePrefix("ja", "ja", "https://example.com/series")).toBe(
       "https://example.com/series"

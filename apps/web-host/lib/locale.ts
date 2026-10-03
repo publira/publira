@@ -3,9 +3,9 @@ import type { Locale } from "@publira/i18n";
 import { notFound } from "next/navigation";
 import { locale as rootLocale } from "next/root-params";
 
-import { getTenantDefaultLocale } from "./tenant";
+import { withLocalePrefix } from "./locale-path";
+import { getTenantLinkDefaultLocale } from "./tenant";
 import { getTenantId } from "./tenant-id";
-import { tenantLocalePath } from "./tenant-locale-path";
 
 export {
   type HostMessageKey,
@@ -41,23 +41,27 @@ export const getLocale = async (): Promise<Locale> => {
 };
 
 /**
+ * The tenant's stored default locale for this request, as a read rather than
+ * its result, so a layout can hand it down without blocking its static shell.
+ *
+ * Every consumer builds links with it, so it is the link read and answers
+ * `null` while the tenant read is unavailable (`getTenantLinkDefaultLocale`).
+ */
+export const tenantDefaultLocale = async (): Promise<Locale | null> =>
+  getTenantLinkDefaultLocale(await getTenantId());
+
+/**
  * An app-internal path under the current locale, normalized for the tenant's
- * default locale.
+ * default locale — or prefixed whatever the locale while that default is
+ * unavailable, the way `<LocaleLink>` does.
  *
  * Server Components that hand a bare href to a shared layout component use
  * this; JSX links use `<LocaleLink>`, which applies the same prefix on its own.
  */
 export const localePath = async (href: string): Promise<string> => {
-  const [currentLocale, tenantId] = await Promise.all([
+  const [currentLocale, defaultLocale] = await Promise.all([
     getLocale(),
-    getTenantId(),
+    tenantDefaultLocale(),
   ]);
-  return tenantLocalePath(tenantId, currentLocale, href);
+  return withLocalePrefix(currentLocale, defaultLocale, href);
 };
-
-/**
- * The tenant's stored default locale for this request, as a read rather than
- * its result, so a layout can hand it down without blocking its static shell.
- */
-export const tenantDefaultLocale = async (): Promise<Locale> =>
-  getTenantDefaultLocale(await getTenantId());

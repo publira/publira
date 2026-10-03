@@ -85,10 +85,16 @@ export const splitLocalePathname = (
  * A query string or hash rides along untouched, and an href that points
  * outside the app is returned as-is, so this is safe to apply blindly to
  * whatever a link was given.
+ *
+ * `defaultLocale` is `null` while the tenant's default is unknown, and the
+ * prefix is then kept for every locale: a prefix that names the default is
+ * redirected to the bare path by `proxy.ts`, so the link still lands on the
+ * same page in the same language, where leaving it off would hand the reader
+ * to whatever the default turns out to be.
  */
 export const withLocalePrefix = (
   locale: Locale,
-  defaultLocale: Locale,
+  defaultLocale: Locale | null,
   href: string
 ): string => {
   if (isExternalHref(href)) {
