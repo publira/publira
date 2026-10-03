@@ -383,7 +383,12 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
-	if reason, err := s.refuseEmail(ctx, tenant.ID, address.Address, "email"); err != nil {
+	// mail.ParseAddress also accepts a display name around the address, as in
+	// John <john@example.com>. What is stored, mailed, and compared with the
+	// accounts already there is the address alone, or a sign-up could open an
+	// account per display name for one inbox.
+	email = address.Address
+	if reason, err := s.refuseEmail(ctx, tenant.ID, email, "email"); err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
 		return nil, err
 	}
@@ -677,6 +682,9 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
+	// The address alone, without the display name mail.ParseAddress also
+	// accepts, for the reason CreateUser stores it that way.
+	newEmail = newAddress.Address
 	if !strings.EqualFold(currentEmail, user.Email) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
@@ -685,7 +693,7 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
 	}
-	if reason, err := s.refuseEmail(ctx, tenant.ID, newAddress.Address, "new_email"); err != nil {
+	if reason, err := s.refuseEmail(ctx, tenant.ID, newEmail, "new_email"); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}

@@ -713,8 +713,9 @@ func TestReaderSignupAttemptNoticeEmailGoesToTheAccountOwner(t *testing.T) {
 
 // A sign-up for a tagged variant of an account's address is answered like one
 // for the address itself, so the notice goes to the address it typed, which
-// reaches the same inbox, and names the account's own address, the one its
-// password and its confirmation belong to.
+// reaches the same inbox. It names that address and not the account's own: at
+// a mail domain that does not deliver tags to one inbox the recipient is
+// someone else, who must not learn the address the account was opened with.
 func TestReaderSignupAttemptNoticeEmailGoesToTheTaggedAddressTheSignupTyped(t *testing.T) {
 	pg, tenant, encryptor := newReaderEmailEnv(t)
 	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB12", "reader@example.com", "Reader")
@@ -735,8 +736,8 @@ func TestReaderSignupAttemptNoticeEmailGoesToTheTaggedAddressTheSignupTyped(t *t
 	if len(mailer.recipients) != 1 || mailer.recipients[0] != "Reader+2@example.com" {
 		t.Fatalf("recipients = %v, want [Reader+2@example.com]", mailer.recipients)
 	}
-	if len(renderer.requests) != 1 || renderer.requests[0].Data["email"] != reader.Email {
-		t.Fatalf("render requests = %+v, want one naming %s", renderer.requests, reader.Email)
+	if len(renderer.requests) != 1 || renderer.requests[0].Data["email"] != "Reader+2@example.com" {
+		t.Fatalf("render requests = %+v, want one naming Reader+2@example.com", renderer.requests)
 	}
 }
 

@@ -53,6 +53,42 @@ func TestDBCreateUserForATaggedVariantAnswersLikeTheRegisteredAddress(t *testing
 	}
 }
 
+// mail.ParseAddress accepts a display name around the address. The account is
+// opened with the address alone and compared on it, so a display name is not
+// a way to open a second account for an inbox, nor a way to store one.
+func TestDBCreateUserStoresTheAddressWithoutItsDisplayName(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "john@tenant-a.example.com", "John")
+
+	for _, email := range []string{"John <john+2@tenant-a.example.com>", "Jane <jane@tenant-a.example.com>"} {
+		if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+			Tenant:   tenantContext(tenant),
+			Name:     "Newcomer",
+			Email:    email,
+			Password: "another-password",
+		})); err != nil {
+			t.Fatalf("CreateUser %s: %v", email, err)
+		}
+	}
+	env.processReaderAuthRequests(t)
+
+	if accounts := countRows(t, env, `SELECT count(*) FROM users WHERE tenant_id = $1`, tenant.ID); accounts != 2 {
+		t.Fatalf("accounts = %d, want the one already there and jane's", accounts)
+	}
+	if jane := countRows(t, env, `SELECT count(*) FROM users WHERE tenant_id = $1 AND email = 'jane@tenant-a.example.com'`, tenant.ID); jane != 1 {
+		t.Fatal("jane's account was not stored under the address alone")
+	}
+	if notices := countRows(t, env, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type = 'reader_signup_attempt_notice_email'
+			AND payload ->> 'user_id' = $1
+			AND payload ->> 'email' = 'john+2@tenant-a.example.com'
+	`, member.ID.String()); notices != 1 {
+		t.Fatalf("notices to the tagged address = %d, want 1", notices)
+	}
+}
+
 // A change to a tagged variant of another account's address is refused the
 // way a change to that address itself is.
 func TestDBRequestEmailChangeRefusesATaggedVariantOfAnotherAccountsAddress(t *testing.T) {
@@ -65,7 +101,7 @@ func TestDBRequestEmailChangeRefusesATaggedVariantOfAnotherAccountsAddress(t *te
 		&publirav1.RequestEmailChangeRequest{
 			Tenant:          tenantContext(tenant),
 			CurrentEmail:    member.Email,
-			NewEmail:        "Other+news@tenant-a.example.com",
+			NewEmail:        "Other <other+news@tenant-a.example.com>",
 			CurrentPassword: testutil.SeededPassword,
 		},
 		tokenFor(t, tenant, member),

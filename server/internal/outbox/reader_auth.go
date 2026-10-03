@@ -489,15 +489,17 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			}
 			recipient = payload.Email
 		}
-		// The body names the account's own address rather than the one typed,
-		// since that is the address its password and its confirmation are tied to.
+		// The body names the address the mail goes to, never the account's own
+		// when the two differ: a mail domain that does not deliver tags to one
+		// inbox makes the recipient someone else, who must not learn the address
+		// the account was opened with.
 		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
 				"account_state": accountState,
 				"action_url":    actionURL,
-				"email":         reader.Email,
+				"email":         recipient,
 				"tenant_name":   delivery.tenantName,
 			},
 			TimeZone: delivery.timeZone,
