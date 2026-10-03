@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
@@ -31,20 +32,30 @@ List<RankedSeriesItem> _chart(String name, {int count = 30}) => [
     ),
 ];
 
+const fantasy = PublishedGenre(
+  id: 'SeedGENRAAA1',
+  name: 'Fantasy',
+  seriesCount: 30,
+);
+
 void main() {
   late GoRouter router;
   late FakeCatalogRepository catalog;
 
   setUp(() {
     final weekly = _chart('weekly');
+    final fantasyWeek = _chart('fantasy');
     catalog = FakeCatalogRepository(
       series: fixtureSeries,
       details: {
         ...fixtureDetails(),
         weekly.last.series.id: fixtureDetail(weekly.last.series),
+        fantasyWeek.last.series.id: fixtureDetail(fantasyWeek.last.series),
       },
       rankedSeries: weekly,
       dailyRankedSeries: _chart('daily'),
+      genres: const [fantasy],
+      genreRankedSeries: {fantasy.id: fantasyWeek},
     );
   });
 
@@ -97,6 +108,13 @@ void main() {
         (period: request.period, token: request.token),
   ];
 
+  /// The genre each of [chartReads] was narrowed to, in order, empty for the
+  /// tenant-wide chart.
+  List<String> chartGenres() => [
+    for (final (index, request) in catalog.rankedSeriesRequests.indexed)
+      if (request.limit == rankingPageLimit) catalog.rankedSeriesGenres[index],
+  ];
+
   /// The tokens of [chartReads], in order.
   List<String> chartTokens() => [for (final read in chartReads()) read.token];
 
@@ -144,8 +162,11 @@ void main() {
       await pumpUntilFound(tester, rowOf('daily-1'));
 
       expect(AppRoutes.rankingPath(), '/ranking');
+      expect(find.text('Ranking'), findsOneWidget);
       expect(isSelected(tester, RankingPeriod.daily), isTrue);
       expect(chartReads().first, (period: RankingPeriod.daily, token: ''));
+      // Without a genre the chart is the tenant's.
+      expect(chartGenres().toSet(), {''});
     });
 
     testWidgets('draws each position beside its series', (tester) async {
@@ -313,6 +334,160 @@ void main() {
       // The page after the refused one is asked for afresh, and the top of the
       // chart is read again first.
       expect(chartTokens().take(3), ['', '20', '']);
+    });
+  });
+
+  group("a genre's chart", () {
+    testWidgets('writes the genre beside the period, as the storefront does', (
+      tester,
+    ) async {
+      expect(
+        AppRoutes.rankingPath(genreId: fantasy.id),
+        '/ranking?genre=${fantasy.id}',
+      );
+      expect(
+        AppRoutes.rankingPath(
+          period: RankingPeriod.weekly,
+          genreId: fantasy.id,
+        ),
+        '/ranking?genre=${fantasy.id}&period=weekly',
+      );
+      expect(
+        AppRoutes.rankingPath(period: RankingPeriod.weekly),
+        '/ranking?period=weekly',
+      );
+    });
+
+    testWidgets('opens on the week of the genre a link names, and pages it', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        location: '/ranking?genre=${fantasy.id}&period=weekly',
+        size: phoneSize,
+      );
+      await pumpUntilFound(tester, rowOf('fantasy-1'));
+
+      expect(find.text('Fantasy ranking'), findsOneWidget);
+      expect(isSelected(tester, RankingPeriod.weekly), isTrue);
+      expect(rowOf('weekly-1'), findsNothing);
+
+      final last = rowOf('fantasy-30');
+      await scrollTo(tester, last);
+      expect(chartReads(), [
+        (period: RankingPeriod.weekly, token: ''),
+        (period: RankingPeriod.weekly, token: '$rankingPageLimit'),
+      ]);
+      // Every page is the genre's, including the ones past the first.
+      expect(chartGenres(), [fantasy.id, fantasy.id]);
+      // A genre is ranked among all-ages series alone.
+      expect(catalog.rankedSeriesAgeRatings.toSet(), {SeriesAgeRating.all});
+
+      await tester.tap(last);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('series-detail-body')),
+      );
+      expect(router.state.uri.path, AppRoutes.seriesDetailPath('fantasy-30'));
+    });
+
+    testWidgets('keeps the genre across a switch of period', (tester) async {
+      await pumpApp(
+        tester,
+        location: AppRoutes.rankingPath(
+          period: RankingPeriod.weekly,
+          genreId: fantasy.id,
+        ),
+        size: phoneSize,
+      );
+      await pumpUntilFound(tester, rowOf('fantasy-1'));
+      final genresReads = catalog.genresReads;
+
+      await tester.tap(find.byKey(const ValueKey('ranking-period-daily')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('ranking-results')),
+      );
+      await tester.pump();
+
+      expect(router.state.uri.toString(), '/ranking?genre=${fantasy.id}');
+      expect(isSelected(tester, RankingPeriod.daily), isTrue);
+      expect(find.text('Fantasy ranking'), findsOneWidget);
+      expect(chartReads().last, (period: RankingPeriod.daily, token: ''));
+      expect(chartGenres(), [fantasy.id, fantasy.id]);
+      // The genre is not looked up again: a switch of period changes only the
+      // positions under it.
+      expect(catalog.genresReads, genresReads);
+    });
+
+    testWidgets('follows a link to the tenant-wide chart while it is open', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        location: AppRoutes.rankingPath(
+          period: RankingPeriod.weekly,
+          genreId: fantasy.id,
+        ),
+        size: phoneSize,
+      );
+      await pumpUntilFound(tester, rowOf('fantasy-1'));
+
+      router.go(AppRoutes.rankingPath(period: RankingPeriod.weekly));
+      await pumpUntilFound(tester, rowOf('weekly-1'));
+
+      expect(find.text('Ranking'), findsOneWidget);
+      expect(find.text('Fantasy ranking'), findsNothing);
+      expect(rowOf('fantasy-1'), findsNothing);
+      expect(chartGenres().last, '');
+    });
+
+    testWidgets('says so when the tenant curates no such genre', (
+      tester,
+    ) async {
+      await pumpApp(tester, location: '/ranking?genre=SeedGENRZZZ9');
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('ranking-not-found')),
+      );
+
+      expect(find.text('Genre not found (SeedGENRZZZ9)'), findsOneWidget);
+      expect(find.text('Ranking'), findsOneWidget);
+      // A value no genre carries is not the tenant-wide chart either, and it
+      // never reaches the API as a genre.
+      expect(chartReads(), isEmpty);
+    });
+
+    testWidgets('reads a genre named twice over as no genre at all', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        location: '/ranking?genre=${fantasy.id}&genre=SeedGENRAAA2',
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('ranking-not-found')),
+      );
+
+      expect(chartReads(), isEmpty);
+    });
+
+    testWidgets('offers a retry when the genres could not be read', (
+      tester,
+    ) async {
+      catalog.genresError = const CatalogFailure(CatalogFailureKind.network);
+      await pumpApp(
+        tester,
+        location: AppRoutes.rankingPath(genreId: fantasy.id),
+      );
+      await pumpUntilFound(tester, find.byKey(const ValueKey('ranking-retry')));
+
+      catalog.genresError = null;
+      await tester.tap(find.byKey(const ValueKey('ranking-retry')));
+      await pumpUntilFound(tester, rowOf('fantasy-1'));
+
+      expect(find.text('Fantasy ranking'), findsOneWidget);
     });
   });
 }

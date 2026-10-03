@@ -600,6 +600,29 @@ void main() {
       expect(find.text(taggedSeries.title), findsWidgets);
     });
 
+    testWidgets('leads from the leaders of its week to the whole of it', (
+      tester,
+    ) async {
+      catalog.genreRankedSeries = {fantasy.id: fantasyChart};
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, rankedCardOf(taggedSeries.id));
+
+      await tester.tap(find.byKey(const ValueKey('genre-ranking-all')));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(ValueKey('ranking-tile-${taggedSeries.id}')),
+      );
+
+      expect(
+        router.state.uri.toString(),
+        '/ranking?genre=${fantasy.id}&period=weekly',
+      );
+      expect(find.text('Fantasy ranking'), findsOneWidget);
+      // The row and the chart behind it are both the genre's own.
+      expect(genreChartReads(), [fantasy.id, fantasy.id]);
+      expect(catalog.rankedSeriesPeriods.last, RankingPeriod.weekly);
+    });
+
     testWidgets('keeps the leaders of its week under a changed filter', (
       tester,
     ) async {

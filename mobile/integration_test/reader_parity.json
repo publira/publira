@@ -50,7 +50,7 @@
       ]
     },
     {
-      "name": "The full ranking, and the leaders of a genre's week on its page",
+      "name": "The full ranking, narrowed to one genre or not, and the leaders of a genre's week on its page",
       "web": {
         "routes": [
           "[locale]/(site)/ranking",
@@ -59,14 +59,21 @@
         "rpcs": ["ListRankedSeries"]
       },
       "mobile": {
-        "routes": ["/", "/ranking", "/genres/:genreId"],
-        "rpcs": ["ListRankedSeries"]
+        "routes": [
+          "/",
+          "/ranking",
+          "/ranking?genre=:genreId",
+          "/genres/:genreId"
+        ],
+        "rpcs": ["ListRankedSeries", "ListPublishedGenres"]
       },
       "tests": [
         "pages through the whole week from the ranking shelf and opens a series",
         "the seed tenant chart is listed in full on the live API",
         "a genre opens on the leaders of its week",
-        "the seed genre chart reaches the genre screen on the live API"
+        "the leaders of a genre lead to the whole of its week",
+        "the seed genre chart reaches the genre screen on the live API",
+        "the seed genre chart is listed in full on the live API"
       ]
     },
     {

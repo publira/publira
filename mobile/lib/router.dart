@@ -166,17 +166,23 @@ abstract final class AppRoutes {
 
   static String genreDetailPath(String genreId) => '/$genres/$genreId';
 
-  /// The full ranking on [period]. The daily chart is the one the path names
-  /// on its own, as it is on the storefront's `/ranking`, so a link to either
-  /// chart opens on the same one here.
-  static String rankingPath({RankingPeriod period = RankingPeriod.daily}) =>
-      switch (period) {
-        RankingPeriod.daily => '/$ranking',
-        RankingPeriod.weekly => Uri(
-          path: '/$ranking',
-          queryParameters: {'period': 'weekly'},
-        ).toString(),
-      };
+  /// The full ranking on [period], narrowed to the genre whose public id is
+  /// [genreId] unless it is empty. The daily chart and the tenant-wide one are
+  /// what the path names on its own, and the query is spelled the way the
+  /// storefront's `/ranking` spells it, so a link to any chart opens on the
+  /// same one here.
+  static String rankingPath({
+    RankingPeriod period = RankingPeriod.daily,
+    String genreId = '',
+  }) {
+    final query = {
+      if (genreId.isNotEmpty) 'genre': genreId,
+      if (period == RankingPeriod.weekly) 'period': 'weekly',
+    };
+    return query.isEmpty
+        ? '/$ranking'
+        : Uri(path: '/$ranking', queryParameters: query).toString();
+  }
 
   /// A tag's slug is whatever an editor typed, so it is one encoded segment.
   static String tagDetailPath(String slug) =>
@@ -304,6 +310,7 @@ List<RouteBase> _tabRoutes() => [
       period: state.uri.queryParameters['period'] == 'weekly'
           ? RankingPeriod.weekly
           : RankingPeriod.daily,
+      genreId: _rankingGenreId(state.uri),
     ),
   ),
   GoRoute(
@@ -343,6 +350,20 @@ List<RouteBase> _tabRoutes() => [
     ],
   ),
 ];
+
+/// The genre a `/ranking` link names, kept as written, as the storefront keeps
+/// it: a value that names none of the tenant's genres is a chart that does not
+/// exist, which only the genre list can tell, so it must not be read as the
+/// tenant-wide chart. Only an absent or empty value is that chart.
+///
+/// A key repeated with different values is joined into one string that no
+/// public id can equal, rather than settling on one of them.
+String _rankingGenreId(Uri uri) {
+  final values = uri.queryParametersAll['genre'] ?? const <String>[];
+  return values.every((value) => value == values.first)
+      ? values.firstOrNull ?? ''
+      : values.join(',');
+}
 
 /// The first path segment of every route [_tabRoutes] puts under a root.
 final _tabRouteSegments = {

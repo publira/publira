@@ -19,6 +19,7 @@ import 'package:publira/config.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
@@ -579,6 +580,45 @@ void main() {
         );
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
       });
+    });
+
+    testApp('the leaders of a genre lead to the whole of its week', (
+      tester,
+    ) async {
+      server.genreRankedSeries = {
+        'SeedGENRAAA1': ConnectFixtureServer.populatedRankedSeries(),
+      };
+      await withFailureScreenshot(
+        tester,
+        'fixture-genre-full-ranking',
+        () async {
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.genreDetailPath('SeedGENRAAA1'),
+          );
+          final all = find.byKey(const ValueKey('genre-ranking-all'));
+          await pumpUntilRouteSettled(tester, all);
+          await tapVisible(tester, all);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(
+              const ValueKey(
+                'ranking-tile-${ConnectFixtureServer.seedSeriesId}',
+              ),
+            ),
+          );
+
+          expect(find.text('Fantasy ranking'), findsOneWidget);
+          final request = server
+              .requestsTo('ListRankedSeries')
+              .lastWhere(
+                (request) => request.body['limit'] == rankingPageLimit,
+              );
+          expect(request.body['genrePublicId'], 'SeedGENRAAA1');
+          expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
+          expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+        },
+      );
     });
 
     testApp('a tag on a series lists the series carrying it', (tester) async {
@@ -2582,6 +2622,34 @@ void main() {
           findsOneWidget,
         );
         expect(find.byKey(const ValueKey('genre-ranking-error')), findsNothing);
+      });
+    });
+
+    testApp('the seed genre chart is listed in full on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-genre-full-ranking', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.rankingPath(
+            period: RankingPeriod.weekly,
+            genreId: 'SeedGENRAAA3',
+          ),
+        );
+        // `db/seeds/scenarios/170_ranking.sql` puts Seed Series 063 at the
+        // top of the third genre's week.
+        final leader = find.byKey(const ValueKey('ranking-tile-SeedSERSAA63'));
+        await pumpUntilRouteSettled(
+          tester,
+          leader,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.descendant(of: leader, matching: find.text('1')),
+          findsOneWidget,
+        );
+        expect(find.text('Mystery ranking'), findsOneWidget);
+        expect(find.byKey(const ValueKey('ranking-error')), findsNothing);
       });
     });
 

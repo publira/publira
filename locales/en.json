@@ -3832,6 +3832,7 @@
       "not_found": "Genre not found ({$id})",
       "ranking_failed": "Could not show this genre's ranking. Try again.",
       "ranking_heading": "Popular this week",
+      "ranking_link": "See the ranking",
       "series_empty": "No published series carry this genre yet.",
       "title": "Genre"
     },
@@ -3951,7 +3952,8 @@
       "period_daily": "Daily",
       "period_weekly": "Weekly",
       "rank_position": "No. {$rank}",
-      "title": "Ranking"
+      "title": "Ranking",
+      "title_genre": "{$genre} ranking"
     },
     "reading_history": {
       "account_description": "Episodes you have finished, wherever you read them.",

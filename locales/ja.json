@@ -3832,6 +3832,7 @@
       "not_found": "ジャンルが見つかりません ({$id})",
       "ranking_failed": "このジャンルのランキングを表示できませんでした。もう一度お試しください。",
       "ranking_heading": "今週の人気作品",
+      "ranking_link": "ランキングを見る",
       "series_empty": "このジャンルのシリーズはまだ公開されていません。",
       "title": "ジャンル"
     },
@@ -3951,7 +3952,8 @@
       "period_daily": "デイリー",
       "period_weekly": "ウィークリー",
       "rank_position": "{$rank}位",
-      "title": "ランキング"
+      "title": "ランキング",
+      "title_genre": "{$genre}ランキング"
     },
     "reading_history": {
       "account_description": "どこで読んだものも含め、読み終えたエピソードを確認できます。",

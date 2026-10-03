@@ -3832,6 +3832,7 @@
       "not_found": "找不到該類型（{$id}）",
       "ranking_failed": "無法顯示該類型的排行榜。請重試。",
       "ranking_heading": "本週熱門作品",
+      "ranking_link": "查看排行榜",
       "series_empty": "尚無屬於該類型的已發布系列。",
       "title": "類型"
     },
@@ -3951,7 +3952,8 @@
       "period_daily": "日榜",
       "period_weekly": "週榜",
       "rank_position": "第{$rank}名",
-      "title": "排行榜"
+      "title": "排行榜",
+      "title_genre": "{$genre}排行榜"
     },
     "reading_history": {
       "account_description": "查看您讀完的章節，無論在哪裡閱讀。",

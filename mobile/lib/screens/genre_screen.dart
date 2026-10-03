@@ -6,6 +6,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A genre the tenant curates: the leaders of its week, then its published
 /// series under the sort and filters the reader picks.
@@ -50,17 +51,13 @@ class GenreScreen extends StatelessWidget {
 const _rankingLimit = 10;
 
 /// The top of the genre's weekly chart, in the positions the last ranking
-/// snapshot recorded.
+/// snapshot recorded, and the way to the whole of it, as the storefront's
+/// genre page offers.
 ///
 /// A genre the ranking batch has not reached yet, or one nobody has read this
 /// week, is shown no row, heading included, so the screen opens on its filters
 /// and its list as it did before genres were ranked. The chart is an all-ages
 /// one, the only one a genre has, so it hides no cover.
-///
-/// The storefront's genre page links its row to the rest of the chart. The
-/// app's ranking screen cannot be narrowed to a genre yet (#3575), and the
-/// tenant-wide chart it would open on is not this genre's, so the row offers
-/// no such way out.
 class _GenreRankingShelf extends StatelessWidget {
   const _GenreRankingShelf({required this.genreId});
 
@@ -74,6 +71,15 @@ class _GenreRankingShelf extends StatelessWidget {
       heading: messages.genreRankingHeading,
       failureMessage: messages.genreRankingFailed,
       reloadToken: genreId,
+      // The week the row is the top of, rather than the daily chart the
+      // ranking screen opens on by itself.
+      action: TextButton(
+        key: const ValueKey('genre-ranking-all'),
+        onPressed: () => context.pushInTab(
+          AppRoutes.rankingPath(period: RankingPeriod.weekly, genreId: genreId),
+        ),
+        child: AutospacedText(messages.genreRankingLink),
+      ),
       load: (catalog) async => (await catalog.listRankedSeries(
         limit: _rankingLimit,
         period: RankingPeriod.weekly,

@@ -279,6 +279,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Age ratings [listRankedSeries] was called with, in order.
   final List<SeriesAgeRating> rankedSeriesAgeRatings = <SeriesAgeRating>[];
 
+  /// How many times [listGenres] was called.
+  var genresReads = 0;
+
   /// Genres [listRankedSeries] was called with, in order, empty for the
   /// tenant-wide chart.
   final List<String> rankedSeriesGenres = <String>[];
@@ -424,6 +427,7 @@ class FakeCatalogRepository implements CatalogRepository {
 
   @override
   Future<List<PublishedGenre>> listGenres() async {
+    genresReads++;
     if (genresError case final error?) {
       throw error;
     }

@@ -914,6 +914,9 @@ abstract class AppMessages {
   /// `mobile.genre.ranking_heading`
   String get genreRankingHeading;
 
+  /// `mobile.genre.ranking_link`
+  String get genreRankingLink;
+
   /// `mobile.genre.series_empty`
   String get genreSeriesEmpty;
 
@@ -1194,6 +1197,9 @@ abstract class AppMessages {
 
   /// `mobile.ranking.title`
   String get rankingTitle;
+
+  /// `mobile.ranking.title_genre`
+  String rankingTitleGenre({required String genre});
 
   /// `mobile.reading_history.account_description`
   String get readingHistoryAccountDescription;
@@ -3052,6 +3058,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get genreRankingLink {
+    return 'ランキングを見る';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return 'このジャンルのシリーズはまだ公開されていません。';
   }
@@ -3514,6 +3525,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get rankingTitle {
     return 'ランキング';
+  }
+
+  @override
+  String rankingTitleGenre({required String genre}) {
+    return '$genreランキング';
   }
 
   @override
@@ -5685,6 +5701,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get genreRankingLink {
+    return 'See the ranking';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return 'No published series carry this genre yet.';
   }
@@ -6147,6 +6168,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get rankingTitle {
     return 'Ranking';
+  }
+
+  @override
+  String rankingTitleGenre({required String genre}) {
+    return '$genre ranking';
   }
 
   @override
@@ -8318,6 +8344,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get genreRankingLink {
+    return '랭킹 보기';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return '이 장르의 시리즈는 아직 공개되지 않았습니다.';
   }
@@ -8780,6 +8811,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get rankingTitle {
     return '랭킹';
+  }
+
+  @override
+  String rankingTitleGenre({required String genre}) {
+    return '$genre 랭킹';
   }
 
   @override
@@ -10951,6 +10987,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get genreRankingLink {
+    return '查看排行榜';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return '尚无属于该类型的已发布系列。';
   }
@@ -11413,6 +11454,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get rankingTitle {
     return '排行榜';
+  }
+
+  @override
+  String rankingTitleGenre({required String genre}) {
+    return '$genre排行榜';
   }
 
   @override
@@ -13584,6 +13630,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get genreRankingLink {
+    return '查看排行榜';
+  }
+
+  @override
   String get genreSeriesEmpty {
     return '尚無屬於該類型的已發布系列。';
   }
@@ -14046,6 +14097,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get rankingTitle {
     return '排行榜';
+  }
+
+  @override
+  String rankingTitleGenre({required String genre}) {
+    return '$genre排行榜';
   }
 
   @override
