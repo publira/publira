@@ -3,6 +3,8 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+	"net/http/httptest"
 	"slices"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -748,6 +751,87 @@ func TestDBAdminSuspendAndDeleteReaderKeepAnActiveTenantAdmin(t *testing.T) {
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM tenant_user_roles WHERE user_id = $1", second.ID); count != 0 {
 		t.Fatalf("roles of the deleted administrator = %d, want none", count)
+	}
+}
+
+// heldAuditQueries holds every tenant entry the async recorder writes until
+// release is closed, so a test can delete the actor while its entry is still
+// queued.
+type heldAuditQueries struct {
+	auditlog.Querier
+	held    chan struct{}
+	release chan struct{}
+}
+
+func (q heldAuditQueries) InsertAuditLog(ctx context.Context, arg dbmodels.InsertAuditLogParams) error {
+	select {
+	case q.held <- struct{}{}:
+	default:
+	}
+	<-q.release
+	return q.Querier.InsertAuditLog(ctx, arg)
+}
+
+// An entry the async recorder writes after the request answered can land once
+// its actor is already deleted. It is filed under the public ID and name the
+// session carried rather than refused by the foreign key and dropped.
+func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenAdminDB(t)
+	queries := heldAuditQueries{Querier: dbmodels.New(pg.DB), held: make(chan struct{}, 1), release: make(chan struct{})}
+	recorder := auditlog.NewAsyncWithConfig(queries, nil, slog.Default(), auditlog.AsyncConfig{})
+	t.Cleanup(recorder.Close)
+	released := false
+	release := func() {
+		if !released {
+			released = true
+			close(queries.release)
+		}
+	}
+	t.Cleanup(release)
+	api, err := newAPI(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, recorder, openMailGuard())
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	server := httptest.NewServer(handlerFromServer(api.server))
+	t.Cleanup(server.Close)
+	env := &adminDBEnv{Server: server, PG: pg}
+
+	admin := env.seedTenantWithAdmin(t, "RAQTENANT001", "reader-queued.example.com", "Queued", "RAQADMIN0001", "admin@reader-queued.example.com")
+	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAQADMIN0002", "second@reader-queued.example.com", "Second"))
+	ctx := context.Background()
+
+	page, err := env.pagesClient().CreatePage(ctx, newAdminDBRequest(second, &publiraadminv1.CreatePageRequest{
+		Tenant: second.tenantContext(),
+		Slug:   "queued",
+		Title:  "Queued",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage by the second administrator: %v", err)
+	}
+	select {
+	case <-queries.held:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the page's audit entry never reached the recorder")
+	}
+	if _, err := env.userClient().DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: second.User.ID.String(),
+	})); err != nil {
+		t.Fatalf("DeleteReader while the account's entry is queued: %v", err)
+	}
+	release()
+	if err := recorder.Shutdown(ctx); err != nil {
+		t.Fatalf("drain the recorder: %v", err)
+	}
+
+	if count := env.countRows(t, `
+		SELECT count(*) FROM audit_logs
+		WHERE tenant_id = $1 AND action = 'page_created' AND target_id = $2
+			AND actor_user_id IS NULL AND actor_public_id = $3 AND actor_name = $4
+	`, admin.Tenant.ID, page.Msg.Page.Id, second.User.PublicID, "Second"); count != 1 {
+		t.Fatalf("queued entries kept under the deleted administrator = %d, want 1", count)
 	}
 }
 

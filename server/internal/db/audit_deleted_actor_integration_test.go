@@ -105,3 +105,54 @@ func TestAuditLogRejectsAnActorNamedOtherThanOnce(t *testing.T) {
 		})
 	}
 }
+
+// An entry written after its actor was deleted is filed under the public ID
+// and name the caller kept, and one whose actor still exists names the account
+// and keeps nothing beside it.
+func TestInsertAuditLogFilesALateEntryUnderTheDeletedActor(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "ADLTENANT001", "late-entry.example.com", "admin-late-entry.example.com", "Late Entry")
+	gone := mustInsertUser(t, ctx, pg.DB, tenantID, "ADLGONE00001", "gone@late-entry.example.com", "Gone")
+	present := mustInsertUser(t, ctx, pg.DB, tenantID, "ADLPRESENT01", "present@late-entry.example.com", "Present")
+	mustExec(t, ctx, pg.DB, `DELETE FROM users WHERE id = $1`, gone)
+
+	queries := dbmodels.New(pg.DB)
+	insert := func(actor uuid.UUID, publicID, name string) uuid.UUID {
+		t.Helper()
+		id := uuid.Must(uuid.NewV7())
+		if err := queries.InsertAuditLog(ctx, dbmodels.InsertAuditLogParams{
+			ID:            id,
+			TenantID:      tenantID,
+			ActorUserID:   nullUUID(actor),
+			ActorPublicID: sql.NullString{String: publicID, Valid: true},
+			ActorName:     sql.NullString{String: name, Valid: true},
+			ActorRole:     "tenant_admin",
+			Action:        "page_created",
+			Outcome:       "success",
+		}); err != nil {
+			t.Fatalf("InsertAuditLog for %s: %v", publicID, err)
+		}
+		return id
+	}
+	late := insert(gone, "ADLGONE00001", "Gone")
+	current := insert(present, "ADLPRESENT01", "Present")
+
+	var actorUserID uuid.NullUUID
+	var publicID, name sql.NullString
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_user_id FROM audit_logs WHERE id = $1`, &actorUserID, late)
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_public_id FROM audit_logs WHERE id = $1`, &publicID, late)
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_name FROM audit_logs WHERE id = $1`, &name, late)
+	if actorUserID.Valid || publicID.String != "ADLGONE00001" || name.String != "Gone" {
+		t.Fatalf("late entry = (%v, %v, %v), want no account and the kept name and public ID", actorUserID, publicID, name)
+	}
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_user_id FROM audit_logs WHERE id = $1`, &actorUserID, current)
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_public_id FROM audit_logs WHERE id = $1`, &publicID, current)
+	if actorUserID.UUID != present || publicID.Valid {
+		t.Fatalf("entry of an existing actor = (%v, %v), want the account and nothing kept beside it", actorUserID, publicID)
+	}
+}

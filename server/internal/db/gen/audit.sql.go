@@ -19,34 +19,64 @@ INSERT INTO audit_logs (
     tenant_id,
     actor_user_id,
     actor_role,
+    actor_public_id,
+    actor_name,
     action,
     target_type,
     target_id,
     outcome,
     reason,
     client_ip
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+)
+SELECT $1,
+    $2,
+    actor.id,
+    $3,
+    CASE
+        WHEN $4::uuid IS NOT NULL AND actor.id IS NULL THEN $5::text
+    END,
+    CASE
+        WHEN $4::uuid IS NOT NULL AND actor.id IS NULL THEN $6::text
+    END,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
+FROM (SELECT 1) AS entry
+    LEFT JOIN users actor ON actor.tenant_id = $2
+    AND actor.id = $4::uuid
 `
 
 type InsertAuditLogParams struct {
-	ID          uuid.UUID      `json:"id"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	ActorUserID uuid.NullUUID  `json:"actor_user_id"`
-	ActorRole   string         `json:"actor_role"`
-	Action      string         `json:"action"`
-	TargetType  sql.NullString `json:"target_type"`
-	TargetID    sql.NullString `json:"target_id"`
-	Outcome     string         `json:"outcome"`
-	Reason      sql.NullString `json:"reason"`
-	ClientIp    sql.NullString `json:"client_ip"`
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	ActorRole     string         `json:"actor_role"`
+	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
+	ActorPublicID sql.NullString `json:"actor_public_id"`
+	ActorName     sql.NullString `json:"actor_name"`
+	Action        string         `json:"action"`
+	TargetType    sql.NullString `json:"target_type"`
+	TargetID      sql.NullString `json:"target_id"`
+	Outcome       string         `json:"outcome"`
+	Reason        sql.NullString `json:"reason"`
+	ClientIp      sql.NullString `json:"client_ip"`
 }
 
+// An entry can land after its actor's account is gone: the async recorder
+// writes it once the request has answered, and the account can be deleted in
+// between. The trigger that keeps a deleted actor only reaches entries already
+// written, so this one files itself the same way, under the public ID and name
+// the caller kept, rather than failing the foreign key and being dropped.
 func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
 	_, err := q.db.ExecContext(ctx, InsertAuditLog,
 		arg.ID,
 		arg.TenantID,
-		arg.ActorUserID,
 		arg.ActorRole,
+		arg.ActorUserID,
+		arg.ActorPublicID,
+		arg.ActorName,
 		arg.Action,
 		arg.TargetType,
 		arg.TargetID,

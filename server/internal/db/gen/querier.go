@@ -773,6 +773,11 @@ type Querier interface {
 	// refunded so far.
 	HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefundParams) error
 	HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnappliedStoreRefundParams) error
+	// An entry can land after its actor's account is gone: the async recorder
+	// writes it once the request has answered, and the account can be deleted in
+	// between. The trigger that keeps a deleted actor only reaches entries already
+	// written, so this one files itself the same way, under the public ID and name
+	// the caller kept, rather than failing the foreign key and being dropped.
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// Engagement / recommend query skeleton.
 	// Later issues fill handlers and batches; these queries pin the index-backed
