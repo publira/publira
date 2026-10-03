@@ -150,6 +150,17 @@ void main() {
       );
     });
 
+    test('a production storefront refusing the dev flavor is a failure, not '
+        'a cancellation', () async {
+      runAs('com.example.reader.dev');
+      apple.answer = const {'error': 'dev_build_refused'};
+
+      await expectLater(
+        newSignIn().signIn(IdentityProvider.apple, providers),
+        throwsA(isA<ProviderSignInFailure>()),
+      );
+    });
+
     test('an answer without a token is a failure', () async {
       apple.answer = const {'code': 'apple-code'};
 

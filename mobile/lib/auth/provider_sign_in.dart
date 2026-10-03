@@ -78,8 +78,10 @@ abstract class ProviderSignIn {
 /// with the tenant's Services ID, and the storefront hands Apple's answer back
 /// to the app the tenant's Android app association names. Apple is offered
 /// there to that app, and to its `dev` flavor, which a storefront running in
-/// development hands the answer to as well. Android signs in to Google with
-/// the web client as its server client ID.
+/// development hands the answer to as well. The app cannot tell how the
+/// storefront runs, so a `dev` build offers it against a production one too,
+/// which answers it with an error rather than a token. Android signs in to
+/// Google with the web client as its server client ID.
 List<IdentityProvider> offeredProviders(
   SignInProviders providers, {
   required TargetPlatform platform,
