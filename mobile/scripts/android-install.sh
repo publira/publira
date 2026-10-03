@@ -2,6 +2,9 @@
 # Install a JDK, the Android SDK, and an emulator into the Dev Container, for
 # the integration tests and screenshots that need an Android device. Running it
 # again installs only what is missing.
+#   android-install.sh           installs, and asks for the SDK license
+#   android-install.sh --attach  sets up this container for an install an
+#                                earlier one left, and downloads nothing
 set -euo pipefail
 
 # shellcheck source=./android-env.sh
@@ -59,10 +62,14 @@ install_jdk() {
   fi
   # A build Renovate has moved past is left behind otherwise.
   find "$(dirname "${JDK_HOME}")" -maxdepth 1 -name 'temurin-*' ! -path "${JDK_HOME}" -exec rm -rf {} +
-  # sdkmanager and avdmanager below run on JAVA_HOME; Flutter hands the JDK it is
-  # configured with to Gradle.
-  export JAVA_HOME="${JDK_HOME}"
-  flutter config --jdk-dir "${JDK_HOME}" > /dev/null
+  use_jdk "${JDK_HOME}"
+}
+
+# sdkmanager and avdmanager run on JAVA_HOME; Flutter hands the JDK it is
+# configured with to Gradle.
+use_jdk() {
+  export JAVA_HOME="$1"
+  flutter config --jdk-dir "$1" > /dev/null
 }
 
 # Prints the archive and SHA-1 of the newest stable command-line tools for Linux
@@ -180,13 +187,47 @@ kotlin.daemon.jvmargs=-Xmx1536m
 EOF
 }
 
-require_host
-install_jdk
-install_cmdline_tools
-install_packages
-create_avd
-grant_kvm
-link_adb
-limit_gradle_heap
+install() {
+  require_host
+  install_jdk
+  install_cmdline_tools
+  install_packages
+  create_avd
+  grant_kvm
+  link_adb
+  limit_gradle_heap
+  android_log "installed under ${ANDROID_HOME}; start the emulator with: task mobile:emulator-start"
+}
 
-android_log "installed under ${ANDROID_HOME}; start the emulator with: task mobile:emulator-start"
+# ~/Android, ~/.android, and ~/.gradle are volumes in the Dev Container, so the
+# JDK, the SDK, the AVD, and the Gradle settings outlive a rebuild. Flutter's
+# configuration, the kvm group, and the adb link live in the container instead,
+# and the tasks that boot the emulator or build the app call this to redo them.
+# A machine that has never run the install has nothing to attach, and that is
+# not an error.
+attach() {
+  local jdk
+  # The JDK install_jdk left. One Renovate has since moved past still builds,
+  # and the next full run replaces it. A directory without bin/java is an
+  # extraction that was interrupted, and Flutter would hand it to Gradle.
+  for jdk in "${JDK_HOME}" "$(dirname "${JDK_HOME}")"/temurin-*; do
+    if [[ -x "${jdk}/bin/java" ]]; then
+      use_jdk "${jdk}"
+      break
+    fi
+  done
+  if [[ -x "${ANDROID_HOME}/platform-tools/adb" ]]; then
+    link_adb
+  fi
+  # A host that passes no KVM through cannot boot the emulator, while a build
+  # still works there.
+  if [[ -x "${ANDROID_HOME}/emulator/emulator" && -e /dev/kvm ]]; then
+    grant_kvm
+  fi
+}
+
+case "${1:-}" in
+  '') install ;;
+  --attach) attach ;;
+  *) android_die "usage: android-install.sh [--attach]" ;;
+esac

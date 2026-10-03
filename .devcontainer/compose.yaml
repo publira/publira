@@ -4,7 +4,7 @@
 # everything here merges onto the dependency stack defined there. This file
 # owns only what the Dev Container adds: the `app` container the editor
 # attaches to, the Traefik edge in front of it, and the volumes that keep
-# agent logins and the pnpm store across rebuilds.
+# agent logins, the pnpm store, and the Android toolchain across rebuilds.
 #
 # Relative paths resolve against the project directory, which is the directory
 # of the *first* compose file — the repository root, not `.devcontainer/`.
@@ -53,6 +53,14 @@ services:
       - grok-config:/home/vscode/.grok
       # Reuse downloaded pnpm packages after rebuilding the container.
       - pnpm-store:/home/vscode/.local/share/pnpm/store
+      # Keep what `task mobile:android-install` and the first Android build
+      # download across rebuilds: the JDK and the SDK, the AVD, and Gradle's
+      # distributions and caches, about 12 GB that would otherwise be fetched
+      # again and the SDK license accepted again. What that task sets up
+      # outside these paths is redone by the mobile tasks that need it.
+      - android-sdk:/home/vscode/Android
+      - android-user-home:/home/vscode/.android
+      - gradle-user-home:/home/vscode/.gradle
       - ..:/workspaces:cached
       # The whole configuration of the inner Docker daemon: the
       # docker-in-docker feature starts `dockerd` with flags only and never
@@ -142,9 +150,12 @@ services:
     ports: !reset []
 
 volumes:
+  android-sdk:
+  android-user-home:
   claude-data:
   codex-data:
   gemini-data:
   gh-config:
+  gradle-user-home:
   grok-config:
   pnpm-store:

@@ -37,7 +37,7 @@ flutter pub get
 The Dev Container carries no Android SDK, because nothing outside `mobile/` needs one. The integration tests and device screenshots do, and install it on demand:
 
 ```bash
-task mobile:android-install   # once per container; asks you to accept the Android SDK license
+task mobile:android-install   # once per machine; asks you to accept the Android SDK license
 task mobile:emulator-start    # boots the emulator headless and waits until Android has booted
 task mobile:emulator-stop
 ```
@@ -54,6 +54,10 @@ task mobile:emulator-stop
 `sdkmanager` shows the [Android SDK License Agreement](https://developer.android.com/studio/terms) and asks you to accept it, so run the task from a terminal; without one it stops before installing any package. Everything is downloaded from Google by you rather than shipped in the image, which the license does not allow.
 
 The emulator needs KVM. The task stops before downloading anything when the container has no `/dev/kvm`, which is the case whenever the host does not pass one through. The platforms, build tools, NDK, and CMake a build needs are fetched by Gradle on the first build.
+
+`~/Android`, `~/.android`, and `~/.gradle` are the `android-sdk`, `android-user-home`, and `gradle-user-home` volumes, so the JDK, the SDK and the license you accepted, the AVD, and Gradle's caches survive a rebuild of the Dev Container. Flutter's JDK setting, the `/dev/kvm` group, and the `adb` link live in the container, and `task mobile:emulator-start` and `task mobile:build` set them up again with `scripts/android-install.sh --attach` before they start, which downloads nothing and does nothing on a machine that has never run the install. A rebuilt container therefore boots the emulator and builds the app without the task.
+
+To start over, stop the Dev Container and remove the three volumes from the host with `docker volume rm`. Compose prefixes each name with the project, so `docker volume ls` lists them as `<project>_android-sdk`, `<project>_android-user-home`, and `<project>_gradle-user-home`. The next rebuild creates them empty, and `task mobile:android-install` downloads everything again.
 
 | Variable | Meaning |
 | --- | --- |
