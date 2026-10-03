@@ -3221,6 +3221,9 @@
       "list_failed": "無法載入類型列表。請稍後再試。",
       "list_title": "類型",
       "not_found_title": "找不到該類型",
+      "ranking_error": "無法顯示該類型的排行榜",
+      "ranking_heading": "本週熱門作品",
+      "ranking_link": "查看排行榜",
       "series_empty": "尚無屬於該類型的已發布系列。",
       "series_first_page": "前往該類型系列列表第一頁",
       "series_pagination_aria": "類型系列分頁"

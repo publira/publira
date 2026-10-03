@@ -1288,6 +1288,14 @@ interface RankedSeriesQuery {
   token?: string;
 }
 
+interface SharedRankedSeriesQuery extends RankedSeriesQuery {
+  /**
+   * The genre whose own leaderboard to read, empty for the tenant-wide one. A
+   * genre is ranked among all-ages series alone, so it goes with `all`.
+   */
+  genrePublicId?: string;
+}
+
 const toRankedSeriesPage = (
   response: ListRankedSeriesResponse
 ): RankedSeriesPage => ({
@@ -1324,12 +1332,19 @@ const toRankedSeriesPage = (
  *
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`. A token carries the period and rating it was built for,
- * so changing either restarts at page 1.
+ * `proto/README.md`. A token carries the period, rating, and genre it was
+ * built for, so changing any of them restarts at page 1.
  */
 export const listRankedSeries = async (
   tenantId: string,
-  { ageRating, limit = 20, locale, period, token = "" }: RankedSeriesQuery
+  {
+    ageRating,
+    genrePublicId = "",
+    limit = 20,
+    locale,
+    period,
+    token = "",
+  }: SharedRankedSeriesQuery
 ): Promise<CachedReadResult<RankedSeriesPage>> => {
   "use cache";
 
@@ -1345,6 +1360,7 @@ export const listRankedSeries = async (
   try {
     response = await apiClient.catalog.listRankedSeries({
       ageRating: rankingAgeRatings[ageRating],
+      genrePublicId,
       limit,
       period: rankingPeriods[period],
       surface: ClientSurface.WEB,

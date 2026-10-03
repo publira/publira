@@ -54,6 +54,7 @@ import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPageAlternates } from "#lib/page-alternates";
+import { DEFAULT_RANKING_PERIOD, rankingHref } from "#lib/ranking-href";
 import { getReaderProvenAgeRating, readerHasBirthDate } from "#lib/reader-age";
 import {
   getTenantAgeVerification,
@@ -64,11 +65,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { RankingAgeGate } from "./_components/ranking-age-gate";
 import { rankMovement } from "./_lib/rank-movement";
 import { rankingAgeRatingsFor } from "./_lib/ranking-age-ratings";
-import {
-  DEFAULT_RANKING_PERIOD,
-  parseRankingSearchParams,
-  rankingHref,
-} from "./_lib/search-params";
+import { parseRankingSearchParams } from "./_lib/search-params";
 
 const RANKING_PAGE_SIZE = 20;
 

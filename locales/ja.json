@@ -3221,6 +3221,9 @@
       "list_failed": "ジャンル一覧を取得できませんでした。時間をおいて再試行してください。",
       "list_title": "ジャンル一覧",
       "not_found_title": "ジャンルが見つかりません",
+      "ranking_error": "このジャンルのランキングを表示できませんでした",
+      "ranking_heading": "今週の人気作品",
+      "ranking_link": "ランキングを見る",
       "series_empty": "このジャンルのシリーズはまだ公開されていません。",
       "series_first_page": "このジャンルのシリーズ一覧の先頭を表示",
       "series_pagination_aria": "ジャンル別シリーズのページング"
