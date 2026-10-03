@@ -109,12 +109,17 @@ const ProviderStatusLine = ({ status }: { status: StoreStatus }) => (
   </div>
 );
 
+/**
+ * Each provider's callback URL on the storefront, and the one Apple answers
+ * the Android app's sign-in at.
+ */
+type SignInCallbackUrls = Partial<
+  Record<SignInProvider | "appleAndroid", string>
+>;
+
 interface TenantSignInSettingsFormProps {
-  /**
-   * Each provider's callback URL on the storefront, absent while the tenant
-   * has no domain.
-   */
-  callbackUrls?: Partial<Record<SignInProvider, string>>;
+  /** The callback URLs to register, absent while the tenant has no domain. */
+  callbackUrls?: SignInCallbackUrls;
   canEdit: boolean;
   /** The saved settings, absent when the read failed. */
   initialSettings?: TenantSignInSettings;
@@ -191,6 +196,32 @@ export const TenantSignInSettingsForm = ({
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.callback_url_description" />
+                        </Suspense>
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
+                ) : null}
+                {callbackUrls?.appleAndroid ? (
+                  <Field>
+                    <FieldLabel>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-40" />}
+                      >
+                        <Message message="admin.settings.sign_in.apple.android_callback_url" />
+                      </Suspense>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Identifier>
+                        <IdentifierValue>
+                          {callbackUrls.appleAndroid}
+                        </IdentifierValue>
+                        <CallbackUrlCopy value={callbackUrls.appleAndroid} />
+                      </Identifier>
+                      <FieldDescription>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-3/4" />}
+                        >
+                          <Message message="admin.settings.sign_in.apple.android_callback_url_description" />
                         </Suspense>
                       </FieldDescription>
                     </FieldContent>
