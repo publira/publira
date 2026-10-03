@@ -565,3 +565,76 @@ func TestDBListEpisodeFreeWindowsRequiresAScope(t *testing.T) {
 		})
 	}
 }
+
+// A series page is merged from one page of each of its episodes, so a page
+// boundary has to fall between windows of different episodes and still resume
+// in order on both sides.
+func TestDBListEpisodeFreeWindowsPagesAcrossTheEpisodesOfASeries(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Campaign Series")
+	episodeIDs := []string{
+		env.episodeID(t, createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")),
+		env.episodeID(t, createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Two")),
+	}
+
+	// The episodes take turns, so every page holds windows of both.
+	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	created := make([]string, 0, 5)
+	for i := range 5 {
+		start := base.Add(time.Duration(i) * 24 * time.Hour)
+		resp, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+			Tenant:    tenant.tenantContext(),
+			EpisodeId: episodeIDs[i%2],
+			StartsAt:  rfc3339(start),
+			EndsAt:    rfc3339(start.Add(time.Hour)),
+		}))
+		if err != nil {
+			t.Fatalf("CreateEpisodeFreeWindow %d: %v", i, err)
+		}
+		created = append(created, resp.Msg.FreeWindow.Id)
+	}
+	slices.Reverse(created)
+
+	seriesID := env.seriesID(t, seriesPublicID)
+	list := func(t *testing.T, token string) *publiraadminv1.ListEpisodeFreeWindowsResponse {
+		t.Helper()
+		resp, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+			Tenant: tenant.tenantContext(),
+			Scope:  listFreeWindowsBySeries(seriesID),
+			Limit:  2,
+			Token:  token,
+		}))
+		if err != nil {
+			t.Fatalf("ListEpisodeFreeWindows token=%q: %v", token, err)
+		}
+		return resp.Msg
+	}
+
+	var walked []string
+	var pages []*publiraadminv1.ListEpisodeFreeWindowsResponse
+	for token := ""; ; {
+		page := list(t, token)
+		pages = append(pages, page)
+		walked = append(walked, freeWindowIDs(page.FreeWindows)...)
+		if page.NextToken == "" {
+			break
+		}
+		token = page.NextToken
+	}
+	if !slices.Equal(walked, created) {
+		t.Fatalf("walked forward = %v, want %v", walked, created)
+	}
+	if len(pages) != 3 {
+		t.Fatalf("pages = %d, want 3", len(pages))
+	}
+
+	back := list(t, pages[2].PreviousToken)
+	if got, want := freeWindowIDs(back.FreeWindows), created[2:4]; !slices.Equal(got, want) {
+		t.Fatalf("page before the last = %v, want %v", got, want)
+	}
+	if back.PreviousToken == "" || back.NextToken == "" {
+		t.Fatalf("middle page tokens = %q / %q, want both", back.PreviousToken, back.NextToken)
+	}
+}

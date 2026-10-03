@@ -333,7 +333,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 }
 
 // freeWindowListScope is the one episode or series ListEpisodeFreeWindows
-// lists, and the key its tokens are bound to.
+// lists, and the key its tokens are bound to. Exactly one of the two ids is set.
 type freeWindowListScope struct {
 	episodeID uuid.NullUUID
 	seriesID  uuid.NullUUID
@@ -368,9 +368,22 @@ func parseFreeWindowListScope(req *publiraadminv1.ListEpisodeFreeWindowsRequest)
 	}
 }
 
-// freeWindowPage runs the keyset query for one page. The list reads latest start
-// first, so a backward page is scanned by the ascending query and put back into
-// display order by pagination.Page.
+// freeWindowListRow is a row of any of the ListEpisodeFreeWindows* queries,
+// which all select the same columns.
+type freeWindowListRow dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescRow
+
+func freeWindowListRows[T any](rows []T, convert func(T) freeWindowListRow) []freeWindowListRow {
+	mapped := make([]freeWindowListRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, convert(row))
+	}
+	return mapped
+}
+
+// freeWindowPage runs the keyset query for one page. Each scope has queries of
+// its own, so neither is planned around a filter it does not use. The list
+// reads latest start first, so a backward page is scanned by the ascending
+// query and put back into display order by pagination.Page.
 func (s *adminServer) freeWindowPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -378,39 +391,63 @@ func (s *adminServer) freeWindowPage(
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]dbmodels.ListEpisodeFreeWindowsForTenantDescRow, error) {
+) ([]freeWindowListRow, error) {
 	queries := s.queriesFor(ctx)
 	cursorID := uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid}
 	cursorStartsAt := sql.NullTime{Time: keys.Time, Valid: keys.Valid}
-	if direction == pagination.Backward {
-		rows, err := queries.ListEpisodeFreeWindowsForTenantAsc(ctx, dbmodels.ListEpisodeFreeWindowsForTenantAscParams{
+	backward := direction == pagination.Backward
+
+	if scope.episodeID.Valid {
+		if backward {
+			rows, err := queries.ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx, dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantAscParams{
+				TenantID:        tenantID,
+				EpisodeID:       scope.episodeID.UUID,
+				CursorID:        cursorID,
+				CursorInclusive: keys.Inclusive,
+				CursorStartsAt:  cursorStartsAt,
+				Limit:           limit,
+			})
+			return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantAscRow) freeWindowListRow {
+				return freeWindowListRow(row)
+			}), err
+		}
+		rows, err := queries.ListEpisodeFreeWindowsByEpisodeForTenantDesc(ctx, dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescParams{
 			TenantID:        tenantID,
-			EpisodeID:       scope.episodeID,
-			SeriesID:        scope.seriesID,
+			EpisodeID:       scope.episodeID.UUID,
 			CursorID:        cursorID,
 			CursorInclusive: keys.Inclusive,
 			CursorStartsAt:  cursorStartsAt,
 			Limit:           limit,
 		})
-		if err != nil {
-			return nil, err
-		}
-		mapped := make([]dbmodels.ListEpisodeFreeWindowsForTenantDescRow, 0, len(rows))
-		for _, row := range rows {
-			mapped = append(mapped, dbmodels.ListEpisodeFreeWindowsForTenantDescRow(row))
-		}
-		return mapped, nil
+		return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsByEpisodeForTenantDescRow) freeWindowListRow {
+			return freeWindowListRow(row)
+		}), err
 	}
 
-	return queries.ListEpisodeFreeWindowsForTenantDesc(ctx, dbmodels.ListEpisodeFreeWindowsForTenantDescParams{
+	if backward {
+		rows, err := queries.ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx, dbmodels.ListEpisodeFreeWindowsBySeriesForTenantAscParams{
+			TenantID:        tenantID,
+			SeriesID:        scope.seriesID.UUID,
+			CursorID:        cursorID,
+			CursorInclusive: keys.Inclusive,
+			CursorStartsAt:  cursorStartsAt,
+			Limit:           limit,
+		})
+		return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsBySeriesForTenantAscRow) freeWindowListRow {
+			return freeWindowListRow(row)
+		}), err
+	}
+	rows, err := queries.ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx, dbmodels.ListEpisodeFreeWindowsBySeriesForTenantDescParams{
 		TenantID:        tenantID,
-		EpisodeID:       scope.episodeID,
-		SeriesID:        scope.seriesID,
+		SeriesID:        scope.seriesID.UUID,
 		CursorID:        cursorID,
 		CursorInclusive: keys.Inclusive,
 		CursorStartsAt:  cursorStartsAt,
 		Limit:           limit,
 	})
+	return freeWindowListRows(rows, func(row dbmodels.ListEpisodeFreeWindowsBySeriesForTenantDescRow) freeWindowListRow {
+		return freeWindowListRow(row)
+	}), err
 }
 
 func (s *adminServer) ListEpisodeFreeWindows(
@@ -541,7 +578,7 @@ func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *pu
 	}
 }
 
-func freeWindowFromListRow(row dbmodels.ListEpisodeFreeWindowsForTenantDescRow) *publiraadminv1.AdminEpisodeFreeWindow {
+func freeWindowFromListRow(row freeWindowListRow) *publiraadminv1.AdminEpisodeFreeWindow {
 	return &publiraadminv1.AdminEpisodeFreeWindow{
 		Id:              row.ID.String(),
 		PublicId:        row.PublicID,

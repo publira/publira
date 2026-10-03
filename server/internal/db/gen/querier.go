@@ -1129,17 +1129,24 @@ type Querier interface {
 	//
 	// This spans every tenant, so the connection must bypass RLS.
 	ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]ListEpisodeFreeWindowBoundariesDueRow, error)
-	ListEpisodeFreeWindowsForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsForTenantAscParams) ([]ListEpisodeFreeWindowsForTenantAscRow, error)
+	ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsByEpisodeForTenantAscParams) ([]ListEpisodeFreeWindowsByEpisodeForTenantAscRow, error)
 	// Admin ListEpisodeFreeWindows is (starts_at, id) DESC: the window furthest
 	// ahead first, then the open one, then the ones already over, which are kept
-	// until someone deletes them. Forward uses the DESC query; backward uses ASC,
-	// and the handler flips its rows back into display order. The handler sets
-	// exactly one of episode_id and series_id. On one episode the exclusion
-	// constraint already makes starts_at unique, so
-	// idx_episode_free_windows_episode_period serves the order on its own; a
-	// series sorts the windows of its episodes, which are few.
+	// until someone deletes them. Forward uses the DESC queries; backward uses ASC,
+	// and the handler flips its rows back into display order.
+	//
+	// Each scope has queries of its own rather than one with optional filters, so
+	// every scan is bounded by the page and not by how much history the episodes
+	// have collected. On one episode the exclusion constraint makes starts_at
+	// unique, so idx_episode_free_windows_episode_period yields the whole order and
+	// the scan stops after one page. A series has no column on the window to index,
+	// so it takes at most one page from each of its episodes by that same index and
+	// sorts only those: the work grows with the number of episodes, never with the
+	// windows that are over.
 	// cursor rules: proto/README.md.
-	ListEpisodeFreeWindowsForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsForTenantDescParams) ([]ListEpisodeFreeWindowsForTenantDescRow, error)
+	ListEpisodeFreeWindowsByEpisodeForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsByEpisodeForTenantDescParams) ([]ListEpisodeFreeWindowsByEpisodeForTenantDescRow, error)
+	ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantAscParams) ([]ListEpisodeFreeWindowsBySeriesForTenantAscRow, error)
+	ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantDescParams) ([]ListEpisodeFreeWindowsBySeriesForTenantDescRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
 	// The opening pages of an episode's body, as the preview of a body the reader

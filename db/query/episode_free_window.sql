@@ -39,14 +39,19 @@ LIMIT 1;
 
 -- Admin ListEpisodeFreeWindows is (starts_at, id) DESC: the window furthest
 -- ahead first, then the open one, then the ones already over, which are kept
--- until someone deletes them. Forward uses the DESC query; backward uses ASC,
--- and the handler flips its rows back into display order. The handler sets
--- exactly one of episode_id and series_id. On one episode the exclusion
--- constraint already makes starts_at unique, so
--- idx_episode_free_windows_episode_period serves the order on its own; a
--- series sorts the windows of its episodes, which are few.
+-- until someone deletes them. Forward uses the DESC queries; backward uses ASC,
+-- and the handler flips its rows back into display order.
+--
+-- Each scope has queries of its own rather than one with optional filters, so
+-- every scan is bounded by the page and not by how much history the episodes
+-- have collected. On one episode the exclusion constraint makes starts_at
+-- unique, so idx_episode_free_windows_episode_period yields the whole order and
+-- the scan stops after one page. A series has no column on the window to index,
+-- so it takes at most one page from each of its episodes by that same index and
+-- sorts only those: the work grows with the number of episodes, never with the
+-- windows that are over.
 -- cursor rules: proto/README.md.
--- name: ListEpisodeFreeWindowsForTenantDesc :many
+-- name: ListEpisodeFreeWindowsByEpisodeForTenantDesc :many
 SELECT w.id,
     w.public_id,
     w.starts_at,
@@ -61,14 +66,7 @@ FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        sqlc.narg('episode_id')::uuid IS NULL
-        OR w.episode_id = sqlc.narg('episode_id')::uuid
-    )
-    AND (
-        sqlc.narg('series_id')::uuid IS NULL
-        OR e.series_id = sqlc.narg('series_id')::uuid
-    )
+    AND w.episode_id = sqlc.arg('episode_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -84,7 +82,7 @@ ORDER BY w.starts_at DESC,
     w.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListEpisodeFreeWindowsForTenantAsc :many
+-- name: ListEpisodeFreeWindowsByEpisodeForTenantAsc :many
 SELECT w.id,
     w.public_id,
     w.starts_at,
@@ -99,14 +97,7 @@ FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        sqlc.narg('episode_id')::uuid IS NULL
-        OR w.episode_id = sqlc.narg('episode_id')::uuid
-    )
-    AND (
-        sqlc.narg('series_id')::uuid IS NULL
-        OR e.series_id = sqlc.narg('series_id')::uuid
-    )
+    AND w.episode_id = sqlc.arg('episode_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -118,6 +109,90 @@ WHERE w.tenant_id = sqlc.arg('tenant_id')
             AND (w.starts_at, w.id) > (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
         )
     )
+ORDER BY w.starts_at ASC,
+    w.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodeFreeWindowsBySeriesForTenantDesc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM series s
+    JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL (
+        SELECT fw.id,
+            fw.public_id,
+            fw.starts_at,
+            fw.ends_at,
+            fw.created_at
+        FROM episode_free_windows fw
+        WHERE fw.episode_id = e.id
+            AND (
+                sqlc.narg('cursor_id')::uuid IS NULL
+                OR (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND (fw.starts_at, fw.id) <= (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND (fw.starts_at, fw.id) < (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+                )
+            )
+        ORDER BY fw.starts_at DESC,
+            fw.id DESC
+        LIMIT sqlc.arg('limit')
+    ) w
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = sqlc.arg('series_id')
+ORDER BY w.starts_at DESC,
+    w.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodeFreeWindowsBySeriesForTenantAsc :many
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id
+FROM series s
+    JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL (
+        SELECT fw.id,
+            fw.public_id,
+            fw.starts_at,
+            fw.ends_at,
+            fw.created_at
+        FROM episode_free_windows fw
+        WHERE fw.episode_id = e.id
+            AND (
+                sqlc.narg('cursor_id')::uuid IS NULL
+                OR (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND (fw.starts_at, fw.id) >= (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND (fw.starts_at, fw.id) > (sqlc.narg('cursor_starts_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+                )
+            )
+        ORDER BY fw.starts_at ASC,
+            fw.id ASC
+        LIMIT sqlc.arg('limit')
+    ) w
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = sqlc.arg('series_id')
 ORDER BY w.starts_at ASC,
     w.id ASC
 LIMIT sqlc.arg('limit');
