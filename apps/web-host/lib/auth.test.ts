@@ -2,6 +2,7 @@ import {
   BadRequestSchema,
   Code,
   ConnectError,
+  ErrorInfoSchema,
 } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -194,7 +195,7 @@ describe("web-host auth", () => {
         nonce: "nonce-value",
         provider: "apple",
       })
-    ).resolves.toBe(true);
+    ).resolves.toBe("deleted");
     expect(mockDeleteMe).toHaveBeenCalledWith(
       {
         idToken: "header.payload.signature",
@@ -398,6 +399,38 @@ describe("web-host auth", () => {
     ).rejects.toMatchObject({
       code: Code.Unauthenticated,
     });
+  });
+
+  it("deleteMe: names the refusal of the tenant's last tenant admin", async () => {
+    const { deleteMe } = await importAuth();
+    mockDeleteMe.mockRejectedValueOnce(
+      new ConnectError(
+        "last tenant admin",
+        Code.FailedPrecondition,
+        undefined,
+        [
+          {
+            desc: ErrorInfoSchema,
+            value: { domain: "publira", reason: "LAST_TENANT_ADMIN" },
+          },
+        ]
+      )
+    );
+
+    await expect(deleteMe("TENANT001", { password: "pw" })).resolves.toBe(
+      "last_tenant_admin"
+    );
+  });
+
+  it("deleteMe: any other refusal fails without a reason", async () => {
+    const { deleteMe } = await importAuth();
+    mockDeleteMe.mockRejectedValueOnce(
+      new ConnectError("invalid password", Code.InvalidArgument)
+    );
+
+    await expect(deleteMe("TENANT001", { password: "pw" })).resolves.toBe(
+      "failed"
+    );
   });
 
   it("deleteMe: Unclassifiable errors are propagated", async () => {

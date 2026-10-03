@@ -148,11 +148,11 @@ const finishLogin = async (
  * `invalid_argument`, a confirmation that failed, and leaves the reader signed
  * in.
  */
-const withConfirmingSession = async (
+const withConfirmingSession = async <T>(
   { locale, tenantId }: SignInRequest,
   screen: string,
-  run: () => Promise<boolean>
-): Promise<boolean | Response> => {
+  run: () => Promise<T>
+): Promise<T | Response> => {
   try {
     return await run();
   } catch (error) {
@@ -171,17 +171,24 @@ const finishDeletion = async (
   { idToken, nonce, provider }: IdTokenSignIn
 ): Promise<Response> => {
   const { accessToken, locale, tenantId } = request;
-  const deleted = await withConfirmingSession(
+  const outcome = await withConfirmingSession(
     request,
     CONFIRMING_SCREENS.delete,
     () => deleteMe(tenantId, { idToken, nonce, provider }, accessToken)
   );
-  if (deleted instanceof Response) {
-    return deleted;
+  if (outcome instanceof Response) {
+    return outcome;
   }
   const t = await getMessagesFor(locale);
-  if (!deleted) {
-    return failure(request, t("host.settings.delete_failed"));
+  if (outcome !== "deleted") {
+    return failure(
+      request,
+      t(
+        outcome === "last_tenant_admin"
+          ? "host.settings.delete_last_tenant_admin"
+          : "host.settings.delete_failed"
+      )
+    );
   }
 
   const cookieStore = await cookies();
