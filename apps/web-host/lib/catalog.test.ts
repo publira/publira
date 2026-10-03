@@ -1684,6 +1684,7 @@ describe("catalog.listRankedSeries", () => {
 
     expect(mockListRankedSeries).toHaveBeenCalledWith({
       ageRating: SeriesAgeRating.ALL,
+      genrePublicId: "",
       limit: 10,
       period: RankingPeriod.WEEKLY,
       surface: ClientSurface.WEB,
@@ -1733,6 +1734,28 @@ describe("catalog.listRankedSeries", () => {
           },
         ],
       },
+    });
+  });
+
+  it("Asks for one genre's own leaderboard when the caller names a genre", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({});
+
+    await listRankedSeries("TENANT_001", {
+      ageRating: "all",
+      genrePublicId: "GENRE0000001",
+      limit: 6,
+      locale: "en",
+      period: "weekly",
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith({
+      ageRating: SeriesAgeRating.ALL,
+      genrePublicId: "GENRE0000001",
+      limit: 6,
+      period: RankingPeriod.WEEKLY,
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
     });
   });
 

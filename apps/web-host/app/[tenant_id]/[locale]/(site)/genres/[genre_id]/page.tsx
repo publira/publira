@@ -34,7 +34,11 @@ import {
   SeriesFilterFormSkeleton,
 } from "#components/series-filter-form";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
-import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
+import {
+  listPublishedGenres,
+  listPublishedSeries,
+  listRankedSeries,
+} from "#lib/catalog";
 import type { PublishedGenreItem } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd } from "#lib/json-ld";
@@ -43,6 +47,10 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
+import {
+  GENRE_RANKING_SHELF_SIZE,
+  GenreRanking,
+} from "./_components/genre-ranking";
 import {
   genreDetailHref,
   isNarrowedGenreSeries,
@@ -290,6 +298,34 @@ const GenreSeries = async ({
   );
 };
 
+/**
+ * The genre's weekly chart. It is the all-ages one, which is the only chart a
+ * genre has, so it is a shared read that hides no cover; the batch rewrites it
+ * without a write that drops a tag, so new positions arrive with the cache
+ * profile's own revalidation.
+ */
+const GenreRankingSection = async ({
+  genreId,
+  locale,
+  tenantId,
+}: {
+  genreId: string;
+  locale: Locale;
+  tenantId: string;
+}) => (
+  <GenreRanking
+    genreId={genreId}
+    locale={locale}
+    result={await listRankedSeries(tenantId, {
+      ageRating: "all",
+      genrePublicId: genreId,
+      limit: GENRE_RANKING_SHELF_SIZE,
+      locale,
+      period: "weekly",
+    })}
+  />
+);
+
 const GenreDetailContent = async ({
   params,
   searchParams,
@@ -356,6 +392,14 @@ const GenreDetailContent = async ({
           </p>
         </div>
       </div>
+
+      <Suspense fallback={null}>
+        <GenreRankingSection
+          genreId={genreId}
+          locale={locale}
+          tenantId={tenantId}
+        />
+      </Suspense>
 
       <Suspense fallback={<SeriesFilterFormSkeleton />}>
         <SeriesFilterForm

@@ -13,8 +13,7 @@ import type { ReactNode } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import type { RankingAgeRatingName, RankingPeriodName } from "#lib/catalog";
-
-import { rankingHref } from "../_lib/search-params";
+import { rankingHref } from "#lib/ranking-href";
 
 /**
  * What stands where a rated ranking would be when the tenant makes a reader

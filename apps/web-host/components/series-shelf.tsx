@@ -12,6 +12,66 @@ import { Message } from "#components/message";
 import type { SeriesListItem } from "#lib/catalog";
 
 /**
+ * One cover of a shelf, with the position it holds in a ranking above its
+ * title when it is a ranking's shelf. The position is the one the snapshot
+ * recorded rather than the index on the shelf, since a series unpublished after
+ * the batch ran leaves a gap instead of moving the rest up.
+ */
+export const SeriesShelfCard = ({
+  item,
+  locale,
+  rank,
+}: {
+  item: SeriesListItem;
+  locale: Locale;
+  rank?: number;
+}) => (
+  <LocaleLink className="group block" href={`/series/${item.publicId}`}>
+    <EyeCatchFrame
+      alt=""
+      className="aspect-3/4 w-full rounded-surface"
+      preferredType="portrait"
+      sizes="(max-width: 640px) 33vw, 16vw"
+      variants={item.eyeCatchImageVariants}
+    >
+      <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
+        {item.title}
+      </span>
+    </EyeCatchFrame>
+    {rank !== undefined && (
+      <span className="mt-2 block font-serif text-sm leading-tight text-primary tabular-nums">
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="host.ranking.rank_position" values={{ rank }} />
+        </Suspense>
+      </span>
+    )}
+    <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
+      {item.title}
+    </span>
+    {item.credits.length > 0 && (
+      <span className="mt-1 line-clamp-2 block text-xs">
+        <CreatorCredits credits={item.credits} locale={locale} />
+      </span>
+    )}
+    {(item.ageRating || item.freeEpisodeCount > 0) && (
+      <span className="mt-2 flex flex-wrap gap-2">
+        <AgeRatingBadge rating={item.ageRating} />
+        {item.freeEpisodeCount > 0 && (
+          <Badge tone="success">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message
+                message="host.common.free_episode_count"
+                values={{ count: item.freeEpisodeCount }}
+              />
+            </Suspense>
+          </Badge>
+        )}
+      </span>
+    )}
+  </LocaleLink>
+);
+
+/**
  * A row of portrait covers with the title and the creators beneath each one.
  *
  * The design gives grids to covers and nothing else, so this is the one shape
@@ -45,42 +105,7 @@ export const SeriesShelf = ({
     {series.map((item) => {
       const card = (
         <li key={item.publicId}>
-          <LocaleLink className="group block" href={`/series/${item.publicId}`}>
-            <EyeCatchFrame
-              alt=""
-              className="aspect-3/4 w-full rounded-surface"
-              preferredType="portrait"
-              sizes="(max-width: 640px) 33vw, 16vw"
-              variants={item.eyeCatchImageVariants}
-            >
-              <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
-                {item.title}
-              </span>
-            </EyeCatchFrame>
-            <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
-              {item.title}
-            </span>
-            {item.credits.length > 0 && (
-              <span className="mt-1 line-clamp-2 block text-xs">
-                <CreatorCredits credits={item.credits} locale={locale} />
-              </span>
-            )}
-            {(item.ageRating || item.freeEpisodeCount > 0) && (
-              <span className="mt-2 flex flex-wrap gap-2">
-                <AgeRatingBadge rating={item.ageRating} />
-                {item.freeEpisodeCount > 0 && (
-                  <Badge tone="success">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                      <Message
-                        message="host.common.free_episode_count"
-                        values={{ count: item.freeEpisodeCount }}
-                      />
-                    </Suspense>
-                  </Badge>
-                )}
-              </span>
-            )}
-          </LocaleLink>
+          <SeriesShelfCard item={item} locale={locale} />
         </li>
       );
 

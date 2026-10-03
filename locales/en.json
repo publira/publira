@@ -3221,6 +3221,9 @@
       "list_failed": "Could not load the genre list. Please try again later.",
       "list_title": "Genres",
       "not_found_title": "Genre not found",
+      "ranking_error": "Could not show this genre's ranking",
+      "ranking_heading": "Popular this week",
+      "ranking_link": "See the ranking",
       "series_empty": "No published series carry this genre yet.",
       "series_first_page": "Show the first page of this genre's series",
       "series_pagination_aria": "Genre series pagination"
