@@ -19,17 +19,18 @@ import (
 // embeds a per-user credential belongs here; GetCreator answers a creator's
 // linked accounts to a tenant admin alone, so it stays off.
 var serviceProcedures = map[string]struct{}{
-	publiraadminv1connect.AdminGenreServiceListGenresProcedure:             {},
-	publiraadminv1connect.AdminCreatorRoleServiceListCreatorRolesProcedure: {},
-	publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure:         {},
-	publiraadminv1connect.AdminLabelServiceListLabelsProcedure:             {},
-	publiraadminv1connect.AdminLabelServiceGetLabelProcedure:               {},
-	publiraadminv1connect.AdminSeriesServiceListSeriesProcedure:            {},
-	publiraadminv1connect.AdminSeriesServiceGetSeriesProcedure:             {},
-	publiraadminv1connect.AdminSeriesServiceListEpisodesProcedure:          {},
-	publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure:            {},
-	publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure:    {},
-	publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure:       {},
+	publiraadminv1connect.AdminGenreServiceListGenresProcedure:              {},
+	publiraadminv1connect.AdminCreatorRoleServiceListCreatorRolesProcedure:  {},
+	publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure:          {},
+	publiraadminv1connect.AdminLabelServiceListLabelsProcedure:              {},
+	publiraadminv1connect.AdminLabelServiceGetLabelProcedure:                {},
+	publiraadminv1connect.AdminSeriesServiceListSeriesProcedure:             {},
+	publiraadminv1connect.AdminSeriesServiceGetSeriesProcedure:              {},
+	publiraadminv1connect.AdminSeriesServiceListEpisodesProcedure:           {},
+	publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure:             {},
+	publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure:     {},
+	publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure: {},
+	publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure:        {},
 }
 
 func serviceProcedureDeniedError() error {
