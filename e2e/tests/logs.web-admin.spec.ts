@@ -12,6 +12,9 @@ const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
   /^⨯ Error \[ConnectError\]: \[internal\] Stream closed with error code NGHTTP2_REFUSED_STREAM$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
+  // A Next.js 16.3 defect, not provoked on purpose (vercel/next.js#96519).
+  // Remove once Next.js ships the fix: #3566.
+  /^⨯ Error: Unexpected end of form$/u,
 ];
 
 test.describe("web-admin server log", () => {
