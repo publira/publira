@@ -67,6 +67,8 @@ export const RANKING_COMPUTED_ON = "Apr 20, 2026";
 export const RANKED_GENRE = {
   coverSeriesNumbers: [42, 30, 90, 84],
   name: "Action",
+  /** The genre's own weekly chart, from the top: these two and no others. */
+  rankedSeriesTitles: ["Seed Series 042", "Seed Series 030"],
 } as const;
 
 /**
