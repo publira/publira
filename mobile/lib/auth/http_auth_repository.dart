@@ -91,19 +91,25 @@ class HttpAuthRepository implements AuthRepository {
     // while GetTenant is still in flight.
     unawaited(association.then<void>((_) {}, onError: (_) {}));
     final tenant = await _getTenant();
-    String appleBundleIdentifier;
+    var appleBundleIdentifier = '';
+    var androidApplicationId = '';
     try {
-      final ios = (await association)['ios'];
-      appleBundleIdentifier = ios is Map<String, Object?>
-          ? _readString(ios, 'bundleIdentifier')
-          : '';
+      final apps = await association;
+      final ios = apps['ios'];
+      final android = apps['android'];
+      if (ios is Map<String, Object?>) {
+        appleBundleIdentifier = _readString(ios, 'bundleIdentifier');
+      }
+      if (android is Map<String, Object?>) {
+        androidApplicationId = _readString(android, 'applicationId');
+      }
     } on AuthFailure {
       // Without it no app is known to take Apple's token; Google still is.
-      appleBundleIdentifier = '';
     }
     return SignInProviders.fromTenant(
       tenant,
       appleBundleIdentifier: appleBundleIdentifier,
+      androidApplicationId: androidApplicationId,
     );
   }
 
@@ -122,6 +128,8 @@ class HttpAuthRepository implements AuthRepository {
         'nonce': credential.nonce,
         if (credential.authorizationCode.isNotEmpty)
           'authorizationCode': credential.authorizationCode,
+        if (credential.redirectUri.isNotEmpty)
+          'redirectUri': credential.redirectUri,
         if (credential.name.isNotEmpty) 'name': credential.name,
         if (birthDate.isNotEmpty) 'birthDate': birthDate,
         if (agreedPageVersionIds.isNotEmpty)

@@ -195,7 +195,10 @@ class PubliraApp extends StatefulWidget {
       auth: auth,
       providerSignIn:
           providerSignIn ??
-          NativeProviderSignIn(googleIosClientId: resolved.googleIosClientId),
+          NativeProviderSignIn(
+            googleIosClientId: resolved.googleIosClientId,
+            tenantHost: resolved.tenantHost,
+          ),
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
       contentViews: HttpContentViewRepository(

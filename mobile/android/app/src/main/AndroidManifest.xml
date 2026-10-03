@@ -94,6 +94,21 @@
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/announcements"/>
             </intent-filter>
         </activity>
+        <!-- Where Sign in with Apple's web flow returns to: the tenant's site
+             redirects Apple's answer to intent://callback with this scheme
+             and the application ID, and the plugin hands it to the sign-in
+             waiting for it. -->
+        <activity
+            android:name="com.aboutyou.dart_packages.sign_in_with_apple.SignInWithAppleCallback"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="signinwithapple"/>
+                <data android:path="callback"/>
+            </intent-filter>
+        </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

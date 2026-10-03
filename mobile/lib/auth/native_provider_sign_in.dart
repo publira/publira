@@ -12,11 +12,17 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// [ProviderSignIn] through Sign in with Apple and Google Sign-In.
 class NativeProviderSignIn implements ProviderSignIn {
-  NativeProviderSignIn({required this.googleIosClientId});
+  NativeProviderSignIn({
+    required this.googleIosClientId,
+    required this.tenantHost,
+  });
 
   /// The iOS client whose URL scheme this build registered, empty for a build
   /// that registered none.
   final String googleIosClientId;
+
+  /// The tenant's site, which Apple's web flow on Android returns through.
+  final String tenantHost;
 
   /// This app's bundle identifier or application ID, read once.
   late final Future<String> _bundleIdentifier = PackageInfo.fromPlatform().then(
@@ -39,12 +45,22 @@ class NativeProviderSignIn implements ProviderSignIn {
   ) {
     final nonce = _newNonce();
     return switch (provider) {
-      IdentityProvider.apple => _signInWithApple(nonce),
+      IdentityProvider.apple => _signInWithApple(nonce, providers),
       IdentityProvider.google => _signInWithGoogle(nonce, providers),
     };
   }
 
-  Future<ProviderCredential> _signInWithApple(String nonce) async {
+  /// Native on iOS. On Android it is Apple's web flow in a Custom Tab, with
+  /// the tenant's Services ID, returning through the storefront; `state`
+  /// names this app, which is how the storefront knows the `dev` flavor from
+  /// the store build.
+  Future<ProviderCredential> _signInWithApple(
+    String nonce,
+    SignInProviders providers,
+  ) async {
+    final redirectUri = defaultTargetPlatform == TargetPlatform.android
+        ? appleAndroidRedirectUri(tenantHost)
+        : null;
     final AuthorizationCredentialAppleID credential;
     try {
       credential = await SignInWithApple.getAppleIDCredential(
@@ -53,6 +69,13 @@ class NativeProviderSignIn implements ProviderSignIn {
           AppleIDAuthorizationScopes.fullName,
         ],
         nonce: sha256.convert(utf8.encode(nonce)).toString(),
+        webAuthenticationOptions: redirectUri == null
+            ? null
+            : WebAuthenticationOptions(
+                clientId: providers.appleServicesId,
+                redirectUri: redirectUri,
+              ),
+        state: redirectUri == null ? null : await _bundleIdentifier,
       );
     } on SignInWithAppleAuthorizationException catch (error) {
       if (error.code == AuthorizationErrorCode.canceled) {
@@ -71,6 +94,7 @@ class NativeProviderSignIn implements ProviderSignIn {
       idToken: idToken,
       nonce: nonce,
       authorizationCode: credential.authorizationCode,
+      redirectUri: redirectUri?.toString() ?? '',
       name: [credential.givenName, credential.familyName]
           .map((part) => part?.trim() ?? '')
           .where((part) => part.isNotEmpty)

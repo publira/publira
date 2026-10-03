@@ -686,6 +686,11 @@ class ConnectFixtureServer {
   /// tenant's iOS app. `null` is a tenant with no iOS app, which it omits.
   String? iosAppBundleIdentifier;
 
+  /// The application ID `GetTenantMobileAppAssociation` names for the
+  /// tenant's Android app. `null` is a tenant with no Android app, which it
+  /// omits.
+  String? androidApplicationId;
+
   /// The ID tokens a provider has issued, keyed by the token itself, which
   /// `LoginWithIdToken`, `RequestEmailChange`, and `DeleteMe` accept for the
   /// nonce they carry.
@@ -1284,6 +1289,11 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/GetTenantMobileAppAssociation')) {
       await _write(request, tenantStatus, {
+        if (tenantStatus == HttpStatus.ok && androidApplicationId != null)
+          'android': {
+            'applicationId': androidApplicationId,
+            'sha256CertFingerprints': <String>[],
+          },
         if (tenantStatus == HttpStatus.ok && iosAppBundleIdentifier != null)
           'ios': {
             'teamId': 'ABCDE12345',

@@ -33,20 +33,28 @@ class SignInProviders {
   const SignInProviders({
     this.apple = false,
     this.appleBundleIdentifier = '',
+    this.appleServicesId = '',
+    this.androidApplicationId = '',
     this.google,
   });
 
-  /// Read from the `GetTenant` body [tenant], with the iOS bundle identifier
-  /// [appleBundleIdentifier] Apple's tokens are accepted for.
+  /// Read from the `GetTenant` body [tenant], with the apps
+  /// `GetTenantMobileAppAssociation` names: the iOS bundle identifier
+  /// [appleBundleIdentifier] Apple's tokens are accepted for, and the Android
+  /// [androidApplicationId] the storefront hands Apple's answer back to.
   factory SignInProviders.fromTenant(
     Map<String, Object?> tenant, {
     String appleBundleIdentifier = '',
+    String androidApplicationId = '',
   }) {
+    final apple = tenant['appleSignIn'];
     final google = tenant['googleSignIn'];
     return SignInProviders(
       // protojson sends an enabled provider with no field set as `{}`.
-      apple: tenant['appleSignIn'] is Map,
+      apple: apple is Map,
       appleBundleIdentifier: appleBundleIdentifier,
+      appleServicesId: apple is Map ? _trimmed(apple['servicesId']) : '',
+      androidApplicationId: androidApplicationId,
       google: google is Map
           ? GoogleSignInClients(
               webClientId: _trimmed(google['webClientId']),
@@ -58,14 +66,23 @@ class SignInProviders {
 
   static const none = SignInProviders();
 
-  /// Whether the tenant signs readers in with Apple. The iOS app signs in
-  /// with its own bundle identifier, so no client ID comes with it.
+  /// Whether the tenant signs readers in with Apple.
   final bool apple;
 
   /// The bundle identifier of the tenant's iOS app, as
   /// `GetTenantMobileAppAssociation` names it, which is the only app an Apple
   /// token is accepted from. Empty where the tenant names none.
   final String appleBundleIdentifier;
+
+  /// The Services ID the storefront and the Android app run Apple's web flow
+  /// with, empty where only the iOS app signs in with Apple.
+  final String appleServicesId;
+
+  /// The application ID of the tenant's Android app, as
+  /// `GetTenantMobileAppAssociation` names it, which is the only app the
+  /// storefront hands Apple's answer back to. Empty where the tenant names
+  /// none.
+  final String androidApplicationId;
 
   final GoogleSignInClients? google;
 
@@ -76,10 +93,18 @@ class SignInProviders {
       other is SignInProviders &&
       other.apple == apple &&
       other.appleBundleIdentifier == appleBundleIdentifier &&
+      other.appleServicesId == appleServicesId &&
+      other.androidApplicationId == androidApplicationId &&
       other.google == google;
 
   @override
-  int get hashCode => Object.hash(apple, appleBundleIdentifier, google);
+  int get hashCode => Object.hash(
+    apple,
+    appleBundleIdentifier,
+    appleServicesId,
+    androidApplicationId,
+    google,
+  );
 }
 
 /// The Google OAuth clients the tenant signs readers in through. Each is
