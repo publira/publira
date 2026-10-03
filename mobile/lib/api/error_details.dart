@@ -15,6 +15,10 @@ const _errorInfoDomain = 'publira';
 /// purchase with when the reader is credited on the episode.
 const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
 
+/// The ErrorInfo reason the API refuses to delete an account with when it is
+/// the tenant's last active tenant admin.
+const lastTenantAdminReason = 'LAST_TENANT_ADMIN';
+
 /// The fields the `google.rpc.BadRequest` details of a Connect error body's
 /// `details` name.
 ///

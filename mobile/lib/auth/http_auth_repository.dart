@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/error_details.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -773,6 +774,9 @@ class HttpAuthRepository implements AuthRepository {
         AuthFailureKind.rateLimited,
         message: error.message,
       ),
+      'failed_precondition'
+          when error.reasons.contains(lastTenantAdminReason) =>
+        AuthFailure(AuthFailureKind.lastTenantAdmin, message: error.message),
       _ => AuthFailure(AuthFailureKind.unexpected, message: error.message),
     };
   }
