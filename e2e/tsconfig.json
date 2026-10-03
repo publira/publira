@@ -8,6 +8,7 @@
   },
   "include": [
     "playwright.config.ts",
+    "routing/**/*.ts",
     "scripts/**/*.ts",
     "src/**/*.ts",
     "tests/**/*.ts"

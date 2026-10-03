@@ -7,24 +7,26 @@
 # backend addresses use — infra/proxy/nginx/upstreams.conf and the Caddyfile
 # defaults alike.
 #
-# `PUBLIRA_ROUTING_ECHO_PY` is exported by scripts/lib.sh; the path is absolute so it
+# `PUBLIRA_ROUTING_ECHO` is exported by scripts/lib.sh; the path is absolute so it
 # resolves the same way here as it does under the Dev Container overlay, where
 # relative paths belong to the repository root.
 
 services:
   app:
-    # Pin the tag + digest the same way .devcontainer/compose.yaml does.
-    image: python:3.14-alpine@sha256:2e740b2c28a426e74f11396c05e38afb3191acced75045b8d62df573c1dc8ce8
-    command: ["python", "/echo.py"]
+    # Pin the tag + digest the same way .devcontainer/compose.yaml does. The
+    # Node.js version is the one `devEngines.runtime.version` in package.json
+    # names, so echo.ts runs on the runtime the rest of the tooling does.
+    image: node:24.21.0-alpine3.24@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+    command: ["node", "/echo.ts"]
     volumes:
-      - ${PUBLIRA_ROUTING_ECHO_PY}:/echo.py:ro
+      - ${PUBLIRA_ROUTING_ECHO}:/echo.ts:ro
     healthcheck:
       test:
         [
           "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/')",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then((res) => process.exit(res.ok ? 0 : 1), () => process.exit(1))",
         ]
       interval: 2s
       timeout: 3s

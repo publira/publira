@@ -2,7 +2,7 @@
 # Shared helpers for the edge routing check.
 #
 # One run puts a single proxy — Traefik, nginx, or Caddy — in front of
-# echo.py, which answers on the six backend ports, so each probe can assert
+# echo.ts, which answers on the four backend ports, so each probe can assert
 # the backend and the path the edge forwarded. The configuration under test is
 # always the repository's own, in infra/proxy/<proxy>.
 # shellcheck shell=bash disable=SC2034 # read by scripts that source this file
@@ -35,7 +35,7 @@ export COMPOSE_PROJECT_NAME="${PUBLIRA_ROUTING_PROJECT_NAME:-publira-routing-${P
 # Absolute: under the Dev Container overlay the first `-f` is the root
 # compose.yaml, so a relative volume would resolve against the repository
 # root, not this directory.
-export PUBLIRA_ROUTING_ECHO_PY="${PUBLIRA_ROUTING_DIR}/echo.py"
+export PUBLIRA_ROUTING_ECHO="${PUBLIRA_ROUTING_DIR}/echo.ts"
 
 # Host ports the compose files publish. Offset from the Dev Container forwards
 # (3080 / 8080) so a local run can coexist with `task dev`.
@@ -120,7 +120,7 @@ PUBLIRA_ROUTING_MIDDLEWARES=(
   strip-trace-context
 )
 
-# W3C Trace Context a caller could forge. echo.py reports each of these
+# W3C Trace Context a caller could forge. echo.ts reports each of these
 # headers back, so a probe can assert the backend saw none of them.
 PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
   "traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
@@ -128,7 +128,7 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
   "baggage: publira=forged"
 )
 
-# Forwarded headers a caller could send ahead of the edge. echo.py reports
+# Forwarded headers a caller could send ahead of the edge. echo.ts reports
 # each of them back, so a probe can assert the edge replaced the value rather
 # than passing the caller's through: the client IP a backend records is the
 # first address in X-Forwarded-For, and the CSRF origin check reads the other

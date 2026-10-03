@@ -19,8 +19,8 @@ for port in "${PUBLIRA_ROUTING_PUBLISHED_PORTS[@]}"; do
   fi
 done
 
-if [[ ! -f "${PUBLIRA_ROUTING_ECHO_PY}" ]]; then
-  routing_fail "echo server missing: ${PUBLIRA_ROUTING_ECHO_PY}"
+if [[ ! -f "${PUBLIRA_ROUTING_ECHO}" ]]; then
+  routing_fail "echo server missing: ${PUBLIRA_ROUTING_ECHO}"
 fi
 
 # The Traefik run is the Dev Container's own edge, so it starts that service by
