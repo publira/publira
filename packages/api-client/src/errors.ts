@@ -12,6 +12,7 @@ export {
 
 /** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
 export const RPC_ERROR_REASON = {
+  accountHasStaffHistory: "ACCOUNT_HAS_STAFF_HISTORY",
   archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
@@ -20,6 +21,7 @@ export const RPC_ERROR_REASON = {
   lastTenantAdmin: "LAST_TENANT_ADMIN",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
+  ownAccount: "OWN_ACCOUNT",
   readerCreditedOnEpisode: "READER_CREDITED_ON_EPISODE",
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
   smtpTestConnection: "SMTP_TEST_CONNECTION",

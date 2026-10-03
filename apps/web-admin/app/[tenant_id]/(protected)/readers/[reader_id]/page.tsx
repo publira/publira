@@ -45,6 +45,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ReaderAccount } from "./_components/reader-account";
 import { ReaderComments } from "./_components/reader-comments";
+import { readerModerationRefusals } from "./_lib/moderation-refusals";
 
 type ReaderDetailPageProps = PageProps<"/[tenant_id]/readers/[reader_id]">;
 
@@ -97,8 +98,8 @@ const ReaderAccountContent = async ({
 
   if (!result.ok) {
     if (result.notFound) {
-      // Missing, a staff account, or another tenant's reader — never told
-      // apart. Renders `(protected)/not-found.tsx` inside the console chrome.
+      // Missing or another tenant's reader — never told apart. Renders
+      // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
 
@@ -125,10 +126,17 @@ const ReaderAccountContent = async ({
     );
   }
 
+  const refusals = await readerModerationRefusals(
+    tenantId,
+    locale,
+    result.reader
+  );
+
   return (
     <ReaderAccount
       locale={locale}
       reader={result.reader}
+      refusals={refusals}
       tenantId={tenantId}
       timeZone={timeZone}
     />

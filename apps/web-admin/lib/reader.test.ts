@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -41,6 +45,11 @@ vi.mock("./api", () => ({
 
 const READER_ID = "01920000-0000-7000-8000-000000000001";
 
+const reasonError = (code: Code, reason: string) =>
+  new ConnectError("refused", code, undefined, [
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+  ]);
+
 const adminReader = {
   birthDate: "1990-04-02",
   createdAt: "2026-06-01T00:00:00Z",
@@ -49,6 +58,7 @@ const adminReader = {
   id: READER_ID,
   name: "Reader One",
   publicId: "READER00001",
+  role: "",
   status: "suspended",
 };
 
@@ -95,10 +105,22 @@ describe("reader lib", () => {
           id: READER_ID,
           name: "Reader One",
           publicId: "READER00001",
+          role: "",
           status: "suspended",
         },
       ],
     });
+  });
+
+  it("carries the console role a staff account holds", async () => {
+    mockListReaders.mockResolvedValue({
+      readers: [{ ...adminReader, role: "tenant_admin" }],
+    });
+
+    const { listReaders } = await import("./reader");
+    const result = await listReaders("TENANT001", "en");
+
+    expect(result.readers[0]?.role).toBe("tenant_admin");
   });
 
   it("reads a tenant with no readers as an empty page rather than a failure", async () => {
@@ -181,6 +203,7 @@ describe("reader lib", () => {
         id: READER_ID,
         name: "Reader One",
         publicId: "READER00001",
+        role: "",
         status: "suspended",
       },
     });
@@ -261,6 +284,53 @@ describe("reader lib", () => {
     );
 
     expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it.each([
+    [
+      "OWN_ACCOUNT",
+      "This is the account you are signed in with, so it cannot be suspended or deleted here.",
+    ],
+    [
+      "LAST_TENANT_ADMIN",
+      "This account is the tenant's last active tenant admin. Make someone else a tenant admin before suspending or deleting it.",
+    ],
+    [
+      "ACCOUNT_HAS_STAFF_HISTORY",
+      "This account cannot be deleted while the audit log or page history still records what it did.",
+    ],
+  ])(
+    "words a refusal for %s as the guard behind it",
+    async (reason, message) => {
+      mockDeleteReader.mockRejectedValue(
+        reasonError(Code.FailedPrecondition, reason)
+      );
+
+      const { moderateReader } = await import("./reader");
+      const result = await moderateReader(
+        { action: "delete", readerId: READER_ID, tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(result).toEqual({ message, ok: false });
+    }
+  );
+
+  it("keeps the operation's own wording for another failed precondition", async () => {
+    mockSuspendReader.mockRejectedValue(
+      new ConnectError("refused", Code.FailedPrecondition)
+    );
+
+    const { moderateReader } = await import("./reader");
+    const result = await moderateReader(
+      { action: "suspend", readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "Could not suspend the reader. Please try again later.",
+      ok: false,
+    });
   });
 
   it("rethrows a rejected session so the Action can send staff to sign in", async () => {

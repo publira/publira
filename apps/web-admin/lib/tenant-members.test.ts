@@ -101,6 +101,7 @@ describe("listTenantMembers", () => {
           role: "tenant_admin",
           status: "active",
           userId: "USER001",
+          userPublicId: "ADMIN000001",
         },
       ],
       nextToken: "next",
@@ -118,6 +119,7 @@ describe("listTenantMembers", () => {
           createdAt: "2026-09-01T00:00:00Z",
           email: "admin@example.com",
           name: "Avery Admin",
+          publicId: "ADMIN000001",
           role: "tenant_admin",
           status: "active",
           userId: "USER001",
@@ -171,6 +173,89 @@ describe("listTenantMembers", () => {
       expire: 0,
       revalidate: 0,
       stale: 0,
+    });
+  });
+});
+
+const rawMember = (userId: string, role: string, status = "active") => ({
+  email: `${userId.toLowerCase()}@example.com`,
+  role,
+  status,
+  userId,
+});
+
+describe("hasOtherActiveTenantAdmin", () => {
+  it("finds another active tenant admin and stops reading there", async () => {
+    mockListMembers.mockResolvedValueOnce({
+      members: [
+        rawMember("USER001", "tenant_admin"),
+        rawMember("USER002", "tenant_admin"),
+      ],
+      nextToken: "next",
+    });
+    const { hasOtherActiveTenantAdmin } = await import("./tenant-members");
+
+    expect(
+      await hasOtherActiveTenantAdmin("TENANT001", "en", "USER001")
+    ).toEqual({ ok: true, value: true });
+    expect(mockListMembers).toHaveBeenCalledOnce();
+    expect(mockListMembers).toHaveBeenCalledWith(
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "" },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("pages on past members who are not active administrators", async () => {
+    mockListMembers
+      .mockResolvedValueOnce({
+        members: [
+          rawMember("USER001", "tenant_admin"),
+          rawMember("USER002", "tenant_editor"),
+          rawMember("USER003", "tenant_admin", "suspended"),
+        ],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        members: [rawMember("USER004", "tenant_admin")],
+        previousToken: "page-1",
+      });
+    const { hasOtherActiveTenantAdmin } = await import("./tenant-members");
+
+    expect(
+      await hasOtherActiveTenantAdmin("TENANT001", "en", "USER001")
+    ).toEqual({ ok: true, value: true });
+    expect(mockListMembers).toHaveBeenLastCalledWith(
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "page-2" },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("answers no once the last page holds no other active administrator", async () => {
+    mockListMembers.mockResolvedValueOnce({
+      members: [
+        rawMember("USER001", "tenant_admin"),
+        rawMember("USER002", "tenant_auditor"),
+      ],
+    });
+    const { hasOtherActiveTenantAdmin } = await import("./tenant-members");
+
+    expect(
+      await hasOtherActiveTenantAdmin("TENANT001", "en", "USER001")
+    ).toEqual({ ok: true, value: false });
+  });
+
+  it("reports a rejected session instead of an answer", async () => {
+    mockListMembers.mockRejectedValueOnce(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+    const { hasOtherActiveTenantAdmin } = await import("./tenant-members");
+
+    expect(
+      await hasOtherActiveTenantAdmin("TENANT001", "en", "USER001")
+    ).toEqual({
+      message: expect.stringMatching(/./u),
+      ok: false,
+      requiresSignIn: true,
     });
   });
 });

@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { StatusChip } from "@publira/ui-components/badge";
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 import {
   Identifier,
   IdentifierCopy,
@@ -17,18 +17,21 @@ import { Suspense } from "react";
 import {
   AdminSection,
   AdminSectionActions,
+  AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantRoleLabel } from "#lib/role-labels";
 
 import {
   ReaderStatusMessage,
   readerStatusTone,
 } from "../../_components/reader-status-label";
 import type { ReaderDetail } from "../../reader-types";
+import type { ReaderModerationRefusals } from "../_lib/moderation-refusals";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 import { DeleteReaderButton } from "./delete-reader-button";
 import { SuspendReaderButton } from "./suspend-reader-button";
@@ -37,6 +40,7 @@ import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 interface ReaderAccountProps {
   locale: Locale;
   reader: ReaderDetail;
+  refusals: ReaderModerationRefusals;
   tenantId: string;
   timeZone: string;
 }
@@ -47,10 +51,13 @@ const valueClassName = cn("min-w-0 text-sm");
 export const ReaderAccount = async ({
   locale,
   reader,
+  refusals,
   tenantId,
   timeZone,
 }: ReaderAccountProps) => {
   const t = await getMessagesFor(locale);
+  // Suspend and delete share both guards, so one flag hides the two buttons.
+  const refused = refusals.ownAccount || refusals.lastTenantAdmin;
 
   return (
     <AdminSection>
@@ -61,6 +68,19 @@ export const ReaderAccount = async ({
               <Message message="admin.readers.account_title" />
             </Suspense>
           </AdminSectionTitle>
+          {refused ? (
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                {refusals.ownAccount ? (
+                  <Message message="admin.readers.own_account" />
+                ) : null}
+                {refusals.ownAccount && refusals.lastTenantAdmin ? " " : null}
+                {refusals.lastTenantAdmin ? (
+                  <Message message="admin.readers.last_tenant_admin" />
+                ) : null}
+              </Suspense>
+            </AdminSectionDescription>
+          ) : null}
         </AdminSectionHeading>
         <AdminSectionActions>
           {reader.status === "suspended" ? (
@@ -69,20 +89,23 @@ export const ReaderAccount = async ({
               readerId={reader.id}
               tenantId={tenantId}
             />
-          ) : (
+          ) : null}
+          {reader.status !== "suspended" && !refused ? (
             <SuspendReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}
               readerId={reader.id}
               tenantId={tenantId}
             />
+          ) : null}
+          {refused ? null : (
+            <DeleteReaderButton
+              name={reader.name || reader.email}
+              publicId={reader.publicId}
+              readerId={reader.id}
+              tenantId={tenantId}
+            />
           )}
-          <DeleteReaderButton
-            name={reader.name || reader.email}
-            publicId={reader.publicId}
-            readerId={reader.id}
-            tenantId={tenantId}
-          />
         </AdminSectionActions>
       </AdminSectionHeader>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
@@ -128,12 +151,17 @@ export const ReaderAccount = async ({
             <Message message="admin.readers.columns.status" />
           </Suspense>
         </dt>
-        <dd className={valueClassName}>
+        <dd className={cn(valueClassName, "flex flex-wrap items-center gap-2")}>
           <StatusChip status={readerStatusTone(reader.status)}>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <ReaderStatusMessage status={reader.status} />
             </Suspense>
           </StatusChip>
+          {reader.role ? (
+            <Badge tone="info">
+              {await getTenantRoleLabel(reader.role, locale)}
+            </Badge>
+          ) : null}
         </dd>
 
         <dt className={labelClassName}>
