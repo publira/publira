@@ -208,11 +208,14 @@ install() {
 attach() {
   local jdk
   # The JDK install_jdk left. One Renovate has since moved past still builds,
-  # and the next full run replaces it.
-  jdk="$(find "$(dirname "${JDK_HOME}")" -maxdepth 1 -name 'temurin-*' -print -quit 2> /dev/null || true)"
-  if [[ -n "${jdk}" ]]; then
-    use_jdk "${jdk}"
-  fi
+  # and the next full run replaces it. A directory without bin/java is an
+  # extraction that was interrupted, and Flutter would hand it to Gradle.
+  for jdk in "${JDK_HOME}" "$(dirname "${JDK_HOME}")"/temurin-*; do
+    if [[ -x "${jdk}/bin/java" ]]; then
+      use_jdk "${jdk}"
+      break
+    fi
+  done
   if [[ -x "${ANDROID_HOME}/platform-tools/adb" ]]; then
     link_adb
   fi
