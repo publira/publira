@@ -41,29 +41,56 @@ const readAndroidCallbackForm = async (
   }
 };
 
+/** The `dev` flavor of the tenant's app, which a store build never is. */
+const devApplicationId = (applicationId: string) => `${applicationId}.dev`;
+
 /**
  * The application IDs this storefront hands an answer back to: the tenant's
- * app, and where the storefront runs in development the `dev` flavor of it as
- * well, which a store build never is.
+ * app, and where the storefront runs in development its `dev` flavor as well.
+ * An intent's package is not checked against a signature, so in production a
+ * `dev` flavor is whatever app claims that name, and is never handed a token.
  */
 const acceptedApplicationIds = (applicationId: string): string[] =>
   process.env.NODE_ENV === "production"
     ? [applicationId]
-    : [applicationId, `${applicationId}.dev`];
+    : [applicationId, devApplicationId(applicationId)];
 
 /**
- * The Android intent `sign_in_with_apple` waits for, carrying the fields Apple
- * posted as the query its callback activity parses.
+ * Sent in place of Apple's answer to a `dev` flavor a production storefront
+ * does not hand one to, so the app reports a failed sign-in instead of
+ * leaving the reader on a blank tab.
  */
-const appIntentUrl = (applicationId: string, form: AndroidCallbackForm) => {
+const DEV_BUILD_REFUSED = "dev_build_refused";
+
+/**
+ * The Android intent `sign_in_with_apple` waits for, carrying `fields` as the
+ * query its callback activity parses.
+ */
+const appIntentUrl = (
+  applicationId: string,
+  fields: Record<string, string | undefined>
+) => {
   const query = new URLSearchParams();
-  for (const [name, value] of Object.entries(form)) {
+  for (const [name, value] of Object.entries(fields)) {
     if (value !== undefined) {
       query.set(name, value);
     }
   }
   return `intent://callback?${query.toString()}#Intent;package=${applicationId};scheme=signinwithapple;end`;
 };
+
+/**
+ * A redirect the browser follows as a navigation, which is what opens an
+ * intent; a 303 makes it a GET rather than a second post.
+ */
+const openApp = (
+  applicationId: string,
+  fields: Record<string, string | undefined>
+) =>
+  new Response(null, {
+    headers: { Location: appIntentUrl(applicationId, fields) },
+    status: 303,
+  });
 
 /**
  * Where Apple posts the Android app's sign-in back to. Android has no native
@@ -105,14 +132,17 @@ export const POST = async (
   }
   // Only an app of this tenant's is handed the answer, whatever a forged post
   // names.
-  if (!acceptedApplicationIds(applicationId).includes(form.state)) {
-    return new Response(null, { status: 400 });
+  if (acceptedApplicationIds(applicationId).includes(form.state)) {
+    return openApp(form.state, form);
   }
-
-  // A redirect the browser follows as a navigation, which is what opens an
-  // intent; a 303 makes it a GET rather than a second post.
-  return new Response(null, {
-    headers: { Location: appIntentUrl(form.state, form) },
-    status: 303,
-  });
+  // A `dev` build pointed at a production storefront offers Apple too, since
+  // it cannot tell how the storefront runs; it is told the sign-in failed,
+  // with nothing of Apple's answer.
+  if (form.state === devApplicationId(applicationId)) {
+    return openApp(form.state, {
+      error: DEV_BUILD_REFUSED,
+      state: form.state,
+    });
+  }
+  return new Response(null, { status: 400 });
 };

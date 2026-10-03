@@ -119,17 +119,23 @@ describe("POST /api/v1/auth/apple/callback/android", () => {
     );
   });
 
-  it("refuses the dev flavor on a production storefront", async () => {
+  it("tells the dev flavor on a production storefront that it failed, with nothing of Apple's answer", async () => {
     vi.stubEnv("NODE_ENV", "production");
 
     const response = await postAnswer({
       code: "apple-code",
       id_token: "apple-id-token",
       state: `${APPLICATION_ID}.dev`,
+      user: JSON.stringify({ email: "reader@example.com" }),
     });
 
-    expect(response.status).toBe(400);
-    expect(response.headers.get("Location")).toBeNull();
+    expect(response.status).toBe(303);
+    const { extras, query } = intentQuery(response);
+    expect(extras).toContain(`package=${APPLICATION_ID}.dev`);
+    expect(query).toStrictEqual({
+      error: "dev_build_refused",
+      state: `${APPLICATION_ID}.dev`,
+    });
   });
 
   it("refuses an answer for an app the tenant does not name", async () => {
