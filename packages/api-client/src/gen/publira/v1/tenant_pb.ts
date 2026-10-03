@@ -293,8 +293,8 @@ export const GetTenantResponseSchema: GenMessage<GetTenantResponse> = /*@__PURE_
  */
 export type TenantAppleSignIn = Message<"publira.v1.TenantAppleSignIn"> & {
   /**
-   * The Services ID the storefront signs in with. Empty where only the iOS app
-   * may.
+   * The Services ID the storefront and the Android app sign in with. Empty
+   * where only the iOS app may.
    *
    * @generated from field: string services_id = 1;
    */

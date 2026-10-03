@@ -105,8 +105,10 @@ export type LoginWithIdTokenRequest = Message<"publira.v1.LoginWithIdTokenReques
   authorizationCode: string;
 
   /**
-   * The redirect_uri of the authorization request the storefront made, which
-   * Apple requires to exchange a code issued to the web. Empty from the app.
+   * The redirect_uri of Apple's web flow the code was issued through, which
+   * Apple requires to exchange it: the storefront's own callback, or the one
+   * the Android app returns through, since Android has no native Sign in with
+   * Apple. Empty from the iOS app.
    *
    * @generated from field: string redirect_uri = 6;
    */
