@@ -123,10 +123,29 @@ docker build -f infra/docker/node/Dockerfile \
 | --- | --- |
 | Build | Debian 13 (trixie) image with the full toolchain (`node:*-trixie-slim` / `golang:*-trixie`) |
 | Runtime | distroless on Debian 13 (Web / Node: `nodejs24-debian13:nonroot`; publiractl: `static-debian13:nonroot`). The server image alone uses `debian:13.*-slim` plus `libvips42t64` (CGO, for Manael). The build and runtime stages of an image always share a Debian release. |
-| Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
+| Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate), with a tag that names the full version and the OS release. See [Image tags](#image-tags). |
 | Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the form [`web/Dockerfile`](./web/Dockerfile) uses |
 
 Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) to reduce dependencies.
+
+### Image tags
+
+Every container image in the repository — each `FROM` line and `# syntax=` frontend in a Dockerfile, and each `image:` in a compose file, wherever that file lives — is written as `tag@sha256:…`. The digest is what pins the image; the tag says what that digest is, by naming the image's full version and its OS release, so a Renovate pull request shows the version it moves from and to in its diff and its title.
+
+| Write | Not | Why |
+| --- | --- | --- |
+| `node:24.21.0-trixie-slim` | `node:24-trixie-slim` | A line-only tag moves to a new patch release with only the digest changing in the diff |
+| `debian:13.7-slim` | `debian:trixie-slim` | The same, for the point release |
+| `valkey/valkey:9.1.2-alpine3.24` | `valkey/valkey:9.1.2-alpine` | A bare `-alpine` follows whichever Alpine release the publisher builds on, so a digest-only update could move musl and every package |
+
+The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`, the runtime contributors run, and Renovate raises that version and the `node` image tags on one branch.
+
+Two publishers offer nothing more to name:
+
+- **distroless** publishes no versioned tags. The image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias), and the digest is the only further identifier.
+- **caddy** publishes no Alpine-versioned tags, so `caddy:<version>-alpine` keeps a bare `-alpine`.
+
+Renovate's Docker versioning treats everything after the version (`-alpine3.24`, `-trixie-slim`) as a compatibility marker and never changes it. Its pull requests move the version and the digest within the OS release the tag names, so moving to a new OS release — Alpine 3.24 to 3.25, Debian 13 to 14 — is an edit made by hand. An image staying on an older OS release after a newer one has shipped is that behaviour, not a missed update.
 
 ### Main runtime environment variables (reference)
 
@@ -278,7 +297,7 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
 ## Change checklist
 
 - [ ] For a new role, added `infra/docker/<role>/Dockerfile` and updated this README's table, decision flow, and build examples
-- [ ] Pinned base-image digests and made tool-version `ARG`s trackable by Renovate
+- [ ] Pinned base-image digests under tags that name the full version and the OS release (see [Image tags](#image-tags)), and made tool-version `ARG`s trackable by Renovate
 - [ ] Verified the build from the root with `docker build -f … .` and `task docker:build:*`
 - [ ] Passed representative verification with `task docker:verify` (and `verify:full` when needed)
 - [ ] For a new target, updated this README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
