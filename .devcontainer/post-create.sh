@@ -10,5 +10,17 @@ sudo chown -R vscode:vscode \
   /home/vscode/.grok \
   /home/vscode/.local
 
+# A new volume is created owned by root, and everything inside these is written
+# by vscode, so only the mount points need it. Recursing would walk the 100k-odd
+# files of the Gradle caches on every rebuild.
+sudo chown vscode:vscode \
+  /home/vscode/.android \
+  /home/vscode/.gradle \
+  /home/vscode/Android
+
+# The Android SDK in those volumes outlives the container; the settings that
+# point at it do not.
+bash mobile/scripts/android-install.sh --attach
+
 task setup
 task db:setup
