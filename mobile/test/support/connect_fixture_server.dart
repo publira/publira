@@ -739,6 +739,16 @@ class ConnectFixtureServer {
   /// the column is unset.
   String memberBirthDate;
 
+  /// Whether the member takes notification email, which
+  /// `GetNotificationSettings` answers and `UpdateNotificationSettings`
+  /// writes. On by default, as the API answers an account that has saved no
+  /// setting.
+  var memberEmailNotifications = true;
+
+  /// The same setting for the account [signedUpAccessToken] stands for, which
+  /// starts on as well.
+  var _signedUpEmailNotifications = true;
+
   /// The tenant's age rule and display zone, as `GetTenant` answers them.
   String ageVerification;
   String tenantTimeZone;
@@ -1146,6 +1156,33 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/UpdateMe')) {
       await _writeUpdateMe(request, body);
+      return;
+    }
+
+    if (path.endsWith('/GetNotificationSettings') ||
+        path.endsWith('/UpdateNotificationSettings')) {
+      final isSignedUp =
+          _signedUpSession != null &&
+          request.headers.value(HttpHeaders.authorizationHeader) ==
+              'Bearer $signedUpAccessToken';
+      if (!isSignedUp && !await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (path.endsWith('/UpdateNotificationSettings')) {
+        // protojson omits a false, so an absent field turns the mail off.
+        final enabled = body['emailNotificationsEnabled'] == true;
+        if (isSignedUp) {
+          _signedUpEmailNotifications = enabled;
+        } else {
+          memberEmailNotifications = enabled;
+        }
+      }
+      final enabled = isSignedUp
+          ? _signedUpEmailNotifications
+          : memberEmailNotifications;
+      await _write(request, HttpStatus.ok, {
+        if (enabled) 'emailNotificationsEnabled': true,
+      });
       return;
     }
 

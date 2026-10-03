@@ -499,7 +499,12 @@
         "routes": ["[locale]/(site)/settings/notifications"],
         "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
       },
-      "exception": "Not in the app yet: #2828."
+      "mobile": {
+        "routes": ["/account"],
+        "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
+      },
+      "sharedRecord": true,
+      "tests": ["the app and the site share the email notification setting"]
     },
     {
       "name": "Viewer preferences",

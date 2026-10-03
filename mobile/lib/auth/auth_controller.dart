@@ -255,6 +255,31 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.readEmail(session));
   }
 
+  /// Whether the signed-in account takes notification email, or `null` when
+  /// nobody is signed in.
+  ///
+  /// Throws [AuthFailure], and signs out on a token the API has stopped
+  /// accepting, the way [readReaderAge] does.
+  Future<bool?> readEmailNotifications() async {
+    final session = _session;
+    if (session == null) {
+      return null;
+    }
+    return _whileHeld(() => _repository.readEmailNotifications(session));
+  }
+
+  /// Turns notification email on or off for the signed-in account and returns
+  /// what it then holds.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<bool> updateEmailNotifications({required bool enabled}) async {
+    final session = _requireSession();
+    return _whileHeld(
+      () => _repository.updateEmailNotifications(session, enabled: enabled),
+    );
+  }
+
   /// Records [birthDate] on the signed-in account and returns the date it
   /// then holds.
   ///

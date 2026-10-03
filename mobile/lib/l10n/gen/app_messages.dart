@@ -182,6 +182,18 @@ abstract class AppMessages {
   /// `mobile.account.delete`
   String get accountDelete;
 
+  /// `mobile.account.email_notifications`
+  String get accountEmailNotifications;
+
+  /// `mobile.account.email_notifications_description`
+  String get accountEmailNotificationsDescription;
+
+  /// `mobile.account.email_notifications_load_failed`
+  String get accountEmailNotificationsLoadFailed;
+
+  /// `mobile.account.email_notifications_update_failed`
+  String get accountEmailNotificationsUpdateFailed;
+
   /// `mobile.account.linked_accounts`
   String get accountLinkedAccounts;
 
@@ -1835,6 +1847,26 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountDelete {
     return 'アカウントを削除';
+  }
+
+  @override
+  String get accountEmailNotifications {
+    return 'メール通知';
+  }
+
+  @override
+  String get accountEmailNotificationsDescription {
+    return '購読や重要なお知らせをメールで受信します。';
+  }
+
+  @override
+  String get accountEmailNotificationsLoadFailed {
+    return 'メール通知の設定を読み込めませんでした。';
+  }
+
+  @override
+  String get accountEmailNotificationsUpdateFailed {
+    return 'メール通知の設定を変更できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -4481,6 +4513,26 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get accountEmailNotifications {
+    return 'Email notifications';
+  }
+
+  @override
+  String get accountEmailNotificationsDescription {
+    return 'Receive subscription updates and important announcements by email.';
+  }
+
+  @override
+  String get accountEmailNotificationsLoadFailed {
+    return 'Could not load your email notification setting.';
+  }
+
+  @override
+  String get accountEmailNotificationsUpdateFailed {
+    return 'Could not change your email notification setting. Try again.';
+  }
+
+  @override
   String get accountLinkedAccounts {
     return 'Linked accounts';
   }
@@ -7121,6 +7173,26 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountDelete {
     return '계정 삭제';
+  }
+
+  @override
+  String get accountEmailNotifications {
+    return '이메일 알림';
+  }
+
+  @override
+  String get accountEmailNotificationsDescription {
+    return '구독 소식과 중요한 공지를 이메일로 받습니다.';
+  }
+
+  @override
+  String get accountEmailNotificationsLoadFailed {
+    return '이메일 알림 설정을 불러오지 못했습니다.';
+  }
+
+  @override
+  String get accountEmailNotificationsUpdateFailed {
+    return '이메일 알림 설정을 변경하지 못했습니다. 다시 시도해 주세요.';
   }
 
   @override
@@ -9767,6 +9839,26 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get accountEmailNotifications {
+    return '邮件通知';
+  }
+
+  @override
+  String get accountEmailNotificationsDescription {
+    return '通过邮件接收订阅更新和重要公告。';
+  }
+
+  @override
+  String get accountEmailNotificationsLoadFailed {
+    return '无法读取您的邮件通知设置。';
+  }
+
+  @override
+  String get accountEmailNotificationsUpdateFailed {
+    return '无法更改您的邮件通知设置。请重试。';
+  }
+
+  @override
   String get accountLinkedAccounts {
     return '关联账户';
   }
@@ -12407,6 +12499,26 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountDelete {
     return '刪除帳戶';
+  }
+
+  @override
+  String get accountEmailNotifications {
+    return '郵件通知';
+  }
+
+  @override
+  String get accountEmailNotificationsDescription {
+    return '透過電子郵件接收訂閱更新與重要公告。';
+  }
+
+  @override
+  String get accountEmailNotificationsLoadFailed {
+    return '無法讀取您的郵件通知設定。';
+  }
+
+  @override
+  String get accountEmailNotificationsUpdateFailed {
+    return '無法變更您的郵件通知設定。請重試。';
   }
 
   @override

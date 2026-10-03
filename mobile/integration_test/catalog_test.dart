@@ -997,10 +997,11 @@ void main() {
         await settleOnCatalog();
 
         await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
-        await settleOn(find.byKey(const ValueKey('account-sign-out')));
-        await tapReachable(
+        await settleOn(find.byKey(const ValueKey('account-name')));
+        await tapVisible(
           tester,
           find.byKey(const ValueKey('account-sign-out')),
+          scrollable: accountList(),
         );
         await settleOn(find.text('You are not signed in.'));
         await tapReachable(tester, find.byKey(const ValueKey('tab-home')));
@@ -1469,7 +1470,7 @@ void main() {
           );
           await pumpUntilRouteSettled(
             tester,
-            find.byKey(const ValueKey('account-sign-out')),
+            find.byKey(const ValueKey('account-change-password')),
           );
           expect(server.memberCurrentPassword, newPassword);
 
@@ -2250,6 +2251,44 @@ void main() {
       ];
     }
 
+    /// Whether [member] takes notification email, as `GetNotificationSettings`
+    /// answers it to the storefront's notification settings.
+    Future<bool> emailNotificationsAtApi(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      final body = await member.client.unary(
+        '/publira.v1.AuthService/GetNotificationSettings',
+        {
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+      // protojson omits a false.
+      return body['emailNotificationsEnabled'] == true;
+    }
+
+    /// Saves [enabled] as [member]'s notification email setting, the way the
+    /// storefront's notification settings save it.
+    Future<void> saveEmailNotificationsAtApi(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member, {
+      required bool enabled,
+    }) async {
+      final tenantId = await member.tenants.resolve();
+      await member.client.unary(
+        '/publira.v1.AuthService/UpdateNotificationSettings',
+        {
+          'tenant': {'tenantId': tenantId},
+          'emailNotificationsEnabled': enabled,
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+    }
+
     /// Whether the API holds the row [id] of `rows` in [procedure]'s first
     /// page as read for [member], or null when the page does not list it.
     Future<bool?> isReadAtApi(
@@ -2993,6 +3032,66 @@ void main() {
           tester,
           find.widgetWithText(AppBar, seriesTitle),
           timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
+    testApp('the app and the site share the email notification setting', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-email-notifications', () async {
+        final member = await signInSeedMember();
+        // The seed saves no setting, which the API answers as on, and the
+        // run leaves it there whichever way it ends.
+        addTearDown(() => saveEmailNotificationsAtApi(member, enabled: true));
+        // Turned off where the site turns it off, so the app has to read
+        // the account rather than show the default.
+        await saveEmailNotificationsAtApi(member, enabled: false);
+
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.account,
+          session: member.session,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-name')),
+          timeout: const Duration(seconds: 20),
+        );
+        final emailSwitch = find.byKey(
+          const ValueKey('account-email-notifications'),
+        );
+        await tester.scrollUntilVisible(
+          // The row is drawn as soon as the screen is, as a spinner until
+          // the setting has been read.
+          find.byWidgetPredicate(
+            (widget) => switch (widget.key) {
+              ValueKey<String>(:final value) => value.startsWith(
+                'account-email-notifications',
+              ),
+              _ => false,
+            },
+          ),
+          100,
+          scrollable: accountList(),
+        );
+        await pumpUntilFound(
+          tester,
+          emailSwitch,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(tester.widget<SwitchListTile>(emailSwitch).value, isFalse);
+
+        await tapVisible(tester, emailSwitch, scrollable: accountList());
+        await pumpUntilTrueAsync(
+          tester,
+          () => emailNotificationsAtApi(member),
+          description: 'the API to hold the setting the app saved',
+        );
+        expect(tester.widget<SwitchListTile>(emailSwitch).value, isTrue);
+        expect(
+          find.byKey(const ValueKey('account-email-notifications-failure')),
+          findsNothing,
         );
       });
     });

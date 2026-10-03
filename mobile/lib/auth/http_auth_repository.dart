@@ -57,6 +57,10 @@ class HttpAuthRepository implements AuthRepository {
   static const _confirmEmailChangeProcedure =
       '/publira.v1.AuthService/ConfirmEmailChange';
   static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
+  static const _getNotificationSettingsProcedure =
+      '/publira.v1.AuthService/GetNotificationSettings';
+  static const _updateNotificationSettingsProcedure =
+      '/publira.v1.AuthService/UpdateNotificationSettings';
   static const _logoutProcedure = '/publira.v1.AuthService/Logout';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _tenantMobileAppAssociationProcedure =
@@ -356,6 +360,43 @@ class HttpAuthRepository implements AuthRepository {
   Future<String> readEmail(AuthSession session) async {
     final user = await _getMe(session);
     return _readString(user, 'email');
+  }
+
+  @override
+  Future<bool> readEmailNotifications(AuthSession session) =>
+      _notificationSettings(session, _getNotificationSettingsProcedure, {});
+
+  @override
+  Future<bool> updateEmailNotifications(
+    AuthSession session, {
+    required bool enabled,
+  }) => _notificationSettings(session, _updateNotificationSettingsProcedure, {
+    'emailNotificationsEnabled': enabled,
+  });
+
+  /// Sends [procedure] for the account behind [session], both of whose
+  /// answers carry the setting the account holds afterwards.
+  Future<bool> _notificationSettings(
+    AuthSession session,
+    String procedure,
+    Map<String, Object?> fields,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        procedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          ...fields,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      // protojson omits a false, so an absent field is a setting that is off.
+      return body['emailNotificationsEnabled'] == true;
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
   }
 
   @override
