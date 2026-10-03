@@ -1738,8 +1738,8 @@ func (x *UpdateTenantMobileAppAssociationResponse) GetAssociation() *TenantMobil
 type TenantAppleSignInSettings struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The Services ID the storefront signs in with. Empty where only the iOS
-	// app signs in with Apple.
+	// The Services ID the storefront and the Android app sign in with. Empty
+	// where only the iOS app signs in with Apple.
 	ServicesId string `protobuf:"bytes,2,opt,name=services_id,json=servicesId,proto3" json:"services_id,omitempty"`
 	// The team and the ID of the Sign in with Apple key, which the server signs
 	// its client secret with. Not secret, and answered as stored.

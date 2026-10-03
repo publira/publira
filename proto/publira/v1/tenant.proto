@@ -106,8 +106,8 @@ message GetTenantResponse {
 // How a client signs a reader in with Apple. The iOS app signs in with its own
 // bundle identifier, which GetTenantMobileAppAssociation names.
 message TenantAppleSignIn {
-  // The Services ID the storefront signs in with. Empty where only the iOS app
-  // may.
+  // The Services ID the storefront and the Android app sign in with. Empty
+  // where only the iOS app may.
   string services_id = 1;
 }
 

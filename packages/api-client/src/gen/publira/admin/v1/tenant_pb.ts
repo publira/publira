@@ -789,8 +789,8 @@ export type TenantAppleSignInSettings = Message<"publira.admin.v1.TenantAppleSig
   enabled: boolean;
 
   /**
-   * The Services ID the storefront signs in with. Empty where only the iOS
-   * app signs in with Apple.
+   * The Services ID the storefront and the Android app sign in with. Empty
+   * where only the iOS app signs in with Apple.
    *
    * @generated from field: string services_id = 2;
    */

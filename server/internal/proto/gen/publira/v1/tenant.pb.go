@@ -487,8 +487,8 @@ func (x *GetTenantResponse) GetGoogleSignIn() *TenantGoogleSignIn {
 // bundle identifier, which GetTenantMobileAppAssociation names.
 type TenantAppleSignIn struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Services ID the storefront signs in with. Empty where only the iOS app
-	// may.
+	// The Services ID the storefront and the Android app sign in with. Empty
+	// where only the iOS app may.
 	ServicesId    string `protobuf:"bytes,1,opt,name=services_id,json=servicesId,proto3" json:"services_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -49,6 +49,8 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: 6.0.0
+  # The platform a test stands Sign in with Apple's sheet or web flow in for.
+  sign_in_with_apple_platform_interface: 2.0.0
   # Reads the app manifest (scripts/app_manifest/) before a build; never shipped.
   yaml: 3.1.4
 

@@ -103,6 +103,19 @@ void main() {
     expect(await auth.readSignInProviders(), SignInProviders.none);
   });
 
+  test('readSignInProviders reads the Services ID and the Android app the '
+      'storefront hands Apple\'s answer to', () async {
+    server
+      ..appleSignIn = const {'servicesId': ' com.example.reader.web '}
+      ..androidApplicationId = 'com.example.reader';
+
+    final providers = await auth.readSignInProviders();
+
+    expect(providers.appleServicesId, 'com.example.reader.web');
+    expect(providers.androidApplicationId, 'com.example.reader');
+    expect(providers.appleBundleIdentifier, 'com.example.reader');
+  });
+
   test(
     'a Google account the site linked signs in to the same account',
     () async {
@@ -154,6 +167,44 @@ void main() {
     expect(sent['nonce'], 'raw-nonce');
     expect(sent['authorizationCode'], 'apple-code');
     expect(sent['name'], 'Taylor Reader');
+    expect(sent.containsKey('redirectUri'), isFalse);
+  });
+
+  test('an Apple account the site linked signs in to the same account from '
+      'the Android app, with the redirect its code is exchanged at', () async {
+    // The site linked the member's Apple account through the Services ID, and
+    // the Android app's web flow is issued to the same one.
+    server.memberIdentities[IdentityProvider.apple.wireName] =
+        const FixtureIdToken(
+          provider: 'IDENTITY_PROVIDER_APPLE',
+          subject: 'apple-subject-1',
+          email: 'relay@privaterelay.appleid.com',
+          nonce: '',
+        );
+    server.idTokens['apple-id-token'] = const FixtureIdToken(
+      provider: 'IDENTITY_PROVIDER_APPLE',
+      subject: 'apple-subject-1',
+      email: 'relay@privaterelay.appleid.com',
+      nonce: 'raw-nonce',
+    );
+
+    final session = await auth.signInWithProvider(
+      const ProviderCredential(
+        provider: IdentityProvider.apple,
+        idToken: 'apple-id-token',
+        nonce: 'raw-nonce',
+        authorizationCode: 'apple-code',
+        redirectUri: 'https://localhost/api/v1/auth/apple/callback/android',
+      ),
+    );
+
+    expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
+    final sent = server.requestsTo('LoginWithIdToken').single.body;
+    expect(sent['authorizationCode'], 'apple-code');
+    expect(
+      sent['redirectUri'],
+      'https://localhost/api/v1/auth/apple/callback/android',
+    );
   });
 
   test('a first sign-in the tenant asks consent for is consentRequired, and '

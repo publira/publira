@@ -102,6 +102,62 @@ void main() {
       );
     });
 
+    const android = SignInProviders(
+      apple: true,
+      appleServicesId: 'com.example.reader.web',
+      androidApplicationId: 'com.example.reader',
+      google: GoogleSignInClients(webClientId: 'web-client'),
+    );
+
+    test('Android offers Apple through the Services ID to the app the tenant '
+        'names and its dev flavor', () {
+      expect(offered(android, TargetPlatform.android), [
+        IdentityProvider.apple,
+        IdentityProvider.google,
+      ]);
+      expect(
+        offered(
+          android,
+          TargetPlatform.android,
+          bundleIdentifier: 'com.example.reader.dev',
+        ),
+        [IdentityProvider.apple, IdentityProvider.google],
+      );
+      expect(
+        offered(
+          android,
+          TargetPlatform.android,
+          bundleIdentifier: 'com.example.other',
+        ),
+        [IdentityProvider.google],
+      );
+    });
+
+    test('Android offers no Apple without a Services ID or an Android app '
+        'to hand the answer to', () {
+      expect(
+        offered(
+          const SignInProviders(
+            apple: true,
+            appleBundleIdentifier: 'com.example.reader',
+            androidApplicationId: 'com.example.reader',
+          ),
+          TargetPlatform.android,
+        ),
+        isEmpty,
+      );
+      expect(
+        offered(
+          const SignInProviders(
+            apple: true,
+            appleServicesId: 'com.example.reader.web',
+          ),
+          TargetPlatform.android,
+        ),
+        isEmpty,
+      );
+    });
+
     test('other platforms offer none', () {
       expect(offered(both, TargetPlatform.linux), isEmpty);
     });

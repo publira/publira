@@ -200,8 +200,10 @@ type LoginWithIdTokenRequest struct {
 	// link or the account is deleted, as Apple requires of an app that creates
 	// accounts with it.
 	AuthorizationCode string `protobuf:"bytes,5,opt,name=authorization_code,json=authorizationCode,proto3" json:"authorization_code,omitempty"`
-	// The redirect_uri of the authorization request the storefront made, which
-	// Apple requires to exchange a code issued to the web. Empty from the app.
+	// The redirect_uri of Apple's web flow the code was issued through, which
+	// Apple requires to exchange it: the storefront's own callback, or the one
+	// the Android app returns through, since Android has no native Sign in with
+	// Apple. Empty from the iOS app.
 	RedirectUri string `protobuf:"bytes,6,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
 	// Read only when no account matches the token and this sign-in creates one.
 	// The name falls back to the one the token carries, and then to the local
