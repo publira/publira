@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http/httptest"
@@ -21,6 +22,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/publishedseries"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -61,8 +63,8 @@ func TestCatalogSearchPublishedSeriesSuccess(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleAsc)).
-		WithArgs(tenantID, "web", "%seed%", nil, false, nil, int32(21)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", nil, false, nil, int32(21)).
 		WillReturnRows(searchHitRows(searchHit{seriesID, "Seed Series"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -109,7 +111,7 @@ func TestCatalogSearchPublishedSeriesRejectsQueryMismatchOnToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	token := webToken(pagination.Forward, "Alpha", "Beta", boundaryID.String())
+	token := webToken(pagination.Forward, "alpha", "title_asc", "Beta", boundaryID.String())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
@@ -133,8 +135,8 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(3)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleAsc)).
-		WithArgs(tenantID, "web", "%seed%", nil, false, nil, int32(3)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", nil, false, nil, int32(3)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Alpha Seed"}, searchHit{ids[1], "Beta Seed"}, searchHit{ids[2], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -154,7 +156,7 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	if got := len(resp.Msg.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
-	wantToken := webToken(pagination.Forward, "seed", "Beta Seed", ids[1].String())
+	wantToken := webToken(pagination.Forward, "seed", "title_asc", "Beta Seed", ids[1].String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
 	}
@@ -170,12 +172,12 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
+	token := webToken(pagination.Forward, "seed", "title_asc", "Beta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleAsc)).
-		WithArgs(tenantID, "web", "%seed%", boundaryID, false, "Beta Seed", int32(3)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(3)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -231,12 +233,12 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
+	token := webToken(pagination.Forward, "seed", "title_asc", "Beta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleAsc)).
-		WithArgs(tenantID, "web", "%seed%", boundaryID, false, "Beta Seed", int32(21)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -264,15 +266,15 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Backward, "seed", "Zeta Seed", boundaryID.String())
+	token := webToken(pagination.Backward, "seed", "title_asc", "Zeta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	alphaID := uuid.Must(uuid.NewV7())
 	betaID := uuid.Must(uuid.NewV7())
 	// A backward page scans descending titles, so Zeta's predecessor Beta
 	// comes first, then Alpha. pagination.Page flips that back to title asc.
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleDesc)).
-		WithArgs(tenantID, "web", "%seed%", boundaryID, false, "Zeta Seed", int32(3)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleDesc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Zeta Seed", int32(3)).
 		WillReturnRows(searchHitRows(searchHit{betaID, "Beta Seed"}, searchHit{alphaID, "Alpha Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
@@ -316,12 +318,12 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:      "forward",
 			direction: pagination.Forward,
-			wantQuery: dbmodels.ListPublishedSeriesBySearchTitleAsc,
+			wantQuery: dbmodels.ListActiveSeriesIDsByTitleAsc,
 		},
 		{
 			name:      "backward",
 			direction: pagination.Backward,
-			wantQuery: dbmodels.ListPublishedSeriesBySearchTitleDesc,
+			wantQuery: dbmodels.ListActiveSeriesIDsByTitleDesc,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -330,11 +332,11 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC()
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := webToken(test.direction, "seed", "Beta Seed", boundaryID.String())
+			token := webToken(test.direction, "seed", "title_asc", "Beta Seed", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "web", "%seed%", boundaryID, false, "Beta Seed", int32(21)).
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
 				WillReturnRows(searchHitRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -368,7 +370,7 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			if err != nil {
 				t.Fatalf("decode recovery token: %v", err)
 			}
-			wantKeys := []string{"seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey}
+			wantKeys := []string{"seed", "title_asc", "Beta Seed", boundaryID.String(), seriesInclusiveKey}
 			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
 				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
 			}
@@ -383,11 +385,11 @@ func TestCatalogSearchPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey)
+	token := webToken(pagination.Forward, "seed", "title_asc", "Beta Seed", boundaryID.String(), seriesInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesBySearchTitleAsc)).
-		WithArgs(tenantID, "web", "%seed%", boundaryID, true, "Beta Seed", int32(21)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, true, "Beta Seed", int32(21)).
 		WillReturnRows(searchHitRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -788,13 +790,15 @@ func TestCatalogSearchPublishedLabelsAttachesEyeCatchVariants(t *testing.T) {
 // fakeSearchBackend answers every search with page, or err, and keeps the
 // request it was asked.
 type fakeSearchBackend struct {
-	page catalogsearch.Page
-	err  error
-	got  catalogsearch.Request
+	page      catalogsearch.Page
+	err       error
+	got       catalogsearch.Request
+	gotSeries catalogsearch.SeriesRequest
 }
 
-func (f *fakeSearchBackend) SearchSeries(_ context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
-	f.got = req
+func (f *fakeSearchBackend) SearchSeries(_ context.Context, req catalogsearch.SeriesRequest) (catalogsearch.Page, error) {
+	f.got = req.Request
+	f.gotSeries = req
 	return f.page, f.err
 }
 
@@ -870,6 +874,8 @@ func TestCatalogSearchAnswersABackendFailure(t *testing.T) {
 		wantMsg  string
 	}{
 		{name: "token for another query", err: catalogsearch.ErrTokenForAnotherQuery, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token was issued for another query"},
+		{name: "token for another order or filter", err: catalogsearch.ErrTokenForAnotherNarrowing, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token was issued for another order or filter"},
+		{name: "narrowing the backend cannot do", err: catalogsearch.ErrNarrowingUnsupported, wantCode: connect.CodeUnimplemented, wantMsg: "unimplemented: this search cannot narrow or sort its results"},
 		{name: "invalid token", err: catalogsearch.ErrInvalidToken, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token is invalid"},
 		{name: "engine failure", err: errors.New("connection refused"), wantCode: connect.CodeInternal, wantMsg: "internal: internal server error"},
 	} {
@@ -890,4 +896,137 @@ func TestCatalogSearchAnswersABackendFailure(t *testing.T) {
 			assertPublicExpectations(t, mock)
 		})
 	}
+}
+
+// The order and the filters reach the backend resolved, in the shape the list
+// uses for them, and an unspecified order leaves the backend its own.
+func TestCatalogSearchPublishedSeriesHandsTheBackendItsOrderAndFilters(t *testing.T) {
+	monday := int32(1)
+	for _, test := range []struct {
+		name       string
+		req        *publirav1.SearchPublishedSeriesRequest
+		lookups    func(sqlmock.Sqlmock, uuid.UUID)
+		wantOrder  publishedseries.Order
+		wantFilter publishedseries.Filter
+	}{
+		{
+			name: "nothing asked",
+			req:  &publirav1.SearchPublishedSeriesRequest{},
+		},
+		{
+			name:      "an order",
+			req:       &publirav1.SearchPublishedSeriesRequest{Order: publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC},
+			wantOrder: publishedseries.PublishedAtDesc,
+		},
+		{
+			name: "every filter",
+			req: &publirav1.SearchPublishedSeriesRequest{
+				HasFreeEpisodes: true,
+				GenrePublicId:   "GENRE0000001",
+				TagSlug:         "swordplay",
+				Status:          publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED,
+				Weekday:         &monday,
+			},
+			lookups: func(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+				expectGenreLookup(mock, tenantID, "GENRE0000001", true)
+				expectTagLookup(mock, tenantID, "swordplay", true)
+			},
+			wantFilter: publishedseries.Filter{
+				HasFreeEpisodes: true,
+				GenrePublicID:   sql.NullString{String: "GENRE0000001", Valid: true},
+				TagSlug:         sql.NullString{String: "swordplay", Valid: true},
+				Status:          sql.NullString{String: "completed", Valid: true},
+				Weekday:         sql.NullInt16{Int16: 1, Valid: true},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			backend := &fakeSearchBackend{}
+			testServer, mock := newSearchBackendTestServer(t, backend)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+			if test.lookups != nil {
+				test.lookups(mock, tenantID)
+			}
+
+			test.req.Tenant = &publirattypesv1.TenantContext{TenantId: tenantID.String()}
+			test.req.Query = "Seed"
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			if _, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(test.req)); err != nil {
+				t.Fatalf("SearchPublishedSeries: %v", err)
+			}
+			if backend.gotSeries.Order != test.wantOrder {
+				t.Fatalf("order = %+v, want %+v", backend.gotSeries.Order, test.wantOrder)
+			}
+			if backend.gotSeries.Filter != test.wantFilter {
+				t.Fatalf("filter = %+v, want %+v", backend.gotSeries.Filter, test.wantFilter)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogSearchPublishedSeriesRefusesAGenreTheTenantDoesNotHave(t *testing.T) {
+	backend := &fakeSearchBackend{}
+	testServer, mock := newSearchBackendTestServer(t, backend)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	expectGenreLookup(mock, tenantID, "GENREFOREIGN", false)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:         "Seed",
+		GenrePublicId: "GENREFOREIGN",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("error = %v, want not_found", err)
+	}
+	if backend.gotSeries.Query != "" {
+		t.Fatalf("backend was asked %+v, want no search for a genre that is not there", backend.gotSeries)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// The SQL backend runs the list's scan of the requested order with the filters
+// beside the keyword, and the token it hands back names that order and those
+// filters after the query.
+func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := newSeriesIDs(2)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
+		WithArgs(tenantID, "web", true, "GENRE0000001", nil, "ongoing", nil, "%seed%", nil, false, nil, int32(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "published_at"}).
+			AddRow(ids[0], now).
+			AddRow(ids[1], now.Add(-time.Hour)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(ids[0], "SERIESNEW01", "Newer Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(1), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:           "Seed",
+		Limit:           1,
+		Order:           publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+		HasFreeEpisodes: true,
+		GenrePublicId:   "GENRE0000001",
+		Status:          publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedSeries: %v", err)
+	}
+	wantToken := webToken(pagination.Forward, "seed", "published_at_desc+has_free_episodes+genre:GENRE0000001+status:ongoing", now.Format(time.RFC3339Nano), ids[0].String())
+	if resp.Msg.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want %q", resp.Msg.NextToken, wantToken)
+	}
+	assertPublicExpectations(t, mock)
 }

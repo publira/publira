@@ -310,6 +310,17 @@ WITH candidate AS (
                     AND sl.schedule_weekdays @> ARRAY[$11::int2]
             )
         )
+        AND (
+            $12::text IS NULL
+            OR s.title ILIKE $12::text ESCAPE '!'
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = $6
+                    AND sl.series_id = s.id
+                    AND sl.synopsis ILIKE $12::text ESCAPE '!'
+            )
+        )
 )
 SELECT id,
     latest_episode_at
@@ -348,6 +359,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtAscParams struct {
 	TagSlug               sql.NullString `json:"tag_slug"`
 	Status                sql.NullString `json:"status"`
 	Weekday               sql.NullInt16  `json:"weekday"`
+	QueryPattern          sql.NullString `json:"query_pattern"`
 }
 
 type ListActiveSeriesIDsByLatestEpisodeAtAscRow struct {
@@ -368,6 +380,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, a
 		arg.TagSlug,
 		arg.Status,
 		arg.Weekday,
+		arg.QueryPattern,
 	)
 	if err != nil {
 		return nil, err
@@ -474,6 +487,17 @@ WITH candidate AS (
                     AND sl.schedule_weekdays @> ARRAY[$11::int2]
             )
         )
+        AND (
+            $12::text IS NULL
+            OR s.title ILIKE $12::text ESCAPE '!'
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = $6
+                    AND sl.series_id = s.id
+                    AND sl.synopsis ILIKE $12::text ESCAPE '!'
+            )
+        )
 )
 SELECT id,
     latest_episode_at
@@ -512,6 +536,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtDescParams struct {
 	TagSlug               sql.NullString `json:"tag_slug"`
 	Status                sql.NullString `json:"status"`
 	Weekday               sql.NullInt16  `json:"weekday"`
+	QueryPattern          sql.NullString `json:"query_pattern"`
 }
 
 type ListActiveSeriesIDsByLatestEpisodeAtDescRow struct {
@@ -548,6 +573,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, 
 		arg.TagSlug,
 		arg.Status,
 		arg.Weekday,
+		arg.QueryPattern,
 	)
 	if err != nil {
 		return nil, err
@@ -571,7 +597,8 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, 
 }
 
 const ListActiveSeriesIDsByPublishedAtAsc = `-- name: ListActiveSeriesIDsByPublishedAtAsc :many
-SELECT s.id
+SELECT s.id,
+    s.published_at
 FROM series s
 WHERE s.tenant_id = $1
     AND s.is_published = true
@@ -640,25 +667,36 @@ WHERE s.tenant_id = $1
         )
     )
     AND (
-        $8::uuid IS NULL
+        $8::text IS NULL
+        OR s.title ILIKE $8::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+        )
+    )
+    AND (
+        $9::uuid IS NULL
         OR (
-            $9::boolean
+            $10::boolean
             AND (s.published_at, s.id) >= (
-                $10::timestamptz,
-                $8::uuid
+                $11::timestamptz,
+                $9::uuid
             )
         )
         OR (
-            NOT $9::boolean
+            NOT $10::boolean
             AND (s.published_at, s.id) > (
-                $10::timestamptz,
-                $8::uuid
+                $11::timestamptz,
+                $9::uuid
             )
         )
     )
 ORDER BY s.published_at ASC,
     s.id ASC
-LIMIT $11
+LIMIT $12
 `
 
 type ListActiveSeriesIDsByPublishedAtAscParams struct {
@@ -669,13 +707,19 @@ type ListActiveSeriesIDsByPublishedAtAscParams struct {
 	TagSlug           sql.NullString `json:"tag_slug"`
 	Status            sql.NullString `json:"status"`
 	Weekday           sql.NullInt16  `json:"weekday"`
+	QueryPattern      sql.NullString `json:"query_pattern"`
 	CursorID          uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive   bool           `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
 	Limit             int32          `json:"limit"`
 }
 
-func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error) {
+type ListActiveSeriesIDsByPublishedAtAscRow struct {
+	ID          uuid.UUID    `json:"id"`
+	PublishedAt sql.NullTime `json:"published_at"`
+}
+
+func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]ListActiveSeriesIDsByPublishedAtAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByPublishedAtAsc,
 		arg.TenantID,
 		arg.Surface,
@@ -684,6 +728,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 		arg.TagSlug,
 		arg.Status,
 		arg.Weekday,
+		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -693,13 +738,13 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []ListActiveSeriesIDsByPublishedAtAscRow
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var i ListActiveSeriesIDsByPublishedAtAscRow
+		if err := rows.Scan(&i.ID, &i.PublishedAt); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -711,7 +756,8 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 }
 
 const ListActiveSeriesIDsByPublishedAtDesc = `-- name: ListActiveSeriesIDsByPublishedAtDesc :many
-SELECT s.id
+SELECT s.id,
+    s.published_at
 FROM series s
 WHERE s.tenant_id = $1
     AND s.is_published = true
@@ -780,25 +826,36 @@ WHERE s.tenant_id = $1
         )
     )
     AND (
-        $8::uuid IS NULL
+        $8::text IS NULL
+        OR s.title ILIKE $8::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+        )
+    )
+    AND (
+        $9::uuid IS NULL
         OR (
-            $9::boolean
+            $10::boolean
             AND (s.published_at, s.id) <= (
-                $10::timestamptz,
-                $8::uuid
+                $11::timestamptz,
+                $9::uuid
             )
         )
         OR (
-            NOT $9::boolean
+            NOT $10::boolean
             AND (s.published_at, s.id) < (
-                $10::timestamptz,
-                $8::uuid
+                $11::timestamptz,
+                $9::uuid
             )
         )
     )
 ORDER BY s.published_at DESC,
     s.id DESC
-LIMIT $11
+LIMIT $12
 `
 
 type ListActiveSeriesIDsByPublishedAtDescParams struct {
@@ -809,23 +866,30 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	TagSlug           sql.NullString `json:"tag_slug"`
 	Status            sql.NullString `json:"status"`
 	Weekday           sql.NullInt16  `json:"weekday"`
+	QueryPattern      sql.NullString `json:"query_pattern"`
 	CursorID          uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive   bool           `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
 	Limit             int32          `json:"limit"`
 }
 
+type ListActiveSeriesIDsByPublishedAtDescRow struct {
+	ID          uuid.UUID    `json:"id"`
+	PublishedAt sql.NullTime `json:"published_at"`
+}
+
 // The published series list, in every shape the storefront reads it: the whole
-// catalogue, one creator's, one label's, and a keyword search. They are apart
-// from series.sql because they are one aggregate of their own — six stage-one
-// scans and the display query they all feed — and keeping them next to the
-// writes and the admin lists put both past the size at which a file stops
-// reading as a unit.
+// catalogue, one creator's, one label's, and the SQL search backend's keyword
+// search. They are apart from series.sql because they are one aggregate of
+// their own — six stage-one scans and the display query they all feed — and
+// keeping them next to the writes and the admin lists put both past the size
+// at which a file stops reading as a unit.
 //
 // The cursor pagination of the published series list runs in two stages.
 //
-// Stage one is the six keyset scans below, which settle nothing but the ids of
-// one page. The sort key is (published_at, id), (title, id), or
+// Stage one is the six keyset scans below, which settle the ids of one page
+// and hand each back with the value it was sorted by, which a token is built
+// from. The sort key is (published_at, id), (title, id), or
 // (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 // the sorted value ties. Every sort order gets its own query with a fixed
 // ORDER BY, because branching with CASE stops the rows from being read in
@@ -845,6 +909,15 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 // idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 // when it keeps a handful.
 //
+// The keyword search is the same list narrowed once more, by query_pattern,
+// which is NULL for a list. A search therefore sorts and filters exactly as a
+// list does, and both read the same scans. The caller builds query_pattern as
+// '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
+// ride a btree, so the scan reads the tenant's published series while the
+// LIMIT still bites after narrowing by tenant and is_published. Once the row
+// count makes the latency visible, add a pg_trgm GIN index on title and
+// series_listings.synopsis.
+//
 // Every query also keeps only what the calling surface may show, through
 // series_surfaces for the series and episode_surfaces for the episodes counted
 // into them. The token names the surface it was built on as well, for the
@@ -856,7 +929,7 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 // free_episode_count, so a series the filter kept never reports none.
 //
 // cursor rules: proto/README.md.
-func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
+func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]ListActiveSeriesIDsByPublishedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
 		arg.Surface,
@@ -865,6 +938,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 		arg.TagSlug,
 		arg.Status,
 		arg.Weekday,
+		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -874,13 +948,13 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []ListActiveSeriesIDsByPublishedAtDescRow
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var i ListActiveSeriesIDsByPublishedAtDescRow
+		if err := rows.Scan(&i.ID, &i.PublishedAt); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -892,7 +966,8 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 }
 
 const ListActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :many
-SELECT s.id
+SELECT s.id,
+    s.title
 FROM series s
 WHERE s.tenant_id = $1
     AND s.is_published = true
@@ -961,25 +1036,36 @@ WHERE s.tenant_id = $1
         )
     )
     AND (
-        $8::uuid IS NULL
+        $8::text IS NULL
+        OR s.title ILIKE $8::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+        )
+    )
+    AND (
+        $9::uuid IS NULL
         OR (
-            $9::boolean
+            $10::boolean
             AND (s.title, s.id) >= (
-                $10::text,
-                $8::uuid
+                $11::text,
+                $9::uuid
             )
         )
         OR (
-            NOT $9::boolean
+            NOT $10::boolean
             AND (s.title, s.id) > (
-                $10::text,
-                $8::uuid
+                $11::text,
+                $9::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $11
+LIMIT $12
 `
 
 type ListActiveSeriesIDsByTitleAscParams struct {
@@ -990,13 +1076,19 @@ type ListActiveSeriesIDsByTitleAscParams struct {
 	TagSlug         sql.NullString `json:"tag_slug"`
 	Status          sql.NullString `json:"status"`
 	Weekday         sql.NullInt16  `json:"weekday"`
+	QueryPattern    sql.NullString `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
 	Limit           int32          `json:"limit"`
 }
 
-func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
+type ListActiveSeriesIDsByTitleAscRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+}
+
+func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]ListActiveSeriesIDsByTitleAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleAsc,
 		arg.TenantID,
 		arg.Surface,
@@ -1005,243 +1097,6 @@ func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListAct
 		arg.TagSlug,
 		arg.Status,
 		arg.Weekday,
-		arg.CursorID,
-		arg.CursorInclusive,
-		arg.CursorTitle,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = $1
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
-    )
-    AND (
-        NOT $3::boolean
-        OR EXISTS (
-            SELECT 1
-            FROM published_free_episodes fe
-            WHERE fe.series_id = s.id
-                AND EXISTS (
-                    SELECT 1
-                    FROM episode_surfaces es
-                    WHERE es.episode_id = fe.episode_id
-                        AND es.surface = $2::text
-                )
-        )
-    )
-    AND (
-        $4::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $4::text
-        )
-    )
-    AND (
-        $5::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $5::text
-        )
-    )
-    AND (
-        $6::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $6::text
-        )
-    )
-    AND (
-        $7::int2 IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$7::int2]
-        )
-    )
-    AND (
-        $8::uuid IS NULL
-        OR (
-            $9::boolean
-            AND (s.title, s.id) <= (
-                $10::text,
-                $8::uuid
-            )
-        )
-        OR (
-            NOT $9::boolean
-            AND (s.title, s.id) < (
-                $10::text,
-                $8::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT $11
-`
-
-type ListActiveSeriesIDsByTitleDescParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	Surface         string         `json:"surface"`
-	HasFreeEpisodes bool           `json:"has_free_episodes"`
-	GenrePublicID   sql.NullString `json:"genre_public_id"`
-	TagSlug         sql.NullString `json:"tag_slug"`
-	Status          sql.NullString `json:"status"`
-	Weekday         sql.NullInt16  `json:"weekday"`
-	CursorID        uuid.NullUUID  `json:"cursor_id"`
-	CursorInclusive bool           `json:"cursor_inclusive"`
-	CursorTitle     sql.NullString `json:"cursor_title"`
-	Limit           int32          `json:"limit"`
-}
-
-func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleDesc,
-		arg.TenantID,
-		arg.Surface,
-		arg.HasFreeEpisodes,
-		arg.GenrePublicID,
-		arg.TagSlug,
-		arg.Status,
-		arg.Weekday,
-		arg.CursorID,
-		arg.CursorInclusive,
-		arg.CursorTitle,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListPublishedSeriesBySearchTitleAsc = `-- name: ListPublishedSeriesBySearchTitleAsc :many
-SELECT s.id,
-    s.title
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = $1
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
-    )
-    AND (
-        s.title ILIKE $3::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
-    )
-    AND (
-        $4::uuid IS NULL
-        OR (
-            $5::boolean
-            AND (s.title, s.id) >= (
-                $6::text,
-                $4::uuid
-            )
-        )
-        OR (
-            NOT $5::boolean
-            AND (s.title, s.id) > (
-                $6::text,
-                $4::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT $7
-`
-
-type ListPublishedSeriesBySearchTitleAscParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	Surface         string         `json:"surface"`
-	QueryPattern    string         `json:"query_pattern"`
-	CursorID        uuid.NullUUID  `json:"cursor_id"`
-	CursorInclusive bool           `json:"cursor_inclusive"`
-	CursorTitle     sql.NullString `json:"cursor_title"`
-	Limit           int32          `json:"limit"`
-}
-
-type ListPublishedSeriesBySearchTitleAscRow struct {
-	ID    uuid.UUID `json:"id"`
-	Title string    `json:"title"`
-}
-
-// The SQL catalog search backend's series search. Takes the published series
-// whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
-// id, and returns the title with each id because the next token is built from
-// it.
-// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
-// with ESCAPE '!'.
-// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
-// cannot ride a btree, so a sequential scan is enough while the LIMIT still
-// bites after narrowing by tenant and is_published. Once the row count makes
-// the latency visible, add a pg_trgm GIN index on title and
-// series_listings.synopsis.
-func (q *Queries) ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesBySearchTitleAscParams) ([]ListPublishedSeriesBySearchTitleAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesBySearchTitleAsc,
-		arg.TenantID,
-		arg.Surface,
 		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -1252,9 +1107,9 @@ func (q *Queries) ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg L
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPublishedSeriesBySearchTitleAscRow
+	var items []ListActiveSeriesIDsByTitleAscRow
 	for rows.Next() {
-		var i ListPublishedSeriesBySearchTitleAscRow
+		var i ListActiveSeriesIDsByTitleAscRow
 		if err := rows.Scan(&i.ID, &i.Title); err != nil {
 			return nil, err
 		}
@@ -1269,11 +1124,10 @@ func (q *Queries) ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg L
 	return items, nil
 }
 
-const ListPublishedSeriesBySearchTitleDesc = `-- name: ListPublishedSeriesBySearchTitleDesc :many
+const ListActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
 SELECT s.id,
     s.title
 FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -1285,51 +1139,123 @@ WHERE s.tenant_id = $1
             AND ss.surface = $2::text
     )
     AND (
-        s.title ILIKE $3::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
+        NOT $3::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.series_id = s.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $2::text
+                )
+        )
     )
     AND (
-        $4::uuid IS NULL
+        $4::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
+                AND g.public_id = $4::text
+        )
+    )
+    AND (
+        $5::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
+                AND t.slug = $5::text
+        )
+    )
+    AND (
+        $6::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.status = $6::text
+        )
+    )
+    AND (
+        $7::int2 IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+        )
+    )
+    AND (
+        $8::text IS NULL
+        OR s.title ILIKE $8::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+        )
+    )
+    AND (
+        $9::uuid IS NULL
         OR (
-            $5::boolean
+            $10::boolean
             AND (s.title, s.id) <= (
-                $6::text,
-                $4::uuid
+                $11::text,
+                $9::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $10::boolean
             AND (s.title, s.id) < (
-                $6::text,
-                $4::uuid
+                $11::text,
+                $9::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $7
+LIMIT $12
 `
 
-type ListPublishedSeriesBySearchTitleDescParams struct {
+type ListActiveSeriesIDsByTitleDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
-	QueryPattern    string         `json:"query_pattern"`
+	HasFreeEpisodes bool           `json:"has_free_episodes"`
+	GenrePublicID   sql.NullString `json:"genre_public_id"`
+	TagSlug         sql.NullString `json:"tag_slug"`
+	Status          sql.NullString `json:"status"`
+	Weekday         sql.NullInt16  `json:"weekday"`
+	QueryPattern    sql.NullString `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
 	Limit           int32          `json:"limit"`
 }
 
-type ListPublishedSeriesBySearchTitleDescRow struct {
+type ListActiveSeriesIDsByTitleDescRow struct {
 	ID    uuid.UUID `json:"id"`
 	Title string    `json:"title"`
 }
 
-// The backward direction of ListPublishedSeriesBySearchTitleAsc.
-func (q *Queries) ListPublishedSeriesBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesBySearchTitleDescParams) ([]ListPublishedSeriesBySearchTitleDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesBySearchTitleDesc,
+func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]ListActiveSeriesIDsByTitleDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleDesc,
 		arg.TenantID,
 		arg.Surface,
+		arg.HasFreeEpisodes,
+		arg.GenrePublicID,
+		arg.TagSlug,
+		arg.Status,
+		arg.Weekday,
 		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -1340,9 +1266,9 @@ func (q *Queries) ListPublishedSeriesBySearchTitleDesc(ctx context.Context, arg 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPublishedSeriesBySearchTitleDescRow
+	var items []ListActiveSeriesIDsByTitleDescRow
 	for rows.Next() {
-		var i ListPublishedSeriesBySearchTitleDescRow
+		var i ListActiveSeriesIDsByTitleDescRow
 		if err := rows.Scan(&i.ID, &i.Title); err != nil {
 			return nil, err
 		}

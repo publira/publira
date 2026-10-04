@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"connectrpc.com/connect"
@@ -20,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/publishedseries"
 )
 
 const (
@@ -31,37 +31,19 @@ const (
 	labelInclusiveKey     = "inclusive"
 )
 
-const (
-	seriesOrderColumnPublishedAt     = "published_at"
-	seriesOrderColumnTitle           = "title"
-	seriesOrderColumnLatestEpisodeAt = "latest_episode_at"
-)
-
-// seriesOrder is a SeriesOrder resolved into what the query needs: the column
-// to sort by, and whether the list runs down or up that column.
-type seriesOrder struct {
-	name       string
-	column     string
-	descending bool
+var seriesOrders = map[publirav1.SeriesOrder]publishedseries.Order{
+	publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED:            publishedseries.PublishedAtDesc,
+	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC:      publishedseries.PublishedAtDesc,
+	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC:       publishedseries.PublishedAtAsc,
+	publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC:              publishedseries.TitleAsc,
+	publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC:             publishedseries.TitleDesc,
+	publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC: publishedseries.LatestEpisodeAtDesc,
 }
 
-var seriesOrders = map[publirav1.SeriesOrder]seriesOrder{
-	publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED:       {name: "published_at_desc", column: seriesOrderColumnPublishedAt, descending: true},
-	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC: {name: "published_at_desc", column: seriesOrderColumnPublishedAt, descending: true},
-	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC:  {name: "published_at_asc", column: seriesOrderColumnPublishedAt},
-	publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC:         {name: "title_asc", column: seriesOrderColumnTitle},
-	publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC:        {name: "title_desc", column: seriesOrderColumnTitle, descending: true},
-	publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC: {
-		name:       "latest_episode_at_desc",
-		column:     seriesOrderColumnLatestEpisodeAt,
-		descending: true,
-	},
-}
-
-func resolveSeriesOrder(requested publirav1.SeriesOrder) (seriesOrder, error) {
+func resolveSeriesOrder(requested publirav1.SeriesOrder) (publishedseries.Order, error) {
 	order, ok := seriesOrders[requested]
 	if !ok {
-		return seriesOrder{}, connect.NewError(connect.CodeInvalidArgument, errors.New("order is not supported"))
+		return publishedseries.Order{}, connect.NewError(connect.CodeInvalidArgument, errors.New("order is not supported"))
 	}
 	return order, nil
 }
@@ -75,23 +57,14 @@ type seriesCursorKeys struct {
 	inclusive       bool
 }
 
-// seriesFilters is what a series list was narrowed by, beyond the tenant and
-// the publication state every one of them applies. Each field is already in the
-// shape the query takes, so resolving a request into this value is also where
-// a genre, a tag, a status, or a weekday the tenant does not have is refused.
-type seriesFilters struct {
-	// Keep only the series that have a free episode at the moment of the read.
+// seriesFilterRequest is the filter fields ListPublishedSeries and
+// SearchPublishedSeries both take, read off either request.
+type seriesFilterRequest struct {
 	hasFreeEpisodes bool
-	// The public ID of the one genre to keep. Invalid means no genre filter.
-	genrePublicID sql.NullString
-	// The slug of the one tag to keep. Invalid means no tag filter.
-	tagSlug sql.NullString
-	// The stored serialization status to keep. Invalid means no status filter.
-	status sql.NullString
-	// The EXTRACT(DOW) weekday a kept series expects an episode on. Invalid
-	// means no weekday filter; 0 is Sunday, which is why this is not an int32
-	// with a zero that could mean either.
-	weekday sql.NullInt16
+	genrePublicID   string
+	tagSlug         string
+	status          publirattypesv1.SeriesStatus
+	weekday         *int32
 }
 
 // resolveSeriesFilters turns the request's filter fields into what the query
@@ -105,84 +78,56 @@ type seriesFilters struct {
 func (s *apiServer) resolveSeriesFilters(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	req *publirav1.ListPublishedSeriesRequest,
-) (seriesFilters, error) {
-	filters := seriesFilters{hasFreeEpisodes: req.HasFreeEpisodes}
+	req seriesFilterRequest,
+) (publishedseries.Filter, error) {
+	filters := publishedseries.Filter{HasFreeEpisodes: req.hasFreeEpisodes}
 
-	if req.GenrePublicId != "" {
+	if req.genrePublicID != "" {
 		if _, err := s.queriesFor(ctx).GetGenreIDByPublicIDForTenant(ctx, dbmodels.GetGenreIDByPublicIDForTenantParams{
 			TenantID: tenantID,
-			PublicID: req.GenrePublicId,
+			PublicID: req.genrePublicID,
 		}); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return seriesFilters{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
 			}
-			return seriesFilters{}, s.internalDBError(ctx, "failed to resolve the genre filter", err, "tenant_id", tenantID.String())
+			return publishedseries.Filter{}, s.internalDBError(ctx, "failed to resolve the genre filter", err, "tenant_id", tenantID.String())
 		}
-		filters.genrePublicID = sql.NullString{String: req.GenrePublicId, Valid: true}
+		filters.GenrePublicID = sql.NullString{String: req.genrePublicID, Valid: true}
 	}
 
-	if req.TagSlug != "" {
+	if req.tagSlug != "" {
 		if _, err := s.queriesFor(ctx).GetTagBySlugForTenant(ctx, dbmodels.GetTagBySlugForTenantParams{
 			TenantID: tenantID,
-			Slug:     req.TagSlug,
+			Slug:     req.tagSlug,
 		}); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return seriesFilters{}, connect.NewError(connect.CodeNotFound, errors.New("tag not found"))
+				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, errors.New("tag not found"))
 			}
-			return seriesFilters{}, s.internalDBError(ctx, "failed to resolve the tag filter", err, "tenant_id", tenantID.String())
+			return publishedseries.Filter{}, s.internalDBError(ctx, "failed to resolve the tag filter", err, "tenant_id", tenantID.String())
 		}
-		filters.tagSlug = sql.NullString{String: req.TagSlug, Valid: true}
+		filters.TagSlug = sql.NullString{String: req.tagSlug, Valid: true}
 	}
 
 	// An unspecified status filters nothing. It is the one place the enum's
 	// zero does not mean the column's default: a list nobody narrowed holds
 	// every state, where a series nobody edited is running.
-	if req.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED {
-		status, err := protomapper.SeriesStatusToStored(req.Status)
+	if req.status != publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED {
+		status, err := protomapper.SeriesStatusToStored(req.status)
 		if err != nil {
-			return seriesFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("status is not supported"))
+			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, errors.New("status is not supported"))
 		}
-		filters.status = sql.NullString{String: status, Valid: true}
+		filters.Status = sql.NullString{String: status, Valid: true}
 	}
 
-	if req.Weekday != nil {
-		weekday := req.GetWeekday()
+	if req.weekday != nil {
+		weekday := *req.weekday
 		if weekday < 0 || weekday > 6 {
-			return seriesFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("weekday must be an EXTRACT(DOW) number from 0 to 6"))
+			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, errors.New("weekday must be an EXTRACT(DOW) number from 0 to 6"))
 		}
-		filters.weekday = sql.NullInt16{Int16: int16(weekday), Valid: true}
+		filters.Weekday = sql.NullInt16{Int16: int16(weekday), Valid: true}
 	}
 
 	return filters, nil
-}
-
-// seriesListKey names the list a token points into. A boundary row sits at
-// another position once the list is filtered differently, exactly as it does
-// under another order, so the filters ride in the same key as the order name
-// and a list with no filter keeps the plain order name it always carried.
-//
-// The filters are appended in a fixed order rather than in the order the
-// request happened to carry them, so the same narrowed list always names
-// itself the same way.
-func seriesListKey(order seriesOrder, filters seriesFilters) string {
-	key := order.name
-	if filters.hasFreeEpisodes {
-		key += "+has_free_episodes"
-	}
-	if filters.genrePublicID.Valid {
-		key += "+genre:" + filters.genrePublicID.String
-	}
-	if filters.tagSlug.Valid {
-		key += "+tag:" + filters.tagSlug.String
-	}
-	if filters.status.Valid {
-		key += "+status:" + filters.status.String
-	}
-	if filters.weekday.Valid {
-		key += "+weekday:" + strconv.FormatInt(int64(filters.weekday.Int16), 10)
-	}
-	return key
 }
 
 // seriesBoundary is the row a token is built from: the display row, plus the
@@ -199,42 +144,42 @@ type seriesBoundary struct {
 // its ties. Token rules: proto/README.md.
 func encodeSeriesCursor(
 	direction pagination.Direction,
-	order seriesOrder,
-	filters seriesFilters,
+	order publishedseries.Order,
+	filters publishedseries.Filter,
 	boundary seriesBoundary,
 ) string {
 	var sortValue string
-	switch order.column {
-	case seriesOrderColumnTitle:
+	switch order.Column {
+	case publishedseries.ColumnTitle:
 		sortValue = boundary.row.Title
-	case seriesOrderColumnLatestEpisodeAt:
+	case publishedseries.ColumnLatestEpisodeAt:
 		sortValue = boundary.latestEpisodeAt.UTC().Format(time.RFC3339Nano)
 	default:
 		sortValue = boundary.row.PublishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, seriesListKey(order, filters), sortValue, boundary.row.ID.String())
+	return pagination.Encode(direction, publishedseries.ListKey(order, filters), sortValue, boundary.row.ID.String())
 }
 
 // A recovery token includes the boundary once. That keeps the boundary row in
 // the page when rows beyond it were deleted after the original token was issued.
-func encodeSeriesRecoveryToken(direction pagination.Direction, order seriesOrder, filters seriesFilters, keys seriesCursorKeys) string {
+func encodeSeriesRecoveryToken(direction pagination.Direction, order publishedseries.Order, filters publishedseries.Filter, keys seriesCursorKeys) string {
 	var sortValue string
-	switch order.column {
-	case seriesOrderColumnTitle:
+	switch order.Column {
+	case publishedseries.ColumnTitle:
 		sortValue = keys.title.String
-	case seriesOrderColumnLatestEpisodeAt:
+	case publishedseries.ColumnLatestEpisodeAt:
 		sortValue = keys.latestEpisodeAt.Time.UTC().Format(time.RFC3339Nano)
 	default:
 		sortValue = keys.publishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, seriesListKey(order, filters), sortValue, keys.id.UUID.String(), seriesInclusiveKey)
+	return pagination.Encode(direction, publishedseries.ListKey(order, filters), sortValue, keys.id.UUID.String(), seriesInclusiveKey)
 }
 
 // decodeSeriesCursorKeys reads a token into the keyset the query compares
 // against. A token built for another order or another filter is rejected
 // rather than reinterpreted: its keys point into a page that does not exist in
 // the requested list.
-func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters seriesFilters) (seriesCursorKeys, error) {
+func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Order, filters publishedseries.Filter) (seriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return seriesCursorKeys{}, invalid
@@ -243,7 +188,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters
 	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
 		return seriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != seriesListKey(order, filters) {
+	if cursor.Keys[0] != publishedseries.ListKey(order, filters) {
 		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
 	}
 
@@ -253,7 +198,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters
 	}
 	keys := seriesCursorKeys{id: uuid.NullUUID{UUID: seriesID, Valid: true}, inclusive: inclusive}
 
-	if order.column == seriesOrderColumnTitle {
+	if order.Column == publishedseries.ColumnTitle {
 		keys.title = sql.NullString{String: cursor.Keys[1], Valid: true}
 		return keys, nil
 	}
@@ -262,7 +207,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters
 	if err != nil {
 		return seriesCursorKeys{}, invalid
 	}
-	if order.column == seriesOrderColumnLatestEpisodeAt {
+	if order.Column == publishedseries.ColumnLatestEpisodeAt {
 		keys.latestEpisodeAt = sql.NullTime{Time: at.UTC(), Valid: true}
 		return keys, nil
 	}
@@ -271,149 +216,34 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, filters
 	return keys, nil
 }
 
-// activeSeriesPageRow is one row of the keyset half of a page: the series, and
-// the sort value the query computed for it when the order is not a column of
-// series. latestEpisodeAt is set only under the latest-update order, which is
-// also the only order whose cursor cannot be rebuilt from the display row.
-type activeSeriesPageRow struct {
-	id              uuid.UUID
-	latestEpisodeAt time.Time
-}
-
-// activeSeriesPage runs the keyset half of the page. The sort order lives in
-// the query rather than in a parameter so each one reads its index in order and
-// stops at LIMIT; a CASE in ORDER BY would sort the whole tenant first.
-// `descending` is the direction actually scanned: the sort order and the page
-// direction folded together.
+// activeSeriesPage runs the keyset half of the page. `descending` is the
+// direction actually scanned: the sort order and the page direction folded
+// together.
 func (s *apiServer) activeSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
-	order seriesOrder,
-	filters seriesFilters,
+	order publishedseries.Order,
+	filters publishedseries.Filter,
 	descending bool,
 	keys seriesCursorKeys,
 	limit int32,
-) ([]activeSeriesPageRow, error) {
-	queries := s.queriesFor(ctx)
-
-	switch {
-	case order.column == seriesOrderColumnLatestEpisodeAt && descending:
-		rows, err := queries.ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx, dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDescParams{
-			TenantID:              tenantID,
-			Surface:               surface,
-			HasFreeEpisodes:       filters.hasFreeEpisodes,
-			GenrePublicID:         filters.genrePublicID,
-			TagSlug:               filters.tagSlug,
-			Status:                filters.status,
-			Weekday:               filters.weekday,
-			CursorLatestEpisodeAt: keys.latestEpisodeAt,
-			CursorID:              keys.id,
-			CursorInclusive:       keys.inclusive,
-			Limit:                 limit,
-		})
-		if err != nil {
-			return nil, err
-		}
-		page := make([]activeSeriesPageRow, 0, len(rows))
-		for _, row := range rows {
-			page = append(page, activeSeriesPageRow{id: row.ID, latestEpisodeAt: row.LatestEpisodeAt})
-		}
-		return page, nil
-	case order.column == seriesOrderColumnLatestEpisodeAt:
-		rows, err := queries.ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx, dbmodels.ListActiveSeriesIDsByLatestEpisodeAtAscParams{
-			TenantID:              tenantID,
-			Surface:               surface,
-			HasFreeEpisodes:       filters.hasFreeEpisodes,
-			GenrePublicID:         filters.genrePublicID,
-			TagSlug:               filters.tagSlug,
-			Status:                filters.status,
-			Weekday:               filters.weekday,
-			CursorLatestEpisodeAt: keys.latestEpisodeAt,
-			CursorID:              keys.id,
-			CursorInclusive:       keys.inclusive,
-			Limit:                 limit,
-		})
-		if err != nil {
-			return nil, err
-		}
-		page := make([]activeSeriesPageRow, 0, len(rows))
-		for _, row := range rows {
-			page = append(page, activeSeriesPageRow{id: row.ID, latestEpisodeAt: row.LatestEpisodeAt})
-		}
-		return page, nil
-	case order.column == seriesOrderColumnTitle && descending:
-		ids, err := queries.ListActiveSeriesIDsByTitleDesc(ctx, dbmodels.ListActiveSeriesIDsByTitleDescParams{
-			TenantID:        tenantID,
-			Surface:         surface,
-			HasFreeEpisodes: filters.hasFreeEpisodes,
-			GenrePublicID:   filters.genrePublicID,
-			TagSlug:         filters.tagSlug,
-			Status:          filters.status,
-			Weekday:         filters.weekday,
-			CursorTitle:     keys.title,
-			CursorID:        keys.id,
-			CursorInclusive: keys.inclusive,
-			Limit:           limit,
-		})
-		return activeSeriesPageRowsFromIDs(ids), err
-	case order.column == seriesOrderColumnTitle:
-		ids, err := queries.ListActiveSeriesIDsByTitleAsc(ctx, dbmodels.ListActiveSeriesIDsByTitleAscParams{
-			TenantID:        tenantID,
-			Surface:         surface,
-			HasFreeEpisodes: filters.hasFreeEpisodes,
-			GenrePublicID:   filters.genrePublicID,
-			TagSlug:         filters.tagSlug,
-			Status:          filters.status,
-			Weekday:         filters.weekday,
-			CursorTitle:     keys.title,
-			CursorID:        keys.id,
-			CursorInclusive: keys.inclusive,
-			Limit:           limit,
-		})
-		return activeSeriesPageRowsFromIDs(ids), err
-	case descending:
-		ids, err := queries.ListActiveSeriesIDsByPublishedAtDesc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtDescParams{
-			TenantID:          tenantID,
-			Surface:           surface,
-			HasFreeEpisodes:   filters.hasFreeEpisodes,
-			GenrePublicID:     filters.genrePublicID,
-			TagSlug:           filters.tagSlug,
-			Status:            filters.status,
-			Weekday:           filters.weekday,
-			CursorPublishedAt: keys.publishedAt,
-			CursorID:          keys.id,
-			CursorInclusive:   keys.inclusive,
-			Limit:             limit,
-		})
-		return activeSeriesPageRowsFromIDs(ids), err
-	default:
-		ids, err := queries.ListActiveSeriesIDsByPublishedAtAsc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtAscParams{
-			TenantID:          tenantID,
-			Surface:           surface,
-			HasFreeEpisodes:   filters.hasFreeEpisodes,
-			GenrePublicID:     filters.genrePublicID,
-			TagSlug:           filters.tagSlug,
-			Status:            filters.status,
-			Weekday:           filters.weekday,
-			CursorPublishedAt: keys.publishedAt,
-			CursorID:          keys.id,
-			CursorInclusive:   keys.inclusive,
-			Limit:             limit,
-		})
-		return activeSeriesPageRowsFromIDs(ids), err
-	}
-}
-
-// activeSeriesPageRowsFromIDs wraps the orders whose sort value is a column of
-// series: the cursor is rebuilt from the display row, so the keyset scan hands
-// back nothing but ids.
-func activeSeriesPageRowsFromIDs(ids []uuid.UUID) []activeSeriesPageRow {
-	page := make([]activeSeriesPageRow, 0, len(ids))
-	for _, id := range ids {
-		page = append(page, activeSeriesPageRow{id: id})
-	}
-	return page
+) ([]publishedseries.Row, error) {
+	return publishedseries.Page(ctx, s.queriesFor(ctx), publishedseries.Scan{
+		TenantID:   tenantID,
+		Surface:    surface,
+		Order:      order,
+		Filter:     filters,
+		Descending: descending,
+		Keys: publishedseries.Keys{
+			PublishedAt:     keys.publishedAt,
+			Title:           keys.title,
+			LatestEpisodeAt: keys.latestEpisodeAt,
+			ID:              keys.id,
+			Inclusive:       keys.inclusive,
+		},
+		Limit: limit,
+	})
 }
 
 // activeSeriesRowsInOrder fetches the display rows for a page and puts them back
@@ -912,7 +742,13 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	filters, err := s.resolveSeriesFilters(ctx, tenant.ID, req.Msg)
+	filters, err := s.resolveSeriesFilters(ctx, tenant.ID, seriesFilterRequest{
+		hasFreeEpisodes: req.Msg.HasFreeEpisodes,
+		genrePublicID:   req.Msg.GenrePublicId,
+		tagSlug:         req.Msg.TagSlug,
+		status:          req.Msg.Status,
+		weekday:         req.Msg.Weekday,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -929,7 +765,7 @@ func (s *apiServer) ListPublishedSeries(
 		}
 	}
 	// Walking back through the list runs against the sort order.
-	descending := order.descending != (cursor.Direction == pagination.Backward)
+	descending := order.Descending != (cursor.Direction == pagination.Backward)
 	// One id past the page: its presence is what says another page exists.
 	pageRows, err := s.activeSeriesPage(ctx, tenant.ID, surface, order, filters, descending, keys, limit+1)
 	if err != nil {
@@ -939,8 +775,8 @@ func (s *apiServer) ListPublishedSeries(
 	ids := make([]uuid.UUID, 0, len(pageRows))
 	latestEpisodeAtByID := make(map[uuid.UUID]time.Time, len(pageRows))
 	for _, pageRow := range pageRows {
-		ids = append(ids, pageRow.id)
-		latestEpisodeAtByID[pageRow.id] = pageRow.latestEpisodeAt
+		ids = append(ids, pageRow.ID)
+		latestEpisodeAtByID[pageRow.ID] = pageRow.LatestEpisodeAt
 	}
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {

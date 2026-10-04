@@ -1,6 +1,7 @@
 package opensearchbackend
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/publishedseries"
 )
 
 func TestDecodeBoundaryRejectsATokenItDidNotIssue(t *testing.T) {
@@ -34,6 +36,24 @@ func TestDecodeBoundaryRejectsATokenItDidNotIssue(t *testing.T) {
 				t.Fatalf("decodeBoundary error = %v, want %v", err, test.want)
 			}
 		})
+	}
+}
+
+// A document carries none of the facts a filter or another order reads, so a
+// request asking for either is refused before the engine is asked anything,
+// rather than answered with hits the reader filtered out.
+func TestSearchSeriesRefusesANarrowedRequest(t *testing.T) {
+	t.Parallel()
+
+	backend := &Backend{}
+	for name, req := range map[string]catalogsearch.SeriesRequest{
+		"an order": {Order: publishedseries.TitleAsc},
+		"a filter": {Filter: publishedseries.Filter{HasFreeEpisodes: true}},
+	} {
+		req.Query = "seed"
+		if _, err := backend.SearchSeries(context.Background(), req); !errors.Is(err, catalogsearch.ErrNarrowingUnsupported) {
+			t.Fatalf("SearchSeries with %s: error = %v, want %v", name, err, catalogsearch.ErrNarrowingUnsupported)
+		}
 	}
 }
 

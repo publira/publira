@@ -1,14 +1,15 @@
 -- The published series list, in every shape the storefront reads it: the whole
--- catalogue, one creator's, one label's, and a keyword search. They are apart
--- from series.sql because they are one aggregate of their own — six stage-one
--- scans and the display query they all feed — and keeping them next to the
--- writes and the admin lists put both past the size at which a file stops
--- reading as a unit.
+-- catalogue, one creator's, one label's, and the SQL search backend's keyword
+-- search. They are apart from series.sql because they are one aggregate of
+-- their own — six stage-one scans and the display query they all feed — and
+-- keeping them next to the writes and the admin lists put both past the size
+-- at which a file stops reading as a unit.
 --
 -- The cursor pagination of the published series list runs in two stages.
 --
--- Stage one is the six keyset scans below, which settle nothing but the ids of
--- one page. The sort key is (published_at, id), (title, id), or
+-- Stage one is the six keyset scans below, which settle the ids of one page
+-- and hand each back with the value it was sorted by, which a token is built
+-- from. The sort key is (published_at, id), (title, id), or
 -- (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 -- the sorted value ties. Every sort order gets its own query with a fixed
 -- ORDER BY, because branching with CASE stops the rows from being read in
@@ -28,6 +29,15 @@
 -- idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 -- when it keeps a handful.
 --
+-- The keyword search is the same list narrowed once more, by query_pattern,
+-- which is NULL for a list. A search therefore sorts and filters exactly as a
+-- list does, and both read the same scans. The caller builds query_pattern as
+-- '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
+-- ride a btree, so the scan reads the tenant's published series while the
+-- LIMIT still bites after narrowing by tenant and is_published. Once the row
+-- count makes the latency visible, add a pg_trgm GIN index on title and
+-- series_listings.synopsis.
+--
 -- Every query also keeps only what the calling surface may show, through
 -- series_surfaces for the series and episode_surfaces for the episodes counted
 -- into them. The token names the surface it was built on as well, for the
@@ -40,7 +50,8 @@
 --
 -- cursor rules: proto/README.md.
 -- name: ListActiveSeriesIDsByPublishedAtDesc :many
-SELECT s.id
+SELECT s.id,
+    s.published_at
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -106,6 +117,17 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             WHERE sl.tenant_id = sqlc.arg('tenant_id')
                 AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
+        )
+    )
+    AND (
+        sqlc.narg('query_pattern')::text IS NULL
+        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -130,7 +152,8 @@ ORDER BY s.published_at DESC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesIDsByPublishedAtAsc :many
-SELECT s.id
+SELECT s.id,
+    s.published_at
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -196,6 +219,17 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             WHERE sl.tenant_id = sqlc.arg('tenant_id')
                 AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
+        )
+    )
+    AND (
+        sqlc.narg('query_pattern')::text IS NULL
+        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -220,7 +254,8 @@ ORDER BY s.published_at ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesIDsByTitleAsc :many
-SELECT s.id
+SELECT s.id,
+    s.title
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -286,6 +321,17 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             WHERE sl.tenant_id = sqlc.arg('tenant_id')
                 AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
+        )
+    )
+    AND (
+        sqlc.narg('query_pattern')::text IS NULL
+        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -310,7 +356,8 @@ ORDER BY s.title ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesIDsByTitleDesc :many
-SELECT s.id
+SELECT s.id,
+    s.title
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -376,6 +423,17 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             WHERE sl.tenant_id = sqlc.arg('tenant_id')
                 AND sl.series_id = s.id
                 AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
+        )
+    )
+    AND (
+        sqlc.narg('query_pattern')::text IS NULL
+        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                AND sl.series_id = s.id
+                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -499,6 +557,17 @@ WITH candidate AS (
                     AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
             )
         )
+        AND (
+            sqlc.narg('query_pattern')::text IS NULL
+            OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
+                    AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            )
+        )
 )
 SELECT id,
     latest_episode_at
@@ -606,6 +675,17 @@ WITH candidate AS (
                 WHERE sl.tenant_id = sqlc.arg('tenant_id')
                     AND sl.series_id = s.id
                     AND sl.schedule_weekdays @> ARRAY[sqlc.narg('weekday')::int2]
+            )
+        )
+        AND (
+            sqlc.narg('query_pattern')::text IS NULL
+            OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = sqlc.arg('tenant_id')
+                    AND sl.series_id = s.id
+                    AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
         )
 )
@@ -934,96 +1014,3 @@ WHERE s.label_id = sqlc.arg('label_id')::uuid
 ORDER BY s.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesBySearchTitleAsc :many
--- The SQL catalog search backend's series search. Takes the published series
--- whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
--- id, and returns the title with each id because the next token is built from
--- it.
--- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
--- with ESCAPE '!'.
--- Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
--- cannot ride a btree, so a sequential scan is enough while the LIMIT still
--- bites after narrowing by tenant and is_published. Once the row count makes
--- the latency visible, add a pg_trgm GIN index on title and
--- series_listings.synopsis.
-SELECT s.id,
-    s.title
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = sqlc.arg('surface')::text
-    )
-    AND (
-        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title ASC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
-
--- name: ListPublishedSeriesBySearchTitleDesc :many
--- The backward direction of ListPublishedSeriesBySearchTitleAsc.
-SELECT s.id,
-    s.title
-FROM series s
-    LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = sqlc.arg('surface')::text
-    )
-    AND (
-        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
-    )
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-        OR (
-            NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
-                sqlc.narg('cursor_title')::text,
-                sqlc.narg('cursor_id')::uuid
-            )
-        )
-    )
-ORDER BY s.title DESC,
-    s.id DESC
-LIMIT sqlc.arg('limit');
-

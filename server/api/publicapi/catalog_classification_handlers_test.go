@@ -52,8 +52,8 @@ func TestCatalogListPublishedSeriesPassesEveryFilterToTheQuery(t *testing.T) {
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	expectTagLookup(mock, tenantID, "swordplay", true)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", true, "GENRE0000001", "swordplay", "completed", int16(4), nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows())
+		WithArgs(tenantID, "web", true, "GENRE0000001", "swordplay", "completed", int16(4), nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesScanRows())
 
 	weekday := int32(4)
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -83,8 +83,8 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, false, nil, int32(2)).
-		WillReturnRows(seriesIDRows(seriesID, uuid.Must(uuid.NewV7())))
+		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, nil, false, nil, int32(2)).
+		WillReturnRows(seriesScanRows(seriesID, uuid.Must(uuid.NewV7())))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
@@ -226,7 +226,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 	latestEpisodeAt := now.Add(-time.Hour)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDesc)).
-		WithArgs(nil, false, nil, int32(2), "web", tenantID, false, nil, nil, nil, nil).
+		WithArgs(nil, false, nil, int32(2), "web", tenantID, false, nil, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}).
 			AddRow(seriesID, latestEpisodeAt).
 			AddRow(uuid.Must(uuid.NewV7()), latestEpisodeAt.Add(-time.Hour)))
@@ -275,7 +275,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtAsc)).
-		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
+		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -618,7 +618,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDesc)).
-		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
+		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)

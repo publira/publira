@@ -52,8 +52,8 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows(seriesID))
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesScanRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
@@ -116,12 +116,23 @@ func seriesDetailColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "status", "schedule_weekdays", "age_rating", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "free_episode_count", "creators", "genres", "tags", "label_info"})
 }
 
-// seriesIDRows is what the keyset half of a page returns: ids only, already in
-// page order.
+// seriesIDRows is what a keyset query that returns nothing but ids hands
+// back, already in page order.
 func seriesIDRows(ids ...uuid.UUID) *sqlmock.Rows {
 	rows := sqlmock.NewRows([]string{"id"})
 	for _, id := range ids {
 		rows.AddRow(id)
+	}
+	return rows
+}
+
+// seriesScanRows is what the keyset half of a series list page returns: the
+// ids in page order, each with the value it was sorted by. The list rebuilds
+// its tokens from the display rows, so the value is left empty.
+func seriesScanRows(ids ...uuid.UUID) *sqlmock.Rows {
+	rows := sqlmock.NewRows([]string{"id", "published_at"})
+	for _, id := range ids {
+		rows.AddRow(id, nil)
 	}
 	return rows
 }
@@ -155,8 +166,8 @@ func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	// The handler asks for one id past the page to learn that a next page exists.
 	ids := newSeriesIDs(3)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(3)).
-		WillReturnRows(seriesIDRows(ids...))
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(3)).
+		WillReturnRows(seriesScanRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, ids[:2]))
@@ -195,8 +206,8 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
-		WillReturnRows(seriesIDRows(ids...))
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesScanRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now.Add(-2*time.Second), ids))
@@ -238,8 +249,8 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtAsc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
-		WillReturnRows(seriesIDRows(olderID, newerID))
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesScanRows(olderID, newerID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
@@ -286,8 +297,8 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, sortArg, int32(21)).
-				WillReturnRows(seriesIDRows())
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, sortArg, int32(21)).
+				WillReturnRows(seriesScanRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -414,8 +425,8 @@ func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, true, sortArg, int32(21)).
-				WillReturnRows(seriesIDRows())
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, true, sortArg, int32(21)).
+				WillReturnRows(seriesScanRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -477,8 +488,8 @@ func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
-				WillReturnRows(seriesIDRows())
+				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
+				WillReturnRows(seriesScanRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -503,8 +514,8 @@ func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByTitleAsc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, boundaryID, false, "Series 001", int32(21)).
-		WillReturnRows(seriesIDRows())
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, "Series 001", int32(21)).
+		WillReturnRows(seriesScanRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -613,8 +624,8 @@ func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows())
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesScanRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -638,16 +649,16 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	seriesBID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantAID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows(seriesAID))
+		WithArgs(tenantAID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesScanRows(seriesAID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantAID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantBID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows(seriesBID))
+		WithArgs(tenantBID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WillReturnRows(seriesScanRows(seriesBID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantBID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
@@ -983,7 +994,7 @@ func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, false, nil, int32(21)).
+		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)

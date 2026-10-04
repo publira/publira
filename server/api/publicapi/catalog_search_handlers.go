@@ -83,6 +83,10 @@ func (s *apiServer) searchError(ctx context.Context, msg string, err error, tena
 	switch {
 	case errors.Is(err, catalogsearch.ErrTokenForAnotherQuery):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another query"))
+	case errors.Is(err, catalogsearch.ErrTokenForAnotherNarrowing):
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
+	case errors.Is(err, catalogsearch.ErrNarrowingUnsupported):
+		return connect.NewError(connect.CodeUnimplemented, errors.New("this search cannot narrow or sort its results"))
 	case errors.Is(err, catalogsearch.ErrInvalidToken):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	default:
@@ -98,7 +102,26 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.search.SearchSeries(ctx, search.backend)
+	seriesReq := catalogsearch.SeriesRequest{Request: search.backend}
+	// Unspecified leaves the order to the backend, which is what a search
+	// answered before it could be sorted; a list's newest-first default is not.
+	if req.Msg.Order != publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED {
+		seriesReq.Order, err = resolveSeriesOrder(req.Msg.Order)
+		if err != nil {
+			return nil, err
+		}
+	}
+	seriesReq.Filter, err = s.resolveSeriesFilters(ctx, search.tenant.ID, seriesFilterRequest{
+		hasFreeEpisodes: req.Msg.HasFreeEpisodes,
+		genrePublicID:   req.Msg.GenrePublicId,
+		tagSlug:         req.Msg.TagSlug,
+		status:          req.Msg.Status,
+		weekday:         req.Msg.Weekday,
+	})
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.search.SearchSeries(ctx, seriesReq)
 	if err != nil {
 		return nil, s.searchError(ctx, "failed to search published series", err, search.tenant.ID)
 	}

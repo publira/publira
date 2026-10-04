@@ -144,9 +144,14 @@ var (
 	}
 )
 
-// SearchSeries matches the title, its reading, and the synopsis.
-func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
-	return b.search(ctx, req, seriesSearch)
+// SearchSeries matches the title, its reading, and the synopsis. It ranks
+// every hit and narrows by nothing: a document carries none of the facts a
+// filter or another order reads, so a request asking for either is refused.
+func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequest) (catalogsearch.Page, error) {
+	if req.Narrowed() {
+		return catalogsearch.Page{}, catalogsearch.ErrNarrowingUnsupported
+	}
+	return b.search(ctx, req.Request, seriesSearch)
 }
 
 // SearchCreators matches the name and its reading.

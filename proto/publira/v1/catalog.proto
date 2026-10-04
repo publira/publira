@@ -31,7 +31,8 @@ message ListPublishedLabelsResponse {
 
 // Sort order of a published series list.
 enum SeriesOrder {
-  // Same as SERIES_ORDER_PUBLISHED_AT_DESC.
+  // Same as SERIES_ORDER_PUBLISHED_AT_DESC in a list. A search gives it a
+  // meaning of its own, stated at SearchPublishedSeriesRequest.order.
   SERIES_ORDER_UNSPECIFIED = 0;
   // Newest published first.
   SERIES_ORDER_PUBLISHED_AT_DESC = 1;
@@ -473,12 +474,15 @@ message ListPublishedTagsResponse {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 // Matches published series whose title or synopsis contains `query`
-// (case-insensitive substring). Sorted by title, then id. There is no order
-// field: title order is the only search result list the storefront needs.
+// (case-insensitive substring), narrowed and sorted the way
+// ListPublishedSeries narrows and sorts the catalogue.
 // The token carries the Unicode-lowercased query it was built for; that same
 // string is the ILIKE pattern. Sending the token with a query that lowers to
 // a different string is invalid_argument. ASCII case changes of the same
 // query are the same search. Changing to a different query restarts at page 1.
+// The token carries the order and the filters as well, under the rule
+// ListPublishedSeriesRequest states for them: sending it with a different
+// order or filter is invalid_argument, and changing either restarts at page 1.
 message SearchPublishedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
@@ -490,6 +494,29 @@ message SearchPublishedSeriesRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Sort order. Unspecified is the search's own order rather than the newest
+  // first a list falls back to: by relevance on a search backend that ranks
+  // its hits, and by title, then id, on one that does not. Every other value
+  // sorts the hits exactly as it sorts ListPublishedSeries.
+  SeriesOrder order = 6;
+  // Keep only the series a reader can start without paying, as
+  // ListPublishedSeriesRequest.has_free_episodes does.
+  bool has_free_episodes = 7;
+  // Keep only the series carrying this genre, as
+  // ListPublishedSeriesRequest.genre_public_id does. A public ID naming no
+  // genre of the tenant is not_found.
+  string genre_public_id = 8;
+  // Keep only the series carrying this tag, as
+  // ListPublishedSeriesRequest.tag_slug does. A slug naming no tag of the
+  // tenant is not_found.
+  string tag_slug = 9;
+  // Keep only the series in this serialization state, as
+  // ListPublishedSeriesRequest.status does; unspecified applies no filter.
+  publira.types.v1.SeriesStatus status = 10;
+  // Keep only the series expecting an episode on this weekday, as
+  // ListPublishedSeriesRequest.weekday does: 0 is Sunday, and a weekday
+  // outside 0 to 6 is invalid_argument.
+  optional int32 weekday = 11;
 }
 
 message SearchPublishedSeriesResponse {
@@ -845,10 +872,12 @@ service CatalogService {
   rpc ListPublishedGenres(ListPublishedGenresRequest) returns (ListPublishedGenresResponse) {}
   // The tags at least one published series carries, the most-carried first.
   rpc ListPublishedTags(ListPublishedTagsRequest) returns (ListPublishedTagsResponse) {}
-  // Keyword search over published series titles and synopses. An empty query
-  // is invalid_argument. A token carries the Unicode-lowercased query it was
+  // Keyword search over published series titles and synopses, narrowed and
+  // sorted by the fields ListPublishedSeries takes. An empty query is
+  // invalid_argument. A token carries the Unicode-lowercased query it was
   // built for; sending it with a query that lowers to a different string is
-  // invalid_argument.
+  // invalid_argument. A search backend that cannot narrow or sort its hits
+  // answers a request that asks it to with unimplemented.
   rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
   // Keyword search over the names of creators who hold at least one currently
   // published series. An empty query is invalid_argument, and the token rule
