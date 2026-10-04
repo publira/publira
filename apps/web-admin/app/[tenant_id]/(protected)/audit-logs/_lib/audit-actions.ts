@@ -13,6 +13,8 @@ export const auditActions = [
   "episode_free_window_deleted",
   "creator_created",
   "creator_updated",
+  "creator_account_linked",
+  "creator_account_unlinked",
   "creator_role_created",
   "creator_role_updated",
   "creator_role_deleted",
