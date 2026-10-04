@@ -8,7 +8,7 @@
 #
 # `name:` is fixed, unlike the root compose.yaml, since a host runs one install
 # whose volumes keep their names across every command; `publira` would share
-# them with the Dev Container's stack, which takes that name from the checkout.
+# them with the development stack, which the root compose.yaml names that.
 
 name: publira-deploy
 

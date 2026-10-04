@@ -45,6 +45,15 @@ The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/de
 
 Loopback only: none of these services authenticates a caller, so they are never published on every interface.
 
+The Compose project is `publira` (`name:` in `compose.yaml`), whichever directory the checkout sits in, so the containers and named volumes keep their names: `publira_postgres-data`, and in the Dev Container `publira_claude-data`, `publira_pnpm-store`, and the rest. Every checkout therefore shares one stack, which the [per-worktree `dev-env` profiles](CONTRIBUTING.md#working-in-several-worktrees) are built on. A second checkout opened as a Dev Container of its own would replace the first one's `app` container; to give it a stack of its own, set `COMPOSE_PROJECT_NAME=<name>` in a `.env` at its root, which both `docker compose` and the Dev Containers CLI read ahead of `name:`.
+
+Changing the project name orphans every volume. Nothing fails: the stack comes up under the new name with empty volumes, while the containers and volumes of the old name keep running and keep their data. List what an old name left behind with:
+
+```bash
+docker ps -a --filter label=com.docker.compose.project=<old name>
+docker volume ls --filter label=com.docker.compose.project=<old name>
+```
+
 ### Running `task setup` / `task dev` on the host
 
 The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.jsonc` passes `PUBLIRA_*` and `PNCH_*` through, so exported values reach `task dev` as is.
