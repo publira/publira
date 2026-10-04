@@ -1,6 +1,6 @@
 ---
 name: organize-github-issues
-description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, Issue fields, labels, epics, Sub-issues, and dependency Relationships. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, or make GitHub work tracking easier to search and maintain.
+description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, Issue fields, labels, milestones, epics, Sub-issues, and dependency Relationships. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, or make GitHub work tracking easier to search and maintain.
 ---
 
 # Organize GitHub Issues
@@ -73,6 +73,15 @@ Use labels only for orthogonal facets that types and fields do not express, for 
 
 Remove or avoid labels such as `type/*`, `priority/*`, `effort/*`, `bug`, or `enhancement` when the equivalent Issue type or field is available. Remember that repository labels can also be used by pull requests; inspect that impact before deleting a label.
 
+### [Milestone](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones)
+
+Give every Issue you create exactly one milestone. The milestones are the repository's own, and so is what belongs in each: read their titles and descriptions with `gh api --paginate 'repos/OWNER/REPO/milestones?per_page=100'` before choosing, rather than assuming a set of names, and choose the open milestone whose description the work matches.
+
+- Decide without asking when the descriptions settle it, or when a precedent does: the request names one, the parent Issue carries one, or a comparable existing Issue was filed under one.
+- Ask the user only when the descriptions leave two milestones equally plausible — for example, whether a piece of work blocks a release or can follow it — and neither the request, the parent Issue, nor a comparable existing Issue settles the question. Ask that one question, naming the candidates, instead of guessing.
+- Give a parent and its Sub-issues the same milestone unless the request says otherwise.
+- Never create, rename, or close a milestone unless the user asks for it. When no existing milestone fits, ask rather than inventing one.
+
 ## Model hierarchy and sequencing
 
 Use these relationships for distinct purposes:
@@ -93,14 +102,14 @@ Such work lands as two stacked pull requests, one per layer, and every pull requ
 - the backend one — the `proto/` contract, the schema, and the server that serves it
 - the frontend one — the screens that consume it, `blocked by` the backend one
 
-Give each its own title naming its layer's outcome, its own Effort, and its own `area/*` label, and put both under the same parent with the same milestone when the work has them. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
+Give each its own title naming its layer's outcome, its own Effort, and its own `area/*` label, give both the same milestone, and put both under the same parent when the work has one. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
 
 ## [Create an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 1. Search for duplicates, bot-managed equivalents, and suitable existing parents.
 2. Write a content-only title.
 3. Write a body containing only useful sections, typically purpose, background, scope, non-scope, acceptance criteria, and implementation notes.
-4. Set Type, Priority, leaf Effort, orthogonal labels, parent, and genuine dependencies.
+4. Set Type, Priority, leaf Effort, orthogonal labels, milestone, parent, and genuine dependencies.
 5. If the Issue is a multi-Issue outcome, add `epic`, leave Effort unset, and attach its Sub-issues.
 6. Re-read the created Issue from GitHub and verify every value.
 
@@ -131,6 +140,7 @@ Confirm all applicable invariants:
 - every human-managed Issue title contains only meaningful content
 - automated titles remain compatible with their generators
 - every Issue has the correct Type
+- every Issue created in this run has exactly one open milestone, the one whose description its work matches and, unless the request said otherwise, the same one as its parent
 - no title or label duplicates Type, Priority, or Effort
 - every open actionable leaf Issue has Effort
 - parent Epics have `epic`, valid Sub-issues, and no Effort
