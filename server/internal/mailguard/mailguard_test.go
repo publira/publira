@@ -129,6 +129,26 @@ func TestGuardTreatsOneMailboxWrittenTwoWaysAsOne(t *testing.T) {
 	}
 }
 
+// A sub-address tag is one more way of writing the same inbox, so rotating tags
+// spends that inbox's one allowance rather than opening a new one per tag.
+func TestGuardChargesTheSubAddressedVariantsOfOneInboxAsOne(t *testing.T) {
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
+
+	if err := guard.Allow(t.Context(), request(testSource), testScope, "john+1@example.com"); err != nil {
+		t.Fatalf("the first tag = %v, want it allowed", err)
+	}
+	for _, address := range []string{"john+2@example.com", "John@Example.com"} {
+		err := guard.Allow(t.Context(), request(testSource), testScope, address)
+		if connect.CodeOf(err) != connect.CodeResourceExhausted {
+			t.Fatalf("%s code = %v, want resource_exhausted from the inbox's one allowance (err=%v)", address, connect.CodeOf(err), err)
+		}
+	}
+
+	if err := guard.Allow(t.Context(), request(testSource), testScope, "jane@example.com"); err != nil {
+		t.Fatalf("another inbox = %v, want an allowance of its own", err)
+	}
+}
+
 // A storefront's traffic must not spend the allowance the reader of another one
 // needs for their own password reset.
 func TestGuardKeepsScopesApart(t *testing.T) {

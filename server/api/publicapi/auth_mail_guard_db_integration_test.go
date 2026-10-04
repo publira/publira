@@ -167,6 +167,31 @@ func TestDBTheMailFormsShareOneAllowancePerAddress(t *testing.T) {
 	}
 }
 
+// Rotating the sub-address tag of one inbox does not buy a caller more mail:
+// every tag spends that inbox's one allowance, and another inbox keeps its own.
+func TestDBTheSubAddressedVariantsOfOneInboxShareOneAllowance(t *testing.T) {
+	env := newMailLimitedEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	requestReset := func(email string) error {
+		_, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+			Tenant: tenantContext(tenant),
+			Email:  email,
+		}))
+		return err
+	}
+
+	if err := requestReset("john+1@example.com"); err != nil {
+		t.Fatalf("RequestPasswordReset for the first tag: %v", err)
+	}
+	if err := requestReset("john+2@example.com"); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("RequestPasswordReset for the second tag code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	if err := requestReset("jane@example.com"); err != nil {
+		t.Fatalf("RequestPasswordReset for another inbox: %v", err)
+	}
+}
+
 // A member naming an address that already has an account is told so and mailed
 // nothing, so that request must not have spent the allowance of the account it
 // named — otherwise the form would be a way for any signed-in caller to stop
