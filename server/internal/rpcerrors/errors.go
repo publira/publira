@@ -56,6 +56,14 @@ const (
 	ReasonStorageTestPermission     = "STORAGE_TEST_PERMISSION"
 	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"
 	ReasonStorageTestUnknown        = "STORAGE_TEST_UNKNOWN"
+	// A wait-for-free ticket refused without being spent: the series does not
+	// offer the rule, the episode is free to everyone already, it is one of the
+	// latest episodes the rule keeps a ticket off, or the reader's next ticket
+	// is not ready yet.
+	ReasonWaitFreeNotOffered      = "WAIT_FREE_NOT_OFFERED"
+	ReasonWaitFreeEpisodeFree     = "WAIT_FREE_EPISODE_FREE"
+	ReasonWaitFreeEpisodeExcluded = "WAIT_FREE_EPISODE_EXCLUDED"
+	ReasonWaitFreeNotRecharged    = "WAIT_FREE_NOT_RECHARGED"
 
 	// FieldReasonPageSlugReserved is a BadRequest field-violation reason, not
 	// an ErrorInfo one: the page slug names a path the public site keeps for
@@ -79,6 +87,11 @@ const (
 	// still name a creator role that cannot be deleted. The value is a decimal
 	// integer in decimal digits, with no sign or thousands separator.
 	MetadataCreditCount = "credit_count"
+
+	// MetadataNextAvailableAt is the ErrorInfo metadata key for the RFC3339
+	// instant a reader's next wait-for-free ticket is ready, on
+	// ReasonWaitFreeNotRecharged.
+	MetadataNextAvailableAt = "next_available_at"
 )
 
 // NewFieldViolationError reports that one request field caused a rejected RPC.

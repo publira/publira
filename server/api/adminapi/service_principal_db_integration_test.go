@@ -111,6 +111,10 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 			}))
 			return err
 		},
+		publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure: func(ctx context.Context) error {
+			_, err := seriesClient.GetSeriesWaitFreeSettings(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetSeriesWaitFreeSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()}))
+			return err
+		},
 		publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure: func(ctx context.Context) error {
 			_, err := dashboardClient.GetDashboard(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetDashboardRequest{Tenant: tenantCtx}))
 			return err

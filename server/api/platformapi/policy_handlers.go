@@ -26,6 +26,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		MfaRequiredForTenantAdmin: policy.MFARequiredForTenantAdmin,
 		PasswordVerification:      minuteDayToProto(policy.PasswordVerification),
 		StorePurchaseConfirmation: minuteDayToProto(policy.StorePurchaseConfirmation),
+		WaitFreeTicketUse:         minuteDayToProto(policy.WaitFreeTicketUse),
 		MailRequestsPerAddress:    hourDayToProto(policy.MailRequestsPerAddress),
 		MailRequestsPerSource:     hourDayToProto(policy.MailRequestsPerSource),
 		CommunityLimitDefaults: &publirasplatformv1.CommunityLimitDefaults{
@@ -57,6 +58,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		MFARequiredForTenantAdmin: policy.GetMfaRequiredForTenantAdmin(),
 		PasswordVerification:      minuteDayFromProto(policy.GetPasswordVerification()),
 		StorePurchaseConfirmation: minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
+		WaitFreeTicketUse:         minuteDayFromProto(policy.GetWaitFreeTicketUse()),
 		MailRequestsPerAddress:    hourDayFromProto(policy.GetMailRequestsPerAddress()),
 		MailRequestsPerSource:     hourDayFromProto(policy.GetMailRequestsPerSource()),
 		Community: platformpolicy.CommunityLimits{
@@ -109,6 +111,19 @@ func (s *platformServer) UpdatePlatformPolicy(
 	params := platformpolicy.SaveParams{
 		Policy:           platformPolicyFromProto(req.Msg.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
+	}
+	// wait_free_ticket_use reached the policy after the console screens that
+	// save it, and those are deployed apart from this server, so a request
+	// that leaves it out keeps what is stored rather than being refused. The
+	// stored value is read here and the save is held to expected_revision, so
+	// a value another operator saved since the caller's read is refused with
+	// the rest of the stale request rather than written back over.
+	if req.Msg.GetPolicy().GetWaitFreeTicketUse() == nil {
+		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
+		}
+		params.Policy.WaitFreeTicketUse = stored.WaitFreeTicketUse
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.platformPolicyError(ctx, err)

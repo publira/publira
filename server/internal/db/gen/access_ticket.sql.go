@@ -34,7 +34,8 @@ RETURNING id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at
+    created_at,
+    source
 `
 
 type CreateAccessTicketParams struct {
@@ -71,6 +72,7 @@ func (q *Queries) CreateAccessTicket(ctx context.Context, arg CreateAccessTicket
 		&i.Note,
 		&i.CreatedByUserID,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
@@ -92,7 +94,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -125,6 +128,7 @@ type GetAccessTicketForTenantRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
+	Source          string         `json:"source"`
 }
 
 func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error) {
@@ -148,6 +152,7 @@ func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTic
 		&i.Note,
 		&i.CreatedByUserID,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
@@ -162,12 +167,14 @@ SELECT id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at
+    created_at,
+    source
 FROM access_tickets
 WHERE tenant_id = $1
     AND user_id = $2
     AND episode_id = $3
     AND revoked_at IS NULL
+    AND source = 'staff'
 ORDER BY created_at DESC,
     id DESC
 LIMIT 1
@@ -179,8 +186,10 @@ type GetNonRevokedAccessTicketForUserEpisodeParams struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 }
 
-// Non-revoked ticket for a user+episode pair (may already be expired).
-// Used for idempotent issue under the unique partial index on non-revoked rows.
+// Non-revoked staff ticket for a user+episode pair (may already be expired).
+// Used for idempotent issue under the unique partial index on non-revoked
+// staff rows. A wait-for-free ticket the reader used is theirs, not one staff
+// issued, so it neither stands in for a staff ticket nor blocks one.
 func (q *Queries) GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error) {
 	row := q.db.QueryRowContext(ctx, GetNonRevokedAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i AccessTicket
@@ -195,6 +204,7 @@ func (q *Queries) GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, a
 		&i.Note,
 		&i.CreatedByUserID,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
@@ -216,7 +226,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -285,6 +296,7 @@ type ListAccessTicketsForTenantAscRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
+	Source          string         `json:"source"`
 }
 
 func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error) {
@@ -323,6 +335,7 @@ func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAcc
 			&i.Note,
 			&i.CreatedByUserID,
 			&i.CreatedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -354,7 +367,8 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at
+    at.created_at,
+    at.source
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
@@ -423,6 +437,7 @@ type ListAccessTicketsForTenantDescRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
+	Source          string         `json:"source"`
 }
 
 // Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
@@ -466,6 +481,7 @@ func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAc
 			&i.Note,
 			&i.CreatedByUserID,
 			&i.CreatedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -495,7 +511,8 @@ RETURNING id,
     revoked_at,
     note,
     created_by_user_id,
-    created_at
+    created_at,
+    source
 `
 
 type RevokeAccessTicketForTenantParams struct {
@@ -517,6 +534,7 @@ func (q *Queries) RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAcc
 		&i.Note,
 		&i.CreatedByUserID,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }

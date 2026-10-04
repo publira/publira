@@ -253,6 +253,14 @@ func expectSeriesRating(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, aver
 		WillReturnRows(sqlmock.NewRows([]string{"rating_count", "rating_average"}).AddRow(count, average))
 }
 
+// expectNoSeriesWaitFreeRule stands in for the wait-for-free read every series
+// detail makes, for a series that never configured the rule.
+func expectNoSeriesWaitFreeRule(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesWaitFreeSettings)).
+		WithArgs(tenantID, seriesID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 // webToken builds a catalog token the way a read from the storefront hands one
 // back: the surface it was built on, then the list's own keys.
 func webToken(direction pagination.Direction, keys ...string) string {

@@ -66,6 +66,7 @@ type accessTicketFields struct {
 	revokedAt       sql.NullTime
 	note            sql.NullString
 	createdAt       time.Time
+	source          string
 }
 
 func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.AdminAccessTicket {
@@ -84,6 +85,7 @@ func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.A
 		Note:            formatOptionalString(fields.note),
 		CreatedAt:       fields.createdAt.UTC().Format(time.RFC3339),
 		Status:          accessTicketStatus(fields.revokedAt, fields.expiresAt, now),
+		Source:          fields.source,
 	}
 }
 
@@ -114,6 +116,7 @@ func mapAccessTicketDescRows(rows []dbmodels.ListAccessTicketsForTenantDescRow) 
 				revokedAt:       row.RevokedAt,
 				note:            row.Note,
 				createdAt:       row.CreatedAt,
+				source:          row.Source,
 			},
 		})
 	}
@@ -139,6 +142,7 @@ func mapAccessTicketAscRows(rows []dbmodels.ListAccessTicketsForTenantAscRow) []
 				revokedAt:       row.RevokedAt,
 				note:            row.Note,
 				createdAt:       row.CreatedAt,
+				source:          row.Source,
 			},
 		})
 	}
@@ -160,6 +164,7 @@ func mapAccessTicketFromGetRow(row dbmodels.GetAccessTicketForTenantRow, now tim
 		revokedAt:       row.RevokedAt,
 		note:            row.Note,
 		createdAt:       row.CreatedAt,
+		source:          row.Source,
 	}, now)
 }
 

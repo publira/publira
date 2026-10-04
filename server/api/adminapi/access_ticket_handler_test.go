@@ -25,7 +25,7 @@ func ticketDetailColumns() []string {
 	return []string{
 		"id", "tenant_id", "public_id", "episode_id", "episode_public_id", "episode_title",
 		"series_public_id", "series_title", "user_id", "user_public_id", "user_name", "user_email",
-		"expires_at", "revoked_at", "note", "created_by_user_id", "created_at",
+		"expires_at", "revoked_at", "note", "created_by_user_id", "created_at", "source",
 	}
 }
 
@@ -86,15 +86,15 @@ func TestIssueAccessTicketSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAccessTicket)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), episodeID, memberID, sql.NullTime{}, sql.NullString{}, uuid.NullUUID{UUID: actorID, Valid: true}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
-			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, nil, nil, actorID, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at", "source"}).
+			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, nil, nil, actorID, now, "staff"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
 		WithArgs(tenantID, ticketID).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
 			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, nil, nil, actorID, now,
+			nil, nil, nil, actorID, now, "staff",
 		))
 
 	expectAdminAuditLogInsert(mock)
@@ -183,15 +183,15 @@ func TestIssueAccessTicketReturnsExistingNonRevoked(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
 		WithArgs(tenantID, memberID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
-			AddRow(ticketID, tenantID, "TICKETEXIST01", episodeID, memberID, nil, nil, nil, actorID, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at", "source"}).
+			AddRow(ticketID, tenantID, "TICKETEXIST01", episodeID, memberID, nil, nil, nil, actorID, now, "staff"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
 		WithArgs(tenantID, ticketID).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKETEXIST01", episodeID, "EPISODE001", "Episode 1",
 			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, nil, nil, actorID, now,
+			nil, nil, nil, actorID, now, "staff",
 		))
 
 	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
@@ -309,20 +309,20 @@ func TestRevokeAccessTicketSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
 			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, nil, nil, actorID, now,
+			nil, nil, nil, actorID, now, "staff",
 		))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.RevokeAccessTicketForTenant)).
 		WithArgs(tenantID, ticketID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
-			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, revokedAt, nil, actorID, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at", "source"}).
+			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, revokedAt, nil, actorID, now, "staff"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
 		WithArgs(tenantID, ticketID).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
 			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, revokedAt, nil, actorID, now,
+			nil, revokedAt, nil, actorID, now, "staff",
 		))
 
 	expectAdminAuditLogInsert(mock)
@@ -368,7 +368,7 @@ func TestRevokeAccessTicketAlreadyRevoked(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
 			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, revokedAt, nil, actorID, now,
+			nil, revokedAt, nil, actorID, now, "staff",
 		))
 
 	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
@@ -427,7 +427,7 @@ func addTicketRow(
 	return rows.AddRow(
 		id, uuid.Must(uuid.NewV7()), publicID, uuid.Must(uuid.NewV7()), "EPISODE001", "Episode 1",
 		"SERIES001", "Series 1", uuid.Must(uuid.NewV7()), "MEMBER001", "Sample Member", "member@example.com",
-		nil, nil, noteValue, uuid.Must(uuid.NewV7()), createdAt,
+		nil, nil, noteValue, uuid.Must(uuid.NewV7()), createdAt, "staff",
 	)
 }
 

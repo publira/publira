@@ -671,6 +671,46 @@ message DeleteEpisodeFreeWindowRequest {
 
 message DeleteEpisodeFreeWindowResponse {}
 
+// One series' wait-for-free rule: a signed-in reader may open one priced
+// episode of the series for access_hours, once every recharge_hours.
+message SeriesWaitFreeSettings {
+  bool enabled = 1;
+  // How long after a reader uses a ticket the next one is ready. 1 to 8760
+  // (a year). Changing it moves the next use, not the wait a reader is already
+  // in.
+  int32 recharge_hours = 2;
+  // How long the episode a ticket opens stays open. 1 to 8760 (a year).
+  int32 access_hours = 3;
+  // How many of the series' latest published episodes a ticket cannot open,
+  // counted from the end of the order the storefront lists them in. 0 keeps
+  // none back.
+  int32 excluded_latest_count = 4;
+}
+
+// A series nobody configured answers the defaults: off, 23 hours to recharge,
+// 72 hours of access, and no episode kept back.
+message GetSeriesWaitFreeSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+}
+
+message GetSeriesWaitFreeSettingsResponse {
+  SeriesWaitFreeSettings settings = 1;
+}
+
+// Saves the whole rule. Turning it off keeps the numbers for the next time it
+// is turned on, and leaves the tickets readers already used open until they
+// expire.
+message UpdateSeriesWaitFreeSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  SeriesWaitFreeSettings settings = 3;
+}
+
+message UpdateSeriesWaitFreeSettingsResponse {
+  SeriesWaitFreeSettings settings = 1;
+}
+
 service AdminSeriesService {
   // Minimum role: tenant_editor.
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
@@ -718,4 +758,8 @@ service AdminSeriesService {
   rpc ListEpisodeFreeWindows(ListEpisodeFreeWindowsRequest) returns (ListEpisodeFreeWindowsResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetSeriesWaitFreeSettings(GetSeriesWaitFreeSettingsRequest) returns (GetSeriesWaitFreeSettingsResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateSeriesWaitFreeSettings(UpdateSeriesWaitFreeSettingsRequest) returns (UpdateSeriesWaitFreeSettingsResponse) {}
 }
