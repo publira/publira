@@ -185,65 +185,29 @@ test.describe("web-admin auth", () => {
     expect(await currentSession(page)).toBeUndefined();
   });
 
-  test("an editor can enter the console but settings stay read-only", async ({
+  test("an editor can enter the console but not the administrator's integrations", async ({
     page,
   }) => {
     applyScenarioSql(AUTH_E2E_SCENARIO);
     await signInAsAdmin(page, SCENARIO_AUTH_EDITOR, "/integrations/email");
 
+    // Every RPC behind these screens refuses an editor, so the console answers
+    // them not found rather than showing settings that could only fail.
     await expect(page).toHaveURL(/\/integrations\/email/u);
     await expect(
+      page.getByRole("heading", { name: "Page not found" })
+    ).toBeVisible();
+    await expect(
       page.getByRole("heading", { exact: true, name: "Email" })
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "Only a tenant administrator can change this setting. You have read-only access."
-      )
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "You do not have permission to perform this action. Go back or use an account that does."
-      )
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
-  });
+    ).toHaveCount(0);
 
-  test("an editor sees payment settings read-only with a permission error", async ({
-    page,
-  }) => {
-    applyScenarioSql(AUTH_E2E_SCENARIO);
-    await signInAsAdmin(page, SCENARIO_AUTH_EDITOR, "/integrations/payment");
-
-    await expect(page).toHaveURL(/\/integrations\/payment/u);
+    await page.goto(adminUrl("/integrations/payment"));
     await expect(
-      page.getByRole("heading", {
-        exact: true,
-        name: "Payments",
-      })
+      page.getByRole("heading", { name: "Page not found" })
     ).toBeVisible();
-    // The payment settings, where episodes are sold, and in-app purchase are
-    // three forms, and each says it is read-only.
     await expect(
-      page.getByText(
-        "Only a tenant administrator can change this setting. You have read-only access."
-      )
-    ).toHaveCount(3);
-    // The API refuses an editor the payment settings, the store settings, and
-    // the store products alike.
-    await expect(
-      page.getByText(
-        "You do not have permission to perform this action. Go back or use an account that does."
-      )
-    ).toHaveCount(3);
-    await expect(
-      page.getByRole("button", { exact: true, name: "Save" })
-    ).toBeDisabled();
-    await expect(
-      page.getByRole("button", { name: "Save where episodes are sold" })
-    ).toBeDisabled();
-    await expect(
-      page.getByRole("button", { name: "Save the in-app purchase settings" })
-    ).toBeDisabled();
+      page.getByRole("heading", { exact: true, name: "Payments" })
+    ).toHaveCount(0);
   });
 });
 
