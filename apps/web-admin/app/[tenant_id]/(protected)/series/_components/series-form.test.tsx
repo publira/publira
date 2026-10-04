@@ -723,6 +723,33 @@ it("shows the label read error beside the picker and keeps the series' label", (
   ).toBe(series.labelId);
 });
 
+it("does not point an operator who may not create a label at the screen that makes one", () => {
+  render(
+    <SeriesForm
+      action={action}
+      canCreateLabel={false}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={[]}
+      mode="update"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      titlePlaceholder="Title"
+    />
+  );
+
+  expect(
+    screen.getByText("A series needs a label, and this tenant has none yet.", {
+      exact: false,
+    })
+  ).toBeDefined();
+  expect(screen.queryByRole("link", { name: "Create a label" })).toBeNull();
+});
+
 it("points a tenant with no labels at creating one while keeping the picker", () => {
   render(
     <SeriesForm
