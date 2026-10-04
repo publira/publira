@@ -23,6 +23,7 @@ type AccessTicket struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
+	Source          string         `json:"source"`
 }
 
 type Announcement struct {
@@ -564,6 +565,8 @@ type PlatformPolicyConfig struct {
 	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
 	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
 	DisposableEmailDomainsUrl            string    `json:"disposable_email_domains_url"`
+	WaitFreeTicketUseLimitPerMinute      int32     `json:"wait_free_ticket_use_limit_per_minute"`
+	WaitFreeTicketUseLimitPerDay         int32     `json:"wait_free_ticket_use_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -806,6 +809,15 @@ type SeriesTag struct {
 	SeriesID  uuid.UUID `json:"series_id"`
 	TagID     uuid.UUID `json:"tag_id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type SeriesWaitFreeSetting struct {
+	TenantID            uuid.UUID `json:"tenant_id"`
+	SeriesID            uuid.UUID `json:"series_id"`
+	Enabled             bool      `json:"enabled"`
+	RechargeHours       int32     `json:"recharge_hours"`
+	AccessHours         int32     `json:"access_hours"`
+	ExcludedLatestCount int32     `json:"excluded_latest_count"`
 }
 
 type SignInNonce struct {
@@ -1238,4 +1250,11 @@ type UserViewerPreference struct {
 	UserID            uuid.UUID `json:"user_id"`
 	WideViewerEnabled bool      `json:"wide_viewer_enabled"`
 	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type WaitFreeTicketState struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	UserID          uuid.UUID `json:"user_id"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	NextAvailableAt time.Time `json:"next_available_at"`
 }

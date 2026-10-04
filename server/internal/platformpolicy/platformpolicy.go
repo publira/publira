@@ -58,6 +58,10 @@ type Policy struct {
 	// StorePurchaseConfirmation bounds the store transactions one reader may
 	// hand the server, each of which it verifies with the store.
 	StorePurchaseConfirmation MinuteDay
+	// WaitFreeTicketUse bounds the wait-for-free tickets one reader may ask to
+	// spend. A spent one is bounded by the series' recharge interval already;
+	// this is what bounds the refused ones.
+	WaitFreeTicketUse MinuteDay
 	// DisposableEmailDomainsURL is where the list of disposable email domains
 	// is read from. Empty means there is no list: none ships with the server.
 	DisposableEmailDomainsURL string
@@ -97,6 +101,7 @@ func Defaults() Policy {
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: 30, PerDay: 300},
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
+		WaitFreeTicketUse:         MinuteDay{PerMinute: 10, PerDay: 100},
 	}
 }
 
@@ -121,6 +126,7 @@ func (p Policy) Validate() error {
 		{"community_limit_defaults.contact_message_per_client", "per_hour", p.Community.ContactMessagePerClient.PerHour, p.Community.ContactMessagePerClient.PerDay},
 		{"community_limit_defaults.viewer_preferences", "per_minute", p.Community.ViewerPreferencesUpdate.PerMinute, p.Community.ViewerPreferencesUpdate.PerDay},
 		{"store_purchase_confirmation", "per_minute", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
+		{"wait_free_ticket_use", "per_minute", p.WaitFreeTicketUse.PerMinute, p.WaitFreeTicketUse.PerDay},
 	} {
 		short, day := limit.name+"."+limit.window, limit.name+".per_day"
 		if limit.short < 1 {
@@ -176,6 +182,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: int(config.ViewerPreferencesLimitPerMinute), PerDay: int(config.ViewerPreferencesLimitPerDay)},
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: int(config.StorePurchaseConfirmLimitPerMinute), PerDay: int(config.StorePurchaseConfirmLimitPerDay)},
+		WaitFreeTicketUse:         MinuteDay{PerMinute: int(config.WaitFreeTicketUseLimitPerMinute), PerDay: int(config.WaitFreeTicketUseLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
 	}
 }
@@ -208,6 +215,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ViewerPreferencesLimitPerDay:         int32(community.ViewerPreferencesUpdate.PerDay),
 		StorePurchaseConfirmLimitPerMinute:   int32(policy.StorePurchaseConfirmation.PerMinute),
 		StorePurchaseConfirmLimitPerDay:      int32(policy.StorePurchaseConfirmation.PerDay),
+		WaitFreeTicketUseLimitPerMinute:      int32(policy.WaitFreeTicketUse.PerMinute),
+		WaitFreeTicketUseLimitPerDay:         int32(policy.WaitFreeTicketUse.PerDay),
 		DisposableEmailDomainsUrl:            policy.DisposableEmailDomainsURL,
 	}
 }

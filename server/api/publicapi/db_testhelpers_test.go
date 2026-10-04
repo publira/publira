@@ -110,6 +110,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerClient = openHourly
 	policy.Community.ViewerPreferencesUpdate = open
 	policy.StorePurchaseConfirmation = open
+	policy.WaitFreeTicketUse = open
 	return policy
 }
 
@@ -202,6 +203,10 @@ func (e *publicDBEnv) followClient() publirav1connect.FollowServiceClient {
 
 func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
 	return publirav1connect.NewRatingServiceClient(e.Server.Client(), e.Server.URL)
+}
+
+func (e *publicDBEnv) waitFreeClient() publirav1connect.WaitFreeServiceClient {
+	return publirav1connect.NewWaitFreeServiceClient(e.Server.Client(), e.Server.URL)
 }
 
 func (e *publicDBEnv) commentClient() publirav1connect.CommentServiceClient {

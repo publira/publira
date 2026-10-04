@@ -146,6 +146,7 @@ go run ./server/cmd/publiractl policy show
 | `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing |
 | `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session |
 | `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify |
+| `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address |
 | `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant |
 | `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below |

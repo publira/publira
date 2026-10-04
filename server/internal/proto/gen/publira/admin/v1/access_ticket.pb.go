@@ -41,8 +41,12 @@ type AdminAccessTicket struct {
 	Note      string `protobuf:"bytes,11,opt,name=note,proto3" json:"note,omitempty"`
 	CreatedAt string `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// active | expired | revoked
-	Status        string `protobuf:"bytes,13,opt,name=status,proto3" json:"status,omitempty"`
-	Id            string `protobuf:"bytes,14,opt,name=id,proto3" json:"id,omitempty"`
+	Status string `protobuf:"bytes,13,opt,name=status,proto3" json:"status,omitempty"`
+	Id     string `protobuf:"bytes,14,opt,name=id,proto3" json:"id,omitempty"`
+	// staff | wait_free. A wait_free ticket is one the reader opened by using a
+	// wait-for-free ticket on the series, and IssueAccessTicket neither returns
+	// one as an existing ticket nor is blocked by it.
+	Source        string `protobuf:"bytes,15,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -171,6 +175,13 @@ func (x *AdminAccessTicket) GetStatus() string {
 func (x *AdminAccessTicket) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *AdminAccessTicket) GetSource() string {
+	if x != nil {
+		return x.Source
 	}
 	return ""
 }
@@ -549,7 +560,7 @@ var File_publira_admin_v1_access_ticket_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"\n" +
-	"$publira/admin/v1/access_ticket.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xc9\x03\n" +
+	"$publira/admin/v1/access_ticket.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xe1\x03\n" +
 	"\x11AdminAccessTicket\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12#\n" +
@@ -569,7 +580,8 @@ const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\f \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06status\x18\r \x01(\tR\x06status\x12\x0e\n" +
-	"\x02id\x18\x0e \x01(\tR\x02id\"\x80\x02\n" +
+	"\x02id\x18\x0e \x01(\tR\x02id\x12\x16\n" +
+	"\x06source\x18\x0f \x01(\tR\x06source\"\x80\x02\n" +
 	"\x18ListAccessTicketsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12$\n" +

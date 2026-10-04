@@ -57,6 +57,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PasswordVerification }),
 	minuteDayFlags("store_purchase_confirmation", "store-purchase-confirmation", "in-app purchase confirmations of one reader", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.StorePurchaseConfirmation }),
+	minuteDayFlags("wait_free_ticket_use", "wait-free-ticket-use", "wait-for-free ticket uses by one reader", false,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.WaitFreeTicketUse }),
 	hourDayFlags("mail_requests_per_address", "mail-requests-per-address", "email requests for one address", false,
 		func(p *policySettings) *platformpolicy.HourDay { return &p.MailRequestsPerAddress }),
 	hourDayFlags("mail_requests_per_source", "mail-requests-per-source", "email requests from one source", false,
@@ -153,6 +155,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "MFA required for tenant administrators:\t%s\n", mfa)
 		fmt.Fprintf(&b, "Password verifications:\t%s\n", perMinute(p.PasswordVerification))
 		fmt.Fprintf(&b, "In-app purchase confirmations per reader:\t%s\n", perMinute(p.StorePurchaseConfirmation))
+		fmt.Fprintf(&b, "Wait-for-free ticket uses per reader:\t%s\n", perMinute(p.WaitFreeTicketUse))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))
 		fmt.Fprintf(&b, "Email requests per source:\t%s\n", perHour(p.MailRequestsPerSource))
 		list := p.DisposableEmailDomainsURL

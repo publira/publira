@@ -64,6 +64,10 @@ const (
 	// transaction is verified, because a transaction the server has not seen is
 	// verified with the store on the tenant's credentials and API quota.
 	actionConfirmStorePurchase readerAction = "store_purchase.confirm"
+	// A request to spend a wait-for-free ticket. One that succeeds is bounded
+	// by the series' recharge interval; the budget is for the ones refused,
+	// each of which reads the episode, the rule, and the reader's grants.
+	actionUseWaitFreeTicket readerAction = "wait_free.use"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -97,6 +101,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionSubmitContactMessage:           hourDayRules(community.ContactMessagePerAccount),
 		actionSubmitContactMessageFromClient: hourDayRules(community.ContactMessagePerClient),
 		actionConfirmStorePurchase:           minuteDayRules(policy.StorePurchaseConfirmation),
+		actionUseWaitFreeTicket:              minuteDayRules(policy.WaitFreeTicketUse),
 	}
 }
 

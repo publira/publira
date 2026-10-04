@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_access_tickets_active_staff_user_episode;
