@@ -264,7 +264,7 @@ The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`,
 
 - `PUBLIRA_SEARCH_BACKEND`
   - `sql` (the default when unset): a substring match in PostgreSQL, ordered by title or name. A series search can be narrowed and sorted by every filter and order `ListPublishedSeries` takes. It needs nothing else
-  - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship. It does not narrow or sort a series search yet (#3619), and answers a search that asks it to with `unimplemented`
+  - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship; [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds one that does, and the root `compose.yaml` runs it in its `search` profile. It does not narrow or sort a series search yet (#3619), and answers a search that asks it to with `unimplemented`
   - Any other value stops the process at startup
 - `PUBLIRA_OPENSEARCH_URL`
   - The engine's URL, `http://` or `https://`. Required with `opensearch`; the server and the worker connect at startup, create the index when it does not exist, and stop when the engine does not answer

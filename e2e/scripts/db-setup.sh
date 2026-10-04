@@ -103,4 +103,18 @@ web_push_sql="${REPO_ROOT}/db/seeds/scenarios/250_web_push.sql"
 e2e_log "applying ${web_push_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${web_push_sql}"
 
+# On the OpenSearch backend the index starts empty, and the seed above wrote
+# its rows straight to Postgres, which queues none of the outbox events that
+# keep the index in step. A rebuild is what a deployment moving to the engine
+# runs, so the stack is filled the same way.
+if [[ "${PUBLIRA_SEARCH_BACKEND}" == "opensearch" ]]; then
+  publiractl="${REPO_ROOT}/server/bin/publiractl"
+  if [[ ! -x "${publiractl}" ]]; then
+    e2e_err "publiractl binary not found at ${publiractl}; run: task server:build"
+    exit 1
+  fi
+  e2e_log "building the catalog index on ${PUBLIRA_OPENSEARCH_URL}"
+  "${publiractl}" search reindex
+fi
+
 e2e_log "database and storage ready"

@@ -6,6 +6,10 @@
 # publishes every port on 127.0.0.1, so `task dev` also works for a developer
 # who does not use the Dev Container.
 #
+# OpenSearch, the optional catalog search engine, is in the `search` profile
+# and starts only when that profile is named:
+# `docker compose --profile search up -d`.
+#
 # The Dev Container layers `.devcontainer/compose.yaml` on top of this file
 # (`dockerComposeFile` in devcontainer.json). That overlay adds `app`, points
 # `traefik` at it, and resets the published ports below, because a container
@@ -94,6 +98,40 @@ services:
       timeout: 3s
       retries: 5
 
+  # The optional catalog search engine (PUBLIRA_SEARCH_BACKEND=opensearch),
+  # built with the analysis plugins the catalog index needs. Single node, with
+  # the security plugin off, so it answers plain HTTP without credentials:
+  # that is why it is published on loopback alone, like everything here.
+  opensearch:
+    profiles: [search]
+    build:
+      context: .
+      dockerfile: infra/docker/opensearch/Dockerfile
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      # The heap the JVM would otherwise size from the machine's memory.
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      # Yellow, not green: a single node has nowhere to put a replica.
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
   # The edge in front of a host-side `task dev`: the three apps and the images
   # under one origin on `localhost:3080`, as in the Dev Container, routed by the
   # committed infra/proxy/traefik/dynamic with the host's backend addresses.
@@ -119,5 +157,6 @@ services:
 
 volumes:
   mailpit-data:
+  opensearch-data:
   postgres-data:
   rustfs-data:

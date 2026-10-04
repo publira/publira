@@ -36,6 +36,8 @@ export PUBLIRA_E2E_EDGE_PORT="${PUBLIRA_E2E_EDGE_PORT:-3080}"
 # The pinned browser the screenshot projects connect to, so a baseline taken
 # here and the comparison run on CI are rasterized by the same fonts.
 export PUBLIRA_E2E_BROWSER_PORT="${PUBLIRA_E2E_BROWSER_PORT:-3090}"
+# OpenSearch, published only by a run on that search backend (below).
+export PUBLIRA_E2E_OPENSEARCH_PORT="${PUBLIRA_E2E_OPENSEARCH_PORT:-9201}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
@@ -78,6 +80,32 @@ export PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL="${PUBLIRA_E2E_SIGN_IN_PROVIDER_BAS
 # Built from the port like the rest, so a second stack's screenshot projects
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
+
+# The catalog search backend the server, the worker, and publiractl run with:
+# `sql` unless the run selects `opensearch` (`task e2e:search` does). Always
+# set from PUBLIRA_E2E_SEARCH_BACKEND, never inherited: a shell that exported a
+# dev stack's PUBLIRA_SEARCH_BACKEND and PUBLIRA_OPENSEARCH_URL would otherwise
+# point this stack at an engine it neither started nor seeded. The engine is in
+# the compose file's `search` profile, so the backend is also what starts it.
+export PUBLIRA_E2E_SEARCH_BACKEND="${PUBLIRA_E2E_SEARCH_BACKEND:-sql}"
+case "${PUBLIRA_E2E_SEARCH_BACKEND}" in
+  sql)
+    export PUBLIRA_SEARCH_BACKEND=sql
+    unset PUBLIRA_OPENSEARCH_URL PUBLIRA_OPENSEARCH_USERNAME PUBLIRA_OPENSEARCH_PASSWORD PUBLIRA_OPENSEARCH_INDEX
+    export COMPOSE_PROFILES=""
+    ;;
+  opensearch)
+    export PUBLIRA_SEARCH_BACKEND=opensearch
+    export PUBLIRA_OPENSEARCH_URL="http://127.0.0.1:${PUBLIRA_E2E_OPENSEARCH_PORT}"
+    unset PUBLIRA_OPENSEARCH_USERNAME PUBLIRA_OPENSEARCH_PASSWORD PUBLIRA_OPENSEARCH_INDEX
+    export COMPOSE_PROFILES=search
+    ;;
+  *)
+    printf '[e2e] ERROR: PUBLIRA_E2E_SEARCH_BACKEND %s names no search backend; use sql or opensearch\n' \
+      "${PUBLIRA_E2E_SEARCH_BACKEND}" >&2
+    exit 2
+    ;;
+esac
 
 # The three periodic jobs the worker runs, in seconds. Short so a
 # scheduled episode, a free window boundary, and a tenant's midnight all land
@@ -172,6 +200,7 @@ else
     [[ "${PUBLIRA_E2E_WORKER_PORT}" != "8003" ]] ||
     [[ "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
     [[ "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" != "8400" ]] ||
+    [[ "${PUBLIRA_E2E_OPENSEARCH_PORT}" != "9201" ]] ||
     [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
@@ -180,7 +209,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi
@@ -289,17 +318,24 @@ e2e_find_foreign_stack() {
 # sockets.
 e2e_find_foreign_port_publisher() {
   local port project
+  local -a ports
   PUBLIRA_E2E_STACK_PORT=""
   PUBLIRA_E2E_STACK_PORT_PROJECT=""
   if ! command -v docker > /dev/null 2>&1; then
     return 1
   fi
-  for port in \
-    "${PUBLIRA_E2E_POSTGRES_PORT}" \
-    "${PUBLIRA_E2E_REDIS_PORT}" \
-    "${PUBLIRA_E2E_RUSTFS_PORT}" \
-    "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}" \
-    "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}"; do
+  ports=(
+    "${PUBLIRA_E2E_POSTGRES_PORT}"
+    "${PUBLIRA_E2E_REDIS_PORT}"
+    "${PUBLIRA_E2E_RUSTFS_PORT}"
+    "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}"
+    "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}"
+  )
+  # The engine's port is this run's only when the run starts the engine.
+  if [[ "${PUBLIRA_SEARCH_BACKEND}" == "opensearch" ]]; then
+    ports+=("${PUBLIRA_E2E_OPENSEARCH_PORT}")
+  fi
+  for port in "${ports[@]}"; do
     while read -r project; do
       if [[ -z "${project}" || "${project}" == "${COMPOSE_PROJECT_NAME}" ]]; then
         continue

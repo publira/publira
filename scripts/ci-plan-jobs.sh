@@ -5,7 +5,7 @@
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
 #   FILTER_FORMAT, FILTER_CHECK, FILTER_CHECK_DOCS, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_MOBILE_IOS, FILTER_TEST_E2E,
-#   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_TEST_DEPLOY, FILTER_BUILD
+#   FILTER_TEST_E2E_SEARCH, FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_TEST_DEPLOY, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_SERVER, FILTER_DOCKER_PUBLIRACTL, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
@@ -66,6 +66,7 @@ test_mobile=false
 test_mobile_e2e=false
 test_mobile_ios=false
 test_e2e=false
+test_e2e_search=false
 test_bootstrap=false
 test_routing=false
 test_deploy=false
@@ -101,6 +102,7 @@ case "${event}" in
     test_mobile_e2e=true
     test_mobile_ios=true
     test_e2e=true
+    test_e2e_search=true
     test_bootstrap=true
     test_routing=true
     test_deploy=true
@@ -131,6 +133,7 @@ case "${event}" in
     if flag FILTER_TEST_MOBILE_E2E; then test_mobile_e2e=true; fi
     if flag FILTER_TEST_MOBILE_IOS; then test_mobile_ios=true; fi
     if flag FILTER_TEST_E2E; then test_e2e=true; fi
+    if flag FILTER_TEST_E2E_SEARCH; then test_e2e_search=true; fi
     if flag FILTER_TEST_BOOTSTRAP; then test_bootstrap=true; fi
     if flag FILTER_TEST_ROUTING; then test_routing=true; fi
     if flag FILTER_TEST_DEPLOY; then test_deploy=true; fi
@@ -174,6 +177,7 @@ fi
   echo "test_mobile_e2e=${test_mobile_e2e}"
   echo "test_mobile_ios=${test_mobile_ios}"
   echo "test_e2e=${test_e2e}"
+  echo "test_e2e_search=${test_e2e_search}"
   echo "test_bootstrap=${test_bootstrap}"
   echo "test_routing=${test_routing}"
   echo "test_deploy=${test_deploy}"
@@ -183,7 +187,7 @@ fi
 } >> "${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} test_routing=${test_routing} test_deploy=${test_deploy} build=${build} docker_any=${docker_any}"
+echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_e2e_search=${test_e2e_search} test_bootstrap=${test_bootstrap} test_routing=${test_routing} test_deploy=${test_deploy} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

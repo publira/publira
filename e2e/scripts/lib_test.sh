@@ -40,6 +40,11 @@ stack_env() {
     -u PUBLIRA_E2E_EMAIL_RENDERER_PORT \
     -u PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT \
     -u PUBLIRA_E2E_EDGE_PORT \
+    -u PUBLIRA_E2E_OPENSEARCH_PORT \
+    -u PUBLIRA_E2E_SEARCH_BACKEND \
+    -u PUBLIRA_SEARCH_BACKEND \
+    -u PUBLIRA_OPENSEARCH_URL \
+    -u COMPOSE_PROFILES \
     -u PUBLIRA_E2E_LOCK_HELD \
     "$@"
 }
@@ -114,6 +119,40 @@ elif [[ "${sign_in_provider_override_dir}" != *"-sp8410-"* ]]; then
   fail "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override dir ${sign_in_provider_override_dir} does not encode sp8410"
 else
   pass "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override isolates RUN_DIR"
+fi
+
+opensearch_override_dir="$(compute_run_dir PUBLIRA_E2E_OPENSEARCH_PORT=9211)"
+if [[ "${opensearch_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_OPENSEARCH_PORT override still uses ${opensearch_override_dir}"
+elif [[ "${opensearch_override_dir}" != *"-os9211-"* ]]; then
+  fail "PUBLIRA_E2E_OPENSEARCH_PORT override dir ${opensearch_override_dir} does not encode os9211"
+else
+  pass "PUBLIRA_E2E_OPENSEARCH_PORT override isolates RUN_DIR"
+fi
+
+# The search backend a run selects, and what it hands the servers and compose.
+search_env() {
+  stack_env "$@" bash -c 'source "$1"; printf "%s|%s|%s" "$PUBLIRA_SEARCH_BACKEND" "${PUBLIRA_OPENSEARCH_URL-}" "$COMPOSE_PROFILES"' bash "${LIB}"
+}
+
+default_search="$(search_env PUBLIRA_SEARCH_BACKEND=opensearch PUBLIRA_OPENSEARCH_URL=http://opensearch:9200 COMPOSE_PROFILES=search)"
+if [[ "${default_search}" == "sql||" ]]; then
+  pass "a run defaults to the SQL backend and ignores an inherited engine"
+else
+  fail "default search environment is ${default_search}, want sql||"
+fi
+
+opensearch_search="$(search_env PUBLIRA_E2E_SEARCH_BACKEND=opensearch PUBLIRA_E2E_OPENSEARCH_PORT=9211)"
+if [[ "${opensearch_search}" == "opensearch|http://127.0.0.1:9211|search" ]]; then
+  pass "PUBLIRA_E2E_SEARCH_BACKEND=opensearch points the servers at this run's engine"
+else
+  fail "opensearch search environment is ${opensearch_search}, want opensearch|http://127.0.0.1:9211|search"
+fi
+
+if search_env PUBLIRA_E2E_SEARCH_BACKEND=elastic > /dev/null 2>&1; then
+  fail "PUBLIRA_E2E_SEARCH_BACKEND=elastic was accepted"
+else
+  pass "an unknown PUBLIRA_E2E_SEARCH_BACKEND is refused"
 fi
 
 project_override_dir="$(compute_run_dir COMPOSE_PROJECT_NAME=publira-e2e-alt)"
