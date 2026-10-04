@@ -26,7 +26,7 @@ gh issue create --repo OWNER/REPO \
   --blocked-by BLOCKER_NUMBER
 ```
 
-`--milestone` takes the milestone's title; list the repository's milestones and their descriptions with `gh api repos/OWNER/REPO/milestones`. Use `--blocking` when the new Issue blocks existing work. Both dependency flags accept comma-separated Issue numbers or URLs.
+`--milestone` takes the milestone's title; list the repository's milestones and their descriptions with `gh api --paginate 'repos/OWNER/REPO/milestones?per_page=100'`, since an unpaginated request returns only the first 30. Use `--blocking` when the new Issue blocks existing work. Both dependency flags accept comma-separated Issue numbers or URLs.
 
 After creation, use the API only to add field values such as Priority and Effort because `gh issue create` does not provide field-value flags.
 

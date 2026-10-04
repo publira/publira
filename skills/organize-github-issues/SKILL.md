@@ -75,7 +75,7 @@ Remove or avoid labels such as `type/*`, `priority/*`, `effort/*`, `bug`, or `en
 
 ### [Milestone](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones)
 
-Give every Issue you create exactly one milestone. The milestones are the repository's own, and so is what belongs in each: read their titles and descriptions with `gh api repos/OWNER/REPO/milestones` before choosing, rather than assuming a set of names, and choose the open milestone whose description the work matches.
+Give every Issue you create exactly one milestone. The milestones are the repository's own, and so is what belongs in each: read their titles and descriptions with `gh api --paginate 'repos/OWNER/REPO/milestones?per_page=100'` before choosing, rather than assuming a set of names, and choose the open milestone whose description the work matches.
 
 - Decide without asking when the descriptions settle it, or when a precedent does: the request names one, the parent Issue carries one, or a comparable existing Issue was filed under one.
 - Ask the user only when the descriptions leave two milestones equally plausible — for example, whether a piece of work blocks a release or can follow it — and neither the request, the parent Issue, nor a comparable existing Issue settles the question. Ask that one question, naming the candidates, instead of guessing.
@@ -140,7 +140,7 @@ Confirm all applicable invariants:
 - every human-managed Issue title contains only meaningful content
 - automated titles remain compatible with their generators
 - every Issue has the correct Type
-- every Issue created in this run has exactly one open milestone, the one whose description its work matches and the same one as its parent
+- every Issue created in this run has exactly one open milestone, the one whose description its work matches and, unless the request said otherwise, the same one as its parent
 - no title or label duplicates Type, Priority, or Effort
 - every open actionable leaf Issue has Effort
 - parent Epics have `epic`, valid Sub-issues, and no Effort
