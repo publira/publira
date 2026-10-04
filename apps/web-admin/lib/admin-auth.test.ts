@@ -9,6 +9,7 @@ import {
   getTenantAdminInvitationState,
   isAdminSessionValid,
   isTenantAdminRole,
+  isTenantEditorRole,
   loginAdmin,
   requestAdminPasswordReset,
 } from "./admin-auth";
@@ -363,6 +364,29 @@ describe("isTenantAdminRole", () => {
   it("normalizes mixed case and whitespace before deciding", () => {
     expect(isTenantAdminRole("  TENANT_ADMIN ")).toBe(true);
   });
+
+  it.each(["tenant_editor", "tenant_auditor", "tenant_member", ""])(
+    "rejects %j",
+    (role) => {
+      expect(isTenantAdminRole(role)).toBe(false);
+    }
+  );
+});
+
+describe("isTenantEditorRole", () => {
+  it.each(["tenant_admin", "admin", "tenant_editor", "  TENANT_EDITOR "])(
+    "allows %j",
+    (role) => {
+      expect(isTenantEditorRole(role)).toBe(true);
+    }
+  );
+
+  it.each(["tenant_auditor", "tenant_member", "editor", "", null, undefined])(
+    "rejects %j",
+    (role) => {
+      expect(isTenantEditorRole(role)).toBe(false);
+    }
+  );
 });
 
 describe("tenant admin invitation", () => {

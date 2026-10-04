@@ -41,6 +41,11 @@ import { unpinAnnouncementAction } from "../_lib/actions";
 import type { AnnouncementItem } from "../announcement-types";
 
 type AnnouncementManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may take a banner down, which a tenant auditor may
+   * not: the banner's state is shown to them without the control.
+   */
+  canEdit: boolean;
   listErrorMessage?: string;
   announcements: AnnouncementItem[];
   locale: Locale;
@@ -103,11 +108,13 @@ const BannerStateLabel = ({
  */
 const BannerCell = ({
   announcement,
+  canEdit,
   locale,
   tenantId,
   timeZone,
 }: {
   announcement: AnnouncementItem;
+  canEdit: boolean;
   locale: Locale;
   tenantId: string;
   timeZone: string;
@@ -127,21 +134,24 @@ const BannerCell = ({
           />
         </Suspense>
       </span>
-      <ActionForm action={unpinAnnouncementAction} className="grid gap-2">
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="announcement_id" type="hidden" value={announcement.id} />
-        <ActionFormSubmit className="justify-self-start" variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.announcements.unpin_action" />
-          </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+      {canEdit ? (
+        <ActionForm action={unpinAnnouncementAction} className="grid gap-2">
+          <input name="tenant_id" type="hidden" value={tenantId} />
+          <input name="announcement_id" type="hidden" value={announcement.id} />
+          <ActionFormSubmit className="justify-self-start" variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.announcements.unpin_action" />
+            </Suspense>
+          </ActionFormSubmit>
+        </ActionForm>
+      ) : null}
     </div>
   );
 };
 
 const AnnouncementListBody = ({
   announcements,
+  canEdit,
   emptyDescription,
   emptyTitle,
   hasPageLinks,
@@ -153,6 +163,7 @@ const AnnouncementListBody = ({
 }: {
   /** The empty state's copy, resolved by the async parent. */
   announcements: AnnouncementItem[];
+  canEdit: boolean;
   emptyDescription: string;
   emptyTitle: string;
   hasPageLinks: boolean;
@@ -236,6 +247,7 @@ const AnnouncementListBody = ({
             <TableCell>
               <BannerCell
                 announcement={announcement}
+                canEdit={canEdit}
                 locale={locale}
                 tenantId={tenantId}
                 timeZone={timeZone}
@@ -250,6 +262,7 @@ const AnnouncementListBody = ({
 };
 
 export const AnnouncementManager = async ({
+  canEdit,
   listErrorMessage,
   nextHref,
   announcements,
@@ -270,6 +283,7 @@ export const AnnouncementManager = async ({
     <div className="grid gap-6">
       <AnnouncementListBody
         announcements={announcements}
+        canEdit={canEdit}
         emptyDescription={t("admin.announcements.empty_description")}
         emptyTitle={t("admin.announcements.empty_title")}
         hasPageLinks={hasPageLinks}

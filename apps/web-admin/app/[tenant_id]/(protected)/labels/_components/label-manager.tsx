@@ -37,6 +37,11 @@ import { getMessagesFor } from "#lib/messages";
 import type { LabelListItem } from "../label-types";
 
 type LabelManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may edit the label, which decides whether a row offers
+   * to edit it or only to view it.
+   */
+  canEdit: boolean;
   labels: LabelListItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -44,11 +49,13 @@ type LabelManagerProps = CursorPageHrefs & {
 };
 
 const LabelListBody = async ({
+  canEdit,
   hasPageLinks,
   labels,
   listErrorMessage,
   locale,
 }: {
+  canEdit: boolean;
   hasPageLinks: boolean;
   labels: LabelListItem[];
   listErrorMessage?: string;
@@ -116,7 +123,11 @@ const LabelListBody = async ({
                   variant="outline"
                 >
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.labels.edit_action" />
+                    {canEdit ? (
+                      <Message message="admin.labels.edit_action" />
+                    ) : (
+                      <Message message="admin.common.view_action" />
+                    )}
                   </Suspense>
                 </LinkButton>
               </div>
@@ -129,6 +140,7 @@ const LabelListBody = async ({
 };
 
 export const LabelManager = async ({
+  canEdit,
   labels,
   listErrorMessage,
   nextHref,
@@ -146,6 +158,7 @@ export const LabelManager = async ({
   return (
     <div className="grid gap-6">
       <LabelListBody
+        canEdit={canEdit}
         hasPageLinks={hasPageLinks}
         labels={labels}
         listErrorMessage={listErrorMessage}

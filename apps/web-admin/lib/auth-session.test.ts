@@ -32,7 +32,8 @@ vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
 
-vi.mock("./admin-auth", () => ({
+vi.mock("./admin-auth", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 
@@ -218,6 +219,59 @@ describe("web-admin auth-session", () => {
     expect(run).not.toHaveBeenCalled();
     expect(mockRedirect).toHaveBeenCalledWith(
       "/login?next=%2Fseries%3Ftoken%3Dabc&reason=session_revoked"
+    );
+  });
+});
+
+const signedInAs = (role: string) => {
+  mockGetAdminCurrentUser.mockResolvedValue({
+    ok: true,
+    user: { name: "Operator", publicId: "USER001", role },
+  });
+};
+
+describe("signed-in role checks", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    setReturnTo("/series");
+  });
+
+  it.each([
+    ["tenant_admin", true, true],
+    ["tenant_editor", false, true],
+    ["tenant_auditor", false, false],
+  ])("answers a %s as admin %s and editor %s", async (role, admin, editor) => {
+    signedInAs(role);
+    const { isSignedInTenantAdmin, isSignedInTenantEditor } =
+      await importAuthSession();
+
+    await expect(isSignedInTenantAdmin("TENANT001")).resolves.toBe(admin);
+    await expect(isSignedInTenantEditor("TENANT001")).resolves.toBe(editor);
+    expect(mockGetAdminCurrentUser).toHaveBeenCalledWith("TENANT001");
+  });
+
+  it("admits no role when the operator could not be read", async () => {
+    mockGetAdminCurrentUser.mockResolvedValue({
+      ok: false,
+      requiresSignIn: false,
+    });
+    const { isSignedInTenantAdmin, isSignedInTenantEditor } =
+      await importAuthSession();
+
+    await expect(isSignedInTenantAdmin("TENANT001")).resolves.toBe(false);
+    await expect(isSignedInTenantEditor("TENANT001")).resolves.toBe(false);
+  });
+
+  it("sends a rejected session to /login", async () => {
+    mockGetAdminCurrentUser.mockResolvedValue({
+      ok: false,
+      requiresSignIn: true,
+    });
+    const { isSignedInTenantEditor } = await importAuthSession();
+
+    await expect(isSignedInTenantEditor("TENANT001")).rejects.toThrow(
+      /NEXT_REDIRECT/u
     );
   });
 });

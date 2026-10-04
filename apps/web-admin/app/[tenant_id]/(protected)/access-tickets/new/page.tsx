@@ -15,6 +15,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import { isSignedInTenantAdmin } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listAllSeries } from "#lib/series";
@@ -26,10 +31,17 @@ import { issueAccessTicketAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.access_tickets.new_title") };
+  return {
+    title: isAdmin
+      ? t("admin.access_tickets.new_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -68,32 +80,39 @@ const NewAccessTicketFormData = async () => {
 
 const NewAccessTicketPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.access_tickets.new_title" />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.access_tickets.new_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.access_tickets.new_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/access-tickets" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+                <Message message="admin.access_tickets.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <Suspense fallback={<NewAccessTicketFormSkeleton />}>
+            <NewAccessTicketFormData />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.access_tickets.new_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/access-tickets" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-            <Message message="admin.access_tickets.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <Suspense fallback={<NewAccessTicketFormSkeleton />}>
-        <NewAccessTicketFormData />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

@@ -31,6 +31,7 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -312,7 +313,9 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
           }
         >
           <Suspense fallback={<EditSeriesFormSkeleton />}>
-            <EditSeriesFormData params={params} searchParams={searchParams} />
+            <TenantEditorFieldset>
+              <EditSeriesFormData params={params} searchParams={searchParams} />
+            </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
       </div>

@@ -16,6 +16,8 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listCreators } from "#lib/creator";
 import {
   cursorPageHrefs,
@@ -46,13 +48,15 @@ const CreatorManagerData = async ({
 }: Pick<CreatorPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [locale, listResult] = await Promise.all([
+  const [locale, listResult, canEdit] = await Promise.all([
     getLocale(tenantId),
     listCreators({ token }),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   return (
     <CreatorManager
+      canEdit={canEdit}
       {...cursorPageHrefs(listResult)}
       creators={listResult.creators}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
@@ -77,13 +81,20 @@ const CreatorPage = ({ searchParams }: CreatorPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/creators/new" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="admin.creators.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/creators/new" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.creators.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </TenantEditorOnly>
+      </Suspense>
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TableSkeleton />}>

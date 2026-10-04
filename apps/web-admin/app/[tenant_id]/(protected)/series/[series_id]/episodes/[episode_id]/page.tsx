@@ -31,7 +31,14 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantEditorFieldset,
+  TenantEditorOnly,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import {
@@ -159,14 +166,16 @@ const EditEpisodeActions = async ({ params }: EditEpisodeSectionProps) => {
           <Message message="admin.series.episodes.back_to_list" />
         </Suspense>
       </LinkButton>
-      <LinkButton
-        render={<Link href={`/series/${seriesId}/episodes/new`} />}
-        variant="outline"
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <Message message="admin.series.episodes.new_action" />
-        </Suspense>
-      </LinkButton>
+      <TenantEditorOnly>
+        <LinkButton
+          render={<Link href={`/series/${seriesId}/episodes/new`} />}
+          variant="outline"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.series.episodes.new_action" />
+          </Suspense>
+        </LinkButton>
+      </TenantEditorOnly>
     </div>
   );
 };
@@ -376,10 +385,13 @@ const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
-  const imagesResult = await listEpisodeImages(
-    { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
-    context.locale
-  );
+  const [imagesResult, canEdit] = await Promise.all([
+    listEpisodeImages(
+      { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
+      context.locale
+    ),
+    isSignedInTenantEditor(context.tenantId),
+  ]);
   await redirectToLoginIfSessionRejected(imagesResult);
 
   // A failed read hands back an empty `images`, so the "nothing uploaded yet"
@@ -406,6 +418,7 @@ const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
 
   return (
     <EpisodeImagesSortableGrid
+      canEdit={canEdit}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       images={imagesResult.images}
@@ -453,6 +466,15 @@ const EpisodeReadingLayoutSection = async ({
     />
   );
 };
+
+/** The sections below, while the operator's role is read. */
+const EditEpisodeSectionsSkeleton = () => (
+  <div className="grid gap-6">
+    <Skeleton className="h-40" />
+    <Skeleton className="h-40" />
+    <Skeleton className="h-40" />
+  </div>
+);
 
 const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
   <AdminPage>
@@ -522,43 +544,49 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
         message="admin.series.episodes.image_reorder_error"
       />
 
-      <div className="grid gap-6">
-        <Suspense fallback={<Skeleton className="h-40" />}>
-          <EpisodeScheduleSection params={params} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-40" />}>
-          <EpisodeAvailabilitySection params={params} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-40" />}>
-          <EpisodePurchaseAvailabilitySection params={params} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-48" />}>
-          <EpisodeCreditsSection params={params} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-40" />}>
-          <EpisodePagesSection params={params} />
-        </Suspense>
-
-        <section className="grid gap-3 border border-border p-4">
-          <h2 className="text-sm font-medium">
-            <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-              <Message message="admin.series.episodes.image_list_title" />
+      <Suspense fallback={<EditEpisodeSectionsSkeleton />}>
+        <TenantEditorFieldset>
+          <div className="grid gap-6">
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodeScheduleSection params={params} />
             </Suspense>
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-              <Message message="admin.series.episodes.image_list_description" />
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodeAvailabilitySection params={params} />
             </Suspense>
-          </p>
-          <Suspense fallback={<Skeleton className="h-32" />}>
-            <EpisodeImageList params={params} />
-          </Suspense>
-        </section>
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodePurchaseAvailabilitySection params={params} />
+            </Suspense>
+            <Suspense fallback={<Skeleton className="h-48" />}>
+              <EpisodeCreditsSection params={params} />
+            </Suspense>
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodePagesSection params={params} />
+            </Suspense>
 
-        <Suspense fallback={<Skeleton className="h-40" />}>
-          <EpisodeReadingLayoutSection params={params} />
-        </Suspense>
-      </div>
+            <section className="grid gap-3 border border-border p-4">
+              <h2 className="text-sm font-medium">
+                <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+                  <Message message="admin.series.episodes.image_list_title" />
+                </Suspense>
+              </h2>
+              <TenantEditorOnly>
+                <p className="text-xs text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                    <Message message="admin.series.episodes.image_list_description" />
+                  </Suspense>
+                </p>
+              </TenantEditorOnly>
+              <Suspense fallback={<Skeleton className="h-32" />}>
+                <EpisodeImageList params={params} />
+              </Suspense>
+            </section>
+
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodeReadingLayoutSection params={params} />
+            </Suspense>
+          </div>
+        </TenantEditorFieldset>
+      </Suspense>
     </AdminPageContent>
   </AdminPage>
 );

@@ -15,6 +15,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import {
+  TenantEditorRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
@@ -25,10 +30,15 @@ import { createPageAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isEditor] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.pages.new_title") };
+  return {
+    title: isEditor ? t("admin.pages.new_title") : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -60,32 +70,36 @@ const NewPageFormData = async () => {
 
 const NewPagePage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.pages.new_title" />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantEditorRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.pages.new_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.pages.new_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/pages" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+                <Message message="admin.pages.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <Suspense fallback={<PageFormSkeleton />}>
+            <NewPageFormData />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="admin.pages.new_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/pages" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-            <Message message="admin.pages.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <Suspense fallback={<PageFormSkeleton />}>
-        <NewPageFormData />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantEditorRoute>
+    </Suspense>
   </AdminPage>
 );
 

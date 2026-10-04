@@ -631,6 +631,7 @@
     },
     "common": {
       "back_to_dashboard": "返回儀表板",
+      "editor_only": "只有編輯或租戶管理員才能變更此內容。您只有唯讀權限。",
       "error_id": "錯誤ID：",
       "next": "下一頁",
       "page_empty_description": "它們可能在您瀏覽本頁期間被刪除。請前往相鄰的頁面。",
@@ -655,7 +656,8 @@
         "moved": "{$name}已移到第{$position}位。",
         "dropped": "{$name}已放在第{$position}位。",
         "cancelled": "已取消移動。{$name}回到第{$position}位。"
-      }
+      },
+      "view_action": "檢視"
     },
     "contact_messages": {
       "title": "諮詢",

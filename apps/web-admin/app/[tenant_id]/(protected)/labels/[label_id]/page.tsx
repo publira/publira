@@ -31,6 +31,7 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
 import { getLocale } from "#lib/locale";
@@ -232,7 +233,9 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
           }
         >
           <Suspense fallback={<EditLabelFormSkeleton />}>
-            <EditLabelFormData params={params} searchParams={searchParams} />
+            <TenantEditorFieldset>
+              <EditLabelFormData params={params} searchParams={searchParams} />
+            </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
       </div>

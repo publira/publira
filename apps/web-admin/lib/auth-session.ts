@@ -2,7 +2,11 @@ import { updateTag } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getAdminCurrentUser } from "./admin-auth";
+import {
+  getAdminCurrentUser,
+  isTenantAdminRole,
+  isTenantEditorRole,
+} from "./admin-auth";
 import type { AdminCurrentUser } from "./admin-auth";
 import {
   ADMIN_SESSION_CACHE_TAG,
@@ -100,6 +104,34 @@ export const verifyAdminSession = async (
   }
   return result.user;
 };
+
+/**
+ * Whether the signed-in operator of `tenantId` holds a role `meets` admits.
+ *
+ * A session the API rejected goes to `/login`, as everywhere else; a `GetMe`
+ * that answered nothing useful admits no role, so whatever this guards stays
+ * hidden rather than shown to someone the console cannot name.
+ */
+const signedInRoleMeets = async (
+  tenantId: string,
+  meets: (role: string) => boolean
+): Promise<boolean> => {
+  const result = await getAdminCurrentUser(tenantId);
+  await redirectToLoginIfSessionRejected(result);
+
+  return result.ok && meets(result.user.role);
+};
+
+/** Whether the signed-in operator of `tenantId` is a tenant admin. */
+export const isSignedInTenantAdmin = (tenantId: string): Promise<boolean> =>
+  signedInRoleMeets(tenantId, isTenantAdminRole);
+
+/**
+ * Whether the signed-in operator of `tenantId` may write the catalogue: a
+ * tenant editor or a tenant admin.
+ */
+export const isSignedInTenantEditor = (tenantId: string): Promise<boolean> =>
+  signedInRoleMeets(tenantId, isTenantEditorRole);
 
 /**
  * Resolve the session for work that must not run without one.

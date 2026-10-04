@@ -17,7 +17,14 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -36,10 +43,17 @@ type RoyaltyStatementsPageProps =
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.royalties.statements.title") };
+  return {
+    title: isAdmin
+      ? t("admin.royalties.statements.title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -84,40 +98,44 @@ const RoyaltyStatementsPage = ({
   searchParams,
 }: RoyaltyStatementsPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
-            <Message message="admin.royalties.statements.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.royalties.statements.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/royalties" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.royalties.open_month_link" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.royalties.statements.section_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<TableSkeleton />}>
-          <StatementListContent searchParams={searchParams} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+                <Message message="admin.royalties.statements.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.royalties.statements.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/royalties" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.royalties.open_month_link" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.royalties.statements.section_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<TableSkeleton />}>
+              <StatementListContent searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

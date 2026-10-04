@@ -51,7 +51,9 @@ describe("CreatorRoleManager", () => {
   // The Action carries what the form held when it was submitted, so a change
   // made while it is in flight would sit under the success message unsaved.
   it("closes the new role's name while its creation is in flight", async () => {
-    render(<CreatorRoleManager creatorRoles={[]} tenantId="TENANT001" />);
+    render(
+      <CreatorRoleManager canEdit creatorRoles={[]} tenantId="TENANT001" />
+    );
     const field = screen.getByRole("textbox", { name: /Role name/u });
 
     fireEvent.change(field, { target: { value: "Colorist" } });
@@ -67,5 +69,18 @@ describe("CreatorRoleManager", () => {
     await waitFor(() => {
       expect(field.matches(":disabled")).toBe(false);
     });
+  });
+
+  it("offers a tenant auditor no new role", () => {
+    render(
+      <CreatorRoleManager
+        canEdit={false}
+        creatorRoles={[]}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create role" })).toBeNull();
   });
 });

@@ -631,6 +631,7 @@
     },
     "common": {
       "back_to_dashboard": "대시보드로 돌아가기",
+      "editor_only": "편집 담당 또는 테넌트 관리자만 변경할 수 있습니다. 현재는 읽기 전용입니다.",
       "error_id": "오류 ID:",
       "next": "다음",
       "page_empty_description": "보고 있는 동안 다른 작업으로 삭제되었을 수 있습니다. 이전이나 다음 페이지로 이동해 주세요.",
@@ -655,7 +656,8 @@
         "moved": "{$name}을(를) {$position}번째로 옮겼습니다.",
         "dropped": "{$name}을(를) {$position}번째에 놓았습니다.",
         "cancelled": "이동을 취소했습니다. {$name}이(가) {$position}번째로 돌아갔습니다."
-      }
+      },
+      "view_action": "보기"
     },
     "contact_messages": {
       "title": "문의",

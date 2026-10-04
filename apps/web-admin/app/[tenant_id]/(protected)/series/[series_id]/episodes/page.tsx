@@ -39,6 +39,8 @@ import {
   PaginationFooter,
   PaginationFooterDescription,
 } from "#components/pagination-controls";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -138,13 +140,15 @@ const SeriesEpisodesChrome = async ({
       </AdminPageHeading>
       <AdminPageActions>
         <div className="flex gap-2">
-          <LinkButton
-            render={<Link href={`/series/${series_id}/episodes/new`} />}
-          >
-            <Message message="admin.series.episodes.new_action" />
-          </LinkButton>
           <Suspense fallback={null}>
-            <SeriesEpisodeCreditsRange params={params} />
+            <TenantEditorOnly>
+              <LinkButton
+                render={<Link href={`/series/${series_id}/episodes/new`} />}
+              >
+                <Message message="admin.series.episodes.new_action" />
+              </LinkButton>
+              <SeriesEpisodeCreditsRange params={params} />
+            </TenantEditorOnly>
           </Suspense>
           <LinkButton
             render={<Link href={`/series/${series_id}`} />}
@@ -171,10 +175,11 @@ const SeriesEpisodesData = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [seriesResult, timeZone, t] = await Promise.all([
+  const [seriesResult, timeZone, t, canEdit] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   if (!seriesResult.ok) {
@@ -231,13 +236,15 @@ const SeriesEpisodesData = async ({
               <Message message="admin.series.episodes.empty_description" />
             </EmptyStateDescription>
           </EmptyStateHeading>
-          <EmptyStateActions>
-            <LinkButton
-              render={<Link href={`/series/${series_id}/episodes/new`} />}
-            >
-              <Message message="admin.series.episodes.create_action" />
-            </LinkButton>
-          </EmptyStateActions>
+          {canEdit ? (
+            <EmptyStateActions>
+              <LinkButton
+                render={<Link href={`/series/${series_id}/episodes/new`} />}
+              >
+                <Message message="admin.series.episodes.create_action" />
+              </LinkButton>
+            </EmptyStateActions>
+          ) : null}
         </CursorPageEmptyState>
         {hasPageLinks ? (
           <PaginationFooter>
@@ -259,13 +266,16 @@ const SeriesEpisodesData = async ({
   return (
     <>
       <div className="grid gap-3">
-        <p className="text-xs text-muted-foreground">
-          <Message message="admin.series.episodes.drag_description" />
-          {hasPageLinks ? (
-            <Message message="admin.series.episodes.drag_page_description" />
-          ) : null}
-        </p>
+        {canEdit ? (
+          <p className="text-xs text-muted-foreground">
+            <Message message="admin.series.episodes.drag_description" />
+            {hasPageLinks ? (
+              <Message message="admin.series.episodes.drag_page_description" />
+            ) : null}
+          </p>
+        ) : null}
         <EpisodesSortableList
+          canEdit={canEdit}
           episodes={result.episodes}
           reorderAction={reorderEpisodesAction}
           seriesAvailability={seriesResult.series.availability}

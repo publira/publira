@@ -30,6 +30,8 @@ import { GenreCreateForm } from "./genre-create-form";
 import { GenreList } from "./genre-list";
 
 interface GenreManagerProps {
+  /** Whether the operator may write the genres, which a tenant auditor may not. */
+  canEdit: boolean;
   genres: GenreListItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -37,11 +39,13 @@ interface GenreManagerProps {
 }
 
 const GenreListBody = async ({
+  canEdit,
   genres,
   listErrorMessage,
   locale,
   tenantId,
 }: {
+  canEdit: boolean;
   genres: GenreListItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -74,10 +78,11 @@ const GenreListBody = async ({
     );
   }
 
-  return <GenreList genres={genres} tenantId={tenantId} />;
+  return <GenreList canEdit={canEdit} genres={genres} tenantId={tenantId} />;
 };
 
 export const GenreManager = async ({
+  canEdit,
   genres,
   listErrorMessage,
   locale,
@@ -87,26 +92,28 @@ export const GenreManager = async ({
 
   return (
     <AdminSections>
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.genres.create_card_title" />
-              </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.genres.create_description" />
-              </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
-        <GenreCreateForm
-          namePlaceholder={t("admin.genres.form.name_placeholder")}
-          tenantId={tenantId}
-        />
-      </AdminSection>
+      {canEdit ? (
+        <AdminSection>
+          <AdminSectionHeader>
+            <AdminSectionHeading>
+              <AdminSectionTitle>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.genres.create_card_title" />
+                </Suspense>
+              </AdminSectionTitle>
+              <AdminSectionDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.genres.create_description" />
+                </Suspense>
+              </AdminSectionDescription>
+            </AdminSectionHeading>
+          </AdminSectionHeader>
+          <GenreCreateForm
+            namePlaceholder={t("admin.genres.form.name_placeholder")}
+            tenantId={tenantId}
+          />
+        </AdminSection>
+      ) : null}
 
       <AdminSection>
         <AdminSectionHeader>
@@ -116,14 +123,17 @@ export const GenreManager = async ({
                 <Message message="admin.genres.list_title" />
               </Suspense>
             </AdminSectionTitle>
-            <AdminSectionDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.genres.list_description" />
-              </Suspense>
-            </AdminSectionDescription>
+            {canEdit ? (
+              <AdminSectionDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.genres.list_description" />
+                </Suspense>
+              </AdminSectionDescription>
+            ) : null}
           </AdminSectionHeading>
         </AdminSectionHeader>
         <GenreListBody
+          canEdit={canEdit}
           genres={genres}
           listErrorMessage={listErrorMessage}
           locale={locale}

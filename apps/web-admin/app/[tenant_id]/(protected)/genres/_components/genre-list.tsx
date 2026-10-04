@@ -14,6 +14,11 @@ import { GenreRenameForm } from "./genre-rename-form";
 import { GenreSortableList } from "./genre-sortable-list";
 
 interface GenreListProps {
+  /**
+   * Whether the operator may write the genres. Without it the list is the
+   * genres in their order and nothing that would change them.
+   */
+  canEdit: boolean;
   genres: GenreListItem[];
   tenantId: string;
 }
@@ -108,13 +113,42 @@ const GenreRow = ({
   </SortableItem>
 );
 
-/** The tenant's genres in their own order, with the controls that write it. */
-export const GenreList = ({ genres, tenantId }: GenreListProps) => (
-  <GenreSortableList
-    rows={genres.map((genre) => ({
-      content: <GenreRow genre={genre} tenantId={tenantId} />,
-      id: genre.id,
-    }))}
-    tenantId={tenantId}
-  />
+/** A genre as a tenant auditor sees it: named, and opened to be viewed. */
+const ReadOnlyGenreRow = ({ genre }: { genre: GenreListItem }) => (
+  <li className="flex items-center justify-between gap-4 border border-border bg-background px-4 py-3">
+    <div className="flex flex-1 items-center gap-3">
+      <GenreThumbnail genre={genre} />
+      <p className="text-sm font-medium">{genre.name}</p>
+    </div>
+    <LinkButton
+      render={<Link href={`/genres/${genre.publicId}`} />}
+      size="sm"
+      variant="outline"
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <Message message="admin.common.view_action" />
+      </Suspense>
+    </LinkButton>
+  </li>
 );
+
+/**
+ * The tenant's genres in their own order, with the controls that write it for
+ * an operator who may.
+ */
+export const GenreList = ({ canEdit, genres, tenantId }: GenreListProps) =>
+  canEdit ? (
+    <GenreSortableList
+      rows={genres.map((genre) => ({
+        content: <GenreRow genre={genre} tenantId={tenantId} />,
+        id: genre.id,
+      }))}
+      tenantId={tenantId}
+    />
+  ) : (
+    <ul className="grid gap-3">
+      {genres.map((genre) => (
+        <ReadOnlyGenreRow genre={genre} key={genre.id} />
+      ))}
+    </ul>
+  );

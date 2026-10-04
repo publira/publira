@@ -62,6 +62,7 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [],
+        canEdit: true,
         locale: "en",
         pageSize: 20,
         tenantId: "TENANT001",
@@ -77,6 +78,7 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [],
+        canEdit: true,
         locale: "en",
         pageSize: 20,
         previousHref: "?token=previous",
@@ -98,6 +100,7 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [announcement("n1")],
+        canEdit: true,
         locale: "en",
         nextHref: "?token=next",
         pageSize: 20,
@@ -122,6 +125,7 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [],
+        canEdit: true,
         listErrorMessage: "Could not load the announcements.",
         locale: "en",
         nextHref: "?token=next",
@@ -153,6 +157,7 @@ describe("AnnouncementManager", () => {
     render(
       await AnnouncementManager({
         announcements: [announcement("n1")],
+        canEdit: true,
         locale: "en",
         pageSize: 20,
         tenantId: "TENANT001",
@@ -164,4 +169,33 @@ describe("AnnouncementManager", () => {
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
     expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
   });
+
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])(
+    "offers to take a banner down when the operator may edit: %s",
+    async (canEdit, count) => {
+      render(
+        await AnnouncementManager({
+          announcements: [
+            {
+              ...announcement("n1"),
+              pinned: true,
+              pinnedUntil: "2026-07-01T00:00:00Z",
+            },
+          ],
+          canEdit,
+          locale: "en",
+          pageSize: 20,
+          tenantId: "TENANT001",
+          timeZone: "UTC",
+        })
+      );
+
+      expect(
+        screen.queryAllByRole("button", { name: "Stop showing" })
+      ).toHaveLength(count);
+    }
+  );
 });

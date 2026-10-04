@@ -15,6 +15,7 @@ import {
   AdminSections,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listGenres } from "#lib/genre";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -48,13 +49,15 @@ const GenreManagerSkeleton = () => (
 
 const GenreManagerData = async () => {
   const tenantId = await getTenantId();
-  const [locale, listResult] = await Promise.all([
+  const [locale, listResult, canEdit] = await Promise.all([
     getLocale(tenantId),
     listGenres(),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   return (
     <GenreManager
+      canEdit={canEdit}
       genres={listResult.genres}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}

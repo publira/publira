@@ -46,6 +46,11 @@ import type { SeriesListItem } from "../series-types";
 import { SeriesAvailabilityBadge } from "./series-availability-badge";
 
 type SeriesManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may edit the series, which decides whether a row
+   * offers to edit it or only to view it.
+   */
+  canEdit: boolean;
   filters: SeriesFilters;
   series: SeriesListItem[];
   listErrorMessage?: string;
@@ -208,6 +213,7 @@ const excerpt = (text: string, max = 56) => {
 };
 
 const SeriesListBody = ({
+  canEdit,
   hasPageLinks,
   itemLabel,
   listErrorMessage,
@@ -215,6 +221,7 @@ const SeriesListBody = ({
   series,
   timeZone,
 }: {
+  canEdit: boolean;
   hasPageLinks: boolean;
   /**
    * What the list holds, for the empty state's sentence. The async parent
@@ -354,7 +361,11 @@ const SeriesListBody = ({
               <div className="flex flex-wrap gap-2">
                 <LinkButton href={`/series/${item.publicId}`} variant="outline">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.series.edit_action" />
+                    {canEdit ? (
+                      <Message message="admin.series.edit_action" />
+                    ) : (
+                      <Message message="admin.common.view_action" />
+                    )}
                   </Suspense>
                 </LinkButton>
                 <LinkButton
@@ -375,6 +386,7 @@ const SeriesListBody = ({
 };
 
 export const SeriesManager = async ({
+  canEdit,
   filters,
   series,
   listErrorMessage,
@@ -395,6 +407,7 @@ export const SeriesManager = async ({
     <div className="grid gap-6">
       <SeriesFiltersForm filters={filters} locale={locale} />
       <SeriesListBody
+        canEdit={canEdit}
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.series.title")}
         listErrorMessage={listErrorMessage}

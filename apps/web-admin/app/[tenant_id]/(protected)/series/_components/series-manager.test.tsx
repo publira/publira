@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { renderServerComponent } from "#lib/render-server-component";
 
+import type { SeriesListItem } from "../series-types";
 import { SeriesManager } from "./series-manager";
 
 vi.mock("#lib/messages", () => ({
@@ -48,10 +49,32 @@ afterEach(() => {
   cleanup();
 });
 
+const series: SeriesListItem = {
+  ageRating: "all",
+  availability: "all",
+  creatorCredits: [],
+  eyeCatchImageUpdatedAt: "",
+  eyeCatchImageVariants: [],
+  genreIds: [],
+  id: "SERIES001-ID",
+  isPublished: false,
+  labelId: "LABEL001",
+  labelName: "Label A",
+  publicId: "SERIES001",
+  publishedAt: "",
+  readingPeriodHours: 72,
+  scheduleWeekdays: [],
+  status: "ongoing",
+  synopsis: "A synopsis",
+  tagNames: [],
+  title: "Existing Series",
+};
+
 describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", async () => {
     await renderServerComponent(
       await SeriesManager({
+        canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
         pageSize: 20,
@@ -69,6 +92,7 @@ describe("SeriesManager", () => {
   it("does not say the whole list is empty when a later page is empty", async () => {
     await renderServerComponent(
       await SeriesManager({
+        canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
         pageSize: 20,
@@ -86,6 +110,7 @@ describe("SeriesManager", () => {
   it("shows only the error and does not call the list empty when the fetch fails", async () => {
     await renderServerComponent(
       await SeriesManager({
+        canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         listErrorMessage: "Could not load the series.",
         locale: "en",
@@ -113,6 +138,7 @@ describe("SeriesManager", () => {
   it("keeps the chosen status and age rating in the filters", async () => {
     await renderServerComponent(
       await SeriesManager({
+        canEdit: true,
         filters: { ageRating: "r15", status: "completed", token: "" },
         locale: "en",
         pageSize: 20,
@@ -128,5 +154,41 @@ describe("SeriesManager", () => {
       age_rating: "r15",
       status: "completed",
     });
+  });
+
+  it("offers an editor to edit each series", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        canEdit: true,
+        filters: { ageRating: "", status: "", token: "" },
+        locale: "en",
+        pageSize: 20,
+        series: [series],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Edit" }).getAttribute("href")
+    ).toBe("/series/SERIES001");
+    expect(screen.queryByRole("link", { name: "View" })).toBeNull();
+  });
+
+  it("offers an auditor only to view each series", async () => {
+    await renderServerComponent(
+      await SeriesManager({
+        canEdit: false,
+        filters: { ageRating: "", status: "", token: "" },
+        locale: "en",
+        pageSize: 20,
+        series: [series],
+        timeZone: "UTC",
+      })
+    );
+
+    expect(
+      screen.getByRole("link", { name: "View" }).getAttribute("href")
+    ).toBe("/series/SERIES001");
+    expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();
   });
 });

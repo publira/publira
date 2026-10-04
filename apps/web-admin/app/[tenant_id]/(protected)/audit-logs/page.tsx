@@ -32,8 +32,15 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
@@ -57,10 +64,15 @@ type AuditLogsPageProps = PageProps<"/[tenant_id]/audit-logs">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.audit.title") };
+  return {
+    title: isAdmin ? t("admin.audit.title") : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -344,33 +356,37 @@ const AuditLogsContent = async ({
 
 const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-            <Message message="admin.audit.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.audit.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.audit.section_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<AuditLogsSkeleton />}>
-          <AuditLogsContent searchParams={searchParams} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+                <Message message="admin.audit.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.audit.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.audit.section_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<AuditLogsSkeleton />}>
+              <AuditLogsContent searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

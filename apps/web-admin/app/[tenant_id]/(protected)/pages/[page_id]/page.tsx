@@ -33,6 +33,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -269,7 +270,9 @@ const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
         }
       >
         <Suspense fallback={<PageWorkspaceSkeleton />}>
-          <PageWorkspaceData params={params} searchParams={searchParams} />
+          <TenantEditorFieldset>
+            <PageWorkspaceData params={params} searchParams={searchParams} />
+          </TenantEditorFieldset>
         </Suspense>
       </SectionErrorBoundary>
     </AdminPageContent>

@@ -36,6 +36,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
@@ -224,7 +225,9 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
           }
         >
           <Suspense fallback={<EditCreatorFormSkeleton />}>
-            <EditCreatorFormData params={params} />
+            <TenantEditorFieldset>
+              <EditCreatorFormData params={params} />
+            </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
         <SectionErrorBoundary

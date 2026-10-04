@@ -16,8 +16,12 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { listAnnouncements } from "#lib/announcement";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -49,15 +53,17 @@ const AnnouncementManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, timeZone, canEdit] = await Promise.all([
     listAnnouncements(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <AnnouncementManager
+      canEdit={canEdit}
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       announcements={listResult.announcements}
@@ -84,16 +90,20 @@ const AnnouncementsPage = ({ searchParams }: AnnouncementsPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton
-          render={<Link href="/announcements/new" />}
-          variant="outline"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="admin.announcements.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/announcements/new" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.announcements.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </TenantEditorOnly>
+      </Suspense>
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TableSkeleton />}>

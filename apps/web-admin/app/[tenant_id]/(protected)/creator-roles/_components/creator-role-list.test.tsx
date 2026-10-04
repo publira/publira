@@ -140,7 +140,11 @@ afterEach(() => {
 describe("CreatorRoleList", () => {
   it("lists the roles in priority order and states each position", async () => {
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     expect(namesOnScreen()).toEqual(["Original Author", "Artist", "Writer"]);
@@ -154,7 +158,11 @@ describe("CreatorRoleList", () => {
   // label `Field` ties to it.
   it("names each name box after the role it edits", async () => {
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     expect(
@@ -168,7 +176,11 @@ describe("CreatorRoleList", () => {
   // all pick a row up by, so every row has to offer one.
   it("gives every row a drag handle named after the role it moves", async () => {
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     expect(
@@ -180,7 +192,11 @@ describe("CreatorRoleList", () => {
 
   it("posts the whole order it wants beside the one it was showing", async () => {
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     await dropOver("ROLE002", "ROLE001");
@@ -206,7 +222,11 @@ describe("CreatorRoleList", () => {
   // is no order to post and no conflict to risk.
   it("writes nothing when the row is dropped where it started", async () => {
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     await dropOver("ROLE002", "ROLE002");
@@ -220,7 +240,11 @@ describe("CreatorRoleList", () => {
     reorder.mockReturnValue(pending.promise);
 
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     await dropOver("ROLE002", "ROLE001");
@@ -240,7 +264,11 @@ describe("CreatorRoleList", () => {
     });
 
     await renderList(
-      <CreatorRoleList creatorRoles={creatorRoles} tenantId="TENANT001" />
+      <CreatorRoleList
+        canEdit
+        creatorRoles={creatorRoles}
+        tenantId="TENANT001"
+      />
     );
 
     await dropOver("ROLE002", "ROLE001");
@@ -248,5 +276,28 @@ describe("CreatorRoleList", () => {
     expect(
       await screen.findByText("The role priority changed somewhere else.")
     ).toBeDefined();
+  });
+
+  it("shows a tenant auditor the roles in priority order and nothing that writes them", async () => {
+    await act(() => {
+      render(
+        <CreatorRoleList
+          canEdit={false}
+          creatorRoles={creatorRoles}
+          tenantId="TENANT001"
+        />,
+        { wrapper: EnglishConsole }
+      );
+    });
+
+    expect(
+      screen.getAllByRole("listitem").map((row) => row.textContent)
+    ).toEqual([
+      "Priority 1Original Author",
+      "Priority 2Artist",
+      "Priority 3Writer",
+    ]);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

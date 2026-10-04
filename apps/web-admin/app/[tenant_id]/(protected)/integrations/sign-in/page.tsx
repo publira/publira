@@ -13,8 +13,15 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -29,10 +36,17 @@ import { TenantSignInSettingsForm } from "./_components/tenant-sign-in-settings-
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.integrations.sign_in_title") };
+  return {
+    title: isAdmin
+      ? t("admin.integrations.sign_in_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -82,33 +96,37 @@ const SignInSettingsSection = async () => {
 
 const IntegrationsSignInPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.sign_in_title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.integrations.sign_in_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.integrations.sign_in_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<SignInSettingsSkeleton />}>
-          <SignInSettingsSection />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+                <Message message="admin.integrations.sign_in_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.integrations.sign_in_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.integrations.sign_in_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<SignInSettingsSkeleton />}>
+              <SignInSettingsSection />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

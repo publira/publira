@@ -33,6 +33,11 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
   verifyAdminSession,
 } from "#lib/auth-session";
@@ -54,10 +59,17 @@ type ContactMessageDetailPageProps =
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.contact_messages.detail_title") };
+  return {
+    title: isAdmin
+      ? t("admin.contact_messages.detail_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -158,67 +170,71 @@ const ContactMessageDetailPage = ({
   params,
 }: ContactMessageDetailPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.contact_messages.detail_title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.contact_messages.detail_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton
-          render={<Link href="/contact-messages" />}
-          variant="outline"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.contact_messages.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast
-        keyName="handled"
-        message="admin.contact_messages.marked_handled"
-      />
-      <FlashToast
-        keyName="reopened"
-        message="admin.contact_messages.reopened"
-      />
-      <FlashToast
-        keyName="assigned"
-        message="admin.contact_messages.assignment.assigned"
-      />
-      <FlashToast
-        keyName="unassigned"
-        message="admin.contact_messages.assignment.unassigned"
-      />
-      <FlashToast
-        keyName="note_saved"
-        message="admin.contact_messages.staff_note.saved"
-      />
-      <FlashToast
-        keyName="note_cleared"
-        message="admin.contact_messages.staff_note.cleared"
-      />
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.contact_messages.detail_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<DetailSkeleton />}>
-          <ContactMessageDetailContent params={params} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.contact_messages.detail_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.contact_messages.detail_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/contact-messages" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.contact_messages.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <FlashToast
+            keyName="handled"
+            message="admin.contact_messages.marked_handled"
+          />
+          <FlashToast
+            keyName="reopened"
+            message="admin.contact_messages.reopened"
+          />
+          <FlashToast
+            keyName="assigned"
+            message="admin.contact_messages.assignment.assigned"
+          />
+          <FlashToast
+            keyName="unassigned"
+            message="admin.contact_messages.assignment.unassigned"
+          />
+          <FlashToast
+            keyName="note_saved"
+            message="admin.contact_messages.staff_note.saved"
+          />
+          <FlashToast
+            keyName="note_cleared"
+            message="admin.contact_messages.staff_note.cleared"
+          />
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.contact_messages.detail_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<DetailSkeleton />}>
+              <ContactMessageDetailContent params={params} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

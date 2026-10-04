@@ -57,6 +57,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("../lib/auth-session", () => ({
+  isSignedInTenantAdmin: vi.fn(() => Promise.resolve(true)),
   verifyAdminSession: vi.fn(),
 }));
 

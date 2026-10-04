@@ -631,6 +631,7 @@
     },
     "common": {
       "back_to_dashboard": "返回仪表盘",
+      "editor_only": "只有编辑或租户管理员才能变更此内容。您只有只读权限。",
       "error_id": "错误ID：",
       "next": "下一页",
       "page_empty_description": "它们可能在您浏览本页期间被删除。请前往相邻的页面。",
@@ -655,7 +656,8 @@
         "moved": "{$name}已移到第{$position}位。",
         "dropped": "{$name}已放在第{$position}位。",
         "cancelled": "已取消移动。{$name}回到第{$position}位。"
-      }
+      },
+      "view_action": "查看"
     },
     "contact_messages": {
       "title": "咨询",

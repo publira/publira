@@ -26,7 +26,14 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantEditorRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
@@ -40,10 +47,17 @@ import { createEpisodeAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isEditor] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.series.episodes.new_title") };
+  return {
+    title: isEditor
+      ? t("admin.series.episodes.new_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -151,35 +165,39 @@ const NewEpisodeFormSkeleton = () => (
 
 const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageContext>
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <NewEpisodeContext params={params} />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantEditorRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageContext>
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <NewEpisodeContext params={params} />
+              </Suspense>
+            </AdminPageContext>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.series.episodes.new_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.series.episodes.new_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <Suspense fallback={<SkeletonLine className="h-10 w-56" />}>
+              <NewEpisodeActions params={params} />
+            </Suspense>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <Suspense fallback={<NewEpisodeFormSkeleton />}>
+            <NewEpisodeFormData params={params} />
           </Suspense>
-        </AdminPageContext>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.series.episodes.new_title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="admin.series.episodes.new_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <Suspense fallback={<SkeletonLine className="h-10 w-56" />}>
-          <NewEpisodeActions params={params} />
-        </Suspense>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <Suspense fallback={<NewEpisodeFormSkeleton />}>
-        <NewEpisodeFormData params={params} />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantEditorRoute>
+    </Suspense>
   </AdminPage>
 );
 

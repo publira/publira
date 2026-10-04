@@ -170,6 +170,7 @@ const SettingsForms = async () => {
     <AdminSections>
       {settingsResult.ok ? (
         <SiteSettingsForm
+          canEdit={canEdit}
           initialSettings={settingsResult.settings}
           tenantId={tenantId}
         />
@@ -238,8 +239,8 @@ const SettingsForms = async () => {
         loadErrorMessage={
           legalPagesResult.ok ? undefined : legalPagesResult.message
         }
-        // Listing pages is an admin RPC, so its refusal of anyone else is not a
-        // failure worth reporting next to controls they cannot use anyway.
+        // Only a tenant admin can choose a page here, so a list that could not
+        // be read is not worth reporting next to controls nobody else can use.
         pagesErrorMessage={
           canEdit && !publishedPagesResult.ok
             ? publishedPagesResult.message

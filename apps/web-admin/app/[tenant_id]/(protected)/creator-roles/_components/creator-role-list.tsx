@@ -5,6 +5,7 @@ import { Message } from "#components/message";
 import { SortableItem, SortableItemHandle } from "#components/sortable-list";
 
 import type { CreatorRoleListItem } from "../creator-role-types";
+import { CREATOR_ROLE_LIST_TITLE_ID } from "../creator-role-types";
 import { CreatorRoleDeleteButton } from "./creator-role-delete-button";
 import { CreatorRoleRenameForm } from "./creator-role-rename-form";
 import {
@@ -13,6 +14,11 @@ import {
 } from "./creator-role-sortable-list";
 
 interface CreatorRoleListProps {
+  /**
+   * Whether the operator may write the roles. Without it the list is the roles
+   * in their priority order and nothing that would change them.
+   */
+  canEdit: boolean;
   creatorRoles: CreatorRoleListItem[];
   tenantId: string;
 }
@@ -62,14 +68,37 @@ const CreatorRoleRow = ({
  * row carries is stated rather than left to be counted.
  */
 export const CreatorRoleList = ({
+  canEdit,
   creatorRoles,
   tenantId,
-}: CreatorRoleListProps) => (
-  <CreatorRoleSortableList
-    rows={creatorRoles.map((creatorRole) => ({
-      content: <CreatorRoleRow creatorRole={creatorRole} tenantId={tenantId} />,
-      id: creatorRole.id,
-    }))}
-    tenantId={tenantId}
-  />
-);
+}: CreatorRoleListProps) =>
+  canEdit ? (
+    <CreatorRoleSortableList
+      rows={creatorRoles.map((creatorRole) => ({
+        content: (
+          <CreatorRoleRow creatorRole={creatorRole} tenantId={tenantId} />
+        ),
+        id: creatorRole.id,
+      }))}
+      tenantId={tenantId}
+    />
+  ) : (
+    <ol aria-labelledby={CREATOR_ROLE_LIST_TITLE_ID} className="grid gap-3">
+      {creatorRoles.map((creatorRole, index) => (
+        <li
+          className="flex items-center gap-4 border border-border bg-background px-4 py-3"
+          key={creatorRole.id}
+        >
+          <p className="text-xs text-muted-foreground sm:w-28">
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message
+                message="admin.creator_roles.priority_hint"
+                values={{ position: String(index + 1) }}
+              />
+            </Suspense>
+          </p>
+          <p className="text-sm font-medium">{creatorRole.name}</p>
+        </li>
+      ))}
+    </ol>
+  );
