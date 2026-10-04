@@ -66,7 +66,11 @@ func (i index) refresh(t *testing.T) {
 type searchFunc func(*opensearchbackend.Backend, context.Context, catalogsearch.Request) (catalogsearch.Page, error)
 
 var (
-	searchSeries   searchFunc = (*opensearchbackend.Backend).SearchSeries
+	// A series search asking for no order and no filter is the one the other
+	// two kinds answer.
+	searchSeries searchFunc = func(b *opensearchbackend.Backend, ctx context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
+		return b.SearchSeries(ctx, catalogsearch.SeriesRequest{Request: req})
+	}
 	searchCreators searchFunc = (*opensearchbackend.Backend).SearchCreators
 	searchLabels   searchFunc = (*opensearchbackend.Backend).SearchLabels
 )
