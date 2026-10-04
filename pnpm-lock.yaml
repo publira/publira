@@ -191,6 +191,9 @@ catalogs:
     '@testing-library/react':
       specifier: 16.3.3
       version: 16.3.3
+    '@types/mdast':
+      specifier: 4.0.4
+      version: 4.0.4
     '@types/node':
       specifier: 24.19.0
       version: 24.19.0
@@ -209,6 +212,15 @@ catalogs:
     lru-cache:
       specifier: 11.5.3
       version: 11.5.3
+    mdast-util-from-markdown:
+      specifier: 2.0.3
+      version: 2.0.3
+    mdast-util-gfm:
+      specifier: 3.1.0
+      version: 3.1.0
+    micromark-extension-gfm:
+      specifier: 3.0.0
+      version: 3.0.0
     next:
       specifier: 16.3.8
       version: 16.3.8
@@ -251,6 +263,9 @@ catalogs:
     vitest:
       specifier: 5.0.3
       version: 5.0.3
+    yaml:
+      specifier: 2.9.1
+      version: 2.9.1
     zod:
       specifier: 4.6.5
       version: 4.6.5
@@ -262,6 +277,9 @@ importers:
 
   .:
     devDependencies:
+      '@types/mdast':
+        specifier: 'catalog:'
+        version: 4.0.4
       eslint-plugin-github:
         specifier: 6.1.2
         version: 6.1.2(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
@@ -271,6 +289,15 @@ importers:
       lefthook:
         specifier: 2.1.15
         version: 2.1.15
+      mdast-util-from-markdown:
+        specifier: 'catalog:'
+        version: 2.0.3(supports-color@7.2.0)
+      mdast-util-gfm:
+        specifier: 'catalog:'
+        version: 3.1.0(supports-color@7.2.0)
+      micromark-extension-gfm:
+        specifier: 'catalog:'
+        version: 3.0.0
       node:
         specifier: runtime:24.21.0
         version: runtime:24.21.0
@@ -304,6 +331,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(jsdom@30.1.1)(vite@8.3.1(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
 
   apps/email-renderer:
     dependencies:

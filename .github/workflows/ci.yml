@@ -131,6 +131,12 @@ jobs:
               - '.gitattributes'
               - 'scripts/check-design-tokens.ts'
               - 'scripts/ci-plan-jobs.sh'
+            # The pages under docs/ are Markdown, which the check filter leaves
+            # out, yet `Check` is where they are validated. A filter of its own,
+            # without docs_excluded, starts that job for a change to them alone.
+            check_docs:
+              - 'docs/**'
+              - 'scripts/check-docs.ts'
             # Narrower than test_go on purpose: golangci-lint only reads Go
             # sources and server/.golangci.yml, and `task gen` writes its output
             # under server/, so a db/ or proto/ edit cannot change the result
@@ -371,6 +377,7 @@ jobs:
           DOCKER_MODE_INPUT: ${{ inputs.docker_mode }}
           FILTER_FORMAT: ${{ steps.filter.outputs.format }}
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
+          FILTER_CHECK_DOCS: ${{ steps.filter.outputs.check_docs }}
           FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
@@ -492,6 +499,9 @@ jobs:
 
       - name: Validate / Design tokens
         run: node scripts/check-design-tokens.ts
+
+      - name: Validate / Docs
+        run: node scripts/check-docs.ts
 
       - name: Validate / Typecheck
         run: pnpm typecheck
