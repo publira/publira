@@ -203,7 +203,7 @@ docker compose --profile search up -d
 - The index is kept in the `opensearch-data` volume
 - Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address
 
-Then export `PUBLIRA_SEARCH_BACKEND=opensearch` and `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:9200` for `task dev`, and fill the index from the seeded database once with `go run ./server/cmd/publiractl search reindex`; the worker keeps it in step after that. The variables are described in [server/README.md](server/README.md#catalog-search).
+Then export `PUBLIRA_SEARCH_BACKEND=opensearch` and `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:9200` for `task dev`, and fill the index from the seeded database once with `(cd server && go run ./cmd/publiractl search reindex)`; the worker keeps it in step after that. The variables are described in [server/README.md](server/README.md#catalog-search).
 
 ## Distributed tracing (Jaeger)
 

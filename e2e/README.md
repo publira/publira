@@ -223,6 +223,6 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, `platform-locale-switching` and then `platform-operator-management` follow the platform chain, `viewer-performance` runs after all of those so nothing competes with it for the runner, and `platform-setup` runs last of everything.
 - The required branch check is the final **Summary** job, as with all CI jobs.
 
-Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, and `tests/catalog.search.spec.ts` — and its failure artifact is `e2e-search-artifacts`.
+Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts` and the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

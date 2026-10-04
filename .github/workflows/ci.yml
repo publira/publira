@@ -278,6 +278,12 @@ jobs:
               - 'e2e/Taskfile.yaml'
               - 'e2e/playwright.config.ts'
               - 'e2e/tests/catalog.search.spec.ts'
+              # What the spec reads: its helpers and fixtures, and the seed
+              # its OpenSearch-only cases search for, which the ordinary run
+              # never asserts on because it registers those cases on
+              # OpenSearch alone.
+              - 'e2e/src/**'
+              - 'db/seeds/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
