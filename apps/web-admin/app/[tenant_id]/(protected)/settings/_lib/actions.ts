@@ -152,39 +152,33 @@ const tenantLegalPagesSchema = async (locale: Locale) => {
 };
 
 /**
- * The list arrives as the textarea's text, one entry a line, and is checked
- * line by line with the rule the settings card applies as it is typed — the
- * server's own, so a list this accepts is one the server accepts. The switch
- * is a checkbox, present only while it is on.
+ * The list arrives as one `entries` field per input, blank ones included, and
+ * is checked entry by entry with the rule the settings card applies as each
+ * field is left — the server's own, so a list this accepts is one the server
+ * accepts. The switch is a checkbox, present only while it is on.
  */
 const tenantEmailRejectionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    entries: z
-      .string({
-        error: t("admin.settings.email_rejection.validation.entries_refused", {
-          max: MAX_EMAIL_REJECTION_ENTRIES,
-        }),
-      })
-      .transform((text, context) => {
-        const result = parseEmailRejectionEntries(text);
-        if (result.ok) {
-          return result.entries;
-        }
-        context.addIssue({
-          code: "custom",
-          message:
-            result.reason === "too_many"
-              ? t("admin.settings.email_rejection.validation.too_many", {
-                  max: MAX_EMAIL_REJECTION_ENTRIES,
-                })
-              : t("admin.settings.email_rejection.validation.entry_invalid", {
-                  entry: result.entry,
-                }),
-        });
-        return z.NEVER;
-      }),
+    entries: z.array(z.string()).transform((values, context) => {
+      const result = parseEmailRejectionEntries(values);
+      if (result.ok) {
+        return result.entries;
+      }
+      context.addIssue({
+        code: "custom",
+        message:
+          result.reason === "too_many"
+            ? t("admin.settings.email_rejection.validation.too_many", {
+                max: MAX_EMAIL_REJECTION_ENTRIES,
+              })
+            : t("admin.settings.email_rejection.validation.entry_invalid", {
+                entry: result.entry,
+              }),
+      });
+      return z.NEVER;
+    }),
     rejectDisposableDomains: z
       .literal("on")
       .optional()
@@ -538,7 +532,7 @@ export const updateTenantEmailRejectionAction = async (
   const schema = await tenantEmailRejectionSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      entries: "value",
+      entries: "values",
       rejectDisposableDomains: {
         kind: "value",
         name: "reject_disposable_domains",

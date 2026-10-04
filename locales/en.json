@@ -2117,7 +2117,10 @@
         "disposable_description": "Refuses addresses on domains made for throwaway email, using the list the platform maintains.",
         "disposable_unavailable": "The platform has no disposable domain list configured, so this switch has no effect until one is.",
         "entries_label": "Addresses and domains to refuse",
-        "entries_description": "One email address or domain per line. A domain also refuses its subdomains, and an address also refuses the same address with a + tag added.",
+        "entries_description": "One email address or domain per field. Pasting several lines adds a field for each. A domain also refuses its subdomains, and an address also refuses the same address with a + tag added.",
+        "entry_label": "Address or domain {$position}",
+        "entry_remove": "Remove address or domain {$position}",
+        "entries_add": "Add an address or domain",
         "submit": "Save the refused email addresses",
         "saved": "The refused email addresses were saved.",
         "load_failed": "Could not load the refused email addresses. Please try again later.",
@@ -2126,7 +2129,7 @@
         "validation": {
           "entry_invalid": "\"{$entry}\" is neither an email address nor a domain.",
           "too_many": "List at most {$max} addresses and domains.",
-          "entries_refused": "Check the list. Each line must be one email address or domain, and at most {$max} can be listed."
+          "entries_refused": "Check the list. Each entry must be one email address or domain, and at most {$max} can be listed."
         }
       },
       "icon": {

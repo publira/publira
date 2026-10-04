@@ -2,9 +2,9 @@
  * The rule an entry of the tenant's refused email addresses is held to, as the
  * Go server writes it in `server/internal/emailrejection`: an entry with an @
  * is an address, any other a domain of two labels or more. The settings card
- * checks each line as it is typed and the Server Action checks the list again
- * before it is sent, so an operator is told which line is wrong without a round
- * trip. The server stays the authority, and a refusal from it is still worded
+ * checks each field once the operator leaves it and the Server Action checks
+ * the list again before it is sent, so an operator is told which entry is
+ * wrong without a round trip. The server stays the authority, and a refusal from it is still worded
  * by the card.
  *
  * Kept apart from `tenant-email-rejection-settings.ts` because the settings
@@ -113,11 +113,11 @@ const toAsciiDomain = (domain: string): string | null => {
 };
 
 /**
- * One line as the server compares it — the address or domain with the domain
+ * One entry as the server compares it — the address or domain with the domain
  * in ASCII — or `null` when it is neither.
  */
-const toEntryKey = (line: string): string | null => {
-  const value = line.trim().toLowerCase();
+const toEntryKey = (entry: string): string | null => {
+  const value = entry.trim().toLowerCase();
   if (utf8Length(value.replace(/\.$/u, "")) > MAX_ENTRY_BYTES) {
     return null;
   }
@@ -132,23 +132,27 @@ const toEntryKey = (line: string): string | null => {
   return host !== null && isValidLocal(local) ? `${local}@${host}` : null;
 };
 
+/** Whether the server would store `entry`, which must not be blank. */
+export const isEmailRejectionEntry = (entry: string): boolean =>
+  toEntryKey(entry) !== null;
+
 export type EmailRejectionEntriesResult =
   | {
       ok: true;
-      /** The non-blank lines, trimmed, for the server to normalize. */
+      /** The non-blank entries, trimmed, for the server to normalize. */
       entries: string[];
     }
   | { ok: false; reason: "entry_invalid"; entry: string }
   | { ok: false; reason: "too_many" };
 
-/** The textarea's lines, one entry each, as the server would take them. */
+/** The entries as the server would take them; blank ones are dropped. */
 export const parseEmailRejectionEntries = (
-  text: string
+  values: readonly string[]
 ): EmailRejectionEntriesResult => {
   const entries: string[] = [];
   const keys = new Set<string>();
-  for (const line of text.split(/\r\n|\r|\n/u)) {
-    const entry = line.trim();
+  for (const value of values) {
+    const entry = value.trim();
     if (entry === "") {
       continue;
     }
@@ -165,3 +169,10 @@ export const parseEmailRejectionEntries = (
   }
   return { entries, ok: true };
 };
+
+/** The entries a pasted text names, one a line, trimmed, blank lines dropped. */
+export const splitPastedEmailRejectionEntries = (text: string): string[] =>
+  text
+    .split(/\r\n|\r|\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");

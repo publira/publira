@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isEmailRejectionEntry,
   MAX_EMAIL_REJECTION_ENTRIES,
   parseEmailRejectionEntries,
+  splitPastedEmailRejectionEntries,
 } from "./tenant-email-rejection-settings-shared";
 
-// The cases mirror server/internal/emailrejection: a line the card accepts has
-// to be one the server stores, and a line it refuses one the server refuses.
+// The cases mirror server/internal/emailrejection: an entry the card accepts
+// has to be one the server stores, and one it refuses one the server refuses.
 describe("parseEmailRejectionEntries", () => {
-  it("takes one entry a line, trimmed, and skips blank lines", () => {
+  it("takes each entry trimmed, and skips blank ones", () => {
     expect(
-      parseEmailRejectionEntries(
-        "  Refused.Example \r\n\r\nsomeone@example.com\n\n"
-      )
+      parseEmailRejectionEntries([
+        "  Refused.Example ",
+        "",
+        " ",
+        "someone@example.com",
+      ])
     ).toEqual({
       entries: ["Refused.Example", "someone@example.com"],
       ok: true,
@@ -20,7 +25,7 @@ describe("parseEmailRejectionEntries", () => {
   });
 
   it("accepts an empty list", () => {
-    expect(parseEmailRejectionEntries("\n \n")).toEqual({
+    expect(parseEmailRejectionEntries([""])).toEqual({
       entries: [],
       ok: true,
     });
@@ -40,8 +45,9 @@ describe("parseEmailRejectionEntries", () => {
     "o'brien@example.com",
     "ユーザー@例え.jp",
     "a.b@example.com",
-  ])("accepts %s", (line) => {
-    expect(parseEmailRejectionEntries(line).ok).toBe(true);
+  ])("accepts %s", (entry) => {
+    expect(isEmailRejectionEntry(entry)).toBe(true);
+    expect(parseEmailRejectionEntries([entry]).ok).toBe(true);
   });
 
   it.each([
@@ -68,9 +74,10 @@ describe("parseEmailRejectionEntries", () => {
       "an entry longer than 254 bytes",
       `john@${Array.from({ length: 4 }, () => "a".repeat(61)).join(".")}.com`,
     ],
-  ])("refuses %s", (_, line) => {
-    expect(parseEmailRejectionEntries(`example.com\n${line}`)).toEqual({
-      entry: line.trim(),
+  ])("refuses %s", (_, entry) => {
+    expect(isEmailRejectionEntry(entry)).toBe(false);
+    expect(parseEmailRejectionEntries(["example.com", entry])).toEqual({
+      entry: entry.trim(),
       ok: false,
       reason: "entry_invalid",
     });
@@ -83,12 +90,20 @@ describe("parseEmailRejectionEntries", () => {
     );
 
     expect(
-      parseEmailRejectionEntries(
-        [...domains, "D0.EXAMPLE", "d1.example."].join("\n")
-      ).ok
+      parseEmailRejectionEntries([...domains, "D0.EXAMPLE", "d1.example."]).ok
     ).toBe(true);
     expect(
-      parseEmailRejectionEntries([...domains, "one-more.example"].join("\n"))
+      parseEmailRejectionEntries([...domains, "one-more.example"])
     ).toEqual({ ok: false, reason: "too_many" });
+  });
+});
+
+describe("splitPastedEmailRejectionEntries", () => {
+  it("takes one entry a line, trimmed, whatever the line endings", () => {
+    expect(
+      splitPastedEmailRejectionEntries(
+        "  one.example \r\n\r\ntwo@example.com\rthree.example\n\n"
+      )
+    ).toEqual(["one.example", "two@example.com", "three.example"]);
   });
 });

@@ -456,6 +456,21 @@ describe("updateTenantLegalPagesAction", () => {
   });
 });
 
+/** The card's form: the switch while it is on, and one `entries` field per input. */
+const emailRejectionFormData = (
+  entries: string[],
+  rejectDisposableDomains?: string
+): FormData => {
+  const formData = textFormData({ tenant_id: "TENANT001" });
+  for (const entry of entries) {
+    formData.append("entries", entry);
+  }
+  if (rejectDisposableDomains !== undefined) {
+    formData.set("reject_disposable_domains", rejectDisposableDomains);
+  }
+  return formData;
+};
+
 describe("updateTenantEmailRejectionAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -463,7 +478,7 @@ describe("updateTenantEmailRejectionAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("sends the switch and each non-blank line, then revalidates the tag", async () => {
+  it("sends the switch and each non-blank field, then revalidates the tag", async () => {
     const saved = {
       disposableDomainListAvailable: true,
       ok: true,
@@ -478,11 +493,10 @@ describe("updateTenantEmailRejectionAction", () => {
 
     const result = await updateTenantEmailRejectionAction(
       null,
-      textFormData({
-        entries: " Refused.Example \r\n\r\nsomeone@example.com\n",
-        reject_disposable_domains: "on",
-        tenant_id: "TENANT001",
-      })
+      emailRejectionFormData(
+        [" Refused.Example ", "", "someone@example.com"],
+        "on"
+      )
     );
 
     expect(result).toEqual({
@@ -504,7 +518,7 @@ describe("updateTenantEmailRejectionAction", () => {
     );
   });
 
-  it("reads an absent switch as off and an empty list as clearing it", async () => {
+  it("reads an absent switch as off and empty fields as clearing the list", async () => {
     mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
       disposableDomainListAvailable: false,
       ok: true,
@@ -513,10 +527,7 @@ describe("updateTenantEmailRejectionAction", () => {
 
     const { updateTenantEmailRejectionAction } = await import("./actions");
 
-    await updateTenantEmailRejectionAction(
-      null,
-      textFormData({ entries: "", tenant_id: "TENANT001" })
-    );
+    await updateTenantEmailRejectionAction(null, emailRejectionFormData([""]));
 
     expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
       { entries: [], rejectDisposableDomains: false, tenantId: "TENANT001" },
@@ -524,16 +535,12 @@ describe("updateTenantEmailRejectionAction", () => {
     );
   });
 
-  it("names the line it refuses without calling the API", async () => {
+  it("names the entry it refuses without calling the API", async () => {
     const { updateTenantEmailRejectionAction } = await import("./actions");
 
     const result = await updateTenantEmailRejectionAction(
       null,
-      textFormData({
-        entries: "refused.example\nnot a domain",
-        reject_disposable_domains: "on",
-        tenant_id: "TENANT001",
-      })
+      emailRejectionFormData(["refused.example", "not a domain"], "on")
     );
 
     const message = '"not a domain" is neither an email address nor a domain.';
@@ -551,11 +558,7 @@ describe("updateTenantEmailRejectionAction", () => {
 
     const result = await updateTenantEmailRejectionAction(
       null,
-      textFormData({
-        entries: "",
-        reject_disposable_domains: "true",
-        tenant_id: "TENANT001",
-      })
+      emailRejectionFormData([], "true")
     );
 
     expect(result?.ok).toBe(false);
@@ -564,7 +567,7 @@ describe("updateTenantEmailRejectionAction", () => {
 
   it("puts the API's refusal of the list beside the field without revalidating", async () => {
     const message =
-      "Check the list. Each line must be one email address or domain, and at most 1000 can be listed.";
+      "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
     mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
       entriesError: message,
       message,
@@ -575,7 +578,7 @@ describe("updateTenantEmailRejectionAction", () => {
 
     const result = await updateTenantEmailRejectionAction(
       null,
-      textFormData({ entries: "xn--zz.com", tenant_id: "TENANT001" })
+      emailRejectionFormData(["xn--zz.com"])
     );
 
     expect(result).toEqual({

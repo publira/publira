@@ -39,8 +39,37 @@ const LISTED_REFUSAL =
 const listSwitch = (page: Page) =>
   page.getByRole("switch", { name: "Refuse disposable email domains" });
 
-const entriesField = (page: Page) =>
-  page.getByRole("textbox", { name: "Addresses and domains to refuse" });
+/** The list's fields, in order. */
+const entryFields = (page: Page) =>
+  page.getByRole("textbox", { name: /^Address or domain \d+$/u });
+
+const entryField = (page: Page, position: number) =>
+  page.getByRole("textbox", {
+    exact: true,
+    name: `Address or domain ${position}`,
+  });
+
+const entryValues = (page: Page) =>
+  entryFields(page).evaluateAll((fields) =>
+    fields.map((field) => (field as HTMLInputElement).value)
+  );
+
+/**
+ * Paste `text` into the field the way a browser does from the clipboard, which
+ * a headless page cannot be given without granting clipboard access.
+ */
+const pasteInto = (page: Page, position: number, text: string) =>
+  entryField(page, position).evaluate((field, pasted) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", pasted);
+    field.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      })
+    );
+  }, text);
 
 const signUp = async (page: Page, email: string): Promise<void> => {
   await page.goto(signupUrl);
@@ -102,13 +131,14 @@ test.describe("web-admin email rejection", () => {
     await expect.poll(() => accountCount(email)).toBe("1");
   });
 
-  test("an administrator switches the list on, lists a domain, and sees both after a reload", async ({
+  test("an administrator switches the list on, lists entries, and sees both after a reload", async ({
     page,
   }) => {
     await openSettings(page);
 
     await expect(listSwitch(page)).toHaveAttribute("aria-checked", "false");
-    await expect(entriesField(page)).toHaveValue("");
+    // One empty field to type into, for a tenant that lists nothing.
+    await expect.poll(() => entryValues(page)).toEqual([""]);
     // The stack names a list, so the switch is not said to do nothing.
     await expect(
       page.getByText(
@@ -117,29 +147,64 @@ test.describe("web-admin email rejection", () => {
     ).toBeHidden();
 
     await listSwitch(page).click();
-    await entriesField(page).fill("  Refused.Example  \n\nsomeone@example.com");
+    await entryField(page, 1).fill("  Refused.Example  ");
+    await page
+      .getByRole("button", { name: "Add an address or domain" })
+      .click();
+    await expect(entryField(page, 2)).toBeFocused();
+    await entryField(page, 2).fill("someone@example.com");
     await page.getByRole("button", { name: SAVE }).click();
 
     await expect(page.getByText(SAVED)).toBeVisible();
-    // Answered as stored: trimmed, lowercased, blank lines dropped, sorted.
-    await expect(entriesField(page)).toHaveValue(
-      "refused.example\nsomeone@example.com"
-    );
+    // Answered as stored: trimmed, lowercased, sorted.
+    await expect
+      .poll(() => entryValues(page))
+      .toEqual(["refused.example", "someone@example.com"]);
 
     await page.reload();
 
     await expect(listSwitch(page)).toHaveAttribute("aria-checked", "true");
-    await expect(entriesField(page)).toHaveValue(
-      "refused.example\nsomeone@example.com"
-    );
+    await expect
+      .poll(() => entryValues(page))
+      .toEqual(["refused.example", "someone@example.com"]);
   });
 
-  test("a line that is neither an address nor a domain is refused on the form", async ({
+  test("a paste of several lines becomes one field per line", async ({
+    page,
+  }) => {
+    await openSettings(page);
+    await page
+      .getByRole("button", { name: "Add an address or domain" })
+      .click();
+
+    await pasteInto(page, 3, "first.example\r\n\r\nsecond@example.com\n");
+
+    await expect
+      .poll(() => entryValues(page))
+      .toEqual([
+        "refused.example",
+        "someone@example.com",
+        "first.example",
+        "second@example.com",
+      ]);
+    await expect(entryField(page, 4)).toBeFocused();
+
+    // Not saved, so a reload puts the stored list back.
+    await page.reload();
+    await expect
+      .poll(() => entryValues(page))
+      .toEqual(["refused.example", "someone@example.com"]);
+  });
+
+  test("an entry that is neither an address nor a domain is refused on the form", async ({
     page,
   }) => {
     await openSettings(page);
 
-    await entriesField(page).fill("refused.example\nnot a domain");
+    await page
+      .getByRole("button", { name: "Add an address or domain" })
+      .click();
+    await entryField(page, 3).fill("not a domain");
     await page.getByRole("button", { name: SAVE }).click();
 
     await expect(
@@ -147,13 +212,14 @@ test.describe("web-admin email rejection", () => {
         .getByText('"not a domain" is neither an email address nor a domain.')
         .first()
     ).toBeVisible();
+    await expect(entryField(page, 3)).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByText(SAVED)).toBeHidden();
 
     await page.reload();
 
-    await expect(entriesField(page)).toHaveValue(
-      "refused.example\nsomeone@example.com"
-    );
+    await expect
+      .poll(() => entryValues(page))
+      .toEqual(["refused.example", "someone@example.com"]);
   });
 
   test("the storefront refuses a disposable address and a listed domain with a reason", async ({
@@ -181,10 +247,13 @@ test.describe("web-admin email rejection", () => {
     await openSettings(page, EMAIL_REJECTION_EDITOR);
 
     await expect(page.getByRole("button", { name: SAVE })).toBeDisabled();
-    await expect(entriesField(page)).toBeDisabled();
+    await expect(entryField(page, 1)).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Add an address or domain" })
+    ).toBeDisabled();
     // The API answers the setting to an administrator alone, so the card
     // shows nothing of it rather than a permission error.
-    await expect(entriesField(page)).toHaveValue("");
+    await expect.poll(() => entryValues(page)).toEqual([""]);
     await expect(
       page.getByText(
         "You do not have permission to perform this action. Go back or use an account that does."

@@ -2117,7 +2117,10 @@
         "disposable_description": "根据平台维护的列表，不接受一次性邮箱服务域名下的地址。",
         "disposable_unavailable": "平台尚未配置一次性域名列表，因此在配置之前此开关不起作用。",
         "entries_label": "不接受的地址和域名",
-        "entries_description": "每行一个电子邮件地址或域名。域名也会拒绝其子域名，地址也会拒绝加上+标签的同一地址。",
+        "entries_description": "每栏填写一个电子邮件地址或域名。粘贴多行时会按行分成多栏。域名也会拒绝其子域名，地址也会拒绝加上+标签的同一地址。",
+        "entry_label": "地址或域名{$position}",
+        "entry_remove": "删除地址或域名{$position}",
+        "entries_add": "添加地址或域名",
         "submit": "保存不接受的电子邮件地址",
         "saved": "不接受的电子邮件地址已保存。",
         "load_failed": "无法加载不接受的电子邮件地址。请稍后再试。",
@@ -2126,7 +2129,7 @@
         "validation": {
           "entry_invalid": "“{$entry}”既不是电子邮件地址也不是域名。",
           "too_many": "地址和域名最多可列出{$max}个。",
-          "entries_refused": "请检查列表。每行只能填写一个电子邮件地址或域名，最多可列出{$max}个。"
+          "entries_refused": "请检查列表。每栏只能填写一个电子邮件地址或域名，最多可列出{$max}个。"
         }
       },
       "icon": {

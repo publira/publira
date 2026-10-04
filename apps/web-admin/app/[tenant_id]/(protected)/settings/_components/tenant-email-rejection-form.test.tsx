@@ -69,9 +69,26 @@ const renderForm = (
 const listSwitch = () =>
   screen.getByRole("switch", { name: "Refuse disposable email domains" });
 
-const entriesField = () =>
-  screen.getByRole<HTMLTextAreaElement>("textbox", {
-    name: "Addresses and domains to refuse",
+/** The list's fields, in order. */
+const entryFields = () =>
+  screen.getAllByRole<HTMLInputElement>("textbox", {
+    name: /^Address or domain \d+$/u,
+  });
+
+const entryField = (position: number) =>
+  screen.getByRole<HTMLInputElement>("textbox", {
+    name: `Address or domain ${position}`,
+  });
+
+const entryValues = () => entryFields().map((field) => field.value);
+
+const addButton = () =>
+  screen.getByRole("button", { name: "Add an address or domain" });
+
+/** A paste into `field`, as the browser dispatches it with the text on the clipboard. */
+const paste = (field: HTMLInputElement, text: string) =>
+  fireEvent.paste(field, {
+    clipboardData: { getData: () => text },
   });
 
 const submitButton = () =>
@@ -92,13 +109,21 @@ afterEach(() => {
 });
 
 describe("TenantEmailRejectionForm", () => {
-  it("opens on the saved switch and one entry per line", () => {
+  it("opens on the saved switch and one field per entry", () => {
     renderForm();
 
     expect(listSwitch().getAttribute("aria-checked")).toBe("true");
-    expect(entriesField().value).toBe("refused.example\nsomeone@example.com");
+    expect(entryValues()).toEqual(["refused.example", "someone@example.com"]);
     expect(screen.queryByText(NO_LIST_NOTE)).toBeNull();
     expect(submitButton().disabled).toBe(false);
+  });
+
+  it("opens one empty field for a tenant that lists nothing", () => {
+    renderForm({
+      initialSettings: { entries: [], rejectDisposableDomains: false },
+    });
+
+    expect(entryValues()).toEqual([""]);
   });
 
   it("says the switch does nothing on a platform with no list", () => {
@@ -119,9 +144,10 @@ describe("TenantEmailRejectionForm", () => {
     });
 
     expect(screen.getByText(ADMIN_ONLY)).toBeTruthy();
-    expect(isDisabled(entriesField())).toBe(true);
+    expect(entryValues()).toEqual([""]);
+    expect(isDisabled(entryField(1))).toBe(true);
     expect(isDisabled(listSwitch())).toBe(true);
-    expect(entriesField().value).toBe("");
+    expect(isDisabled(addButton())).toBe(true);
     expect(screen.queryByText(NO_LIST_NOTE)).toBeNull();
     expect(submitButton().disabled).toBe(true);
   });
@@ -141,33 +167,97 @@ describe("TenantEmailRejectionForm", () => {
         "Could not load the refused email addresses. Please try again later."
       )
     ).toBeTruthy();
-    expect(isDisabled(entriesField())).toBe(true);
+    expect(isDisabled(entryField(1))).toBe(true);
     expect(submitButton().disabled).toBe(true);
   });
 
-  it("names a line that is neither an address nor a domain once the list is left", () => {
+  it("adds an empty field to type into, and focuses it", () => {
     renderForm();
 
-    fireEvent.change(entriesField(), {
-      target: { value: "refused.example\nnot a domain" },
+    fireEvent.click(addButton());
+
+    expect(entryValues()).toEqual([
+      "refused.example",
+      "someone@example.com",
+      "",
+    ]);
+    expect(document.activeElement).toBe(entryField(3));
+  });
+
+  it("removes a field and keeps one to type into when the last goes", () => {
+    renderForm();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove address or domain 1" })
+    );
+    expect(entryValues()).toEqual(["someone@example.com"]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove address or domain 1" })
+    );
+    expect(entryValues()).toEqual([""]);
+  });
+
+  it("spreads a paste of several lines over one field per line", () => {
+    renderForm({
+      initialSettings: {
+        entries: ["first.example", "last.example"],
+        rejectDisposableDomains: false,
+      },
     });
+    const field = entryField(1);
+    field.setSelectionRange(0, field.value.length);
+
+    paste(field, "  one.example\r\n\r\ntwo@example.com\nnot a domain\n");
+
+    // The first line takes the selection's place, the rest follow it, and the
+    // fields after it stay where they were.
+    expect(entryValues()).toEqual([
+      "one.example",
+      "two@example.com",
+      "not a domain",
+      "last.example",
+    ]);
+    expect(document.activeElement).toBe(entryField(3));
+    // A pasted entry is checked at once, since nobody typed it.
+    expect(
+      screen.getByText(
+        '"not a domain" is neither an email address nor a domain.'
+      )
+    ).toBeTruthy();
+  });
+
+  it("leaves a paste of one line to the browser", () => {
+    renderForm();
+
+    const event = paste(entryField(1), "one.example");
+
+    expect(event).toBe(true);
+    expect(entryFields()).toHaveLength(2);
+  });
+
+  it("names an entry that is neither an address nor a domain once its field is left", () => {
+    renderForm();
+
+    fireEvent.change(entryField(2), { target: { value: "not a domain" } });
     expect(
       screen.queryByText(
         '"not a domain" is neither an email address nor a domain.'
       )
     ).toBeNull();
 
-    fireEvent.focusOut(entriesField());
+    fireEvent.focusOut(entryField(2));
 
     expect(
       screen.getByText(
         '"not a domain" is neither an email address nor a domain.'
       )
     ).toBeTruthy();
-    expect(entriesField().getAttribute("aria-invalid")).toBe("true");
+    expect(entryField(2).getAttribute("aria-invalid")).toBe("true");
+    expect(entryField(1).getAttribute("aria-invalid")).toBeNull();
 
-    fireEvent.change(entriesField(), {
-      target: { value: "refused.example\nnot-a-domain.example" },
+    fireEvent.change(entryField(2), {
+      target: { value: "not-a-domain.example" },
     });
 
     expect(
@@ -177,24 +267,29 @@ describe("TenantEmailRejectionForm", () => {
     ).toBeNull();
   });
 
-  it("submits the switch and the list, and then shows the list as stored", async () => {
+  it("submits the switch and one entry per field, and then shows the list as stored", async () => {
     renderForm({
       initialSettings: { entries: [], rejectDisposableDomains: false },
     });
 
     fireEvent.click(listSwitch());
-    fireEvent.change(entriesField(), {
-      target: { value: "  Refused.Example \n\nrefused.example" },
+    fireEvent.change(entryField(1), {
+      target: { value: "  Refused.Example " },
     });
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    fireEvent.change(entryField(3), { target: { value: "refused.example" } });
     fireEvent.click(submitButton());
 
     await waitFor(() => {
       expect(save.formData).toBeDefined();
     });
     expect(save.formData?.get("reject_disposable_domains")).toBe("on");
-    expect(save.formData?.get("entries")).toBe(
-      "  Refused.Example \n\nrefused.example"
-    );
+    expect(save.formData?.getAll("entries")).toEqual([
+      "  Refused.Example ",
+      "",
+      "refused.example",
+    ]);
 
     save.current.resolve({
       disposableDomainListAvailable: true,
@@ -204,7 +299,7 @@ describe("TenantEmailRejectionForm", () => {
     });
 
     await waitFor(() => {
-      expect(entriesField().value).toBe("refused.example");
+      expect(entryValues()).toEqual(["refused.example"]);
     });
     expect(listSwitch().getAttribute("aria-checked")).toBe("true");
     expect(
@@ -225,27 +320,24 @@ describe("TenantEmailRejectionForm", () => {
     expect(save.formData?.get("reject_disposable_domains")).toBeNull();
   });
 
-  it("shows the refusal of the list beside it", async () => {
+  it("shows the refusal of the list beside it and keeps what was entered", async () => {
     renderForm();
 
     fireEvent.click(submitButton());
     await waitFor(() => {
       expect(save.formData).toBeDefined();
     });
+    const refusal =
+      "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
     save.current.resolve({
-      fieldErrors: {
-        entries:
-          "Check the list. Each line must be one email address or domain, and at most 1000 can be listed.",
-      },
-      message:
-        "Check the list. Each line must be one email address or domain, and at most 1000 can be listed.",
+      fieldErrors: { entries: refusal },
+      message: refusal,
       ok: false,
     });
 
     await waitFor(() => {
-      expect(entriesField().getAttribute("aria-invalid")).toBe("true");
+      expect(screen.getAllByText(refusal).length).toBeGreaterThan(0);
     });
-    // Kept, so the operator can fix what was refused.
-    expect(entriesField().value).toBe("refused.example\nsomeone@example.com");
+    expect(entryValues()).toEqual(["refused.example", "someone@example.com"]);
   });
 });

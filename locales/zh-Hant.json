@@ -2117,7 +2117,10 @@
         "disposable_description": "根據平台維護的清單，不接受拋棄式信箱服務網域下的地址。",
         "disposable_unavailable": "平台尚未設定拋棄式網域清單，因此在設定之前此開關不會生效。",
         "entries_label": "不接受的地址和網域",
-        "entries_description": "每行一個電子郵件地址或網域。網域也會拒絕其子網域，地址也會拒絕加上+標籤的同一地址。",
+        "entries_description": "每欄填寫一個電子郵件地址或網域。貼上多行時會依行分成多欄。網域也會拒絕其子網域，地址也會拒絕加上+標籤的同一地址。",
+        "entry_label": "地址或網域{$position}",
+        "entry_remove": "刪除地址或網域{$position}",
+        "entries_add": "新增地址或網域",
         "submit": "儲存不接受的電子郵件地址",
         "saved": "不接受的電子郵件地址已儲存。",
         "load_failed": "無法載入不接受的電子郵件地址。請稍後再試。",
@@ -2126,7 +2129,7 @@
         "validation": {
           "entry_invalid": "「{$entry}」既不是電子郵件地址也不是網域。",
           "too_many": "地址和網域最多可列出{$max}個。",
-          "entries_refused": "請檢查清單。每行只能填寫一個電子郵件地址或網域，最多可列出{$max}個。"
+          "entries_refused": "請檢查清單。每欄只能填寫一個電子郵件地址或網域，最多可列出{$max}個。"
         }
       },
       "icon": {
