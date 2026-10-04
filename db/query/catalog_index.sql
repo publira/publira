@@ -3,9 +3,9 @@
 -- READ transaction and read GetCatalogIndexSnapshotTime first, because that
 -- instant is the version each document is written with.
 --
--- A row that comes back with no surfaces is not searchable, and its document
--- is deleted rather than written; its published_at is then the epoch, which
--- nothing reads. A creator or a label is published through its series, so it
+-- A row that comes back with no surfaces is not searchable, and a tombstone
+-- is written in place of its document; its published_at is then the epoch,
+-- which nothing reads. A creator or a label is published through its series, so it
 -- carries every surface one of its published series is on, from the earliest
 -- of their published_at. A published_at still in the future is written as it
 -- is, and the search filters on it.

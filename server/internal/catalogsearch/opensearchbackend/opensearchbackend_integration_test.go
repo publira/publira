@@ -5,6 +5,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -354,11 +355,19 @@ func TestAWriteOfALowerVersionLeavesTheDocumentAsItIs(t *testing.T) {
 	refresh(t, backend)
 	assertIDs(t, "harbor", searchSeries(t, backend, tenantID, "harbor", 10, pagination.Cursor{}).IDs, renamed.ID)
 
+	// The engine forgets a deleted document's version once index.gc_deletes
+	// has passed. With it at zero, only a delete that keeps its version as a
+	// document can refuse the stale write that follows it.
+	if _, err := backend.client.Indices.Settings.Put(ctx, opensearchapi.SettingsPutReq{
+		Indices: []string{backend.index},
+		Body:    strings.NewReader(`{"index":{"gc_deletes":"0s"}}`),
+	}); err != nil {
+		t.Fatalf("set gc_deletes: %v", err)
+	}
 	if err := backend.Delete(ctx, KindSeries, tenantID, renamed.ID, 30); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	// The delete keeps its version, so the stale write cannot bring the
-	// document back.
+	refresh(t, backend)
 	put(t, backend, stale)
 	assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs)
 }

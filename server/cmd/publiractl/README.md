@@ -202,7 +202,7 @@ go run ./server/cmd/publiractl search reindex --tenant comics.example.com
 | Command | What it does |
 | --- | --- |
 | `search reindex` | Creates a new index beside the one the alias names, fills it with every tenant's published series, creators, and labels, and moves the alias onto it in one step, deleting the index it named before. Searches answer from the old index until the move. Each tenant is then written again on the new index, which picks up what changed while it was being filled |
-| `search reindex --tenant` | Rewrites one tenant's documents in the index the alias names, by public ID or domain, writing what is published and deleting the rest. It creates no index, so it cannot apply a changed definition |
+| `search reindex --tenant` | Rewrites one tenant's documents in the index the alias names, by public ID or domain, writing what is published and a tombstone no search finds for the rest. It creates no index, so it cannot apply a changed definition |
 
 Either form can run while the worker drains events. Run one rebuild at a time.
 

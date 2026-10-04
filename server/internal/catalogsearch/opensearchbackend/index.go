@@ -76,7 +76,11 @@ type Document struct {
 	// they cannot show.
 	//
 	// A row published on no surface is one no search returns, so writing it
-	// deletes its document instead of storing one.
+	// stores a tombstone in place of its document: the identity and the version
+	// with no surface and no text, which every search's surface filter leaves
+	// out. A delete would not do, because the engine keeps a deleted document's
+	// version only for index.gc_deletes (60s by default), after which a write
+	// read before the row was unpublished would bring the document back.
 	Surfaces    []string
 	PublishedAt time.Time
 	// Version orders the writes of one document: a write is refused when the
@@ -182,14 +186,14 @@ func alreadyExists(err error) bool {
 	return errors.As(err, &structErr) && structErr.Err.Type == "resource_already_exists_exception"
 }
 
-// Put writes doc: it indexes it, replacing the document of the same row, or
-// deletes that document when doc is published on no surface.
+// Put writes doc, replacing the document of the same row, or a tombstone in
+// its place when doc is published on no surface.
 func (b *Backend) Put(ctx context.Context, doc Document) error {
 	return b.write(ctx, b.index, []Document{doc})
 }
 
-// Delete removes the document of a row, unless the document holds a version
-// above the one given. A row that has none is already gone.
+// Delete replaces the document of a row with a tombstone, unless the document
+// holds a version above the one given.
 func (b *Backend) Delete(ctx context.Context, kind Kind, tenantID, id uuid.UUID, version int64) error {
 	return b.Put(ctx, Document{Kind: kind, TenantID: tenantID, ID: id, Version: version})
 }
@@ -238,25 +242,22 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error
 			Version:     doc.Version,
 			VersionType: versionType,
 		}
-		if len(doc.Surfaces) == 0 {
-			if err := encoder.Encode(map[string]bulkAction{"delete": action}); err != nil {
-				return fmt.Errorf("opensearchbackend: encode delete: %w", err)
-			}
-			continue
-		}
 		source := documentSource{
 			Kind:     doc.Kind,
 			TenantID: doc.TenantID.String(),
 			EntityID: doc.ID.String(),
-			Surfaces: doc.Surfaces,
-			Title:    doc.Title,
-			Synopsis: doc.Synopsis,
-			Name:     doc.Name,
-			Reading:  doc.Reading,
+			Surfaces: []string{},
 		}
-		if !doc.PublishedAt.IsZero() {
-			at := doc.PublishedAt.UTC()
-			source.PublishedAt = &at
+		if len(doc.Surfaces) > 0 {
+			source.Surfaces = doc.Surfaces
+			source.Title = doc.Title
+			source.Synopsis = doc.Synopsis
+			source.Name = doc.Name
+			source.Reading = doc.Reading
+			if !doc.PublishedAt.IsZero() {
+				at := doc.PublishedAt.UTC()
+				source.PublishedAt = &at
+			}
 		}
 		if err := encoder.Encode(map[string]bulkAction{"index": action}); err != nil {
 			return fmt.Errorf("opensearchbackend: encode index: %w", err)
@@ -277,8 +278,6 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error
 		for operation, result := range item {
 			switch {
 			case result.Status >= 200 && result.Status < 300:
-			// A delete of a document that was never written.
-			case operation == "delete" && result.Status == http.StatusNotFound:
 			// The document holds a higher version, which is a later read of the
 			// row than this one.
 			case result.Status == http.StatusConflict:

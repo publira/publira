@@ -273,7 +273,7 @@ The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`,
 - `PUBLIRA_OPENSEARCH_INDEX`
   - The alias of the index holding every tenant's series, creators, and labels. Default: `publira-catalog`. Give each environment sharing a cluster an alias of its own
 
-Set the same values on `publira server` and `publira worker`. Every write to a series, a creator, or a label queues a `catalog_index_sync` outbox event in its own transaction, and the worker rewrites the named row's document from the database, or deletes it when the row is published nowhere; on `sql` the worker marks those events done as it claims them. `publiractl search reindex` builds the index from the database, for a deployment moving to `opensearch` or an index definition that changed; see [publiractl](cmd/publiractl/README.md#search).
+Set the same values on `publira server` and `publira worker`. Every write to a series, a creator, or a label queues a `catalog_index_sync` outbox event in its own transaction, and the worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere; on `sql` the worker marks those events done as it claims them. `publiractl search reindex` builds the index from the database, for a deployment moving to `opensearch` or an index definition that changed; see [publiractl](cmd/publiractl/README.md#search).
 
 ## Disposable email domains
 

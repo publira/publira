@@ -17,7 +17,7 @@ const EventTypeCatalogIndexSync = "catalog_index_sync"
 
 // CatalogIndexSyncPayload is the JSON body of the event. It names the row and
 // not what became of it: the handler reads the row when the event drains and
-// writes the document, or deletes it, from what it finds. A verdict fixed when
+// writes the document, or a tombstone in its place, from what it finds. A verdict fixed when
 // the event was queued would be wrong whenever two events for one row drain
 // out of order.
 type CatalogIndexSyncPayload struct {

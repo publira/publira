@@ -105,8 +105,8 @@ func NewSyncer(db *sql.DB, index Writer) *Syncer {
 	return &Syncer{db: db, index: index}
 }
 
-// Sync reads the row and writes its document, or deletes it when the row is
-// gone or no longer published anywhere.
+// Sync reads the row and writes its document, or a tombstone in its place when
+// the row is gone or no longer published anywhere.
 func (s *Syncer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) error {
 	ref := Ref{Kind: opensearchbackend.Kind(kind), ID: id}
 	var docs []opensearchbackend.Document
@@ -151,7 +151,7 @@ func inSnapshot(ctx context.Context, db *sql.DB, read func(q *dbmodels.Queries, 
 
 // readDocuments reads the documents of a tenant's rows, or of the one row only
 // names. A row published on no surface comes back with none, which the writer
-// deletes, and so does a row only names that no longer exists.
+// stores as a tombstone, and so does a row only names that no longer exists.
 func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, only *Ref, version int64) ([]opensearchbackend.Document, error) {
 	var docs []opensearchbackend.Document
 	filter := func(kind opensearchbackend.Kind) (uuid.NullUUID, bool) {
@@ -210,8 +210,8 @@ func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID,
 }
 
 // SyncTenant rewrites every document of one tenant on w from one snapshot of
-// its rows: those that are published are written, and the rest deleted. It
-// answers how many documents it wrote and how many it deleted.
+// its rows: those that are published are written, and the rest replaced with
+// tombstones no search finds. It answers how many of each it wrote.
 //
 // It works on the live index: an event draining at the same time carries a
 // later read of its row, and the version keeps that read in place.
