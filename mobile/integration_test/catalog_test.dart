@@ -2056,6 +2056,48 @@ void main() {
         );
       });
     });
+
+    testApp('every page the footer lists opens from the account screen', (
+      tester,
+    ) async {
+      server.publishedPages = {
+        '/legal/terms': (
+          title: 'Terms of service',
+          contentMarkdown: '## Using the site',
+          locale: 'en',
+        ),
+        '/privacy': (
+          title: 'Privacy policy',
+          contentMarkdown: '## What we collect',
+          locale: 'en',
+        ),
+      };
+      await withFailureScreenshot(tester, 'fixture-published-pages', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.account);
+        await tapReachable(tester, find.byKey(const ValueKey('account-pages')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('pages-list')),
+        );
+        expect(
+          server.requestsTo('ListPublishedPages').single.body['locale'],
+          'en',
+        );
+
+        for (final (slug, heading) in [
+          ('/legal/terms', 'Using the site'),
+          ('/privacy', 'What we collect'),
+        ]) {
+          await tapReachable(tester, find.byKey(ValueKey('pages-row-$slug')));
+          await pumpUntilRouteSettled(tester, find.text(heading));
+          await tapBack(tester);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('pages-list')),
+          );
+        }
+      });
+    });
   });
 
   group('live public API', skip: !_liveApi, () {
@@ -2388,6 +2430,36 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
         expect(find.text('Privacy policy'), findsOneWidget);
+      });
+    });
+
+    testApp('the seed pages open from the account screen on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-published-pages', () async {
+        // `db/seeds/dev/040_pages.sql` puts the privacy policy and the terms
+        // of service in the footer.
+        await pumpLive(tester, initialLocation: AppRoutes.account);
+        await tapReachable(tester, find.byKey(const ValueKey('account-pages')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('pages-row-/terms')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.byKey(const ValueKey('pages-row-/privacy')),
+          findsOneWidget,
+        );
+
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('pages-row-/terms')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.text('Article 1 (Scope)'),
+          timeout: const Duration(seconds: 20),
+        );
       });
     });
 

@@ -3657,6 +3657,8 @@
       "notifications_denied": "Notifications are turned off for this app. Turn them on in your device settings.",
       "notifications_description": "Be told when a new episode is published.",
       "notifications_unavailable": "Could not turn notifications on. Try again.",
+      "pages": "About this site",
+      "pages_description": "Terms of service, privacy policy, and the other pages this site publishes.",
       "sign_out": "Sign out",
       "signed_out": "You are not signed in.",
       "title": "Account"
@@ -3878,6 +3880,8 @@
     "pages": {
       "body_empty": "This page has no content yet.",
       "fallback_notice": "This page is not published in your language, so it is shown in {$language}.",
+      "list_empty": "This site has not published any pages.",
+      "list_load_failed": "Could not load this site's pages. Try again.",
       "load_failed": "Could not show this page. Try again.",
       "not_found": "This page is no longer available."
     },

@@ -3657,6 +3657,8 @@
       "notifications_denied": "此應用程式的通知已關閉。請在裝置的系統設定中開啟。",
       "notifications_description": "有新章節發布時通知您。",
       "notifications_unavailable": "無法開啟通知。請重試。",
+      "pages": "關於本網站",
+      "pages_description": "本網站發布的服務條款、隱私權政策等頁面。",
       "sign_out": "登出",
       "signed_out": "您尚未登入。",
       "title": "帳戶"
@@ -3878,6 +3880,8 @@
     "pages": {
       "body_empty": "此頁面還沒有內容。",
       "fallback_notice": "此頁面沒有以你所使用的語言發布的版本，因此以{$language}顯示。",
+      "list_empty": "本網站尚未發布任何頁面。",
+      "list_load_failed": "無法載入頁面列表。請重試。",
       "load_failed": "無法顯示該頁面。請重試。",
       "not_found": "該頁面已無法查看。"
     },

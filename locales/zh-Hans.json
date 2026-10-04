@@ -3657,6 +3657,8 @@
       "notifications_denied": "此应用的通知已关闭。请在设备的系统设置中开启。",
       "notifications_description": "有新章节发布时通知您。",
       "notifications_unavailable": "无法开启通知。请重试。",
+      "pages": "关于本站点",
+      "pages_description": "本站点发布的服务条款、隐私政策等页面。",
       "sign_out": "退出登录",
       "signed_out": "您尚未登录。",
       "title": "账户"
@@ -3878,6 +3880,8 @@
     "pages": {
       "body_empty": "此页面还没有内容。",
       "fallback_notice": "此页面没有以你所用的语言发布的版本，因此以{$language}显示。",
+      "list_empty": "本站点尚未发布任何页面。",
+      "list_load_failed": "无法加载页面列表。请重试。",
       "load_failed": "无法显示该页面。请重试。",
       "not_found": "该页面已无法查看。"
     },

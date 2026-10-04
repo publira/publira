@@ -11,6 +11,8 @@ class HttpPageRepository implements PageRepository {
 
   static const _getProcedure =
       '/publira.v1.PublicPagesService/GetPublishedPage';
+  static const _listProcedure =
+      '/publira.v1.PublicPagesService/ListPublishedPages';
   static const _listSlugsProcedure =
       '/publira.v1.PublicPagesService/ListPublishedPageSlugs';
 
@@ -48,6 +50,37 @@ class HttpPageRepository implements PageRepository {
           : '',
       locale: _string(page['locale']),
     );
+  }
+
+  @override
+  Future<List<PublishedPageLink>> list({required String locale}) async {
+    final Map<String, Object?> body;
+    try {
+      final tenantId = await _tenants.resolve();
+      body = await _client.unary(_listProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'locale': locale,
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+    final pages = body['pages'];
+    return [
+      if (pages is List)
+        for (final page in pages)
+          if (page is Map<String, Object?>) ?_link(page),
+    ];
+  }
+
+  /// [page] as a link, or `null` when it has no slug to open or no title to
+  /// name it by.
+  static PublishedPageLink? _link(Map<String, Object?> page) {
+    final slug = _string(page['slug']).trim();
+    final title = _string(page['title']).trim();
+    if (slug.isEmpty || title.isEmpty) {
+      return null;
+    }
+    return PublishedPageLink(slug: pageSlugFromPath(slug), title: title);
   }
 
   @override

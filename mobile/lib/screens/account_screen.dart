@@ -9,6 +9,7 @@ import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
@@ -46,6 +47,7 @@ class AccountScreen extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
+                  const _PagesEntry(),
                   const _ContactEntry(),
                 ],
               )
@@ -118,6 +120,7 @@ class AccountScreen extends StatelessWidget {
                       session.userPublicId,
                     )),
                   ),
+                  const _PagesEntry(),
                   const _ContactEntry(),
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -179,6 +182,37 @@ class _PurchasesEntry extends StatelessWidget {
           subtitle: AutospacedText(messages.purchasesAccountDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountPurchases),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// The way to the pages the storefront's footer lists, so a reader can
+/// reread the terms they agreed to, for a guest as much as for a signed-in
+/// reader.
+///
+/// A build carrying no [PageScope] has no pages to read, so the row is left
+/// out.
+class _PagesEntry extends StatelessWidget {
+  const _PagesEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    if (PageScope.maybeOf(context) == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-pages'),
+          title: AutospacedText(messages.accountPages),
+          subtitle: AutospacedText(messages.accountPagesDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountPages),
         ),
         const Divider(height: 1),
       ],

@@ -11,6 +11,9 @@ class FakePageRepository implements PageRepository {
   /// Thrown by [get] in place of reading [pages], until a test clears it.
   PageFailure? getFailure;
 
+  /// Thrown by [list] in place of reading [pages], until a test clears it.
+  PageFailure? listPagesFailure;
+
   /// Thrown by [listSlugs] in place of reading [pages].
   PageFailure? listFailure;
 
@@ -19,6 +22,9 @@ class FakePageRepository implements PageRepository {
 
   /// The locales [get] has been asked for, in order.
   final readLocales = <String>[];
+
+  /// The locales [list] has been asked for, in order.
+  final listLocales = <String>[];
 
   @override
   Future<PublishedPage> get(String slug, {required String locale}) async {
@@ -34,6 +40,20 @@ class FakePageRepository implements PageRepository {
       }
     }
     throw const PageFailure(PageFailureKind.notFound);
+  }
+
+  /// Every page in [pages], as the footer lists them.
+  @override
+  Future<List<PublishedPageLink>> list({required String locale}) async {
+    listLocales.add(locale);
+    final failure = listPagesFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return [
+      for (final page in pages)
+        PublishedPageLink(slug: page.slug, title: page.title),
+    ];
   }
 
   @override
