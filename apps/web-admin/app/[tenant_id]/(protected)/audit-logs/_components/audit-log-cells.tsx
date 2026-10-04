@@ -317,6 +317,11 @@ const settingsActionName = (action: string) => {
     case "tenant_retention_updated": {
       return <Message message="admin.audit.actions.tenant_retention_updated" />;
     }
+    case "tenant_email_rejection_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_email_rejection_settings_updated" />
+      );
+    }
     case "admin_mfa_enrolled": {
       return <Message message="admin.audit.actions.admin_mfa_enrolled" />;
     }

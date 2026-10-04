@@ -322,7 +322,7 @@ describe("Apple and Google sign-in round trip", () => {
 
   it("asks for an email change with the fresh sign-in", async () => {
     const authorization = await startEmailChange();
-    mockRequestPublicEmailChange.mockResolvedValueOnce(true);
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: true });
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
@@ -358,7 +358,7 @@ describe("Apple and Google sign-in round trip", () => {
 
   it("returns a refused email change to the security settings", async () => {
     const authorization = await startEmailChange();
-    mockRequestPublicEmailChange.mockResolvedValueOnce(false);
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: false });
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
@@ -373,6 +373,28 @@ describe("Apple and Google sign-in round trip", () => {
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
       "Could not request the email change. Please check what you entered."
+    );
+  });
+
+  it("says the tenant refuses the new address", async () => {
+    const authorization = await startEmailChange();
+    mockRequestPublicEmailChange.mockResolvedValueOnce({
+      emailRefusal: "refused",
+      ok: false,
+    });
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.get("message")).toBe(
+      "This site does not accept this email address. Use another email address."
     );
   });
 

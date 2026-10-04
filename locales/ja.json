@@ -323,6 +323,7 @@
         "tenant_sign_in_settings_updated": "ログイン方法の設定更新",
         "tenant_community_limits_updated": "コミュニティの上限更新",
         "tenant_retention_updated": "保持期間更新",
+        "tenant_email_rejection_settings_updated": "受け付けないメールアドレスの更新",
         "admin_mfa_enrolled": "2段階認証の設定",
         "admin_mfa_verified": "ログイン時の2段階認証",
         "admin_mfa_recovery_code_used": "リカバリーコードでのログイン",
@@ -2109,6 +2110,28 @@
           "privacy_unavailable": "プライバシーポリシーに選んだページは公開されていません。再読み込みしてから選び直してください。"
         }
       },
+      "email_rejection": {
+        "title": "受け付けないメールアドレス",
+        "description": "読者が会員登録やメールアドレスの変更に使えないアドレスを指定します。AppleやGoogleでのログインは、アドレスを提供元が渡すため対象外です。",
+        "disposable_label": "使い捨てメールのドメインを受け付けない",
+        "disposable_description": "プラットフォームが管理する一覧をもとに、使い捨てメール用のドメインのアドレスを受け付けません。",
+        "disposable_unavailable": "プラットフォームに使い捨てドメインの一覧が設定されていないため、設定されるまでこのスイッチは効果がありません。",
+        "entries_label": "受け付けないアドレスとドメイン",
+        "entries_description": "1つの欄に1つ、メールアドレスかドメインを入力します。複数行を貼り付けると1行ずつ欄に分かれます。ドメインはそのサブドメインも、アドレスは+タグを付けた同じアドレスも受け付けません。",
+        "entry_label": "アドレスまたはドメイン{$position}",
+        "entry_remove": "アドレスまたはドメイン{$position}を削除",
+        "entries_add": "アドレスかドメインを追加",
+        "submit": "受け付けないメールアドレスを保存",
+        "saved": "受け付けないメールアドレスを保存しました。",
+        "load_failed": "受け付けないメールアドレスの取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "受け付けないメールアドレスの保存に失敗しました。時間をおいて再試行してください。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "validation": {
+          "entry_invalid": "「{$entry}」はメールアドレスでもドメインでもありません。",
+          "too_many": "アドレスとドメインは{$max}件までにしてください。",
+          "entries_refused": "一覧を確認してください。1つの欄には1つのメールアドレスかドメインを入力し、{$max}件までにしてください。"
+        }
+      },
       "icon": {
         "title": "アイコン",
         "description": "公開サイトのタブやロケーションバーに表示するアイコンです。",
@@ -2916,6 +2939,8 @@
       "errors": {
         "consent_changed": "同意するページが更新されました。内容を読み、あらためて同意してください。",
         "consent_required": "アカウントを作成するには、記載のページに同意してください。",
+        "email_disposable_domain": "このサイトでは使い捨てメールサービスのアドレスは使えません。別のメールアドレスを入力してください。",
+        "email_refused": "このサイトではこのメールアドレスは使えません。別のメールアドレスを入力してください。",
         "login_failed": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
         "name_required": "表示名を入力してください。",
         "name_too_long": "表示名は100文字以内で入力してください。",

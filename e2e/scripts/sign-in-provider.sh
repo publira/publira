@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Start/stop only the sign-in-provider process, the stand-in for Apple's and
-# Google's signing keys that sign-in-provider.ts describes.
+# Google's signing keys and for the disposable-domain list that
+# sign-in-provider.ts describes.
 set -euo pipefail
 
 # shellcheck source=lib.sh

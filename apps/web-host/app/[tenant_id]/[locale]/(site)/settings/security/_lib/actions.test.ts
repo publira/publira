@@ -279,7 +279,7 @@ describe("requestEmailChangeAction", () => {
   });
 
   it("confirms the change with the account's password", async () => {
-    mockRequestPublicEmailChange.mockResolvedValueOnce(true);
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: true });
     const { requestEmailChangeAction } = await importActions();
 
     await expect(
@@ -294,6 +294,36 @@ describe("requestEmailChangeAction", () => {
       accessToken
     );
     expect(lastFlash().status).toBe("success");
+  });
+
+  it("says the tenant refuses the new address", async () => {
+    mockRequestPublicEmailChange.mockResolvedValueOnce({
+      emailRefusal: "disposable_domain",
+      ok: false,
+    });
+    const { requestEmailChangeAction } = await importActions();
+
+    await expect(
+      requestEmailChangeAction(emailChangeForm({ currentPassword }))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(lastFlash()).toEqual({
+      message:
+        "This site does not accept addresses from disposable email services. Use another email address.",
+      status: "error",
+    });
+  });
+
+  it("keeps the general failure for a refusal that is not of the address", async () => {
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: false });
+    const { requestEmailChangeAction } = await importActions();
+
+    await expect(
+      requestEmailChangeAction(emailChangeForm({ currentPassword }))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(lastFlash().status).toBe("error");
+    expect(lastFlash().message).not.toContain("does not accept");
   });
 });
 

@@ -11,6 +11,7 @@ import {
 import type { IdTokenSignIn } from "#lib/auth";
 import { sealPublicSessionCookie } from "#lib/auth-session";
 import { buildLoginPath, PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { emailRefusalMessage } from "#lib/email-refusal-message";
 import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
 import {
@@ -225,8 +226,15 @@ const finishEmailChange = async (
   if (requested instanceof Response) {
     return requested;
   }
-  if (!requested) {
-    return failure(request, t("host.settings.email_change_failed"));
+  if (!requested.ok) {
+    return failure(
+      request,
+      emailRefusalMessage(
+        t,
+        requested.emailRefusal,
+        t("host.settings.email_change_failed")
+      )
+    );
   }
 
   const path = await tenantLocalePath(

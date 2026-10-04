@@ -37,6 +37,7 @@ export type {
   TenantAndroidAppAssociation,
   TenantAppleSignInSettings,
   TenantCommunityLimitOverrides,
+  TenantEmailRejectionSettings,
   TenantGoogleSignInSettings,
   TenantIosAppAssociation,
   TenantLegalPage,

@@ -5,6 +5,7 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
+  mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantTimezone,
@@ -13,6 +14,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
+  mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
@@ -53,6 +55,12 @@ vi.mock("#lib/site-settings", () => ({
 
 vi.mock("#lib/tenant-default-locale", () => ({
   updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
+}));
+
+vi.mock("#lib/tenant-email-rejection-settings", () => ({
+  tenantEmailRejectionSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:email-rejection-settings`,
+  updateTenantEmailRejectionSettings: mockUpdateTenantEmailRejectionSettings,
 }));
 
 vi.mock("#lib/tenant-legal-pages", () => ({
@@ -442,6 +450,165 @@ describe("updateTenantLegalPagesAction", () => {
     expect(result).toEqual({
       message:
         "The page chosen as the terms of service is not published. Reload the page and choose again.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+/** The card's form: the switch while it is on, and one `entries` field per input. */
+const EMAIL_REJECTION_TENANT_ID = "018f1060-0001-7000-8000-000000000001";
+
+const emailRejectionFormData = (
+  entries: string[],
+  rejectDisposableDomains?: string,
+  tenantId: string = EMAIL_REJECTION_TENANT_ID
+): FormData => {
+  const formData = textFormData({ tenant_id: tenantId });
+  for (const entry of entries) {
+    formData.append("entries", entry);
+  }
+  if (rejectDisposableDomains !== undefined) {
+    formData.set("reject_disposable_domains", rejectDisposableDomains);
+  }
+  return formData;
+};
+
+describe("updateTenantEmailRejectionAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the switch and each non-blank field, then revalidates the tag", async () => {
+    const saved = {
+      disposableDomainListAvailable: true,
+      ok: true,
+      settings: {
+        entries: ["refused.example", "someone@example.com"],
+        rejectDisposableDomains: true,
+      },
+    };
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce(saved);
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      emailRejectionFormData(
+        [" Refused.Example ", "", "someone@example.com"],
+        "on"
+      )
+    );
+
+    expect(result).toEqual({
+      disposableDomainListAvailable: true,
+      message: "The refused email addresses were saved.",
+      ok: true,
+      settings: saved.settings,
+    });
+    expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
+      {
+        entries: ["Refused.Example", "someone@example.com"],
+        rejectDisposableDomains: true,
+        tenantId: EMAIL_REJECTION_TENANT_ID,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${EMAIL_REJECTION_TENANT_ID}:email-rejection-settings`
+    );
+  });
+
+  it("reads an absent switch as off and empty fields as clearing the list", async () => {
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
+      disposableDomainListAvailable: false,
+      ok: true,
+      settings: { entries: [], rejectDisposableDomains: false },
+    });
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    await updateTenantEmailRejectionAction(null, emailRejectionFormData([""]));
+
+    expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
+      {
+        entries: [],
+        rejectDisposableDomains: false,
+        tenantId: EMAIL_REJECTION_TENANT_ID,
+      },
+      "en"
+    );
+  });
+
+  it("names the entry it refuses without calling the API", async () => {
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      emailRejectionFormData(["refused.example", "not a domain"], "on")
+    );
+
+    const message = '"not a domain" is neither an email address nor a domain.';
+    expect(result).toEqual({
+      fieldErrors: { entries: message },
+      message,
+      ok: false,
+    });
+    expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing", ""],
+    ["not a tenant id", "TENANT001"],
+  ])(
+    "refuses a tenant id that is %s without calling the API",
+    async (_, tenantId) => {
+      const { updateTenantEmailRejectionAction } = await import("./actions");
+
+      const result = await updateTenantEmailRejectionAction(
+        null,
+        emailRejectionFormData(["refused.example"], "on", tenantId)
+      );
+
+      expect(result?.ok).toBe(false);
+      expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+    }
+  );
+
+  it("refuses a switch value a checkbox never submits", async () => {
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      emailRejectionFormData([], "true")
+    );
+
+    expect(result?.ok).toBe(false);
+    expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+  });
+
+  it("puts the API's refusal of the list beside the field without revalidating", async () => {
+    const message =
+      "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
+      entriesError: message,
+      message,
+      ok: false,
+    });
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      emailRejectionFormData(["xn--zz.com"])
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { entries: message },
+      message,
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

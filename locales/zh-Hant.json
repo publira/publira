@@ -323,6 +323,7 @@
         "tenant_sign_in_settings_updated": "更新了登入方式設定",
         "tenant_community_limits_updated": "更新了社群限制",
         "tenant_retention_updated": "更新了保留期限",
+        "tenant_email_rejection_settings_updated": "更新了不接受的電子郵件地址",
         "admin_mfa_enrolled": "設定了兩步驟驗證",
         "admin_mfa_verified": "登入時的兩步驟驗證",
         "admin_mfa_recovery_code_used": "使用復原碼登入",
@@ -2109,6 +2110,28 @@
           "privacy_unavailable": "選為隱私權政策的頁面未發布。請重新載入頁面後再選擇。"
         }
       },
+      "email_rejection": {
+        "title": "不接受的電子郵件地址",
+        "description": "讀者無法用於註冊或變更為的電子郵件地址。使用Apple或Google登入不受影響，因為地址由提供方給出。",
+        "disposable_label": "不接受拋棄式信箱網域",
+        "disposable_description": "根據平台維護的清單，不接受拋棄式信箱服務網域下的地址。",
+        "disposable_unavailable": "平台尚未設定拋棄式網域清單，因此在設定之前此開關不會生效。",
+        "entries_label": "不接受的地址和網域",
+        "entries_description": "每欄填寫一個電子郵件地址或網域。貼上多行時會依行分成多欄。網域也會拒絕其子網域，地址也會拒絕加上+標籤的同一地址。",
+        "entry_label": "地址或網域{$position}",
+        "entry_remove": "刪除地址或網域{$position}",
+        "entries_add": "新增地址或網域",
+        "submit": "儲存不接受的電子郵件地址",
+        "saved": "不接受的電子郵件地址已儲存。",
+        "load_failed": "無法載入不接受的電子郵件地址。請稍後再試。",
+        "save_failed": "無法儲存不接受的電子郵件地址。請稍後再試。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "validation": {
+          "entry_invalid": "「{$entry}」既不是電子郵件地址也不是網域。",
+          "too_many": "地址和網域最多可列出{$max}個。",
+          "entries_refused": "請檢查清單。每欄只能填寫一個電子郵件地址或網域，最多可列出{$max}個。"
+        }
+      },
       "icon": {
         "title": "圖示",
         "description": "公開網站在瀏覽器分頁與網址列中顯示的圖示。",
@@ -2916,6 +2939,8 @@
       "errors": {
         "consent_changed": "需要同意的頁面已更新。請閱讀後重新同意。",
         "consent_required": "要建立帳戶，請同意所列頁面。",
+        "email_disposable_domain": "本站不接受拋棄式信箱服務的地址。請使用其他電子郵件地址。",
+        "email_refused": "本站不接受此電子郵件地址。請使用其他電子郵件地址。",
         "login_failed": "電子郵件地址或密碼不正確。",
         "name_required": "請輸入顯示名稱。",
         "name_too_long": "顯示名稱請控制在100個字元以內。",

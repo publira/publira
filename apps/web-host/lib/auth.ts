@@ -3,6 +3,7 @@ import {
   isRejectedRequestRpcError,
   isUnauthenticatedRpcError,
   RPC_ERROR_REASON,
+  RPC_FIELD_VIOLATION_REASON,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
@@ -282,10 +283,49 @@ export const unlinkMyIdentity = async (
 };
 
 /**
+ * Why the API refused the address a reader typed: one on a disposable domain
+ * the tenant has switched the list on for, or one the tenant listed itself. It
+ * depends on the address alone, so unlike a registered address it is answered
+ * for the form to say.
+ */
+export type EmailRefusal = "disposable_domain" | "refused";
+
+/** Whether the API took a submission, and, when it did not, what it refused. */
+export type EmailSubmissionOutcome =
+  | { ok: true }
+  | { ok: false; emailRefusal?: EmailRefusal };
+
+/** The refusal of the address in `field`, if that is what the API refused. */
+const emailRefusalOf = (
+  error: unknown,
+  field: string
+): EmailRefusal | undefined => {
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      field,
+      RPC_FIELD_VIOLATION_REASON.emailDisposableDomain
+    )
+  ) {
+    return "disposable_domain";
+  }
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      field,
+      RPC_FIELD_VIOLATION_REASON.emailRefused
+    )
+  ) {
+    return "refused";
+  }
+  return undefined;
+};
+
+/**
  * Submit a sign-up and report whether the API took it.
  *
  * An address that already has an account is accepted like a free one, so a
- * stranger cannot learn from the answer which addresses are registered. `true`
+ * stranger cannot learn from the answer which addresses are registered. `ok`
  * therefore means the request was accepted and the address was written to — not
  * that an account was created.
  */
@@ -296,7 +336,7 @@ export const signupPublic = async ({
   name,
   password,
   tenantId,
-}: SignupInput): Promise<boolean> => {
+}: SignupInput): Promise<EmailSubmissionOutcome> => {
   try {
     const response = await apiClient.auth.createUser(
       {
@@ -309,10 +349,10 @@ export const signupPublic = async ({
       },
       await buildClientAddressHeaders()
     );
-    return response.accepted;
+    return response.accepted ? { ok: true } : { ok: false };
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
-      return false;
+      return { emailRefusal: emailRefusalOf(error, "email"), ok: false };
     }
     throw error;
   }
@@ -549,10 +589,10 @@ export const requestPublicEmailChange = async (
   newEmail: string,
   confirmation: AccountConfirmation,
   accessToken?: string
-): Promise<boolean> => {
+): Promise<EmailSubmissionOutcome> => {
   const sid = await resolveAccessToken(accessToken);
   if (!sid) {
-    return false;
+    return { ok: false };
   }
 
   try {
@@ -568,13 +608,13 @@ export const requestPublicEmailChange = async (
       buildSessionHeaders(sid)
     );
 
-    return Boolean(response.requested);
+    return response.requested ? { ok: true } : { ok: false };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
     rethrowUnclassifiedRpcError(error);
-    return false;
+    return { emailRefusal: emailRefusalOf(error, "new_email"), ok: false };
   }
 };
 

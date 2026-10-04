@@ -313,6 +313,12 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_retention_updated",
             },
             {
+              label: t(
+                "admin.audit.actions.tenant_email_rejection_settings_updated"
+              ),
+              value: "tenant_email_rejection_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.admin_mfa_enrolled"),
               value: "admin_mfa_enrolled",
             },

@@ -8,6 +8,7 @@ import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCreateUser,
   mockLogin,
   mockDeleteMe,
   mockLogout,
@@ -19,6 +20,7 @@ const {
   mockResolveAccessToken,
   mockUpdateMe,
 } = vi.hoisted(() => ({
+  mockCreateUser: vi.fn(),
   mockDeleteMe: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
@@ -34,6 +36,7 @@ const {
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      createUser: mockCreateUser,
       deleteMe: mockDeleteMe,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
@@ -250,6 +253,99 @@ describe("web-host auth", () => {
     });
   });
 
+  it("signupPublic: answers a taken request as accepted", async () => {
+    const { signupPublic } = await importAuth();
+    mockCreateUser.mockResolvedValueOnce({ accepted: true });
+
+    await expect(
+      signupPublic({
+        agreedPageVersionIds: [],
+        birthDate: "",
+        email: "reader@example.com",
+        name: "Reader",
+        password: "pw",
+        tenantId: "TENANT001",
+      })
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it.each([
+    ["EMAIL_DISPOSABLE_DOMAIN", "disposable_domain"],
+    ["EMAIL_REFUSED", "refused"],
+  ] as const)(
+    "signupPublic: reports an address the tenant refuses (%s)",
+    async (reason, emailRefusal) => {
+      const { signupPublic } = await importAuth();
+      mockCreateUser.mockRejectedValueOnce(
+        new ConnectError("refused", Code.InvalidArgument, undefined, [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "email", reason }] },
+          },
+        ])
+      );
+
+      await expect(
+        signupPublic({
+          agreedPageVersionIds: [],
+          birthDate: "",
+          email: "reader@throwaway.example",
+          name: "Reader",
+          password: "pw",
+          tenantId: "TENANT001",
+        })
+      ).resolves.toEqual({ emailRefusal, ok: false });
+    }
+  );
+
+  it("signupPublic: names no refusal for another invalid field", async () => {
+    const { signupPublic } = await importAuth();
+    mockCreateUser.mockRejectedValueOnce(
+      new ConnectError("weak", Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "password" }] },
+        },
+      ])
+    );
+
+    await expect(
+      signupPublic({
+        agreedPageVersionIds: [],
+        birthDate: "",
+        email: "reader@example.com",
+        name: "Reader",
+        password: "pw",
+        tenantId: "TENANT001",
+      })
+    ).resolves.toEqual({ emailRefusal: undefined, ok: false });
+  });
+
+  it("requestPublicEmailChange: reports a new address the tenant refuses", async () => {
+    const { requestPublicEmailChange } = await importAuth();
+    mockRequestEmailChange.mockRejectedValueOnce(
+      new ConnectError("refused", Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: {
+            fieldViolations: [
+              { field: "new_email", reason: "EMAIL_DISPOSABLE_DOMAIN" },
+            ],
+          },
+        },
+      ])
+    );
+
+    await expect(
+      requestPublicEmailChange(
+        "TENANT001",
+        "old@example.com",
+        "new@throwaway.example",
+        { password: "pw" }
+      )
+    ).resolves.toEqual({ emailRefusal: "disposable_domain", ok: false });
+  });
+
   it("requestPublicEmailChange: false if no session", async () => {
     const { requestPublicEmailChange } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("");
@@ -261,7 +357,7 @@ describe("web-host auth", () => {
         "new@example.com",
         { password: "pw" }
       )
-    ).resolves.toBe(false);
+    ).resolves.toEqual({ ok: false });
   });
 
   it("requestPublicEmailChange: confirms an account without a password with a fresh sign-in", async () => {
@@ -279,7 +375,7 @@ describe("web-host auth", () => {
           provider: "google",
         }
       )
-    ).resolves.toBe(true);
+    ).resolves.toEqual({ ok: true });
     expect(mockRequestEmailChange).toHaveBeenCalledWith(
       {
         currentEmail: "old@example.com",

@@ -30,6 +30,26 @@ export const signIdToken = async (
   return response.text();
 };
 
+/**
+ * The domains on the disposable-domain list the stack names in the platform
+ * policy, as the stand-in serves them to publira server.
+ */
+export const disposableEmailDomains = async (): Promise<string[]> => {
+  const response = await fetch(
+    `${SIGN_IN_PROVIDER_BASE_URL}/disposable-email-domains`
+  );
+  if (!response.ok) {
+    throw new Error(
+      `sign-in-provider did not serve the disposable domain list: ${response.status}`
+    );
+  }
+  const list = await response.text();
+  return list
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+};
+
 const escapeAttribute = (value: string): string =>
   value
     .replaceAll("&", "&amp;")
