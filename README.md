@@ -34,16 +34,19 @@ docker compose up -d
 
 The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container, points Traefik at it, and resets the published ports, because everything inside the container reaches these services by service name. That Traefik reads its routing from [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md), the same contract every other environment runs.
 
-| Service   | Host port        | Purpose                                |
-| --------- | ---------------- | -------------------------------------- |
-| `db`      | `5432`           | PostgreSQL                             |
-| `redis`   | `6379`           | Valkey (Next.js shared cache)          |
-| `rustfs`  | `9000` / `9001`  | S3 endpoint / console UI               |
-| `mailpit` | `1025` / `8025`  | SMTP intake / web UI                   |
-| `jaeger`  | `4318` / `16686` | OTLP intake (http/protobuf) / query UI |
-| `traefik` | `3080`           | The edge in front of `task dev`        |
+| Service | Host port | Purpose |
+| --- | --- | --- |
+| `db` | `5432` | PostgreSQL |
+| `redis` | `6379` | Valkey (Next.js shared cache) |
+| `rustfs` | `9000` / `9001` | S3 endpoint / console UI |
+| `mailpit` | `1025` / `8025` | SMTP intake / web UI |
+| `jaeger` | `4318` / `16686` | OTLP intake (http/protobuf) / query UI |
+| `traefik` | `3080` | The edge in front of `task dev` |
+| `opensearch` | `9200` | Catalog search engine (`search` profile only) |
 
 Loopback only: none of these services authenticates a caller, so they are never published on every interface.
+
+`opensearch` starts only when its profile is named, `docker compose --profile search up -d`; plain `docker compose up -d` and the Dev Container leave it off. See [Catalog search engine (OpenSearch)](#catalog-search-engine-opensearch).
 
 The Compose project is `publira` (`name:` in `compose.yaml`), whichever directory the checkout sits in, so the containers and named volumes keep their names: `publira_postgres-data`, and in the Dev Container `publira_claude-data`, `publira_pnpm-store`, and the rest. Every checkout therefore shares one stack, which the [per-worktree `dev-env` profiles](CONTRIBUTING.md#working-in-several-worktrees) are built on. A second checkout opened as a Dev Container of its own would replace the first one's `app` container; to give it a stack of its own, set `COMPOSE_PROJECT_NAME=<name>` in a `.env` at its root, which both `docker compose` and the Dev Containers CLI read ahead of `name:`.
 
@@ -79,6 +82,9 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 # Tenant links are built on the edge, which serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME="http"
+# Optional: search the catalog on OpenSearch (`docker compose --profile search up -d`).
+# export PUBLIRA_SEARCH_BACKEND="opensearch"
+# export PUBLIRA_OPENSEARCH_URL="http://127.0.0.1:9200"
 ```
 
 The role users come from `db/seeds/baseline` and their development passwords from `db/seeds/dev/000_role_passwords.sql`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection — `task db:*` and `publiractl db` connect with it — and the `publiractl job` subcommands are the only other readers, as a fallback. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
@@ -183,6 +189,21 @@ The defaults passed to the app container live in `.devcontainer/compose.yaml`.
 These access keys are **for local development only** (they work against nothing but the RustFS container). Production S3 uses IAM roles or separately issued credentials; do not carry these values there. Creating the bucket uses the aws CLI, so the Dev Container bundles the `aws-cli` feature.
 
 See [server/README.md](server/README.md) for the list of server-side environment variables.
+
+## Catalog search engine (OpenSearch)
+
+The catalog search runs on PostgreSQL unless `PUBLIRA_SEARCH_BACKEND` says otherwise, so nothing here is needed for ordinary development. To work on the OpenSearch backend, start the engine in the `search` profile of `compose.yaml`:
+
+```bash
+docker compose --profile search up -d
+```
+
+- The image is built from [`infra/docker/opensearch/Dockerfile`](infra/docker/opensearch/Dockerfile): the published `opensearchproject/opensearch` with the `analysis-kuromoji` and `analysis-icu` plugins the catalog index needs
+- One node with the security plugin off, so it answers plain HTTP without credentials on `http://127.0.0.1:9200`, loopback only like the rest of the stack
+- The index is kept in the `opensearch-data` volume
+- Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address
+
+Then export `PUBLIRA_SEARCH_BACKEND=opensearch` and `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:9200` for `task dev`, and fill the index from the seeded database once with `go run ./server/cmd/publiractl search reindex`; the worker keeps it in step after that. The variables are described in [server/README.md](server/README.md#catalog-search).
 
 ## Distributed tracing (Jaeger)
 
