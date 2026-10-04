@@ -143,7 +143,12 @@ SELECT s.id,
                         'published_at',
                         el.published_at,
                         'purchase_availability',
-                        epa.purchase_availability
+                        epa.purchase_availability,
+                        -- The end of the free window open on the episode, read
+                        -- where GetPublishedEpisodeForTenant reads it, so a row
+                        -- here and the episode it links to agree on it.
+                        'free_until',
+                        fe.free_until
                     )
                     -- order_index can tie, so the UUIDv7 id is the
                     -- tiebreaker that keeps the order unique. It is the order
@@ -157,6 +162,7 @@ SELECT s.id,
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN episode_surfaces es ON es.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+                LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
             WHERE e.series_id = s.id
                 AND es.surface = sqlc.arg('surface')::text
                 AND el.status = 'published'

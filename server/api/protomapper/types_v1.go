@@ -142,6 +142,9 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 	if row.PublishedAt.Valid {
 		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
+	if row.FreeUntil.Valid {
+		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
+	}
 	return episode
 }
 
@@ -184,6 +187,9 @@ func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingPro
 	if row.PublishedAt.Valid {
 		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
+	if row.FreeUntil.Valid {
+		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
+	}
 	return episode
 }
 
@@ -207,6 +213,9 @@ func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *p
 	}
 	if row.PublishedAt.Valid {
 		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.FreeUntil.Valid {
+		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
 	}
 	return episode
 }

@@ -544,6 +544,8 @@ type episodeJSON struct {
 	PublishedAt        *string `json:"published_at"`
 	// Resolved through the series and the tenant, so never empty.
 	PurchaseAvailability string `json:"purchase_availability"`
+	// The end of the free window open on the episode, and nil when none is.
+	FreeUntil *time.Time `json:"free_until"`
 }
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
@@ -1122,6 +1124,9 @@ func (s *apiServer) GetSeriesDetail(
 			return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", purchaseErr, "tenant_id", tenant.ID.String(), "episode_public_id", episode.PublicID)
 		}
 		item.PurchaseAvailability = purchaseAvailability
+		if episode.FreeUntil != nil {
+			item.FreeUntil = episode.FreeUntil.UTC().Format(time.RFC3339)
+		}
 		res.Msg.Episodes = append(res.Msg.Episodes, item)
 	}
 
@@ -1342,9 +1347,7 @@ func (s *apiServer) GetEpisodeDetail(
 		PreviewImages:     make([]*publirattypesv1.EpisodeImage, 0),
 		NextFreeEpisode:   nextFreeEpisode,
 	})
-	if row.FreeUntil.Valid {
-		res.Msg.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
-	}
+	res.Msg.FreeUntil = episode.FreeUntil
 	if includeImages {
 		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 		if listErr != nil {
