@@ -213,13 +213,19 @@ func TestDBGetSeriesDetailCarriesTheEndOfEachEpisodesOpenFreeWindow(t *testing.T
 	paid := newEpisode("EPISODEPAY01", "Never Free", 500)
 	free := newEpisode("EPISODEFRE01", "Always Free", 0)
 
+	// A window on an episode that costs nothing ends nothing: the episode is
+	// still free after it, so there is no instant to count down to.
+	freeInWindow := newEpisode("EPISODEFRE02", "Always Free Anyway", 0)
+	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, freeInWindow.ID, tenantMidnight(t, tenant, now, 0), endsAt)
+
 	got := seriesDetailFreeUntil(t, env, tenant, series.PublicID)
 	want := map[string]string{
-		open.PublicID:     endsAt.UTC().Format(time.RFC3339),
-		over.PublicID:     "",
-		upcoming.PublicID: "",
-		paid.PublicID:     "",
-		free.PublicID:     "",
+		open.PublicID:         endsAt.UTC().Format(time.RFC3339),
+		over.PublicID:         "",
+		upcoming.PublicID:     "",
+		paid.PublicID:         "",
+		free.PublicID:         "",
+		freeInWindow.PublicID: "",
 	}
 	if len(got) != len(want) {
 		t.Fatalf("series detail episodes = %v, want %d", got, len(want))
@@ -242,6 +248,21 @@ func TestDBGetSeriesDetailCarriesTheEndOfEachEpisodesOpenFreeWindow(t *testing.T
 	if detail.Msg.Episode.FreeUntil != got[open.PublicID] || detail.Msg.FreeUntil != got[open.PublicID] {
 		t.Fatalf("episode detail free_until = (episode %q, response %q), want the row's %q",
 			detail.Msg.Episode.FreeUntil, detail.Msg.FreeUntil, got[open.PublicID])
+	}
+
+	freeDetail, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: freeInWindow.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail %s: %v", freeInWindow.PublicID, err)
+	}
+	if freeDetail.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("%s access = %v, want free", freeInWindow.PublicID, freeDetail.Msg.Access)
+	}
+	if freeDetail.Msg.Episode.FreeUntil != "" || freeDetail.Msg.FreeUntil != "" {
+		t.Fatalf("%s free_until = (episode %q, response %q), want both empty",
+			freeInWindow.PublicID, freeDetail.Msg.Episode.FreeUntil, freeDetail.Msg.FreeUntil)
 	}
 }
 
