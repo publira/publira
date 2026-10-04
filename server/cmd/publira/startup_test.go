@@ -171,6 +171,57 @@ func TestServerRefusesAnUnknownSearchBackend(t *testing.T) {
 	}
 }
 
+// A process configured for OpenSearch does not start without it, rather than
+// starting and answering every search with an error.
+func TestServerRefusesAnOpenSearchThatDoesNotAnswer(t *testing.T) {
+	url := "http://" + testutil.FreeAddr(t)
+	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_SEARCH_BACKEND": "opensearch",
+		"PUBLIRA_OPENSEARCH_URL": url,
+	}), "server")
+	if code == 0 {
+		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
+	}
+	if !strings.Contains(output, url) {
+		t.Fatalf("output does not name %s:\n%s", url, output)
+	}
+}
+
+// One that does start creates the catalog index under the name it was given.
+func TestServerStartsOnTheOpenSearchBackend(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	search := testutil.StartOpenSearch(t)
+	index := "catalog-startup-" + strings.ToLower(t.Name())
+	edgeAddr := testutil.FreeAddr(t)
+	internalAddr := testutil.FreeAddr(t)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_SEARCH_BACKEND":       "opensearch",
+		"PUBLIRA_OPENSEARCH_URL":       search.URL,
+		"PUBLIRA_OPENSEARCH_INDEX":     index,
+	}, revalidationWithoutPlatformConsole()), "server")
+	p.WaitReady(t, "http://"+internalAddr+"/readyz")
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodHead, search.URL+"/"+index, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("HEAD %s: %v", index, err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("HEAD %s = %d, want the index the server created", index, resp.StatusCode)
+	}
+}
+
 // The worker starts on the same footing. Object storage is not among what it
 // needs either: the orphan image sweep is the only job that needs a bucket,
 // and it resolves one from the platform's settings when a run starts.
