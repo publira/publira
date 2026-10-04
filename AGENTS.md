@@ -48,6 +48,14 @@ A passage that a doc comment or a test already carries is deleted outright rathe
 
 No lint covers this — no tool can tell reference from reasoning. A README section that predates the rule is a leftover, not a precedent: move it to the code or the test rather than writing a neighbour for it.
 
+## User documentation: `docs/en/`
+
+`docs/en/` holds the pages the website publishes under `/docs/`, and [`docs/README.md`](docs/README.md) is the contract it is read by: the names, the URLs they map to, the frontmatter, and the link rules.
+
+A page there is written for a reader with a task — an operator deploying an install, a publisher's staff configuring a site — and is read in order, without the code beside it. Reference for the code beside it stays in that directory's `README.md`: what a package exports, which variables a process reads, how a part is run during development. When both are needed, the page says what to do and why, and links to the README on GitHub for the full reference rather than copying it. A behaviour change that a page describes updates the page in the same pull request.
+
+Enforced by `node scripts/check-docs.ts` in the `Check` job, for everything but the choice of where a text belongs, which is a review judgement.
+
 ## Git commits
 
 Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
