@@ -85,6 +85,9 @@ SELECT e.id AS episode_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    -- The end of the free window open on the episode, so the offer can say how
+    -- long a priced episode stays free.
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at,
@@ -99,6 +102,7 @@ FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
 WHERE rp.tenant_id = $1
     AND rp.user_id = $2
     AND s.id = $3
@@ -137,6 +141,7 @@ type GetMySeriesReadingProgressRow struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	FreeUntil          sql.NullTime  `json:"free_until"`
 	PageIndex          int32         `json:"page_index"`
 	PageCount          int32         `json:"page_count"`
 	UpdatedAt          time.Time     `json:"updated_at"`
@@ -169,6 +174,7 @@ func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySerie
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
+		&i.FreeUntil,
 		&i.PageIndex,
 		&i.PageCount,
 		&i.UpdatedAt,
@@ -280,12 +286,14 @@ SELECT cf.series_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
         AND rp.user_id = $2
         AND rp.episode_id = e.id
@@ -334,6 +342,7 @@ type ListMyRecentSeriesAscRow struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	FreeUntil          sql.NullTime  `json:"free_until"`
 	PageIndex          sql.NullInt32 `json:"page_index"`
 	PageCount          sql.NullInt32 `json:"page_count"`
 	PositionUpdatedAt  sql.NullTime  `json:"position_updated_at"`
@@ -369,6 +378,7 @@ func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSer
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+			&i.FreeUntil,
 			&i.PageIndex,
 			&i.PageCount,
 			&i.PositionUpdatedAt,
@@ -489,12 +499,14 @@ SELECT cf.series_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
         AND rp.user_id = $2
         AND rp.episode_id = e.id
@@ -543,6 +555,7 @@ type ListMyRecentSeriesDescRow struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	FreeUntil          sql.NullTime  `json:"free_until"`
 	PageIndex          sql.NullInt32 `json:"page_index"`
 	PageCount          sql.NullInt32 `json:"page_count"`
 	PositionUpdatedAt  sql.NullTime  `json:"position_updated_at"`
@@ -608,6 +621,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+			&i.FreeUntil,
 			&i.PageIndex,
 			&i.PageCount,
 			&i.PositionUpdatedAt,

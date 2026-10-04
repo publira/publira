@@ -1584,8 +1584,19 @@ type Episode struct {
 	// surface, because StartEpisodeCheckout refuses it anywhere else.
 	PurchaseAvailability SurfaceAvailability `protobuf:"varint,14,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
 	Id                   string              `protobuf:"bytes,15,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// RFC3339 end of the free window open on this episode, and empty when none
+	// is. It is what GetEpisodeDetailResponse.free_until reports for the same
+	// episode, so a row in a list can say how long a priced episode stays free
+	// without the episode being opened. `price` stays the stored price meanwhile,
+	// because that is what the episode costs again once the window closes.
+	//
+	// Set on the public reads that carry `price`: GetEpisodeDetail, the episodes
+	// GetSeriesDetail lists, GetMySeriesProgress and ListMyRecentSeries. Empty
+	// on the console's reads, and in the lists that carry an episode as a link
+	// without a price.
+	FreeUntil     string `protobuf:"bytes,16,opt,name=free_until,json=freeUntil,proto3" json:"free_until,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1719,6 +1730,13 @@ func (x *Episode) GetPurchaseAvailability() SurfaceAvailability {
 func (x *Episode) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *Episode) GetFreeUntil() string {
+	if x != nil {
+		return x.FreeUntil
 	}
 	return ""
 }
@@ -2682,7 +2700,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
 	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x0e\n" +
-	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x93\x05\n" +
+	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xb2\x05\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2700,7 +2718,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\x12I\n" +
 	"\favailability\x18\r \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
 	"\x15purchase_availability\x18\x0e \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x0e\n" +
-	"\x02id\x18\x0f \x01(\tR\x02id\"\xd9\x01\n" +
+	"\x02id\x18\x0f \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"free_until\x18\x10 \x01(\tR\tfreeUntil\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

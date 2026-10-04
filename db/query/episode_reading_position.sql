@@ -116,6 +116,9 @@ SELECT e.id AS episode_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    -- The end of the free window open on the episode, so the offer can say how
+    -- long a priced episode stays free.
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at,
@@ -130,6 +133,7 @@ FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND rp.user_id = sqlc.arg('user_id')
     AND s.id = sqlc.arg('series_id')
@@ -284,12 +288,14 @@ SELECT cf.series_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')
         AND rp.user_id = sqlc.arg('user_id')
         AND rp.episode_id = e.id
@@ -419,12 +425,14 @@ SELECT cf.series_id,
     el.status,
     el.scheduled_at,
     el.published_at,
+    fe.free_until,
     rp.page_index,
     rp.page_count,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')
         AND rp.user_id = sqlc.arg('user_id')
         AND rp.episode_id = e.id

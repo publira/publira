@@ -1576,7 +1576,7 @@ type GetEpisodeDetailResponse struct {
 	// A priced episode reads as free until this instant and is locked again
 	// afterwards, which is what a countdown on the reader's screen counts down
 	// to. An episode whose price is 0 carries no value here: it is not free
-	// until anything.
+	// until anything. episode.free_until carries the same value.
 	FreeUntil string `protobuf:"bytes,5,opt,name=free_until,json=freeUntil,proto3" json:"free_until,omitempty"`
 	// The published episodes either side of this one in the same series, by
 	// order_index and then id, which is the order the series detail lists them

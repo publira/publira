@@ -270,6 +270,17 @@ message Episode {
   // surface, because StartEpisodeCheckout refuses it anywhere else.
   SurfaceAvailability purchase_availability = 14;
   string id = 15;
+  // RFC3339 end of the free window open on this episode, and empty when none
+  // is. It is what GetEpisodeDetailResponse.free_until reports for the same
+  // episode, so a row in a list can say how long a priced episode stays free
+  // without the episode being opened. `price` stays the stored price meanwhile,
+  // because that is what the episode costs again once the window closes.
+  //
+  // Set on the public reads that carry `price`: GetEpisodeDetail, the episodes
+  // GetSeriesDetail lists, GetMySeriesProgress and ListMyRecentSeries. Empty
+  // on the console's reads, and in the lists that carry an episode as a link
+  // without a price.
+  string free_until = 16;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
