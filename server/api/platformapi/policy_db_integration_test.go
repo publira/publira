@@ -122,6 +122,45 @@ func TestDBUpdatePlatformPolicyPersistsAndAudits(t *testing.T) {
 	}
 }
 
+// A console built before wait_free_ticket_use existed sends a policy without
+// it. The save keeps the stored limit, or the default while nothing is saved,
+// instead of refusing the whole policy.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedWaitFreeTicketUseLimit(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.WaitFreeTicketUse = nil
+		resp, err := client.UpdatePlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		}))
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without wait_free_ticket_use: %v", err)
+		}
+		return resp.Msg
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.WaitFreeTicketUse = platformpolicy.Defaults().WaitFreeTicketUse
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default ticket use limit", got, want)
+	}
+
+	want.WaitFreeTicketUse = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 30}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with wait_free_ticket_use: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Msg.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored ticket use limit", got, want)
+	}
+}
+
 // A save based on a read another save has since moved past is refused, so it
 // cannot roll that other save back.
 func TestDBUpdatePlatformPolicyRejectsAStaleRevision(t *testing.T) {

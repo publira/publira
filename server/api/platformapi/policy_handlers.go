@@ -112,6 +112,19 @@ func (s *platformServer) UpdatePlatformPolicy(
 		Policy:           platformPolicyFromProto(req.Msg.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
 	}
+	// wait_free_ticket_use reached the policy after the console screens that
+	// save it, and those are deployed apart from this server, so a request
+	// that leaves it out keeps what is stored rather than being refused. The
+	// stored value is read here and the save is held to expected_revision, so
+	// a value another operator saved since the caller's read is refused with
+	// the rest of the stale request rather than written back over.
+	if req.Msg.GetPolicy().GetWaitFreeTicketUse() == nil {
+		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
+		}
+		params.Policy.WaitFreeTicketUse = stored.WaitFreeTicketUse
+	}
 	if err := params.Validate(); err != nil {
 		return nil, s.platformPolicyError(ctx, err)
 	}

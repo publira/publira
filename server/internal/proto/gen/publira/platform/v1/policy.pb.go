@@ -263,6 +263,10 @@ type PlatformPolicy struct {
 	// How often one reader may ask WaitFreeService.UseTicket to spend a
 	// wait-for-free ticket. A spent ticket is bounded by the series' recharge
 	// interval already; this bounds the requests that are refused.
+	//
+	// Unlike the other limits, UpdatePlatformPolicy keeps the saved value when
+	// a request leaves it unset, so a console built before the field existed
+	// can still save the rest of the policy.
 	WaitFreeTicketUse *MinuteDayLimit `protobuf:"bytes,8,opt,name=wait_free_ticket_use,json=waitFreeTicketUse,proto3" json:"wait_free_ticket_use,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache

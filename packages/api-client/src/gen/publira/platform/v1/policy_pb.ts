@@ -199,6 +199,10 @@ export type PlatformPolicy = Message<"publira.platform.v1.PlatformPolicy"> & {
    * wait-for-free ticket. A spent ticket is bounded by the series' recharge
    * interval already; this bounds the requests that are refused.
    *
+   * Unlike the other limits, UpdatePlatformPolicy keeps the saved value when
+   * a request leaves it unset, so a console built before the field existed
+   * can still save the rest of the policy.
+   *
    * @generated from field: publira.platform.v1.MinuteDayLimit wait_free_ticket_use = 8;
    */
   waitFreeTicketUse?: MinuteDayLimit | undefined;
