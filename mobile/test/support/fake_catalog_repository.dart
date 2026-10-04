@@ -645,6 +645,7 @@ class FakeCatalogRepository implements CatalogRepository {
       ...readingPositions,
       episodeKey(seriesPublicId, episodePublicId): pageIndex,
     };
+    _readingProgressWrites.add(null);
   }
 
   @override
@@ -657,6 +658,7 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
+    _readingProgressWrites.add(null);
   }
 
   @override
@@ -696,6 +698,11 @@ class FakeCatalogRepository implements CatalogRepository {
     reactions = {...reactions, episodeInternalId: next};
     return next;
   }
+
+  final _readingProgressWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
 
   @override
   Future<SeriesProgress> getSeriesProgress(String seriesInternalId) async {

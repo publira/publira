@@ -276,6 +276,76 @@ void main() {
     expect(finishedMark(1), findsOne);
   });
 
+  testWidgets('a finish that lands after the return still reaches the screen', (
+    tester,
+  ) async {
+    await pumpSeries(tester);
+    await pumpUntilTrue(
+      tester,
+      () => catalog.seriesProgressRequests.isNotEmpty,
+    );
+    await tapReachable(tester, readingAction);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('episode-page-view')),
+    );
+    await tester.pageBack();
+    await pumpUntilRouteSettled(tester, readingAction);
+    await pumpUntilTrue(
+      tester,
+      () => catalog.seriesProgressRequests.length == 2,
+    );
+    await tester.pump();
+    expect(actionLabel(tester), 'Read from episode 1');
+
+    // The viewer sends the finish without waiting for it, so it can reach the
+    // API after the return has already asked.
+    catalog.seriesProgress = {
+      detail.series.internalId: SeriesProgress(
+        episode: episode(1),
+        isFinished: true,
+        finishedEpisodeIds: {episode(1).id},
+      ),
+    };
+    await catalog.markEpisodeAsRead(
+      episode(1).id,
+      episodeInternalId: episode(1).internalId,
+    );
+    await pumpUntilTrue(
+      tester,
+      () => actionLabel(tester) == 'Continue reading',
+    );
+
+    await scrollToEpisode(tester, 1);
+    expect(finishedMark(1), findsOne);
+  });
+
+  testWidgets('pages turned in an open episode are not read back one by one', (
+    tester,
+  ) async {
+    await pumpSeries(tester);
+    await pumpUntilTrue(
+      tester,
+      () => catalog.seriesProgressRequests.isNotEmpty,
+    );
+    await tapReachable(tester, readingAction);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('episode-page-view')),
+    );
+    final asked = catalog.seriesProgressRequests.length;
+
+    await catalog.saveReadingPosition(
+      series.id,
+      episode(1).id,
+      1,
+      episodeInternalId: episode(1).internalId,
+    );
+    await tester.pump();
+
+    expect(catalog.seriesProgressRequests, hasLength(asked));
+  });
+
   testWidgets('signing out takes the reader\'s place off the screen', (
     tester,
   ) async {

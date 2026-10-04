@@ -236,6 +236,14 @@ abstract class CatalogRepository {
   /// removed or lowered; the server applies the series' press mode.
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId);
 
+  /// Fires each time a write of the signed-in reader's place lands at the API:
+  /// a page they stopped on, or an episode they finished.
+  ///
+  /// The viewer sends both without waiting for them, the last page as it goes
+  /// away, so a screen showing where the reader stands can be asked again
+  /// before they have landed. This is what tells it to ask once more.
+  Stream<void> get readingProgressWrites;
+
   /// Where the signed-in reader stands in the series [seriesInternalId] names:
   /// the episode they last moved in, and the episodes they have finished.
   ///

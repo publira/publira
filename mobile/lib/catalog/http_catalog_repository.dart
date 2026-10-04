@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
@@ -78,6 +80,11 @@ class HttpCatalogRepository implements CatalogRepository {
   final AppConfig config;
   final ConnectClient _client;
   final TenantResolver _tenants;
+
+  final _readingProgressWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
 
   /// How many series one catalog page holds, which is also the API's own
   /// fallback for a request naming no limit.
@@ -736,6 +743,7 @@ class HttpCatalogRepository implements CatalogRepository {
         tenantId: tenantId,
         accessToken: accessToken,
       );
+      _readingProgressWrites.add(null);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -762,6 +770,7 @@ class HttpCatalogRepository implements CatalogRepository {
         tenantId: tenantId,
         accessToken: accessToken,
       );
+      _readingProgressWrites.add(null);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

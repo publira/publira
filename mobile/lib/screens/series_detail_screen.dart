@@ -246,7 +246,23 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// and "start here" is a better answer than a notice where the action was.
   var _progress = SeriesProgress.none;
 
+  /// How many reads of [_progress] this screen has started. Only the latest
+  /// one's answer is shown, since an earlier one may answer after it with a
+  /// place the reader has moved on from.
+  var _progressReads = 0;
+
+  /// How many episodes this screen has opened that the reader has not come
+  /// back from yet. Their writes are not read back while they are open: the
+  /// return asks once for all of them, rather than one read per page turned.
+  var _episodesOpen = 0;
+
   CatalogRepository? _catalog;
+
+  /// The viewer sends what the reader read without waiting for it, the last
+  /// page as it goes away after the return, so a write that lands once the
+  /// reader is back is read back then rather than lost to the read the return
+  /// made before it.
+  StreamSubscription<void>? _progressWrites;
 
   OfflineLibrary? _library;
 
@@ -258,6 +274,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   @override
   void dispose() {
     unawaited(_libraryChanges?.cancel());
+    unawaited(_progressWrites?.cancel());
     super.dispose();
   }
 
@@ -280,6 +297,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       );
     }
     final changedCatalog = !identical(catalog, _catalog);
+    if (changedCatalog) {
+      unawaited(_progressWrites?.cancel());
+      _progressWrites = catalog.readingProgressWrites.listen((_) {
+        if (_episodesOpen == 0) {
+          unawaited(_loadProgress(catalog, _readerId));
+        }
+      });
+    }
     _catalog = catalog;
     if (_started && readerId == _readerId) {
       if (changedLibrary && library != null) {
@@ -336,13 +361,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     if (readerId.isEmpty || seriesId.isEmpty) {
       return;
     }
+    final read = ++_progressReads;
     final SeriesProgress progress;
     try {
       progress = await catalog.getSeriesProgress(seriesId);
     } on CatalogFailure {
       return;
     }
-    if (!mounted || readerId != _readerId || !identical(catalog, _catalog)) {
+    if (!mounted ||
+        read != _progressReads ||
+        readerId != _readerId ||
+        !identical(catalog, _catalog)) {
       return;
     }
     setState(() {
@@ -353,7 +382,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// Opens [location] in the viewer, and asks where the reader stands again
   /// once they come back: the viewer is where that moves.
   Future<void> _openEpisode(String location) async {
-    await context.pushInTab<void>(location);
+    _episodesOpen++;
+    try {
+      await context.pushInTab<void>(location);
+    } finally {
+      _episodesOpen--;
+    }
     final catalog = _catalog;
     if (!mounted || catalog == null) {
       return;

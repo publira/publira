@@ -426,6 +426,11 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId) =>
       _origin.reactToEpisode(episodeInternalId);
 
+  /// Every write lands through the API, whether it is sent at once or later
+  /// from the outbox, so the API's own notice is the one there is.
+  @override
+  Stream<void> get readingProgressWrites => _origin.readingProgressWrites;
+
   /// Where the reader stands in a series, across every device, which only the
   /// API holds. A screen that cannot reach it offers the first episode, the
   /// way it does a guest.
