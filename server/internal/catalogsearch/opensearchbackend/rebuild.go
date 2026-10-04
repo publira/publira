@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 )
 
 // Rebuild is a new catalog index being filled while searches and writes still
@@ -53,14 +53,14 @@ func (b *Backend) StartRebuild(ctx context.Context) (*Rebuild, error) {
 
 // aliasIndices lists the indices the alias names, none where it names none.
 func (b *Backend) aliasIndices(ctx context.Context) ([]string, error) {
-	resp, err := b.client.Indices.Alias.Get(ctx, opensearchapi.AliasGetReq{Alias: []string{b.index}})
+	resp, err := b.client.Indices.GetAlias(ctx, &opensearchapi.IndicesGetAliasReq{Name: []string{b.index}})
 	if resp != nil && resp.Inspect().Response != nil && resp.Inspect().Response.StatusCode == http.StatusNotFound {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("opensearchbackend: look up alias %q: %w", b.index, err)
 	}
-	return slices.Sorted(maps.Keys(resp.GetIndices())), nil
+	return slices.Sorted(maps.Keys(resp.Entries)), nil
 }
 
 // Index is the name of the index being filled.
@@ -86,7 +86,7 @@ type aliasAction struct {
 func (r *Rebuild) Swap(ctx context.Context) error {
 	// A document is only found once the index has been refreshed, and the
 	// first search through the alias must not find an empty catalog.
-	if _, err := r.backend.client.Indices.Refresh(ctx, &opensearchapi.IndicesRefreshReq{Index: []string{r.index}}); err != nil {
+	if _, err := r.backend.client.Indices.Refresh(ctx, &opensearchapi.IndicesRefreshReq{Indices: []string{r.index}}); err != nil {
 		return fmt.Errorf("opensearchbackend: refresh %q: %w", r.index, err)
 	}
 
@@ -102,14 +102,14 @@ func (r *Rebuild) Swap(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("opensearchbackend: encode alias actions: %w", err)
 	}
-	if _, err := r.backend.client.Aliases(ctx, opensearchapi.AliasesReq{Body: bytes.NewReader(body)}); err != nil {
+	if _, err := r.backend.client.Indices.UpdateAliases(ctx, &opensearchapi.IndicesUpdateAliasesReq{BodyReader: bytes.NewReader(body)}); err != nil {
 		return fmt.Errorf("opensearchbackend: move alias %q to %q: %w", r.backend.index, r.index, err)
 	}
 
 	if len(r.previous) == 0 {
 		return nil
 	}
-	if _, err := r.backend.client.Indices.Delete(ctx, opensearchapi.IndicesDeleteReq{Indices: r.previous}); err != nil {
+	if _, err := r.backend.client.Indices.Delete(ctx, &opensearchapi.IndicesDeleteReq{Indices: r.previous}); err != nil {
 		return fmt.Errorf("opensearchbackend: alias %q now names %q, but deleting the indices it named before (%v) failed: %w", r.backend.index, r.index, r.previous, err)
 	}
 	return nil
@@ -117,7 +117,7 @@ func (r *Rebuild) Swap(ctx context.Context) error {
 
 // Abort deletes the index being filled and leaves the alias where it was.
 func (r *Rebuild) Abort(ctx context.Context) error {
-	if _, err := r.backend.client.Indices.Delete(ctx, opensearchapi.IndicesDeleteReq{Indices: []string{r.index}}); err != nil {
+	if _, err := r.backend.client.Indices.Delete(ctx, &opensearchapi.IndicesDeleteReq{Indices: []string{r.index}}); err != nil {
 		return fmt.Errorf("opensearchbackend: delete %q: %w", r.index, err)
 	}
 	return nil

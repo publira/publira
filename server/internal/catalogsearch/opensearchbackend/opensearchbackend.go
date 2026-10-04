@@ -19,8 +19,8 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/opensearch-project/opensearch-go/v4"
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/pagination"
@@ -55,6 +55,11 @@ func New(ctx context.Context, cfg Config) (*Backend, error) {
 			Username:  cfg.Username,
 			Password:  cfg.Password,
 			Transport: tracing.Transport(nil),
+			// The configured URL is the only address the client sends to.
+			// Discovery would replace it with each node's publish address,
+			// which a managed service or a proxy in front of the cluster does
+			// not let the client reach.
+			DiscoverNodesOnStart: new(false),
 		},
 	})
 	if err != nil {
@@ -323,9 +328,9 @@ func (b *Backend) search(ctx context.Context, req catalogsearch.Request, search 
 	ctx, cancel := context.WithTimeout(ctx, searchTimeout)
 	defer cancel()
 	resp, err := b.client.Search(ctx, &opensearchapi.SearchReq{
-		Indices: []string{b.index},
-		Body:    bytes.NewReader(encoded),
-		Params:  opensearchapi.SearchParams{Routing: []string{req.TenantID.String()}},
+		Indices:    []string{b.index},
+		BodyReader: bytes.NewReader(encoded),
+		Params:     &opensearchapi.SearchParams{Routing: []string{req.TenantID.String()}},
 	})
 	if err != nil {
 		return catalogsearch.Page{}, fmt.Errorf("opensearchbackend: search %s: %w", search.kind, err)
@@ -335,7 +340,11 @@ func (b *Backend) search(ctx context.Context, req catalogsearch.Request, search 
 	for _, raw := range resp.Hits.Hits {
 		hit, err := hitBoundary(raw.Sort)
 		if err != nil {
-			return catalogsearch.Page{}, fmt.Errorf("opensearchbackend: search %s: hit %s: %w", search.kind, raw.ID, err)
+			id := ""
+			if raw.ID != nil {
+				id = *raw.ID
+			}
+			return catalogsearch.Page{}, fmt.Errorf("opensearchbackend: search %s: hit %s: %w", search.kind, id, err)
 		}
 		hits = append(hits, hit)
 	}
@@ -366,21 +375,21 @@ func (b *Backend) search(ctx context.Context, req catalogsearch.Request, search 
 
 // hitBoundary reads the sort values the engine returned with a hit, which are
 // the values of the order sortFor asked for.
-func hitBoundary(values []any) (boundary, error) {
+func hitBoundary(values []opensearchapi.FieldValue) (boundary, error) {
 	if len(values) != 3 {
 		return boundary{}, fmt.Errorf("%d sort values, want 3", len(values))
 	}
-	score, ok := values[0].(float64)
-	if !ok {
-		return boundary{}, fmt.Errorf("score sort value %v is not a number", values[0])
+	score, err := values[0].Float64()
+	if err != nil {
+		return boundary{}, fmt.Errorf("score sort value %s is not a number", values[0].RawJSON())
 	}
-	sortKey, ok := values[1].(string)
-	if !ok {
-		return boundary{}, fmt.Errorf("sort key %v is not a string", values[1])
+	sortKey, err := values[1].String()
+	if err != nil {
+		return boundary{}, fmt.Errorf("sort key %s is not a string", values[1].RawJSON())
 	}
-	rawID, ok := values[2].(string)
-	if !ok {
-		return boundary{}, fmt.Errorf("id sort value %v is not a string", values[2])
+	rawID, err := values[2].String()
+	if err != nil {
+		return boundary{}, fmt.Errorf("id sort value %s is not a string", values[2].RawJSON())
 	}
 	id, err := uuid.Parse(rawID)
 	if err != nil {
