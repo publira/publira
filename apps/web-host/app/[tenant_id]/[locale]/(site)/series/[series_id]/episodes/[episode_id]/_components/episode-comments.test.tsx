@@ -15,10 +15,12 @@ import { EpisodeComments } from "./episode-comments";
 
 const {
   messageLocale,
+  linkLocale,
   mockGetMe,
   mockListEpisodeComments,
   mockListMyEpisodeComments,
 } = vi.hoisted(() => ({
+  linkLocale: { current: "en" as Locale },
   messageLocale: { current: "en" as Locale },
   mockGetMe: vi.fn(),
   mockListEpisodeComments: vi.fn(),
@@ -39,7 +41,7 @@ vi.mock("#components/message", () => ({
 }));
 
 vi.mock("#components/locale-context", () => ({
-  useLocale: () => "en",
+  useLocale: () => linkLocale.current,
   useTenantDefaultLocale: () => "en",
 }));
 
@@ -144,6 +146,7 @@ const publicComment = (
   body: `Body of ${id}`,
   createdAt,
   creatorName: "",
+  creatorPublicId: "",
   id,
   ...overrides,
 });
@@ -185,6 +188,7 @@ const renderedBodies = (): string[] =>
 beforeEach(() => {
   vi.clearAllMocks();
   messageLocale.current = "en";
+  linkLocale.current = "en";
   mockGetMe.mockResolvedValue(null);
   mockListEpisodeComments.mockResolvedValue(listPage([]));
   mockListMyEpisodeComments.mockResolvedValue({ ok: true, value: [] });
@@ -269,6 +273,7 @@ describe("EpisodeComments", () => {
         publicComment("CmntAAAAAAA2", "2026-09-02T00:00:00Z", {
           authorName: "Sample Member",
           creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
         }),
         publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z"),
       ])
@@ -287,6 +292,50 @@ describe("EpisodeComments", () => {
     expect(within(readerRow).queryByText("Author")).toBeNull();
   });
 
+  it("links a creator's comment to the creator's page and leaves a reader's plain", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA2", "2026-09-02T00:00:00Z", {
+          authorName: "Sample Member",
+          creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
+        }),
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z"),
+      ])
+    );
+
+    await renderSection();
+
+    const [creatorRow, readerRow] = screen.getAllByRole("listitem");
+    if (!(creatorRow && readerRow)) {
+      throw new Error("expected two comments");
+    }
+    expect(
+      within(creatorRow)
+        .getByRole("link", { name: "Sample Author" })
+        .getAttribute("href")
+    ).toBe("/creators/SeedCRTRAAA1");
+    expect(within(readerRow).queryByRole("link")).toBeNull();
+  });
+
+  it("keeps the reader's locale on the link to the creator's page", async () => {
+    linkLocale.current = "ja";
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
+          creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
+        }),
+      ])
+    );
+
+    await renderSection();
+
+    expect(
+      screen.getByRole("link", { name: "Sample Author" }).getAttribute("href")
+    ).toBe("/ja/creators/SeedCRTRAAA1");
+  });
+
   it("marks the reader's own comment when the episode credits them", async () => {
     mockGetMe.mockResolvedValueOnce(viewer);
     mockListMyEpisodeComments.mockResolvedValueOnce({
@@ -297,6 +346,7 @@ describe("EpisodeComments", () => {
           authorPublicId: viewer.publicId,
           awaitingApproval: true,
           creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
         }),
       ],
     });
@@ -304,7 +354,9 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     expect(screen.getByText("Author")).toBeDefined();
-    expect(screen.getByText("Sample Author")).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: "Sample Author" }).getAttribute("href")
+    ).toBe("/creators/SeedCRTRAAA1");
     expect(screen.getByText("Delete CmntAAAAAAA9")).toBeDefined();
   });
 
@@ -314,6 +366,7 @@ describe("EpisodeComments", () => {
       listPage([
         publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
           creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
         }),
       ])
     );
@@ -340,6 +393,7 @@ describe("EpisodeComments", () => {
       listPage([
         publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
           creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
         }),
       ])
     );

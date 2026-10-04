@@ -64,7 +64,8 @@ export interface EpisodeCommentsProps {
  * A comment by one of the episode's credited creators is shown under the name
  * the episode credits them as, with a badge saying so in words: the badge is
  * the whole of the mark, so a reader who cannot tell its colour apart still
- * reads it.
+ * reads it. That name links to the creator's page, since it is the one name in
+ * the list a reader may want to follow; a reader's name stays plain text.
  *
  * Nothing here marks a comment as removed. A comment staff took down keeps
  * rendering to its author exactly as it did before — same place in the list,
@@ -246,7 +247,16 @@ export const EpisodeComments = async ({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
-                    {episodeCommentDisplayName(comment)}
+                    {comment.creatorPublicId ? (
+                      <LocaleLink
+                        className="text-primary underline underline-offset-4"
+                        href={`/creators/${comment.creatorPublicId}`}
+                      >
+                        {episodeCommentDisplayName(comment)}
+                      </LocaleLink>
+                    ) : (
+                      episodeCommentDisplayName(comment)
+                    )}
                     {comment.creatorName ? (
                       <Badge tone="info">
                         <Suspense
