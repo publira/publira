@@ -1,6 +1,6 @@
 module github.com/publira/publira/server
 
-go 1.26.1
+go 1.26.8
 
 require (
 	connectrpc.com/connect v1.21.0
@@ -19,6 +19,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/lib/pq v1.12.3
+	github.com/opensearch-project/opensearch-go/v4 v4.8.0
 	github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0

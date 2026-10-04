@@ -258,6 +258,21 @@ On the platform API it runs as a service principal with no operator and no platf
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, the worker delivers text-only mail. There is no default URL
 
+## Catalog search
+
+The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`, `SearchPublishedLabels`) find their hits through the backend `PUBLIRA_SEARCH_BACKEND` names, and read what they show from the database either way.
+
+- `PUBLIRA_SEARCH_BACKEND`
+  - `sql` (the default when unset): a substring match in PostgreSQL, ordered by title or name. It needs nothing else
+  - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship
+  - Any other value stops the process at startup
+- `PUBLIRA_OPENSEARCH_URL`
+  - The engine's URL, `http://` or `https://`. Required with `opensearch`; the server connects at startup, creates the index when it does not exist, and stops when the engine does not answer
+- `PUBLIRA_OPENSEARCH_USERNAME`, `PUBLIRA_OPENSEARCH_PASSWORD`
+  - HTTP basic auth, set together or not at all. They need an `https://` URL and stop the process at startup over `http://`
+- `PUBLIRA_OPENSEARCH_INDEX`
+  - The index holding every tenant's series, creators, and labels. Default: `publira-catalog`. Give each environment sharing a cluster an index of its own
+
 ## Disposable email domains
 
 `internal/disposabledomains` answers whether an email domain, or a domain it is a subdomain of, belongs to a service made for throwaway addresses. No list ships with the server: it is read from the URL in the platform policy's `disposable_email_domains_url`, saved through `PlatformPolicyService` or `publiractl policy set --disposable-email-domains-url`, and a platform that names none has no domain disposable.
