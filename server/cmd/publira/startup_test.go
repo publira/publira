@@ -223,10 +223,12 @@ func TestServerStartsOnTheOpenSearchBackend(t *testing.T) {
 }
 
 // The worker writes the index the server searches, so it refuses a backend it
-// does not have in the same way.
+// does not have in the same way, and before it reaches for a database that may
+// not be there either.
 func TestWorkerRefusesAnUnknownSearchBackend(t *testing.T) {
 	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_SEARCH_BACKEND": "elasticsearch",
+		"PUBLIRA_WORKER_DB_URL":  "postgres://publira_outbox:outboxpass@" + testutil.FreeAddr(t) + "/publira?sslmode=disable",
 	}, revalidationWithoutPlatformConsole()), "worker")
 	if code == 0 {
 		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)

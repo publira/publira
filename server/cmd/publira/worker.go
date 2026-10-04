@@ -74,6 +74,16 @@ func runWorker() int {
 		return 1
 	}
 
+	// The worker writes the documents the catalog_index_sync events name into
+	// the engine the server searches. The variable is read before any pool is
+	// opened, as the server reads it, so a value naming no backend stops the
+	// process with the variable's name.
+	searchIndex, err := openSearchFromEnv()
+	if err != nil {
+		logger.Error("failed to initialize the search backend", "error", err)
+		return 1
+	}
+
 	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
@@ -81,15 +91,9 @@ func runWorker() int {
 	}
 	defer db.Close() //nolint:errcheck
 
-	// The worker writes the documents the catalog_index_sync events name into
-	// the engine the server searches. Declared as the interface, never as
-	// *catalogindex.Syncer, so the SQL backend, which keeps no index, leaves it
-	// nil and the handler marks those events done as it claims them.
-	searchIndex, err := openSearchFromEnv()
-	if err != nil {
-		logger.Error("failed to initialize the search backend", "error", err)
-		return 1
-	}
+	// Declared as the interface, never as *catalogindex.Syncer, so the SQL
+	// backend, which keeps no index, leaves it nil and the handler marks those
+	// events done as it claims them.
 	var catalogIndexer outbox.CatalogIndexer
 	if searchIndex != nil {
 		catalogIndexer = catalogindex.NewSyncer(db, searchIndex)
