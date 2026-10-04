@@ -16,6 +16,8 @@ const securityValues = {
   revision: "3",
   store_purchase_confirmation_per_day: "100",
   store_purchase_confirmation_per_minute: "10",
+  wait_free_ticket_use_per_day: "100",
+  wait_free_ticket_use_per_minute: "10",
 };
 
 const parseSecurity = async (fields: Record<string, string>) => {
@@ -55,6 +57,38 @@ describe("securityPolicyFormSchema", () => {
   it("refuses a confirmation limit of zero", async () => {
     const result = await parseSecurity({
       store_purchase_confirmation_per_minute: "0",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("reads the wait-for-free ticket use limit", async () => {
+    const result = await parseSecurity({
+      wait_free_ticket_use_per_day: "60",
+      wait_free_ticket_use_per_minute: "6",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      waitFreeTicketUsePerDay: 60,
+      waitFreeTicketUsePerMinute: 6,
+    });
+  });
+
+  it("refuses a daily ticket use limit below the per-minute one", async () => {
+    const result = await parseSecurity({
+      wait_free_ticket_use_per_day: "9",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "The daily limit for Wait-for-free ticket uses must be at least its per-minute limit."
+    );
+  });
+
+  it("refuses a ticket use limit of zero", async () => {
+    const result = await parseSecurity({
+      wait_free_ticket_use_per_minute: "0",
     });
 
     expect(result.success).toBe(false);

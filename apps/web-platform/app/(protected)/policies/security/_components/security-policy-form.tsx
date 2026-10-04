@@ -132,6 +132,24 @@ export const SecurityPolicyForm = ({
               <Message message="platform.policy.security.store_purchase_per_day" />
             </Suspense>
           </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.waitFreeTicketUse.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="wait_free_ticket_use_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.wait_free_ticket_use_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.waitFreeTicketUse.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="wait_free_ticket_use_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.wait_free_ticket_use_per_day" />
+            </Suspense>
+          </PolicyLimitField>
         </div>
         <Field className="flex items-center gap-2">
           <Checkbox
