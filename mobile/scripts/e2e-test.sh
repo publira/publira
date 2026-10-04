@@ -18,18 +18,14 @@ export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
 
 device="${PUBLIRA_E2E_MOBILE_DEVICE:-}"
 if [[ -z "${device}" ]]; then
+  if ! command -v jq > /dev/null 2>&1; then
+    e2e_err "jq is not installed; it picks the device when PUBLIRA_E2E_MOBILE_DEVICE is unset"
+    exit 1
+  fi
   # The Linux desktop is run only when named: it proves less than a phone.
   device="$(
     cd "${MOBILE_DIR}" && flutter devices --machine |
-      python3 -c '
-import json, sys
-devices = json.load(sys.stdin)
-for device in devices:
-    target = device.get("id") or ""
-    if device.get("isSupported") and target and target != "linux":
-        print(target)
-        break
-'
+      jq -r 'first(.[] | select(.isSupported) | .id | select(. != null and . != "" and . != "linux"))'
   )"
 fi
 if [[ -z "${device}" ]]; then

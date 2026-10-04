@@ -29,6 +29,9 @@ require_host() {
   # and the gigabytes below would be of no use.
   [[ -e /dev/kvm ]] ||
     android_die "/dev/kvm is missing: this host does not pass KVM into the container, so no emulator can run here"
+  # temurin_archive picks the JDK out of Adoptium's release list with it.
+  command -v jq > /dev/null 2>&1 ||
+    android_die "jq is not installed; it reads the Adoptium release list the JDK is picked from"
 }
 
 # Prints the download link and SHA-256 of the Linux x64 archive of JDK_VERSION,
@@ -36,14 +39,8 @@ require_host() {
 temurin_archive() {
   local feature="${JDK_VERSION%%.*}"
   curl -fsSL "https://api.adoptium.net/v3/assets/feature_releases/${feature}/ga?architecture=x64&image_type=jdk&os=linux&vendor=eclipse&jvm_impl=hotspot&heap_size=normal&project=jdk&page_size=50" |
-    python3 -c '
-import json, sys
-for release in json.load(sys.stdin):
-    if release["version_data"]["semver"] == sys.argv[1]:
-        package = release["binaries"][0]["package"]
-        print(package["link"], package["checksum"])
-        break
-' "${JDK_VERSION}"
+    jq -r --arg semver "${JDK_VERSION}" \
+      'first(.[] | select(.version_data.semver == $semver)) | .binaries[0].package | "\(.link) \(.checksum)"'
 }
 
 install_jdk() {
