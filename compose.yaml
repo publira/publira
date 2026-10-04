@@ -15,9 +15,11 @@
 # a caller, so a bare `<port>:<port>` would hand the whole dev stack to anyone
 # on the same network.
 #
-# Deliberately no `name:`. A merged `name` outranks every other source, so it
-# would collapse the per-worktree project names (derived from the directory of
-# the first compose file) into a single shared project.
+# `name:` is fixed so the containers and volumes keep their names when the
+# checkout directory or the compose file layout changes; a derived name would
+# start an empty stack and orphan the old volumes. `-p` and
+# `COMPOSE_PROJECT_NAME` still outrank it.
+name: publira
 
 services:
   db:
