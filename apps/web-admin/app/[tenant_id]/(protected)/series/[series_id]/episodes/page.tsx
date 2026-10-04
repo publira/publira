@@ -55,9 +55,13 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
-import { EpisodeCreditsSelectionProvider } from "./_components/episode-credits-selection";
+import { EpisodeFreeWindowsDialog } from "./_components/episode-free-windows-dialog";
+import { EpisodeSelectionProvider } from "./_components/episode-selection";
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
-import { reorderEpisodesAction } from "./_lib/actions";
+import {
+  createSeriesFreeWindowsAction,
+  reorderEpisodesAction,
+} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -87,7 +91,8 @@ const SeriesEpisodesHeaderSkeleton = () => (
       </AdminPageDescription>
     </AdminPageHeading>
     <AdminPageActions>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
@@ -106,19 +111,32 @@ const SeriesEpisodesListSkeleton = () => (
 );
 
 /**
- * The dialog writes credits on the series by its ID, so it waits for the
- * series read and stays out while that read fails.
+ * The bulk actions write on the series by its ID, so they wait for the series
+ * read and stay out while that read fails.
  */
-const SeriesEpisodeCreditsRange = async ({
+const SeriesEpisodeBulkActions = async ({
   params,
 }: Pick<SeriesEpisodesPageProps, "params">) => {
-  const { series_id } = await params;
+  const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
   guardPlaceholder(series_id);
-  const seriesResult = await getSeries({ publicId: series_id });
+  const [seriesResult, timeZone] = await Promise.all([
+    getSeries({ publicId: series_id }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+  if (!seriesResult.ok) {
+    return null;
+  }
 
-  return seriesResult.ok ? (
-    <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
-  ) : null;
+  return (
+    <>
+      <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
+      <EpisodeFreeWindowsDialog
+        action={createSeriesFreeWindowsAction}
+        seriesId={seriesResult.series.id}
+        timeZone={timeZone}
+      />
+    </>
+  );
 };
 
 const SeriesEpisodesChrome = async ({
@@ -139,7 +157,7 @@ const SeriesEpisodesChrome = async ({
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Suspense fallback={null}>
             <TenantEditorOnly>
               <LinkButton
@@ -147,7 +165,7 @@ const SeriesEpisodesChrome = async ({
               >
                 <Message message="admin.series.episodes.new_action" />
               </LinkButton>
-              <SeriesEpisodeCreditsRange params={params} />
+              <SeriesEpisodeBulkActions params={params} />
             </TenantEditorOnly>
           </Suspense>
           <LinkButton
@@ -303,7 +321,7 @@ const SeriesEpisodesPage = ({
   params,
   searchParams,
 }: SeriesEpisodesPageProps) => (
-  <EpisodeCreditsSelectionProvider>
+  <EpisodeSelectionProvider>
     <AdminPage>
       <AdminPageHeader>
         <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
@@ -330,7 +348,7 @@ const SeriesEpisodesPage = ({
         </Suspense>
       </AdminPageContent>
     </AdminPage>
-  </EpisodeCreditsSelectionProvider>
+  </EpisodeSelectionProvider>
 );
 
 export default SeriesEpisodesPage;

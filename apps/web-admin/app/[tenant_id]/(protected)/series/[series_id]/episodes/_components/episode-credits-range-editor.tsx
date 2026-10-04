@@ -27,7 +27,7 @@ import { sharePercentToBps } from "#lib/credit-share";
 
 import { MAX_BULK_EPISODE_CREDIT_EPISODES } from "../_lib/credit-range";
 import type { EpisodeCreditRangeOption } from "../episode-types";
-import { selectionCheckboxProps } from "./episode-credits-selection";
+import { selectionCheckboxProps } from "./episode-selection";
 
 export const OPERATIONS = ["add", "replace", "remove", "set_share"] as const;
 

@@ -1,6 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -24,6 +25,11 @@ import {
 } from "#lib/episode";
 import type { BulkEpisodeCreditOperation } from "#lib/episode";
 import {
+  createSeriesFreeWindows,
+  episodeFreeWindowsCacheTag,
+} from "#lib/episode-free-window";
+import {
+  boundedIntFormSchema,
   jsonRecordIdArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalRecordId,
@@ -31,6 +37,7 @@ import {
   requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
@@ -45,6 +52,10 @@ import {
   MAX_BULK_EPISODE_CREDIT_EPISODES,
   episodesSelectedInReadingOrder,
 } from "./credit-range";
+import {
+  MAX_SERIES_FREE_WINDOW_EPISODES,
+  freeWindowEpisodes,
+} from "./free-window-target";
 
 const createEpisodeSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -559,4 +570,136 @@ export const bulkEditEpisodeCreditsAction = async (
     updateTag(episodesCacheTag(parsed.data.tenantId));
   }
   return result;
+};
+
+const createSeriesFreeWindowsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const base = {
+    endsAt: optionalTrimmedString(),
+    seriesId: requiredRecordId(
+      t("admin.series.episodes.validation.series_missing")
+    ),
+    startsAt: optionalTrimmedString(),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  };
+
+  return z.discriminatedUnion(
+    "target",
+    [
+      z.object({
+        ...base,
+        episodeIds: jsonRecordIdArrayFormSchema,
+        target: z.literal("selected"),
+      }),
+      z.object({
+        ...base,
+        firstCount: boundedIntFormSchema(
+          t(
+            "admin.series.episodes.free_windows.validation.first_count_invalid",
+            { max: String(MAX_SERIES_FREE_WINDOW_EPISODES) }
+          ),
+          { max: MAX_SERIES_FREE_WINDOW_EPISODES, min: 1 }
+        ),
+        target: z.literal("first"),
+      }),
+      z.object({ ...base, target: z.literal("all") }),
+    ],
+    {
+      error: t("admin.series.episodes.free_windows.validation.target_invalid"),
+    }
+  );
+};
+
+/**
+ * The free reading period action on the series episode list: one period on
+ * the checked episodes, on the first ones, or on all of them, in one
+ * all-or-nothing call. The windows show on each episode's screen rather than
+ * on the list, so success is a message rather than a refresh.
+ */
+export const createSeriesFreeWindowsAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    createSeriesFreeWindowsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      endsAt: { kind: "value", name: "ends_at" },
+      episodeIds: { kind: "value", name: "episode_ids" },
+      firstCount: { kind: "value", name: "first_count" },
+      seriesId: { kind: "value", name: "series_id" },
+      startsAt: { kind: "value", name: "starts_at" },
+      target: "value",
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { seriesId, tenantId } = parsed.data;
+  const period = await toFreeWindowPeriod(
+    parsed.data,
+    await getTenantDisplayTimeZone(tenantId),
+    locale
+  );
+  if (!period.ok) {
+    return period;
+  }
+
+  await verifyAdminSession(tenantId);
+  const listed = await listAllEpisodesForTenant({ seriesId, tenantId }, locale);
+  if (!listed.ok) {
+    return { message: listed.message, ok: false };
+  }
+
+  const covered = freeWindowEpisodes(listed.episodes, parsed.data);
+  if (!covered.ok) {
+    if (covered.reason === "too-many") {
+      return {
+        message: t(
+          "admin.series.episodes.free_windows.validation.selection_too_many",
+          { count: String(MAX_SERIES_FREE_WINDOW_EPISODES) }
+        ),
+        ok: false,
+      };
+    }
+    return {
+      message:
+        parsed.data.target === "selected"
+          ? t("admin.series.episodes.free_windows.validation.selection_empty")
+          : t("admin.series.episodes.free_windows.no_episodes"),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    createSeriesFreeWindows(
+      {
+        endsAt: period.endsAt,
+        episodeIds: covered.episodeIds,
+        seriesId,
+        startsAt: period.startsAt,
+        tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(episodeFreeWindowsCacheTag(tenantId));
+  return {
+    message: t("admin.series.episodes.free_windows.bulk_created", {
+      count: String(result.freeWindows.length),
+    }),
+    ok: true,
+  };
 };

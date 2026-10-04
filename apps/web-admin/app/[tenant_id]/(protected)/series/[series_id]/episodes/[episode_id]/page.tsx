@@ -46,6 +46,7 @@ import {
   listEpisodeCredits,
   listEpisodeImages,
 } from "#lib/episode";
+import { listEpisodeFreeWindows } from "#lib/episode-free-window";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
@@ -56,12 +57,15 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
+import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import {
+  createEpisodeFreeWindowAction,
+  deleteEpisodeFreeWindowAction,
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
@@ -287,6 +291,58 @@ const EpisodePurchaseAvailabilitySection = async ({
           : undefined
       }
       tenantId={context.tenantId}
+    />
+  );
+};
+
+const EpisodeFreeWindowsSectionData = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, timeZone] = await Promise.all([
+    loadEpisode(context),
+    getTenantDisplayTimeZone(context.tenantId),
+  ]);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={
+          <Message message="admin.series.episodes.free_windows.list_error" />
+        }
+      />
+    );
+  }
+
+  const freeWindowsResult = await listEpisodeFreeWindows({
+    episodeId: episodeResult.episode.id,
+  });
+  // A failed read hands back no windows, and "nothing scheduled" next to a
+  // form would invite scheduling over a window nobody could see.
+  if (!freeWindowsResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={freeWindowsResult.message}
+        title={
+          <Message message="admin.series.episodes.free_windows.list_error" />
+        }
+      />
+    );
+  }
+
+  return (
+    <EpisodeFreeWindowsSection
+      createAction={createEpisodeFreeWindowAction}
+      deleteAction={deleteEpisodeFreeWindowAction}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
+      freeWindows={freeWindowsResult.freeWindows}
+      locale={context.locale}
+      now={Temporal.Now.instant()}
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+      timeZone={timeZone}
     />
   );
 };
@@ -524,6 +580,10 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
         message="admin.series.episodes.purchase_availability.updated"
       />
       <FlashToast
+        keyName="free_window_created"
+        message="admin.series.episodes.free_windows.created"
+      />
+      <FlashToast
         keyName="layout_updated"
         message="admin.series.episodes.layout.updated"
       />
@@ -555,6 +615,9 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
             </Suspense>
             <Suspense fallback={<Skeleton className="h-40" />}>
               <EpisodePurchaseAvailabilitySection params={params} />
+            </Suspense>
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodeFreeWindowsSectionData params={params} />
             </Suspense>
             <Suspense fallback={<Skeleton className="h-48" />}>
               <EpisodeCreditsSection params={params} />
