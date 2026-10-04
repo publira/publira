@@ -26,6 +26,60 @@ const (
 	maxFreeWindowListLimit     int32 = 100
 )
 
+// maxSeriesFreeWindowEpisodes bounds the episodes one CreateSeriesFreeWindows
+// call may name, the same bound BulkEditEpisodeCredits puts on its range and
+// for the same series: one that runs to roughly 800 episodes still fits in a
+// single campaign.
+const maxSeriesFreeWindowEpisodes = 1000
+
+// seriesFreeWindowEpisodes reads the episodes a CreateSeriesFreeWindows call
+// names. Nil means every episode of the series.
+func seriesFreeWindowEpisodes(raw []string) ([]uuid.UUID, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	ids, err := recordIDsArg(raw, "episode_ids", "episode")
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) > maxSeriesFreeWindowEpisodes {
+		return nil, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("episode_ids must name at most %d episodes", maxSeriesFreeWindowEpisodes),
+			"episode_ids",
+		)
+	}
+	return ids, nil
+}
+
+// selectSeriesFreeWindowEpisodes narrows the series' episodes to the ones the
+// call named, keeping the series' own order. An id the series does not have —
+// another series' episode, another tenant's, or none at all — fails the whole
+// call rather than being skipped, since the campaign the caller composed would
+// otherwise be smaller than the one it asked for.
+func selectSeriesFreeWindowEpisodes(
+	episodes []dbmodels.ListEpisodesBySeriesForTenantRow,
+	named []uuid.UUID,
+) ([]dbmodels.ListEpisodesBySeriesForTenantRow, error) {
+	if named == nil {
+		return episodes, nil
+	}
+	wanted := make(map[uuid.UUID]struct{}, len(named))
+	for _, id := range named {
+		wanted[id] = struct{}{}
+	}
+	selected := make([]dbmodels.ListEpisodesBySeriesForTenantRow, 0, len(named))
+	for _, episode := range episodes {
+		if _, ok := wanted[episode.ID]; ok {
+			selected = append(selected, episode)
+		}
+	}
+	if len(selected) != len(named) {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("episode_ids names an episode this series does not have"), "episode_ids")
+	}
+	return selected, nil
+}
+
 // freeWindowPeriod is a validated request period, in UTC.
 type freeWindowPeriod struct {
 	startsAt time.Time
@@ -242,6 +296,10 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	if err != nil {
 		return nil, err
 	}
+	namedEpisodeIDs, err := seriesFreeWindowEpisodes(req.Msg.EpisodeIds)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -273,6 +331,10 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	}
 	if len(episodes) == 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no episodes"))
+	}
+	episodes, err = selectSeriesFreeWindowEpisodes(episodes, namedEpisodeIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	createdBy := createdByUserID(ctx)

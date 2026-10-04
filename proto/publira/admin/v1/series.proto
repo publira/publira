@@ -615,10 +615,10 @@ message CreateEpisodeFreeWindowResponse {
   AdminEpisodeFreeWindow free_window = 1;
 }
 
-// Schedules the same period on every episode of one series, which is how a
+// Schedules the same period on several episodes of one series, which is how a
 // "first week free" campaign is set up in one call. It is all or nothing: when
-// the period overlaps a window any one episode already has, no window is
-// created.
+// the period overlaps a window any one of those episodes already has, no window
+// is created.
 message CreateSeriesFreeWindowsRequest {
   reserved 2;
   reserved "series_public_id";
@@ -626,10 +626,16 @@ message CreateSeriesFreeWindowsRequest {
   string starts_at = 3;
   string ends_at = 4;
   string series_id = 5;
+  // The episodes to schedule, each of them an episode of this series, rather
+  // than a span of order indexes: episodes are reordered through this API, so a
+  // span would name other episodes after a reorder than it did when it was
+  // composed. Empty schedules every episode of the series. At most 1000 per
+  // call, with no episode named twice.
+  repeated string episode_ids = 6;
 }
 
 message CreateSeriesFreeWindowsResponse {
-  // One per episode of the series, in the series' own episode order.
+  // One per episode scheduled, in the series' own episode order.
   repeated AdminEpisodeFreeWindow free_windows = 1;
 }
 
