@@ -144,6 +144,16 @@ func TestConfigFromEnv(t *testing.T) {
 			wantErr: "is not an http:// or https:// URL",
 		},
 		{
+			name:    "credentials in a URL that does not parse",
+			env:     map[string]string{"PUBLIRA_OPENSEARCH_URL": "https://publira:secret@[search.example.com"},
+			wantErr: "is not an http:// or https:// URL",
+		},
+		{
+			name:    "credentials in a URL of another scheme",
+			env:     map[string]string{"PUBLIRA_OPENSEARCH_URL": "opensearch://publira:secret@search.example.com"},
+			wantErr: "is not an http:// or https:// URL",
+		},
+		{
 			name:    "credentials in the URL",
 			env:     map[string]string{"PUBLIRA_OPENSEARCH_URL": "https://publira:secret@search.example.com"},
 			wantErr: "carries credentials",
@@ -175,6 +185,11 @@ func TestConfigFromEnv(t *testing.T) {
 			if test.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), test.wantErr) {
 					t.Fatalf("ConfigFromEnv error = %v, want one containing %q", err, test.wantErr)
+				}
+				// The error reaches the startup log, so it must not repeat a
+				// credential the value carried.
+				if strings.Contains(err.Error(), "secret") {
+					t.Fatalf("ConfigFromEnv error %q prints the password", err)
 				}
 				return
 			}

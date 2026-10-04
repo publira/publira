@@ -2,7 +2,6 @@ package opensearchbackend
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -32,9 +31,11 @@ func ConfigFromEnv() (Config, error) {
 	if raw == "" {
 		return Config{}, errors.New(`PUBLIRA_OPENSEARCH_URL is required when PUBLIRA_SEARCH_BACKEND is "opensearch"`)
 	}
+	// The errors name the variable and never print its value, which may carry
+	// credentials the URL was refused for.
 	parsed, err := url.Parse(raw)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return Config{}, fmt.Errorf("PUBLIRA_OPENSEARCH_URL %q is not an http:// or https:// URL", raw)
+		return Config{}, errors.New("PUBLIRA_OPENSEARCH_URL is not an http:// or https:// URL")
 	}
 	if parsed.User != nil {
 		return Config{}, errors.New("PUBLIRA_OPENSEARCH_URL carries credentials; set PUBLIRA_OPENSEARCH_USERNAME and PUBLIRA_OPENSEARCH_PASSWORD instead")
