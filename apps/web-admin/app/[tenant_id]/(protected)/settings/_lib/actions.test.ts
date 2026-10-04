@@ -5,6 +5,7 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
+  mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantTimezone,
@@ -13,6 +14,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
+  mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
@@ -53,6 +55,12 @@ vi.mock("#lib/site-settings", () => ({
 
 vi.mock("#lib/tenant-default-locale", () => ({
   updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
+}));
+
+vi.mock("#lib/tenant-email-rejection-settings", () => ({
+  tenantEmailRejectionSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:email-rejection-settings`,
+  updateTenantEmailRejectionSettings: mockUpdateTenantEmailRejectionSettings,
 }));
 
 vi.mock("#lib/tenant-legal-pages", () => ({
@@ -442,6 +450,137 @@ describe("updateTenantLegalPagesAction", () => {
     expect(result).toEqual({
       message:
         "The page chosen as the terms of service is not published. Reload the page and choose again.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantEmailRejectionAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the switch and each non-blank line, then revalidates the tag", async () => {
+    const saved = {
+      disposableDomainListAvailable: true,
+      ok: true,
+      settings: {
+        entries: ["refused.example", "someone@example.com"],
+        rejectDisposableDomains: true,
+      },
+    };
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce(saved);
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      textFormData({
+        entries: " Refused.Example \r\n\r\nsomeone@example.com\n",
+        reject_disposable_domains: "on",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      disposableDomainListAvailable: true,
+      message: "The refused email addresses were saved.",
+      ok: true,
+      settings: saved.settings,
+    });
+    expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
+      {
+        entries: ["Refused.Example", "someone@example.com"],
+        rejectDisposableDomains: true,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:email-rejection-settings"
+    );
+  });
+
+  it("reads an absent switch as off and an empty list as clearing it", async () => {
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
+      disposableDomainListAvailable: false,
+      ok: true,
+      settings: { entries: [], rejectDisposableDomains: false },
+    });
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    await updateTenantEmailRejectionAction(
+      null,
+      textFormData({ entries: "", tenant_id: "TENANT001" })
+    );
+
+    expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
+      { entries: [], rejectDisposableDomains: false, tenantId: "TENANT001" },
+      "en"
+    );
+  });
+
+  it("names the line it refuses without calling the API", async () => {
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      textFormData({
+        entries: "refused.example\nnot a domain",
+        reject_disposable_domains: "on",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    const message = '"not a domain" is neither an email address nor a domain.';
+    expect(result).toEqual({
+      fieldErrors: { entries: message },
+      message,
+      ok: false,
+    });
+    expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("refuses a switch value a checkbox never submits", async () => {
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      textFormData({
+        entries: "",
+        reject_disposable_domains: "true",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result?.ok).toBe(false);
+    expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+  });
+
+  it("puts the API's refusal of the list beside the field without revalidating", async () => {
+    const message =
+      "Check the list. Each line must be one email address or domain, and at most 1000 can be listed.";
+    mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
+      entriesError: message,
+      message,
+      ok: false,
+    });
+
+    const { updateTenantEmailRejectionAction } = await import("./actions");
+
+    const result = await updateTenantEmailRejectionAction(
+      null,
+      textFormData({ entries: "xn--zz.com", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { entries: message },
+      message,
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

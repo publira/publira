@@ -37,6 +37,8 @@ export const RPC_ERROR_REASON = {
  * for a field that can be refused for more than one cause.
  */
 export const RPC_FIELD_VIOLATION_REASON = {
+  emailDisposableDomain: "EMAIL_DISPOSABLE_DOMAIN",
+  emailRefused: "EMAIL_REFUSED",
   pageSlugReserved: "PAGE_SLUG_RESERVED",
   pageSlugUnreachable: "PAGE_SLUG_UNREACHABLE",
 } as const;

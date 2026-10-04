@@ -283,6 +283,22 @@ export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant whose refused email addresses the console suite
+ * changes, from `db/seeds/scenarios/380_email_rejection.sql`. The setting is
+ * tenant-wide, so the sign-ups it refuses are not ones another suite drives.
+ */
+export const WEB_HOST_EMAIL_REJECTION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_EMAIL_REJECTION_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "reject.localhost")
+);
+
+/** Admin console of the same email rejection tenant. */
+export const WEB_ADMIN_EMAIL_REJECTION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_EMAIL_REJECTION_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.reject.localhost")
+);
+
+/**
  * Public site of the tenant that names its terms and privacy pages, from
  * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
  * so the sign-up that asks for consent is not the one another suite drives.

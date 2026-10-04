@@ -3,7 +3,7 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
-import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -33,6 +33,14 @@ import {
 } from "#lib/tenant-comment-settings-shared";
 import { updateTenantDefaultLocale } from "#lib/tenant-default-locale";
 import {
+  tenantEmailRejectionSettingsCacheTag,
+  updateTenantEmailRejectionSettings,
+} from "#lib/tenant-email-rejection-settings";
+import {
+  MAX_EMAIL_REJECTION_ENTRIES,
+  parseEmailRejectionEntries,
+} from "#lib/tenant-email-rejection-settings-shared";
+import {
   tenantLegalPagesCacheTag,
   updateTenantLegalPages,
 } from "#lib/tenant-legal-pages";
@@ -44,6 +52,7 @@ import type {
   TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
   TenantDefaultLocaleActionState,
+  TenantEmailRejectionActionState,
   TenantLegalPagesActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
@@ -139,6 +148,47 @@ const tenantLegalPagesSchema = async (locale: Locale) => {
   return z.object({
     privacyPageId: pageId,
     termsPageId: pageId,
+  });
+};
+
+/**
+ * The list arrives as the textarea's text, one entry a line, and is checked
+ * line by line with the rule the settings card applies as it is typed — the
+ * server's own, so a list this accepts is one the server accepts. The switch
+ * is a checkbox, present only while it is on.
+ */
+const tenantEmailRejectionSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    entries: z
+      .string({
+        error: t("admin.settings.email_rejection.validation.entries_refused", {
+          max: MAX_EMAIL_REJECTION_ENTRIES,
+        }),
+      })
+      .transform((text, context) => {
+        const result = parseEmailRejectionEntries(text);
+        if (result.ok) {
+          return result.entries;
+        }
+        context.addIssue({
+          code: "custom",
+          message:
+            result.reason === "too_many"
+              ? t("admin.settings.email_rejection.validation.too_many", {
+                  max: MAX_EMAIL_REJECTION_ENTRIES,
+                })
+              : t("admin.settings.email_rejection.validation.entry_invalid", {
+                  entry: result.entry,
+                }),
+        });
+        return z.NEVER;
+      }),
+    rejectDisposableDomains: z
+      .literal("on")
+      .optional()
+      .transform((value) => value === "on"),
   });
 };
 
@@ -467,6 +517,74 @@ export const updateTenantLegalPagesAction = async (
   return {
     message: t("admin.settings.legal_pages.saved"),
     ok: true,
+  };
+};
+
+export const updateTenantEmailRejectionAction = async (
+  _prevState: TenantEmailRejectionActionState,
+  formData: FormData
+): Promise<TenantEmailRejectionActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const schema = await tenantEmailRejectionSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      entries: "value",
+      rejectDisposableDomains: {
+        kind: "value",
+        name: "reject_disposable_domains",
+      },
+    })
+  );
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+    return {
+      fieldErrors: { entries: fieldErrors.entries },
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantEmailRejectionSettings(
+      {
+        entries: parsed.data.entries,
+        rejectDisposableDomains: parsed.data.rejectDisposableDomains,
+        tenantId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.entriesError
+        ? { entries: result.entriesError }
+        : undefined,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the setting through a private cache, so without
+  // this the operator would keep seeing the previous list in the same session.
+  // The storefront reads it in the API on every sign-up, through no cache.
+  updateTag(tenantEmailRejectionSettingsCacheTag(tenantId));
+
+  return {
+    disposableDomainListAvailable: result.disposableDomainListAvailable,
+    message: t("admin.settings.email_rejection.saved"),
+    ok: true,
+    settings: result.settings,
   };
 };
 

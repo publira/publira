@@ -323,6 +323,7 @@
         "tenant_sign_in_settings_updated": "更新了登录方式设置",
         "tenant_community_limits_updated": "更新了社区限制",
         "tenant_retention_updated": "更新了保留期限",
+        "tenant_email_rejection_settings_updated": "更新了不接受的电子邮件地址",
         "admin_mfa_enrolled": "设置了两步验证",
         "admin_mfa_verified": "登录时的两步验证",
         "admin_mfa_recovery_code_used": "使用恢复码登录",
@@ -2109,6 +2110,25 @@
           "privacy_unavailable": "选为隐私政策的页面未发布。请重新加载页面后再选择。"
         }
       },
+      "email_rejection": {
+        "title": "不接受的电子邮件地址",
+        "description": "读者无法用于注册或更改为的电子邮件地址。使用Apple或Google登录不受影响，因为地址由提供方给出。",
+        "disposable_label": "不接受一次性邮箱域名",
+        "disposable_description": "根据平台维护的列表，不接受一次性邮箱服务域名下的地址。",
+        "disposable_unavailable": "平台尚未配置一次性域名列表，因此在配置之前此开关不起作用。",
+        "entries_label": "不接受的地址和域名",
+        "entries_description": "每行一个电子邮件地址或域名。域名也会拒绝其子域名，地址也会拒绝加上+标签的同一地址。",
+        "submit": "保存不接受的电子邮件地址",
+        "saved": "不接受的电子邮件地址已保存。",
+        "load_failed": "无法加载不接受的电子邮件地址。请稍后再试。",
+        "save_failed": "无法保存不接受的电子邮件地址。请稍后再试。",
+        "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+        "validation": {
+          "entry_invalid": "“{$entry}”既不是电子邮件地址也不是域名。",
+          "too_many": "地址和域名最多可列出{$max}个。",
+          "entries_refused": "请检查列表。每行只能填写一个电子邮件地址或域名，最多可列出{$max}个。"
+        }
+      },
       "icon": {
         "title": "图标",
         "description": "公开站点在浏览器标签页和地址栏中显示的图标。",
@@ -2916,6 +2936,8 @@
       "errors": {
         "consent_changed": "需要同意的页面已更新。请阅读后重新同意。",
         "consent_required": "要创建账户，请同意所列页面。",
+        "email_disposable_domain": "本站不接受一次性邮箱服务的地址。请使用其他电子邮件地址。",
+        "email_refused": "本站不接受此电子邮件地址。请使用其他电子邮件地址。",
         "login_failed": "邮箱地址或密码不正确。",
         "name_required": "请输入显示名称。",
         "name_too_long": "显示名称请控制在100个字符以内。",

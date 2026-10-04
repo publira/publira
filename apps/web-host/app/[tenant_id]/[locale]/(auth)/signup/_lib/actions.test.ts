@@ -70,7 +70,7 @@ describe("signupAction", () => {
   });
 
   it("stores the destination email in a flash cookie and redirects without a query", async () => {
-    mockSignupPublic.mockResolvedValueOnce(true);
+    mockSignupPublic.mockResolvedValueOnce({ ok: true });
 
     const { signupAction } = await import("./actions");
     await signupAction({ message: "", ok: false }, formData(validSignupFields));
@@ -95,7 +95,7 @@ describe("signupAction", () => {
       "privacy-v2",
       "terms-v1",
     ]);
-    mockSignupPublic.mockResolvedValueOnce(true);
+    mockSignupPublic.mockResolvedValueOnce({ ok: true });
     const data = formData({ ...validSignupFields, consent: "on" });
     data.append("agreedPageVersionIds", "terms-v1");
     data.append("agreedPageVersionIds", "privacy-v2");
@@ -114,7 +114,7 @@ describe("signupAction", () => {
 
   it("checks the versions against the pages in the locale the form was submitted in", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-ja-v1"]);
-    mockSignupPublic.mockResolvedValueOnce(true);
+    mockSignupPublic.mockResolvedValueOnce({ ok: true });
     const data = formData({
       ...validSignupFields,
       consent: "on",
@@ -192,7 +192,7 @@ describe("signupAction", () => {
   });
 
   it("sends no consent once the tenant names no page any more", async () => {
-    mockSignupPublic.mockResolvedValueOnce(true);
+    mockSignupPublic.mockResolvedValueOnce({ ok: true });
     const data = formData({ ...validSignupFields, consent: "on" });
     data.append("agreedPageVersionIds", "terms-v1");
 
@@ -235,7 +235,7 @@ describe("signupAction", () => {
   });
 
   it("does not set a flash cookie when signup fails", async () => {
-    mockSignupPublic.mockResolvedValueOnce(false);
+    mockSignupPublic.mockResolvedValueOnce({ ok: false });
 
     const { signupAction } = await import("./actions");
     const result = await signupAction(
@@ -250,4 +250,32 @@ describe("signupAction", () => {
     expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
   });
+
+  // A refusal by address says nothing about whether the address is
+  // registered, so the reader is told to use another one.
+  it.each([
+    [
+      "disposable_domain",
+      "This site does not accept addresses from disposable email services. Use another email address.",
+    ],
+    [
+      "refused",
+      "This site does not accept this email address. Use another email address.",
+    ],
+  ] as const)(
+    "says why an address the tenant refuses (%s) cannot sign up",
+    async (emailRefusal, message) => {
+      mockSignupPublic.mockResolvedValueOnce({ emailRefusal, ok: false });
+
+      const { signupAction } = await import("./actions");
+      const result = await signupAction(
+        { message: "", ok: false },
+        formData(validSignupFields)
+      );
+
+      expect(result).toEqual({ message, ok: false });
+      expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    }
+  );
 });

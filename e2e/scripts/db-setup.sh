@@ -61,6 +61,19 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
       updated_at = NOW();
 "
 
+# No disposable-domain list ships with the server, so the stack names the one
+# the sign-in-provider stand-in serves, as an operator names a maintained list.
+# A tenant refuses nothing from it until it switches the list on, which only
+# the email rejection suite does, on a tenant of its own.
+disposable_email_domains_url="http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}/disposable-email-domains"
+e2e_log "naming ${disposable_email_domains_url} as the disposable email domain list"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
+  UPDATE platform_policy_config
+  SET disposable_email_domains_url = '${disposable_email_domains_url}',
+      revision = revision + 1,
+      updated_at = NOW();
+"
+
 # Creates the bucket and uploads the images the development seed's rows name:
 # every series' and label's eye-catch, every creator's icon, and every episode's
 # body pages.

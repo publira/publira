@@ -23,6 +23,7 @@ import {
   setEmailFlashCookie,
   SIGNUP_PENDING_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
+import { emailRefusalMessage } from "#lib/email-refusal-message";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import { readConsentPageVersionIds } from "#lib/tenant";
@@ -145,7 +146,7 @@ export const signupAction = async (
     };
   }
 
-  const accepted = await signupPublic({
+  const signup = await signupPublic({
     agreedPageVersionIds: publishedVersionIds,
     birthDate,
     email,
@@ -153,9 +154,13 @@ export const signupAction = async (
     password,
     tenantId,
   });
-  if (!accepted) {
+  if (!signup.ok) {
     return {
-      message: t("host.auth.errors.signup_failed"),
+      message: emailRefusalMessage(
+        t,
+        signup.emailRefusal,
+        t("host.auth.errors.signup_failed")
+      ),
       ok: false,
     };
   }

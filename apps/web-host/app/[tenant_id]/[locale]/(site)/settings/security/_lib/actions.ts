@@ -26,6 +26,7 @@ import {
   writePublicSessionCookie,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { emailRefusalMessage } from "#lib/email-refusal-message";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
@@ -110,7 +111,7 @@ export const requestEmailChangeAction = async (
   );
   // A wrong `currentPassword` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
-  const requested = await withPublicSessionReauth(
+  const emailChange = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () =>
@@ -123,12 +124,16 @@ export const requestEmailChangeAction = async (
       ),
     tenantId
   );
-  if (!requested) {
+  if (!emailChange.ok) {
     const errorPath = await buildSettingsPath(
       locale,
       tenantId,
       "error",
-      t("host.settings.email_change_failed")
+      emailRefusalMessage(
+        t,
+        emailChange.emailRefusal,
+        t("host.settings.email_change_failed")
+      )
     );
     redirect(errorPath);
   }

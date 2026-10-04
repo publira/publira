@@ -323,6 +323,7 @@
         "tenant_sign_in_settings_updated": "Sign-in providers updated",
         "tenant_community_limits_updated": "Community limits updated",
         "tenant_retention_updated": "Retention periods updated",
+        "tenant_email_rejection_settings_updated": "Refused email addresses updated",
         "admin_mfa_enrolled": "Two-step verification set up",
         "admin_mfa_verified": "Two-step verification at sign-in",
         "admin_mfa_recovery_code_used": "Signed in with a recovery code",
@@ -2109,6 +2110,25 @@
           "privacy_unavailable": "The page chosen as the privacy policy is not published. Reload the page and choose again."
         }
       },
+      "email_rejection": {
+        "title": "Refused email addresses",
+        "description": "Addresses that readers cannot sign up with or change their email address to. Sign-in with Apple or Google is not affected, since the provider supplies the address.",
+        "disposable_label": "Refuse disposable email domains",
+        "disposable_description": "Refuses addresses on domains made for throwaway email, using the list the platform maintains.",
+        "disposable_unavailable": "The platform has no disposable domain list configured, so this switch has no effect until one is.",
+        "entries_label": "Addresses and domains to refuse",
+        "entries_description": "One email address or domain per line. A domain also refuses its subdomains, and an address also refuses the same address with a + tag added.",
+        "submit": "Save the refused email addresses",
+        "saved": "The refused email addresses were saved.",
+        "load_failed": "Could not load the refused email addresses. Please try again later.",
+        "save_failed": "Could not save the refused email addresses. Please try again later.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "validation": {
+          "entry_invalid": "\"{$entry}\" is neither an email address nor a domain.",
+          "too_many": "List at most {$max} addresses and domains.",
+          "entries_refused": "Check the list. Each line must be one email address or domain, and at most {$max} can be listed."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",
@@ -2916,6 +2936,8 @@
       "errors": {
         "consent_changed": "The pages to agree to have been updated. Read them and agree again.",
         "consent_required": "Agree to the listed pages to create an account.",
+        "email_disposable_domain": "This site does not accept addresses from disposable email services. Use another email address.",
+        "email_refused": "This site does not accept this email address. Use another email address.",
         "login_failed": "That email address or password is incorrect. Check them and try again.",
         "name_required": "Enter a display name.",
         "name_too_long": "Use 100 characters or fewer for the display name.",
