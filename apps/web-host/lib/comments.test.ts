@@ -60,6 +60,7 @@ const comment = (
   awaitingApproval: false,
   body: "A comment",
   creatorName: "",
+  creatorPublicId: "",
   id: `C${overrides.createdAt}`,
   ...overrides,
 });
@@ -114,6 +115,7 @@ describe("listEpisodeComments", () => {
             body: "Loved this episode",
             createdAt: "2026-09-01T10:00:00Z",
             creatorName: "",
+            creatorPublicId: "",
             id: "CmntAAAAAAA1",
           },
         ],
@@ -158,8 +160,16 @@ describe("listEpisodeComments", () => {
       ok: true,
       value: {
         comments: [
-          { authorName: "Sample Member", creatorName: "Sample Author" },
-          { authorName: "Another Reader", creatorName: "" },
+          {
+            authorName: "Sample Member",
+            creatorName: "Sample Author",
+            creatorPublicId: "SeedCRTRAAA1",
+          },
+          {
+            authorName: "Another Reader",
+            creatorName: "",
+            creatorPublicId: "",
+          },
         ],
       },
     });
@@ -236,6 +246,7 @@ describe("listMyEpisodeComments", () => {
           body: "Waiting for approval",
           createdAt: "2026-09-02T10:00:00Z",
           creatorName: "",
+          creatorPublicId: "",
           id: "CmntAAAAAAA2",
         },
       ],
@@ -268,7 +279,13 @@ describe("listMyEpisodeComments", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      value: [{ authorName: "Sample Member", creatorName: "Sample Author" }],
+      value: [
+        {
+          authorName: "Sample Member",
+          creatorName: "Sample Author",
+          creatorPublicId: "SeedCRTRAAA1",
+        },
+      ],
     });
   });
 

@@ -63,6 +63,11 @@ export interface EpisodeCommentItem {
    * else.
    */
   creatorName: string;
+  /**
+   * The public ID of the creator {@link creatorName} names, which the
+   * storefront's creator page resolves; empty exactly when `creatorName` is.
+   */
+  creatorPublicId: string;
   id: string;
 }
 
@@ -119,6 +124,7 @@ const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
   creatorName: comment.creator?.name ?? "",
+  creatorPublicId: comment.creator?.publicId ?? "",
   id: comment.id ?? "",
 });
 
@@ -136,6 +142,7 @@ const toOwnComment = (
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
   creatorName: comment.creator?.name ?? "",
+  creatorPublicId: comment.creator?.publicId ?? "",
   id: comment.id ?? "",
 });
 
