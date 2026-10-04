@@ -1,7 +1,5 @@
 # Publira
 
-English | [日本語](README.ja.md)
-
 ## Product vision
 
 Publira is a multi-tenant SaaS that gives publishers with limited IT resources a digital distribution platform (manga and novels) they can run under their own brand. Publishers and editors submit the book information they receive from creators, and end users read it on the web or on mobile.

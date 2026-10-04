@@ -110,10 +110,10 @@ reviews:
     - path: "**/*.md"
       instructions: |
         Markdown this repository owns is written in English. Source of truth: the
-        "Documentation and test labels: English" section of AGENTS.md.
+        "Documentation, test labels, and GitHub Issues: English" section of AGENTS.md.
 
-        - The one translated copy is README.ja.md, paired with the root README.md.
-          No other directory gets a *.ja.md.
+        - No Markdown file is kept in a second language. Flag any *.ja.md or other
+          translated copy, the root README included.
         - Japanese README files that are still around are leftovers awaiting
           translation, not a precedent. Never ask an English line to match the
           Japanese entries surrounding it.
