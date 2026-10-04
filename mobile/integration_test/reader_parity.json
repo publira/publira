@@ -212,15 +212,24 @@
       ]
     },
     {
-      "name": "Related series at the end of an episode and on an author's page, and recommendations",
-      "web": {
-        "rpcs": [
-          "ListRelatedSeries",
-          "ListRecommendedSeries",
-          "ListMyRecommendedSeries"
-        ]
-      },
+      "name": "Related series at the end of an episode and on an author's page",
+      "web": { "rpcs": ["ListRelatedSeries"] },
       "exception": "Not in the app yet: #2827."
+    },
+    {
+      "name": "Recommended series: the reader's own order, and the shelf a tenant with no chart shows in its place",
+      "web": {
+        "rpcs": ["ListRecommendedSeries", "ListMyRecommendedSeries"]
+      },
+      "mobile": {
+        "routes": ["/", "/library", "/recommended"],
+        "rpcs": ["ListRecommendedSeries", "ListMyRecommendedSeries"]
+      },
+      "tests": [
+        "a tenant with no chart recommends a guest its order instead",
+        "the library recommends a member their own order",
+        "the seed recommendations reach the library on the live API"
+      ]
     },
     {
       "name": "The episode viewer, free and locked",

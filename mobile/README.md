@@ -335,7 +335,7 @@ Every screen but the episode viewer carries a bottom navigation bar of five tabs
 | --- | --- | --- |
 | Home | `/` | Catalog list |
 | Search | `/search` | Search, with the keyword field focused while it is empty |
-| Library | `/library` | Continue reading, follows, and downloads |
+| Library | `/library` | Continue reading, follows, downloads, and recommendations |
 | Notifications | `/notifications` | The reader's notification inbox, badged with the unread count |
 | Account | `/account` | Signed-in reader, their date of birth, the way to each account setting, and sign-out |
 
@@ -354,6 +354,7 @@ Every tab holds the catalog's routes and the sign-in forms under its own root, s
 | `/series/:seriesId` | Series details |
 | `/creators/:creatorId` | An author and the published series credited to them |
 | `/labels/:labelId` | A label and its published series |
+| `/recommended` | The whole of the order recommended to the reader, which the catalog's popularity shelf leads to while the tenant has no chart |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer, which hides the bar |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
 
@@ -395,10 +396,11 @@ The catalog is four sections, top to bottom. Each reads its own page of `Catalog
 | --- | --- | --- |
 | Continue reading | `ListMyRecentSeries` | A signed-in reader in the middle of something. Each card opens the episode the API names for its series |
 | Top 10 this week | `ListRankedSeries`, weekly | A tenant the ranking batch has written a snapshot for. Cards carry the snapshot's own positions, so a series unpublished since leaves a gap |
+| Recommended, in place of the chart | `ListMyRecommendedSeries` for a signed-in reader, `ListRecommendedSeries` for a guest | A tenant the ranking batch has not written a snapshot for. The shelf is headed as a recommendation and its **View all** opens `/recommended` rather than the ranking, as the storefront's popularity module does |
 | New arrivals | `ListPublishedSeries`, newest first | A tenant with a published series |
 | All series | `ListPublishedSeries`, by title | The whole catalog, as the list the screen ends in |
 
-The first three are horizontal shelves, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing and a tenant with no chart are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
+The shelves are horizontal rows, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing, and a tenant with neither a chart nor a published series to recommend, are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
 
 Only the whole-catalog list is kept for reading without a network. The shelves above it are another order over the same series, a chart of a window that has closed, and one reader's own history — none of which the device can answer on its own, so each reports that it could not reach the API.
 
@@ -420,13 +422,14 @@ A reader reaches an author from the search screen, from a name in the credit lin
 
 ### The library
 
-`/library` is what the reader reads, as three tabs of one screen, each a list that pages and scrolls on its own:
+`/library` is what the reader reads, and what is recommended to them next, as four tabs of one screen, each a list that pages and scrolls on its own:
 
 | Tab | Read | A guest sees |
 | --- | --- | --- |
 | Continue reading | `ListMyRecentSeries`, one cursor page at a time; a row opens the episode the API names for its series | The way to sign in |
 | Follows | `ListMyFollows`, as [Follows](#follows) describes | The way to sign in |
 | Downloads | What the device keeps, as [Offline reading](#offline-reading) describes | The same list |
+| Recommended | `ListMyRecommendedSeries`, one cursor page at a time; a row opens its series | The tenant's order, `ListRecommendedSeries` |
 
 A build carrying no follow repository or no offline library leaves that tab out.
 

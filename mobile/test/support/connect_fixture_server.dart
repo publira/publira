@@ -28,6 +28,8 @@ class ConnectFixtureServer {
     this.entitledEpisodes = const {},
     this.readingPositions = const {},
     this.recentSeries = const [],
+    this.recommendedSeries = const [],
+    this.myRecommendedSeries = const [],
     this.seriesProgress = const {},
     this.seriesRatings = const {},
     this.commentMode = 'COMMENT_MODE_IMMEDIATE',
@@ -558,6 +560,16 @@ class ConnectFixtureServer {
   /// page with the token written the way [followsPageSize] writes one.
   List<Map<String, Object?>> recentSeries;
 
+  /// `Series` entries `ListRecommendedSeries` answers anyone with, in the
+  /// tenant's recommendation order, at most the request's `limit` to a page
+  /// with the token written the way [followsPageSize] writes one.
+  List<Map<String, Object?>> recommendedSeries;
+
+  /// `Series` entries `ListMyRecommendedSeries` answers a signed-in member
+  /// with, paged the way [recommendedSeries] is. A request without the active
+  /// token is refused `unauthenticated`, as the API refuses one.
+  List<Map<String, Object?>> myRecommendedSeries;
+
   /// The `SeriesProgress` `GetMySeriesProgress` answers a signed-in member
   /// with, keyed by series public id. A series missing here is one they have
   /// opened nothing of. The finished episodes beside it are the series'
@@ -1067,6 +1079,32 @@ class ConnectFixtureServer {
       await _write(request, HttpStatus.ok, {
         // protojson omits an empty repeated field.
         if (page.isNotEmpty) 'series': page,
+      });
+      return;
+    }
+
+    if (path.endsWith('/ListRecommendedSeries') ||
+        path.endsWith('/ListMyRecommendedSeries')) {
+      final mine = path.endsWith('/ListMyRecommendedSeries');
+      if (mine && !await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      final order = [
+        for (final series in mine ? myRecommendedSeries : recommendedSeries)
+          if (_shows(body, series['publicId'])) series,
+      ];
+      final limit = body['limit'] as int? ?? 0;
+      final token = body['token'] as String? ?? '';
+      final start = min(token.isEmpty ? 0 : int.parse(token), order.length);
+      final end = limit <= 0 ? order.length : min(start + limit, order.length);
+      final page = order.sublist(start, end);
+      await _write(request, HttpStatus.ok, {
+        // protojson omits an empty repeated field.
+        if (page.isNotEmpty) 'series': page,
+        if (end < order.length) 'nextToken': '$end',
+        'source': mine
+            ? 'RECOMMENDATION_SOURCE_READER_FEATURES'
+            : 'RECOMMENDATION_SOURCE_RANKING',
       });
       return;
     }

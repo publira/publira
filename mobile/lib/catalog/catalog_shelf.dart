@@ -20,6 +20,28 @@ const _shelfCardAspectRatio = 3 / 4;
 /// loading or loaded, so a row arriving does not move the ones below it.
 const _shelfHeight = _shelfCardWidth / _shelfCardAspectRatio + 80;
 
+/// The heading a shelf stands under and the way out beside it.
+typedef ShelfFrame = ({String heading, Widget? action});
+
+/// The heading a shelf stands under when a read fails, and what it says about
+/// that failure.
+typedef ShelfFailureFrame = ({String heading, String failureMessage});
+
+/// A failed read of one of the two lists a shelf can show, naming which one,
+/// so the shelf can report the failure under that list's own words rather
+/// than the ones it was given for the other.
+class ShelfReadFailure implements Exception {
+  const ShelfReadFailure(this.list, this.failure);
+
+  /// Which list could not be read, as the screen holding the shelf names it.
+  final Object list;
+
+  final CatalogFailure failure;
+
+  @override
+  String toString() => 'ShelfReadFailure($list, $failure)';
+}
+
 /// One horizontal shelf: a heading, and a row of cards under it.
 ///
 /// An empty answer takes the heading with it. A shelf is a way into part of
@@ -40,6 +62,8 @@ class CatalogShelf<T> extends StatefulWidget {
     this.rowHeight = _shelfHeight,
     this.skeleton,
     this.action,
+    this.frameFor,
+    this.failureFrameFor,
   });
 
   /// Names this section on screen, and its loading, failure, and retry states.
@@ -74,6 +98,16 @@ class CatalogShelf<T> extends StatefulWidget {
   /// A way out of the shelf beside its heading, shown once it has cards.
   final Widget? action;
 
+  /// The heading and the way out for the cards [load] answered with, for a
+  /// shelf that reads one of two lists and has to say which one it shows.
+  /// [heading] and [action] when `null`, and while there are no cards yet.
+  final ShelfFrame Function(List<T> items)? frameFor;
+
+  /// The heading and the failure copy for a [ShelfReadFailure] [load] threw,
+  /// by the list it names. [heading] and [failureMessage] when `null`, and for
+  /// a plain [CatalogFailure].
+  final ShelfFailureFrame Function(Object list)? failureFrameFor;
+
   @override
   State<CatalogShelf<T>> createState() => _CatalogShelfState<T>();
 }
@@ -82,6 +116,9 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
   /// What the API answered, and `null` while a read is still in flight.
   List<T>? _items;
   CatalogFailure? _failure;
+
+  /// The list a [ShelfReadFailure] named, and `null` for any other failure.
+  Object? _failedList;
 
   CatalogRepository? _catalog;
 
@@ -112,16 +149,21 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
   void _load() {
     _items = null;
     _failure = null;
+    _failedList = null;
     unawaited(_read(++_reads, _catalog!));
   }
 
   Future<void> _read(int read, CatalogRepository catalog) async {
     List<T>? items;
     CatalogFailure? failure;
+    Object? failedList;
     try {
       items = await widget.load(catalog);
     } on CatalogFailure catch (error) {
       failure = error;
+    } on ShelfReadFailure catch (error) {
+      failure = error.failure;
+      failedList = error.list;
     }
     if (!mounted || read != _reads) {
       return;
@@ -129,6 +171,7 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     setState(() {
       _items = items;
       _failure = failure;
+      _failedList = failedList;
     });
   }
 
@@ -137,12 +180,16 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     final messages = AppMessages.of(context);
     final failure = _failure;
     if (failure != null) {
-      final failureMessage = widget.failureMessage;
+      final failedList = _failedList;
+      final frame = failedList == null
+          ? null
+          : widget.failureFrameFor?.call(failedList);
+      final failureMessage = frame?.failureMessage ?? widget.failureMessage;
       if (failureMessage == null) {
         return const SizedBox.shrink();
       }
       return _ShelfFrame(
-        heading: widget.heading,
+        heading: frame?.heading ?? widget.heading,
         child: RetryRow(
           sectionKey: widget.sectionKey,
           message: catalogFailureCopy(messages, failure, failureMessage),
@@ -160,12 +207,15 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
+    final frame =
+        widget.frameFor?.call(items) ??
+        (heading: widget.heading, action: widget.action);
     // The section is named only once it is showing its cards, so a screen that
     // has it and a screen still waiting on it are told apart by the same key.
     return _ShelfFrame(
       key: ValueKey(widget.sectionKey),
-      heading: widget.heading,
-      action: widget.action,
+      heading: frame.heading,
+      action: frame.action,
       child: SizedBox(
         height: widget.rowHeight,
         child: ListView.separated(

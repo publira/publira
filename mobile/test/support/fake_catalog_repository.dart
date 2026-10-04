@@ -20,6 +20,11 @@ class FakeCatalogRepository implements CatalogRepository {
     this.genreRankedSeries = const {},
     this.rankedSeriesPageSize = 20,
     this.relatedSeries = const {},
+    this.recommendedSeries = const [],
+    this.myRecommendedSeries,
+    this.recommendedSeriesPageSize = 20,
+    this.recommendedSeriesError,
+    this.recommendedSeriesMoreError,
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
@@ -318,6 +323,29 @@ class FakeCatalogRepository implements CatalogRepository {
   /// tenant-wide chart.
   final List<String> rankedSeriesGenres = <String>[];
 
+  /// The tenant's recommendation order [listRecommendedSeries] pages over.
+  List<SeriesItem> recommendedSeries;
+
+  /// The signed-in reader's own order [listMyRecommendedSeries] pages over.
+  /// `null` acts out a reader the batch has computed nothing for, who is
+  /// answered [recommendedSeries], as the API answers them.
+  List<SeriesItem>? myRecommendedSeries;
+
+  /// The most series one page of either recommendation order holds, whatever
+  /// limit the read asks for.
+  int recommendedSeriesPageSize;
+
+  /// What the first page of either recommendation order fails with.
+  CatalogFailure? recommendedSeriesError;
+
+  /// What a page of either recommendation order after the first fails with.
+  CatalogFailure? recommendedSeriesMoreError;
+
+  /// Every page of a recommendation order asked for, in order: whether it was
+  /// the reader's own, with its limit and token.
+  final List<({bool mine, int limit, String token})> recommendedSeriesRequests =
+      [];
+
   /// Every page [listRankedSeries] was asked for, in order.
   final List<({RankingPeriod period, int limit, String token})>
   rankedSeriesRequests = [];
@@ -608,6 +636,44 @@ class FakeCatalogRepository implements CatalogRepository {
       min(limit, rankedSeriesPageSize),
     );
     return RankedSeriesPage(rankedSeries: page, nextToken: nextToken);
+  }
+
+  @override
+  Future<SeriesPage> listRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) async => _recommended(recommendedSeries, limit, token, mine: false);
+
+  @override
+  Future<SeriesPage> listMyRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) async => _recommended(
+    myRecommendedSeries ?? recommendedSeries,
+    limit,
+    token,
+    mine: true,
+  );
+
+  SeriesPage _recommended(
+    List<SeriesItem> order,
+    int limit,
+    String token, {
+    required bool mine,
+  }) {
+    recommendedSeriesRequests.add((mine: mine, limit: limit, token: token));
+    final error = token.isEmpty
+        ? recommendedSeriesError
+        : recommendedSeriesMoreError ?? recommendedSeriesError;
+    if (error != null) {
+      throw error;
+    }
+    final (page, nextToken) = _page(
+      order,
+      token,
+      min(limit, recommendedSeriesPageSize),
+    );
+    return SeriesPage(series: page, nextToken: nextToken);
   }
 
   @override
