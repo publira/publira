@@ -5,16 +5,21 @@
 # the browser the screenshot projects render in.
 #
 # Host ports are offset from each service's default (5432 / 6379 / 9000 / 1025
-# / 8025) so they clear other local stacks. Override the variable a line below
-# names (and set a distinct COMPOSE_PROJECT_NAME) so a second stack can run
-# from the same checkout:
-#   postgres → localhost:${PUBLIRA_E2E_POSTGRES_PORT:-5433}
-#   redis    → localhost:${PUBLIRA_E2E_REDIS_PORT:-6380}
-#   rustfs   → localhost:${PUBLIRA_E2E_RUSTFS_PORT:-9003}
-#   mailpit  → localhost:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
-#              localhost:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026} (API)
-#   traefik  → localhost:${PUBLIRA_E2E_EDGE_PORT:-3080}
-#   browser  → localhost:${PUBLIRA_E2E_BROWSER_PORT:-3090}
+# / 8025 / 9200) so they clear other local stacks. Override the variable a
+# line below names (and set a distinct COMPOSE_PROJECT_NAME) so a second stack
+# can run from the same checkout:
+#   postgres   → localhost:${PUBLIRA_E2E_POSTGRES_PORT:-5433}
+#   redis      → localhost:${PUBLIRA_E2E_REDIS_PORT:-6380}
+#   rustfs     → localhost:${PUBLIRA_E2E_RUSTFS_PORT:-9003}
+#   mailpit    → localhost:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
+#                localhost:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026} (API)
+#   traefik    → localhost:${PUBLIRA_E2E_EDGE_PORT:-3080}
+#   browser    → localhost:${PUBLIRA_E2E_BROWSER_PORT:-3090}
+#   opensearch → localhost:${PUBLIRA_E2E_OPENSEARCH_PORT:-9201}
+#
+# opensearch is in the `search` profile, which scripts/lib.sh turns on when a
+# run selects that search backend (`task e2e:search`); every other run leaves
+# the server on the SQL backend and the engine off.
 
 name: publira-e2e
 
@@ -96,6 +101,37 @@ services:
       timeout: 3s
       retries: 20
       start_period: 2s
+
+  # The catalog search engine, for a run on PUBLIRA_SEARCH_BACKEND=opensearch.
+  # The image the root compose.yaml builds, with the analysis plugins the
+  # catalog index needs. No volume: a run starts from an empty index, which
+  # db-setup.sh fills from the seed with `publiractl search reindex`.
+  opensearch:
+    profiles: [search]
+    build:
+      context: ..
+      dockerfile: infra/docker/opensearch/Dockerfile
+    labels: *run-dir-label
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:${PUBLIRA_E2E_OPENSEARCH_PORT:-9201}:9200"
+    healthcheck:
+      # Yellow, not green: a single node has nowhere to put a replica.
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
 
   # The public edge, matching what Traefik serves in the Dev Container: an
   # episode body image is `/images/episodes/{id}` on the reader's own origin,

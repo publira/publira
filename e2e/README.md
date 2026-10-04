@@ -17,13 +17,13 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (the server's edge-facing and internal listeners; the images are on the first), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (the server's edge-facing and internal listeners; the images are on the first), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to). `task e2e:search` also needs `9201` (E2E OpenSearch).
 
 PIDs and logs default to `e2e/.run/`. When `PUBLIRA_E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `PUBLIRA_E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
 A lease lives only as long as its holder process, while a stack outlives one, so `up`, `db`, and `start-apps` read ownership off the containers as well: `compose.yaml` labels every service with the run directory that created it (`com.publira.e2e.run-dir`). A stack whose lease holder is gone therefore still refuses a run from another directory, as does a data port already published by a different compose project. `task e2e:down` stays the way to remove a stack nothing owns any more.
 
-Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_EMAIL_RENDERER_PORT`, `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT`, and `PUBLIRA_E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` (and the apps' `PNCH_REDIS_URL`, which carries the same value) and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches the server, the worker's periodic jobs, and all three apps (as `PNCH_REVALIDATE_TOKEN`), so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `PUBLIRA_TENANT_URL_SCHEME` is `http`. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-host serves the browser notification switch the member settings suite drives.
+Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_EMAIL_RENDERER_PORT`, `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT`, `PUBLIRA_E2E_EDGE_PORT`, and `PUBLIRA_E2E_OPENSEARCH_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` (and the apps' `PNCH_REDIS_URL`, which carries the same value) and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches the server, the worker's periodic jobs, and all three apps (as `PNCH_REVALIDATE_TOKEN`), so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `PUBLIRA_TENANT_URL_SCHEME` is `http`. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-host serves the browser notification switch the member settings suite drives.
 
 ## One-command run
 
@@ -47,6 +47,7 @@ This always tears down app processes and compose volumes, including on failure o
 | `bash e2e/scripts/sign-in-provider.sh <start\|start-wait\|stop>` | Operate sign-in-provider on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
+| `task e2e:search` | The full lifecycle on the OpenSearch search backend, running `tests/catalog.search.spec.ts` alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
 | `task e2e:test-lib` | Verify `PUBLIRA_E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
 | `task e2e:down` | Stop applications and remove compose resources, including volumes. |
 
@@ -69,7 +70,7 @@ e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Edge routing check (separate lifecycle, no Playwright)
 ├── browser/               # The pinned browser image the screenshot projects render in
-├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser (project: publira-e2e)
+├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser, and opensearch in the `search` profile (project: publira-e2e)
 ├── fixtures/              # test images, rendered from the vector sources in the repository's assets/
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
@@ -117,6 +118,29 @@ A spec that changes state the whole console reads gets an isolated project for t
 - `platform-configuration-status` (`platform.configuration-status.spec.ts`): the configuration overview is read from those same two rows, and the spec empties the object store and clears the Web Push subject to see an unfinished installation, then saves the store again, so it follows `platform-webpush-settings` and puts both rows `task e2e:db` saved back on teardown.
 - `admin-mfa-sign-in` (`admin.mfa-sign-in.spec.ts`): `platform_policy_config` decides whether a tenant administrator without an authenticator is held at `/mfa` for an enrollment, and the spec requires it of every tenant administrator to enroll one, so it follows `admin-age-verification`, precedes `viewer-performance`, and clears the requirement again on teardown.
 - `platform-setup` (`platform.setup.spec.ts`): `/setup` renders only while `platform_users` is empty, so the spec empties it and creates the platform's first operator through the form. Every console sign-in in the suite reads that table, so this project runs after every other one — `viewer-performance` included — and restores the development seed's platform rows on teardown.
+
+## Catalog search on OpenSearch
+
+The stack searches the catalog on PostgreSQL. `PUBLIRA_E2E_SEARCH_BACKEND` selects the backend a run puts the server, the worker, and `publiractl` on, and `scripts/lib.sh` derives everything else from it, never from an inherited `PUBLIRA_SEARCH_BACKEND`:
+
+| `PUBLIRA_E2E_SEARCH_BACKEND` | Backend | Engine |
+| --- | --- | --- |
+| `sql` (default) | `PUBLIRA_SEARCH_BACKEND=sql` | Not started |
+| `opensearch` | `PUBLIRA_SEARCH_BACKEND=opensearch`, `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:<PUBLIRA_E2E_OPENSEARCH_PORT>` | The `opensearch` service, through `COMPOSE_PROFILES=search`, on `PUBLIRA_E2E_OPENSEARCH_PORT` (default `9201`) |
+
+On `opensearch`, `task e2e:db` ends with `publiractl search reindex`, since the seed writes straight to Postgres and queues none of the events that keep the index in step; everything a spec writes through a console reaches the index through the worker. The engine is the image [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds, with no volume.
+
+`task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and runs the `catalog-search` project with `--no-deps`. That project is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL, after the screenshot projects like the other three ordinary projects: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone.
+
+To keep a stack on the engine while iterating, export the variable for every step:
+
+```bash
+export PUBLIRA_E2E_SEARCH_BACKEND=opensearch
+task e2e:prepare
+task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
+task e2e:test -- --project=catalog-search --no-deps
+task e2e:down
+```
 
 ## Readiness and failures
 
@@ -198,5 +222,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - The three screenshot projects run first, in the browser image compose builds; the rest of the suite waits on them.
 - Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, `platform-locale-switching` and then `platform-operator-management` follow the platform chain, `viewer-performance` runs after all of those so nothing competes with it for the runner, and `platform-setup` runs last of everything.
 - The required branch check is the final **Summary** job, as with all CI jobs.
+
+Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, and `tests/catalog.search.spec.ts` — and its failure artifact is `e2e-search-artifacts`.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

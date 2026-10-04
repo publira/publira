@@ -106,6 +106,14 @@ const performanceSpecs = /\.viewer-performance\./u;
 const serverLogSpecs = /\/logs\./u;
 
 /**
+ * The catalog search suite, which `task e2e:search` runs on its own with the
+ * OpenSearch backend selected. It has a project of its own so that run can
+ * name it alone; in every other run it runs beside the ordinary projects, on
+ * the SQL backend.
+ */
+const catalogSearchSpecs = /catalog\.search\./u;
+
+/**
  * The suites that record what a screen looks like. They run before every other
  * project, as its dependency, because the state they photograph is the one
  * `task e2e:db` seeded: the admin console lists the series the publishing
@@ -187,7 +195,21 @@ export default defineConfig({
         performanceSpecs,
         screenshotSpecs,
         serverLogSpecs,
+        catalogSearchSpecs,
       ],
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_HOST_BASE_URL,
+      },
+    },
+    // After the screenshots for the reason the three projects around it are:
+    // it publishes series of its own on the seed tenant, whose catalogue the
+    // screenshot projects photograph.
+    {
+      dependencies: screenshotDependencies,
+      name: "catalog-search",
+      testMatch: [catalogSearchSpecs],
+      timeout: 120_000,
       use: {
         ...desktopChrome,
         baseURL: WEB_HOST_BASE_URL,
