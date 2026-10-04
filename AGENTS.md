@@ -14,7 +14,7 @@ Code, identifiers, commit messages, and quoted technical terms stay as-is in eit
 
 ## Documentation, test labels, and GitHub Issues: English
 
-Every Markdown document this repository owns — every `README.md` and `AGENTS.md`, the skills under `skills/`, the pull request template — is written in English, and so are the labels of automated tests: the first argument of Vitest's `describe` / `it`, Playwright's `test` / `test.describe`, Go's `t.Run`, and Flutter's `test` / `group` / `testWidgets`. The only exception is the root `README.md`, which is paired with a Japanese translation at `README.ja.md`; no other directory gets a `*.ja.md`.
+Every Markdown document this repository owns — every `README.md` and `AGENTS.md`, the skills under `skills/`, the pull request template — is written in English, and so are the labels of automated tests: the first argument of Vitest's `describe` / `it`, Playwright's `test` / `test.describe`, Go's `t.Run`, and Flutter's `test` / `group` / `testWidgets`. None of them is kept in a second language: there is no `*.ja.md` or other translated copy anywhere, because a translation nothing checks drifts from its original without anyone noticing.
 
 Japanese survives only where it is quoted as code rather than written as prose: a UI string inside a code example, and the values in `locales/*.json`. Prose that names a screen element uses its English label — the UI ships `locales/en.json`, so a Japanese label is not a string an English reader can find on screen. Take the wording from `locales/en.json`, or describe the element in English when that screen has no English copy yet. Identifiers, API names, paths, and environment variable names are never translated in either direction.
 
