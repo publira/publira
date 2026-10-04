@@ -64,6 +64,10 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.storePurchaseConfirmationPerDay,
           perMinute: data.storePurchaseConfirmationPerMinute,
         },
+        waitFreeTicketUse: {
+          perDay: data.waitFreeTicketUsePerDay,
+          perMinute: data.waitFreeTicketUsePerMinute,
+        },
       },
       data.revision,
       locale

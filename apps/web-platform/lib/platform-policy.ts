@@ -41,6 +41,7 @@ export interface PlatformSecurityPolicy {
   mfaRequiredForTenantAdmin: boolean;
   passwordVerification: MinuteDay;
   storePurchaseConfirmation: MinuteDay;
+  waitFreeTicketUse: MinuteDay;
 }
 
 export interface PlatformCommunityLimits {
@@ -107,6 +108,7 @@ type RawPlatformPolicy = Pick<
   | "mfaRequiredForTenantAdmin"
   | "passwordVerification"
   | "storePurchaseConfirmation"
+  | "waitFreeTicketUse"
 >;
 type RawRetentionPeriods = Pick<
   RetentionPeriods,
@@ -149,6 +151,7 @@ export const toPlatformPolicy = (
     mfaRequiredForTenantAdmin: policy?.mfaRequiredForTenantAdmin ?? false,
     passwordVerification: toMinuteDay(policy?.passwordVerification),
     storePurchaseConfirmation: toMinuteDay(policy?.storePurchaseConfirmation),
+    waitFreeTicketUse: toMinuteDay(policy?.waitFreeTicketUse),
   },
 });
 

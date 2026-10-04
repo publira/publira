@@ -32,6 +32,7 @@ const emptyValues: PlatformSecurityPolicy = {
   mfaRequiredForTenantAdmin: false,
   passwordVerification: { perDay: 1, perMinute: 1 },
   storePurchaseConfirmation: { perDay: 1, perMinute: 1 },
+  waitFreeTicketUse: { perDay: 1, perMinute: 1 },
 };
 
 const FormSkeleton = () => (
