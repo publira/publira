@@ -20,6 +20,7 @@ import (
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
@@ -833,6 +834,9 @@ func (s *adminServer) UpdateCreator(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
 	}
+	if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.CreatorRef(current.ID)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the search index sync for the updated creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
+	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
@@ -1025,6 +1029,9 @@ func (s *adminServer) UpdateLabel(
 	err = s.queriesFor(txCtx).UpdateLabel(txCtx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+	if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.LabelRef(current.ID)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the search index sync for the updated label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
 	if err != nil {

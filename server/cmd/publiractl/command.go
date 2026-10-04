@@ -50,7 +50,7 @@ var rootGroup = commandGroup{
 	groups:   groups,
 }
 
-var groups = []commandGroup{dbGroup, jobGroup, platformGroup, policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
+var groups = []commandGroup{dbGroup, jobGroup, platformGroup, policyGroup, retentionGroup, searchGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
 
 // commandFlags is the flag set of one command, with the secrets it declared.
 type commandFlags struct {

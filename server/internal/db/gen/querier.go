@@ -316,7 +316,9 @@ type Querier interface {
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
-	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
+	// Returns the creators the series credited, whose search documents the save
+	// has to re-read along with those it credits now.
+	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) ([]uuid.UUID, error)
 	DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error)
 	DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
@@ -369,6 +371,21 @@ type Querier interface {
 	// Returns the announcement with the caller's read state. A row owned by another
 	// tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
+	// What the OpenSearch catalog index is written from: the outbox handler reads
+	// one row, and the reindex every row of a tenant. Both run in one REPEATABLE
+	// READ transaction and read GetCatalogIndexSnapshotTime first, because that
+	// instant is the version each document is written with.
+	//
+	// A row that comes back with no surfaces is not searchable, and its document
+	// is deleted rather than written; its published_at is then the epoch, which
+	// nothing reads. A creator or a label is published through its series, so it
+	// carries every surface one of its published series is on, from the earliest
+	// of their published_at. A published_at still in the future is written as it
+	// is, and the search filters on it.
+	// The start of the transaction, which precedes its snapshot: every write the
+	// snapshot misses commits after this instant, and the outbox event that write
+	// queued is read later still, under a higher version.
+	GetCatalogIndexSnapshotTime(ctx context.Context) (time.Time, error)
 	// The account a message may be assigned to: an active tenant_admin of the
 	// tenant, because the inbox is theirs alone and an account that cannot open it
 	// could never work the message it was handed.
@@ -1066,6 +1083,15 @@ type Querier interface {
 	// Every tenant that chose automatic closing, for the maintenance pass that
 	// closes their months across tenants.
 	ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error)
+	// Every creator of the tenant, or the one creator_id names, with what the
+	// series that credit it publish.
+	ListCatalogIndexCreators(ctx context.Context, arg ListCatalogIndexCreatorsParams) ([]ListCatalogIndexCreatorsRow, error)
+	// Every label of the tenant, or the one label_id names, with what the series
+	// under it publish.
+	ListCatalogIndexLabels(ctx context.Context, arg ListCatalogIndexLabelsParams) ([]ListCatalogIndexLabelsRow, error)
+	// Every series of the tenant, or the one series_id names.
+	ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error)
+	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
 	// The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
 	// reverses the returned rows to preserve the newest-first order.
 	ListContactMessagesByCreatedAtAsc(ctx context.Context, arg ListContactMessagesByCreatedAtAscParams) ([]ListContactMessagesByCreatedAtAscRow, error)

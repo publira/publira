@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -188,6 +188,29 @@ go run ./server/cmd/publiractl retention show
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+
+## search
+
+Rebuilds the OpenSearch catalog index from the database. The worker keeps the index in step with every catalog write through `catalog_index_sync` events, so this is for what those events cannot do: fill the index of a deployment moving to `PUBLIRA_SEARCH_BACKEND=opensearch`, apply an index definition that changed, or recover after the index was lost.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl search reindex
+go run ./server/cmd/publiractl search reindex --tenant comics.example.com
+```
+
+| Command | What it does |
+| --- | --- |
+| `search reindex` | Creates a new index beside the one the alias names, fills it with every tenant's published series, creators, and labels, and moves the alias onto it in one step, deleting the index it named before. Searches answer from the old index until the move. Each tenant is then written again on the new index, which picks up what changed while it was being filled |
+| `search reindex --tenant` | Rewrites one tenant's documents in the index the alias names, by public ID or domain, writing what is published and deleting the rest. It creates no index, so it cannot apply a changed definition |
+
+Either form can run while the worker drains events. Run one rebuild at a time.
+
+Environment variables:
+
+- `PUBLIRA_SEARCH_BACKEND`: has to be `opensearch`; on `sql` the command exits `1`, as there is no index to build.
+- `PUBLIRA_OPENSEARCH_URL`, `PUBLIRA_OPENSEARCH_USERNAME`, `PUBLIRA_OPENSEARCH_PASSWORD`, `PUBLIRA_OPENSEARCH_INDEX`: the values the server and the worker run with; see [Catalog search](../../README.md#catalog-search).
+- `PUBLIRA_CONTENT_STATS_DB_URL`: the `publira_content_stats` connection the catalog is read on. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## smtp
 

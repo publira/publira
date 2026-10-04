@@ -56,14 +56,35 @@ func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreat
 	return err
 }
 
-const DeleteSeriesCreatorsBySeriesID = `-- name: DeleteSeriesCreatorsBySeriesID :exec
+const DeleteSeriesCreatorsBySeriesID = `-- name: DeleteSeriesCreatorsBySeriesID :many
 DELETE FROM series_creators
 WHERE series_id = $1
+RETURNING creator_id
 `
 
-func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, DeleteSeriesCreatorsBySeriesID, seriesID)
-	return err
+// Returns the creators the series credited, whose search documents the save
+// has to re-read along with those it credits now.
+func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, DeleteSeriesCreatorsBySeriesID, seriesID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var creator_id uuid.UUID
+		if err := rows.Scan(&creator_id); err != nil {
+			return nil, err
+		}
+		items = append(items, creator_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListSeriesCreatorsBySeriesIDs = `-- name: ListSeriesCreatorsBySeriesIDs :many

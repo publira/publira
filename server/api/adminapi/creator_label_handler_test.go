@@ -504,6 +504,7 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "creator", creatorID)
 	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByIDForTenant)).
 		WithArgs(tenantID, creatorID).
@@ -1206,6 +1207,7 @@ func TestUpdateLabelSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "label", labelID)
 	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
 		WithArgs(tenantID, labelID).
@@ -1343,6 +1345,7 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "label", labelID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
@@ -1444,6 +1447,7 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "creator", creatorID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByIDForTenant)).

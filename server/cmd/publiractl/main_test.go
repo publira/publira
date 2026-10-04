@@ -123,7 +123,7 @@ func TestRootUsageListsEveryGroup(t *testing.T) {
 	if !strings.HasPrefix(out, "\nUsage: publiractl <command>\n\nCommands:\n") {
 		t.Fatalf("usage text = %q, want the root usage line", out)
 	}
-	for _, name := range []string{"setup", "db", "job", "platform", "policy", "retention", "smtp", "storage", "tenant", "webpush"} {
+	for _, name := range []string{"setup", "db", "job", "platform", "policy", "retention", "search", "smtp", "storage", "tenant", "webpush"} {
 		if !strings.Contains(out, "\n  "+name+" ") {
 			t.Fatalf("usage text is missing %q", name)
 		}

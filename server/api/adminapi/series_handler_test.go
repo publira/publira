@@ -552,6 +552,8 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
+	expectCatalogIndexSync(mock, tenantID, "label", labelID)
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
@@ -616,6 +618,7 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
@@ -721,10 +724,11 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+		WillReturnRows(sqlmock.NewRows([]string{"creator_id"}))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
@@ -789,10 +793,11 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+		WillReturnRows(sqlmock.NewRows([]string{"creator_id"}))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
@@ -951,12 +956,14 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	expectCatalogIndexSync(mock, tenantID, "creator", creatorID1, creatorID2)
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
@@ -1028,9 +1035,13 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
+	// The save drops one creator and keeps the other: both credited ones and
+	// the dropped one are re-read, each once.
+	droppedCreatorID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
-		WillReturnResult(sqlmock.NewResult(0, 2))
+		WillReturnRows(sqlmock.NewRows([]string{"creator_id"}).AddRow(creatorID1).AddRow(droppedCreatorID))
+	expectCatalogIndexSync(mock, tenantID, "creator", creatorID1, droppedCreatorID, creatorID2)
 
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
@@ -1039,6 +1050,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
+	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	mock.ExpectCommit()
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
