@@ -158,7 +158,9 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	// Minimum role: tenant_auditor.
 	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
 }
 
@@ -533,7 +535,9 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	// Minimum role: tenant_auditor.
 	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
 }
 

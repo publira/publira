@@ -2479,6 +2479,8 @@ export const AdminSeriesService: GenService<{
     output: typeof DeleteEpisodeFreeWindowResponseSchema;
   },
   /**
+   * Minimum role: tenant_auditor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings
    */
   getSeriesWaitFreeSettings: {
@@ -2487,6 +2489,8 @@ export const AdminSeriesService: GenService<{
     output: typeof GetSeriesWaitFreeSettingsResponseSchema;
   },
   /**
+   * Minimum role: tenant_editor.
+   *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings
    */
   updateSeriesWaitFreeSettings: {

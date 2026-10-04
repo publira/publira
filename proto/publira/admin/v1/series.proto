@@ -758,6 +758,8 @@ service AdminSeriesService {
   rpc ListEpisodeFreeWindows(ListEpisodeFreeWindowsRequest) returns (ListEpisodeFreeWindowsResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
+  // Minimum role: tenant_auditor.
   rpc GetSeriesWaitFreeSettings(GetSeriesWaitFreeSettingsRequest) returns (GetSeriesWaitFreeSettingsResponse) {}
+  // Minimum role: tenant_editor.
   rpc UpdateSeriesWaitFreeSettings(UpdateSeriesWaitFreeSettingsRequest) returns (UpdateSeriesWaitFreeSettingsResponse) {}
 }

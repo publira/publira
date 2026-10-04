@@ -12,7 +12,6 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // The column defaults of series_wait_free_settings, which is what a series
@@ -71,6 +70,9 @@ func (s *adminServer) GetSeriesWaitFreeSettings(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetSeriesWaitFreeSettingsRequest],
 ) (*connect.Response[publiraadminv1.GetSeriesWaitFreeSettingsResponse], error) {
+	if _, err := s.requireTenantAuditor(ctx); err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -103,6 +105,10 @@ func (s *adminServer) UpdateSeriesWaitFreeSettings(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.UpdateSeriesWaitFreeSettingsRequest],
 ) (*connect.Response[publiraadminv1.UpdateSeriesWaitFreeSettingsResponse], error) {
+	sessionCtx, err := s.requireTenantEditor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -144,18 +150,16 @@ func (s *adminServer) UpdateSeriesWaitFreeSettings(
 	}
 	s.reval.Send(ctx, owed)
 
-	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
-			TenantID:    tenant.ID,
-			ActorUserID: sessionCtx.User.ID,
-			ActorRole:   sessionCtx.Role,
-			Action:      "series_wait_free_settings_updated",
-			TargetType:  "series",
-			TargetID:    series.PublicID,
-			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
-		})
-	}
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "series_wait_free_settings_updated",
+		TargetType:  "series",
+		TargetID:    series.PublicID,
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesWaitFreeSettingsResponse{
 		Settings: &publiraadminv1.SeriesWaitFreeSettings{
