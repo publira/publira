@@ -16,6 +16,7 @@ import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
+import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/config.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
@@ -1961,6 +1962,105 @@ void main() {
       });
     });
 
+    testApp('a tenant with no chart recommends a guest its order instead', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-recommended', () async {
+        server.recommendedSeries = ConnectFixtureServer.populatedSeries();
+        await pumpApp(tester);
+        final card = find.byKey(
+          const ValueKey(
+            'catalog-recommended-${ConnectFixtureServer.seedSeriesId}',
+          ),
+        );
+        await pumpUntilFound(tester, card);
+
+        // The tenant has no weekly chart, so the shelf stands under the
+        // heading of what it shows rather than the chart's.
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('catalog-ranking')),
+            matching: find.text('Recommended'),
+          ),
+          findsOne,
+        );
+        expect(find.text('Top 10 this week'), findsNothing);
+        final request = server.requestsTo('ListRecommendedSeries').single;
+        expect(request.body['surface'], appClientSurface);
+        expect(server.requestsTo('ListMyRecommendedSeries'), isEmpty);
+
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('catalog-recommended-all')),
+        );
+        final tile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        await pumpUntilRouteSettled(tester, tile);
+        expect(
+          find.byKey(const ValueKey('series-tile-series-kitchen')),
+          findsOne,
+        );
+
+        await tapReachable(tester, tile);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+      });
+    });
+
+    testApp('the library recommends a member their own order', (tester) async {
+      await withFailureScreenshot(
+        tester,
+        'fixture-library-recommended',
+        () async {
+          server
+            ..recommendedSeries = ConnectFixtureServer.populatedSeries()
+            ..myRecommendedSeries = ConnectFixtureServer.populatedSeries()
+                .reversed
+                .toList();
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.library,
+            session: memberSession(),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('library-tab-recommended')),
+          );
+          // The tab bar scrolls, and a narrow window leaves the last tab partly
+          // past its edge, so it is tapped where it shows: its leading edge.
+          final tab = find.byKey(const ValueKey('library-tab-recommended'));
+          await tester.tapAt(
+            Offset(tester.getTopLeft(tab).dx + 16, tester.getCenter(tab).dy),
+          );
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('library-recommended-results')),
+          );
+
+          // The member's own order puts the kitchen first, where the tenant's
+          // puts the seed series.
+          final tiles = find.descendant(
+            of: find.byKey(const ValueKey('library-recommended-results')),
+            matching: find.byType(SeriesTile),
+          );
+          await pumpUntilFound(tester, tiles);
+          expect(
+            tester.widget<SeriesTile>(tiles.first).series.id,
+            'series-kitchen',
+          );
+          final request = server.requestsTo('ListMyRecommendedSeries').single;
+          expect(
+            request.headers[HttpHeaders.authorizationHeader],
+            'Bearer ${ConnectFixtureServer.memberAccessToken}',
+          );
+          expect(request.body['surface'], appClientSurface);
+        },
+      );
+    });
+
     testApp('a guest is offered a series from its first episode', (
       tester,
     ) async {
@@ -3372,6 +3472,38 @@ void main() {
 
         await tapReachable(tester, row);
         await pumpUntilPagesDrawn(tester);
+      });
+    });
+
+    testApp('the seed recommendations reach the library on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-library-recommended', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.library);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('library-tab-recommended')),
+        );
+        // The tab bar scrolls, and a narrow window leaves the last tab partly
+        // past its edge, so it is tapped where it shows: its leading edge.
+        final tab = find.byKey(const ValueKey('library-tab-recommended'));
+        await tester.tapAt(
+          Offset(tester.getTopLeft(tab).dx + 16, tester.getCenter(tab).dy),
+        );
+        // The recommendation order holds every published series, so the seed
+        // tenant's is never empty.
+        await pumpUntilFound(
+          tester,
+          find.descendant(
+            of: find.byKey(const ValueKey('library-recommended-results')),
+            matching: find.byType(SeriesTile),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.byKey(const ValueKey('library-recommended-error')),
+          findsNothing,
+        );
       });
     });
 
