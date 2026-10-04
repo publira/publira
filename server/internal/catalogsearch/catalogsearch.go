@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/publishedseries"
 )
 
 // ErrInvalidToken is returned for a cursor the backend did not issue.
@@ -20,6 +21,16 @@ var ErrInvalidToken = errors.New("catalogsearch: token is invalid")
 // ErrTokenForAnotherQuery is returned for a cursor issued for a different
 // query: its boundary points into a page that does not exist under this one.
 var ErrTokenForAnotherQuery = errors.New("catalogsearch: token was issued for another query")
+
+// ErrTokenForAnotherNarrowing is returned for a series cursor issued under
+// another order or filter: its boundary sits somewhere else in the list this
+// request asks for, the same way a list's token does.
+var ErrTokenForAnotherNarrowing = errors.New("catalogsearch: token was issued for another order or filter")
+
+// ErrNarrowingUnsupported is returned by a backend that cannot narrow or sort a
+// series search for a request that asks it to. Ignoring the request instead
+// would answer with hits the reader filtered out.
+var ErrNarrowingUnsupported = errors.New("catalogsearch: this backend cannot narrow or sort a series search")
 
 // Request is one page of a search.
 type Request struct {
@@ -36,6 +47,24 @@ type Request struct {
 	Cursor pagination.Cursor
 }
 
+// SeriesRequest is one page of a series search, narrowed and sorted the way the
+// published series list is.
+type SeriesRequest struct {
+	Request
+	// Order sorts the hits as the list sorts the catalogue. The zero value is
+	// the backend's own order: by relevance where it ranks its hits, by title
+	// where it does not.
+	Order publishedseries.Order
+	// Filter keeps only the hits the list would keep under it.
+	Filter publishedseries.Filter
+}
+
+// Narrowed reports whether the request asks for anything beyond the backend's
+// own order of every hit.
+func (r SeriesRequest) Narrowed() bool {
+	return r.Order != (publishedseries.Order{}) || r.Filter != (publishedseries.Filter{})
+}
+
 // Page is the hits of one page in display order, with the pagination.Encode
 // tokens of the pages on either side. An empty token means there is none.
 type Page struct {
@@ -46,7 +75,7 @@ type Page struct {
 
 // Backend answers the three catalog searches for a tenant.
 type Backend interface {
-	SearchSeries(ctx context.Context, req Request) (Page, error)
+	SearchSeries(ctx context.Context, req SeriesRequest) (Page, error)
 	SearchCreators(ctx context.Context, req Request) (Page, error)
 	SearchLabels(ctx context.Context, req Request) (Page, error)
 }

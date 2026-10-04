@@ -204,10 +204,12 @@ type CatalogServiceClient interface {
 	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
 	// The tags at least one published series carries, the most-carried first.
 	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
-	// Keyword search over published series titles and synopses. An empty query
-	// is invalid_argument. A token carries the Unicode-lowercased query it was
+	// Keyword search over published series titles and synopses, narrowed and
+	// sorted by the fields ListPublishedSeries takes. An empty query is
+	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
-	// invalid_argument.
+	// invalid_argument. A search backend that cannot narrow or sort its hits
+	// answers a request that asks it to with unimplemented.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
@@ -548,10 +550,12 @@ type CatalogServiceHandler interface {
 	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
 	// The tags at least one published series carries, the most-carried first.
 	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
-	// Keyword search over published series titles and synopses. An empty query
-	// is invalid_argument. A token carries the Unicode-lowercased query it was
+	// Keyword search over published series titles and synopses, narrowed and
+	// sorted by the fields ListPublishedSeries takes. An empty query is
+	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
-	// invalid_argument.
+	// invalid_argument. A search backend that cannot narrow or sort its hits
+	// answers a request that asks it to with unimplemented.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule

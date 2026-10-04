@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/publishedseries"
 )
 
 func publishedLabelFromRow(row dbmodels.GetPublishedLabelByPublicIDRow) *publirav1.PublishedLabel {
@@ -102,7 +103,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order, seriesFilters{})
+		keys, err = decodeSeriesCursorKeys(cursor, order, publishedseries.Filter{})
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -127,15 +128,15 @@ func (s *apiServer) publishedLabelSeriesPage(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			previousToken = encodeSeriesCursor(pagination.Backward, order, seriesFilters{}, seriesBoundary{row: rows[0]})
+			previousToken = encodeSeriesCursor(pagination.Backward, order, publishedseries.Filter{}, seriesBoundary{row: rows[0]})
 		}
 		if hasNext {
-			nextToken = encodeSeriesCursor(pagination.Forward, order, seriesFilters{}, seriesBoundary{row: rows[len(rows)-1]})
+			nextToken = encodeSeriesCursor(pagination.Forward, order, publishedseries.Filter{}, seriesBoundary{row: rows[len(rows)-1]})
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, seriesFilters{}, keys)
+		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, publishedseries.Filter{}, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, seriesFilters{}, keys)
+		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, publishedseries.Filter{}, keys)
 	}
 	bindSurfaceTokens(surface, &previousToken, &nextToken)
 	return items, previousToken, nextToken, nil

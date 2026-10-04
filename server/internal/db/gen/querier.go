@@ -1009,18 +1009,19 @@ type Querier interface {
 	// caller that recomputed it would be reading a second NOW(), and a token built
 	// on a value this query never sorted by points at the wrong page.
 	ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, arg ListActiveSeriesIDsByLatestEpisodeAtDescParams) ([]ListActiveSeriesIDsByLatestEpisodeAtDescRow, error)
-	ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error)
+	ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]ListActiveSeriesIDsByPublishedAtAscRow, error)
 	// The published series list, in every shape the storefront reads it: the whole
-	// catalogue, one creator's, one label's, and a keyword search. They are apart
-	// from series.sql because they are one aggregate of their own — six stage-one
-	// scans and the display query they all feed — and keeping them next to the
-	// writes and the admin lists put both past the size at which a file stops
-	// reading as a unit.
+	// catalogue, one creator's, one label's, and the SQL search backend's keyword
+	// search. They are apart from series.sql because they are one aggregate of
+	// their own — six stage-one scans and the display query they all feed — and
+	// keeping them next to the writes and the admin lists put both past the size
+	// at which a file stops reading as a unit.
 	//
 	// The cursor pagination of the published series list runs in two stages.
 	//
-	// Stage one is the six keyset scans below, which settle nothing but the ids of
-	// one page. The sort key is (published_at, id), (title, id), or
+	// Stage one is the six keyset scans below, which settle the ids of one page
+	// and hand each back with the value it was sorted by, which a token is built
+	// from. The sort key is (published_at, id), (title, id), or
 	// (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 	// the sorted value ties. Every sort order gets its own query with a fixed
 	// ORDER BY, because branching with CASE stops the rows from being read in
@@ -1040,6 +1041,15 @@ type Querier interface {
 	// idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 	// when it keeps a handful.
 	//
+	// The keyword search is the same list narrowed once more, by query_pattern,
+	// which is NULL for a list. A search therefore sorts and filters exactly as a
+	// list does, and both read the same scans. The caller builds query_pattern as
+	// '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
+	// ride a btree, so the scan reads the tenant's published series while the
+	// LIMIT still bites after narrowing by tenant and is_published. Once the row
+	// count makes the latency visible, add a pg_trgm GIN index on title and
+	// series_listings.synopsis.
+	//
 	// Every query also keeps only what the calling surface may show, through
 	// series_surfaces for the series and episode_surfaces for the episodes counted
 	// into them. The token names the surface it was built on as well, for the
@@ -1051,9 +1061,9 @@ type Querier interface {
 	// free_episode_count, so a series the filter kept never reports none.
 	//
 	// cursor rules: proto/README.md.
-	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
-	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
-	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
+	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]ListActiveSeriesIDsByPublishedAtDescRow, error)
+	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]ListActiveSeriesIDsByTitleAscRow, error)
+	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]ListActiveSeriesIDsByTitleDescRow, error)
 	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]Announcement, error)
 	// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_announcements_tenant_created_at can be
@@ -1652,20 +1662,6 @@ type Querier interface {
 	// reader navigates to them from. Each page is listed in the translation
 	// published_page_translation_for picks for the reader's locale.
 	ListPublishedPagesForTenant(ctx context.Context, arg ListPublishedPagesForTenantParams) ([]ListPublishedPagesForTenantRow, error)
-	// The SQL catalog search backend's series search. Takes the published series
-	// whose title or synopsis ILIKE-matches query_pattern, by a keyset on title +
-	// id, and returns the title with each id because the next token is built from
-	// it.
-	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
-	// with ESCAPE '!'.
-	// Index plan: idx_series_tenant_title carries the keyset half. ILIKE '%q%'
-	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
-	// bites after narrowing by tenant and is_published. Once the row count makes
-	// the latency visible, add a pg_trgm GIN index on title and
-	// series_listings.synopsis.
-	ListPublishedSeriesBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesBySearchTitleAscParams) ([]ListPublishedSeriesBySearchTitleAscRow, error)
-	// The backward direction of ListPublishedSeriesBySearchTitleAsc.
-	ListPublishedSeriesBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesBySearchTitleDescParams) ([]ListPublishedSeriesBySearchTitleDescRow, error)
 	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
 	// The related series of a creator detail page. A keyset scan on title + id.
 	// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc

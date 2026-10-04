@@ -82,13 +82,13 @@ func publishedSeries(tenantID uuid.UUID, title, reading string) Document {
 
 func searchSeries(t *testing.T, backend *Backend, tenantID uuid.UUID, query string, limit int32, cursor pagination.Cursor) catalogsearch.Page {
 	t.Helper()
-	page, err := backend.SearchSeries(context.Background(), catalogsearch.Request{
+	page, err := backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{Request: catalogsearch.Request{
 		TenantID: tenantID,
 		Surface:  testSurface,
 		Query:    query,
 		Limit:    limit,
 		Cursor:   cursor,
-	})
+	}})
 	if err != nil {
 		t.Fatalf("SearchSeries(%q): %v", query, err)
 	}
@@ -257,9 +257,9 @@ func TestPagesThroughHitsInBothDirections(t *testing.T) {
 		t.Fatalf("page back = %+v, want only a next token", back)
 	}
 
-	if _, err := backend.SearchSeries(context.Background(), catalogsearch.Request{
+	if _, err := backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{Request: catalogsearch.Request{
 		TenantID: tenantID, Surface: testSurface, Query: "garden", Limit: 2, Cursor: decodeToken(t, first.NextToken),
-	}); !errors.Is(err, catalogsearch.ErrTokenForAnotherQuery) {
+	}}); !errors.Is(err, catalogsearch.ErrTokenForAnotherQuery) {
 		t.Fatalf("search with another query's token: error = %v, want %v", err, catalogsearch.ErrTokenForAnotherQuery)
 	}
 }
