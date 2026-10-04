@@ -22,6 +22,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
+    this.seriesProgress = const {},
     this.episodeReads = const [],
     this.followUpdates = const [],
     this.readingPositions = const {},
@@ -58,6 +59,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.readingPositionError,
     this.markReadError,
     this.recentSeriesError,
+    this.seriesProgressError,
     this.episodeReadsError,
     this.episodeReadsMoreError,
     this.followUpdatesError,
@@ -177,6 +179,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What the continue-reading row is answered with.
   List<RecentSeriesItem> recentSeries;
 
+  /// Where the reader stands in each series, keyed by the series' internal
+  /// id. A series absent is one the reader has opened nothing of.
+  Map<String, SeriesProgress> seriesProgress;
+
   /// What the reading history is answered with, most recently finished first.
   List<EpisodeReadItem> episodeReads;
 
@@ -213,6 +219,7 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? readingPositionError;
   CatalogFailure? markReadError;
   CatalogFailure? recentSeriesError;
+  CatalogFailure? seriesProgressError;
   CatalogFailure? episodeReadsError;
 
   /// What a read of a history page under the first one fails with.
@@ -263,6 +270,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// order, with their tokens.
   final List<({String id, String token})> detailRequests =
       <({String id, String token})>[];
+
+  /// Internal ids [getSeriesProgress] was called with, in order.
+  final List<String> seriesProgressRequests = <String>[];
 
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
@@ -635,6 +645,7 @@ class FakeCatalogRepository implements CatalogRepository {
       ...readingPositions,
       episodeKey(seriesPublicId, episodePublicId): pageIndex,
     };
+    _readingProgressWrites.add(null);
   }
 
   @override
@@ -647,6 +658,7 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
+    _readingProgressWrites.add(null);
   }
 
   @override
@@ -685,6 +697,21 @@ class FakeCatalogRepository implements CatalogRepository {
     );
     reactions = {...reactions, episodeInternalId: next};
     return next;
+  }
+
+  final _readingProgressWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
+
+  @override
+  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) async {
+    seriesProgressRequests.add(seriesInternalId);
+    final error = seriesProgressError;
+    if (error != null) {
+      throw error;
+    }
+    return seriesProgress[seriesInternalId] ?? SeriesProgress.none;
   }
 
   @override

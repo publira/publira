@@ -240,6 +240,30 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// one.
   var _acceptsPayments = false;
 
+  /// Where this reader stands in the series. Nothing for a guest, until the
+  /// API has answered, and for good when it cannot, which leaves the reading
+  /// action on the first episode: what a failure costs is the reader's place,
+  /// and "start here" is a better answer than a notice where the action was.
+  var _progress = SeriesProgress.none;
+
+  /// How many reads of [_progress] this screen has started. Only the latest
+  /// one's answer is shown, since an earlier one may answer after it with a
+  /// place the reader has moved on from.
+  var _progressReads = 0;
+
+  /// How many episodes this screen has opened that the reader has not come
+  /// back from yet. Their writes are not read back while they are open: the
+  /// return asks once for all of them, rather than one read per page turned.
+  var _episodesOpen = 0;
+
+  CatalogRepository? _catalog;
+
+  /// The viewer sends what the reader read without waiting for it, the last
+  /// page as it goes away after the return, so a write that lands once the
+  /// reader is back is read back then rather than lost to the read the return
+  /// made before it.
+  StreamSubscription<void>? _progressWrites;
+
   OfflineLibrary? _library;
 
   /// Saved episodes change under this screen too — a save it started that
@@ -250,6 +274,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   @override
   void dispose() {
     unawaited(_libraryChanges?.cancel());
+    unawaited(_progressWrites?.cancel());
     super.dispose();
   }
 
@@ -259,6 +284,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
+    final catalog = CatalogScope.of(context);
     final library = OfflineScope.maybeOf(context);
     // A library swapped under the screen is listened to and read again the
     // way a new reader is, so the marks never come from the library before it.
@@ -270,14 +296,31 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         (_) => unawaited(_loadSaved(library, _readerId)),
       );
     }
+    final changedCatalog = !identical(catalog, _catalog);
+    if (changedCatalog) {
+      unawaited(_progressWrites?.cancel());
+      _progressWrites = catalog.readingProgressWrites.listen((_) {
+        if (_episodesOpen == 0) {
+          unawaited(_loadProgress(catalog, _readerId));
+        }
+      });
+    }
+    _catalog = catalog;
     if (_started && readerId == _readerId) {
       if (changedLibrary && library != null) {
         unawaited(_loadSaved(library, readerId));
+      }
+      if (changedCatalog) {
+        unawaited(_loadProgress(catalog, readerId));
       }
       return;
     }
     _started = true;
     _readerId = readerId;
+    // The last reader's place is not this one's, whether or not the API
+    // answers for the new one.
+    _progress = SeriesProgress.none;
+    unawaited(_loadProgress(catalog, readerId));
     final purchase = PurchaseScope.maybeOf(context)?.repository;
     if (purchase != null) {
       unawaited(_loadPurchase(purchase, readerId));
@@ -309,6 +352,47 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       _access = access;
       _acceptsPayments = acceptsPayments;
     });
+  }
+
+  /// Where [readerId] stands in the series. A guest has no place to keep, so
+  /// nothing is asked for one.
+  Future<void> _loadProgress(CatalogRepository catalog, String readerId) async {
+    final seriesId = widget.detail.series.internalId;
+    if (readerId.isEmpty || seriesId.isEmpty) {
+      return;
+    }
+    final read = ++_progressReads;
+    final SeriesProgress progress;
+    try {
+      progress = await catalog.getSeriesProgress(seriesId);
+    } on CatalogFailure {
+      return;
+    }
+    if (!mounted ||
+        read != _progressReads ||
+        readerId != _readerId ||
+        !identical(catalog, _catalog)) {
+      return;
+    }
+    setState(() {
+      _progress = progress;
+    });
+  }
+
+  /// Opens [location] in the viewer, and asks where the reader stands again
+  /// once they come back: the viewer is where that moves.
+  Future<void> _openEpisode(String location) async {
+    _episodesOpen++;
+    try {
+      await context.pushInTab<void>(location);
+    } finally {
+      _episodesOpen--;
+    }
+    final catalog = _catalog;
+    if (!mounted || catalog == null) {
+      return;
+    }
+    await _loadProgress(catalog, _readerId);
   }
 
   /// Saves [episode] with every page, and tells the reader how that ended.
@@ -378,6 +462,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     // control nor the author rows it would sit in are put on the screen.
     final follows = FollowScope.maybeOf(context) != null;
     final downloader = OfflineScope.downloaderOf(context);
+    final offer = _progress.offerIn(widget.detail.episodes);
 
     return ListView(
       key: const ValueKey('series-detail-body'),
@@ -510,6 +595,31 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ],
           ),
         ],
+        // The way into the work: the episode this reader stopped in or is due
+        // next, and the first one for a guest and for a reader who has read
+        // nothing yet. It takes the tenant's secondary colour, as the
+        // storefront's does, so it is not one more button like the follow
+        // control under it.
+        if (offer != null) ...[
+          const SizedBox(height: 16),
+          FilledButton(
+            key: const ValueKey('series-reading-action'),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.secondary,
+              foregroundColor: theme.colorScheme.onSecondary,
+            ),
+            onPressed: () => unawaited(
+              _openEpisode(
+                AppRoutes.episodeViewerPath(series.id, offer.episode.id),
+              ),
+            ),
+            child: AutospacedText(
+              offer.isContinuation
+                  ? messages.seriesContinueReading
+                  : messages.seriesReadFromFirst,
+            ),
+          ),
+        ],
         if (follows) ...[
           const SizedBox(height: 16),
           FollowControl(
@@ -560,7 +670,15 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ListTile(
               key: ValueKey('episode-tile-${episode.id}'),
               contentPadding: EdgeInsets.zero,
+              // A finished row steps back, so the episodes still ahead are the
+              // ones that stand out.
+              textColor: _progress.finishedEpisodeIds.contains(episode.id)
+                  ? theme.colorScheme.onSurfaceVariant
+                  : null,
               title: AutospacedText(episode.title),
+              subtitle: _progress.finishedEpisodeIds.contains(episode.id)
+                  ? _FinishedMark(episodeId: episode.id)
+                  : null,
               trailing: _EpisodeTrailing(
                 price: episode.price,
                 soldOnWeb:
@@ -591,24 +709,28 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                           series.id,
                           episode.id,
                         ),
-                        onAlreadyPurchased: () => context.pushInTab(
-                          AppRoutes.episodeViewerPath(series.id, episode.id),
+                        onAlreadyPurchased: () => unawaited(
+                          _openEpisode(
+                            AppRoutes.episodeViewerPath(series.id, episode.id),
+                          ),
                         ),
-                        onStorePurchase: () => context.pushInTab(
-                          AppRoutes.episodeViewerPath(
-                            series.id,
-                            episode.id,
-                            checkout: CheckoutOutcome.success,
+                        onStorePurchase: () => unawaited(
+                          _openEpisode(
+                            AppRoutes.episodeViewerPath(
+                              series.id,
+                              episode.id,
+                              checkout: CheckoutOutcome.success,
+                            ),
                           ),
                         ),
                       )
                     : null,
               ),
-              onTap: () {
-                context.pushInTab(
+              onTap: () => unawaited(
+                _openEpisode(
                   AppRoutes.episodeViewerPath(series.id, episode.id),
-                );
-              },
+                ),
+              ),
             ),
       ],
     );
@@ -643,6 +765,27 @@ class _SeriesLabel extends StatelessWidget {
       onPressed: () =>
           context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
       child: AutospacedText(series.labelName),
+    );
+  }
+}
+
+/// The mark on an episode row this reader has finished, in words as well as
+/// ink, so a screen reader says it too.
+class _FinishedMark extends StatelessWidget {
+  const _FinishedMark({required this.episodeId});
+
+  final String episodeId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: ValueKey('episode-finished-$episodeId'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.check_circle_outline, size: 16),
+        const SizedBox(width: 4),
+        AutospacedText(AppMessages.of(context).seriesEpisodeFinished),
+      ],
     );
   }
 }

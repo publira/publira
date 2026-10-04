@@ -1357,11 +1357,17 @@ abstract class AppMessages {
   /// `mobile.series.age_rating_r18`
   String get seriesAgeRatingR18;
 
+  /// `mobile.series.continue_reading`
+  String get seriesContinueReading;
+
   /// `mobile.series.creators_heading`
   String get seriesCreatorsHeading;
 
   /// `mobile.series.episode_count`
   String seriesEpisodeCount({required String count});
+
+  /// `mobile.series.episode_finished`
+  String get seriesEpisodeFinished;
 
   /// `mobile.series.episodes_empty`
   String get seriesEpisodesEmpty;
@@ -1383,6 +1389,9 @@ abstract class AppMessages {
 
   /// `mobile.series.rating_single`
   String seriesRatingSingle({required String average, required String count});
+
+  /// `mobile.series.read_from_first`
+  String get seriesReadFromFirst;
 
   /// `mobile.series.save_offline`
   String get seriesSaveOffline;
@@ -3817,6 +3826,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get seriesContinueReading {
+    return '続きを読む';
+  }
+
+  @override
   String get seriesCreatorsHeading {
     return '著者';
   }
@@ -3824,6 +3838,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String seriesEpisodeCount({required String count}) {
     return '$count話';
+  }
+
+  @override
+  String get seriesEpisodeFinished {
+    return '読了';
   }
 
   @override
@@ -3859,6 +3878,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String seriesRatingSingle({required String average, required String count}) {
     return '評価: $average・$count人';
+  }
+
+  @override
+  String get seriesReadFromFirst {
+    return '第1話から読む';
   }
 
   @override
@@ -6500,6 +6524,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesContinueReading {
+    return 'Continue reading';
+  }
+
+  @override
   String get seriesCreatorsHeading {
     return 'Authors';
   }
@@ -6507,6 +6536,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String seriesEpisodeCount({required String count}) {
     return '$count episodes';
+  }
+
+  @override
+  String get seriesEpisodeFinished {
+    return 'Finished';
   }
 
   @override
@@ -6542,6 +6576,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String seriesRatingSingle({required String average, required String count}) {
     return 'Rating: $average · $count reader';
+  }
+
+  @override
+  String get seriesReadFromFirst {
+    return 'Read from episode 1';
   }
 
   @override
@@ -9183,6 +9222,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get seriesContinueReading {
+    return '이어 읽기';
+  }
+
+  @override
   String get seriesCreatorsHeading {
     return '작가';
   }
@@ -9190,6 +9234,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String seriesEpisodeCount({required String count}) {
     return '$count화';
+  }
+
+  @override
+  String get seriesEpisodeFinished {
+    return '완독';
   }
 
   @override
@@ -9225,6 +9274,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String seriesRatingSingle({required String average, required String count}) {
     return '평점: $average · $count명';
+  }
+
+  @override
+  String get seriesReadFromFirst {
+    return '1화부터 읽기';
   }
 
   @override
@@ -11866,6 +11920,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesContinueReading {
+    return '继续阅读';
+  }
+
+  @override
   String get seriesCreatorsHeading {
     return '作者';
   }
@@ -11873,6 +11932,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String seriesEpisodeCount({required String count}) {
     return '$count章';
+  }
+
+  @override
+  String get seriesEpisodeFinished {
+    return '已读完';
   }
 
   @override
@@ -11908,6 +11972,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String seriesRatingSingle({required String average, required String count}) {
     return '评分：$average · $count位读者';
+  }
+
+  @override
+  String get seriesReadFromFirst {
+    return '从第1章开始阅读';
   }
 
   @override
@@ -14549,6 +14618,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get seriesContinueReading {
+    return '繼續閱讀';
+  }
+
+  @override
   String get seriesCreatorsHeading {
     return '作者';
   }
@@ -14556,6 +14630,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String seriesEpisodeCount({required String count}) {
     return '$count章';
+  }
+
+  @override
+  String get seriesEpisodeFinished {
+    return '已讀完';
   }
 
   @override
@@ -14591,6 +14670,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String seriesRatingSingle({required String average, required String count}) {
     return '評分：$average · $count位讀者';
+  }
+
+  @override
+  String get seriesReadFromFirst {
+    return '從第1章開始閱讀';
   }
 
   @override

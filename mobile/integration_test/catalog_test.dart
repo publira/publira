@@ -1852,6 +1852,139 @@ void main() {
       });
     });
 
+    testApp('a guest is offered a series from its first episode', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-series-start', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        final action = find.byKey(const ValueKey('series-reading-action'));
+        await pumpUntilRouteSettled(tester, action);
+
+        expect(
+          find.descendant(
+            of: action,
+            matching: find.text('Read from episode 1'),
+          ),
+          findsOne,
+        );
+        // A guest keeps no place in a series, so nothing is asked for one.
+        expect(server.requestsTo('GetMySeriesProgress'), isEmpty);
+
+        await tapReachable(tester, action);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        expect(find.text(ConnectFixtureServer.seedEpisodeTitle), findsWidgets);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a member resumes a series on the episode and page they left', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-series-resume', () async {
+        // Where the member stopped on the website, which the app has never
+        // seen until the series screen asks.
+        server
+          ..readingPositions = {ConnectFixtureServer.seedEpisodeId: 1}
+          ..seriesProgress = {
+            ConnectFixtureServer.seedSeriesId: {
+              'episode': {
+                'publicId': ConnectFixtureServer.seedEpisodeId,
+                'title': ConnectFixtureServer.seedEpisodeTitle,
+                'orderIndex': 1,
+              },
+              'position': {
+                'episodePublicId': ConnectFixtureServer.seedEpisodeId,
+                'pageIndex': 1,
+              },
+            },
+          };
+        await pumpApp(
+          tester,
+          session: memberSession(),
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        final action = find.byKey(const ValueKey('series-reading-action'));
+        final resume = find.descendant(
+          of: action,
+          matching: find.text('Continue reading'),
+        );
+        await pumpUntilRouteSettled(tester, resume);
+
+        await tapReachable(tester, action);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('episode-page-view')),
+        );
+        expect(
+          find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
+          findsOneWidget,
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('the episodes a member finished are marked on their series', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-series-finished', () async {
+        server
+          ..episodeReads[ConnectFixtureServer.seedEpisodeId] =
+              '2026-09-01T00:00:00Z'
+          ..seriesProgress = {
+            ConnectFixtureServer.seedSeriesId: {
+              'episode': {
+                'publicId': ConnectFixtureServer.seedEpisodeId,
+                'title': ConnectFixtureServer.seedEpisodeTitle,
+                'orderIndex': 1,
+              },
+              'isFinished': true,
+            },
+          };
+        await pumpApp(
+          tester,
+          session: memberSession(),
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        final finished = find.byKey(
+          const ValueKey(
+            'episode-finished-${ConnectFixtureServer.seedEpisodeId}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-reading-action')),
+        );
+        await scrollSeriesTo(tester, find.text('¥500'));
+        await pumpUntilFound(tester, finished);
+
+        // The episode after the finished one is the one still ahead.
+        expect(
+          find.byKey(
+            const ValueKey(
+              'episode-finished-${ConnectFixtureServer.paidEpisodeId}',
+            ),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: finished, matching: find.text('Finished')),
+          findsOne,
+        );
+      });
+    });
+
     testApp('a member drags the progress slider to a page and reopens the '
         'episode there', (tester) async {
       await withFailureScreenshot(tester, 'fixture-progress-slider', () async {
@@ -3060,6 +3193,57 @@ void main() {
 
         await tapReachable(tester, row);
         await pumpUntilPagesDrawn(tester);
+      });
+    });
+
+    testApp('the series an episode the seed member finished goes on from it', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-series-progress', () async {
+        final member = await signInSeedMember();
+        await finishSeedEpisode(tester, member.session);
+        await pumpUntilSeedEpisodeRecorded(tester, member);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+          session: member.session,
+        );
+        final action = find.byKey(const ValueKey('series-reading-action'));
+        // The website sends a reader who finished the first episode on to the
+        // second, and so does the app, from the same record.
+        await pumpUntilRouteSettled(
+          tester,
+          find.descendant(of: action, matching: find.text('Continue reading')),
+          timeout: const Duration(seconds: 20),
+        );
+        final finished = find.byKey(
+          const ValueKey(
+            'episode-finished-${ConnectFixtureServer.seedEpisodeId}',
+          ),
+        );
+        await scrollSeriesTo(tester, finished);
+        expect(finished, findsOne);
+
+        // Back up to the action, above the rows.
+        await tester.scrollUntilVisible(
+          action,
+          -200,
+          scrollable: find.descendant(
+            of: find.byKey(const ValueKey('series-detail-body')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await tapReachable(tester, action);
+        await pumpUntilFound(
+          tester,
+          find.text('Seed Episode 001-02'),
+          timeout: const Duration(seconds: 20),
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
 

@@ -2272,6 +2272,9 @@ void main() {
         episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
       );
       await signedIn.listRecentSeries(limit: 6);
+      await signedIn.getSeriesProgress(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
       await signedIn.listEpisodeReads(limit: 20);
       await signedIn.getEpisodeReaction(
         ConnectFixtureServer.internalIdOf(episodeId),
@@ -2292,6 +2295,7 @@ void main() {
           'SaveReadingPosition',
           'MarkEpisodeAsRead',
           'ListMyRecentSeries',
+          'GetMySeriesProgress',
           'ListMyEpisodeReads',
           'GetMyEpisodeRating',
           'RateEpisode',
@@ -2485,6 +2489,122 @@ void main() {
       expect(requests.last.body['token'], first.nextToken);
     });
 
+    test('a position or a finish that lands is announced', () async {
+      final writes = <void>[];
+      final subscription = signedIn.readingProgressWrites.listen(writes.add);
+      addTearDown(subscription.cancel);
+      const episodeId = ConnectFixtureServer.seedEpisodeId;
+
+      await signedIn.saveReadingPosition(
+        ConnectFixtureServer.seedSeriesId,
+        episodeId,
+        4,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
+      );
+      await signedIn.markEpisodeAsRead(
+        episodeId,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
+      );
+      await pumpEventQueue();
+
+      expect(writes, hasLength(2));
+    });
+
+    test('a finish the API refuses is not announced', () async {
+      server.markReadErrorCode = 'permission_denied';
+      final writes = <void>[];
+      final subscription = signedIn.readingProgressWrites.listen(writes.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(
+        signedIn.markEpisodeAsRead(
+          ConnectFixtureServer.seedEpisodeId,
+          episodeInternalId: ConnectFixtureServer.internalIdOf(
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        ),
+        throwsA(isA<CatalogFailure>()),
+      );
+      await pumpEventQueue();
+
+      expect(writes, isEmpty);
+    });
+
+    test(
+      'getSeriesProgress maps the episode to resume and the finished ones',
+      () async {
+        server
+          ..seriesProgress = {
+            ConnectFixtureServer.seedSeriesId: {
+              'episode': {
+                'publicId': 'SeedEPSDAAA3',
+                'title': 'Seed Episode 001-03',
+                'orderIndex': 3,
+              },
+              'position': {'episodePublicId': 'SeedEPSDAAA3', 'pageIndex': 2},
+            },
+          }
+          ..episodeReads.addAll({
+            ConnectFixtureServer.seedEpisodeId: '2026-09-01T00:00:00Z',
+            ConnectFixtureServer.paidEpisodeId: '2026-09-02T00:00:00Z',
+          });
+
+        final progress = await signedIn.getSeriesProgress(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        );
+
+        expect(progress.episode?.id, 'SeedEPSDAAA3');
+        expect(progress.episode?.orderIndex, 3);
+        // protojson omits a false.
+        expect(progress.isFinished, isFalse);
+        expect(progress.finishedEpisodeIds, {
+          ConnectFixtureServer.seedEpisodeId,
+          ConnectFixtureServer.paidEpisodeId,
+        });
+        final request = server.requestsTo('GetMySeriesProgress').single;
+        expect(
+          request.body['seriesId'],
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        );
+        expect(
+          request.headers['authorization'],
+          'Bearer ${ConnectFixtureServer.memberAccessToken}',
+        );
+      },
+    );
+
+    test('getSeriesProgress reads a finished episode as finished', () async {
+      server.seriesProgress = {
+        ConnectFixtureServer.seedSeriesId: {
+          'episode': {
+            'publicId': ConnectFixtureServer.seedEpisodeId,
+            'orderIndex': 1,
+          },
+          'isFinished': true,
+        },
+      };
+
+      final progress = await signedIn.getSeriesProgress(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
+
+      expect(progress.episode?.id, ConnectFixtureServer.seedEpisodeId);
+      expect(progress.isFinished, isTrue);
+    });
+
+    test(
+      'a member who opened nothing of a series stands nowhere in it',
+      () async {
+        final progress = await signedIn.getSeriesProgress(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        );
+
+        expect(progress.episode, isNull);
+        expect(progress.isFinished, isFalse);
+        expect(progress.finishedEpisodeIds, isEmpty);
+      },
+    );
+
     test('listEpisodeReads maps the episode, its series, and when', () async {
       final reads = (await signedIn.listEpisodeReads(limit: 20)).reads;
 
@@ -2542,6 +2662,9 @@ void main() {
     });
 
     test('a guest asks the API for none of it', () async {
+      final writes = <void>[];
+      final subscription = catalog.readingProgressWrites.listen(writes.add);
+      addTearDown(subscription.cancel);
       expect(
         await catalog.getReadingPosition(
           ConnectFixtureServer.seedSeriesId,
@@ -2567,6 +2690,11 @@ void main() {
         ),
       );
       expect((await catalog.listRecentSeries(limit: 6)).series, isEmpty);
+      final progress = await catalog.getSeriesProgress(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
+      expect(progress.episode, isNull);
+      expect(progress.finishedEpisodeIds, isEmpty);
       expect((await catalog.listEpisodeReads(limit: 20)).reads, isEmpty);
 
       // Nothing was asked, so nothing was refused: the API answers a request
@@ -2576,6 +2704,10 @@ void main() {
       expect(server.requestsTo('SaveReadingPosition'), isEmpty);
       expect(server.requestsTo('MarkEpisodeAsRead'), isEmpty);
       expect(server.requestsTo('ListMyRecentSeries'), isEmpty);
+      expect(server.requestsTo('GetMySeriesProgress'), isEmpty);
+      // Nothing was recorded, so nothing is announced either.
+      await pumpEventQueue();
+      expect(writes, isEmpty);
       expect(server.requestsTo('ListMyEpisodeReads'), isEmpty);
       expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 11);
     });

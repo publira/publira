@@ -22,6 +22,7 @@ void main() {
   final addRow = find.byKey(const ValueKey('account-birth-date-add'));
   final storedRow = find.byKey(const ValueKey('account-birth-date'));
   final gate = find.byKey(const ValueKey('age-rating-gate'));
+  final seriesBody = find.byKey(const ValueKey('series-detail-body'));
 
   setUp(() {
     router = createAppRouter(initialLocation: AppRoutes.account);
@@ -236,7 +237,7 @@ void main() {
         initialLocation: AppRoutes.seriesDetailPath(series.id),
       );
       await pumpApp(tester);
-      await pumpUntilFound(tester, find.text('Episodes'));
+      await pumpUntilFound(tester, seriesBody);
 
       expect(gate, findsNothing);
     });
@@ -249,12 +250,12 @@ void main() {
         initialLocation: AppRoutes.seriesDetailPath(series.id),
       );
       await pumpApp(tester);
-      await pumpUntilFound(tester, find.text('Episodes'));
+      await pumpUntilFound(tester, seriesBody);
 
       await auth.signOut();
       await pumpUntilFound(tester, gate);
 
-      expect(find.text('Episodes'), findsNothing);
+      expect(seriesBody, findsNothing);
     });
 
     testWidgets('a date proving only R15 still asks for an R18 series', (

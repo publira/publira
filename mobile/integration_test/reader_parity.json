@@ -161,10 +161,27 @@
       ]
     },
     {
-      "name": "Reading progress, ratings, related series, and recommendations around a series",
+      "name": "Where a member stands in a series: the start or resume action and the finished episodes",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": ["GetMySeriesProgress"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId"],
+        "rpcs": ["GetMySeriesProgress"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a guest is offered a series from its first episode",
+        "a member resumes a series on the episode and page they left",
+        "the episodes a member finished are marked on their series",
+        "the series an episode the seed member finished goes on from it"
+      ]
+    },
+    {
+      "name": "Ratings, related series, and recommendations around a series",
       "web": {
         "rpcs": [
-          "GetMySeriesProgress",
           "GetMySeriesRating",
           "ListRelatedSeries",
           "ListRecommendedSeries",
