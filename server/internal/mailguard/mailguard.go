@@ -29,6 +29,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/emailaddress"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/requestmeta"
@@ -158,10 +159,13 @@ func (g *Guard) charge(ctx context.Context, req connect.AnyRequest, policy platf
 // allowance is the one that bounds the total across scopes.
 //
 // The address reaches the key as a digest, so the counters hold nobody's
-// address, and it is folded to lower case first: a mailbox written two ways is
-// one inbox and gets one allowance.
+// address, and it is reduced to its canonical form first: a mailbox written two
+// ways is one inbox and gets one allowance, and that includes its sub-addressed
+// variants. Were each tag an allowance of its own, a caller could multiply the
+// mail one inbox receives by rotating tags until only the origin's allowance
+// held them back.
 func addressSubject(scope, address string) string {
-	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(address))))
+	digest := sha256.Sum256([]byte(emailaddress.Canonical(strings.TrimSpace(address))))
 	return "mail.address:" + scope + ":" + hex.EncodeToString(digest[:])
 }
 
