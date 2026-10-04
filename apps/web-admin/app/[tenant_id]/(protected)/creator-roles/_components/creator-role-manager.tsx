@@ -36,16 +36,20 @@ import { CreatorRoleList } from "./creator-role-list";
 import { CreatorRoleNameInput } from "./creator-role-name-input";
 
 interface CreatorRoleManagerProps {
+  /** Whether the operator may write the roles, which a tenant auditor may not. */
+  canEdit: boolean;
   creatorRoles: CreatorRoleListItem[];
   listErrorMessage?: string;
   tenantId: string;
 }
 
 const CreatorRoleListBody = ({
+  canEdit,
   creatorRoles,
   listErrorMessage,
   tenantId,
 }: {
+  canEdit: boolean;
   creatorRoles: CreatorRoleListItem[];
   listErrorMessage?: string;
   tenantId: string;
@@ -89,57 +93,66 @@ const CreatorRoleListBody = ({
     );
   }
 
-  return <CreatorRoleList creatorRoles={creatorRoles} tenantId={tenantId} />;
+  return (
+    <CreatorRoleList
+      canEdit={canEdit}
+      creatorRoles={creatorRoles}
+      tenantId={tenantId}
+    />
+  );
 };
 
 export const CreatorRoleManager = ({
+  canEdit,
   creatorRoles,
   listErrorMessage,
   tenantId,
 }: CreatorRoleManagerProps) => (
   <AdminSections>
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
-              <Message message="admin.creator_roles.create_card_title" />
-            </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-              <Message message="admin.creator_roles.create_description" />
-            </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
-      <ActionForm action={createCreatorRoleAction} className="grid gap-4">
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <ActionFormFieldset>
-          <Field>
-            <FieldLabel required>
+    {canEdit ? (
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
+                <Message message="admin.creator_roles.create_card_title" />
+              </Suspense>
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="admin.creator_roles.create_description" />
+              </Suspense>
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <ActionForm action={createCreatorRoleAction} className="grid gap-4">
+          <input name="tenant_id" type="hidden" value={tenantId} />
+          <ActionFormFieldset>
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="admin.creator_roles.form.name" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Suspense
+                  fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
+                >
+                  <CreatorRoleNameInput />
+                </Suspense>
+              </FieldContent>
+            </Field>
+          </ActionFormFieldset>
+          <div className="flex justify-end">
+            <ActionFormSubmit>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.creator_roles.form.name" />
+                <Message message="admin.creator_roles.create_action" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Suspense
-                fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
-              >
-                <CreatorRoleNameInput />
-              </Suspense>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
-        <div className="flex justify-end">
-          <ActionFormSubmit>
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <Message message="admin.creator_roles.create_action" />
-            </Suspense>
-          </ActionFormSubmit>
-        </div>
-      </ActionForm>
-    </AdminSection>
+            </ActionFormSubmit>
+          </div>
+        </ActionForm>
+      </AdminSection>
+    ) : null}
 
     <AdminSection>
       <AdminSectionHeader>
@@ -149,14 +162,17 @@ export const CreatorRoleManager = ({
               <Message message="admin.creator_roles.list_title" />
             </Suspense>
           </AdminSectionTitle>
-          <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="admin.creator_roles.list_description" />
-            </Suspense>
-          </AdminSectionDescription>
+          {canEdit ? (
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.creator_roles.list_description" />
+              </Suspense>
+            </AdminSectionDescription>
+          ) : null}
         </AdminSectionHeading>
       </AdminSectionHeader>
       <CreatorRoleListBody
+        canEdit={canEdit}
         creatorRoles={creatorRoles}
         listErrorMessage={listErrorMessage}
         tenantId={tenantId}

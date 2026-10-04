@@ -634,6 +634,7 @@
     },
     "common": {
       "back_to_dashboard": "ダッシュボードへ戻る",
+      "editor_only": "編集担当またはテナント管理者のみ変更できます。現在は閲覧専用です。",
       "error_id": "エラーID:",
       "next": "次へ",
       "page_empty_description": "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。",
@@ -658,7 +659,8 @@
         "moved": "{$name}を{$position}番目に移動しました。",
         "dropped": "{$name}を{$position}番目に置きました。",
         "cancelled": "移動を取り消しました。{$name}は{$position}番目に戻りました。"
-      }
+      },
+      "view_action": "表示"
     },
     "contact_messages": {
       "title": "お問い合わせ",

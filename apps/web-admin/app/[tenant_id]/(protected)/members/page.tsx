@@ -2,9 +2,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { TableSkeleton } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import type { ReactNode } from "react";
 
 import {
   AdminPageContent,
@@ -22,8 +20,14 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -45,13 +49,6 @@ import {
 
 type MembersPageProps = PageProps<"/[tenant_id]/members">;
 
-const isSignedInTenantAdmin = async (tenantId: string): Promise<boolean> => {
-  const result = await getAdminCurrentUser(tenantId);
-  await redirectToLoginIfSessionRejected(result);
-
-  return result.ok && isTenantAdminRole(result.user.role);
-};
-
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const [locale, isAdmin] = await Promise.all([
@@ -67,30 +64,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
-
-/**
- * Renders the screen for a tenant admin and answers not found to every other
- * role, so an editor or an auditor cannot tell the route from one that does
- * not exist. Nothing of the screen is painted before the role is known.
- */
-const TenantAdminOnly = async ({ children }: { children: ReactNode }) => {
-  const tenantId = await getTenantId();
-  if (!(await isSignedInTenantAdmin(tenantId))) {
-    notFound();
-  }
-
-  return children;
-};
-
-const MembersPageSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="grid gap-2">
-      <SkeletonLine className="h-7 w-32" />
-      <SkeletonLine className="h-4 w-80" />
-    </div>
-    <TableSkeleton />
-  </div>
-);
 
 const MemberListData = async ({
   searchParams,
@@ -156,8 +129,8 @@ const MemberInviteFormData = async () => {
 
 const MembersPage = ({ searchParams }: MembersPageProps) => (
   <AdminPage>
-    <Suspense fallback={<MembersPageSkeleton />}>
-      <TenantAdminOnly>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
         <AdminPageHeader>
           <AdminPageHeading>
             <AdminPageTitle>
@@ -251,7 +224,7 @@ const MembersPage = ({ searchParams }: MembersPageProps) => (
             </AdminSection>
           </AdminSections>
         </AdminPageContent>
-      </TenantAdminOnly>
+      </TenantAdminRoute>
     </Suspense>
   </AdminPage>
 );

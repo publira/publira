@@ -52,6 +52,16 @@ import {
 } from "./comment-status-label";
 
 type CommentManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may moderate comments, which decides whether each row
+   * offers the moderation actions. A tenant auditor may not.
+   */
+  canModerate: boolean;
+  /**
+   * Whether the operator may open a reader's account, which only a tenant admin
+   * may. Anyone else is shown the reader's name without a link to it.
+   */
+  canViewReaders: boolean;
   comments: CommentItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -249,6 +259,8 @@ export const CommentRowActions = ({
 );
 
 const CommentListBody = ({
+  canModerate,
+  canViewReaders,
   comments,
   emptyDescription,
   emptyTitle,
@@ -259,6 +271,8 @@ const CommentListBody = ({
   tenantId,
   timeZone,
 }: {
+  canModerate: boolean;
+  canViewReaders: boolean;
   /** The empty state's copy, resolved by the async parent. */
   comments: CommentItem[];
   emptyDescription: string;
@@ -325,11 +339,13 @@ const CommentListBody = ({
               <Message message="admin.comments.columns.created_at" />
             </Suspense>
           </TableHead>
-          <TableHead className="w-36">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.comments.columns.actions" />
-            </Suspense>
-          </TableHead>
+          {canModerate ? (
+            <TableHead className="w-36">
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.comments.columns.actions" />
+              </Suspense>
+            </TableHead>
+          ) : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -354,7 +370,7 @@ const CommentListBody = ({
             </TableCell>
             <TableCell>
               <div className="grid gap-0.5">
-                {comment.authorIsStaff ? (
+                {comment.authorIsStaff || !canViewReaders ? (
                   <span className="font-medium">
                     {comment.authorName || comment.authorPublicId}
                   </span>
@@ -388,9 +404,11 @@ const CommentListBody = ({
             <TableCell>
               {formatCommentDateTime(comment.createdAt, locale, timeZone)}
             </TableCell>
-            <TableCell>
-              <CommentRowActions comment={comment} tenantId={tenantId} />
-            </TableCell>
+            {canModerate ? (
+              <TableCell>
+                <CommentRowActions comment={comment} tenantId={tenantId} />
+              </TableCell>
+            ) : null}
           </TableRow>
         ))}
       </TableBody>
@@ -399,6 +417,8 @@ const CommentListBody = ({
 };
 
 export const CommentManager = async ({
+  canModerate,
+  canViewReaders,
   comments,
   listErrorMessage,
   locale,
@@ -431,6 +451,8 @@ export const CommentManager = async ({
       </AdminSectionHeader>
 
       <CommentListBody
+        canModerate={canModerate}
+        canViewReaders={canViewReaders}
         comments={comments}
         emptyDescription={t("admin.comments.empty_description")}
         emptyTitle={t("admin.comments.empty_title")}

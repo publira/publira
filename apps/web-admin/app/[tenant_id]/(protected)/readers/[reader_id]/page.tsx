@@ -33,7 +33,14 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { listComments } from "#lib/comment";
 import { cursorTokenSchema, DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
@@ -51,10 +58,17 @@ type ReaderDetailPageProps = PageProps<"/[tenant_id]/readers/[reader_id]">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.readers.detail_title") };
+  return {
+    title: isAdmin
+      ? t("admin.readers.detail_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -190,62 +204,69 @@ const ReaderCommentsContent = async ({
 
 const ReaderDetailPage = ({ params, searchParams }: ReaderDetailPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-            <Message message="admin.readers.detail_title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.readers.detail_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/readers" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.readers.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast keyName="suspended" message="admin.readers.suspended" />
-      <FlashToast keyName="unsuspended" message="admin.readers.unsuspended" />
-      <FlashToast
-        keyName="birth_date_updated"
-        message="admin.readers.birth_date_updated"
-      />
-      <AdminSections>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.readers.detail_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<AccountSkeleton />}>
-            <ReaderAccountContent params={params} />
-          </Suspense>
-        </SectionErrorBoundary>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.readers.comments_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<CommentsSkeleton />}>
-            <ReaderCommentsContent
-              params={params}
-              searchParams={searchParams}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
-      </AdminSections>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+                <Message message="admin.readers.detail_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.readers.detail_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/readers" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.readers.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <FlashToast keyName="suspended" message="admin.readers.suspended" />
+          <FlashToast
+            keyName="unsuspended"
+            message="admin.readers.unsuspended"
+          />
+          <FlashToast
+            keyName="birth_date_updated"
+            message="admin.readers.birth_date_updated"
+          />
+          <AdminSections>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.readers.detail_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<AccountSkeleton />}>
+                <ReaderAccountContent params={params} />
+              </Suspense>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.readers.comments_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<CommentsSkeleton />}>
+                <ReaderCommentsContent
+                  params={params}
+                  searchParams={searchParams}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+          </AdminSections>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

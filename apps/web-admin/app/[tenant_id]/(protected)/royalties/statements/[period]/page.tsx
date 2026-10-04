@@ -50,7 +50,14 @@ import {
   PaginationFooterDescription,
 } from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -75,10 +82,17 @@ type RoyaltyStatementPageProps =
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.royalties.statement.title") };
+  return {
+    title: isAdmin
+      ? t("admin.royalties.statement.title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -265,44 +279,48 @@ const RoyaltyStatementPage = ({
   searchParams,
 }: RoyaltyStatementPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-            <Message message="admin.royalties.statement.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.royalties.statement.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton
-          render={<Link href="/royalties/statements" />}
-          variant="outline"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="admin.royalties.statement.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast keyName="closed" message="admin.royalties.close.done" />
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.royalties.statement.section_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<StatementSkeleton />}>
-          <StatementContent params={params} searchParams={searchParams} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+                <Message message="admin.royalties.statement.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.royalties.statement.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/royalties/statements" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.royalties.statement.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <FlashToast keyName="closed" message="admin.royalties.close.done" />
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.royalties.statement.section_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<StatementSkeleton />}>
+              <StatementContent params={params} searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

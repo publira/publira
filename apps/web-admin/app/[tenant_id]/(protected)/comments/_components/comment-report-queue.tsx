@@ -70,6 +70,11 @@ export interface CommentReportStatusOption {
 }
 
 type CommentReportQueueProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may decide a report and moderate the comment behind
+   * it. A tenant auditor may not, and is shown the queue without either.
+   */
+  canModerate: boolean;
   listErrorMessage?: string;
   /** For the timestamps and the two strings that have to be attributes. */
   locale: Locale;
@@ -288,6 +293,7 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
 );
 
 const CommentReportListBody = ({
+  canModerate,
   hasPageLinks,
   itemLabel,
   listErrorMessage,
@@ -296,6 +302,7 @@ const CommentReportListBody = ({
   tenantId,
   timeZone,
 }: {
+  canModerate: boolean;
   hasPageLinks: boolean;
   itemLabel: string;
   listErrorMessage?: string;
@@ -357,16 +364,20 @@ const CommentReportListBody = ({
               <Message message="admin.comments.reports.columns.episode" />
             </Suspense>
           </TableHead>
-          <TableHead className="w-40">
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="admin.comments.reports.columns.decision" />
-            </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="admin.comments.reports.columns.comment_actions" />
-            </Suspense>
-          </TableHead>
+          {canModerate ? (
+            <>
+              <TableHead className="w-40">
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.comments.reports.columns.decision" />
+                </Suspense>
+              </TableHead>
+              <TableHead className="w-36">
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.comments.reports.columns.comment_actions" />
+                </Suspense>
+              </TableHead>
+            </>
+          ) : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -396,31 +407,37 @@ const CommentReportListBody = ({
                 </span>
               </div>
             </TableCell>
-            <TableCell>
-              {report.status === "open" ? (
-                <div className="grid gap-2">
-                  <CommentReportDecisionButton
-                    reportId={report.reportId}
-                    resolution="resolved"
-                    tenantId={tenantId}
-                  />
-                  <CommentReportDecisionButton
-                    reportId={report.reportId}
-                    resolution="rejected"
-                    tenantId={tenantId}
-                  />
-                </div>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
-                    <Message message="admin.comments.reports.already_done" />
-                  </Suspense>
-                </span>
-              )}
-            </TableCell>
-            <TableCell>
-              <ReportedCommentActions report={report} tenantId={tenantId} />
-            </TableCell>
+            {canModerate ? (
+              <>
+                <TableCell>
+                  {report.status === "open" ? (
+                    <div className="grid gap-2">
+                      <CommentReportDecisionButton
+                        reportId={report.reportId}
+                        resolution="resolved"
+                        tenantId={tenantId}
+                      />
+                      <CommentReportDecisionButton
+                        reportId={report.reportId}
+                        resolution="rejected"
+                        tenantId={tenantId}
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-3 w-24" />}
+                      >
+                        <Message message="admin.comments.reports.already_done" />
+                      </Suspense>
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <ReportedCommentActions report={report} tenantId={tenantId} />
+                </TableCell>
+              </>
+            ) : null}
           </TableRow>
         ))}
       </TableBody>
@@ -429,6 +446,7 @@ const CommentReportListBody = ({
 };
 
 export const CommentReportQueue = async ({
+  canModerate,
   listErrorMessage,
   locale,
   nextHref,
@@ -471,6 +489,7 @@ export const CommentReportQueue = async ({
       </AdminSectionHeader>
 
       <CommentReportListBody
+        canModerate={canModerate}
         hasPageLinks={hasPageLinks}
         // Interpolated into another message, so this one has to be a string.
         itemLabel={t("admin.comments.reports.item_label")}

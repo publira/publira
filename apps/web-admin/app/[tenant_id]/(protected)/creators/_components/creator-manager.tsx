@@ -38,6 +38,11 @@ import { getMessagesFor } from "#lib/messages";
 import type { CreatorListItem } from "../creator-types";
 
 type CreatorManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may edit the creator, which decides whether a row offers
+   * to edit it or only to view it.
+   */
+  canEdit: boolean;
   creators: CreatorListItem[];
   listErrorMessage?: string;
   locale: Locale;
@@ -54,11 +59,13 @@ const excerpt = (text: string, max = 56) => {
 };
 
 const CreatorListBody = async ({
+  canEdit,
   creators,
   hasPageLinks,
   listErrorMessage,
   locale,
 }: {
+  canEdit: boolean;
   creators: CreatorListItem[];
   hasPageLinks: boolean;
   listErrorMessage?: string;
@@ -156,7 +163,11 @@ const CreatorListBody = async ({
                   variant="outline"
                 >
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.creators.edit_action" />
+                    {canEdit ? (
+                      <Message message="admin.creators.edit_action" />
+                    ) : (
+                      <Message message="admin.common.view_action" />
+                    )}
                   </Suspense>
                 </LinkButton>
               </div>
@@ -169,6 +180,7 @@ const CreatorListBody = async ({
 };
 
 export const CreatorManager = async ({
+  canEdit,
   creators,
   listErrorMessage,
   nextHref,
@@ -186,6 +198,7 @@ export const CreatorManager = async ({
   return (
     <div className="grid gap-6">
       <CreatorListBody
+        canEdit={canEdit}
         creators={creators}
         hasPageLinks={hasPageLinks}
         listErrorMessage={listErrorMessage}

@@ -16,8 +16,15 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getRoyaltyClosePolicy } from "#lib/royalties";
@@ -27,10 +34,17 @@ import { RoyaltyCloseSettingsForm } from "./_components/royalty-close-settings-f
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.royalties.close_settings.title") };
+  return {
+    title: isAdmin
+      ? t("admin.royalties.close_settings.title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -69,40 +83,44 @@ const RoyaltyCloseSettingsSection = async () => {
 
 const RoyaltyCloseSettingsPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-            <Message message="admin.royalties.close_settings.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.royalties.close_settings.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/royalties" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.royalties.open_month_link" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.royalties.close_settings.section_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<RoyaltyCloseSettingsSkeleton />}>
-          <RoyaltyCloseSettingsSection />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+                <Message message="admin.royalties.close_settings.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.royalties.close_settings.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/royalties" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.royalties.open_month_link" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.royalties.close_settings.section_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<RoyaltyCloseSettingsSkeleton />}>
+              <RoyaltyCloseSettingsSection />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

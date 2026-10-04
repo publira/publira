@@ -15,7 +15,14 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { listContactMessages } from "#lib/contact-message";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
@@ -33,10 +40,17 @@ type ContactMessagesPageProps = PageProps<"/[tenant_id]/contact-messages">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.contact_messages.title") };
+  return {
+    title: isAdmin
+      ? t("admin.contact_messages.title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -105,33 +119,37 @@ const ContactMessagesContent = async ({
 
 const ContactMessagesPage = ({ searchParams }: ContactMessagesPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.contact_messages.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.contact_messages.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.contact_messages.list_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<ContactMessagesSkeleton />}>
-          <ContactMessagesContent searchParams={searchParams} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.contact_messages.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.contact_messages.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.contact_messages.list_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<ContactMessagesSkeleton />}>
+              <ContactMessagesContent searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

@@ -11,6 +11,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -30,12 +31,14 @@ import type { TenantSiteSettings } from "#lib/site-settings";
 import { updateSiteSettingsAction } from "../_lib/actions";
 
 interface SiteSettingsFormProps {
+  canEdit: boolean;
   initialSettings: TenantSiteSettings;
   tenantId: string;
 }
 
 /** Awaits the catalog for its placeholders, which are attributes rather than nodes. */
 export const SiteSettingsForm = async ({
+  canEdit,
   initialSettings,
   tenantId,
 }: SiteSettingsFormProps) => {
@@ -60,7 +63,7 @@ export const SiteSettingsForm = async ({
       <ActionForm action={updateSiteSettingsAction} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset className="grid gap-4">
+        <ActionFormFieldset className="grid gap-4" disabled={!canEdit}>
           <Field>
             <FieldLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -127,8 +130,16 @@ export const SiteSettingsForm = async ({
           </Field>
         </ActionFormFieldset>
 
+        {canEdit ? null : (
+          <FormMessage variant="destructive">
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.admin_only" />
+            </Suspense>
+          </FormMessage>
+        )}
+
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit>
+          <ActionFormSubmit disabled={!canEdit}>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <ActionFormIdle>
                 <Message message="admin.settings.site.submit" />

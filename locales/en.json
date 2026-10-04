@@ -634,6 +634,7 @@
     },
     "common": {
       "back_to_dashboard": "Back to dashboard",
+      "editor_only": "Only an editor or a tenant admin can change this. You have read-only access.",
       "error_id": "Error ID:",
       "next": "Next",
       "page_empty_description": "They may have been deleted while you were looking at this page. Move to the pages around it.",
@@ -658,7 +659,8 @@
         "moved": "{$name} moved to position {$position}.",
         "dropped": "{$name} dropped at position {$position}.",
         "cancelled": "Move cancelled. {$name} returned to position {$position}."
-      }
+      },
+      "view_action": "View"
     },
     "contact_messages": {
       "title": "Contact messages",

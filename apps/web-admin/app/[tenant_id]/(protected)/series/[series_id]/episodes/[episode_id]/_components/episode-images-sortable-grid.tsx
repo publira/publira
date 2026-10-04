@@ -17,6 +17,11 @@ import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
 interface EpisodeImagesSortableGridProps {
+  /**
+   * Whether the operator may reorder the pages. Without it the grid shows them
+   * in their order with no grip to move one by.
+   */
+  canEdit: boolean;
   seriesPublicId: string;
   episodeId: string;
   episodePublicId: string;
@@ -29,6 +34,7 @@ interface EpisodeImagesSortableGridProps {
 const imageId = (image: EpisodeImageItem): string => image.id;
 
 export const EpisodeImagesSortableGrid = ({
+  canEdit,
   seriesPublicId,
   episodeId,
   episodePublicId,
@@ -120,7 +126,7 @@ export const EpisodeImagesSortableGrid = ({
       {optimisticItems.map((image, index) => (
         <SortableItem
           className="grid gap-2 border border-border bg-background p-2"
-          disabled={isPending}
+          disabled={isPending || !canEdit}
           id={image.id}
           index={index}
           key={image.id}
@@ -143,12 +149,14 @@ export const EpisodeImagesSortableGrid = ({
               <span>
                 {image.displayOrder} / {image.width}x{image.height}
               </span>
-              <SortableItemHandle>
-                <ClientMessage
-                  message="admin.series.episodes.image_reorder_action"
-                  values={{ position: String(index + 1) }}
-                />
-              </SortableItemHandle>
+              {canEdit ? (
+                <SortableItemHandle>
+                  <ClientMessage
+                    message="admin.series.episodes.image_reorder_action"
+                    values={{ position: String(index + 1) }}
+                  />
+                </SortableItemHandle>
+              ) : null}
             </figcaption>
           </figure>
         </SortableItem>

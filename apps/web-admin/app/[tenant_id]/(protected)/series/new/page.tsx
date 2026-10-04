@@ -14,6 +14,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import {
+  TenantEditorRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { listGenres } from "#lib/genre";
@@ -32,10 +37,15 @@ import { createSeriesAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isEditor] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.series.new_title") };
+  return {
+    title: isEditor ? t("admin.series.new_title") : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -127,27 +137,31 @@ const NewSeriesFormData = async () => {
 
 const NewSeriesPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.series.new_title" />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantEditorRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.series.new_title" />
+              </Suspense>
+            </AdminPageTitle>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/series" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+                <Message message="admin.series.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <Suspense fallback={<NewSeriesFormSkeleton />}>
+            <NewSeriesFormData />
           </Suspense>
-        </AdminPageTitle>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/series" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-            <Message message="admin.series.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <Suspense fallback={<NewSeriesFormSkeleton />}>
-        <NewSeriesFormData />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantEditorRoute>
+    </Suspense>
   </AdminPage>
 );
 

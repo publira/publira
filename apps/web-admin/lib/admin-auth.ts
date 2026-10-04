@@ -128,10 +128,45 @@ export interface AdminEmailChangeConfirmResult {
   pendingConfirmationFor: string;
 }
 
-export const isTenantAdminRole = (role: string | null | undefined): boolean => {
-  const normalizedRole = role?.trim().toLowerCase();
-  return normalizedRole === "admin" || normalizedRole === "tenant_admin";
+/**
+ * How much a tenant role may do, ranked the way the API ranks it: a
+ * tenant_admin covers a tenant_editor, who covers a tenant_auditor. Any other
+ * string ranks below all three.
+ */
+const tenantRoleRank = (role: string | null | undefined): number => {
+  switch (role?.trim().toLowerCase()) {
+    case "admin":
+    case "tenant_admin": {
+      return 3;
+    }
+    case "tenant_editor": {
+      return 2;
+    }
+    case "tenant_auditor": {
+      return 1;
+    }
+    default: {
+      return 0;
+    }
+  }
 };
+
+/**
+ * Whether the role may administer the tenant: its members, its settings, its
+ * integrations, its readers, and its money. The API places every RPC behind
+ * these at `tenant_admin`.
+ */
+export const isTenantAdminRole = (role: string | null | undefined): boolean =>
+  tenantRoleRank(role) >= 3;
+
+/**
+ * Whether the role may write the catalogue, the pages, and the announcements,
+ * and moderate comments: a tenant_editor or a tenant_admin. A tenant_auditor
+ * reads the same screens and writes none of them, so a control behind which
+ * the API places a `tenant_editor` write is shown only when this holds.
+ */
+export const isTenantEditorRole = (role: string | null | undefined): boolean =>
+  tenantRoleRank(role) >= 2;
 
 const toErrorMessage = async (
   error: unknown,

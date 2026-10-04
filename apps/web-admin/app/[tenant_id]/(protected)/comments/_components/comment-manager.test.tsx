@@ -98,6 +98,8 @@ describe("CommentManager", () => {
   it("says there is nothing to show when the first page is empty", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [],
         locale: "en",
         pageSize: 20,
@@ -112,6 +114,8 @@ describe("CommentManager", () => {
   it("renders the failure instead of the list when the read failed", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [],
         listErrorMessage: "The API is unavailable.",
         locale: "en",
@@ -129,6 +133,8 @@ describe("CommentManager", () => {
   it("offers approve, remove, and purge on a comment awaiting approval", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [comment("pending")],
         locale: "en",
         pageSize: 20,
@@ -154,6 +160,8 @@ describe("CommentManager", () => {
   it("offers only a purge on a comment its author deleted", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [
           comment("withdrawn", {
             purgeDueAt: "2099-06-08T00:00:00Z",
@@ -184,6 +192,8 @@ describe("CommentManager", () => {
   it("names who removed a comment and warns that its author still reads it", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [
           comment("hidden", {
             hiddenAt: "2026-06-02T00:00:00Z",
@@ -220,6 +230,8 @@ describe("CommentManager", () => {
     try {
       render(
         await CommentManager({
+          canModerate: true,
+          canViewReaders: true,
           comments: [
             comment("withdrawn", {
               // 2026-06-08 in UTC, where 2026-06-01T20:00Z is already
@@ -244,6 +256,8 @@ describe("CommentManager", () => {
   it("links the episode to its page in the console", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
@@ -260,6 +274,8 @@ describe("CommentManager", () => {
   it("links the commenter to their reader page", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
@@ -276,6 +292,8 @@ describe("CommentManager", () => {
   it("shows a staff commenter without a link, since staff have no reader page", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [
           comment("published", {
             authorIsStaff: true,
@@ -297,6 +315,8 @@ describe("CommentManager", () => {
   it("marks a comment by the episode's author with the badge and the credited name", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [
           comment("published", {
             creator: { name: "Sample Author", publicId: "CREATOR001" },
@@ -318,6 +338,8 @@ describe("CommentManager", () => {
   it("leaves every other comment unmarked", async () => {
     render(
       await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
@@ -327,5 +349,43 @@ describe("CommentManager", () => {
     );
 
     expect(screen.queryByText("Author")).toBeNull();
+  });
+
+  it("offers a tenant auditor no moderation", async () => {
+    render(
+      await CommentManager({
+        canModerate: false,
+        canViewReaders: false,
+        comments: [comment("pending")],
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.getByText("A comment on the first episode.")).toBeTruthy();
+    // The pager is all that is left to press.
+    expect(
+      screen.queryAllByRole("button").map((button) => button.textContent)
+    ).toEqual(["Previous", "Next"]);
+    expect(screen.queryByText("Actions")).toBeNull();
+  });
+
+  it("shows the commenter without a link to an operator who cannot open readers", async () => {
+    render(
+      await CommentManager({
+        canModerate: true,
+        canViewReaders: false,
+        comments: [comment("published")],
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    expect(screen.getByText("Reader")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Reader" })).toBeNull();
   });
 });

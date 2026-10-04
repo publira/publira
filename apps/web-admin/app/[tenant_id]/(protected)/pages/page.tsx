@@ -16,7 +16,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import {
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -49,15 +53,17 @@ const PageManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [listResult, timeZone] = await Promise.all([
+  const [listResult, timeZone, canEdit] = await Promise.all([
     listPages(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <PageManager
+      canEdit={canEdit}
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}
@@ -83,13 +89,17 @@ const PagesPage = ({ searchParams }: PagesPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/pages/new" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.pages.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/pages/new" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.pages.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </TenantEditorOnly>
+      </Suspense>
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TableSkeleton />}>

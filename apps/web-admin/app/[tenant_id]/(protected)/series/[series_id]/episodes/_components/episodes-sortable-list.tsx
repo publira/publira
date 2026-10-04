@@ -30,6 +30,12 @@ import {
 import { EpisodeStatusPrice } from "./episode-status-price";
 
 interface EpisodesSortableListProps {
+  /**
+   * Whether the operator may write the episodes. Without it the rows can be
+   * neither reordered nor picked for a credit edit, and each offers only to
+   * view its episode.
+   */
+  canEdit: boolean;
   /** The series the reorder is sent for. */
   seriesId: string;
   /** The series as the URL names it, for the links to each episode. */
@@ -49,6 +55,7 @@ interface EpisodesSortableListProps {
 const episodeId = (episode: EpisodeItem): string => episode.id;
 
 export const EpisodesSortableList = ({
+  canEdit,
   seriesId,
   seriesPublicId,
   seriesAvailability = DEFAULT_SURFACE_AVAILABILITY,
@@ -146,21 +153,23 @@ export const EpisodesSortableList = ({
 
   return (
     <div className="grid gap-3">
-      <div className="flex items-center gap-2">
-        <Checkbox
-          {...selectionCheckboxProps(allOnPageSelected, someOnPageSelected)}
-          id="episode-credits-select-page"
-          onCheckedChange={(checked) => {
-            selectMany(pageIds, checked);
-          }}
-        />
-        <label
-          className="text-xs text-muted-foreground"
-          htmlFor="episode-credits-select-page"
-        >
-          {t("admin.series.episodes.credits.select_page")}
-        </label>
-      </div>
+      {canEdit ? (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            {...selectionCheckboxProps(allOnPageSelected, someOnPageSelected)}
+            id="episode-credits-select-page"
+            onCheckedChange={(checked) => {
+              selectMany(pageIds, checked);
+            }}
+          />
+          <label
+            className="text-xs text-muted-foreground"
+            htmlFor="episode-credits-select-page"
+          >
+            {t("admin.series.episodes.credits.select_page")}
+          </label>
+        </div>
+      ) : null}
       <SortableList
         aria-label={t("admin.series.episodes.list_title")}
         className="grid gap-3"
@@ -169,27 +178,32 @@ export const EpisodesSortableList = ({
         {optimisticItems.map((episode, index) => (
           <SortableItem
             className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
-            disabled={isPending}
+            disabled={isPending || !canEdit}
             id={episode.id}
             index={index}
             key={episode.id}
             label={episode.title}
           >
-            <Checkbox
-              aria-label={t("admin.series.episodes.credits.select_episode", {
-                title: episode.title,
-              })}
-              checked={selectedIds.has(episode.id)}
-              onCheckedChange={(checked) => {
-                toggle(episode.id, checked);
-              }}
-            />
-            <SortableItemHandle>
-              <ClientMessage
-                message="admin.series.episodes.reorder_action"
-                values={{ title: episode.title }}
-              />
-            </SortableItemHandle>
+            {canEdit ? (
+              <>
+                <Checkbox
+                  aria-label={t(
+                    "admin.series.episodes.credits.select_episode",
+                    { title: episode.title }
+                  )}
+                  checked={selectedIds.has(episode.id)}
+                  onCheckedChange={(checked) => {
+                    toggle(episode.id, checked);
+                  }}
+                />
+                <SortableItemHandle>
+                  <ClientMessage
+                    message="admin.series.episodes.reorder_action"
+                    values={{ title: episode.title }}
+                  />
+                </SortableItemHandle>
+              </>
+            ) : null}
 
             <div className="grid flex-1 gap-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -231,7 +245,11 @@ export const EpisodesSortableList = ({
                 }
                 variant="outline"
               >
-                <ClientMessage message="admin.series.episodes.edit_action" />
+                {canEdit ? (
+                  <ClientMessage message="admin.series.episodes.edit_action" />
+                ) : (
+                  <ClientMessage message="admin.common.view_action" />
+                )}
               </LinkButton>
             </div>
           </SortableItem>

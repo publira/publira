@@ -60,6 +60,12 @@ import { SeriesReadingDirectionField } from "./series-reading-layout-fields";
 
 interface SeriesFormProps {
   mode: "create" | "update";
+  /**
+   * Whether the operator may create a label, which decides whether a tenant
+   * with none is pointed at the screen that makes one. A tenant auditor reads
+   * the form and may not; left out, the form is one an editor submits.
+   */
+  canCreateLabel?: boolean;
   action: (
     prevState: SeriesActionState,
     formData: FormData
@@ -146,6 +152,7 @@ const NEW_SERIES_VALUES: Omit<SeriesFormValues, "readingPeriodHours"> = {
  */
 export const SeriesForm = ({
   mode,
+  canCreateLabel = true,
   action,
   defaultReadingPeriodHours,
   creators,
@@ -281,15 +288,22 @@ export const SeriesForm = ({
                 <FieldDescription>
                   <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                     <Message message="admin.series.form.label_none" />
-                  </Suspense>{" "}
-                  <Link
-                    className="text-primary underline underline-offset-4"
-                    href="/labels/new"
-                  >
-                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                      <Message message="admin.series.form.label_create" />
-                    </Suspense>
-                  </Link>
+                  </Suspense>
+                  {canCreateLabel ? (
+                    <>
+                      {" "}
+                      <Link
+                        className="text-primary underline underline-offset-4"
+                        href="/labels/new"
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-24" />}
+                        >
+                          <Message message="admin.series.form.label_create" />
+                        </Suspense>
+                      </Link>
+                    </>
+                  ) : null}
                 </FieldDescription>
               ) : (
                 <FieldDescription>

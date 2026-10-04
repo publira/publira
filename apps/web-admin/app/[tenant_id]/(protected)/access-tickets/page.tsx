@@ -17,8 +17,15 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
 import { listAccessTickets } from "#lib/access-ticket";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -34,10 +41,17 @@ type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.access_tickets.title") };
+  return {
+    title: isAdmin
+      ? t("admin.access_tickets.title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -99,36 +113,40 @@ const TicketManagerData = async ({
 
 const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.access_tickets.title" />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.access_tickets.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.access_tickets.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton
+              render={<Link href="/access-tickets/new" />}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.access_tickets.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <FlashToast message="admin.access_tickets.issued" />
+          <Suspense fallback={<TableSkeleton />}>
+            <TicketManagerData searchParams={searchParams} />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.access_tickets.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton
-          render={<Link href="/access-tickets/new" />}
-          variant="outline"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="admin.access_tickets.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast message="admin.access_tickets.issued" />
-      <Suspense fallback={<TableSkeleton />}>
-        <TicketManagerData searchParams={searchParams} />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

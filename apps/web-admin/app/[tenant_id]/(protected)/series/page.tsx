@@ -16,6 +16,8 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -45,7 +47,7 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseSeriesFilters(sp);
-  const [locale, listResult, timeZone] = await Promise.all([
+  const [locale, listResult, timeZone, canEdit] = await Promise.all([
     getLocale(tenantId),
     listSeries({
       ageRating: filters.ageRating || undefined,
@@ -53,6 +55,7 @@ const SeriesManagerData = async ({
       token: filters.token,
     }),
     getTenantDisplayTimeZone(tenantId),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   const pageHref = (token: string): string | undefined =>
@@ -66,6 +69,7 @@ const SeriesManagerData = async ({
 
   return (
     <SeriesManager
+      canEdit={canEdit}
       filters={filters}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}
@@ -93,13 +97,17 @@ const SeriesPage = ({ searchParams }: SeriesPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/series/new" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.series.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/series/new" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.series.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </TenantEditorOnly>
+      </Suspense>
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TableSkeleton />}>

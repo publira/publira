@@ -38,6 +38,11 @@ import type { PageListItem } from "../page-types";
 import { formatPageDateTime, formatPagePath } from "../page-types";
 
 type PageManagerProps = CursorPageHrefs & {
+  /**
+   * Whether the operator may edit the page, which decides whether a row offers
+   * to edit it or only to view it.
+   */
+  canEdit: boolean;
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
@@ -46,12 +51,14 @@ type PageManagerProps = CursorPageHrefs & {
 };
 
 const PageListBody = async ({
+  canEdit,
   hasPageLinks,
   listErrorMessage,
   locale,
   pages,
   timeZone,
 }: {
+  canEdit: boolean;
   hasPageLinks: boolean;
   listErrorMessage?: string;
   locale: Locale;
@@ -164,7 +171,11 @@ const PageListBody = async ({
             <TableCell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <Message message="admin.pages.edit_action" />
+                  {canEdit ? (
+                    <Message message="admin.pages.edit_action" />
+                  ) : (
+                    <Message message="admin.common.view_action" />
+                  )}
                 </Suspense>
               </LinkButton>
             </TableCell>
@@ -176,6 +187,7 @@ const PageListBody = async ({
 };
 
 export const PageManager = async ({
+  canEdit,
   listErrorMessage,
   nextHref,
   pageSize,
@@ -194,6 +206,7 @@ export const PageManager = async ({
   return (
     <div className="grid gap-6">
       <PageListBody
+        canEdit={canEdit}
         hasPageLinks={hasPageLinks}
         listErrorMessage={listErrorMessage}
         locale={locale}

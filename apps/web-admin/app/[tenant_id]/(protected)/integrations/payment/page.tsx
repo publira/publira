@@ -13,8 +13,15 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -38,10 +45,17 @@ import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payme
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.integrations.payment_title") };
+  return {
+    title: isAdmin
+      ? t("admin.integrations.payment_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -231,68 +245,72 @@ const StoreProducts = async () => {
 
 const IntegrationsPaymentPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.integrations.payment_title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.integrations.payment_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <div className="grid gap-6">
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.integrations.payment_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SettingsPaymentFormSkeleton />}>
-            <SettingsPaymentForm />
-          </Suspense>
-        </SectionErrorBoundary>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.purchase.section_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SettingsPurchaseFormSkeleton />}>
-            <SettingsPurchaseForm />
-          </Suspense>
-        </SectionErrorBoundary>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.store_payment.section_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SettingsStorePaymentFormSkeleton />}>
-            <SettingsStorePaymentForm />
-          </Suspense>
-        </SectionErrorBoundary>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.store_products.section_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<StoreProductsSkeleton />}>
-            <StoreProducts />
-          </Suspense>
-        </SectionErrorBoundary>
-      </div>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
+                <Message message="admin.integrations.payment_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.integrations.payment_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <div className="grid gap-6">
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.integrations.payment_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsPaymentFormSkeleton />}>
+                <SettingsPaymentForm />
+              </Suspense>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.settings.purchase.section_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsPurchaseFormSkeleton />}>
+                <SettingsPurchaseForm />
+              </Suspense>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.settings.store_payment.section_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsStorePaymentFormSkeleton />}>
+                <SettingsStorePaymentForm />
+              </Suspense>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.settings.store_products.section_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<StoreProductsSkeleton />}>
+                <StoreProducts />
+              </Suspense>
+            </SectionErrorBoundary>
+          </div>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

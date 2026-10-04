@@ -31,6 +31,8 @@ import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -204,6 +206,7 @@ const EditSeriesFormData = async ({
     purchaseSettingsResult,
     timeZone,
     t,
+    canCreateLabel,
   ] = await Promise.all([
     getSeries({ publicId: seriesId }),
     // Walk every cursor page so the Combobox can search past the first 100.
@@ -223,6 +226,7 @@ const EditSeriesFormData = async ({
     getTenantDisplayTimeZone(tenantId),
     // The placeholders are attributes, which cannot stream in as nodes.
     getMessagesFor(locale),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   if (!result.ok) {
@@ -235,6 +239,7 @@ const EditSeriesFormData = async ({
   return (
     <SeriesForm
       action={updateSeriesAction}
+      canCreateLabel={canCreateLabel}
       creatorRoles={creatorRolesResult.creatorRoles}
       creatorRolesErrorMessage={
         creatorRolesResult.ok ? undefined : creatorRolesResult.message
@@ -312,7 +317,9 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
           }
         >
           <Suspense fallback={<EditSeriesFormSkeleton />}>
-            <EditSeriesFormData params={params} searchParams={searchParams} />
+            <TenantEditorFieldset>
+              <EditSeriesFormData params={params} searchParams={searchParams} />
+            </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
       </div>

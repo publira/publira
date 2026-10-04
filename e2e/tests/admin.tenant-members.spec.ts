@@ -116,7 +116,7 @@ test.describe("tenant members", () => {
     await signIn(page, TENANT_MEMBERS_EDITOR, "/");
 
     await expect(
-      page.getByRole("link", { exact: true, name: "Audit logs" })
+      page.getByRole("link", { exact: true, name: "Settings" })
     ).toBeVisible();
     // The entry and the account menu wait on the same read of the operator, so
     // once the menu carries the editor's name the entry has had its answer.

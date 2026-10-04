@@ -16,7 +16,14 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  TenantAdminRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -34,10 +41,15 @@ type ReadersPageProps = PageProps<"/[tenant_id]/readers">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isAdmin] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantAdmin(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.readers.title") };
+  return {
+    title: isAdmin ? t("admin.readers.title") : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -107,34 +119,38 @@ const ReadersContent = async ({
 
 const ReadersPage = ({ searchParams }: ReadersPageProps) => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
-            <Message message="admin.readers.title" />
-          </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.readers.page_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast keyName="deleted" message="admin.readers.deleted" />
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.readers.list_error" />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<ReadersSkeleton />}>
-          <ReadersContent searchParams={searchParams} />
-        </Suspense>
-      </SectionErrorBoundary>
-    </AdminPageContent>
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantAdminRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+                <Message message="admin.readers.title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                <Message message="admin.readers.page_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <FlashToast keyName="deleted" message="admin.readers.deleted" />
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.readers.list_error" />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<ReadersSkeleton />}>
+              <ReadersContent searchParams={searchParams} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </AdminPageContent>
+      </TenantAdminRoute>
+    </Suspense>
   </AdminPage>
 );
 

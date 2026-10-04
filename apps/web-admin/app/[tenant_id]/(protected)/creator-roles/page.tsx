@@ -13,6 +13,7 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -49,13 +50,15 @@ const CreatorRoleManagerSkeleton = () => (
 );
 
 const CreatorRoleManagerData = async () => {
-  const [tenantId, listResult] = await Promise.all([
-    getTenantId(),
+  const tenantId = await getTenantId();
+  const [listResult, canEdit] = await Promise.all([
     listCreatorRoles(),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   return (
     <CreatorRoleManager
+      canEdit={canEdit}
       creatorRoles={listResult.creatorRoles}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       tenantId={tenantId}

@@ -19,6 +19,7 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantAdminFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -116,7 +117,9 @@ const BrandingPage = () => (
         }
       >
         <Suspense fallback={<BrandingFormsSkeleton />}>
-          <BrandingForms />
+          <TenantAdminFieldset>
+            <BrandingForms />
+          </TenantAdminFieldset>
         </Suspense>
       </SectionErrorBoundary>
     </AdminPageContent>

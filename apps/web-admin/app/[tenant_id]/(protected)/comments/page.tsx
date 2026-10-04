@@ -16,7 +16,11 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  isSignedInTenantEditor,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { listCommentReports, listComments } from "#lib/comment";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
@@ -111,21 +115,24 @@ const CommentsContent = async ({
   const filters = parseCommentFilters(sp);
   const locale = await getLocale(tenantId);
 
-  const [listResult, reportResult, timeZone] = await Promise.all([
-    listComments(tenantId, locale, {
-      episodePublicId: filters.episode,
-      limit: DEFAULT_PAGE_SIZE,
-      seriesPublicId: filters.series,
-      status: filters.status,
-      token: filters.token,
-    }),
-    listCommentReports(tenantId, locale, {
-      limit: DEFAULT_PAGE_SIZE,
-      status: filters.reportStatus,
-      token: filters.reportToken,
-    }),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
+  const [listResult, reportResult, timeZone, canModerate, canViewReaders] =
+    await Promise.all([
+      listComments(tenantId, locale, {
+        episodePublicId: filters.episode,
+        limit: DEFAULT_PAGE_SIZE,
+        seriesPublicId: filters.series,
+        status: filters.status,
+        token: filters.token,
+      }),
+      listCommentReports(tenantId, locale, {
+        limit: DEFAULT_PAGE_SIZE,
+        status: filters.reportStatus,
+        token: filters.reportToken,
+      }),
+      getTenantDisplayTimeZone(tenantId),
+      isSignedInTenantEditor(tenantId),
+      isSignedInTenantAdmin(tenantId),
+    ]);
 
   await redirectToLoginIfSessionRejected(listResult);
   await redirectToLoginIfSessionRejected(reportResult);
@@ -138,6 +145,7 @@ const CommentsContent = async ({
         at it yet.
       */}
       <CommentReportQueue
+        canModerate={canModerate}
         listErrorMessage={reportResult.ok ? undefined : reportResult.message}
         locale={locale}
         nextHref={
@@ -167,6 +175,8 @@ const CommentsContent = async ({
         timeZone={timeZone}
       />
       <CommentManager
+        canModerate={canModerate}
+        canViewReaders={canViewReaders}
         comments={listResult.comments}
         listErrorMessage={listResult.ok ? undefined : listResult.message}
         locale={locale}

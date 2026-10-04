@@ -61,7 +61,13 @@ afterEach(() => {
 
 describe("SiteSettingsForm", () => {
   it("shows the saved settings", async () => {
-    render(await SiteSettingsForm({ initialSettings, tenantId: "TENANT001" }));
+    render(
+      await SiteSettingsForm({
+        canEdit: true,
+        initialSettings,
+        tenantId: "TENANT001",
+      })
+    );
 
     expect(fields().map((field) => field.value)).toStrictEqual([
       "Copyright © 2026 Acme Inc.",
@@ -73,7 +79,13 @@ describe("SiteSettingsForm", () => {
   // The Action carries what the fields held when the form was submitted, so an
   // edit made while it is in flight would sit under the success message unsaved.
   it("closes the fields while the save is in flight", async () => {
-    render(await SiteSettingsForm({ initialSettings, tenantId: "TENANT001" }));
+    render(
+      await SiteSettingsForm({
+        canEdit: true,
+        initialSettings,
+        tenantId: "TENANT001",
+      })
+    );
 
     for (const field of fields()) {
       expect(field.matches(":disabled")).toBe(false);
@@ -90,5 +102,29 @@ describe("SiteSettingsForm", () => {
     save.current.resolve({ message: "Could not save.", ok: false });
     expect(await screen.findByText("Could not save.")).toBeDefined();
     expect(fields()[0].matches(":disabled")).toBe(false);
+  });
+
+  it("stays read-only for someone who is not a tenant admin", async () => {
+    render(
+      await SiteSettingsForm({
+        canEdit: false,
+        initialSettings,
+        tenantId: "TENANT001",
+      })
+    );
+
+    for (const field of fields()) {
+      expect(field.matches(":disabled")).toBe(true);
+    }
+    expect(
+      screen
+        .getByRole<HTMLButtonElement>("button", { name: "Save the settings" })
+        .matches(":disabled")
+    ).toBe(true);
+    expect(
+      screen.getByText(
+        "Only a tenant administrator can change this setting. You have read-only access."
+      )
+    ).toBeTruthy();
   });
 });

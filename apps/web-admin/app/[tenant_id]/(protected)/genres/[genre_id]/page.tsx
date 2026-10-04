@@ -30,6 +30,7 @@ import {
 import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantEditorFieldset } from "#components/tenant-role-gate";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getGenre } from "#lib/genre";
 import { getLocale } from "#lib/locale";
@@ -218,7 +219,9 @@ const EditGenrePage = ({ params, searchParams }: EditGenrePageProps) => (
           }
         >
           <Suspense fallback={<EditGenreFormSkeleton />}>
-            <EditGenreFormData params={params} searchParams={searchParams} />
+            <TenantEditorFieldset>
+              <EditGenreFormData params={params} searchParams={searchParams} />
+            </TenantEditorFieldset>
           </Suspense>
         </SectionErrorBoundary>
       </div>

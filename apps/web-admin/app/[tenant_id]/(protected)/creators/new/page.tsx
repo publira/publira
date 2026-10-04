@@ -15,6 +15,11 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import {
+  TenantEditorRoute,
+  TenantRoleRouteSkeleton,
+} from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -24,10 +29,17 @@ import { createCreatorAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
+  const [locale, isEditor] = await Promise.all([
+    getLocale(tenantId),
+    isSignedInTenantEditor(tenantId),
+  ]);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.creators.new_title") };
+  return {
+    title: isEditor
+      ? t("admin.creators.new_title")
+      : t("admin.not_found.title"),
+  };
 };
 
 export const generateStaticParams = () =>
@@ -55,32 +67,36 @@ const NewCreatorFormData = async () => {
 
 const NewCreatorPage = () => (
   <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.creators.new_title" />
+    <Suspense fallback={<TenantRoleRouteSkeleton />}>
+      <TenantEditorRoute>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageTitle>
+              <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+                <Message message="admin.creators.new_title" />
+              </Suspense>
+            </AdminPageTitle>
+            <AdminPageDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.creators.new_description" />
+              </Suspense>
+            </AdminPageDescription>
+          </AdminPageHeading>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/creators" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+                <Message message="admin.creators.back_to_list" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <Suspense fallback={<NewCreatorFormSkeleton />}>
+            <NewCreatorFormData />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="admin.creators.new_description" />
-          </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/creators" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-            <Message message="admin.creators.back_to_list" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <Suspense fallback={<NewCreatorFormSkeleton />}>
-        <NewCreatorFormData />
-      </Suspense>
-    </AdminPageContent>
+        </AdminPageContent>
+      </TenantEditorRoute>
+    </Suspense>
   </AdminPage>
 );
 

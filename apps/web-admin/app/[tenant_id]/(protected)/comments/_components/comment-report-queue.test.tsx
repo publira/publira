@@ -113,10 +113,12 @@ const statusOptions = [
 
 const renderQueue = async (
   reports: CommentReportItem[],
-  listErrorMessage?: string
+  listErrorMessage?: string,
+  canModerate = true
 ) =>
   render(
     await CommentReportQueue({
+      canModerate,
       listErrorMessage,
       locale: "en",
       pageSize: 20,
@@ -250,5 +252,16 @@ describe("CommentReportQueue", () => {
     await renderQueue([report("open")]);
 
     expect(screen.queryByText("Author")).toBeNull();
+  });
+
+  it("shows a tenant auditor the report without a decision or a removal", async () => {
+    await renderQueue([report("open")], undefined, false);
+
+    expect(screen.getByText("Spam or advertising")).toBeTruthy();
+    expect(screen.getByText("A comment on the first episode.")).toBeTruthy();
+    // The pager is all that is left to press.
+    expect(
+      screen.queryAllByRole("button").map((button) => button.textContent)
+    ).toEqual(["Previous", "Next"]);
   });
 });

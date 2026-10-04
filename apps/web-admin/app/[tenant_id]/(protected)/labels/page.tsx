@@ -16,6 +16,8 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { TenantEditorOnly } from "#components/tenant-role-gate";
+import { isSignedInTenantEditor } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -46,13 +48,15 @@ const LabelManagerData = async ({
 }: Pick<LabelPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const [locale, listResult] = await Promise.all([
+  const [locale, listResult, canEdit] = await Promise.all([
     getLocale(tenantId),
     listLabels({ token }),
+    isSignedInTenantEditor(tenantId),
   ]);
 
   return (
     <LabelManager
+      canEdit={canEdit}
       {...cursorPageHrefs(listResult)}
       labels={listResult.labels}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
@@ -77,13 +81,17 @@ const LabelPage = ({ searchParams }: LabelPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
-      <AdminPageActions>
-        <LinkButton render={<Link href="/labels/new" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="admin.labels.new_action" />
-          </Suspense>
-        </LinkButton>
-      </AdminPageActions>
+      <Suspense fallback={null}>
+        <TenantEditorOnly>
+          <AdminPageActions>
+            <LinkButton render={<Link href="/labels/new" />} variant="outline">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.labels.new_action" />
+              </Suspense>
+            </LinkButton>
+          </AdminPageActions>
+        </TenantEditorOnly>
+      </Suspense>
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TableSkeleton />}>
