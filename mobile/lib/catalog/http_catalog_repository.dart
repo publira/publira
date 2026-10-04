@@ -88,6 +88,11 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
 
+  final _reactionWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get reactionWrites => _reactionWrites.stream;
+
   /// How many series one catalog page holds, which is also the API's own
   /// fallback for a request naming no limit.
   static const seriesPageLimit = 20;
@@ -824,6 +829,7 @@ class HttpCatalogRepository implements CatalogRepository {
         tenantId: tenantId,
         accessToken: accessToken,
       );
+      _reactionWrites.add(null);
       return _reactionFromJson(body, 'reaction');
     } on ConnectException catch (error) {
       throw _toFailure(error);

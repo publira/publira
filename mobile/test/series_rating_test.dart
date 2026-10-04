@@ -206,6 +206,49 @@ void main() {
     expect(find.text('Your rating: 2.0'), findsOne);
   });
 
+  testWidgets('a reaction that lands after the return still reaches the '
+      'screen', (tester) async {
+    await pumpSeries(tester);
+    await pumpUntilAsked(tester, 1);
+    await tapReachable(tester, readingAction);
+    final viewer = AppRoutes.episodeViewerPath(
+      series.id,
+      detail.episodes.first.id,
+    );
+    await pumpUntilTrue(tester, () => router.state.uri.path == viewer);
+    await tester.pageBack();
+    await pumpUntilRouteSettled(tester, publicRating);
+    await pumpUntilAsked(tester, 2);
+    expect(ownRating, findsNothing);
+
+    // The press was made just before the reader left, and reaches the API
+    // after the return has already asked.
+    catalog.mySeriesRatings = {series.internalId: 5};
+    await catalog.reactToEpisode(detail.episodes.first.internalId);
+    await pumpUntilFound(tester, ownRating);
+
+    expect(find.text('Your rating: 5.0'), findsOne);
+  });
+
+  testWidgets('reactions in an open episode are not read back one by one', (
+    tester,
+  ) async {
+    await pumpSeries(tester);
+    await pumpUntilAsked(tester, 1);
+    await tapReachable(tester, readingAction);
+    final viewer = AppRoutes.episodeViewerPath(
+      series.id,
+      detail.episodes.first.id,
+    );
+    await pumpUntilTrue(tester, () => router.state.uri.path == viewer);
+    final asked = catalog.mySeriesRatingRequests.length;
+
+    await catalog.reactToEpisode(detail.episodes.first.internalId);
+    await tester.pump();
+
+    expect(catalog.mySeriesRatingRequests, hasLength(asked));
+  });
+
   testWidgets('signing out takes the reader\'s rating off the screen', (
     tester,
   ) async {

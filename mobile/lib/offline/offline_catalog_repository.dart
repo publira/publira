@@ -426,6 +426,9 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId) =>
       _origin.reactToEpisode(episodeInternalId);
 
+  @override
+  Stream<void> get reactionWrites => _origin.reactionWrites;
+
   /// Every write lands through the API, whether it is sent at once or later
   /// from the outbox, so the API's own notice is the one there is.
   @override

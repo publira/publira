@@ -278,6 +278,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// made before it.
   StreamSubscription<void>? _progressWrites;
 
+  /// A reaction pressed just before the reader came back can land after the
+  /// return has read the rating, so it is read again once it has landed.
+  StreamSubscription<void>? _reactionWrites;
+
   OfflineLibrary? _library;
 
   /// Saved episodes change under this screen too — a save it started that
@@ -289,6 +293,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   void dispose() {
     unawaited(_libraryChanges?.cancel());
     unawaited(_progressWrites?.cancel());
+    unawaited(_reactionWrites?.cancel());
     super.dispose();
   }
 
@@ -316,6 +321,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       _progressWrites = catalog.readingProgressWrites.listen((_) {
         if (_episodesOpen == 0) {
           unawaited(_loadProgress(catalog, _readerId));
+        }
+      });
+      unawaited(_reactionWrites?.cancel());
+      _reactionWrites = catalog.reactionWrites.listen((_) {
+        if (_episodesOpen == 0) {
+          unawaited(_loadOwnRating(catalog, _readerId));
         }
       });
     }

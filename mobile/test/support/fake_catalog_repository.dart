@@ -706,8 +706,14 @@ class FakeCatalogRepository implements CatalogRepository {
       allowsMultiplePresses: current.allowsMultiplePresses,
     );
     reactions = {...reactions, episodeInternalId: next};
+    _reactionWrites.add(null);
     return next;
   }
+
+  final _reactionWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get reactionWrites => _reactionWrites.stream;
 
   final _readingProgressWrites = StreamController<void>.broadcast();
 

@@ -2514,6 +2514,31 @@ void main() {
       expect(writes, hasLength(2));
     });
 
+    test(
+      'a reaction that lands is announced, and a refused one is not',
+      () async {
+        final writes = <void>[];
+        final subscription = signedIn.reactionWrites.listen(writes.add);
+        addTearDown(subscription.cancel);
+        final episodeId = ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        );
+
+        await signedIn.reactToEpisode(episodeId);
+        server.rateEpisodeError = (
+          status: HttpStatus.notFound,
+          body: {'code': 'not_found', 'message': 'episode not found'},
+        );
+        await expectLater(
+          signedIn.reactToEpisode(episodeId),
+          throwsA(isA<CatalogFailure>()),
+        );
+        await pumpEventQueue();
+
+        expect(writes, hasLength(1));
+      },
+    );
+
     test('a finish the API refuses is not announced', () async {
       server.markReadErrorCode = 'permission_denied';
       final writes = <void>[];

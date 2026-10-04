@@ -236,6 +236,13 @@ abstract class CatalogRepository {
   /// removed or lowered; the server applies the series' press mode.
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId);
 
+  /// Fires each time a reaction of the signed-in reader lands at the API.
+  ///
+  /// A reader can press and leave the episode before the press has landed, so
+  /// a screen showing their rating can be asked again before it counts. This
+  /// is what tells it to ask once more.
+  Stream<void> get reactionWrites;
+
   /// Fires each time a write of the signed-in reader's place lands at the API:
   /// a page they stopped on, or an episode they finished.
   ///
