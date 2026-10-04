@@ -15,17 +15,10 @@
 # a caller, so a bare `<port>:<port>` would hand the whole dev stack to anyone
 # on the same network.
 #
-# `name:` is fixed, because without it Compose and the Dev Containers CLI derive
-# the project name from the directory of the first compose file, and every
-# container and named volume is prefixed with it. Moving the Dev Container's
-# first file from `.devcontainer/` to the root once renamed the project from
-# `publira_devcontainer` to `publira`: nothing failed, the stack came up with
-# empty volumes, and the old containers and volumes stayed behind unreferenced
-# until the disk filled up. The fixed name keeps the existing `publira_*`
-# volumes and makes every checkout share one stack, which the per-worktree
-# dev-env profiles are built on. `-p` and `COMPOSE_PROJECT_NAME` (also read from
-# `.env` beside this file) still outrank it, which is how the E2E checks and a
-# second Dev Container get a project of their own.
+# `name:` is fixed so the containers and volumes keep their names when the
+# checkout directory or the compose file layout changes; a derived name would
+# start an empty stack and orphan the old volumes. `-p` and
+# `COMPOSE_PROJECT_NAME` still outrank it.
 name: publira
 
 services:
