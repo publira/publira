@@ -251,6 +251,14 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesProgress> getSeriesProgress(String seriesInternalId);
 
+  /// The signed-in reader's own rating of the series [seriesInternalId] names:
+  /// the mean of the scores they gave its episodes, to one decimal.
+  ///
+  /// `null` for a reader who has reacted to none of them, and for one who is
+  /// signed out, without a request. Throws [CatalogFailure] on a transport or
+  /// unexpected server error.
+  Future<double?> getMySeriesRating(String seriesInternalId);
+
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.
   ///

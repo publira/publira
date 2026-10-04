@@ -256,6 +256,20 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// return asks once for all of them, rather than one read per page turned.
   var _episodesOpen = 0;
 
+  /// This reader's own rating of the series, the mean of the scores they gave
+  /// its episodes. `null` for a guest, until the API has answered, and for a
+  /// reader who has reacted to none of them.
+  double? _ownRating;
+
+  /// Whether the latest read of [_ownRating] failed, which the screen says
+  /// where the rating would be, as the storefront does: unlike a place in the
+  /// series, a rating has no stand-in that would not read as the reader's own.
+  var _ownRatingFailed = false;
+
+  /// How many reads of [_ownRating] this screen has started, so that only the
+  /// latest one's answer is shown.
+  var _ownRatingReads = 0;
+
   CatalogRepository? _catalog;
 
   /// The viewer sends what the reader read without waiting for it, the last
@@ -312,15 +326,19 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       }
       if (changedCatalog) {
         unawaited(_loadProgress(catalog, readerId));
+        unawaited(_loadOwnRating(catalog, readerId));
       }
       return;
     }
     _started = true;
     _readerId = readerId;
-    // The last reader's place is not this one's, whether or not the API
-    // answers for the new one.
+    // The last reader's place and rating are not this one's, whether or not
+    // the API answers for the new one.
     _progress = SeriesProgress.none;
+    _ownRating = null;
+    _ownRatingFailed = false;
     unawaited(_loadProgress(catalog, readerId));
+    unawaited(_loadOwnRating(catalog, readerId));
     final purchase = PurchaseScope.maybeOf(context)?.repository;
     if (purchase != null) {
       unawaited(_loadPurchase(purchase, readerId));
@@ -379,8 +397,41 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     });
   }
 
-  /// Opens [location] in the viewer, and asks where the reader stands again
-  /// once they come back: the viewer is where that moves.
+  /// This reader's own rating of the series. A guest has reacted to nothing,
+  /// so nothing is asked for one.
+  Future<void> _loadOwnRating(
+    CatalogRepository catalog,
+    String readerId,
+  ) async {
+    final seriesId = widget.detail.series.internalId;
+    if (readerId.isEmpty || seriesId.isEmpty) {
+      return;
+    }
+    final read = ++_ownRatingReads;
+    double? rating;
+    var failed = false;
+    try {
+      rating = await catalog.getMySeriesRating(seriesId);
+    } on CatalogFailure catch (failure) {
+      // A session the API no longer takes is answered as the guest it now
+      // is, with no rating rather than a failure to show one.
+      failed = failure.kind != CatalogFailureKind.sessionExpired;
+    }
+    if (!mounted ||
+        read != _ownRatingReads ||
+        readerId != _readerId ||
+        !identical(catalog, _catalog)) {
+      return;
+    }
+    setState(() {
+      _ownRating = rating;
+      _ownRatingFailed = failed;
+    });
+  }
+
+  /// Opens [location] in the viewer, and asks where the reader stands and how
+  /// they rate the series again once they come back: the viewer is where both
+  /// move.
   Future<void> _openEpisode(String location) async {
     _episodesOpen++;
     try {
@@ -392,7 +443,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     if (!mounted || catalog == null) {
       return;
     }
-    await _loadProgress(catalog, _readerId);
+    await (
+      _loadProgress(catalog, _readerId),
+      _loadOwnRating(catalog, _readerId),
+    ).wait;
   }
 
   /// Saves [episode] with every page, and tells the reader how that ended.
@@ -485,24 +539,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         ),
         const SizedBox(height: 16),
         AutospacedText(series.title, style: theme.textTheme.headlineSmall),
-        if (series.ratingCount > 0) ...[
-          const SizedBox(height: 8),
-          AutospacedText(
-            key: const ValueKey('series-rating'),
-            series.ratingCount == 1
-                ? messages.seriesRatingSingle(
-                    average: series.ratingAverage.toStringAsFixed(1),
-                    count: messages.formatInteger(series.ratingCount),
-                  )
-                : messages.seriesRating(
-                    average: series.ratingAverage.toStringAsFixed(1),
-                    count: messages.formatInteger(series.ratingCount),
-                  ),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        const SizedBox(height: 8),
+        _SeriesRating(
+          series: series,
+          ownRating: _ownRating,
+          ownRatingFailed: _ownRatingFailed,
+        ),
         if (series.creators.isNotEmpty) ...[
           const SizedBox(height: 4),
           CreatorCredits(
@@ -765,6 +807,72 @@ class _SeriesLabel extends StatelessWidget {
       onPressed: () =>
           context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
       child: AutospacedText(series.labelName),
+    );
+  }
+}
+
+/// The series' rating from every reader who reacted to it, this reader's own
+/// beside it, and how a rating comes about, which the storefront says under
+/// both too: a series is rated through its episodes, never directly.
+class _SeriesRating extends StatelessWidget {
+  const _SeriesRating({
+    required this.series,
+    required this.ownRating,
+    required this.ownRatingFailed,
+  });
+
+  final SeriesItem series;
+  final double? ownRating;
+  final bool ownRatingFailed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final messages = AppMessages.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final figures = [
+      if (series.ratingCount > 0)
+        AutospacedText(
+          key: const ValueKey('series-rating'),
+          series.ratingCount == 1
+              ? messages.seriesRatingSingle(
+                  average: series.ratingAverage.toStringAsFixed(1),
+                  count: messages.formatInteger(series.ratingCount),
+                )
+              : messages.seriesRating(
+                  average: series.ratingAverage.toStringAsFixed(1),
+                  count: messages.formatInteger(series.ratingCount),
+                ),
+          style: style,
+        ),
+      if (ownRating case final rating?)
+        AutospacedText(
+          key: const ValueKey('series-rating-own'),
+          messages.seriesRatingOwn(average: rating.toStringAsFixed(1)),
+          style: style,
+        ),
+      if (ownRatingFailed)
+        AutospacedText(
+          key: const ValueKey('series-rating-own-failed'),
+          messages.seriesRatingOwnFailed,
+          style: style,
+        ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (figures.isNotEmpty) ...[
+          Wrap(spacing: 16, runSpacing: 4, children: figures),
+          const SizedBox(height: 4),
+        ],
+        AutospacedText(
+          key: const ValueKey('series-rating-explanation'),
+          messages.seriesRatingExplanation,
+          style: style,
+        ),
+      ],
     );
   }
 }

@@ -784,7 +784,10 @@ void main() {
     );
 
     await tester.tap(find.text('Back to the series'));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });
@@ -836,7 +839,10 @@ void main() {
     expect(router.state.uri.path, viewerPath);
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });
@@ -994,7 +1000,10 @@ void main() {
     // The episode read before it was replaced rather than stacked, so the way
     // back is the series it was opened from.
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });
@@ -1273,7 +1282,10 @@ void main() {
     await turnToEnd(tester);
 
     await tester.tap(find.byKey(const ValueKey('episode-end-back-to-series')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
   });
@@ -1460,7 +1472,10 @@ void main() {
     expect(catalog.readingPositions, isEmpty);
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
     expect(catalog.readingPositions[episodeKey(seriesId, episodeId)], 1);
   });

@@ -438,6 +438,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<SeriesProgress> getSeriesProgress(String seriesInternalId) =>
       _origin.getSeriesProgress(seriesInternalId);
 
+  /// The reader's own rating, made of reactions that are never kept on the
+  /// device either, so only the API can answer it.
+  @override
+  Future<double?> getMySeriesRating(String seriesInternalId) =>
+      _origin.getMySeriesRating(seriesInternalId);
+
   /// The reader's continue-reading row, which only the API can answer.
   ///
   /// Nothing about it is kept on the device: it is an offer to open something

@@ -23,6 +23,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.episodes = const {},
     this.recentSeries = const [],
     this.seriesProgress = const {},
+    this.mySeriesRatings = const {},
     this.episodeReads = const [],
     this.followUpdates = const [],
     this.readingPositions = const {},
@@ -60,6 +61,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.markReadError,
     this.recentSeriesError,
     this.seriesProgressError,
+    this.mySeriesRatingError,
     this.episodeReadsError,
     this.episodeReadsMoreError,
     this.followUpdatesError,
@@ -183,6 +185,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// id. A series absent is one the reader has opened nothing of.
   Map<String, SeriesProgress> seriesProgress;
 
+  /// The reader's own rating of each series, keyed by the series' internal id.
+  /// A series absent is one the reader has reacted to nothing of.
+  Map<String, double> mySeriesRatings;
+
   /// What the reading history is answered with, most recently finished first.
   List<EpisodeReadItem> episodeReads;
 
@@ -220,6 +226,7 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? markReadError;
   CatalogFailure? recentSeriesError;
   CatalogFailure? seriesProgressError;
+  CatalogFailure? mySeriesRatingError;
   CatalogFailure? episodeReadsError;
 
   /// What a read of a history page under the first one fails with.
@@ -273,6 +280,9 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// Internal ids [getSeriesProgress] was called with, in order.
   final List<String> seriesProgressRequests = <String>[];
+
+  /// Internal ids [getMySeriesRating] was called with, in order.
+  final List<String> mySeriesRatingRequests = <String>[];
 
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
@@ -712,6 +722,16 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     return seriesProgress[seriesInternalId] ?? SeriesProgress.none;
+  }
+
+  @override
+  Future<double?> getMySeriesRating(String seriesInternalId) async {
+    mySeriesRatingRequests.add(seriesInternalId);
+    final error = mySeriesRatingError;
+    if (error != null) {
+      throw error;
+    }
+    return mySeriesRatings[seriesInternalId];
   }
 
   @override

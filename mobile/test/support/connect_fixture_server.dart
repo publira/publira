@@ -28,6 +28,7 @@ class ConnectFixtureServer {
     this.readingPositions = const {},
     this.recentSeries = const [],
     this.seriesProgress = const {},
+    this.seriesRatings = const {},
     this.commentMode = 'COMMENT_MODE_IMMEDIATE',
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
@@ -554,6 +555,11 @@ class ConnectFixtureServer {
   /// episodes [episodeReads] holds, so a finish the viewer records shows on the
   /// next read.
   Map<String, Map<String, Object?>> seriesProgress;
+
+  /// The `GetMySeriesRating` body a signed-in member is answered with, keyed
+  /// by series public id. A series missing here is one they have reacted to
+  /// nothing of, which protojson answers with an empty body.
+  Map<String, Map<String, Object?>> seriesRatings;
 
   /// `MyEpisodeRead` entries `ListMyEpisodeReads` answers a signed-in member
   /// with, in the order they are given, at most the request's `limit` to a
@@ -1592,6 +1598,23 @@ class ConnectFixtureServer {
     if (path.endsWith('/RateEpisode') && rateEpisodeError != null) {
       final error = rateEpisodeError!;
       await _write(request, error.status, error.body);
+      return;
+    }
+
+    if (path.endsWith('/GetMySeriesRating')) {
+      if (!_isAuthorized(request)) {
+        await _write(request, HttpStatus.unauthorized, {
+          'code': 'unauthenticated',
+          'message': 'invalid token',
+        });
+        return;
+      }
+      await _write(
+        request,
+        HttpStatus.ok,
+        seriesRatings[publicIdOf(body['seriesId'])] ??
+            const <String, Object?>{},
+      );
       return;
     }
 

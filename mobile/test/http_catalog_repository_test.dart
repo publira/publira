@@ -2282,6 +2282,9 @@ void main() {
       await signedIn.reactToEpisode(
         ConnectFixtureServer.internalIdOf(episodeId),
       );
+      await signedIn.getMySeriesRating(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
 
       final calls = server.requests.where(
         (request) =>
@@ -2299,6 +2302,7 @@ void main() {
           'ListMyEpisodeReads',
           'GetMyEpisodeRating',
           'RateEpisode',
+          'GetMySeriesRating',
         },
       );
       for (final call in calls) {
@@ -2605,6 +2609,64 @@ void main() {
       },
     );
 
+    test('getMySeriesRating reads the mean of the member\'s scores', () async {
+      server.seriesRatings = {
+        ConnectFixtureServer.seedSeriesId: {
+          'ratingAverage': 4.3,
+          'ratedEpisodeCount': 3,
+        },
+      };
+
+      final rating = await signedIn.getMySeriesRating(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
+
+      expect(rating, 4.3);
+      final request = server.requestsTo('GetMySeriesRating').single;
+      expect(
+        request.body['seriesId'],
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      );
+      expect(
+        request.headers['authorization'],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+    });
+
+    test(
+      'a member who reacted to no episode has no rating of the series',
+      () async {
+        // protojson omits both zeros, which is the whole answer for them.
+        final rating = await signedIn.getMySeriesRating(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        );
+
+        expect(rating, isNull);
+      },
+    );
+
+    test('a series rating outside the scale is refused', () async {
+      server.seriesRatings = {
+        ConnectFixtureServer.seedSeriesId: {
+          'ratingAverage': 7,
+          'ratedEpisodeCount': 1,
+        },
+      };
+
+      await expectLater(
+        signedIn.getMySeriesRating(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        ),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.unexpected,
+          ),
+        ),
+      );
+    });
+
     test('listEpisodeReads maps the episode, its series, and when', () async {
       final reads = (await signedIn.listEpisodeReads(limit: 20)).reads;
 
@@ -2696,6 +2758,12 @@ void main() {
       expect(progress.episode, isNull);
       expect(progress.finishedEpisodeIds, isEmpty);
       expect((await catalog.listEpisodeReads(limit: 20)).reads, isEmpty);
+      expect(
+        await catalog.getMySeriesRating(
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        ),
+        isNull,
+      );
 
       // Nothing was asked, so nothing was refused: the API answers a request
       // without a session `unauthenticated`, and there is no answer in that
@@ -2705,6 +2773,7 @@ void main() {
       expect(server.requestsTo('MarkEpisodeAsRead'), isEmpty);
       expect(server.requestsTo('ListMyRecentSeries'), isEmpty);
       expect(server.requestsTo('GetMySeriesProgress'), isEmpty);
+      expect(server.requestsTo('GetMySeriesRating'), isEmpty);
       // Nothing was recorded, so nothing is announced either.
       await pumpEventQueue();
       expect(writes, isEmpty);

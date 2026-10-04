@@ -1985,6 +1985,76 @@ void main() {
       });
     });
 
+    testApp('a guest sees the series rating and none of their own', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-series-rating', () async {
+        (server.details[ConnectFixtureServer.seedSeriesId]!['series']!
+              as Map<String, Object?>)
+          ..['ratingAverage'] = 4.2
+          ..['ratingCount'] = '12';
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-rating')),
+        );
+
+        expect(find.text('Rating: 4.2 · 12 readers'), findsOne);
+        expect(find.text('React to episodes to rate this series.'), findsOne);
+        expect(find.byKey(const ValueKey('series-rating-own')), findsNothing);
+        // A guest has reacted to nothing, so nothing is asked for them.
+        expect(server.requestsTo('GetMySeriesRating'), isEmpty);
+      });
+    });
+
+    testApp('a member sees their own rating beside the series rating', (
+      tester,
+    ) async {
+      await withFailureScreenshot(
+        tester,
+        'fixture-series-own-rating',
+        () async {
+          (server.details[ConnectFixtureServer.seedSeriesId]!['series']!
+                as Map<String, Object?>)
+            ..['ratingAverage'] = 4.2
+            ..['ratingCount'] = '12';
+          // What the member's reactions on the website make of the series.
+          server.seriesRatings = {
+            ConnectFixtureServer.seedSeriesId: {
+              'ratingAverage': 3.5,
+              'ratedEpisodeCount': 2,
+            },
+          };
+          await pumpApp(
+            tester,
+            session: memberSession(),
+            initialLocation: AppRoutes.seriesDetailPath(
+              ConnectFixtureServer.seedSeriesId,
+            ),
+          );
+          final own = find.byKey(const ValueKey('series-rating-own'));
+          await pumpUntilRouteSettled(tester, own);
+
+          expect(
+            find.descendant(of: own, matching: find.text('Your rating: 3.5')),
+            findsOne,
+          );
+          expect(find.text('Rating: 4.2 · 12 readers'), findsOne);
+          expect(
+            server.requestsTo('GetMySeriesRating').single.body['seriesId'],
+            ConnectFixtureServer.internalIdOf(
+              ConnectFixtureServer.seedSeriesId,
+            ),
+          );
+        },
+      );
+    });
+
     testApp('a member drags the progress slider to a page and reopens the '
         'episode there', (tester) async {
       await withFailureScreenshot(tester, 'fixture-progress-slider', () async {
@@ -3244,6 +3314,71 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
         await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('the rating the seed member gave a series reaches the app', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-series-own-rating', () async {
+        final member = await signInSeedMember();
+        final tenantId = await member.tenants.resolve();
+        Future<Map<String, Object?>> rpc(
+          String procedure,
+          Map<String, Object?> body,
+        ) => member.client.unary(
+          procedure,
+          {
+            ...body,
+            'surface': appClientSurface,
+            'tenant': {'tenantId': tenantId},
+          },
+          tenantId: tenantId,
+          accessToken: member.session.accessToken,
+        );
+        final episode =
+            (await rpc('/publira.v1.CatalogService/GetEpisodeDetail', {
+                  'publicId': ConnectFixtureServer.seedEpisodeId,
+                }))['episode']!
+                as Map<String, Object?>;
+        final series =
+            (await rpc('/publira.v1.CatalogService/GetSeriesDetail', {
+                  'publicId': ConnectFixtureServer.seedSeriesId,
+                }))['series']!
+                as Map<String, Object?>;
+        // A reaction to the seed episode, as the website's press makes one,
+        // which leaves the member a rating of the series it belongs to.
+        await rpc('/publira.v1.RatingService/RateEpisode', {
+          'episodeId': episode['id'],
+          'presses': 1,
+        });
+        final rating = await rpc(
+          '/publira.v1.RatingService/GetMySeriesRating',
+          {'seriesId': series['id']},
+        );
+        final average = (rating['ratingAverage']! as num).toDouble();
+
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+          session: member.session,
+        );
+        final own = find.byKey(const ValueKey('series-rating-own'));
+        await pumpUntilRouteSettled(
+          tester,
+          own,
+          timeout: const Duration(seconds: 20),
+        );
+
+        expect(
+          find.descendant(
+            of: own,
+            matching: find.text('Your rating: ${average.toStringAsFixed(1)}'),
+          ),
+          findsOne,
+        );
       });
     });
 
