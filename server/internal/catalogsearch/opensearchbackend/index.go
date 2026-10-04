@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensearch-project/opensearch-go/v4"
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 )
 
 // indexDefinition is the settings and mappings of the catalog index. Every
@@ -144,7 +144,7 @@ func (b *Backend) EnsureIndex(ctx context.Context) error {
 
 // nameExists reports whether name is an index or an alias.
 func (b *Backend) nameExists(ctx context.Context, name string) (bool, error) {
-	resp, err := b.client.Indices.Exists(ctx, opensearchapi.IndicesExistsReq{Indices: []string{name}})
+	resp, err := b.client.Indices.Exists(ctx, &opensearchapi.IndicesExistsReq{Indices: []string{name}})
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
@@ -173,8 +173,8 @@ func definitionWithAlias(alias string) ([]byte, error) {
 
 func (b *Backend) createIndex(ctx context.Context, name string, body []byte) error {
 	if _, err := b.client.Indices.Create(ctx, opensearchapi.IndicesCreateReq{
-		Index: name,
-		Body:  bytes.NewReader(body),
+		Index:      name,
+		BodyReader: bytes.NewReader(body),
 	}); err != nil {
 		return fmt.Errorf("opensearchbackend: create index %q: %w", name, err)
 	}
@@ -267,28 +267,33 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error
 		}
 	}
 
-	resp, err := b.client.Bulk(ctx, opensearchapi.BulkReq{Body: &body})
-	if err != nil {
+	// A document that refuses its write comes back as a partial failure, with
+	// the response still read, so which items failed is taken from the
+	// response rather than from the error.
+	resp, err := b.client.Doc.Bulk(ctx, opensearchapi.BulkReq{Body: &body})
+	var partial *opensearchapi.PartialBulkError
+	if err != nil && !errors.As(err, &partial) {
 		return fmt.Errorf("opensearchbackend: write to %q: %w", index, err)
 	}
-	if !resp.Errors {
+	failures := resp.BulkItemFailures()
+	if failures == nil {
 		return nil
 	}
-	for _, item := range resp.Items {
-		for operation, result := range item {
-			switch {
-			case result.Status >= 200 && result.Status < 300:
-			// The document holds a higher version, which is a later read of the
-			// row than this one.
-			case result.Status == http.StatusConflict:
-			default:
-				reason := ""
-				if result.Error != nil {
-					reason = result.Error.Type + ": " + result.Error.Reason
-				}
-				return fmt.Errorf("opensearchbackend: %s %s in %q: status %d: %s", operation, result.ID, index, result.Status, reason)
-			}
+	for _, item := range failures.FailedItems {
+		// The document holds a higher version, which is a later read of the
+		// row than this one.
+		if item.Status == http.StatusConflict {
+			continue
 		}
+		id := ""
+		if item.ID != nil {
+			id = *item.ID
+		}
+		reason := item.Error.Type
+		if item.Error.Reason != nil {
+			reason += ": " + *item.Error.Reason
+		}
+		return fmt.Errorf("opensearchbackend: index %s in %q: status %d: %s", id, index, item.Status, reason)
 	}
 	return nil
 }

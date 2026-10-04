@@ -19,7 +19,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/lib/pq v1.12.3
-	github.com/opensearch-project/opensearch-go/v4 v4.8.0
 	github.com/opensearch-project/opensearch-go/v5 v5.0.0
 	github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806
 	github.com/pquerna/otp v1.5.0
@@ -121,6 +120,7 @@ require (
 	github.com/riverqueue/river/riverdriver v0.48.0 // indirect
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.48.0 // indirect
 	github.com/riverqueue/river/rivershared v0.48.0 // indirect
+	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect

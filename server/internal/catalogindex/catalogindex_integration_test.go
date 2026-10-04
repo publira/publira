@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensearch-project/opensearch-go/v4"
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
@@ -39,17 +39,17 @@ func newIndex(t *testing.T) index {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: opensearch.Config{Addresses: []string{env.URL}}})
+	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: opensearch.Config{Addresses: []string{env.URL}, DiscoverNodesOnStart: new(false)}})
 	if err != nil {
 		t.Fatalf("client: %v", err)
 	}
 	t.Cleanup(func() {
-		resp, err := client.Indices.Get(context.Background(), opensearchapi.IndicesGetReq{Indices: []string{alias + "*"}})
-		if err != nil || resp.IndicesGetRespData == nil {
+		resp, err := client.Indices.Get(context.Background(), &opensearchapi.IndicesGetReq{Indices: []string{alias + "*"}})
+		if err != nil || resp.Entries == nil {
 			return
 		}
-		if indices := slices.Collect(maps.Keys(*resp.IndicesGetRespData)); len(indices) > 0 {
-			_, _ = client.Indices.Delete(context.Background(), opensearchapi.IndicesDeleteReq{Indices: indices})
+		if indices := slices.Collect(maps.Keys(resp.Entries)); len(indices) > 0 {
+			_, _ = client.Indices.Delete(context.Background(), &opensearchapi.IndicesDeleteReq{Indices: indices})
 		}
 	})
 	return index{backend: backend, client: client, alias: alias}
@@ -58,7 +58,7 @@ func newIndex(t *testing.T) index {
 // refresh makes what was written visible to the next search.
 func (i index) refresh(t *testing.T) {
 	t.Helper()
-	if _, err := i.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Index: []string{i.alias}}); err != nil {
+	if _, err := i.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{i.alias}}); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 }

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensearch-project/opensearch-go/v4"
-	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/v5"
+	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/pagination"
@@ -39,13 +39,13 @@ func newTestBackend(t *testing.T) *Backend {
 // itself cannot be deleted by name, and a rebuild leaves its index behind it.
 func deleteIndices(backend *Backend) {
 	ctx := context.Background()
-	resp, err := backend.client.Indices.Get(ctx, opensearchapi.IndicesGetReq{Indices: []string{backend.index + "*"}})
-	if err != nil || resp.IndicesGetRespData == nil {
+	resp, err := backend.client.Indices.Get(ctx, &opensearchapi.IndicesGetReq{Indices: []string{backend.index + "*"}})
+	if err != nil || resp.Entries == nil {
 		return
 	}
-	indices := slices.Collect(maps.Keys(*resp.IndicesGetRespData))
+	indices := slices.Collect(maps.Keys(resp.Entries))
 	if len(indices) > 0 {
-		_, _ = backend.client.Indices.Delete(ctx, opensearchapi.IndicesDeleteReq{Indices: indices})
+		_, _ = backend.client.Indices.Delete(ctx, &opensearchapi.IndicesDeleteReq{Indices: indices})
 	}
 }
 
@@ -63,7 +63,7 @@ func put(t *testing.T, backend *Backend, docs ...Document) {
 
 func refresh(t *testing.T, backend *Backend) {
 	t.Helper()
-	if _, err := backend.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Index: []string{backend.index}}); err != nil {
+	if _, err := backend.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{backend.index}}); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 }
@@ -358,9 +358,9 @@ func TestAWriteOfALowerVersionLeavesTheDocumentAsItIs(t *testing.T) {
 	// The engine forgets a deleted document's version once index.gc_deletes
 	// has passed. With it at zero, only a delete that keeps its version as a
 	// document can refuse the stale write that follows it.
-	if _, err := backend.client.Indices.Settings.Put(ctx, opensearchapi.SettingsPutReq{
-		Indices: []string{backend.index},
-		Body:    strings.NewReader(`{"index":{"gc_deletes":"0s"}}`),
+	if _, err := backend.client.Indices.PutSettings(ctx, &opensearchapi.IndicesPutSettingsReq{
+		Indices:    []string{backend.index},
+		BodyReader: strings.NewReader(`{"index":{"gc_deletes":"0s"}}`),
 	}); err != nil {
 		t.Fatalf("set gc_deletes: %v", err)
 	}
