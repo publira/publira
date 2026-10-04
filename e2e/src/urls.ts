@@ -353,6 +353,23 @@ export const WEB_ADMIN_TENANT_MEMBERS_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant whose staff share a contact inbox, from
+ * `db/seeds/scenarios/390_contact_workflow.sql`. A message can be assigned to
+ * any tenant admin of its tenant, so the suite that hands messages between two
+ * of them needs a tenant of its own.
+ */
+export const WEB_HOST_CONTACT_WORKFLOW_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_CONTACT_WORKFLOW_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "desk.localhost")
+);
+
+/** Admin console of the same contact-workflow tenant. */
+export const WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.desk.localhost")
+);
+
+/**
  * Public site of the commenting tenant from the scenario seed
  * `db/seeds/scenarios/140_episode_comments.sql`.
  *
