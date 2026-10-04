@@ -104,7 +104,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               child: _ContinueReadingShelf(refreshes: _refreshes),
             ),
             SliverToBoxAdapter(child: _GenresShelf(refreshes: _refreshes)),
-            SliverToBoxAdapter(child: _RankingShelf(refreshes: _refreshes)),
+            SliverToBoxAdapter(child: _PopularShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _NewArrivalsShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _LabelsShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _CreatorsShelf(refreshes: _refreshes)),
@@ -154,7 +154,8 @@ class _CatalogTitle extends StatelessWidget {
 /// the API's list.
 const _continueReadingLimit = 10;
 
-/// The week's chart is a top ten, which is what its heading says it is.
+/// The week's chart is a top ten, which is what its heading says it is, and
+/// the order standing in for it on a tenant with no chart is as long.
 const _rankingLimit = 10;
 
 /// As many new arrivals as the chart beside it holds, so the two shelves
@@ -208,48 +209,89 @@ class _ContinueReadingShelf extends StatelessWidget {
   }
 }
 
+/// One card of the popularity shelf: a series, and the position the week's
+/// chart gave it, or `null` while the shelf stands in for a chart.
+typedef _PopularCard = ({SeriesItem series, int? rank});
+
 /// The top of the week's all-ages chart, in the positions the last ranking
 /// snapshot recorded, and the way to the whole of it. The app offers no rated
 /// chart, so this is the only one it shows.
 ///
 /// A tenant the ranking batch has not run for yet has no chart, and is shown
-/// no row rather than an empty one.
-class _RankingShelf extends StatelessWidget {
-  const _RankingShelf({required this.refreshes});
+/// the head of the order recommended to the reader in front of it instead, as
+/// the storefront's popularity module is, so a new tenant's catalog is not
+/// missing the row its readers look to for what to read. The heading and the
+/// way out follow whichever of the two the shelf shows: a chart is headed as
+/// the week's top ten and leads to the ranking, and the order standing in for
+/// one is headed as a recommendation and leads to the whole of that order.
+class _PopularShelf extends StatelessWidget {
+  const _PopularShelf({required this.refreshes});
 
   final int refreshes;
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return CatalogShelf<RankedSeriesItem>(
+    // The order standing in for a chart is the reader's own, so a sign-in or
+    // a sign-out asks again, as the continue-reading row does.
+    final readerId = AuthScope.of(context).session?.userPublicId ?? '';
+    // The whole of the chart the shelf is the top of, rather than the daily
+    // one the ranking screen opens on by itself.
+    final rankingAll = TextButton(
+      key: const ValueKey('catalog-ranking-all'),
+      onPressed: () => context.pushInTab(
+        AppRoutes.rankingPath(period: RankingPeriod.weekly),
+      ),
+      child: AutospacedText(messages.catalogViewAll),
+    );
+    return CatalogShelf<_PopularCard>(
       sectionKey: 'catalog-ranking',
       heading: messages.catalogRankingHeading,
       failureMessage: messages.catalogRankingFailed,
-      reloadToken: '$refreshes',
-      // The whole of the chart the shelf is the top of, rather than the daily
-      // one the ranking screen opens on by itself.
-      action: TextButton(
-        key: const ValueKey('catalog-ranking-all'),
-        onPressed: () => context.pushInTab(
-          AppRoutes.rankingPath(period: RankingPeriod.weekly),
+      reloadToken: '$readerId#$refreshes',
+      action: rankingAll,
+      frameFor: (cards) => cards.first.rank != null
+          ? (heading: messages.catalogRankingHeading, action: rankingAll)
+          : (
+              heading: messages.recommendedTitle,
+              action: TextButton(
+                key: const ValueKey('catalog-recommended-all'),
+                onPressed: () => context.pushInTab(AppRoutes.recommendedPath),
+                child: AutospacedText(messages.catalogViewAll),
+              ),
+            ),
+      load: (catalog) async {
+        final chart = await catalog.listRankedSeries(
+          limit: _rankingLimit,
+          period: RankingPeriod.weekly,
+          ageRating: SeriesAgeRating.all,
+        );
+        if (chart.rankedSeries.isNotEmpty) {
+          return [
+            for (final item in chart.rankedSeries)
+              (series: item.series, rank: item.rank),
+          ];
+        }
+        final recommended = readerId.isEmpty
+            ? await catalog.listRecommendedSeries(limit: _rankingLimit)
+            : await catalog.listMyRecommendedSeries(limit: _rankingLimit);
+        return [
+          for (final series in recommended.series) (series: series, rank: null),
+        ];
+      },
+      cardBuilder: (context, card) => SeriesShelfCard(
+        key: ValueKey(
+          card.rank == null
+              ? 'catalog-recommended-${card.series.id}'
+              : 'catalog-ranking-${card.series.id}',
         ),
-        child: AutospacedText(messages.catalogViewAll),
-      ),
-      load: (catalog) async => (await catalog.listRankedSeries(
-        limit: _rankingLimit,
-        period: RankingPeriod.weekly,
-        ageRating: SeriesAgeRating.all,
-      )).rankedSeries,
-      cardBuilder: (context, item) => SeriesShelfCard(
-        key: ValueKey('catalog-ranking-${item.series.id}'),
-        series: item.series,
-        subtitle: item.series.creators.isEmpty
+        series: card.series,
+        subtitle: card.series.creators.isEmpty
             ? null
-            : CreatorCredits(credits: item.series.creators),
-        rank: item.rank,
+            : CreatorCredits(credits: card.series.creators),
+        rank: card.rank,
         onTap: () =>
-            context.pushInTab(AppRoutes.seriesDetailPath(item.series.id)),
+            context.pushInTab(AppRoutes.seriesDetailPath(card.series.id)),
       ),
     );
   }

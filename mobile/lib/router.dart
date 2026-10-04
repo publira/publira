@@ -35,6 +35,7 @@ import 'package:publira/screens/published_page_screen.dart';
 import 'package:publira/screens/published_pages_screen.dart';
 import 'package:publira/screens/purchases_screen.dart';
 import 'package:publira/screens/ranking_screen.dart';
+import 'package:publira/screens/recommended_screen.dart';
 import 'package:publira/screens/reading_history_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/reset_password_screen.dart';
@@ -103,6 +104,7 @@ abstract final class AppRoutes {
   static const genreDetail = 'genres/:genreId';
   static const tagDetail = 'tags/:tagSlug';
   static const ranking = 'ranking';
+  static const recommended = 'recommended';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
@@ -186,6 +188,8 @@ abstract final class AppRoutes {
         ? '/$ranking'
         : Uri(path: '/$ranking', queryParameters: query).toString();
   }
+
+  static const recommendedPath = '/$recommended';
 
   /// A tag's slug is whatever an editor typed, so it is one encoded segment.
   static String tagDetailPath(String slug) =>
@@ -315,6 +319,10 @@ List<RouteBase> _tabRoutes() => [
           : RankingPeriod.daily,
       genreId: _rankingGenreId(state.uri),
     ),
+  ),
+  GoRoute(
+    path: AppRoutes.recommended,
+    builder: (context, state) => const RecommendedScreen(),
   ),
   GoRoute(
     path: AppRoutes.seriesDetail,

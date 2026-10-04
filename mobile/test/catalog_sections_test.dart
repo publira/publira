@@ -109,11 +109,18 @@ void main() {
   testWidgets('a tenant the ranking batch has not run for is shown no chart', (
     tester,
   ) async {
-    catalog.rankedSeries = const [];
+    catalog
+      ..rankedSeries = const []
+      ..recommendedSeries = fixtureSeries;
     await pumpLoadedApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('catalog-recommended-${fixtureSeries.first.id}')),
+    );
 
-    expect(find.byKey(const ValueKey('catalog-ranking')), findsNothing);
+    // The recommendation order stands in the chart's place instead.
     expect(find.text('Top 10 this week'), findsNothing);
+    expect(find.text('Recommended'), findsOneWidget);
   });
 
   testWidgets('the new-arrivals shelf shows the series published last', (

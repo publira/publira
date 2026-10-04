@@ -4007,6 +4007,10 @@
       "title": "랭킹",
       "title_genre": "{$genre} 랭킹"
     },
+    "recommended": {
+      "load_failed": "추천 작품을 표시할 수 없습니다",
+      "title": "추천 작품"
+    },
     "reading_history": {
       "account_description": "어디에서 읽었든 다 읽은 에피소드를 확인할 수 있습니다.",
       "empty": "아직 다 읽은 에피소드가 없습니다. 끝까지 읽은 에피소드는 로그인한 모든 기기에서 여기에 표시됩니다.",

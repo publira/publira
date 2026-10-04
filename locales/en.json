@@ -4007,6 +4007,10 @@
       "title": "Ranking",
       "title_genre": "{$genre} ranking"
     },
+    "recommended": {
+      "load_failed": "Could not show the recommended works. Try again.",
+      "title": "Recommended"
+    },
     "reading_history": {
       "account_description": "Episodes you have finished, wherever you read them.",
       "empty": "You have not finished any episodes yet. Episodes you read to the end appear here on every device you sign in on.",

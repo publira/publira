@@ -422,6 +422,100 @@ void main() {
     );
   });
 
+  group('the recommendation orders', () {
+    late HttpCatalogRepository signedIn;
+
+    /// [count] published series, each with an id starting [prefix].
+    List<Map<String, Object?>> order(String prefix, int count) => [
+      for (var index = 1; index <= count; index++)
+        {
+          ...server.series.first,
+          'publicId': '$prefix-$index',
+          'title': 'Series $prefix $index',
+        },
+    ];
+
+    setUp(() {
+      server
+        ..recommendedSeries = order('tenant', 3)
+        ..myRecommendedSeries = order('reader', 3);
+      signedIn = HttpCatalogRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+    });
+
+    List<String> idsOf(SeriesPage page) => [
+      for (final series in page.series) series.id,
+    ];
+
+    test(
+      'listRecommendedSeries reads the tenant order a page at a time',
+      () async {
+        final first = await catalog.listRecommendedSeries(limit: 2);
+        final second = await catalog.listRecommendedSeries(
+          limit: 2,
+          token: first.nextToken,
+        );
+
+        expect(idsOf(first), ['tenant-1', 'tenant-2']);
+        expect(idsOf(second), ['tenant-3']);
+        expect(second.nextToken, isEmpty);
+        final requests = server.requestsTo('ListRecommendedSeries');
+        expect(requests.first.body['limit'], 2);
+        expect(requests.first.body.containsKey('token'), isFalse);
+        expect(requests.last.body['token'], first.nextToken);
+      },
+    );
+
+    test('listMyRecommendedSeries reads the order the API answers the '
+        'member', () async {
+      final page = await signedIn.listMyRecommendedSeries(limit: 10);
+
+      expect(idsOf(page), ['reader-1', 'reader-2', 'reader-3']);
+      final request = server.requestsTo('ListMyRecommendedSeries').single;
+      expect(
+        request.headers[HttpHeaders.authorizationHeader],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      expect(server.requestsTo('ListRecommendedSeries'), isEmpty);
+    });
+
+    test(
+      'listMyRecommendedSeries reads the tenant order for a guest',
+      () async {
+        final page = await catalog.listMyRecommendedSeries(limit: 10);
+
+        expect(idsOf(page), ['tenant-1', 'tenant-2', 'tenant-3']);
+        expect(server.requestsTo('ListMyRecommendedSeries'), isEmpty);
+      },
+    );
+
+    test('listMyRecommendedSeries reads the tenant order for a session the '
+        'API refuses', () async {
+      server.activeAccessToken = 'another-token';
+
+      final page = await signedIn.listMyRecommendedSeries(limit: 10);
+
+      expect(idsOf(page), ['tenant-1', 'tenant-2', 'tenant-3']);
+      expect(server.requestsTo('ListMyRecommendedSeries'), hasLength(1));
+      expect(server.requestsTo('ListRecommendedSeries'), hasLength(1));
+    });
+
+    test('an empty catalog reads as an empty order', () async {
+      server.recommendedSeries = const [];
+
+      final page = await catalog.listRecommendedSeries(limit: 10);
+
+      expect(page.series, isEmpty);
+      expect(page.nextToken, isEmpty);
+    });
+  });
+
   test('listSeries resolves cover renditions against the image base', () async {
     final items = (await catalog.listSeries()).series;
 
@@ -1894,6 +1988,7 @@ void main() {
       await catalog.getCreatorDetail('SeedAUTHAAA1');
       await catalog.getLabelDetail('SeedLABLAAA1');
       await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId);
+      await catalog.listRecommendedSeries(limit: 3);
 
       final reads = server.requests.where(
         (request) => request.path.contains('/publira.v1.CatalogService/'),
@@ -1903,6 +1998,7 @@ void main() {
         {
           'ListPublishedSeries',
           'ListRankedSeries',
+          'ListRecommendedSeries',
           'SearchPublishedSeries',
           'SearchPublishedCreators',
           'SearchPublishedLabels',

@@ -51,6 +51,10 @@ class HttpCatalogRepository implements CatalogRepository {
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _relatedProcedure =
       '/publira.v1.CatalogService/ListRelatedSeries';
+  static const _recommendedProcedure =
+      '/publira.v1.CatalogService/ListRecommendedSeries';
+  static const _myRecommendedProcedure =
+      '/publira.v1.CatalogService/ListMyRecommendedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _creatorProcedure =
       '/publira.v1.CatalogService/GetPublishedCreatorDetail';
@@ -321,6 +325,74 @@ class HttpCatalogRepository implements CatalogRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<SeriesPage> listRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) async {
+    try {
+      return await _listRecommended(
+        _recommendedProcedure,
+        limit: limit,
+        token: token,
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<SeriesPage> listMyRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return listRecommendedSeries(limit: limit, token: token);
+    }
+    try {
+      return await _listRecommended(
+        _myRecommendedProcedure,
+        limit: limit,
+        token: token,
+        accessToken: accessToken,
+      );
+    } on ConnectException catch (error) {
+      if (error.code != 'unauthenticated') {
+        throw _toFailure(error);
+      }
+    }
+    // The token is handed on as it is: one the tenant's order cannot read is
+    // refused there, which starts the list again from its first page.
+    return listRecommendedSeries(limit: limit, token: token);
+  }
+
+  /// One page of [procedure], which is either recommendation RPC: the two
+  /// share a request and a response, and differ in whose order they answer.
+  Future<SeriesPage> _listRecommended(
+    String procedure, {
+    required int limit,
+    required String token,
+    String? accessToken,
+  }) async {
+    final tenantId = await _tenants.resolve();
+    final body = await _client.unary(
+      procedure,
+      {
+        'limit': limit,
+        'surface': appClientSurface,
+        if (token.isNotEmpty) 'token': token,
+        'tenant': {'tenantId': tenantId},
+      },
+      tenantId: tenantId,
+      accessToken: accessToken,
+    );
+    return SeriesPage(
+      series: _parseSeriesList(body['series']),
+      nextToken: _readString(body, 'nextToken', 'response'),
+    );
   }
 
   List<RankedSeriesItem> _parseRankedSeries(Object? raw) {

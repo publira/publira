@@ -170,6 +170,20 @@ class OfflineCatalogRepository implements CatalogRepository {
     required int limit,
   }) => _origin.listRelatedSeries(seriesInternalId, limit: limit);
 
+  /// The recommendation orders, which only the API can answer: each is the
+  /// whole catalog ranked from signals the device does not hold.
+  @override
+  Future<SeriesPage> listRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) => _origin.listRecommendedSeries(limit: limit, token: token);
+
+  @override
+  Future<SeriesPage> listMyRecommendedSeries({
+    required int limit,
+    String token = '',
+  }) => _origin.listMyRecommendedSeries(limit: limit, token: token);
+
   @override
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {

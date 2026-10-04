@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:publira/catalog/recommended_series_list.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/library/continue_reading_list.dart';
@@ -8,7 +9,8 @@ import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// What the reader reads, gathered on one screen: what they are in the middle
-/// of, what they follow, and what the device keeps for reading offline.
+/// of, what they follow, what the device keeps for reading offline, and what
+/// is recommended to them to read next.
 ///
 /// Each is a list of its own under a tab of this screen, so each pages and
 /// scrolls on its own, and each keeps its place while the reader looks at
@@ -22,7 +24,7 @@ class LibraryScreen extends StatelessWidget {
     final follows = FollowScope.maybeOf(context) != null;
     final downloads = OfflineScope.maybeOf(context) != null;
     return DefaultTabController(
-      length: 1 + (follows ? 1 : 0) + (downloads ? 1 : 0),
+      length: 2 + (follows ? 1 : 0) + (downloads ? 1 : 0),
       child: Scaffold(
         appBar: AppBar(
           title: AutospacedText(messages.libraryTitle),
@@ -46,6 +48,10 @@ class LibraryScreen extends StatelessWidget {
                   key: const ValueKey('library-tab-downloads'),
                   text: messages.downloadsTitle,
                 ),
+              Tab(
+                key: const ValueKey('library-tab-recommended'),
+                text: messages.recommendedTitle,
+              ),
             ],
           ),
         ),
@@ -55,6 +61,9 @@ class LibraryScreen extends StatelessWidget {
               const _KeptAlive(child: ContinueReadingList()),
               if (follows) const _KeptAlive(child: FollowsList()),
               if (downloads) const _KeptAlive(child: DownloadsList()),
+              const _KeptAlive(
+                child: RecommendedSeriesList(sectionKey: 'library-recommended'),
+              ),
             ],
           ),
         ),

@@ -120,6 +120,36 @@ abstract class CatalogRepository {
     required int limit,
   });
 
+  /// One page of every published series in the tenant's recommendation order:
+  /// the latest ranking snapshot first, then the rest newest first, and the
+  /// whole of it newest first on a tenant the ranking batch has not run for.
+  ///
+  /// It is the order every guest is recommended. [limit] is how many series
+  /// one page holds. [token] is empty for the first page, and otherwise the
+  /// [SeriesPage.nextToken] of the page above the one wanted.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesPage> listRecommendedSeries({required int limit, String token});
+
+  /// One page of every published series in the order recommended to the
+  /// signed-in reader, from what they did over the last 28 days. A reader the
+  /// recommendation batch has computed nothing for is answered the order
+  /// [listRecommendedSeries] reads.
+  ///
+  /// So is a reader who is signed out, or whose session the API refuses, as
+  /// the storefront answers a stale session: it should not cost a reader the
+  /// shelf a guest would have seen.
+  ///
+  /// [limit] and [token] follow [listRecommendedSeries]. A token belongs to
+  /// the order it was built in — the reader's own, or the tenant's — and the
+  /// API refuses one from the other, which happens when the batch writes or
+  /// drops the reader's features between two pages. The way on from that
+  /// refusal is the first page again.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesPage> listMyRecommendedSeries({
+    required int limit,
+    String token,
+  });
+
   /// Detail for [publicId]. Returns `null` when the series is missing,
   /// unpublished, or not in this tenant (same 404 policy as web-host).
   /// Throws [CatalogFailure] on a transport or unexpected server error.

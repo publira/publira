@@ -20,6 +20,9 @@ const _shelfCardAspectRatio = 3 / 4;
 /// loading or loaded, so a row arriving does not move the ones below it.
 const _shelfHeight = _shelfCardWidth / _shelfCardAspectRatio + 80;
 
+/// The heading a shelf stands under and the way out beside it.
+typedef ShelfFrame = ({String heading, Widget? action});
+
 /// One horizontal shelf: a heading, and a row of cards under it.
 ///
 /// An empty answer takes the heading with it. A shelf is a way into part of
@@ -40,6 +43,7 @@ class CatalogShelf<T> extends StatefulWidget {
     this.rowHeight = _shelfHeight,
     this.skeleton,
     this.action,
+    this.frameFor,
   });
 
   /// Names this section on screen, and its loading, failure, and retry states.
@@ -73,6 +77,11 @@ class CatalogShelf<T> extends StatefulWidget {
 
   /// A way out of the shelf beside its heading, shown once it has cards.
   final Widget? action;
+
+  /// The heading and the way out for the cards [load] answered with, for a
+  /// shelf that reads one of two lists and has to say which one it shows.
+  /// [heading] and [action] when `null`, and while there are no cards yet.
+  final ShelfFrame Function(List<T> items)? frameFor;
 
   @override
   State<CatalogShelf<T>> createState() => _CatalogShelfState<T>();
@@ -160,12 +169,15 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
+    final frame =
+        widget.frameFor?.call(items) ??
+        (heading: widget.heading, action: widget.action);
     // The section is named only once it is showing its cards, so a screen that
     // has it and a screen still waiting on it are told apart by the same key.
     return _ShelfFrame(
       key: ValueKey(widget.sectionKey),
-      heading: widget.heading,
-      action: widget.action,
+      heading: frame.heading,
+      action: frame.action,
       child: SizedBox(
         height: widget.rowHeight,
         child: ListView.separated(

@@ -1246,6 +1246,12 @@ abstract class AppMessages {
   /// `mobile.reading_history.title`
   String get readingHistoryTitle;
 
+  /// `mobile.recommended.load_failed`
+  String get recommendedLoadFailed;
+
+  /// `mobile.recommended.title`
+  String get recommendedTitle;
+
   /// `mobile.resend_verification.description`
   String get resendVerificationDescription;
 
@@ -3650,6 +3656,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get readingHistoryTitle {
     return '読書履歴';
+  }
+
+  @override
+  String get recommendedLoadFailed {
+    return 'おすすめ作品を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get recommendedTitle {
+    return 'おすすめ作品';
   }
 
   @override
@@ -6371,6 +6387,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get recommendedLoadFailed {
+    return 'Could not show the recommended works. Try again.';
+  }
+
+  @override
+  String get recommendedTitle {
+    return 'Recommended';
+  }
+
+  @override
   String get resendVerificationDescription {
     return 'Enter the address you signed up with. If it is still waiting to be confirmed, a new link goes out to it.';
   }
@@ -9086,6 +9112,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get readingHistoryTitle {
     return '읽은 기록';
+  }
+
+  @override
+  String get recommendedLoadFailed {
+    return '추천 작품을 표시할 수 없습니다';
+  }
+
+  @override
+  String get recommendedTitle {
+    return '추천 작품';
   }
 
   @override
@@ -11807,6 +11843,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get recommendedLoadFailed {
+    return '无法显示推荐作品。';
+  }
+
+  @override
+  String get recommendedTitle {
+    return '推荐作品';
+  }
+
+  @override
   String get resendVerificationDescription {
     return '请输入您注册时使用的邮箱地址。如果它仍在等待确认，我们会向它发送新的链接。';
   }
@@ -14522,6 +14568,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get readingHistoryTitle {
     return '閱讀記錄';
+  }
+
+  @override
+  String get recommendedLoadFailed {
+    return '無法顯示推薦作品。';
+  }
+
+  @override
+  String get recommendedTitle {
+    return '推薦作品';
   }
 
   @override

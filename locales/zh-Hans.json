@@ -4007,6 +4007,10 @@
       "title": "排行榜",
       "title_genre": "{$genre}排行榜"
     },
+    "recommended": {
+      "load_failed": "无法显示推荐作品。",
+      "title": "推荐作品"
+    },
     "reading_history": {
       "account_description": "查看您读完的章节，无论在哪里阅读。",
       "empty": "您还没有读完任何章节。读到最后的章节会显示在您登录的每台设备上。",
