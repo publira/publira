@@ -1,13 +1,15 @@
 import type { AdminEpisodeFreeWindow } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
   rethrowUnclassifiedRpcError,
+  rpcErrorCode,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { verifyAdminPageSession } from "./admin-page-session";
@@ -40,7 +42,11 @@ export type CreateSeriesFreeWindowsResult =
   | { ok: false; message: string };
 
 export type DeleteEpisodeFreeWindowResult =
-  | { ok: true }
+  | {
+      ok: true;
+      /** The window was gone before this delete reached it. */
+      alreadyDeleted: boolean;
+    }
   | { ok: false; message: string };
 
 /**
@@ -107,6 +113,11 @@ const listEpisodeFreeWindowsForTenant = async (
   locale: Locale
 ): Promise<ListEpisodeFreeWindowsResult> => {
   "use cache";
+  // A window can be scheduled or removed through the Admin API without this
+  // app, and publira server revalidates only the storefront's tag when it is,
+  // so the entry is refetched once it is a minute old rather than kept for the
+  // default quarter of an hour.
+  cacheLife("minutes");
   cacheTag(episodeFreeWindowsCacheTag(input.tenantId));
   // The rows carry the episode's title, which an episode write can change.
   cacheTag(episodesCacheTag(input.tenantId));
@@ -300,22 +311,22 @@ export const deleteEpisodeFreeWindow = async (
       },
       withSessionHeaders(sessionId)
     );
-    return { ok: true };
+    return { alreadyDeleted: false, ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
+    // Another operator deleted it first, or an earlier attempt committed and
+    // lost its response. Either way the window is gone, which is what the
+    // delete asked for, so the caller still clears the list that shows it.
+    // `NotFound` alone: a refused permission is not a window that is gone.
+    if (rpcErrorCode(error) === Code.NotFound) {
+      return { alreadyDeleted: true, ok: true };
+    }
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
         error,
         t("admin.series.episodes.free_windows.delete_failed"),
-        {
-          locale,
-          overrides: {
-            "not-found": t(
-              "admin.series.episodes.free_windows.already_deleted"
-            ),
-          },
-        }
+        { locale }
       ),
       ok: false,
     };

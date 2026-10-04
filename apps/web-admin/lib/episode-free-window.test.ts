@@ -105,6 +105,9 @@ describe("listEpisodeFreeWindows", () => {
     );
     expect(mockCacheTag).toHaveBeenCalledWith("episode-free-windows-TENANT001");
     expect(mockCacheTag).toHaveBeenCalledWith("episodes-TENANT001");
+    // Written through the Admin API without this app, a window reaches the
+    // list once the entry is a minute old.
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
     expect(result).toEqual({
       freeWindows: [
         {
@@ -230,7 +233,21 @@ describe("createSeriesFreeWindows", () => {
 });
 
 describe("deleteEpisodeFreeWindow", () => {
-  it("says a window that is already gone was deleted, rather than not found", async () => {
+  it("reports a delete that removed the window", async () => {
+    mockDeleteEpisodeFreeWindow.mockResolvedValue({});
+
+    const { deleteEpisodeFreeWindow } = await import("./episode-free-window");
+    const result = await deleteEpisodeFreeWindow(
+      { freeWindowId: "WINDOW1", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ alreadyDeleted: false, ok: true });
+  });
+
+  // Another operator deleted it first, or an earlier attempt committed and
+  // lost its response: the window is gone either way, as the delete asked.
+  it("treats a window that is already gone as deleted", async () => {
     mockDeleteEpisodeFreeWindow.mockRejectedValue(
       new ConnectError("gone", Code.NotFound)
     );
@@ -241,9 +258,20 @@ describe("deleteEpisodeFreeWindow", () => {
       "en"
     );
 
-    expect(result).toEqual({
-      message: "This free reading period has already been deleted.",
-      ok: false,
-    });
+    expect(result).toEqual({ alreadyDeleted: true, ok: true });
+  });
+
+  it("does not read a refused permission as a window that is gone", async () => {
+    mockDeleteEpisodeFreeWindow.mockRejectedValue(
+      new ConnectError("denied", Code.PermissionDenied)
+    );
+
+    const { deleteEpisodeFreeWindow } = await import("./episode-free-window");
+    const result = await deleteEpisodeFreeWindow(
+      { freeWindowId: "WINDOW1", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false });
   });
 });

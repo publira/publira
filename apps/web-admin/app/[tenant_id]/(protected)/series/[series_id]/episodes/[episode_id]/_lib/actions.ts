@@ -790,11 +790,14 @@ export const deleteEpisodeFreeWindowAction = async (
   }
 
   // The row goes from the list, so success is a toast rather than a message
-  // left under a form that is gone.
+  // left under a form that is gone. A window someone else deleted first leaves
+  // the list too, which is why the tag is cleared on that outcome as well.
   updateTag(episodeFreeWindowsCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
   return {
-    message: t("admin.series.episodes.free_windows.deleted"),
+    message: result.alreadyDeleted
+      ? t("admin.series.episodes.free_windows.already_deleted")
+      : t("admin.series.episodes.free_windows.deleted"),
     ok: true,
   };
 };

@@ -801,7 +801,10 @@ describe("episode actions", () => {
 
   describe("deleting a free reading period", () => {
     it("deletes the window and clears the windows' tag", async () => {
-      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({ ok: true });
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        alreadyDeleted: false,
+        ok: true,
+      });
 
       const { deleteEpisodeFreeWindowAction } = await import("./actions");
       const result = await deleteEpisodeFreeWindowAction(
@@ -822,6 +825,46 @@ describe("episode actions", () => {
       expect(result).toEqual({
         message: "Free reading period deleted.",
         ok: true,
+      });
+    });
+
+    it("still clears the windows' tag when the window was already gone", async () => {
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        alreadyDeleted: true,
+        ok: true,
+      });
+
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
+      );
+
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-free-windows-TENANT001"
+      );
+      expect(result).toEqual({
+        message: "This free reading period has already been deleted.",
+        ok: true,
+      });
+    });
+
+    it("leaves the tag alone when the delete failed", async () => {
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        message: "Could not delete the free reading period.",
+        ok: false,
+      });
+
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
+      );
+
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        message: "Could not delete the free reading period.",
+        ok: false,
       });
     });
 
