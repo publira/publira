@@ -8,6 +8,7 @@ const {
   mockListContactMessages,
   mockListTenantMembers,
   mockMarkContactMessageHandled,
+  mockUpdateContactMessageStaffNote,
 } = vi.hoisted(() => ({
   mockAssignContactMessage: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockListContactMessages: vi.fn(),
   mockListTenantMembers: vi.fn(),
   mockMarkContactMessageHandled: vi.fn(),
+  mockUpdateContactMessageStaffNote: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -28,6 +30,7 @@ vi.mock("./api", () => ({
       getContactMessage: mockGetContactMessage,
       listContactMessages: mockListContactMessages,
       markContactMessageHandled: mockMarkContactMessageHandled,
+      updateContactMessageStaffNote: mockUpdateContactMessageStaffNote,
     },
     members: {
       listTenantMembers: mockListTenantMembers,
@@ -50,6 +53,7 @@ const adminContactMessage = {
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
   senderPublicId: "READER00001",
+  staffNote: "",
   status: "unhandled",
   subject: "Cannot open an episode",
 };
@@ -135,6 +139,7 @@ describe("contact message lib", () => {
       replyToEmail: "guest@example.com",
       senderName: "",
       senderPublicId: "",
+      staffNote: "",
       status: "unhandled",
       subject: "",
     });
@@ -249,6 +254,26 @@ describe("contact message lib", () => {
       contactMessage: {
         ...contactMessageItem,
         handledAt: "2026-06-03T00:00:00Z",
+      },
+      ok: true,
+    });
+  });
+
+  it("reads the staff note with the message", async () => {
+    mockGetContactMessage.mockResolvedValue({
+      message: {
+        ...adminContactMessage,
+        staffNote: "Asked the reader for their device.",
+      },
+    });
+
+    const { getContactMessage } = await import("./contact-message");
+    const result = await getContactMessage("TENANT001", "en", "CONTACT0001");
+
+    expect(result).toEqual({
+      contactMessage: {
+        ...contactMessageItem,
+        staffNote: "Asked the reader for their device.",
       },
       ok: true,
     });
@@ -424,6 +449,88 @@ describe("contact message lib", () => {
         "en"
       )
     ).rejects.toThrow();
+  });
+
+  it.each(["The reader uses an old tablet.", ""])(
+    "states the staff note %j",
+    async (staffNote) => {
+      mockUpdateContactMessageStaffNote.mockResolvedValue({});
+
+      const { updateContactMessageStaffNote } =
+        await import("./contact-message");
+      const result = await updateContactMessageStaffNote(
+        {
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          staffNote,
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+
+      expect(mockUpdateContactMessageStaffNote).toHaveBeenCalledWith(
+        {
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          staffNote,
+          tenant: { tenantId: "TENANT001" },
+        },
+        { headers: { Authorization: "Bearer session-token" } }
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  );
+
+  it("reports a refused staff note as a message", async () => {
+    mockUpdateContactMessageStaffNote.mockRejectedValue(
+      new ConnectError("too long", Code.InvalidArgument)
+    );
+
+    const { updateContactMessageStaffNote } = await import("./contact-message");
+    const result = await updateContactMessageStaffNote(
+      {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        staffNote: "A note.",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it("rethrows a session the staff note was refused for", async () => {
+    mockUpdateContactMessageStaffNote.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { updateContactMessageStaffNote } = await import("./contact-message");
+
+    await expect(
+      updateContactMessageStaffNote(
+        {
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          staffNote: "A note.",
+          tenantId: "TENANT001",
+        },
+        "en"
+      )
+    ).rejects.toThrow();
+  });
+
+  it("does not save a staff note when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { updateContactMessageStaffNote } = await import("./contact-message");
+    const result = await updateContactMessageStaffNote(
+      {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        staffNote: "A note.",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateContactMessageStaffNote).not.toHaveBeenCalled();
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
   });
 
   it("offers every active tenant admin across every page of members, and nobody else", async () => {

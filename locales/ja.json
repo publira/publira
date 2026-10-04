@@ -303,6 +303,7 @@
         "contact_message_reopened": "お問い合わせの対応済みを取り消し",
         "contact_message_assigned": "お問い合わせの担当者を割り当て",
         "contact_message_unassigned": "お問い合わせの担当者の割り当てを解除",
+        "contact_message_staff_note_updated": "お問い合わせのスタッフメモを更新",
         "reader_suspended": "読者の停止",
         "reader_unsuspended": "読者の停止解除",
         "reader_birth_date_changed": "読者の生年月日変更",
@@ -689,7 +690,7 @@
         "reset": "リセット"
       },
       "detail_title": "お問い合わせ",
-      "detail_description": "メッセージの全文と返信先のアドレス、担当者、対応状況を確認します。",
+      "detail_description": "メッセージの全文と返信先のアドレス、担当者、対応状況、スタッフメモを確認します。",
       "detail_section_title": "メッセージ",
       "detail_error": "お問い合わせを表示できませんでした",
       "detail_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
@@ -705,6 +706,7 @@
       "assign_failed": "担当者を割り当てられませんでした。時間をおいて再試行してください。",
       "unassign_failed": "担当者の割り当てを解除できませんでした。時間をおいて再試行してください。",
       "assignees_failed": "割り当てできるスタッフを取得できませんでした。時間をおいて再試行してください。",
+      "staff_note_failed": "スタッフメモを保存できませんでした。時間をおいて再試行してください。",
       "assignment": {
         "title": "担当者の割り当て",
         "description": "このお問い合わせを担当するスタッフです。対応済みにしても、対応済みを取り消しても担当者はそのまま残ります。",
@@ -714,10 +716,21 @@
         "assigned": "担当者を保存しました。",
         "unassigned": "担当者の割り当てを解除しました。"
       },
+      "staff_note": {
+        "title": "スタッフメモ",
+        "description": "このお問い合わせに対応するスタッフで共有する社内用のメモです。読者には表示されません。",
+        "label": "メモ",
+        "hint": "保存すると、全員が見ているメモが置き換わります。空にして保存するとメモを削除します。",
+        "submit": "メモを保存",
+        "saving": "保存しています…",
+        "saved": "スタッフメモを保存しました。",
+        "cleared": "スタッフメモを削除しました。"
+      },
       "validation": {
         "target_missing": "対象のお問い合わせを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
         "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
-        "assignee_invalid": "一覧からスタッフを選ぶか、未割り当てを選んでください。"
+        "assignee_invalid": "一覧からスタッフを選ぶか、未割り当てを選んでください。",
+        "staff_note_too_long": "メモは{$count}文字以内で入力してください。"
       }
     },
     "creators": {

@@ -52,6 +52,7 @@ type RawContactMessage = Pick<
   | "replyToEmail"
   | "senderName"
   | "senderPublicId"
+  | "staffNote"
   | "status"
   | "subject"
 >;
@@ -91,6 +92,7 @@ const mapContactMessage = (item: RawContactMessage): ContactMessageItem => ({
   replyToEmail: item.replyToEmail ?? "",
   senderName: item.senderName ?? "",
   senderPublicId: item.senderPublicId ?? "",
+  staffNote: item.staffNote ?? "",
   status: contactMessageStatus(item),
   subject: item.subject ?? "",
 });
@@ -297,6 +299,58 @@ export const assignContactMessage = async (
       : t("admin.contact_messages.unassign_failed");
     return {
       message: rpcErrorMessage(error, failed, { locale }),
+      ok: false,
+    };
+  }
+};
+
+export interface UpdateContactMessageStaffNoteInput {
+  contactMessageId: string;
+  /** The whole note, replacing the one stored. Empty clears it. */
+  staffNote: string;
+  tenantId: string;
+}
+
+export type UpdateContactMessageStaffNoteResult =
+  | { message: string; ok: false }
+  | { ok: true };
+
+/**
+ * Saves, replaces, or clears the internal note on one message. A rejected
+ * session leaves as a throw so the Action can send the staff member to sign in
+ * again.
+ */
+export const updateContactMessageStaffNote = async (
+  input: UpdateContactMessageStaffNoteInput,
+  locale: Locale
+): Promise<UpdateContactMessageStaffNoteResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.contact.updateContactMessageStaffNote(
+      {
+        contactMessageId: input.contactMessageId,
+        staffNote: input.staffNote,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.contact_messages.staff_note_failed"),
+        { locale }
+      ),
       ok: false,
     };
   }

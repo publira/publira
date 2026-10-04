@@ -12,6 +12,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   assignContactMessage,
   markContactMessageHandled,
+  updateContactMessageStaffNote,
 } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -20,6 +21,8 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+
+import { CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH } from "../../contact-message-types";
 
 const contactMessageActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -179,6 +182,76 @@ export const assignContactMessageAction = async (
   }
 
   const flash = parsed.data.assigneeUserId ? "assigned" : "unassigned";
+  redirect(
+    `/contact-messages/${encodeURIComponent(parsed.data.publicId)}?${flash}=1`
+  );
+};
+
+const staffNoteActionSchema = async (locale: Locale) => {
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    contactMessageActionSchema(locale),
+  ]);
+
+  return schema.extend({
+    // Counted in code points rather than by `.max()`, which counts UTF-16 code
+    // units and would refuse a note full of emoji the API still accepts.
+    staffNote: z.preprocess(
+      (value) => (typeof value === "string" ? value.trim() : ""),
+      z.string().refine(
+        (value) => [...value].length <= CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH,
+        t("admin.contact_messages.validation.staff_note_too_long", {
+          count: String(CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH),
+        })
+      )
+    ),
+  });
+};
+
+const staffNoteActionFormFields = {
+  ...contactMessageActionFormFields,
+  staffNote: { kind: "value", name: "staff_note" },
+} as const;
+
+/**
+ * Replaces the message's staff note with the one posted, and an empty note
+ * clears it: the API keeps one shared current note, not a history.
+ *
+ * Redirects back to the message like the other actions on it, so the note is
+ * read again rather than kept as the field last held it.
+ */
+export const updateContactMessageStaffNoteAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await staffNoteActionSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, staffNoteActionFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateContactMessageStaffNote(
+      {
+        contactMessageId: parsed.data.contactMessageId,
+        staffNote: parsed.data.staffNote,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  const flash = parsed.data.staffNote ? "note_saved" : "note_cleared";
   redirect(
     `/contact-messages/${encodeURIComponent(parsed.data.publicId)}?${flash}=1`
   );

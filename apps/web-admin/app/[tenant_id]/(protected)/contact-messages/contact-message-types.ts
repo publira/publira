@@ -17,6 +17,13 @@ export const CONTACT_MESSAGE_STATUSES = [
 export type ContactMessageStatus = (typeof CONTACT_MESSAGE_STATUSES)[number];
 
 /**
+ * The longest staff note `UpdateContactMessageStaffNote` accepts once its
+ * surrounding whitespace is trimmed, counted in Unicode code points as the
+ * API and PostgreSQL count characters.
+ */
+export const CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH = 4000;
+
+/**
  * One message a reader sent the tenant.
  *
  * The list carries the whole body already, so the same shape serves the inbox
@@ -48,6 +55,11 @@ export interface ContactMessageItem {
   senderName: string;
   /** Empty in the same two cases as {@link ContactMessageItem.senderName}. */
   senderPublicId: string;
+  /**
+   * The internal note staff keep on the message, one shared current note
+   * rather than a thread. Empty when there is none. Readers never see it.
+   */
+  staffNote: string;
   /** Where the message stands in the inbox, as the API derived it. */
   status: ContactMessageStatus;
   /** Empty for a message the reader gave no subject. */

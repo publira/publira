@@ -303,6 +303,7 @@
         "contact_message_reopened": "문의 처리 완료 취소",
         "contact_message_assigned": "문의 담당자 배정",
         "contact_message_unassigned": "문의 담당자 배정 해제",
+        "contact_message_staff_note_updated": "문의 스태프 메모 수정",
         "reader_suspended": "독자 정지",
         "reader_unsuspended": "독자 정지 해제",
         "reader_birth_date_changed": "독자 생년월일 변경",
@@ -689,7 +690,7 @@
         "reset": "초기화"
       },
       "detail_title": "문의",
-      "detail_description": "메시지 전문과 답장할 주소, 담당자, 그리고 처리 여부를 확인합니다.",
+      "detail_description": "메시지 전문과 답장할 주소, 담당자, 처리 여부, 그리고 스태프 메모를 확인합니다.",
       "detail_section_title": "메시지",
       "detail_error": "문의를 표시할 수 없습니다",
       "detail_failed": "문의를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
@@ -705,6 +706,7 @@
       "assign_failed": "담당자를 배정하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "unassign_failed": "담당자 배정을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "assignees_failed": "배정할 수 있는 스태프를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "staff_note_failed": "스태프 메모를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "assignment": {
         "title": "담당자 배정",
         "description": "이 문의를 담당하는 스태프입니다. 처리 완료로 표시하거나 처리 완료를 취소해도 담당자는 유지됩니다.",
@@ -714,10 +716,21 @@
         "assigned": "담당자를 저장했습니다.",
         "unassigned": "담당자 배정을 해제했습니다."
       },
+      "staff_note": {
+        "title": "스태프 메모",
+        "description": "이 문의를 담당하는 스태프끼리 공유하는 내부 메모입니다. 독자에게는 표시되지 않습니다.",
+        "label": "메모",
+        "hint": "저장하면 모두가 보는 메모가 바뀝니다. 비운 채로 저장하면 메모가 삭제됩니다.",
+        "submit": "메모 저장",
+        "saving": "저장 중…",
+        "saved": "스태프 메모를 저장했습니다.",
+        "cleared": "스태프 메모를 삭제했습니다."
+      },
       "validation": {
         "target_missing": "대상 문의를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
         "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
-        "assignee_invalid": "목록에서 스태프를 선택하거나 미배정을 선택하세요."
+        "assignee_invalid": "목록에서 스태프를 선택하거나 미배정을 선택하세요.",
+        "staff_note_too_long": "메모는 {$count}자 이내로 입력하세요."
       }
     },
     "creators": {

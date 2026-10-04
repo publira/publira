@@ -45,6 +45,7 @@ const contactMessage = (
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
   senderPublicId: "READER00001",
+  staffNote: "",
   status: "unhandled",
   subject: "Cannot open an episode",
   ...overrides,

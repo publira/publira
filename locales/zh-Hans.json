@@ -303,6 +303,7 @@
         "contact_message_reopened": "取消咨询的已处理状态",
         "contact_message_assigned": "分配咨询负责人",
         "contact_message_unassigned": "取消咨询负责人分配",
+        "contact_message_staff_note_updated": "更新咨询的工作人员备注",
         "reader_suspended": "暂停了读者",
         "reader_unsuspended": "解除了读者暂停",
         "reader_birth_date_changed": "更改了读者出生日期",
@@ -689,7 +690,7 @@
         "reset": "重置"
       },
       "detail_title": "咨询",
-      "detail_description": "查看消息全文、回复地址、负责人，以及是否已经处理。",
+      "detail_description": "查看消息全文、回复地址、负责人、是否已经处理，以及工作人员备注。",
       "detail_section_title": "消息",
       "detail_error": "无法显示该咨询",
       "detail_failed": "无法加载该咨询。请稍后重试。",
@@ -705,6 +706,7 @@
       "assign_failed": "无法分配负责人。请稍后重试。",
       "unassign_failed": "无法取消负责人分配。请稍后重试。",
       "assignees_failed": "无法获取可分配的工作人员。请稍后重试。",
+      "staff_note_failed": "无法保存工作人员备注。请稍后重试。",
       "assignment": {
         "title": "分配负责人",
         "description": "负责该咨询的工作人员。标记为已处理或取消已处理后，负责人保持不变。",
@@ -714,10 +716,21 @@
         "assigned": "已保存负责人。",
         "unassigned": "已取消负责人分配。"
       },
+      "staff_note": {
+        "title": "工作人员备注",
+        "description": "处理该咨询的工作人员共享的内部备注。读者看不到。",
+        "label": "备注",
+        "hint": "保存后会替换所有人看到的备注。清空后保存即可删除备注。",
+        "submit": "保存备注",
+        "saving": "正在保存…",
+        "saved": "已保存工作人员备注。",
+        "cleared": "已删除工作人员备注。"
+      },
       "validation": {
         "target_missing": "无法确定要操作的咨询。请刷新页面后重试。",
         "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。",
-        "assignee_invalid": "请从列表中选择工作人员，或选择未分配。"
+        "assignee_invalid": "请从列表中选择工作人员，或选择未分配。",
+        "staff_note_too_long": "备注请控制在{$count}个字符以内。"
       }
     },
     "creators": {
