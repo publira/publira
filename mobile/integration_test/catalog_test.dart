@@ -14,6 +14,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
+import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
@@ -107,7 +108,12 @@ Future<void> scrollSeriesTo(WidgetTester tester, Finder finder) async {
     200,
     scrollable: find.descendant(
       of: find.byKey(const ValueKey('series-detail-body')),
-      matching: find.byType(Scrollable),
+      // The screen's own list, rather than the related row that scrolls
+      // across its foot.
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.down,
+      ),
     ),
   );
 }
@@ -1852,6 +1858,109 @@ void main() {
       });
     });
 
+    testApp('a series with related works lists them and opens each one', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-series-related', () async {
+        server
+          ..relatedSeries = {
+            ConnectFixtureServer.seedSeriesId: ['series-kitchen'],
+          }
+          ..details = {
+            ...ConnectFixtureServer.populatedDetails(),
+            'series-kitchen': {
+              'series': {
+                'publicId': 'series-kitchen',
+                'title': 'The Little Kitchen',
+                'synopsis': 'Everyday cooking, one plate at a time.',
+              },
+              'episodes': <Object?>[],
+            },
+          };
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        final card = find.byKey(
+          const ValueKey('series-related-series-kitchen'),
+        );
+        // The row is read once the screen is scrolled down to it, under the
+        // last episode.
+        await scrollSeriesTo(tester, find.text('¥500'));
+        await pumpUntilFound(tester, card);
+        await scrollSeriesTo(tester, card);
+
+        final request = server.requestsTo('ListRelatedSeries').single;
+        expect(
+          request.body['seriesId'],
+          ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        );
+        expect(request.body['surface'], appClientSurface);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('series-related')),
+            matching: find.text('You may also like'),
+          ),
+          findsOne,
+        );
+
+        await tapReachable(tester, card);
+        await pumpUntilRouteSettled(
+          tester,
+          find.text('Everyday cooking, one plate at a time.'),
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('The Little Kitchen'),
+          ),
+          findsOne,
+        );
+      });
+    });
+
+    testApp('a series without related works shows no row', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-series-unrelated', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        await scrollSeriesTo(tester, find.text('¥500'));
+        await pumpUntilTrue(
+          tester,
+          () => server.requestsTo('ListRelatedSeries').isNotEmpty,
+          description: 'the related row to be asked for',
+        );
+        await pumpUntilTrue(
+          tester,
+          () => find
+              .byKey(const ValueKey('series-related-loading'))
+              .evaluate()
+              .isEmpty,
+          description: 'the related row to be answered',
+        );
+
+        expect(find.byKey(const ValueKey('series-related')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('series-related-loading')),
+          findsNothing,
+        );
+        expect(find.text('You may also like'), findsNothing);
+      });
+    });
+
     testApp('a guest is offered a series from its first episode', (
       tester,
     ) async {
@@ -3266,6 +3375,60 @@ void main() {
       });
     });
 
+    testApp('the seed series lists related works on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-series-related', () async {
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+          timeout: const Duration(seconds: 20),
+        );
+        // The seed tenant publishes many series, and the API places every
+        // other one in the row, related or not, so the row is never empty
+        // here.
+        final cards = find.descendant(
+          of: find.byKey(const ValueKey('series-related')),
+          matching: find.byType(SeriesShelfCard),
+        );
+        // The row stands under every episode of the series, and a scroll view
+        // builds only what is near the screen, so it is read once the screen
+        // has been scrolled down to it.
+        await scrollSeriesTo(
+          tester,
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key == const ValueKey('series-related') ||
+                widget.key == const ValueKey('series-related-loading'),
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('series-related')),
+          timeout: const Duration(seconds: 20),
+        );
+        await scrollSeriesTo(tester, cards.first);
+        final first = tester.widget<SeriesShelfCard>(cards.first).series;
+        expect(first.id, isNot(ConnectFixtureServer.seedSeriesId));
+
+        await tapReachable(tester, cards.first);
+        await pumpUntilRouteSettled(
+          tester,
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text(first.title),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
     testApp('the series an episode the seed member finished goes on from it', (
       tester,
     ) async {
@@ -3304,7 +3467,13 @@ void main() {
           -200,
           scrollable: find.descendant(
             of: find.byKey(const ValueKey('series-detail-body')),
-            matching: find.byType(Scrollable),
+            // The screen's own list, rather than the related row that scrolls
+            // across its foot.
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Scrollable &&
+                  widget.axisDirection == AxisDirection.down,
+            ),
           ),
         );
         await tapReachable(tester, action);

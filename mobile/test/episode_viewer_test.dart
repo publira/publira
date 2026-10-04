@@ -48,7 +48,12 @@ void main() {
   final pageView = find.byKey(const ValueKey('episode-page-view'));
   final seriesBody = find.descendant(
     of: find.byKey(const ValueKey('series-detail-body')),
-    matching: find.byType(Scrollable),
+    // The screen's own list, rather than the related row that scrolls
+    // across its foot.
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
   );
   final endPanel = find.byKey(const ValueKey('episode-end-panel'));
 

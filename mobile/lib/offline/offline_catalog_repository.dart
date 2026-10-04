@@ -161,6 +161,15 @@ class OfflineCatalogRepository implements CatalogRepository {
     token: token,
   );
 
+  /// The related row under a series, which only the API can answer: it is
+  /// scored over the whole published catalog, of which the device keeps only
+  /// what the reader opened.
+  @override
+  Future<List<SeriesItem>> listRelatedSeries(
+    String seriesInternalId, {
+    required int limit,
+  }) => _origin.listRelatedSeries(seriesInternalId, limit: limit);
+
   @override
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {

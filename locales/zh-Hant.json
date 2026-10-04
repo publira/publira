@@ -4061,6 +4061,7 @@
       "rating_own": "你的評分：{$average}",
       "rating_own_failed": "無法顯示你的評分",
       "read_from_first": "從第1章開始閱讀",
+      "related_heading": "你可能也喜歡",
       "episodes_empty": "尚未發布任何章節。",
       "episodes_heading": "章節",
       "load_failed": "無法顯示該系列。",

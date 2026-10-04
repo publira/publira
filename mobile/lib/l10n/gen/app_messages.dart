@@ -1402,6 +1402,9 @@ abstract class AppMessages {
   /// `mobile.series.read_from_first`
   String get seriesReadFromFirst;
 
+  /// `mobile.series.related_heading`
+  String get seriesRelatedHeading;
+
   /// `mobile.series.save_offline`
   String get seriesSaveOffline;
 
@@ -3907,6 +3910,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get seriesReadFromFirst {
     return '第1話から読む';
+  }
+
+  @override
+  String get seriesRelatedHeading {
+    return 'こちらもおすすめ';
   }
 
   @override
@@ -6623,6 +6631,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesRelatedHeading {
+    return 'You may also like';
+  }
+
+  @override
   String get seriesSaveOffline {
     return 'Save for offline';
   }
@@ -9333,6 +9346,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get seriesReadFromFirst {
     return '1화부터 읽기';
+  }
+
+  @override
+  String get seriesRelatedHeading {
+    return '이런 작품은 어떠세요';
   }
 
   @override
@@ -12049,6 +12067,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesRelatedHeading {
+    return '你可能也喜欢';
+  }
+
+  @override
   String get seriesSaveOffline {
     return '保存以供离线阅读';
   }
@@ -14759,6 +14782,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get seriesReadFromFirst {
     return '從第1章開始閱讀';
+  }
+
+  @override
+  String get seriesRelatedHeading {
+    return '你可能也喜歡';
   }
 
   @override

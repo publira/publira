@@ -4061,6 +4061,7 @@
       "rating_own": "あなたの評価: {$average}",
       "rating_own_failed": "あなたの評価を表示できませんでした",
       "read_from_first": "第1話から読む",
+      "related_heading": "こちらもおすすめ",
       "episodes_empty": "公開中のエピソードはありません",
       "episodes_heading": "エピソード一覧",
       "load_failed": "ページを表示できませんでした。もう一度お試しください。",

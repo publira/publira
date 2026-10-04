@@ -21,6 +21,7 @@ class ConnectFixtureServer {
     this.rankedSeries = const [],
     this.genreRankedSeries = const {},
     this.rankedSeriesPageSize = 0,
+    this.relatedSeries = const {},
     this.genres = const [],
     this.details = const {},
     this.episodes = const {},
@@ -46,6 +47,7 @@ class ConnectFixtureServer {
     this.searchStatus = HttpStatus.ok,
     this.directoryStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
+    this.relatedStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
@@ -522,6 +524,13 @@ class ConnectFixtureServer {
   /// writes one. `0` leaves the request's `limit` alone.
   int rankedSeriesPageSize;
 
+  /// The public ids `ListRelatedSeries` answers with, most related first,
+  /// keyed by the public id of the series asked about; each is answered as the
+  /// entry of [series] it names. A series of [details] missing here is one
+  /// with nothing to go on to, and a series missing from [details] is
+  /// answered `not_found`.
+  Map<String, List<String>> relatedSeries;
+
   Map<String, Map<String, Object?>> details;
 
   /// `GetEpisodeDetail` bodies keyed by episode public id.
@@ -637,6 +646,7 @@ class ConnectFixtureServer {
   /// What `ListPublishedCreators` and `ListPublishedLabels` answer with.
   int directoryStatus;
   int rankedStatus;
+  int relatedStatus;
   int detailStatus;
   int episodeStatus;
   int tenantStatus;
@@ -1027,6 +1037,36 @@ class ConnectFixtureServer {
           'nextToken': '$end',
         if (rankedStatus != HttpStatus.ok) 'code': 'unavailable',
         if (rankedStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.endsWith('/ListRelatedSeries')) {
+      if (relatedStatus != HttpStatus.ok) {
+        await _write(request, relatedStatus, {
+          'code': 'unavailable',
+          'message': 'unavailable',
+        });
+        return;
+      }
+      final subject = publicIdOf(body['seriesId']);
+      if (!_shows(body, subject) || !details.containsKey(subject)) {
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'series not found',
+        });
+        return;
+      }
+      final shown = _seriesShownTo(body);
+      final related = [
+        for (final id in relatedSeries[subject] ?? const <String>[])
+          ...shown.where((item) => item['publicId'] == id),
+      ];
+      final limit = body['limit'] as int? ?? 0;
+      final page = limit > 0 ? related.take(limit).toList() : related;
+      await _write(request, HttpStatus.ok, {
+        // protojson omits an empty repeated field.
+        if (page.isNotEmpty) 'series': page,
       });
       return;
     }

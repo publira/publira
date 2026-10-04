@@ -105,6 +105,21 @@ abstract class CatalogRepository {
     String token,
   });
 
+  /// The tenant's other published series, most related to the series
+  /// [seriesInternalId] names first, at most [limit] of them.
+  ///
+  /// The API never cuts the list off at the related ones: a series sharing
+  /// nothing still takes its place in ranking order. So an empty answer is a
+  /// tenant with one series, or a series that has stopped being shown since
+  /// the screen read it, which the API answers `not_found` and this answers
+  /// with nothing rather than a failure.
+  ///
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<SeriesItem>> listRelatedSeries(
+    String seriesInternalId, {
+    required int limit,
+  });
+
   /// Detail for [publicId]. Returns `null` when the series is missing,
   /// unpublished, or not in this tenant (same 404 policy as web-host).
   /// Throws [CatalogFailure] on a transport or unexpected server error.
