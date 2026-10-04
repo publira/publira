@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { requestAdminEmailChange } from "#lib/admin-auth";
+import { tenantIdFormSchema } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getMessagesFor } from "#lib/messages";
@@ -158,7 +159,10 @@ const tenantLegalPagesSchema = async (locale: Locale) => {
  * accepts. The switch is a checkbox, present only while it is on.
  */
 const tenantEmailRejectionSchema = async (locale: Locale) => {
-  const t = await getMessagesFor(locale);
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
 
   return z.object({
     entries: z.array(z.string()).transform((values, context) => {
@@ -183,6 +187,7 @@ const tenantEmailRejectionSchema = async (locale: Locale) => {
       .literal("on")
       .optional()
       .transform((value) => value === "on"),
+    tenantId,
   });
 };
 
@@ -520,16 +525,10 @@ export const updateTenantEmailRejectionAction = async (
 ): Promise<TenantEmailRejectionActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  if (!tenantId) {
-    return {
-      message: t("admin.settings.tenant_missing"),
-      ok: false,
-    };
-  }
-
-  const schema = await tenantEmailRejectionSchema(locale);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantEmailRejectionSchema(locale),
+  ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       entries: "values",
@@ -537,6 +536,7 @@ export const updateTenantEmailRejectionAction = async (
         kind: "value",
         name: "reject_disposable_domains",
       },
+      tenantId: { kind: "value", name: "tenant_id" },
     })
   );
   if (!parsed.success) {
@@ -548,13 +548,10 @@ export const updateTenantEmailRejectionAction = async (
     };
   }
 
+  const { entries, rejectDisposableDomains, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
     updateTenantEmailRejectionSettings(
-      {
-        entries: parsed.data.entries,
-        rejectDisposableDomains: parsed.data.rejectDisposableDomains,
-        tenantId,
-      },
+      { entries, rejectDisposableDomains, tenantId },
       locale
     )
   );

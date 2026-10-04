@@ -457,11 +457,14 @@ describe("updateTenantLegalPagesAction", () => {
 });
 
 /** The card's form: the switch while it is on, and one `entries` field per input. */
+const EMAIL_REJECTION_TENANT_ID = "018f1060-0001-7000-8000-000000000001";
+
 const emailRejectionFormData = (
   entries: string[],
-  rejectDisposableDomains?: string
+  rejectDisposableDomains?: string,
+  tenantId: string = EMAIL_REJECTION_TENANT_ID
 ): FormData => {
-  const formData = textFormData({ tenant_id: "TENANT001" });
+  const formData = textFormData({ tenant_id: tenantId });
   for (const entry of entries) {
     formData.append("entries", entry);
   }
@@ -509,12 +512,12 @@ describe("updateTenantEmailRejectionAction", () => {
       {
         entries: ["Refused.Example", "someone@example.com"],
         rejectDisposableDomains: true,
-        tenantId: "TENANT001",
+        tenantId: EMAIL_REJECTION_TENANT_ID,
       },
       "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
-      "tenant:TENANT001:email-rejection-settings"
+      `tenant:${EMAIL_REJECTION_TENANT_ID}:email-rejection-settings`
     );
   });
 
@@ -530,7 +533,11 @@ describe("updateTenantEmailRejectionAction", () => {
     await updateTenantEmailRejectionAction(null, emailRejectionFormData([""]));
 
     expect(mockUpdateTenantEmailRejectionSettings).toHaveBeenCalledWith(
-      { entries: [], rejectDisposableDomains: false, tenantId: "TENANT001" },
+      {
+        entries: [],
+        rejectDisposableDomains: false,
+        tenantId: EMAIL_REJECTION_TENANT_ID,
+      },
       "en"
     );
   });
@@ -552,6 +559,24 @@ describe("updateTenantEmailRejectionAction", () => {
     expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["missing", ""],
+    ["not a tenant id", "TENANT001"],
+  ])(
+    "refuses a tenant id that is %s without calling the API",
+    async (_, tenantId) => {
+      const { updateTenantEmailRejectionAction } = await import("./actions");
+
+      const result = await updateTenantEmailRejectionAction(
+        null,
+        emailRejectionFormData(["refused.example"], "on", tenantId)
+      );
+
+      expect(result?.ok).toBe(false);
+      expect(mockUpdateTenantEmailRejectionSettings).not.toHaveBeenCalled();
+    }
+  );
 
   it("refuses a switch value a checkbox never submits", async () => {
     const { updateTenantEmailRejectionAction } = await import("./actions");
