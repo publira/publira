@@ -136,6 +136,7 @@ Implementation:
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed, then a production APK from `mobile/config/app.example.yaml` through `task mobile:build`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile iOS` | `task mobile:test-ios-build` on macOS: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
+| `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search spec alone. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
@@ -182,6 +183,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Mobile iOS` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh` |
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, build inputs, storage init and seed |
+| `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, the outbox handler, the search handlers and commands, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, and the catalog search spec |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
 | `Test / Deploy` | `infra/deploy/**`, `infra/proxy/traefik/**`, `infra/docker/**`, `.dockerignore`, its two scripts, `Taskfile.yaml` |
@@ -215,7 +217,7 @@ Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, wh
 
 The `Path filter` step runs on all three events, so a merge-group run selects its jobs from the group's changed paths instead of falling through to an empty filter result.
 
-Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, bootstrap, routing, and deploy jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
+Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, E2E search, bootstrap, routing, and deploy jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
 `Validate / buf Generated Diff` runs `buf generate`, then compares `server/internal/proto/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
 
@@ -262,6 +264,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / Mobile E2E` | `task mobile:e2e` |
    | `Test / Mobile iOS` | `task mobile:deps` then `task mobile:test-ios-build`, on a Mac with Xcode |
    | `Test / E2E` | `task e2e` |
+   | `Test / E2E Search` | `task e2e:search` |
    | `Test / Bootstrap` | `task e2e:bootstrap` (`PUBLIRA_BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
    | `Test / Routing` | `task e2e:routing` |
    | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke` |

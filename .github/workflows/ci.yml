@@ -67,6 +67,7 @@ jobs:
       test_mobile_e2e: ${{ steps.plan.outputs.test_mobile_e2e }}
       test_mobile_ios: ${{ steps.plan.outputs.test_mobile_ios }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
+      test_e2e_search: ${{ steps.plan.outputs.test_e2e_search }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       test_routing: ${{ steps.plan.outputs.test_routing }}
       test_deploy: ${{ steps.plan.outputs.test_deploy }}
@@ -259,6 +260,27 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+            # The OpenSearch backend and what it runs on, and nothing wider:
+            # the rest of the stack is Test / E2E's, which runs the same spec
+            # on the SQL backend.
+            test_e2e_search:
+              - *docs_excluded
+              - 'server/internal/catalogsearch/**'
+              - 'server/internal/catalogindex/**'
+              - 'server/internal/outbox/catalog_index_sync.go'
+              - 'server/api/publicapi/catalog_search_handlers.go'
+              - 'server/cmd/publira/search.go'
+              - 'server/cmd/publiractl/search.go'
+              - 'db/query/catalog_index.sql'
+              - 'infra/docker/opensearch/**'
+              - 'e2e/compose.yaml'
+              - 'e2e/scripts/**'
+              - 'e2e/Taskfile.yaml'
+              - 'e2e/playwright.config.ts'
+              - 'e2e/tests/catalog.search.spec.ts'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
@@ -387,6 +409,7 @@ jobs:
           FILTER_TEST_MOBILE_E2E: ${{ steps.filter.outputs.test_mobile_e2e }}
           FILTER_TEST_MOBILE_IOS: ${{ steps.filter.outputs.test_mobile_ios }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
+          FILTER_TEST_E2E_SEARCH: ${{ steps.filter.outputs.test_e2e_search }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
           FILTER_TEST_DEPLOY: ${{ steps.filter.outputs.test_deploy }}
@@ -1013,6 +1036,105 @@ jobs:
             e2e/.run/logs/
           if-no-files-found: ignore
 
+  test-e2e-search:
+    name: Test / E2E Search
+    needs: changes
+    if: needs.changes.outputs.test_e2e_search == 'true'
+    runs-on: ubuntu-latest
+    # One spec on the OpenSearch backend; the build and the image pulls are
+    # most of the run.
+    timeout-minutes: 30
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / Install wait4x
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) wait4x_arch="amd64" ;;
+            arm64) wait4x_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="wait4x-linux-${wait4x_arch}.tar.gz"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          (cd /tmp && sha256sum -c "${archive}.sha256sum")
+          tar -xzf "/tmp/${archive}" -C /tmp wait4x
+          sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
+          rm -f "/tmp/${archive}" "/tmp/${archive}.sha256sum" /tmp/wait4x
+
+      - name: Dependencies / Install
+        run: task deps
+
+      - name: Cache / Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Build + Readiness + Playwright
+        # The same lifecycle as Test / E2E, with the engine in the compose
+        # stack and the server and the worker on it, running
+        # catalog.search.spec.ts alone.
+        run: task e2e:search
+        env:
+          CI: true
+
+      - name: Upload / E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-search-artifacts
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/.run/logs/
+          if-no-files-found: ignore
+
   test-bootstrap:
     name: Test / Bootstrap
     needs: changes
@@ -1282,6 +1404,7 @@ jobs:
       - test-mobile-e2e
       - test-mobile-ios
       - test-e2e
+      - test-e2e-search
       - test-bootstrap
       - test-routing
       - test-deploy
@@ -1303,6 +1426,7 @@ jobs:
           TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
           TEST_MOBILE_IOS: ${{ needs.test-mobile-ios.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
+          TEST_E2E_SEARCH: ${{ needs.test-e2e-search.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           TEST_ROUTING: ${{ needs.test-routing.result }}
           TEST_DEPLOY: ${{ needs.test-deploy.result }}
@@ -1324,6 +1448,7 @@ jobs:
             "Test / Mobile E2E=${TEST_MOBILE_E2E}" \
             "Test / Mobile iOS=${TEST_MOBILE_IOS}" \
             "Test / E2E=${TEST_E2E}" \
+            "Test / E2E Search=${TEST_E2E_SEARCH}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Test / Routing=${TEST_ROUTING}" \
             "Test / Deploy=${TEST_DEPLOY}" \
