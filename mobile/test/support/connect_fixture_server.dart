@@ -655,6 +655,8 @@ class ConnectFixtureServer {
 
   /// The tenant's published pages, keyed by slug in storage form, each in the
   /// one translation `GetPublishedPage` serves whatever locale is asked for.
+  /// `ListPublishedPages` lists every one of them, in this order, as pages
+  /// the footer shows.
   Map<String, ({String title, String contentMarkdown, String locale})>
   publishedPages;
 
@@ -1128,6 +1130,28 @@ class ConnectFixtureServer {
           },
         });
       }
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedPages')) {
+      await _write(
+        request,
+        pageStatus,
+        pageStatus == HttpStatus.ok
+            ? {
+                'pages': [
+                  for (final MapEntry(key: slug, value: page)
+                      in publishedPages.entries)
+                    {
+                      'slug': slug,
+                      'title': page.title,
+                      'locale': page.locale,
+                      'displayInFooter': true,
+                    },
+                ],
+              }
+            : {'code': 'unavailable', 'message': 'unavailable'},
+      );
       return;
     }
 

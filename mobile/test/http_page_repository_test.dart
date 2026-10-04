@@ -5,6 +5,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/pages/http_page_repository.dart';
 import 'package:publira/pages/page_failure.dart';
+import 'package:publira/pages/published_page.dart';
 
 import 'support/connect_fixture_server.dart';
 
@@ -87,6 +88,36 @@ void main() {
 
     await expectLater(
       repository().get('/legal/terms', locale: 'en'),
+      throwsA(
+        isA<PageFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          PageFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'list asks for the footer pages in a locale and keeps their order',
+    () async {
+      expect(await repository().list(locale: 'ja'), const [
+        PublishedPageLink(slug: '/legal/terms', title: 'Terms of service'),
+        PublishedPageLink(slug: '/blank', title: 'Blank'),
+        PublishedPageLink(slug: '/legal/privacy', title: 'Privacy policy'),
+      ]);
+      expect(server.requestsTo('ListPublishedPages').single.body, {
+        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
+        'locale': 'ja',
+      });
+    },
+  );
+
+  test('list maps an unreachable API to network', () async {
+    server.pageStatus = HttpStatus.serviceUnavailable;
+
+    await expectLater(
+      repository().list(locale: 'en'),
       throwsA(
         isA<PageFailure>().having(
           (failure) => failure.kind,

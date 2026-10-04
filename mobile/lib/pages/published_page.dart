@@ -38,6 +38,28 @@ class PublishedPage {
   }
 }
 
+/// A page the tenant lists where the storefront's footer does, as
+/// `PublicPagesService/ListPublishedPages` answers it: enough to name the page
+/// and open it.
+@immutable
+class PublishedPageLink {
+  const PublishedPageLink({required this.slug, required this.title});
+
+  /// In storage form (`/privacy`).
+  final String slug;
+  final String title;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PublishedPageLink && other.slug == slug && other.title == title;
+
+  @override
+  int get hashCode => Object.hash(slug, title);
+
+  @override
+  String toString() => 'PublishedPageLink($slug, $title)';
+}
+
 /// [path] in the storage form a slug is kept in: one leading slash, no
 /// trailing one, and lower case, the way the site matches a path to a page.
 String pageSlugFromPath(String path) {

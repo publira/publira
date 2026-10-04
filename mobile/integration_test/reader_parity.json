@@ -350,7 +350,14 @@
     {
       "name": "The list of the tenant's published pages",
       "web": { "rpcs": ["ListPublishedPages"] },
-      "exception": "The storefront lists them in its footer; the app has no list yet: #2829."
+      "mobile": {
+        "routes": ["/account/pages"],
+        "rpcs": ["ListPublishedPages"]
+      },
+      "tests": [
+        "every page the footer lists opens from the account screen",
+        "the seed pages open from the account screen on the live API"
+      ]
     },
     {
       "name": "Buying an episode and the purchase library",

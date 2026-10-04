@@ -10,6 +10,13 @@ abstract class PageRepository {
   /// Throws [PageFailure].
   Future<PublishedPage> get(String slug, {required String locale});
 
+  /// The pages the storefront's footer lists, in its order, each titled in
+  /// its translation in [locale], else the tenant's default locale, else its
+  /// oldest published one.
+  ///
+  /// Throws [PageFailure].
+  Future<List<PublishedPageLink>> list({required String locale});
+
   /// Every published page's slug, in storage form, which is how a link to a
   /// path on the tenant site is told to be one of its pages.
   ///

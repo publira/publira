@@ -368,6 +368,7 @@ The routes only one tab holds:
 | `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`) |
 | `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 | `/account/contact` | Account | A message to the tenant's staff |
+| `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
 | `/verify` | Account | Where a confirmation link is spent; the site's own path, claimed as an App Link |
 | `/confirm-password` | Account | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
 | `/confirm-email` | Account | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
@@ -693,6 +694,7 @@ PUBLIRA_MOBILE_SCREENSHOT_READER= task mobile:screenshot -- /sign-in
 - An episode opening on the page the API already held for the member, and the page they turn to reaching the API
 - An episode reopening on its saved page once the API is gone
 - A notification and an announcement opened by the seed member, and the read mark each sends reaching the API
+- Every page the storefront's footer lists opening from the account screen
 
 `integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-host` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-host` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
 

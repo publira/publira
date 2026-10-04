@@ -215,6 +215,12 @@ abstract class AppMessages {
   /// `mobile.account.notifications_unavailable`
   String get accountNotificationsUnavailable;
 
+  /// `mobile.account.pages`
+  String get accountPages;
+
+  /// `mobile.account.pages_description`
+  String get accountPagesDescription;
+
   /// `mobile.account.sign_out`
   String get accountSignOut;
 
@@ -1123,6 +1129,12 @@ abstract class AppMessages {
   /// `mobile.pages.fallback_notice`
   String pagesFallbackNotice({required String language});
 
+  /// `mobile.pages.list_empty`
+  String get pagesListEmpty;
+
+  /// `mobile.pages.list_load_failed`
+  String get pagesListLoadFailed;
+
   /// `mobile.pages.load_failed`
   String get pagesLoadFailed;
 
@@ -1902,6 +1914,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountNotificationsUnavailable {
     return '通知をオンにできませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get accountPages {
+    return 'このサイトについて';
+  }
+
+  @override
+  String get accountPagesDescription {
+    return '利用規約やプライバシーポリシーなど、このサイトが公開しているページです。';
   }
 
   @override
@@ -3415,6 +3437,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get pagesListEmpty {
+    return 'このサイトが公開しているページはありません。';
+  }
+
+  @override
+  String get pagesListLoadFailed {
+    return 'ページの一覧を読み込めませんでした。もう一度お試しください。';
+  }
+
+  @override
   String get pagesLoadFailed {
     return 'このページを表示できませんでした。もう一度お試しください。';
   }
@@ -4565,6 +4597,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountNotificationsUnavailable {
     return 'Could not turn notifications on. Try again.';
+  }
+
+  @override
+  String get accountPages {
+    return 'About this site';
+  }
+
+  @override
+  String get accountPagesDescription {
+    return 'Terms of service, privacy policy, and the other pages this site publishes.';
   }
 
   @override
@@ -6078,6 +6120,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get pagesListEmpty {
+    return 'This site has not published any pages.';
+  }
+
+  @override
+  String get pagesListLoadFailed {
+    return 'Could not load this site\'s pages. Try again.';
+  }
+
+  @override
   String get pagesLoadFailed {
     return 'Could not show this page. Try again.';
   }
@@ -7228,6 +7280,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountNotificationsUnavailable {
     return '알림을 켜지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get accountPages {
+    return '이 사이트에 대하여';
+  }
+
+  @override
+  String get accountPagesDescription {
+    return '이용약관, 개인정보 처리방침 등 이 사이트가 공개한 페이지입니다.';
   }
 
   @override
@@ -8741,6 +8803,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get pagesListEmpty {
+    return '이 사이트가 공개한 페이지가 없습니다.';
+  }
+
+  @override
+  String get pagesListLoadFailed {
+    return '페이지 목록을 불러올 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
   String get pagesLoadFailed {
     return '이 페이지를 표시할 수 없습니다. 다시 시도해 주세요.';
   }
@@ -9891,6 +9963,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountNotificationsUnavailable {
     return '无法开启通知。请重试。';
+  }
+
+  @override
+  String get accountPages {
+    return '关于本站点';
+  }
+
+  @override
+  String get accountPagesDescription {
+    return '本站点发布的服务条款、隐私政策等页面。';
   }
 
   @override
@@ -11404,6 +11486,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get pagesListEmpty {
+    return '本站点尚未发布任何页面。';
+  }
+
+  @override
+  String get pagesListLoadFailed {
+    return '无法加载页面列表。请重试。';
+  }
+
+  @override
   String get pagesLoadFailed {
     return '无法显示该页面。请重试。';
   }
@@ -12554,6 +12646,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountNotificationsUnavailable {
     return '無法開啟通知。請重試。';
+  }
+
+  @override
+  String get accountPages {
+    return '關於本網站';
+  }
+
+  @override
+  String get accountPagesDescription {
+    return '本網站發布的服務條款、隱私權政策等頁面。';
   }
 
   @override
@@ -14064,6 +14166,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String pagesFallbackNotice({required String language}) {
     return '此頁面沒有以你所使用的語言發布的版本，因此以$language顯示。';
+  }
+
+  @override
+  String get pagesListEmpty {
+    return '本網站尚未發布任何頁面。';
+  }
+
+  @override
+  String get pagesListLoadFailed {
+    return '無法載入頁面列表。請重試。';
   }
 
   @override
