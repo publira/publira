@@ -177,8 +177,8 @@ catalogs:
       specifier: 1.43.0
       version: 1.43.0
     '@publira/comic-viewer':
-      specifier: 0.9.0
-      version: 0.9.0
+      specifier: 0.10.0
+      version: 0.10.0
     '@publira/next-cache-handlers':
       specifier: 1.0.0
       version: 1.0.0
@@ -455,7 +455,7 @@ importers:
         version: link:../../packages/brand
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.9.0(react@19.3.0)
+        version: 0.10.0(react@19.3.0)
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -2185,8 +2185,8 @@ packages:
   '@preact/signals-core@1.14.4':
     resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
 
-  '@publira/comic-viewer@0.9.0':
-    resolution: {integrity: sha512-6m+c1Ol6/m1TX3c3pN2wxCaYlRHKZ0CK0KI/+cYNlKIl2/NHPyyQKcKRCJ6ynTQ7R3x/5tfkeJLMs71elv/N/A==}
+  '@publira/comic-viewer@0.10.0':
+    resolution: {integrity: sha512-3syL7udd20XC3mh1j7jFf3UoTxrpCFvOQ5cTZP+ay3uUdjHx4gx+gh/Q1wROzBS+W8kEj/TVB5Rwgm1IwGFOZQ==}
     peerDependencies:
       react: '>=19'
 
@@ -6375,7 +6375,7 @@ snapshots:
 
   '@preact/signals-core@1.14.4': {}
 
-  '@publira/comic-viewer@0.9.0(react@19.3.0)':
+  '@publira/comic-viewer@0.10.0(react@19.3.0)':
     dependencies:
       react: 19.3.0
 
