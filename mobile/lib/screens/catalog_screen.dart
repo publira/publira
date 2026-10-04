@@ -213,6 +213,10 @@ class _ContinueReadingShelf extends StatelessWidget {
 /// chart gave it, or `null` while the shelf stands in for a chart.
 typedef _PopularCard = ({SeriesItem series, int? rank});
 
+/// The list the popularity shelf stands in with when the tenant has no chart,
+/// named on a failed read of it so the failure is reported as that list's.
+const _recommendations = #recommendations;
+
 /// The top of the week's all-ages chart, in the positions the last ranking
 /// snapshot recorded, and the way to the whole of it. The app offers no rated
 /// chart, so this is the only one it shows.
@@ -260,6 +264,13 @@ class _PopularShelf extends StatelessWidget {
                 child: AutospacedText(messages.catalogViewAll),
               ),
             ),
+      // A failed read of the chart is the chart's, under its heading; a failed
+      // read of what stands in for it is reported as a recommendation, since
+      // the chart has already answered that there is none.
+      failureFrameFor: (list) => (
+        heading: messages.recommendedTitle,
+        failureMessage: messages.recommendedLoadFailed,
+      ),
       load: (catalog) async {
         final chart = await catalog.listRankedSeries(
           limit: _rankingLimit,
@@ -272,9 +283,14 @@ class _PopularShelf extends StatelessWidget {
               (series: item.series, rank: item.rank),
           ];
         }
-        final recommended = readerId.isEmpty
-            ? await catalog.listRecommendedSeries(limit: _rankingLimit)
-            : await catalog.listMyRecommendedSeries(limit: _rankingLimit);
+        final SeriesPage recommended;
+        try {
+          recommended = readerId.isEmpty
+              ? await catalog.listRecommendedSeries(limit: _rankingLimit)
+              : await catalog.listMyRecommendedSeries(limit: _rankingLimit);
+        } on CatalogFailure catch (error) {
+          throw ShelfReadFailure(_recommendations, error);
+        }
         return [
           for (final series in recommended.series) (series: series, rank: null),
         ];

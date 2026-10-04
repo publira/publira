@@ -147,6 +147,52 @@ void main() {
       expect(router.state.uri.path, AppRoutes.seriesDetailPath(series.id));
     });
 
+    testWidgets('reports a failed read of the order as a recommendation', (
+      tester,
+    ) async {
+      catalog.recommendedSeriesError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+      );
+      await pumpApp(tester, location: AppRoutes.catalog);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('catalog-ranking-error')),
+      );
+
+      // The chart answered that there is none, so what failed is the order
+      // standing in for it, and the row says so in that order's words.
+      expect(find.text('Recommended'), findsOneWidget);
+      expect(
+        find.text('Could not show the recommended works. Try again.'),
+        findsOneWidget,
+      );
+      expect(find.text('Top 10 this week'), findsNothing);
+
+      catalog.recommendedSeriesError = null;
+      await tester.tap(find.byKey(const ValueKey('catalog-ranking-retry')));
+      await pumpUntilFound(tester, shelfCardOf(tenantOrder.first));
+    });
+
+    testWidgets('reports a failed read of the chart as the chart', (
+      tester,
+    ) async {
+      catalog.rankedSeriesError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+      );
+      await pumpApp(tester, location: AppRoutes.catalog);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('catalog-ranking-error')),
+      );
+
+      expect(find.text('Top 10 this week'), findsOneWidget);
+      expect(
+        find.text("Could not show this week's ranking. Try again."),
+        findsOneWidget,
+      );
+      expect(catalog.recommendedSeriesRequests, isEmpty);
+    });
+
     testWidgets('shows no row when nothing is published to recommend', (
       tester,
     ) async {
