@@ -71,6 +71,12 @@ const taxonomyActionName = (action: string) => {
     case "creator_updated": {
       return <Message message="admin.audit.actions.creator_updated" />;
     }
+    case "creator_account_linked": {
+      return <Message message="admin.audit.actions.creator_account_linked" />;
+    }
+    case "creator_account_unlinked": {
+      return <Message message="admin.audit.actions.creator_account_unlinked" />;
+    }
     case "creator_role_created": {
       return <Message message="admin.audit.actions.creator_role_created" />;
     }
@@ -373,6 +379,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "creator": {
       return <Message message="admin.audit.targets.creator" />;
+    }
+    case "creator_account": {
+      return <Message message="admin.audit.targets.creator_account" />;
     }
     case "creator_role": {
       return <Message message="admin.audit.targets.creator_role" />;
