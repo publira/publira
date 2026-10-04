@@ -303,6 +303,7 @@
         "contact_message_reopened": "取消諮詢的已處理狀態",
         "contact_message_assigned": "指派諮詢負責人",
         "contact_message_unassigned": "取消諮詢負責人指派",
+        "contact_message_staff_note_updated": "更新諮詢的工作人員備註",
         "reader_suspended": "暫停了讀者",
         "reader_unsuspended": "解除了讀者暫停",
         "reader_birth_date_changed": "變更了讀者出生日期",
@@ -689,7 +690,7 @@
         "reset": "重設"
       },
       "detail_title": "諮詢",
-      "detail_description": "查看訊息全文、回覆地址、負責人，以及是否已經處理。",
+      "detail_description": "查看訊息全文、回覆地址、負責人、是否已經處理，以及工作人員備註。",
       "detail_section_title": "訊息",
       "detail_error": "無法顯示此諮詢",
       "detail_failed": "無法載入此諮詢。請稍後再試。",
@@ -705,6 +706,7 @@
       "assign_failed": "無法指派負責人。請稍後再試。",
       "unassign_failed": "無法取消負責人指派。請稍後再試。",
       "assignees_failed": "無法取得可指派的工作人員。請稍後再試。",
+      "staff_note_failed": "無法儲存工作人員備註。請稍後再試。",
       "assignment": {
         "title": "指派負責人",
         "description": "負責此諮詢的工作人員。標記為已處理或取消已處理後，負責人維持不變。",
@@ -714,10 +716,21 @@
         "assigned": "已儲存負責人。",
         "unassigned": "已取消負責人指派。"
       },
+      "staff_note": {
+        "title": "工作人員備註",
+        "description": "處理此諮詢的工作人員共用的內部備註。讀者看不到。",
+        "label": "備註",
+        "hint": "儲存後會取代所有人看到的備註。清空後儲存即可刪除備註。",
+        "submit": "儲存備註",
+        "saving": "正在儲存…",
+        "saved": "已儲存工作人員備註。",
+        "cleared": "已刪除工作人員備註。"
+      },
       "validation": {
         "target_missing": "無法確定要操作的諮詢。請重新整理頁面後再試。",
         "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。",
-        "assignee_invalid": "請從清單中選擇工作人員，或選擇未指派。"
+        "assignee_invalid": "請從清單中選擇工作人員，或選擇未指派。",
+        "staff_note_too_long": "備註請控制在{$count}個字元以內。"
       }
     },
     "creators": {

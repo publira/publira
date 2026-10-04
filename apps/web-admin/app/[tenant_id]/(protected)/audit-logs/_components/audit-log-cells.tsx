@@ -194,6 +194,11 @@ const contactMessageActionName = (action: string) => {
         <Message message="admin.audit.actions.contact_message_unassigned" />
       );
     }
+    case "contact_message_staff_note_updated": {
+      return (
+        <Message message="admin.audit.actions.contact_message_staff_note_updated" />
+      );
+    }
     default: {
       return null;
     }

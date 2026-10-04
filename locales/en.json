@@ -303,6 +303,7 @@
         "contact_message_reopened": "Contact message reopened",
         "contact_message_assigned": "Contact message assigned",
         "contact_message_unassigned": "Contact message unassigned",
+        "contact_message_staff_note_updated": "Contact message staff note updated",
         "reader_suspended": "Reader suspended",
         "reader_unsuspended": "Reader suspension lifted",
         "reader_birth_date_changed": "Reader birth date changed",
@@ -689,7 +690,7 @@
         "reset": "Reset"
       },
       "detail_title": "Contact message",
-      "detail_description": "The whole message, the address to answer it at, who is working on it, and whether it has been dealt with.",
+      "detail_description": "The whole message, the address to answer it at, who is working on it, whether it has been dealt with, and the staff's internal note.",
       "detail_section_title": "Message",
       "detail_error": "Could not display the contact message",
       "detail_failed": "Could not load the contact message. Please try again later.",
@@ -705,6 +706,7 @@
       "assign_failed": "Could not assign the message. Please try again later.",
       "unassign_failed": "Could not clear the message's assignee. Please try again later.",
       "assignees_failed": "Could not load the staff the message can be assigned to. Please try again later.",
+      "staff_note_failed": "Could not save the staff note. Please try again later.",
       "assignment": {
         "title": "Assignment",
         "description": "The member of staff working on this message. Marking it handled or reopening it keeps the assignee.",
@@ -714,10 +716,21 @@
         "assigned": "The assignee has been saved.",
         "unassigned": "The message is no longer assigned to anyone."
       },
+      "staff_note": {
+        "title": "Staff note",
+        "description": "An internal note the staff working on this message share. Readers never see it.",
+        "label": "Note",
+        "hint": "Saving replaces the note for everyone. Empty the field and save to clear it.",
+        "submit": "Save note",
+        "saving": "Saving…",
+        "saved": "The staff note has been saved.",
+        "cleared": "The staff note has been cleared."
+      },
       "validation": {
         "target_missing": "Could not tell which message this applies to. Reload the page and try again.",
         "tenant_missing": "Could not tell which tenant this applies to. Reload the page and try again.",
-        "assignee_invalid": "Choose a member of staff from the list, or Unassigned."
+        "assignee_invalid": "Choose a member of staff from the list, or Unassigned.",
+        "staff_note_too_long": "Keep the note to {$count} characters or fewer."
       }
     },
     "creators": {

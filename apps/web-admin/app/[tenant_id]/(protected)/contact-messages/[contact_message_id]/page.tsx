@@ -47,6 +47,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ContactMessageAssignment } from "./_components/contact-message-assignment";
 import { ContactMessageDetail } from "./_components/contact-message-detail";
+import { ContactMessageStaffNote } from "./_components/contact-message-staff-note";
 
 type ContactMessageDetailPageProps =
   PageProps<"/[tenant_id]/contact-messages/[contact_message_id]">;
@@ -145,6 +146,10 @@ const ContactMessageDetailContent = async ({
         locale={locale}
         tenantId={tenantId}
       />
+      <ContactMessageStaffNote
+        contactMessage={result.contactMessage}
+        tenantId={tenantId}
+      />
     </AdminSections>
   );
 };
@@ -193,6 +198,14 @@ const ContactMessageDetailPage = ({
       <FlashToast
         keyName="unassigned"
         message="admin.contact_messages.assignment.unassigned"
+      />
+      <FlashToast
+        keyName="note_saved"
+        message="admin.contact_messages.staff_note.saved"
+      />
+      <FlashToast
+        keyName="note_cleared"
+        message="admin.contact_messages.staff_note.cleared"
       />
       <SectionErrorBoundary
         title={
