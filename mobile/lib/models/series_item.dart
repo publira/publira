@@ -348,6 +348,73 @@ class SeriesDetail {
   final List<EpisodeItem> episodes;
 }
 
+/// Where the reader stands in one series, as `GetMySeriesProgressResponse`
+/// answers it.
+class SeriesProgress {
+  const SeriesProgress({
+    this.episode,
+    this.isFinished = false,
+    this.finishedEpisodeIds = const {},
+  });
+
+  /// A reader who is signed out, or who has opened nothing of the series.
+  static const none = SeriesProgress();
+
+  /// The episode the reader last moved in. `null` when they have opened no
+  /// episode of the series they can still read.
+  final EpisodeItem? episode;
+
+  /// Whether the reader already finished [episode].
+  final bool isFinished;
+
+  /// The public ids of the episodes the reader has finished. Not derived from
+  /// [episode]: finishing an episode and stopping on a page of it are two
+  /// different records, so a reader can have finished episodes and no
+  /// [episode] at all.
+  final Set<String> finishedEpisodeIds;
+
+  /// The episode the series screen's reading action opens among [episodes],
+  /// the series' published list in ascending order, or `null` for a series
+  /// with none.
+  ///
+  /// A reader who stopped inside an episode is sent back into it, and one who
+  /// finished it to the next episode published after it. One who has opened
+  /// nothing, and one who finished the last episode there is, are invited into
+  /// the first.
+  ContinueOffer? offerIn(List<EpisodeItem> episodes) {
+    final first = episodes.firstOrNull;
+    if (first == null) {
+      return null;
+    }
+    final episode = this.episode;
+    if (episode == null) {
+      return ContinueOffer(episode: first, isContinuation: false);
+    }
+    if (!isFinished) {
+      return ContinueOffer(episode: episode, isContinuation: true);
+    }
+    final next = episodes
+        .where((later) => later.orderIndex > episode.orderIndex)
+        .firstOrNull;
+    return next == null
+        ? ContinueOffer(episode: first, isContinuation: false)
+        : ContinueOffer(episode: next, isContinuation: true);
+  }
+}
+
+/// The episode the series screen's reading action opens.
+class ContinueOffer {
+  const ContinueOffer({required this.episode, required this.isContinuation});
+
+  final EpisodeItem episode;
+
+  /// Whether the offer picks up where the reader stopped. It decides which of
+  /// the two labels the action carries, so the words follow the episode rather
+  /// than the reader: a reader who has read the series to its end is offered
+  /// the beginning again, and offered it as a beginning.
+  final bool isContinuation;
+}
+
 /// One offer in the reader's continue-reading row, as `RecentSeries`
 /// describes it.
 class RecentSeriesItem {

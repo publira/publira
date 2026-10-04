@@ -426,6 +426,13 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId) =>
       _origin.reactToEpisode(episodeInternalId);
 
+  /// Where the reader stands in a series, across every device, which only the
+  /// API holds. A screen that cannot reach it offers the first episode, the
+  /// way it does a guest.
+  @override
+  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) =>
+      _origin.getSeriesProgress(seriesInternalId);
+
   /// The reader's continue-reading row, which only the API can answer.
   ///
   /// Nothing about it is kept on the device: it is an offer to open something

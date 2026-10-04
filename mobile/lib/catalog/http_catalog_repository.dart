@@ -69,6 +69,8 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.FollowService/ListMyFollowUpdates';
   static const _recentSeriesProcedure =
       '/publira.v1.EpisodeReadService/ListMyRecentSeries';
+  static const _seriesProgressProcedure =
+      '/publira.v1.EpisodeReadService/GetMySeriesProgress';
   static const _myEpisodeRatingProcedure =
       '/publira.v1.RatingService/GetMyEpisodeRating';
   static const _rateEpisodeProcedure = '/publira.v1.RatingService/RateEpisode';
@@ -812,6 +814,57 @@ class HttpCatalogRepository implements CatalogRepository {
         accessToken: accessToken,
       );
       return _reactionFromJson(body, 'reaction');
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return SeriesProgress.none;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _seriesProgressProcedure,
+        {
+          'seriesId': seriesInternalId,
+          'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      final finishedEpisodeIds = <String>{};
+      final finished = body['finishedEpisodePublicIds'];
+      // protojson omits an empty repeated field.
+      if (finished != null) {
+        for (final id in _expectList(finished, 'finishedEpisodePublicIds')) {
+          if (id is! String || id.trim().isEmpty) {
+            _invalidPayload(
+              'finishedEpisodePublicIds[] must be a non-empty string',
+            );
+          }
+          finishedEpisodeIds.add(id.trim());
+        }
+      }
+      final raw = body['progress'];
+      // protojson omits an unset message, which is the answer for a reader who
+      // has opened no episode of the series they can still read.
+      if (raw == null) {
+        return SeriesProgress(finishedEpisodeIds: finishedEpisodeIds);
+      }
+      final progress = _expectMap(raw, 'progress');
+      return SeriesProgress(
+        episode: _episodeFromJson(
+          _expectMap(progress['episode'], 'progress.episode'),
+          'progress.episode',
+        ),
+        isFinished: _readBool(progress, 'isFinished', 'progress'),
+        finishedEpisodeIds: finishedEpisodeIds,
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

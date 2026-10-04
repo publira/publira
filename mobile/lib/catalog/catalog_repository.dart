@@ -236,6 +236,13 @@ abstract class CatalogRepository {
   /// removed or lowered; the server applies the series' press mode.
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId);
 
+  /// Where the signed-in reader stands in the series [seriesInternalId] names:
+  /// the episode they last moved in, and the episodes they have finished.
+  ///
+  /// [SeriesProgress.none] for a reader who is signed out, without a request.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesProgress> getSeriesProgress(String seriesInternalId);
+
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.
   ///

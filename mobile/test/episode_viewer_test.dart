@@ -32,6 +32,7 @@ import 'support/fake_offline_library.dart';
 import 'support/fake_screen_captures.dart';
 import 'support/fake_tenant_brand.dart';
 import 'support/pump_until.dart';
+import 'support/tap.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -45,6 +46,10 @@ void main() {
   const landscape = Size(900, 600);
 
   final pageView = find.byKey(const ValueKey('episode-page-view'));
+  final seriesBody = find.descendant(
+    of: find.byKey(const ValueKey('series-detail-body')),
+    matching: find.byType(Scrollable),
+  );
   final endPanel = find.byKey(const ValueKey('episode-end-panel'));
 
   /// The image the reader draws for the one-based page [number].
@@ -813,9 +818,16 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(seriesId),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
 
-    await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
+    await tapVisible(
+      tester,
+      find.byKey(ValueKey('episode-tile-$episodeId')),
+      scrollable: seriesBody,
+    );
     await pumpUntilFound(
       tester,
       find.byKey(const ValueKey('episode-page-view')),
@@ -950,8 +962,15 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(seriesId),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
-    await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
+    await tapVisible(
+      tester,
+      find.byKey(ValueKey('episode-tile-$episodeId')),
+      scrollable: seriesBody,
+    );
     await pumpUntilRouteSettled(tester, pageView);
     await turnToEnd(tester);
 
@@ -1425,8 +1444,15 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(seriesId),
     );
     await pumpApp(tester, session: fakeSession);
-    await pumpUntilFound(tester, find.text('Episodes'));
-    await tester.tap(find.byKey(ValueKey('episode-tile-$episodeId')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
+    await tapVisible(
+      tester,
+      find.byKey(ValueKey('episode-tile-$episodeId')),
+      scrollable: seriesBody,
+    );
     await pumpUntilRouteSettled(tester, pageView);
 
     await tester.tap(find.byKey(const ValueKey('episode-next-page')));

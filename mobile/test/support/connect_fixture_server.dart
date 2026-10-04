@@ -27,6 +27,7 @@ class ConnectFixtureServer {
     this.entitledEpisodes = const {},
     this.readingPositions = const {},
     this.recentSeries = const [],
+    this.seriesProgress = const {},
     this.commentMode = 'COMMENT_MODE_IMMEDIATE',
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
@@ -546,6 +547,13 @@ class ConnectFixtureServer {
   /// with, in the order they are given, at most the request's `limit` to a
   /// page with the token written the way [followsPageSize] writes one.
   List<Map<String, Object?>> recentSeries;
+
+  /// The `SeriesProgress` `GetMySeriesProgress` answers a signed-in member
+  /// with, keyed by series public id. A series missing here is one they have
+  /// opened nothing of. The finished episodes beside it are the series'
+  /// episodes [episodeReads] holds, so a finish the viewer records shows on the
+  /// next read.
+  Map<String, Map<String, Object?>> seriesProgress;
 
   /// `MyEpisodeRead` entries `ListMyEpisodeReads` answers a signed-in member
   /// with, in the order they are given, at most the request's `limit` to a
@@ -1340,7 +1348,8 @@ class ConnectFixtureServer {
         path.endsWith('/SaveReadingPosition') ||
         path.endsWith('/MarkEpisodeAsRead') ||
         path.endsWith('/ListMyEpisodeReads') ||
-        path.endsWith('/ListMyRecentSeries')) {
+        path.endsWith('/ListMyRecentSeries') ||
+        path.endsWith('/GetMySeriesProgress')) {
       if (!_isAuthorized(request)) {
         await _write(request, HttpStatus.unauthorized, {
           'code': 'unauthenticated',
@@ -2326,6 +2335,23 @@ class ConnectFixtureServer {
       await _write(request, HttpStatus.ok, {
         'series': recentSeries.sublist(start, end),
         if (end < recentSeries.length) 'nextToken': '$end',
+      });
+      return;
+    }
+    if (path.endsWith('/GetMySeriesProgress')) {
+      final seriesId = publicIdOf(body['seriesId']);
+      final episodes = details[seriesId]?['episodes'] as List? ?? const [];
+      final finished = [
+        for (final episode in episodes)
+          if ((episode as Map)['publicId'] case final String id
+              when episodeReads.containsKey(id))
+            id,
+      ];
+      final progress = seriesProgress[seriesId];
+      await _write(request, HttpStatus.ok, {
+        // protojson omits an unset message and an empty repeated field.
+        'progress': ?progress,
+        if (finished.isNotEmpty) 'finishedEpisodePublicIds': finished,
       });
       return;
     }

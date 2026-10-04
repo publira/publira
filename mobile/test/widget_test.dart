@@ -381,7 +381,18 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
-    expect(find.text(fixtureRatedSeries.description), findsOneWidget);
+    // The synopsis sits under the reading action, below the fold here.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('series-detail-body')),
+        matching: find.text(
+          fixtureRatedSeries.description,
+          skipOffstage: false,
+        ),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
     expect(
       tester
           .widget<AutospacedText>(
