@@ -19,6 +19,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.dailyRankedSeries,
     this.genreRankedSeries = const {},
     this.rankedSeriesPageSize = 20,
+    this.relatedSeries = const {},
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
@@ -53,6 +54,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.newestSeriesError,
     this.rankedSeriesError,
     this.rankedSeriesMoreError,
+    this.relatedSeriesError,
     this.creators = const [],
     this.detailError,
     this.creatorError,
@@ -168,6 +170,16 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// What a page of [listRankedSeries] after the first fails with.
   CatalogFailure? rankedSeriesMoreError;
+
+  /// What [listRelatedSeries] answers, keyed by the internal id of the series
+  /// the row stands under. A series absent is one with nothing to go on to.
+  Map<String, List<SeriesItem>> relatedSeries;
+
+  CatalogFailure? relatedSeriesError;
+
+  /// Every read of [listRelatedSeries], in order, with the internal id of the
+  /// series it was asked for and its limit.
+  final List<({String seriesId, int limit})> relatedSeriesRequests = [];
 
   Map<String, SeriesDetail> details;
 
@@ -551,6 +563,21 @@ class FakeCatalogRepository implements CatalogRepository {
     // The API answers a page of at most [limit], so a fixture longer than the
     // shelf asked for must not reach it here either.
     return List<SeriesItem>.from(newestSeries.take(limit));
+  }
+
+  @override
+  Future<List<SeriesItem>> listRelatedSeries(
+    String seriesInternalId, {
+    required int limit,
+  }) async {
+    relatedSeriesRequests.add((seriesId: seriesInternalId, limit: limit));
+    final error = relatedSeriesError;
+    if (error != null) {
+      throw error;
+    }
+    return List<SeriesItem>.from(
+      (relatedSeries[seriesInternalId] ?? const []).take(limit),
+    );
   }
 
   @override

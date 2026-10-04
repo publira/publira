@@ -365,6 +365,63 @@ void main() {
     );
   });
 
+  test('listRelatedSeries asks about a series by its internal id', () async {
+    server.relatedSeries = {
+      ConnectFixtureServer.seedSeriesId: ['series-kitchen'],
+    };
+
+    final related = await catalog.listRelatedSeries(
+      ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      limit: 10,
+    );
+
+    expect(related.map((item) => item.id), ['series-kitchen']);
+    expect(related.single.title, 'The Little Kitchen');
+    final request = server.requestsTo('ListRelatedSeries').single;
+    expect(
+      request.body['seriesId'],
+      ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+    );
+    expect(request.body['limit'], 10);
+    expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+  });
+
+  test('a series with nothing to go on to reads as an empty row', () async {
+    final related = await catalog.listRelatedSeries(
+      ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+      limit: 10,
+    );
+
+    expect(related, isEmpty);
+  });
+
+  test('a series the API no longer shows reads as an empty row', () async {
+    final related = await catalog.listRelatedSeries(
+      ConnectFixtureServer.internalIdOf('missing'),
+      limit: 10,
+    );
+
+    expect(related, isEmpty);
+  });
+
+  test('a related row the API could not answer is a failure', () async {
+    server.relatedStatus = HttpStatus.serviceUnavailable;
+
+    expect(
+      () => catalog.listRelatedSeries(
+        ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        limit: 10,
+      ),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.network,
+        ),
+      ),
+    );
+  });
+
   test('listSeries resolves cover renditions against the image base', () async {
     final items = (await catalog.listSeries()).series;
 

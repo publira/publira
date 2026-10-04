@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
@@ -529,263 +530,340 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final downloader = OfflineScope.downloaderOf(context);
     final offer = _progress.offerIn(widget.detail.episodes);
 
-    return ListView(
+    return CustomScrollView(
       key: const ValueKey('series-detail-body'),
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 16:9 is the shape of the rendition, and on a phone it is what the
-        // banner takes. The cap is for the wide screen a tablet or a
-        // desktop window gives it, where the same ratio would push the
-        // synopsis and the episodes off the first screen.
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 220),
-          child: EyeCatchCover(
-            kind: 'series',
-            id: series.id,
-            variants: series.eyeCatchVariants,
-            requestHeaders: series.imageRequestHeaders,
-            preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
-            aspectRatio: 16 / 9,
-          ),
-        ),
-        const SizedBox(height: 16),
-        AutospacedText(series.title, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        _SeriesRating(
-          series: series,
-          ownRating: _ownRating,
-          ownRatingFailed: _ownRatingFailed,
-        ),
-        if (series.creators.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          CreatorCredits(
-            key: const ValueKey('series-creators'),
-            credits: series.creators,
-            style: theme.textTheme.bodyMedium,
-            onCreatorTap: (creator) =>
-                context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
-          ),
-        ],
-        const SizedBox(height: 8),
-        AutospacedText(
-          messages.seriesEpisodeCount(
-            count: messages.formatInteger(series.episodeCount),
-          ),
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        if (series.labelName.isNotEmpty ||
-            series.status != null ||
-            series.scheduleWeekdays.isNotEmpty ||
-            messages.seriesAgeRatingLabel(series.ageRating) != null) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            key: const ValueKey('series-classification'),
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          sliver: SliverList.list(
             children: [
-              if (series.labelName.isNotEmpty) _SeriesLabel(series: series),
-              if (series.status != null)
-                AutospacedText(
-                  key: const ValueKey('series-status'),
-                  messages.seriesStatusLabel(series.status!),
-                  style: theme.textTheme.labelLarge,
+              // 16:9 is the shape of the rendition, and on a phone it is what the
+              // banner takes. The cap is for the wide screen a tablet or a
+              // desktop window gives it, where the same ratio would push the
+              // synopsis and the episodes off the first screen.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: EyeCatchCover(
+                  kind: 'series',
+                  id: series.id,
+                  variants: series.eyeCatchVariants,
+                  requestHeaders: series.imageRequestHeaders,
+                  preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
+                  aspectRatio: 16 / 9,
                 ),
-              if (messages.seriesAgeRatingLabel(series.ageRating)
-                  case final rating?)
-                AutospacedText(
-                  key: const ValueKey('series-age-rating'),
-                  rating,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              if (series.scheduleWeekdays.isNotEmpty)
-                AutospacedText(
-                  key: const ValueKey('series-schedule'),
-                  messages.seriesSchedule(
-                    weekdays: messages.formatList([
-                      for (final weekday in series.scheduleWeekdays)
-                        messages.formatWeekday(weekday),
-                    ]),
-                  ),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
-        // Where a reader goes next when this work is not the one: the
-        // tenant's own genres first, then the words an editor wrote on the
-        // series, told apart by the mark in front of a tag.
-        if (series.genres.isNotEmpty || series.tags.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            key: const ValueKey('series-genres-tags'),
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final genre in series.genres)
-                ActionChip(
-                  key: ValueKey('series-genre-${genre.id}'),
-                  label: AutospacedText(genre.name),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () =>
-                      context.pushInTab(AppRoutes.genreDetailPath(genre.id)),
-                ),
-              for (final tag in series.tags)
-                ActionChip(
-                  key: ValueKey('series-tag-${tag.slug}'),
-                  avatar: const Icon(Icons.tag),
-                  label: AutospacedText(tag.name),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () =>
-                      context.pushInTab(AppRoutes.tagDetailPath(tag.slug)),
-                ),
-            ],
-          ),
-        ],
-        // The way into the work: the episode this reader stopped in or is due
-        // next, and the first one for a guest and for a reader who has read
-        // nothing yet. It takes the tenant's secondary colour, as the
-        // storefront's does, so it is not one more button like the follow
-        // control under it.
-        if (offer != null) ...[
-          const SizedBox(height: 16),
-          FilledButton(
-            key: const ValueKey('series-reading-action'),
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.secondary,
-              foregroundColor: theme.colorScheme.onSecondary,
-            ),
-            onPressed: () => unawaited(
-              _openEpisode(
-                AppRoutes.episodeViewerPath(series.id, offer.episode.id),
               ),
-            ),
-            child: AutospacedText(
-              offer.isContinuation
-                  ? messages.seriesContinueReading
-                  : messages.seriesReadFromFirst,
-            ),
-          ),
-        ],
-        if (follows) ...[
-          const SizedBox(height: 16),
-          FollowControl(
-            kind: FollowTargetKind.series,
-            targetId: series.internalId,
-            targetName: series.title,
-          ),
-        ],
-        if (series.description.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          AutospacedText(series.description, style: theme.textTheme.bodyLarge),
-        ],
-        // Each author is followed on their own, and the row opens the author.
-        if (follows && series.creators.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          AutospacedText(
-            messages.seriesCreatorsHeading,
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          // A person credited in two roles is still one person to follow.
-          for (final creator in {
-            for (final credit in series.creators) credit.id: credit,
-          }.values)
-            ListTile(
-              key: ValueKey('series-creator-${creator.id}'),
-              contentPadding: EdgeInsets.zero,
-              title: AutospacedText(creator.name),
-              trailing: FollowControl(
-                kind: FollowTargetKind.creator,
-                targetId: creator.internalId,
-                targetName: creator.name,
+              const SizedBox(height: 16),
+              AutospacedText(
+                series.title,
+                style: theme.textTheme.headlineSmall,
               ),
-              onTap: () =>
-                  context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
-            ),
-        ],
-        const SizedBox(height: 24),
-        AutospacedText(
-          messages.seriesEpisodesHeading,
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        if (widget.detail.episodes.isEmpty)
-          AutospacedText(messages.seriesEpisodesEmpty)
-        else
-          for (final episode in widget.detail.episodes)
-            ListTile(
-              key: ValueKey('episode-tile-${episode.id}'),
-              contentPadding: EdgeInsets.zero,
-              // A finished row steps back, so the episodes still ahead are the
-              // ones that stand out.
-              textColor: _progress.finishedEpisodeIds.contains(episode.id)
-                  ? theme.colorScheme.onSurfaceVariant
-                  : null,
-              title: AutospacedText(episode.title),
-              subtitle: _progress.finishedEpisodeIds.contains(episode.id)
-                  ? _FinishedMark(episodeId: episode.id)
-                  : null,
-              trailing: _EpisodeTrailing(
-                price: episode.price,
-                soldOnWeb:
-                    _acceptsPayments &&
-                    episode.purchaseSurface == EpisodePurchaseSurface.web,
-                saved: _saved.contains(episode.id),
-                download: downloader == null || !_canSave(episode)
-                    ? null
-                    : _SaveOfflineButton(
-                        downloader: downloader,
-                        seriesId: series.id,
-                        episode: episode,
-                        saved: _saved.contains(episode.id),
-                        onSave: () =>
-                            unawaited(_saveOffline(downloader, episode)),
+              const SizedBox(height: 8),
+              _SeriesRating(
+                series: series,
+                ownRating: _ownRating,
+                ownRatingFailed: _ownRatingFailed,
+              ),
+              if (series.creators.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                CreatorCredits(
+                  key: const ValueKey('series-creators'),
+                  credits: series.creators,
+                  style: theme.textTheme.bodyMedium,
+                  onCreatorTap: (creator) => context.pushInTab(
+                    AppRoutes.creatorDetailPath(creator.id),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              AutospacedText(
+                messages.seriesEpisodeCount(
+                  count: messages.formatInteger(series.episodeCount),
+                ),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              if (series.labelName.isNotEmpty ||
+                  series.status != null ||
+                  series.scheduleWeekdays.isNotEmpty ||
+                  messages.seriesAgeRatingLabel(series.ageRating) != null) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  key: const ValueKey('series-classification'),
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (series.labelName.isNotEmpty)
+                      _SeriesLabel(series: series),
+                    if (series.status != null)
+                      AutospacedText(
+                        key: const ValueKey('series-status'),
+                        messages.seriesStatusLabel(series.status!),
+                        style: theme.textTheme.labelLarge,
                       ),
-                buy:
-                    _acceptsPayments &&
-                        episode.price > 0 &&
-                        episode.purchaseSurface != EpisodePurchaseSurface.web &&
-                        _access[episode.id] == EpisodeAccess.locked
-                    ? BuyEpisodeButton(
-                        episodeId: episode.id,
-                        episodeInternalId: episode.internalId,
-                        price: episode.price,
-                        compact: true,
-                        signInReturnTo: AppRoutes.episodeViewerPath(
-                          series.id,
-                          episode.id,
+                    if (messages.seriesAgeRatingLabel(series.ageRating)
+                        case final rating?)
+                      AutospacedText(
+                        key: const ValueKey('series-age-rating'),
+                        rating,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.error,
                         ),
-                        onAlreadyPurchased: () => unawaited(
-                          _openEpisode(
-                            AppRoutes.episodeViewerPath(series.id, episode.id),
-                          ),
+                      ),
+                    if (series.scheduleWeekdays.isNotEmpty)
+                      AutospacedText(
+                        key: const ValueKey('series-schedule'),
+                        messages.seriesSchedule(
+                          weekdays: messages.formatList([
+                            for (final weekday in series.scheduleWeekdays)
+                              messages.formatWeekday(weekday),
+                          ]),
                         ),
-                        onStorePurchase: () => unawaited(
-                          _openEpisode(
-                            AppRoutes.episodeViewerPath(
-                              series.id,
-                              episode.id,
-                              checkout: CheckoutOutcome.success,
-                            ),
-                          ),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                      )
-                    : null,
-              ),
-              onTap: () => unawaited(
-                _openEpisode(
-                  AppRoutes.episodeViewerPath(series.id, episode.id),
+                      ),
+                  ],
                 ),
+              ],
+              // Where a reader goes next when this work is not the one: the
+              // tenant's own genres first, then the words an editor wrote on the
+              // series, told apart by the mark in front of a tag.
+              if (series.genres.isNotEmpty || series.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  key: const ValueKey('series-genres-tags'),
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final genre in series.genres)
+                      ActionChip(
+                        key: ValueKey('series-genre-${genre.id}'),
+                        label: AutospacedText(genre.name),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => context.pushInTab(
+                          AppRoutes.genreDetailPath(genre.id),
+                        ),
+                      ),
+                    for (final tag in series.tags)
+                      ActionChip(
+                        key: ValueKey('series-tag-${tag.slug}'),
+                        avatar: const Icon(Icons.tag),
+                        label: AutospacedText(tag.name),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => context.pushInTab(
+                          AppRoutes.tagDetailPath(tag.slug),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+              // The way into the work: the episode this reader stopped in or is due
+              // next, and the first one for a guest and for a reader who has read
+              // nothing yet. It takes the tenant's secondary colour, as the
+              // storefront's does, so it is not one more button like the follow
+              // control under it.
+              if (offer != null) ...[
+                const SizedBox(height: 16),
+                FilledButton(
+                  key: const ValueKey('series-reading-action'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.secondary,
+                    foregroundColor: theme.colorScheme.onSecondary,
+                  ),
+                  onPressed: () => unawaited(
+                    _openEpisode(
+                      AppRoutes.episodeViewerPath(series.id, offer.episode.id),
+                    ),
+                  ),
+                  child: AutospacedText(
+                    offer.isContinuation
+                        ? messages.seriesContinueReading
+                        : messages.seriesReadFromFirst,
+                  ),
+                ),
+              ],
+              if (follows) ...[
+                const SizedBox(height: 16),
+                FollowControl(
+                  kind: FollowTargetKind.series,
+                  targetId: series.internalId,
+                  targetName: series.title,
+                ),
+              ],
+              if (series.description.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                AutospacedText(
+                  series.description,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ],
+              // Each author is followed on their own, and the row opens the author.
+              if (follows && series.creators.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                AutospacedText(
+                  messages.seriesCreatorsHeading,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                // A person credited in two roles is still one person to follow.
+                for (final creator in {
+                  for (final credit in series.creators) credit.id: credit,
+                }.values)
+                  ListTile(
+                    key: ValueKey('series-creator-${creator.id}'),
+                    contentPadding: EdgeInsets.zero,
+                    title: AutospacedText(creator.name),
+                    trailing: FollowControl(
+                      kind: FollowTargetKind.creator,
+                      targetId: creator.internalId,
+                      targetName: creator.name,
+                    ),
+                    onTap: () => context.pushInTab(
+                      AppRoutes.creatorDetailPath(creator.id),
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 24),
+              AutospacedText(
+                messages.seriesEpisodesHeading,
+                style: theme.textTheme.titleMedium,
               ),
-            ),
+              const SizedBox(height: 8),
+              if (widget.detail.episodes.isEmpty)
+                AutospacedText(messages.seriesEpisodesEmpty)
+              else
+                for (final episode in widget.detail.episodes)
+                  ListTile(
+                    key: ValueKey('episode-tile-${episode.id}'),
+                    contentPadding: EdgeInsets.zero,
+                    // A finished row steps back, so the episodes still ahead are the
+                    // ones that stand out.
+                    textColor: _progress.finishedEpisodeIds.contains(episode.id)
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                    title: AutospacedText(episode.title),
+                    subtitle: _progress.finishedEpisodeIds.contains(episode.id)
+                        ? _FinishedMark(episodeId: episode.id)
+                        : null,
+                    trailing: _EpisodeTrailing(
+                      price: episode.price,
+                      soldOnWeb:
+                          _acceptsPayments &&
+                          episode.purchaseSurface == EpisodePurchaseSurface.web,
+                      saved: _saved.contains(episode.id),
+                      download: downloader == null || !_canSave(episode)
+                          ? null
+                          : _SaveOfflineButton(
+                              downloader: downloader,
+                              seriesId: series.id,
+                              episode: episode,
+                              saved: _saved.contains(episode.id),
+                              onSave: () =>
+                                  unawaited(_saveOffline(downloader, episode)),
+                            ),
+                      buy:
+                          _acceptsPayments &&
+                              episode.price > 0 &&
+                              episode.purchaseSurface !=
+                                  EpisodePurchaseSurface.web &&
+                              _access[episode.id] == EpisodeAccess.locked
+                          ? BuyEpisodeButton(
+                              episodeId: episode.id,
+                              episodeInternalId: episode.internalId,
+                              price: episode.price,
+                              compact: true,
+                              signInReturnTo: AppRoutes.episodeViewerPath(
+                                series.id,
+                                episode.id,
+                              ),
+                              onAlreadyPurchased: () => unawaited(
+                                _openEpisode(
+                                  AppRoutes.episodeViewerPath(
+                                    series.id,
+                                    episode.id,
+                                  ),
+                                ),
+                              ),
+                              onStorePurchase: () => unawaited(
+                                _openEpisode(
+                                  AppRoutes.episodeViewerPath(
+                                    series.id,
+                                    episode.id,
+                                    checkout: CheckoutOutcome.success,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    onTap: () => unawaited(
+                      _openEpisode(
+                        AppRoutes.episodeViewerPath(series.id, episode.id),
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+        // A shelf runs to the edges of the screen, as every one on the catalog
+        // does, so the covers scroll out from under the side rather than
+        // stopping short of it.
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 8),
+          sliver: SliverToBoxAdapter(
+            child: _RelatedSeriesShelf(series: series),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+/// As many related series as every shelf of the catalog holds, so the row
+/// scrolls the same distance as they do.
+const _relatedSeriesLimit = 10;
+
+/// The tenant's other series, most related first, as the storefront's series
+/// page lists them under the series: where a reader goes on to once this one
+/// is not, or no longer, the one.
+///
+/// A suggestion is worth nothing to say nothing about, so the row and its
+/// heading are drawn only when the API answers with series. A tenant with this
+/// one series alone is shown no row, and neither is a reader whose read
+/// failed: the screen they came for is whole without it, as the storefront's
+/// page is.
+class _RelatedSeriesShelf extends StatelessWidget {
+  const _RelatedSeriesShelf({required this.series});
+
+  final SeriesItem series;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return CatalogShelf<SeriesItem>(
+      sectionKey: 'series-related',
+      heading: messages.seriesRelatedHeading,
+      // Nothing in the row depends on who is reading, so a sign-in or a
+      // sign-out leaves it as it is.
+      reloadToken: series.internalId,
+      // A copy saved on this device before the internal id was kept names no
+      // series the API can score against.
+      load: (catalog) async => series.internalId.isEmpty
+          ? const []
+          : catalog.listRelatedSeries(
+              series.internalId,
+              limit: _relatedSeriesLimit,
+            ),
+      cardBuilder: (context, item) => SeriesShelfCard(
+        key: ValueKey('series-related-${item.id}'),
+        series: item,
+        subtitle: item.creators.isEmpty
+            ? null
+            : CreatorCredits(credits: item.creators),
+        onTap: () => context.pushInTab(AppRoutes.seriesDetailPath(item.id)),
+      ),
     );
   }
 }

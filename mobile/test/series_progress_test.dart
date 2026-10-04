@@ -28,7 +28,12 @@ void main() {
       find.byKey(ValueKey('episode-tile-${episode(orderIndex).id}'));
   final seriesBody = find.descendant(
     of: find.byKey(const ValueKey('series-detail-body')),
-    matching: find.byType(Scrollable),
+    // The screen's own list, rather than the related row that scrolls
+    // across its foot.
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    ),
   );
 
   late GoRouter router;

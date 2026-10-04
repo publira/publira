@@ -4066,6 +4066,7 @@
       "rating_own": "내 평점: {$average}",
       "rating_own_failed": "내 평점을 표시하지 못했습니다",
       "read_from_first": "1화부터 읽기",
+      "related_heading": "이런 작품은 어떠세요",
       "episodes_empty": "아직 공개된 에피소드가 없습니다",
       "episodes_heading": "에피소드",
       "load_failed": "시리즈를 표시할 수 없습니다",

@@ -196,7 +196,23 @@
       ]
     },
     {
-      "name": "Related series and recommendations around a series",
+      "name": "The related series under a series",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": ["ListRelatedSeries"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId"],
+        "rpcs": ["ListRelatedSeries"]
+      },
+      "tests": [
+        "a series with related works lists them and opens each one",
+        "a series without related works shows no row",
+        "the seed series lists related works on the live API"
+      ]
+    },
+    {
+      "name": "Related series at the end of an episode and on an author's page, and recommendations",
       "web": {
         "rpcs": [
           "ListRelatedSeries",

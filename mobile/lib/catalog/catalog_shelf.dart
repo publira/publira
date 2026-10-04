@@ -33,7 +33,7 @@ class CatalogShelf<T> extends StatefulWidget {
     super.key,
     required this.sectionKey,
     required this.heading,
-    required this.failureMessage,
+    this.failureMessage,
     required this.load,
     required this.cardBuilder,
     required this.reloadToken,
@@ -49,7 +49,12 @@ class CatalogShelf<T> extends StatefulWidget {
 
   /// What the shelf says about a failure it has no closer words for. A request
   /// that could not reach the API is reported as that instead.
-  final String failureMessage;
+  ///
+  /// `null` takes the shelf away on a failure the way an empty answer does,
+  /// for a row that is a suggestion under something else rather than a part
+  /// of the screen a reader came for: a notice and a retry there would stand
+  /// in for a row they were never told to expect.
+  final String? failureMessage;
 
   final Future<List<T>> Function(CatalogRepository catalog) load;
 
@@ -132,11 +137,15 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     final messages = AppMessages.of(context);
     final failure = _failure;
     if (failure != null) {
+      final failureMessage = widget.failureMessage;
+      if (failureMessage == null) {
+        return const SizedBox.shrink();
+      }
       return _ShelfFrame(
         heading: widget.heading,
         child: RetryRow(
           sectionKey: widget.sectionKey,
-          message: catalogFailureCopy(messages, failure, widget.failureMessage),
+          message: catalogFailureCopy(messages, failure, failureMessage),
           onRetry: () => setState(_load),
         ),
       );

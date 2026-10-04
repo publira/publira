@@ -4067,6 +4067,7 @@
       "rating_own": "Your rating: {$average}",
       "rating_own_failed": "Could not show your rating",
       "read_from_first": "Read from episode 1",
+      "related_heading": "You may also like",
       "episodes_heading": "Episodes",
       "load_failed": "Could not show the series. Try again.",
       "not_found": "Series not found ({$id})",

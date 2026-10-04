@@ -49,6 +49,8 @@ class HttpCatalogRepository implements CatalogRepository {
   static const _listLabelsProcedure =
       '/publira.v1.CatalogService/ListPublishedLabels';
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
+  static const _relatedProcedure =
+      '/publira.v1.CatalogService/ListRelatedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _creatorProcedure =
       '/publira.v1.CatalogService/GetPublishedCreatorDetail';
@@ -340,6 +342,28 @@ class HttpCatalogRepository implements CatalogRepository {
         })
         .toList();
     return List<RankedSeriesItem>.unmodifiable(items);
+  }
+
+  @override
+  Future<List<SeriesItem>> listRelatedSeries(
+    String seriesInternalId, {
+    required int limit,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_relatedProcedure, {
+        'limit': limit,
+        'seriesId': seriesInternalId,
+        'surface': appClientSurface,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return _parseSeriesList(body['series']);
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return const [];
+      }
+      throw _toFailure(error);
+    }
   }
 
   @override
