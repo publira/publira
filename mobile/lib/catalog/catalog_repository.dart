@@ -236,6 +236,13 @@ abstract class CatalogRepository {
   /// removed or lowered; the server applies the series' press mode.
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId);
 
+  /// Fires each time a reaction of the signed-in reader lands at the API.
+  ///
+  /// A reader can press and leave the episode before the press has landed, so
+  /// a screen showing their rating can be asked again before it counts. This
+  /// is what tells it to ask once more.
+  Stream<void> get reactionWrites;
+
   /// Fires each time a write of the signed-in reader's place lands at the API:
   /// a page they stopped on, or an episode they finished.
   ///
@@ -250,6 +257,14 @@ abstract class CatalogRepository {
   /// [SeriesProgress.none] for a reader who is signed out, without a request.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesProgress> getSeriesProgress(String seriesInternalId);
+
+  /// The signed-in reader's own rating of the series [seriesInternalId] names:
+  /// the mean of the scores they gave its episodes, to one decimal.
+  ///
+  /// `null` for a reader who has reacted to none of them, and for one who is
+  /// signed out, without a request. Throws [CatalogFailure] on a transport or
+  /// unexpected server error.
+  Future<double?> getMySeriesRating(String seriesInternalId);
 
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.

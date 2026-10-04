@@ -179,10 +179,26 @@
       ]
     },
     {
-      "name": "Ratings, related series, and recommendations around a series",
+      "name": "A series' rating, and the member's own beside it",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": ["GetMySeriesRating"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId"],
+        "rpcs": ["GetMySeriesRating"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a guest sees the series rating and none of their own",
+        "a member sees their own rating beside the series rating",
+        "the rating the seed member gave a series reaches the app"
+      ]
+    },
+    {
+      "name": "Related series and recommendations around a series",
       "web": {
         "rpcs": [
-          "GetMySeriesRating",
           "ListRelatedSeries",
           "ListRecommendedSeries",
           "ListMyRecommendedSeries"

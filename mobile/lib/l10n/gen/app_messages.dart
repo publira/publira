@@ -1387,6 +1387,15 @@ abstract class AppMessages {
   /// `mobile.series.rating`
   String seriesRating({required String average, required String count});
 
+  /// `mobile.series.rating_explanation`
+  String get seriesRatingExplanation;
+
+  /// `mobile.series.rating_own`
+  String seriesRatingOwn({required String average});
+
+  /// `mobile.series.rating_own_failed`
+  String get seriesRatingOwnFailed;
+
   /// `mobile.series.rating_single`
   String seriesRatingSingle({required String average, required String count});
 
@@ -3873,6 +3882,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String seriesRating({required String average, required String count}) {
     return '評価: $average・$count人';
+  }
+
+  @override
+  String get seriesRatingExplanation {
+    return 'エピソードにリアクションすると、シリーズの評価に反映されます。';
+  }
+
+  @override
+  String seriesRatingOwn({required String average}) {
+    return 'あなたの評価: $average';
+  }
+
+  @override
+  String get seriesRatingOwnFailed {
+    return 'あなたの評価を表示できませんでした';
   }
 
   @override
@@ -6574,6 +6598,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesRatingExplanation {
+    return 'React to episodes to rate this series.';
+  }
+
+  @override
+  String seriesRatingOwn({required String average}) {
+    return 'Your rating: $average';
+  }
+
+  @override
+  String get seriesRatingOwnFailed {
+    return 'Could not show your rating';
+  }
+
+  @override
   String seriesRatingSingle({required String average, required String count}) {
     return 'Rating: $average · $count reader';
   }
@@ -9269,6 +9308,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String seriesRating({required String average, required String count}) {
     return '평점: $average · $count명';
+  }
+
+  @override
+  String get seriesRatingExplanation {
+    return '에피소드에 반응하면 시리즈 평점에 반영됩니다.';
+  }
+
+  @override
+  String seriesRatingOwn({required String average}) {
+    return '내 평점: $average';
+  }
+
+  @override
+  String get seriesRatingOwnFailed {
+    return '내 평점을 표시하지 못했습니다';
   }
 
   @override
@@ -11970,6 +12024,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesRatingExplanation {
+    return '对章节作出回应即可为本系列评分。';
+  }
+
+  @override
+  String seriesRatingOwn({required String average}) {
+    return '你的评分：$average';
+  }
+
+  @override
+  String get seriesRatingOwnFailed {
+    return '无法显示你的评分';
+  }
+
+  @override
   String seriesRatingSingle({required String average, required String count}) {
     return '评分：$average · $count位读者';
   }
@@ -14665,6 +14734,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String seriesRating({required String average, required String count}) {
     return '評分：$average · $count位讀者';
+  }
+
+  @override
+  String get seriesRatingExplanation {
+    return '對章節作出回應即可為本系列評分。';
+  }
+
+  @override
+  String seriesRatingOwn({required String average}) {
+    return '你的評分：$average';
+  }
+
+  @override
+  String get seriesRatingOwnFailed {
+    return '無法顯示你的評分';
   }
 
   @override

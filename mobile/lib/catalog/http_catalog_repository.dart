@@ -76,6 +76,8 @@ class HttpCatalogRepository implements CatalogRepository {
   static const _myEpisodeRatingProcedure =
       '/publira.v1.RatingService/GetMyEpisodeRating';
   static const _rateEpisodeProcedure = '/publira.v1.RatingService/RateEpisode';
+  static const _mySeriesRatingProcedure =
+      '/publira.v1.RatingService/GetMySeriesRating';
 
   final AppConfig config;
   final ConnectClient _client;
@@ -85,6 +87,11 @@ class HttpCatalogRepository implements CatalogRepository {
 
   @override
   Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
+
+  final _reactionWrites = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get reactionWrites => _reactionWrites.stream;
 
   /// How many series one catalog page holds, which is also the API's own
   /// fallback for a request naming no limit.
@@ -822,6 +829,7 @@ class HttpCatalogRepository implements CatalogRepository {
         tenantId: tenantId,
         accessToken: accessToken,
       );
+      _reactionWrites.add(null);
       return _reactionFromJson(body, 'reaction');
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -874,6 +882,35 @@ class HttpCatalogRepository implements CatalogRepository {
         isFinished: _readBool(progress, 'isFinished', 'progress'),
         finishedEpisodeIds: finishedEpisodeIds,
       );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<double?> getMySeriesRating(String seriesInternalId) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return null;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _mySeriesRatingProcedure,
+        {
+          'seriesId': seriesInternalId,
+          'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      // The average of no scores is 0, which is not a rating of 0: only the
+      // count tells a reader who reacted to nothing from one who did.
+      if (_readInt(body, 'ratedEpisodeCount', 'response') <= 0) {
+        return null;
+      }
+      return _readDouble(body, 'ratingAverage', 'response');
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

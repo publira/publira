@@ -426,6 +426,9 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<EpisodeReaction> reactToEpisode(String episodeInternalId) =>
       _origin.reactToEpisode(episodeInternalId);
 
+  @override
+  Stream<void> get reactionWrites => _origin.reactionWrites;
+
   /// Every write lands through the API, whether it is sent at once or later
   /// from the outbox, so the API's own notice is the one there is.
   @override
@@ -437,6 +440,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesProgress> getSeriesProgress(String seriesInternalId) =>
       _origin.getSeriesProgress(seriesInternalId);
+
+  /// The reader's own rating, made of reactions that are never kept on the
+  /// device either, so only the API can answer it.
+  @override
+  Future<double?> getMySeriesRating(String seriesInternalId) =>
+      _origin.getMySeriesRating(seriesInternalId);
 
   /// The reader's continue-reading row, which only the API can answer.
   ///
