@@ -187,7 +187,7 @@ func TestServerRefusesAnOpenSearchThatDoesNotAnswer(t *testing.T) {
 	}
 }
 
-// One that does start creates the catalog index under the name it was given.
+// One that does start creates the catalog index behind the name it was given.
 func TestServerStartsOnTheOpenSearchBackend(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -219,6 +219,22 @@ func TestServerStartsOnTheOpenSearchBackend(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("HEAD %s = %d, want the index the server created", index, resp.StatusCode)
+	}
+}
+
+// The worker writes the index the server searches, so it refuses a backend it
+// does not have in the same way, and before it reaches for a database that may
+// not be there either.
+func TestWorkerRefusesAnUnknownSearchBackend(t *testing.T) {
+	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_SEARCH_BACKEND": "elasticsearch",
+		"PUBLIRA_WORKER_DB_URL":  "postgres://publira_outbox:outboxpass@" + testutil.FreeAddr(t) + "/publira?sslmode=disable",
+	}, revalidationWithoutPlatformConsole()), "worker")
+	if code == 0 {
+		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
+	}
+	if !strings.Contains(output, "PUBLIRA_SEARCH_BACKEND") {
+		t.Fatalf("output does not name PUBLIRA_SEARCH_BACKEND:\n%s", output)
 	}
 }
 

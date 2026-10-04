@@ -3,11 +3,14 @@ package opensearchbackend
 import (
 	"context"
 	"errors"
+	"maps"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensearch-project/opensearch-go/v4"
 	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
 
 	"github.com/publira/publira/server/internal/catalogsearch"
@@ -28,10 +31,22 @@ func newTestBackend(t *testing.T) *Backend {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	t.Cleanup(func() {
-		_, _ = backend.client.Indices.Delete(context.Background(), opensearchapi.IndicesDeleteReq{Indices: []string{backend.index}})
-	})
+	t.Cleanup(func() { deleteIndices(backend) })
 	return backend
+}
+
+// deleteIndices deletes every index the test's alias has named. The alias
+// itself cannot be deleted by name, and a rebuild leaves its index behind it.
+func deleteIndices(backend *Backend) {
+	ctx := context.Background()
+	resp, err := backend.client.Indices.Get(ctx, opensearchapi.IndicesGetReq{Indices: []string{backend.index + "*"}})
+	if err != nil || resp.IndicesGetRespData == nil {
+		return
+	}
+	indices := slices.Collect(maps.Keys(*resp.IndicesGetRespData))
+	if len(indices) > 0 {
+		_, _ = backend.client.Indices.Delete(ctx, opensearchapi.IndicesDeleteReq{Indices: indices})
+	}
 }
 
 // put indexes docs and refreshes the index, so the next search sees them.
@@ -166,11 +181,11 @@ func TestSearchFindsOnlyWhatTheTenantPublishedOnTheSurface(t *testing.T) {
 	page := searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{})
 	assertIDs(t, "seed", page.IDs, visible.ID)
 
-	if err := backend.Delete(context.Background(), KindSeries, tenantID, visible.ID); err != nil {
+	if err := backend.Delete(context.Background(), KindSeries, tenantID, visible.ID, 0); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	// A row that has no document is already gone.
-	if err := backend.Delete(context.Background(), KindSeries, tenantID, visible.ID); err != nil {
+	if err := backend.Delete(context.Background(), KindSeries, tenantID, visible.ID, 0); err != nil {
 		t.Fatalf("Delete of a missing document: %v", err)
 	}
 	refresh(t, backend)
@@ -261,7 +276,7 @@ func TestRecoveryTokenReturnsToTheBoundaryHit(t *testing.T) {
 	first := searchSeries(t, backend, tenantID, "seed", 1, pagination.Cursor{})
 	assertIDs(t, "seed", first.IDs, kept.ID)
 
-	if err := backend.Delete(context.Background(), KindSeries, tenantID, removed.ID); err != nil {
+	if err := backend.Delete(context.Background(), KindSeries, tenantID, removed.ID, 0); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	refresh(t, backend)
@@ -275,7 +290,7 @@ func TestRecoveryTokenReturnsToTheBoundaryHit(t *testing.T) {
 
 	// A recovery token whose boundary is gone too answers an empty page with
 	// no tokens, so the reader falls back to the first page.
-	if err := backend.Delete(context.Background(), KindSeries, tenantID, kept.ID); err != nil {
+	if err := backend.Delete(context.Background(), KindSeries, tenantID, kept.ID, 0); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	refresh(t, backend)
@@ -299,4 +314,152 @@ func TestEnsureIndexKeepsAnExistingIndex(t *testing.T) {
 	}
 	page := searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{})
 	assertIDs(t, "seed", page.IDs, seed.ID)
+}
+
+// A first start puts the index behind the configured name as an alias, which
+// is what a rebuild moves.
+func TestEnsureIndexCreatesTheIndexBehindAnAlias(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+
+	indices, err := backend.aliasIndices(context.Background())
+	if err != nil {
+		t.Fatalf("aliasIndices: %v", err)
+	}
+	if want := []string{backend.index + initialIndexSuffix}; !slices.Equal(indices, want) {
+		t.Fatalf("alias %q names %v, want %v", backend.index, indices, want)
+	}
+}
+
+// A row read before another write carries the lower version, so writing it
+// last leaves the later read in place, a delete included.
+func TestAWriteOfALowerVersionLeavesTheDocumentAsItIs(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	ctx := context.Background()
+
+	renamed := publishedSeries(tenantID, "Harbor Lights", "")
+	renamed.Version = 20
+	stale := renamed
+	stale.Title = "Seed Garden"
+	stale.Version = 10
+	put(t, backend, renamed, stale)
+
+	assertIDs(t, "harbor", searchSeries(t, backend, tenantID, "harbor", 10, pagination.Cursor{}).IDs, renamed.ID)
+	assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs)
+
+	if err := backend.Delete(ctx, KindSeries, tenantID, renamed.ID, 15); err != nil {
+		t.Fatalf("Delete of a lower version: %v", err)
+	}
+	refresh(t, backend)
+	assertIDs(t, "harbor", searchSeries(t, backend, tenantID, "harbor", 10, pagination.Cursor{}).IDs, renamed.ID)
+
+	// The engine forgets a deleted document's version once index.gc_deletes
+	// has passed. With it at zero, only a delete that keeps its version as a
+	// document can refuse the stale write that follows it.
+	if _, err := backend.client.Indices.Settings.Put(ctx, opensearchapi.SettingsPutReq{
+		Indices: []string{backend.index},
+		Body:    strings.NewReader(`{"index":{"gc_deletes":"0s"}}`),
+	}); err != nil {
+		t.Fatalf("set gc_deletes: %v", err)
+	}
+	if err := backend.Delete(ctx, KindSeries, tenantID, renamed.ID, 30); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	refresh(t, backend)
+	put(t, backend, stale)
+	assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs)
+}
+
+func TestRebuildMovesTheAliasOntoTheNewIndex(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	ctx := context.Background()
+
+	old := publishedSeries(tenantID, "Seed Garden", "")
+	put(t, backend, old)
+
+	rebuild, err := backend.StartRebuild(ctx)
+	if err != nil {
+		t.Fatalf("StartRebuild: %v", err)
+	}
+	rebuilt := publishedSeries(tenantID, "Seed Harbor", "")
+	if err := rebuild.PutAll(ctx, []Document{rebuilt}); err != nil {
+		t.Fatalf("PutAll: %v", err)
+	}
+	// Until the swap, searches answer from the index the alias names.
+	assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs, old.ID)
+
+	if err := rebuild.Swap(ctx); err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+	assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs, rebuilt.ID)
+	indices, err := backend.aliasIndices(ctx)
+	if err != nil {
+		t.Fatalf("aliasIndices: %v", err)
+	}
+	if want := []string{rebuild.Index()}; !slices.Equal(indices, want) {
+		t.Fatalf("alias names %v after the swap, want %v", indices, want)
+	}
+	if exists, err := backend.nameExists(ctx, backend.index+initialIndexSuffix); err != nil || exists {
+		t.Fatalf("the index the alias named before exists = %v (%v), want it deleted", exists, err)
+	}
+}
+
+func TestAbortedRebuildLeavesTheAliasWhereItWas(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	rebuild, err := backend.StartRebuild(ctx)
+	if err != nil {
+		t.Fatalf("StartRebuild: %v", err)
+	}
+	if err := rebuild.Abort(ctx); err != nil {
+		t.Fatalf("Abort: %v", err)
+	}
+	if exists, err := backend.nameExists(ctx, rebuild.Index()); err != nil || exists {
+		t.Fatalf("aborted index exists = %v (%v), want it deleted", exists, err)
+	}
+	indices, err := backend.aliasIndices(ctx)
+	if err != nil {
+		t.Fatalf("aliasIndices: %v", err)
+	}
+	if want := []string{backend.index + initialIndexSuffix}; !slices.Equal(indices, want) {
+		t.Fatalf("alias names %v, want %v", indices, want)
+	}
+}
+
+// An index created under the configured name itself, before that name was an
+// alias, gives the name up to the alias in the same step.
+func TestRebuildReplacesAnIndexThatHasTheAliasName(t *testing.T) {
+	t.Parallel()
+	env := testutil.StartOpenSearch(t)
+	ctx := context.Background()
+	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: opensearch.Config{Addresses: []string{env.URL}}})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	backend := &Backend{client: client, index: "catalog-test-" + uuid.NewString()}
+	t.Cleanup(func() { deleteIndices(backend) })
+	if err := backend.createIndex(ctx, backend.index, indexDefinition); err != nil {
+		t.Fatalf("create the index under the alias name: %v", err)
+	}
+
+	rebuild, err := backend.StartRebuild(ctx)
+	if err != nil {
+		t.Fatalf("StartRebuild: %v", err)
+	}
+	if err := rebuild.Swap(ctx); err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+	indices, err := backend.aliasIndices(ctx)
+	if err != nil {
+		t.Fatalf("aliasIndices: %v", err)
+	}
+	if want := []string{rebuild.Index()}; !slices.Equal(indices, want) {
+		t.Fatalf("alias names %v, want %v", indices, want)
+	}
 }

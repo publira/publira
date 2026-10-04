@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
@@ -73,12 +74,30 @@ func runWorker() int {
 		return 1
 	}
 
+	// The worker writes the documents the catalog_index_sync events name into
+	// the engine the server searches. The variable is read before any pool is
+	// opened, as the server reads it, so a value naming no backend stops the
+	// process with the variable's name.
+	searchIndex, err := openSearchFromEnv()
+	if err != nil {
+		logger.Error("failed to initialize the search backend", "error", err)
+		return 1
+	}
+
 	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		return 1
 	}
 	defer db.Close() //nolint:errcheck
+
+	// Declared as the interface, never as *catalogindex.Syncer, so the SQL
+	// backend, which keeps no index, leaves it nil and the handler marks those
+	// events done as it claims them.
+	var catalogIndexer outbox.CatalogIndexer
+	if searchIndex != nil {
+		catalogIndexer = catalogindex.NewSyncer(db, searchIndex)
+	}
 
 	// The periodic jobs get a pool of their own rather than sharing the one
 	// above. publira_outbox owns River's schema and holds CREATE on the public
@@ -190,7 +209,7 @@ func runWorker() int {
 		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
-		invalidator))
+		invalidator, catalogIndexer))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
 		return 1
@@ -236,6 +255,7 @@ func workerConfig(
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	appleSignInHandlers outbox.AppleSignInHandlerConfig,
 	invalidator outbox.CacheInvalidator,
+	catalogIndexer outbox.CatalogIndexer,
 ) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
@@ -263,6 +283,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.Register(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
+	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer))
 	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	googlePlayHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))

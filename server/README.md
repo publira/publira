@@ -267,11 +267,13 @@ The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`,
   - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship
   - Any other value stops the process at startup
 - `PUBLIRA_OPENSEARCH_URL`
-  - The engine's URL, `http://` or `https://`. Required with `opensearch`; the server connects at startup, creates the index when it does not exist, and stops when the engine does not answer
+  - The engine's URL, `http://` or `https://`. Required with `opensearch`; the server and the worker connect at startup, create the index when it does not exist, and stop when the engine does not answer
 - `PUBLIRA_OPENSEARCH_USERNAME`, `PUBLIRA_OPENSEARCH_PASSWORD`
   - HTTP basic auth, set together or not at all. They need an `https://` URL and stop the process at startup over `http://`
 - `PUBLIRA_OPENSEARCH_INDEX`
-  - The index holding every tenant's series, creators, and labels. Default: `publira-catalog`. Give each environment sharing a cluster an index of its own
+  - The alias of the index holding every tenant's series, creators, and labels. Default: `publira-catalog`. Give each environment sharing a cluster an alias of its own
+
+Set the same values on `publira server` and `publira worker`. Every write to a series, a creator, or a label queues a `catalog_index_sync` outbox event in its own transaction, and the worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere; on `sql` the worker marks those events done as it claims them. `publiractl search reindex` builds the index from the database, for a deployment moving to `opensearch` or an index definition that changed; see [publiractl](cmd/publiractl/README.md#search).
 
 ## Disposable email domains
 

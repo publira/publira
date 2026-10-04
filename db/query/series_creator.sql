@@ -46,6 +46,9 @@ VALUES (
         sqlc.arg('share_bps')
     );
 
--- name: DeleteSeriesCreatorsBySeriesID :exec
+-- name: DeleteSeriesCreatorsBySeriesID :many
+-- Returns the creators the series credited, whose search documents the save
+-- has to re-read along with those it credits now.
 DELETE FROM series_creators
-WHERE series_id = $1;
+WHERE series_id = $1
+RETURNING creator_id;

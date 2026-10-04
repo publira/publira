@@ -17,6 +17,7 @@ import (
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
@@ -196,6 +197,10 @@ func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
 // syncSeriesCredits writes the whole credit list of a series. replace is false
 // on create, where there is nothing to clear first.
 //
+// A creator is searchable through the series that credit it, so the creators
+// the list drops and the ones it holds now all have their search documents
+// re-read.
+//
 // display_order is the position in the request, which orders the creators who
 // share a role: the read sorts by role priority first, so a global index keeps
 // the order the editor gave within each role without carrying a second
@@ -206,10 +211,21 @@ func (s *adminServer) syncSeriesCredits(
 	credits []creatorCredit,
 	replace bool,
 ) ([]*publirattypesv1.Creator, []*publiraadminv1.SeriesCreatorCredit, error) {
+	var indexed []catalogindex.Ref
 	if replace {
-		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
+		previous, err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID)
+		if err != nil {
 			return nil, nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
+		for _, creatorID := range previous {
+			indexed = append(indexed, catalogindex.CreatorRef(creatorID))
+		}
+	}
+	for _, credit := range credits {
+		indexed = append(indexed, catalogindex.CreatorRef(credit.creator.ID))
+	}
+	if err := catalogindex.Queue(ctx, s.queriesFor(ctx), tenantID, indexed...); err != nil {
+		return nil, nil, s.internalDBError(ctx, "failed to queue the search index sync for the series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 	}
 	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right creatorCredit) int {
 		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
@@ -737,6 +753,9 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(base.ID), catalogindex.LabelRef(labelID.UUID)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the search index sync for the created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+	}
 	// The drop is recorded in the transaction that publishes the series, so a
 	// rollback takes it back and a crash after the commit still owes it.
 	var owed revalidate.Owed
@@ -962,6 +981,11 @@ func (s *adminServer) UpdateSeries(
 	tags, err := s.syncSeriesTags(txCtx, tenant.ID, current.ID, tagsToLink, true)
 	if err != nil {
 		return nil, err
+	}
+	// The label the series leaves and the one it joins are both published
+	// through it.
+	if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(current.ID), catalogindex.LabelRef(current.LabelID.UUID), catalogindex.LabelRef(labelID.UUID)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the search index sync for the updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	var owed revalidate.Owed
 	if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {

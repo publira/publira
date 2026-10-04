@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -403,6 +404,52 @@ func expectRevalidationRecord(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 			"next_cache_revalidation:"+uuid.Must(uuid.NewV7()).String(),
 			"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
 		))
+}
+
+// catalogIndexSyncPayload matches the payload of the catalog_index_sync event
+// for one row.
+type catalogIndexSyncPayload struct {
+	kind string
+	id   uuid.UUID
+}
+
+func (p catalogIndexSyncPayload) Match(value driver.Value) bool {
+	raw, ok := value.([]byte)
+	if !ok {
+		return false
+	}
+	var payload outbox.CatalogIndexSyncPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return false
+	}
+	return payload.Kind == p.kind && payload.ID == p.id.String()
+}
+
+// expectCatalogIndexSync expects the outbox row a catalog write queues for
+// each row whose search document it leaves stale, in the order given.
+func expectCatalogIndexSync(mock sqlmock.Sqlmock, tenantID uuid.UUID, kind string, ids ...uuid.UUID) {
+	for _, id := range ids {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+			WithArgs(
+				sqlmock.AnyArg(),
+				uuid.NullUUID{UUID: tenantID, Valid: true},
+				outbox.EventTypeCatalogIndexSync,
+				catalogIndexSyncPayload{kind: kind, id: id},
+				sqlmock.AnyArg(),
+				sqlmock.AnyArg(),
+			).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"id", "tenant_id", "event_type", "payload", "idempotency_key",
+				"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
+			}).AddRow(
+				uuid.Must(uuid.NewV7()),
+				uuid.NullUUID{UUID: tenantID, Valid: true},
+				outbox.EventTypeCatalogIndexSync,
+				json.RawMessage(`{}`),
+				outbox.EventTypeCatalogIndexSync+":"+uuid.Must(uuid.NewV7()).String(),
+				"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
+			))
+	}
 }
 
 func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
