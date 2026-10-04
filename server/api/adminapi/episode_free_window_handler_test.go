@@ -1,10 +1,14 @@
 package adminapi
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
+
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func TestParseFreeWindowPeriod(t *testing.T) {
@@ -117,4 +121,89 @@ func TestFreeWindowPeriodOpenAt(t *testing.T) {
 	if period.openAt(period.startsAt.Add(-time.Second)) {
 		t.Error("a period reads as open before it starts")
 	}
+}
+
+func TestSeriesFreeWindowEpisodes(t *testing.T) {
+	first := uuid.MustParse("01900000-0000-7000-8000-000000000001")
+	second := uuid.MustParse("01900000-0000-7000-8000-000000000002")
+
+	t.Run("no episodes named is every episode", func(t *testing.T) {
+		ids, err := seriesFreeWindowEpisodes(nil)
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+		if ids != nil {
+			t.Fatalf("ids = %v, want nil", ids)
+		}
+	})
+
+	t.Run("the named episodes are read in the order given", func(t *testing.T) {
+		ids, err := seriesFreeWindowEpisodes([]string{second.String(), first.String()})
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+		if !slices.Equal(ids, []uuid.UUID{second, first}) {
+			t.Fatalf("ids = %v, want [%v %v]", ids, second, first)
+		}
+	})
+
+	t.Run("an episode named twice is refused", func(t *testing.T) {
+		_, err := seriesFreeWindowEpisodes([]string{first.String(), first.String()})
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want invalid_argument", connect.CodeOf(err))
+		}
+	})
+
+	t.Run("more episodes than one call may name is refused", func(t *testing.T) {
+		raw := make([]string, 0, maxSeriesFreeWindowEpisodes+1)
+		for range maxSeriesFreeWindowEpisodes + 1 {
+			raw = append(raw, uuid.Must(uuid.NewV7()).String())
+		}
+		_, err := seriesFreeWindowEpisodes(raw)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want invalid_argument", connect.CodeOf(err))
+		}
+	})
+}
+
+func TestSelectSeriesFreeWindowEpisodes(t *testing.T) {
+	episodes := []dbmodels.ListEpisodesBySeriesForTenantRow{
+		{ID: uuid.MustParse("01900000-0000-7000-8000-000000000001"), Title: "Chapter One"},
+		{ID: uuid.MustParse("01900000-0000-7000-8000-000000000002"), Title: "Chapter Two"},
+		{ID: uuid.MustParse("01900000-0000-7000-8000-000000000003"), Title: "Chapter Three"},
+	}
+	titles := func(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []string {
+		out := make([]string, 0, len(rows))
+		for _, row := range rows {
+			out = append(out, row.Title)
+		}
+		return out
+	}
+
+	t.Run("nothing named keeps every episode", func(t *testing.T) {
+		selected, err := selectSeriesFreeWindowEpisodes(episodes, nil)
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+		if len(selected) != len(episodes) {
+			t.Fatalf("selected %d episodes, want %d", len(selected), len(episodes))
+		}
+	})
+
+	t.Run("the named episodes come back in the series' order", func(t *testing.T) {
+		selected, err := selectSeriesFreeWindowEpisodes(episodes, []uuid.UUID{episodes[2].ID, episodes[0].ID})
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+		if got, want := titles(selected), []string{"Chapter One", "Chapter Three"}; !slices.Equal(got, want) {
+			t.Fatalf("selected = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("an episode the series does not have fails the call", func(t *testing.T) {
+		_, err := selectSeriesFreeWindowEpisodes(episodes, []uuid.UUID{episodes[0].ID, uuid.Must(uuid.NewV7())})
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want invalid_argument", connect.CodeOf(err))
+		}
+	})
 }

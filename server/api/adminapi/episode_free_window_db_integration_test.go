@@ -242,6 +242,129 @@ func TestDBCreateSeriesFreeWindowsIsAllOrNothing(t *testing.T) {
 	}
 }
 
+func TestDBCreateSeriesFreeWindowsCoversOnlyTheNamedEpisodes(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Campaign Series")
+	first := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")
+	second := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Two")
+	third := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Three")
+
+	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	created, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+		StartsAt: rfc3339(base),
+		EndsAt:   rfc3339(base.Add(24 * time.Hour)),
+		// Named out of order: the response follows the series, not the request.
+		EpisodeIds: env.episodeIDs(t, []string{third, first}),
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeriesFreeWindows: %v", err)
+	}
+	got := make([]string, 0, len(created.Msg.FreeWindows))
+	for _, window := range created.Msg.FreeWindows {
+		got = append(got, window.EpisodePublicId)
+	}
+	if want := []string{first, third}; !slices.Equal(got, want) {
+		t.Fatalf("windows cover %v, want %v", got, want)
+	}
+
+	// The episode left out of the campaign has no window over the period.
+	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, second),
+		StartsAt:  rfc3339(base),
+		EndsAt:    rfc3339(base.Add(24 * time.Hour)),
+	})); err != nil {
+		t.Fatalf("CreateEpisodeFreeWindow on the episode left out: %v", err)
+	}
+}
+
+func TestDBCreateSeriesFreeWindowsOnNamedEpisodesIsAllOrNothing(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Campaign Series")
+	first := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")
+	second := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Two")
+
+	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, second),
+		StartsAt:  rfc3339(base),
+		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
+	})); err != nil {
+		t.Fatalf("CreateEpisodeFreeWindow on the second episode: %v", err)
+	}
+
+	_, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+		Tenant:     tenant.tenantContext(),
+		SeriesId:   env.seriesID(t, seriesPublicID),
+		StartsAt:   rfc3339(base),
+		EndsAt:     rfc3339(base.Add(2 * time.Hour)),
+		EpisodeIds: env.episodeIDs(t, []string{first, second}),
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, first),
+		StartsAt:  rfc3339(base),
+		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
+	})); err != nil {
+		t.Fatalf("CreateEpisodeFreeWindow on the first episode after the failed campaign: %v", err)
+	}
+}
+
+// An episode of another series, or of another tenant, is not part of the
+// campaign the caller named, so the call fails instead of scheduling the rest.
+func TestDBCreateSeriesFreeWindowsRefusesAnEpisodeOutsideTheSeries(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Campaign Series")
+	own := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")
+	otherSeries := createDBSeries(t, client, tenant, "Another Series")
+	otherSeriesEpisode := createDBEpisode(t, client, tenant, otherSeries, "Elsewhere")
+	otherTenantSeries := createDBSeries(t, client, other, "Tenant B Series")
+	otherTenantEpisode := createDBEpisode(t, client, other, otherTenantSeries, "Tenant B Chapter")
+
+	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	for name, outsider := range map[string]string{
+		"another series": otherSeriesEpisode,
+		"another tenant": otherTenantEpisode,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+				Tenant:     tenant.tenantContext(),
+				SeriesId:   env.seriesID(t, seriesPublicID),
+				StartsAt:   rfc3339(base),
+				EndsAt:     rfc3339(base.Add(time.Hour)),
+				EpisodeIds: env.episodeIDs(t, []string{own, outsider}),
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+		})
+	}
+
+	// Neither refusal left the series' own episode a window.
+	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, own),
+		StartsAt:  rfc3339(base),
+		EndsAt:    rfc3339(base.Add(time.Hour)),
+	})); err != nil {
+		t.Fatalf("CreateEpisodeFreeWindow after the refused campaigns: %v", err)
+	}
+}
+
 func TestDBDeleteEpisodeFreeWindow(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")

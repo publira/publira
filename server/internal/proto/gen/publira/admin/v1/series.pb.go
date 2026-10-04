@@ -3680,16 +3680,22 @@ func (x *CreateEpisodeFreeWindowResponse) GetFreeWindow() *AdminEpisodeFreeWindo
 	return nil
 }
 
-// Schedules the same period on every episode of one series, which is how a
+// Schedules the same period on several episodes of one series, which is how a
 // "first week free" campaign is set up in one call. It is all or nothing: when
-// the period overlaps a window any one episode already has, no window is
-// created.
+// the period overlaps a window any one of those episodes already has, no window
+// is created.
 type CreateSeriesFreeWindowsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	StartsAt      string                 `protobuf:"bytes,3,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
-	EndsAt        string                 `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
-	SeriesId      string                 `protobuf:"bytes,5,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	StartsAt string                 `protobuf:"bytes,3,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	EndsAt   string                 `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	SeriesId string                 `protobuf:"bytes,5,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	// The episodes to schedule, each of them an episode of this series, rather
+	// than a span of order indexes: episodes are reordered through this API, so a
+	// span would name other episodes after a reorder than it did when it was
+	// composed. Empty schedules every episode of the series. At most 1000 per
+	// call, with no episode named twice.
+	EpisodeIds    []string `protobuf:"bytes,6,rep,name=episode_ids,json=episodeIds,proto3" json:"episode_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3752,9 +3758,16 @@ func (x *CreateSeriesFreeWindowsRequest) GetSeriesId() string {
 	return ""
 }
 
+func (x *CreateSeriesFreeWindowsRequest) GetEpisodeIds() []string {
+	if x != nil {
+		return x.EpisodeIds
+	}
+	return nil
+}
+
 type CreateSeriesFreeWindowsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// One per episode of the series, in the series' own episode order.
+	// One per episode scheduled, in the series' own episode order.
 	FreeWindows   []*AdminEpisodeFreeWindow `protobuf:"bytes,1,rep,name=free_windows,json=freeWindows,proto3" json:"free_windows,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4638,12 +4651,14 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episode_id\x18\x05 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"l\n" +
 	"\x1fCreateEpisodeFreeWindowResponse\x12I\n" +
 	"\vfree_window\x18\x01 \x01(\v2(.publira.admin.v1.AdminEpisodeFreeWindowR\n" +
-	"freeWindow\"\xc4\x01\n" +
+	"freeWindow\"\xe5\x01\n" +
 	"\x1eCreateSeriesFreeWindowsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tstarts_at\x18\x03 \x01(\tR\bstartsAt\x12\x17\n" +
 	"\aends_at\x18\x04 \x01(\tR\x06endsAt\x12\x1b\n" +
-	"\tseries_id\x18\x05 \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"n\n" +
+	"\tseries_id\x18\x05 \x01(\tR\bseriesId\x12\x1f\n" +
+	"\vepisode_ids\x18\x06 \x03(\tR\n" +
+	"episodeIdsJ\x04\b\x02\x10\x03R\x10series_public_id\"n\n" +
 	"\x1fCreateSeriesFreeWindowsResponse\x12K\n" +
 	"\ffree_windows\x18\x01 \x03(\v2(.publira.admin.v1.AdminEpisodeFreeWindowR\vfreeWindows\"\xcd\x01\n" +
 	"\x1dListEpisodeFreeWindowsRequest\x127\n" +
