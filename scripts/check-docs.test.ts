@@ -133,6 +133,26 @@ describe("checkPage", () => {
       { image: false, line: 15, url: "./2-deployments/index.md" },
     ]);
   });
+
+  it("takes a definition as an image or a link by how it is referenced", () => {
+    const { links } = checkPage(
+      "docs/en/2-deployments/index.md",
+      page(VALID, [
+        "![A diagram][diagram]",
+        "",
+        "[The overview][overview], and [the overview again][overview].",
+        "",
+        "[diagram]: ./diagram.png",
+        "[overview]: ./1-overview.md",
+        "[unused]: ./nowhere.md",
+      ])
+    );
+
+    assert.deepEqual(links, [
+      { image: true, line: 11, url: "./diagram.png" },
+      { image: false, line: 12, url: "./1-overview.md" },
+    ]);
+  });
 });
 
 describe("scan", () => {
@@ -165,7 +185,9 @@ describe("scan", () => {
       page(VALID, [
         "See [the overview](./1-overview.md#what-an-install-runs) and [the start](../1-getting-started.md).",
         "",
-        "![A diagram](./diagram.png)",
+        "![A diagram](./diagram.png) and ![the same diagram][diagram]",
+        "",
+        "[diagram]: ./diagram.png",
         "",
         "The [code](https://github.com/publira/publira/blob/main/server/README.md) and [this section](#a-section).",
       ])
@@ -259,6 +281,8 @@ describe("scan", () => {
         "[The server](../../server/README.md)",
         "",
         "[Rooted](/docs/en/1-getting-started.md)",
+        "",
+        "![A page](./1-getting-started.md)",
       ])
     );
 
@@ -267,7 +291,7 @@ describe("scan", () => {
       reported.map((finding) =>
         finding.message.split(" ").slice(1, 4).join(" ")
       ),
-      ["is not a", "leaves docs/en/, which", "is rooted at"]
+      ["is not a", "leaves docs/en/, which", "is rooted at", "is not an"]
     );
   });
 });

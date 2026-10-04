@@ -18,7 +18,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { Nodes } from "mdast";
+import type { Definition, ImageReference, LinkReference, Nodes } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
@@ -237,6 +237,8 @@ export const checkPage = (
   });
 
   const links: Link[] = [];
+  const definitions = new Map<string, Definition>();
+  const references: (ImageReference | LinkReference)[] = [];
   visit(tree, (node) => {
     const line = node.position?.start.line ?? 1;
     if (node.type === "heading" && node.depth === 1) {
@@ -247,13 +249,35 @@ export const checkPage = (
           "The body has a `#` heading. `title` is the page's heading; the body starts at `##`.",
       });
     }
-    if (node.type === "link" || node.type === "definition") {
-      links.push({ image: false, line, url: node.url });
+    if (node.type === "link" || node.type === "image") {
+      links.push({ image: node.type === "image", line, url: node.url });
     }
-    if (node.type === "image") {
-      links.push({ image: true, line, url: node.url });
+    // CommonMark lets the first of two definitions with one label win.
+    if (node.type === "definition" && !definitions.has(node.identifier)) {
+      definitions.set(node.identifier, node);
+    }
+    if (node.type === "linkReference" || node.type === "imageReference") {
+      references.push(node);
     }
   });
+
+  // A definition is a link or an image only by how it is referenced, so each
+  // way it is used is checked once, on the line its URL is written on. One
+  // nothing references is never rendered, and is left alone.
+  const resolved = new Set<string>();
+  for (const reference of references) {
+    const definition = definitions.get(reference.identifier);
+    const image = reference.type === "imageReference";
+    const key = `${reference.identifier}:${image}`;
+    if (definition && !resolved.has(key)) {
+      resolved.add(key);
+      links.push({
+        image,
+        line: definition.position?.start.line ?? 1,
+        url: definition.url,
+      });
+    }
+  }
 
   return { findings, links };
 };
@@ -313,7 +337,13 @@ const checkLink = async (
       `\`${url}\` leaves ${ROOT}/, which the website does not serve. Link to source code by an absolute https://github.com/publira/publira/ URL.`
     );
   }
-  if (!link.image && path.extname(decoded) !== PAGE_EXTENSION) {
+  const extension = path.extname(decoded);
+  if (link.image && !IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
+    return report(
+      `\`${url}\` is not an image. An image is one of ${[...IMAGE_EXTENSIONS].join(", ")}, beside the page that shows it.`
+    );
+  }
+  if (!link.image && extension !== PAGE_EXTENSION) {
     return report(
       `\`${url}\` is not a \`.md\` file. Link to the page itself — a directory by its \`index.md\` — so the website can rewrite the link to its URL.`
     );

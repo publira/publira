@@ -55,7 +55,7 @@ The dates are written down rather than derived from `git log`, because the numbe
 ## Links and images
 
 - A link to another page is a relative path to its `.md` file, a directory's page included (`[Deployments](./2-deployments/index.md)`). It works when the file is read on GitHub, and the website rewrites it to the page URL. A fragment (`./1-overview.md#what-an-install-runs`) is kept.
-- An image sits beside the page that shows it and is referenced by a relative path.
+- An image sits beside the page that shows it and is referenced by a relative path. It is an `.avif`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.svg`, or `.webp` file.
 - A link to source code, or to anything else in the repository outside `docs/en/`, is an absolute `https://github.com/publira/publira/...` URL, since the website does not serve the repository.
 
 ## Checking a change
