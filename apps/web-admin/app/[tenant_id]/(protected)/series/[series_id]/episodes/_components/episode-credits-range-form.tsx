@@ -30,7 +30,7 @@ import type {
   CreditPair,
 } from "./episode-credits-range-editor";
 import { EpisodeCreditsRangeResult } from "./episode-credits-range-result";
-import { useEpisodeCreditsSelection } from "./episode-credits-selection";
+import { useEpisodeSelection } from "./episode-selection";
 
 const isCreditOperation = (value: string): value is CreditOperation =>
   OPERATIONS.some((operation) => operation === value);
@@ -184,8 +184,7 @@ export const EpisodeCreditsRangeForm = ({
   const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
-  const { clear, selectedIds, selectMany, toggle } =
-    useEpisodeCreditsSelection();
+  const { clear, selectedIds, selectMany, toggle } = useEpisodeSelection();
   const runAction = useCallback(
     async (
       prevState: BulkEditEpisodeCreditsActionState,

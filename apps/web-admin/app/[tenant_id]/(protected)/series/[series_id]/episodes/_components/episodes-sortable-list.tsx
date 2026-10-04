@@ -25,14 +25,14 @@ import { useTenantId } from "#lib/use-tenant-id";
 import { EpisodeAvailabilityBadge } from "./episode-availability-badge";
 import {
   selectionCheckboxProps,
-  useEpisodeCreditsSelection,
-} from "./episode-credits-selection";
+  useEpisodeSelection,
+} from "./episode-selection";
 import { EpisodeStatusPrice } from "./episode-status-price";
 
 interface EpisodesSortableListProps {
   /**
    * Whether the operator may write the episodes. Without it the rows can be
-   * neither reordered nor picked for a credit edit, and each offers only to
+   * neither reordered nor picked for a bulk action, and each offers only to
    * view its episode.
    */
   canEdit: boolean;
@@ -66,7 +66,7 @@ export const EpisodesSortableList = ({
   const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
-  const { selectedIds, selectMany, toggle } = useEpisodeCreditsSelection();
+  const { selectedIds, selectMany, toggle } = useEpisodeSelection();
   const router = useRouter();
   const { add } = useToastManager();
   const [isPending, startTransition] = useTransition();
@@ -157,16 +157,16 @@ export const EpisodesSortableList = ({
         <div className="flex items-center gap-2">
           <Checkbox
             {...selectionCheckboxProps(allOnPageSelected, someOnPageSelected)}
-            id="episode-credits-select-page"
+            id="episode-select-page"
             onCheckedChange={(checked) => {
               selectMany(pageIds, checked);
             }}
           />
           <label
             className="text-xs text-muted-foreground"
-            htmlFor="episode-credits-select-page"
+            htmlFor="episode-select-page"
           >
-            {t("admin.series.episodes.credits.select_page")}
+            {t("admin.series.episodes.select_page")}
           </label>
         </div>
       ) : null}
@@ -187,10 +187,9 @@ export const EpisodesSortableList = ({
             {canEdit ? (
               <>
                 <Checkbox
-                  aria-label={t(
-                    "admin.series.episodes.credits.select_episode",
-                    { title: episode.title }
-                  )}
+                  aria-label={t("admin.series.episodes.select_episode", {
+                    title: episode.title,
+                  })}
                   checked={selectedIds.has(episode.id)}
                   onCheckedChange={(checked) => {
                     toggle(episode.id, checked);

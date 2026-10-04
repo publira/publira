@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockBulkEditEpisodeCredits,
   mockCreateEpisode,
+  mockCreateSeriesFreeWindows,
   mockGetAccessToken,
   mockGetTenantDisplayTimeZone,
   mockListAllCreators,
@@ -17,6 +18,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCreateEpisode: vi.fn(),
+  mockCreateSeriesFreeWindows: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockListAllCreators: vi.fn(),
@@ -74,6 +76,12 @@ vi.mock("#lib/episode", () => ({
   episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
   listAllEpisodesForTenant: mockListAllEpisodes,
   reorderEpisodePage: mockReorderEpisodePage,
+}));
+
+vi.mock("#lib/episode-free-window", () => ({
+  createSeriesFreeWindows: mockCreateSeriesFreeWindows,
+  episodeFreeWindowsCacheTag: (tenantId: string) =>
+    `episode-free-windows-${tenantId}`,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -534,5 +542,173 @@ describe("listEpisodeCreditRangeOptionsAction", () => {
     );
     expect(mockListAllCreators).toHaveBeenCalledWith("TENANT001", "en");
     expect(mockListCreatorRoles).toHaveBeenCalledWith("TENANT001", "en");
+  });
+});
+
+const campaignEpisodeId = (n: number) =>
+  `018f0e6a-4000-7000-8000-00000000000${String(n)}`;
+
+describe("createSeriesFreeWindowsAction", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+  const startsAt = Temporal.Now.instant().add({ hours: 1 }).toString();
+  const endsAt = Temporal.Now.instant().add({ hours: 25 }).toString();
+
+  const bulkFormData = (fields: Record<string, string>): FormData => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("starts_at", startsAt);
+    formData.set("ends_at", endsAt);
+    formData.set("episode_ids", "[]");
+    formData.set("first_count", "1");
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetTenantDisplayTimeZone.mockResolvedValue("UTC");
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockListAllEpisodes.mockResolvedValue({
+      episodes: [1, 2, 3].map((n) => ({ id: campaignEpisodeId(n) })),
+      ok: true,
+    });
+    mockCreateSeriesFreeWindows.mockImplementation(
+      (input: { episodeIds?: string[] }) =>
+        Promise.resolve({
+          freeWindows: (input.episodeIds ?? [1, 2, 3]).map(() => ({})),
+          ok: true,
+        })
+    );
+  });
+
+  it("schedules the checked episodes in reading order and clears the windows' tag", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({
+        episode_ids: JSON.stringify([
+          campaignEpisodeId(3),
+          campaignEpisodeId(1),
+        ]),
+        target: "selected",
+      })
+    );
+
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockCreateSeriesFreeWindows).toHaveBeenCalledWith(
+      {
+        endsAt,
+        episodeIds: [campaignEpisodeId(1), campaignEpisodeId(3)],
+        seriesId: SERIES_ID,
+        startsAt,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-free-windows-TENANT001"
+    );
+    expect(result).toEqual({
+      message: "Added a free reading period to 2 episodes.",
+      ok: true,
+    });
+  });
+
+  it("names the first episodes of the series", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ first_count: "2", target: "first" })
+    );
+
+    expect(mockCreateSeriesFreeWindows).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episodeIds: [campaignEpisodeId(1), campaignEpisodeId(2)],
+      }),
+      "en"
+    );
+  });
+
+  it("names no episode for the whole series", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    await createSeriesFreeWindowsAction(null, bulkFormData({ target: "all" }));
+
+    expect(mockCreateSeriesFreeWindows).toHaveBeenCalledWith(
+      expect.objectContaining({ episodeIds: undefined }),
+      "en"
+    );
+  });
+
+  it("asks for a check when none of the checked episodes is in the series", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ episode_ids: "[]", target: "selected" })
+    );
+
+    expect(result).toEqual({
+      message: "Select at least one episode on the list.",
+      ok: false,
+    });
+    expect(mockCreateSeriesFreeWindows).not.toHaveBeenCalled();
+  });
+
+  it("says a series with no episodes has none, rather than asking for a check", async () => {
+    mockListAllEpisodes.mockResolvedValueOnce({ episodes: [], ok: true });
+
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ target: "all" })
+    );
+
+    expect(result).toEqual({
+      message: "This series has no episodes yet.",
+      ok: false,
+    });
+  });
+
+  it("refuses a count of first episodes outside the bound", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ first_count: "0", target: "first" })
+    );
+
+    expect(result).toEqual({
+      message: "Enter a number of episodes from 1 to 1000.",
+      ok: false,
+    });
+  });
+
+  it("refuses a target the form could not have offered", async () => {
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ target: "random" })
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    expect(mockCreateSeriesFreeWindows).not.toHaveBeenCalled();
+  });
+
+  it("leaves the tag alone when the API refuses the campaign", async () => {
+    mockCreateSeriesFreeWindows.mockResolvedValueOnce({
+      message: "overlaps",
+      ok: false,
+    });
+
+    const { createSeriesFreeWindowsAction } = await import("./actions");
+    const result = await createSeriesFreeWindowsAction(
+      null,
+      bulkFormData({ target: "all" })
+    );
+
+    expect(result).toEqual({ message: "overlaps", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

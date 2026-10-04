@@ -16,7 +16,7 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 
 import type { BulkEditEpisodeCreditsActionState } from "../episode-types";
 import { EpisodeCreditsRangeForm } from "./episode-credits-range-form";
-import { EpisodeCreditsSelectionProvider } from "./episode-credits-selection";
+import { EpisodeSelectionProvider } from "./episode-selection";
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",
@@ -130,11 +130,9 @@ const render = ({
     {
       wrapper: ({ children }) => (
         <AdminLocaleTestProvider locale="en">
-          <EpisodeCreditsSelectionProvider
-            initialSelectedIds={initialSelectedIds}
-          >
+          <EpisodeSelectionProvider initialSelectedIds={initialSelectedIds}>
             {children}
-          </EpisodeCreditsSelectionProvider>
+          </EpisodeSelectionProvider>
         </AdminLocaleTestProvider>
       ),
     }

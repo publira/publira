@@ -9,15 +9,16 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
-interface EpisodeCreditsSelectionValue {
+interface EpisodeSelectionValue {
   clear: () => void;
   selectedIds: ReadonlySet<string>;
   selectMany: (ids: readonly string[], selected: boolean) => void;
   toggle: (id: string, selected: boolean) => void;
 }
 
-const EpisodeCreditsSelectionContext =
-  createContext<EpisodeCreditsSelectionValue | null>(null);
+const EpisodeSelectionContext = createContext<EpisodeSelectionValue | null>(
+  null
+);
 
 const EMPTY_SELECTED_IDS: readonly string[] = [];
 
@@ -29,7 +30,7 @@ export const selectionCheckboxProps = (
   indeterminate: someSelected,
 });
 
-export const EpisodeCreditsSelectionProvider = ({
+export const EpisodeSelectionProvider = ({
   children,
   initialSelectedIds = EMPTY_SELECTED_IDS,
 }: {
@@ -79,16 +80,16 @@ export const EpisodeCreditsSelectionProvider = ({
   );
 
   return (
-    <EpisodeCreditsSelectionContext.Provider value={value}>
+    <EpisodeSelectionContext.Provider value={value}>
       {children}
-    </EpisodeCreditsSelectionContext.Provider>
+    </EpisodeSelectionContext.Provider>
   );
 };
 
-export const useEpisodeCreditsSelection = (): EpisodeCreditsSelectionValue => {
-  const value = useContext(EpisodeCreditsSelectionContext);
+export const useEpisodeSelection = (): EpisodeSelectionValue => {
+  const value = useContext(EpisodeSelectionContext);
   if (value === null) {
-    throw new Error("EpisodeCreditsSelectionProvider is required.");
+    throw new Error("EpisodeSelectionProvider is required.");
   }
   return value;
 };

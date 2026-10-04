@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockCreateEpisodeFreeWindow,
+  mockDeleteEpisodeFreeWindow,
   mockGetAccessToken,
   mockGetEpisode,
   mockGetTenantDisplayTimeZone,
@@ -17,6 +19,8 @@ const {
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockCreateEpisodeFreeWindow: vi.fn(),
+  mockDeleteEpisodeFreeWindow: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
@@ -78,6 +82,13 @@ vi.mock("#lib/episode", () => ({
   uploadEpisodePages: mockUploadEpisodePages,
 }));
 
+vi.mock("#lib/episode-free-window", () => ({
+  createEpisodeFreeWindow: mockCreateEpisodeFreeWindow,
+  deleteEpisodeFreeWindow: mockDeleteEpisodeFreeWindow,
+  episodeFreeWindowsCacheTag: (tenantId: string) =>
+    `episode-free-windows-${tenantId}`,
+}));
+
 vi.mock("#lib/tenant-timezone", () => ({
   getTenantDisplayTimeZone: mockGetTenantDisplayTimeZone,
 }));
@@ -91,6 +102,16 @@ const layoutFormData = (fields: Record<string, string>) => {
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
   }
+  return formData;
+};
+
+const startsAt = () => Temporal.Now.instant().add({ hours: 1 }).toString();
+const endsAt = () => Temporal.Now.instant().add({ hours: 25 }).toString();
+
+const deleteFormData = (freeWindowId: string) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("free_window_id", freeWindowId);
   return formData;
 };
 
@@ -711,5 +732,151 @@ describe("episode actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?credits_updated=1"
     );
+  });
+
+  describe("adding a free reading period", () => {
+    it("schedules the period on the episode and clears the windows' tag before it redirects", async () => {
+      mockCreateEpisodeFreeWindow.mockResolvedValueOnce({
+        freeWindow: { id: "WINDOW1" },
+        ok: true,
+      });
+      const start = startsAt();
+      const end = endsAt();
+
+      const { createEpisodeFreeWindowAction } = await import("./actions");
+      await createEpisodeFreeWindowAction(
+        null,
+        layoutFormData({ ends_at: end, starts_at: start })
+      );
+
+      expect(mockCreateEpisodeFreeWindow).toHaveBeenCalledWith(
+        {
+          endsAt: end,
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          startsAt: start,
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-free-windows-TENANT001"
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?free_window_created=1"
+      );
+    });
+
+    it("refuses a period that ends before it starts without calling the API", async () => {
+      const { createEpisodeFreeWindowAction } = await import("./actions");
+      const result = await createEpisodeFreeWindowAction(
+        null,
+        layoutFormData({ ends_at: startsAt(), starts_at: endsAt() })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Enter an end that is after the start and still in the future.",
+        ok: false,
+      });
+      expect(mockCreateEpisodeFreeWindow).not.toHaveBeenCalled();
+    });
+
+    it("shows the failure the API reported and stays on the form", async () => {
+      mockCreateEpisodeFreeWindow.mockResolvedValueOnce({
+        message: "overlaps",
+        ok: false,
+      });
+
+      const { createEpisodeFreeWindowAction } = await import("./actions");
+      const result = await createEpisodeFreeWindowAction(
+        null,
+        layoutFormData({ ends_at: endsAt(), starts_at: startsAt() })
+      );
+
+      expect(result).toEqual({ message: "overlaps", ok: false });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleting a free reading period", () => {
+    it("deletes the window and clears the windows' tag", async () => {
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        alreadyDeleted: false,
+        ok: true,
+      });
+
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
+      );
+
+      expect(mockDeleteEpisodeFreeWindow).toHaveBeenCalledWith(
+        {
+          freeWindowId: "018f0e6a-4000-7000-8000-0000000000f1",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-free-windows-TENANT001"
+      );
+      expect(result).toEqual({
+        message: "Free reading period deleted.",
+        ok: true,
+      });
+    });
+
+    it("still clears the windows' tag when the window was already gone", async () => {
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        alreadyDeleted: true,
+        ok: true,
+      });
+
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
+      );
+
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-free-windows-TENANT001"
+      );
+      expect(result).toEqual({
+        message: "This free reading period has already been deleted.",
+        ok: true,
+      });
+    });
+
+    it("leaves the tag alone when the delete failed", async () => {
+      mockDeleteEpisodeFreeWindow.mockResolvedValueOnce({
+        message: "Could not delete the free reading period.",
+        ok: false,
+      });
+
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
+      );
+
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        message: "Could not delete the free reading period.",
+        ok: false,
+      });
+    });
+
+    it("refuses a window id that is not one", async () => {
+      const { deleteEpisodeFreeWindowAction } = await import("./actions");
+      const result = await deleteEpisodeFreeWindowAction(
+        null,
+        deleteFormData("not-an-id")
+      );
+
+      expect(result).toMatchObject({ ok: false });
+      expect(mockDeleteEpisodeFreeWindow).not.toHaveBeenCalled();
+    });
   });
 });

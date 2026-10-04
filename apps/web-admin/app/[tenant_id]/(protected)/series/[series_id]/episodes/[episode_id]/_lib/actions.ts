@@ -26,6 +26,11 @@ import {
   uploadEpisodePages,
 } from "#lib/episode";
 import {
+  createEpisodeFreeWindow,
+  deleteEpisodeFreeWindow,
+  episodeFreeWindowsCacheTag,
+} from "#lib/episode-free-window";
+import {
   creditShareBpsSchema,
   fileListFormSchema,
   jsonStringArrayFormSchema,
@@ -36,6 +41,7 @@ import {
   requiredTrimmedString,
   spreadStartPageFormSchema,
 } from "#lib/form-schemas";
+import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
@@ -69,6 +75,27 @@ const scheduleFormSchema = async (locale: Locale) => {
 
   return base.extend({
     publishAt: optionalTrimmedString(),
+  });
+};
+const freeWindowFormSchema = async (locale: Locale) => {
+  const base = await hiddenParamsSchema(locale);
+
+  return base.extend({
+    endsAt: optionalTrimmedString(),
+    startsAt: optionalTrimmedString(),
+  });
+};
+const deleteFreeWindowSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const missing = t(
+    "admin.series.episodes.free_windows.validation.free_window_missing"
+  );
+
+  return z.object({
+    freeWindowId: requiredRecordId(missing),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
   });
 };
 const creditsFormSchema = async (locale: Locale) => {
@@ -679,6 +706,98 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
 
   return {
+    ok: true,
+  };
+};
+
+export const createEpisodeFreeWindowAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await freeWindowFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      endsAt: { kind: "value", name: "ends_at" },
+      startsAt: { kind: "value", name: "starts_at" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const { episodeId, episodePublicId, seriesPublicId, tenantId } = parsed.data;
+  const period = await toFreeWindowPeriod(
+    parsed.data,
+    await getTenantDisplayTimeZone(tenantId),
+    locale
+  );
+  if (!period.ok) {
+    return toFailure(period.message);
+  }
+
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch);
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    createEpisodeFreeWindow(
+      {
+        endsAt: period.endsAt,
+        episodeId,
+        startsAt: period.startsAt,
+        tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  updateTag(episodeFreeWindowsCacheTag(tenantId));
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?free_window_created=1`
+  );
+};
+
+export const deleteEpisodeFreeWindowAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteFreeWindowSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      freeWindowId: { kind: "value", name: "free_window_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteEpisodeFreeWindow(parsed.data, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The row goes from the list, so success is a toast rather than a message
+  // left under a form that is gone. A window someone else deleted first leaves
+  // the list too, which is why the tag is cleared on that outcome as well.
+  updateTag(episodeFreeWindowsCacheTag(parsed.data.tenantId));
+  const t = await getMessagesFor(locale);
+  return {
+    message: result.alreadyDeleted
+      ? t("admin.series.episodes.free_windows.already_deleted")
+      : t("admin.series.episodes.free_windows.deleted"),
     ok: true,
   };
 };

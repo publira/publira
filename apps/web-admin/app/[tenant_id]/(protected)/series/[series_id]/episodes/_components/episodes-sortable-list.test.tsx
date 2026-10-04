@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 import type { EpisodeItem } from "#lib/episode";
 
-import { EpisodeCreditsSelectionProvider } from "./episode-credits-selection";
+import { EpisodeSelectionProvider } from "./episode-selection";
 import { EpisodesSortableList } from "./episodes-sortable-list";
 
 vi.mock("#lib/use-tenant-id", () => ({
@@ -60,7 +60,7 @@ const episodes: EpisodeItem[] = [
 const renderList = (canEdit: boolean) =>
   render(
     <AdminLocaleTestProvider locale="en">
-      <EpisodeCreditsSelectionProvider>
+      <EpisodeSelectionProvider>
         <EpisodesSortableList
           canEdit={canEdit}
           episodes={episodes}
@@ -69,7 +69,7 @@ const renderList = (canEdit: boolean) =>
           seriesPublicId="SERIES001"
           timeZone="UTC"
         />
-      </EpisodeCreditsSelectionProvider>
+      </EpisodeSelectionProvider>
     </AdminLocaleTestProvider>
   );
 
