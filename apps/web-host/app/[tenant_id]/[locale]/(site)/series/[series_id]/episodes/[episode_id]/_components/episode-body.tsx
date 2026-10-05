@@ -17,10 +17,16 @@ import type {
   EpisodeNeighborItem,
   EpisodeSeriesSummary,
   SeriesCommentMode,
+  SeriesWaitFreeRule,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
+import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
+import {
+  toWaitFreeOffer,
+  waitFreeEpisodeEligible,
+} from "../_lib/wait-free-offer";
 import { EpisodeAccessGate } from "./episode-access-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeGateFrame } from "./episode-gate-frame";
@@ -42,6 +48,8 @@ export const EpisodeBody = async ({
   previousEpisode,
   series,
   tenantId,
+  timeZone,
+  waitFree,
 }: {
   acceptsPayments: boolean;
   access: EpisodeAccessState;
@@ -64,6 +72,10 @@ export const EpisodeBody = async ({
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
   tenantId: string;
+  /** The tenant's time zone, for the instant a recharging ticket is ready. */
+  timeZone: string;
+  /** The series' wait-for-free rule; absent when it offers none. */
+  waitFree?: SeriesWaitFreeRule;
 }) => {
   if (isPublicEpisodeBody(access)) {
     return (
@@ -95,11 +107,18 @@ export const EpisodeBody = async ({
           episodeId={episode.id}
           episodePublicId={episode.publicId}
           googlePlayUrl={googlePlayUrl}
+          locale={locale}
           nextFreeEpisode={nextFreeEpisode}
           purchaseSurface={episode.purchaseSurface}
           seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
+          timeZone={timeZone}
+          waitFree={toWaitFreeOffer({
+            episodeId: episode.id,
+            rule: waitFree,
+            ticketState: undefined,
+          })}
         />
       </EpisodeGateFrame>
     );
@@ -151,6 +170,12 @@ export const EpisodeBody = async ({
     );
   }
 
+  // Asked only where a ticket could open the episode: the rule says on its
+  // own that it keeps one off the latest episodes, whoever the reader is.
+  const ticketState = waitFreeEpisodeEligible(waitFree, episode.id)
+    ? await getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
+    : undefined;
+
   return (
     <EpisodeGateFrame
       previewImages={previewImages}
@@ -162,11 +187,18 @@ export const EpisodeBody = async ({
         episodeId={episode.id}
         episodePublicId={episode.publicId}
         googlePlayUrl={googlePlayUrl}
+        locale={locale}
         nextFreeEpisode={nextFreeEpisode}
         purchaseSurface={episode.purchaseSurface}
         seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}
+        timeZone={timeZone}
+        waitFree={toWaitFreeOffer({
+          episodeId: episode.id,
+          rule: waitFree,
+          ticketState,
+        })}
       />
     </EpisodeGateFrame>
   );

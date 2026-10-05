@@ -152,6 +152,39 @@ describe("catalog.getSeriesDetail", () => {
     });
   });
 
+  it("Carries the series' wait-for-free rule and the episodes it keeps a ticket off", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+      waitFree: {
+        accessHours: 72,
+        excludedEpisodeIds: ["EP_ID_003"],
+        excludedLatestCount: 1,
+        rechargeHours: 23,
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(result.ok && result.value?.series.waitFree).toEqual({
+      accessHours: 72,
+      excludedEpisodeIds: ["EP_ID_003"],
+      excludedLatestCount: 1,
+      rechargeHours: 23,
+    });
+  });
+
+  it("Leaves the rule out of a series that does not offer it", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(result.ok && result.value?.series.waitFree).toBeUndefined();
+  });
+
   it("Carries where each listed episode may be bought", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [
@@ -795,6 +828,16 @@ describe("catalog.getEpisodeViewer", () => {
       value: { access: "locked", images: [] },
     });
     expect(mockGetEpisodeDetail).not.toHaveBeenCalled();
+  });
+
+  it("Carries the tag the wait-for-free Action drops", async () => {
+    mockCacheTag.mockReset();
+
+    await getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "", "en");
+
+    expect(mockCacheTag.mock.calls.map((call) => call[0])).toContain(
+      "tenant:TENANT_001:reader-access"
+    );
   });
 
   it("Valid ticket returns entitled image with session", async () => {

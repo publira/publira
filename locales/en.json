@@ -3242,7 +3242,14 @@
         "signed_in_app_only_description": "This episode is sold in the app. Buy it there with this account, and it opens here as well.",
         "signed_in_payable_description": "You do not have access. Your ticket has expired or has not been granted yet. If you have already bought this episode, check whether you are signed in with a different account.",
         "signed_in_title": "You cannot read this episode",
-        "signed_in_unpayable_description": "This site cannot take purchases at the moment. Check whether your ticket has expired or has not been granted yet."
+        "signed_in_unpayable_description": "This site cannot take purchases at the moment. Check whether your ticket has expired or has not been granted yet.",
+        "wait_free_ready": "Your free ticket for this series is ready. It opens this episode for {$access}.",
+        "wait_free_use": "Read free with a ticket",
+        "wait_free_recharging_at": "Your next free ticket is ready on {$date}.",
+        "wait_free_recharging_in": "Your next free ticket is ready in {$duration}.",
+        "wait_free_excluded": "This is one of the newest episodes, which a free ticket cannot open.",
+        "wait_free_guest": "This series is free if you wait: sign in to read this episode with a free ticket.",
+        "wait_free_state_failed": "Your free ticket for this series could not be checked."
       },
       "images_empty": "The pages of this episode have not been published yet.",
       "navigation": {
@@ -3285,7 +3292,8 @@
         "page_title": "{$title}, page {$page}",
         "progress": "Reading progress",
         "reload": "Reload"
-      }
+      },
+      "wait_free_error": "Your free ticket could not be used. Try again in a moment."
     },
     "errors": {
       "not_found_description": "The page may have been removed, or its URL may have changed. Open the home page.",
@@ -3577,7 +3585,10 @@
         "own": "Your rating: {$average}",
         "explanation": "React to episodes to rate this series.",
         "failed": "Could not show your rating"
-      }
+      },
+      "wait_free_rule": "Free if you wait: a free ticket opens one paid episode for {$access}, and your next ticket is ready {$recharge} after you use one.",
+      "wait_free_excluded_note": "A free ticket cannot open the newest episodes marked below.",
+      "wait_free_excluded": "No free ticket"
     },
     "share": {
       "action": "Share",

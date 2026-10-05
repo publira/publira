@@ -5,7 +5,12 @@ import {
   EmptyStateDescription,
 } from "@publira/ui-components/empty-state";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate, formatList, formatWeekdayName } from "@publira/utils";
+import {
+  formatDate,
+  formatDuration,
+  formatList,
+  formatWeekdayName,
+} from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -307,6 +312,7 @@ const SeriesDetailContent = async (
 
   const { episodes, series } = result.value;
   const [firstEpisode] = episodes;
+  const waitFreeExcludedIds = new Set(series.waitFree?.excludedEpisodeIds);
   // Read only for a series that carries a rating: an unrated page has nothing
   // to ask the reader, so it never touches the session cookie.
   const provenAgeRating = series.ageRating
@@ -543,6 +549,35 @@ const SeriesDetailContent = async (
                   <Message message="host.series.episodes_heading" />
                 </Suspense>
               </h2>
+              {/* The rule in the reader's terms, above the list it applies to,
+              and which of the episodes below it does not reach. It is the
+              same for every reader, so it is part of the shared page; whether
+              this reader has a ticket ready is the episode gate's to say. */}
+              {series.waitFree ? (
+                <p className="text-sm text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                    <Message
+                      message="host.series.wait_free_rule"
+                      values={{
+                        access: formatDuration(
+                          { hours: series.waitFree.accessHours },
+                          { locale }
+                        ),
+                        recharge: formatDuration(
+                          { hours: series.waitFree.rechargeHours },
+                          { locale }
+                        ),
+                      }}
+                    />
+                    {series.waitFree.excludedEpisodeIds.length > 0 ? (
+                      <>
+                        {" "}
+                        <Message message="host.series.wait_free_excluded_note" />
+                      </>
+                    ) : null}
+                  </Suspense>
+                </p>
+              ) : null}
               {episodes.length === 0 ? (
                 <EmptyState>
                   <EmptyStateDescription>
@@ -591,9 +626,24 @@ const SeriesDetailContent = async (
                             </span>
                             {/* Wrapped rather than truncated: the title is what a
                             reader picks an episode by, and on a phone the row
-                            leaves it too little width to clip it there. */}
-                            <span className="line-clamp-2 underline-offset-4 group-hover:underline">
-                              {episode.title}
+                            leaves it too little width to clip it there. The
+                            wait-for-free mark goes under it for the same
+                            reason, rather than beside it. */}
+                            <span className="grid min-w-0 justify-items-start gap-1">
+                              <span className="line-clamp-2 underline-offset-4 group-hover:underline">
+                                {episode.title}
+                              </span>
+                              {waitFreeExcludedIds.has(episode.id) ? (
+                                <Badge tone="muted">
+                                  <Suspense
+                                    fallback={
+                                      <SkeletonLine className="h-4 w-20" />
+                                    }
+                                  >
+                                    <Message message="host.series.wait_free_excluded" />
+                                  </Suspense>
+                                </Badge>
+                              ) : null}
                             </span>
                           </span>
                           <span className="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:mt-0 sm:w-56 sm:shrink-0">

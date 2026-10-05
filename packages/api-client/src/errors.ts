@@ -30,6 +30,10 @@ export const RPC_ERROR_REASON = {
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",
   smtpTestUnknown: "SMTP_TEST_UNKNOWN",
   storageNotConfigured: "STORAGE_NOT_CONFIGURED",
+  waitFreeEpisodeExcluded: "WAIT_FREE_EPISODE_EXCLUDED",
+  waitFreeEpisodeFree: "WAIT_FREE_EPISODE_FREE",
+  waitFreeNotOffered: "WAIT_FREE_NOT_OFFERED",
+  waitFreeNotRecharged: "WAIT_FREE_NOT_RECHARGED",
 } as const;
 
 /**
@@ -49,6 +53,7 @@ export type RpcFieldViolationReason =
 /** ErrorInfo metadata keys Publira APIs attach. Values are always strings. */
 export const RPC_ERROR_METADATA = {
   creditCount: "credit_count",
+  nextAvailableAt: "next_available_at",
 } as const;
 
 export type RpcErrorReason =

@@ -39,6 +39,7 @@ import type {
   Series,
   SeriesEyeCatchVariant,
   Tag,
+  WaitFreeRule,
 } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { WEEKDAY_NUMBERS } from "@publira/utils";
@@ -52,6 +53,7 @@ import {
   applyCacheTag,
   tenantCreatorsTag,
   tenantLabelsTag,
+  tenantReaderAccessTag,
   tenantSeriesDetailTag,
   tenantSeriesListTag,
   tenantSeriesTag,
@@ -621,7 +623,45 @@ export interface SeriesDetail {
   readingPeriodHours: number;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
+  /** The series' wait-for-free rule; absent when the series offers none. */
+  waitFree?: SeriesWaitFreeRule;
 }
+
+/**
+ * A series' wait-for-free rule: a signed-in reader may open one priced episode
+ * for `accessHours`, and their next ticket is ready `rechargeHours` after they
+ * use one. It says nothing about the reader, so it rides on the shared series
+ * read; whether this reader has a ticket ready is `getMyWaitFreeTicketState`.
+ */
+export interface SeriesWaitFreeRule {
+  accessHours: number;
+  /**
+   * The episodes a ticket cannot open, by `EpisodeItem.id`: the latest
+   * `excludedLatestCount` of the series, resolved by the server so a page marks
+   * them without counting.
+   */
+  excludedEpisodeIds: string[];
+  excludedLatestCount: number;
+  rechargeHours: number;
+}
+
+/** The generated `WaitFreeRule` fields {@link toSeriesWaitFreeRule} reads. */
+type RawWaitFreeRule = Pick<
+  WaitFreeRule,
+  "accessHours" | "excludedEpisodeIds" | "excludedLatestCount" | "rechargeHours"
+>;
+
+export const toSeriesWaitFreeRule = (
+  rule: RawWaitFreeRule | undefined
+): SeriesWaitFreeRule | undefined =>
+  rule
+    ? {
+        accessHours: rule.accessHours ?? 0,
+        excludedEpisodeIds: [...(rule.excludedEpisodeIds ?? [])],
+        excludedLatestCount: rule.excludedLatestCount ?? 0,
+        rechargeHours: rule.rechargeHours ?? 0,
+      }
+    : undefined;
 
 /**
  * How a series publishes reader comments after its own setting and the
@@ -1679,6 +1719,7 @@ export const getSeriesDetail = async (
             synopsis: response.series.synopsis ?? "",
             tags: (response.series.tags ?? []).flatMap(toSeriesTagItem),
             title: response.series.title ?? "",
+            waitFree: toSeriesWaitFreeRule(response.waitFree),
           },
           response.series.ageRating
         )
@@ -1838,6 +1879,7 @@ export const getEpisodeViewer = async (
   const normalizedEpisodePublicId = episodePublicId.trim();
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
+  applyCacheTag(tenantReaderAccessTag(normalizedTenantId));
 
   const sessionId = accessToken.trim();
   // The return URL carries an opaque value naming the provider's checkout.

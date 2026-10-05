@@ -5,7 +5,9 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -13,6 +15,7 @@ import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
+import { tenantReaderAccessTag } from "#lib/cache-tags";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { recordIdSchema } from "#lib/record-id";
@@ -21,7 +24,7 @@ import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const publicIDFormSchema = z.string().trim().min(1).max(64);
 
-const checkoutFormSchema = z.object({
+const episodeFormSchema = z.object({
   episodeId: recordIdSchema,
   episodePublicId: publicIDFormSchema,
   locale: localeFormSchema,
@@ -41,7 +44,7 @@ export const startEpisodeCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const parsed = checkoutFormSchema.safeParse(
+  const parsed = episodeFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
       episodePublicId: "value",
@@ -111,4 +114,79 @@ export const startEpisodeCheckoutAction = async (
     redirect(errorPath);
   }
   redirect(checkoutURL);
+};
+
+const waitFreeErrorPath = (
+  seriesPublicId: string,
+  episodePublicId: string
+): string => `${episodePath(seriesPublicId, episodePublicId)}?wait_free=error`;
+
+/**
+ * Spend the reader's wait-for-free ticket on the episode, and come back to it.
+ *
+ * Every answer but a failure to reach the API leads back to the episode
+ * itself, which reads the reader's access and ticket again and says what
+ * holds now: the body once the ticket opened it, and otherwise why it did not
+ * — an episode already open, one of the latest the rule keeps a ticket off, a
+ * ticket still recharging, a rule an editor turned off, an age the reader has
+ * not proved. Those are the states the gate already words, so the Action does
+ * not word them a second time.
+ */
+export const openWithWaitFreeTicketAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  const parsed = episodeFormSchema.safeParse(
+    toFormDataInput(formData, {
+      episodeId: "value",
+      episodePublicId: "value",
+      locale: "value",
+      seriesPublicId: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    redirect("/");
+  }
+
+  const { episodeId, episodePublicId, locale, seriesPublicId, tenantId } =
+    parsed.data;
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
+
+  let failed = false;
+  try {
+    await apiClient.waitFree.useTicket(
+      {
+        episodeId,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      await redirectToLogin(locale, returnTo, tenantId);
+    }
+    rethrowUnclassifiedRpcError(error);
+    // Too many attempts, or an API that could not be reached: nothing the
+    // episode can show tells the reader the ticket was not used.
+    failed = !isRpcError(
+      error,
+      Code.AlreadyExists,
+      Code.FailedPrecondition,
+      Code.NotFound,
+      Code.PermissionDenied
+    );
+  }
+
+  // A refusal changes what the gate says as well — a ticket that was not ready
+  // after all is a countdown now — so the reads are dropped either way.
+  updateTag(tenantReaderAccessTag(tenantId));
+  const returnPath = await tenantLocalePath(
+    tenantId,
+    locale,
+    failed ? waitFreeErrorPath(seriesPublicId, episodePublicId) : returnTo
+  );
+  redirect(returnPath);
 };

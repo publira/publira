@@ -3242,7 +3242,14 @@
         "signed_in_app_only_description": "이 에피소드는 앱에서 판매합니다. 이 계정으로 앱에서 구매하면 여기에서도 읽을 수 있습니다.",
         "signed_in_payable_description": "열람 권한이 없습니다. 이용권이 만료되었거나 아직 부여되지 않았습니다. 이미 구매하셨다면 다른 계정으로 로그인하지 않았는지 확인해 주세요.",
         "signed_in_title": "이 에피소드는 읽을 수 없습니다",
-        "signed_in_unpayable_description": "현재 이 사이트에서는 구매할 수 없습니다. 이용권이 만료되었거나 아직 부여되지 않았는지 확인해 주세요."
+        "signed_in_unpayable_description": "현재 이 사이트에서는 구매할 수 없습니다. 이용권이 만료되었거나 아직 부여되지 않았는지 확인해 주세요.",
+        "wait_free_ready": "이 시리즈의 무료 이용권을 사용할 수 있습니다. 사용하면 이 에피소드를 {$access} 동안 읽을 수 있습니다.",
+        "wait_free_use": "무료 이용권으로 읽기",
+        "wait_free_recharging_at": "다음 무료 이용권은 {$date}에 사용할 수 있습니다.",
+        "wait_free_recharging_in": "다음 무료 이용권은 {$duration} 후에 사용할 수 있습니다.",
+        "wait_free_excluded": "최신 에피소드라서 무료 이용권으로는 읽을 수 없습니다.",
+        "wait_free_guest": "이 시리즈는 기다리면 무료입니다. 로그인하면 무료 이용권으로 이 에피소드를 읽을 수 있습니다.",
+        "wait_free_state_failed": "이 시리즈의 무료 이용권을 확인할 수 없습니다."
       },
       "images_empty": "이 에피소드의 페이지는 아직 공개되지 않았습니다.",
       "navigation": {
@@ -3285,7 +3292,8 @@
         "page_title": "{$title} {$page}쪽",
         "progress": "읽은 분량",
         "reload": "새로고침"
-      }
+      },
+      "wait_free_error": "무료 이용권을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
     },
     "errors": {
       "not_found_description": "해당 페이지가 삭제되었거나 URL이 변경되었을 수 있습니다.",
@@ -3577,7 +3585,10 @@
         "own": "내 평점: {$average}",
         "explanation": "에피소드에 반응하면 시리즈 평점에 반영됩니다.",
         "failed": "내 평점을 표시하지 못했습니다"
-      }
+      },
+      "wait_free_rule": "기다리면 무료: 무료 이용권 1장으로 유료 에피소드 1화를 {$access} 동안 읽을 수 있으며, 다음 이용권은 사용 후 {$recharge} 뒤에 사용할 수 있습니다.",
+      "wait_free_excluded_note": "아래 목록에 표시된 최신 에피소드는 무료 이용권으로 읽을 수 없습니다.",
+      "wait_free_excluded": "무료 이용권 제외"
     },
     "share": {
       "action": "공유",
