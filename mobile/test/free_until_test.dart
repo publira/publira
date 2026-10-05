@@ -90,6 +90,27 @@ void main() {
     expect(find.text('¥500'), findsNothing);
   });
 
+  testWidgets('a window that closes while the screen is open prices the row', (
+    tester,
+  ) async {
+    final freeUntil = DateTime.now().add(const Duration(seconds: 2));
+    catalog.details[series.id] = windowed(freeUntil);
+    await pumpApp(tester, AppRoutes.seriesDetailPath(series.id));
+    await pumpUntilFound(tester, rowBadge);
+
+    // The rows are drawn against the wall clock, so it has to pass the close
+    // too, not only the test's timers.
+    await tester.runAsync(
+      () => Future<void>.delayed(
+        freeUntil.difference(DateTime.now()) + const Duration(milliseconds: 50),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 3));
+
+    expect(rowBadge, findsNothing);
+    expect(find.text('¥500'), findsOneWidget);
+  });
+
   testWidgets('a window that has closed leaves the row priced', (tester) async {
     catalog.details[series.id] = windowed(
       DateTime.now().subtract(const Duration(minutes: 1)),

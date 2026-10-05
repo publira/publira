@@ -242,6 +242,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// one.
   var _acceptsPayments = false;
 
+  /// How many reads of [_access] this screen has started, so that only the
+  /// latest one's answer is shown: the read the screen opened with can answer
+  /// after the one the return from the viewer made, with an episode locked
+  /// that a ticket has since opened.
+  var _purchaseReads = 0;
+
+  /// Fires when the soonest free window open on an episode of this series
+  /// closes, which is when its row is priced again and what the reader may do
+  /// with it has to be asked again.
+  Timer? _windowClose;
+
   /// Where this reader stands in the series. Nothing for a guest, until the
   /// API has answered, and for good when it cannot, which leaves the reading
   /// action on the first episode: what a failure costs is the reader's place,
@@ -292,7 +303,54 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   StreamSubscription<void>? _libraryChanges;
 
   @override
+  void initState() {
+    super.initState();
+    _scheduleWindowClose();
+  }
+
+  @override
+  void didUpdateWidget(_SeriesDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.detail, widget.detail)) {
+      _scheduleWindowClose();
+    }
+  }
+
+  /// Sets [_windowClose] for the soonest window still open, or for none when
+  /// no episode has one. A row is drawn free or priced at build time, so
+  /// without it a screen left open past the close would keep saying the
+  /// episode is free.
+  void _scheduleWindowClose() {
+    _windowClose?.cancel();
+    final now = DateTime.now();
+    DateTime? soonest;
+    for (final episode in widget.detail.episodes) {
+      final freeUntil = episode.freeUntil;
+      if (freeUntil != null &&
+          freeUntil.isAfter(now) &&
+          (soonest == null || freeUntil.isBefore(soonest))) {
+        soonest = freeUntil;
+      }
+    }
+    if (soonest == null) {
+      _windowClose = null;
+      return;
+    }
+    _windowClose = Timer(soonest.difference(now), () {
+      if (!mounted) {
+        return;
+      }
+      setState(_scheduleWindowClose);
+      final purchase = PurchaseScope.maybeOf(context)?.repository;
+      if (purchase != null) {
+        unawaited(_loadPurchase(purchase, _readerId));
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _windowClose?.cancel();
     unawaited(_libraryChanges?.cancel());
     unawaited(_progressWrites?.cancel());
     unawaited(_reactionWrites?.cancel());
@@ -369,6 +427,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     PurchaseRepository purchase,
     String readerId,
   ) async {
+    final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
     final (access, acceptsPayments) = await (
       purchase
@@ -376,7 +435,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           .onError<PurchaseFailure>((_, _) => const {}),
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
     ).wait;
-    if (!mounted || readerId != _readerId) {
+    if (!mounted || read != _purchaseReads || readerId != _readerId) {
       return;
     }
     setState(() {

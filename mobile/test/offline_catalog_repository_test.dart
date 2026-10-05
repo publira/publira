@@ -585,6 +585,32 @@ void main() {
     expect(offlineReadableUntil(saved), _checkedAt.add(offlineGracePeriod));
   });
 
+  test('a wait-for-free ticket that closes while its end is asked takes the '
+      'body off the device', () async {
+    readerId = _reader;
+    origin.episodes = {
+      episodeKey(_seriesId, _episodeId): _detail(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.accessTicket,
+        price: 500,
+      ),
+    };
+    // The ticket closes after the body was read and before the reader's
+    // open tickets are listed, so the list no longer names it.
+    waitFree.onStateRead = () {
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.locked,
+          price: 500,
+        ),
+      };
+    };
+
+    await build().getEpisode(_seriesId, _episodeId);
+
+    expect(library.episodes, isEmpty);
+  });
+
   test('a bought body never asks after a ticket', () async {
     readerId = _reader;
     origin.episodes = {

@@ -29,6 +29,10 @@ class FakeWaitFreeRepository implements WaitFreeRepository {
   /// answering the episode as the reader's.
   void Function(String episodeInternalId)? onUsed;
 
+  /// Called as [ticketState] is asked, before it answers, which is where a
+  /// ticket that closes between two reads closes.
+  void Function()? onStateRead;
+
   /// Series [ticketState] was asked about, in order.
   final List<String> stateReads = <String>[];
 
@@ -38,6 +42,7 @@ class FakeWaitFreeRepository implements WaitFreeRepository {
   @override
   Future<WaitFreeTicketState> ticketState(String seriesInternalId) async {
     stateReads.add(seriesInternalId);
+    onStateRead?.call();
     if (stateFailure case final failure?) {
       throw failure;
     }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
@@ -249,6 +251,45 @@ void main() {
       find.byKey(ValueKey('episode-tile-$paidEpisodeId')),
     );
     await pumpUntilTrue(tester, () => buy.evaluate().isEmpty);
+  });
+
+  testWidgets('a read of the series screen\'s access that answers late is '
+      'not shown', (tester) async {
+    offerWaitFree();
+    // The read the screen opens with is still out when the reader comes back
+    // from opening the episode with a ticket.
+    final opening = Completer<void>();
+    purchases
+      ..access = {paidEpisodeId: EpisodeAccess.locked}
+      ..accessGate = opening;
+    final previous = waitFree.onUsed!;
+    waitFree.onUsed = (id) {
+      previous(id);
+      purchases
+        ..access = {paidEpisodeId: EpisodeAccess.entitled}
+        ..accessGate = null;
+    };
+    await pumpApp(
+      tester,
+      session: fakeSession,
+      location: AppRoutes.seriesDetailPath(series.id),
+    );
+    final title = find.text('${series.title} #${series.episodeCount}');
+    await pumpUntilFound(tester, title);
+    await tester.ensureVisible(title);
+    await tester.pumpAndSettle();
+    await tester.tap(title);
+    await pumpUntilFound(tester, use);
+    await tester.tap(use);
+    await pumpUntilFound(tester, pages);
+    await tester.pageBack();
+    await pumpUntilFound(tester, title);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    opening.complete();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(buy, findsNothing);
   });
 
   testWidgets('a series without wait-for-free says nothing of tickets', (
