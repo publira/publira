@@ -276,7 +276,7 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
-When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs the [integration tests](#integration-tests) on Android emulators, and `Test / Mobile Android` builds a tenant's production APK from `config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key.
+When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E (device)` and `Test / Mobile E2E (live)` run the [integration tests](#integration-tests) on Android emulators, and `Test / Mobile Android` builds a tenant's production APK from `config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key.
 
 `Test / Mobile iOS` builds the iOS app with Xcode on macOS through `task mobile:test-ios-build`, which needs a Mac with Xcode and `task mobile:deps` run first. It builds the `dev` flavor for the simulator from Publira's own manifest and the `production` flavor, unsigned, from a tenant manifest, reads `CFBundleIdentifier`, `CFBundleDisplayName`, and the associated domain back out of each built app — for the unsigned store build, which carries no entitlements, the associated domain of the entitlements file Xcode resolves for it — confirms that a production build for another tenant host is refused, and fails when the builds leave the working tree changed.
 
@@ -737,13 +737,13 @@ On failure, the screenshots the tests take are left in `mobile/.run/artifacts/sc
 
 On failure, logcat and screenshots are left in `mobile/.run/artifacts/`.
 
-CI's `Test / Mobile E2E` runs the suite as two entries, each on an emulator and a runner of its own:
+CI runs the suite as two jobs, `Test / Mobile E2E (device)` and `Test / Mobile E2E (live)`, each on an emulator and a runner of its own:
 
-| Entry | What it runs | Stack |
+| Job | What it runs | Stack |
 | --- | --- | --- |
 | `device` | Every group but the live one, with `PUBLIRA_LIVE_API=false`, which leaves the live group skipped | None: the groups answer themselves on the device |
 | `live` | The live group alone, `task mobile:test-integration -- --plain-name 'live public API'` | `scripts/e2e-up.sh`: postgres, redis, rustfs, and mailpit, the database and storage as `scripts/e2e-db-setup.sh` leaves them, and the server and the worker that `Test / Mobile E2E Build` built from the same commit |
 
-Each entry uploads `mobile-e2e-artifacts-<entry>` on failure. The server's image routes matter to the live entry because every seeded episode carries a body, so its reader fetches pages as soon as it opens one.
+Each job uploads `mobile-e2e-artifacts-device` or `mobile-e2e-artifacts-live` on failure. The server's image routes matter to the live job because every seeded episode carries a body, so its reader fetches pages as soon as it opens one.
 
 `task mobile:test-integration` passes its arguments on to `flutter test`, and `task mobile:e2e` passes them on to it, so either can run one group: `task mobile:e2e -- --plain-name 'live public API'`. `scripts/e2e-up.sh` starts the stack from a `server/bin` that is already built; `task mobile:e2e` builds it first.

@@ -30,7 +30,7 @@ runs:
     # distribution and most dependencies across a build-file edit, since the
     # exact key only survives while none of the hashed inputs change.
     #
-    # Restored only: the job that saves it says so itself.
+    # Restored only: `Test / Mobile E2E (device)` saves it.
     - name: Cache / Gradle
       id: gradle
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

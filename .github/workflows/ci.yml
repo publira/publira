@@ -770,7 +770,6 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Android build
-        id: setup
         uses: ./.github/actions/mobile-android-setup
 
       - name: Build / Tenant Android app
@@ -787,6 +786,53 @@ jobs:
           PUBLIRA_ANDROID_KEY_ALIAS: upload
           PUBLIRA_ANDROID_KEY_PASSWORD: throwaway
 
+  # The integration tests run in two jobs, each on an emulator and a runner of
+  # its own. This one runs every group that answers itself on the device — the
+  # Connect fixture server, the keychain, offline reading — and leaves the live
+  # group skipped, so it needs no stack and waits for no build.
+  test-mobile-e2e-device:
+    name: Test / Mobile E2E (device)
+    needs: changes
+    if: needs.changes.outputs.test_mobile_e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PUBLIRA_E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
+      CI: true
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Android build
+        id: setup
+        uses: ./.github/actions/mobile-android-setup
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup / Android emulator packages
+        id: emulator-packages
+        run: bash mobile/scripts/emulator-packages.sh
+
+      - name: Validate / Mobile E2E
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ steps.emulator-packages.outputs.api-level }}
+          target: ${{ steps.emulator-packages.outputs.target }}
+          arch: ${{ steps.emulator-packages.outputs.arch }}
+          profile: pixel_6
+          disable-animations: true
+          script: task mobile:test-integration
+        env:
+          PUBLIRA_LIVE_API: "false"
+
+      # Saved by the job that builds the app the way both integration-test jobs
+      # do: what a debug build transforms is most of what the cache saves them.
       # `restore-keys` carries the previous entry's distributions into this job,
       # so drop every one the wrapper no longer names before the cache is saved.
       - name: Cache / Prune Gradle distributions
@@ -805,43 +851,15 @@ jobs:
             ~/.gradle/caches
           key: ${{ steps.setup.outputs.gradle-cache-key }}
 
-  # Temporary: the integration-test build with the whole Gradle cache, without
-  # the per-version caches (transforms and generated jars), and with none.
-  gradle-cache-experiment:
-    name: Experiment / Gradle cache (${{ matrix.variant }})
-    needs: changes
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [full, modules-only, none]
-    steps:
-      - name: Setup / Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Upload / Mobile E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          persist-credentials: false
-
-      - name: Setup / Android build
-        uses: ./.github/actions/mobile-android-setup
-
-      - name: Drop part of the cache
-        env:
-          VARIANT: ${{ matrix.variant }}
-        run: |
-          set -euo pipefail
-          du -sh ~/.gradle/caches/9.8.0/* | sort -h | tail -15
-          case "${VARIANT}" in
-            modules-only) rm -rf ~/.gradle/caches/9.8.0 ;;
-            none) rm -rf ~/.gradle/caches ;;
-          esac
-
-      - name: Build
-        working-directory: mobile
-        run: time flutter build apk --debug --target-platform android-x64
-
-      - name: Build again with another entry point
-        working-directory: mobile
-        run: time flutter build apk --debug --target-platform android-x64 -t integration_test/catalog_test.dart
+          name: mobile-e2e-artifacts-device
+          path: |
+            mobile/.run/artifacts/
+            mobile/.run/logs/
+          if-no-files-found: ignore
 
   # The binaries the live group's stack runs, built once from the commit under
   # test.
@@ -889,25 +907,14 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  test-mobile-e2e:
-    name: Test / Mobile E2E (${{ matrix.group }})
+  # The live group alone, against the public API, the worker, and the seed, on
+  # a stack of only the containers it reads. It waits for the build, which is
+  # what leaves it the longest of the mobile jobs.
+  test-mobile-e2e-live:
+    name: Test / Mobile E2E (live)
     needs: test-mobile-e2e-build
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # One emulator per group, on a runner of its own. `device` runs every
-    # group that answers itself on the device — the Connect fixture server,
-    # the keychain, offline reading — and leaves the live group skipped;
-    # `live` runs that group alone, against a stack of its own.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - group: device
-            live-api: "false"
-            args: ""
-          - group: live
-            live-api: "true"
-            args: "--plain-name 'live public API'"
     env:
       COMPOSE_PROJECT_NAME: publira-mobile-e2e
       PUBLIRA_E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
@@ -924,13 +931,11 @@ jobs:
       # libvips-tools for the libvips the server links: it depends on the
       # library under whatever name the release gives it.
       - name: Setup / Stack packages
-        if: matrix.group == 'live'
         uses: ./.github/actions/apt-install
         with:
           packages: libvips-tools postgresql-client
 
       - name: Setup / Install migrate
-        if: matrix.group == 'live'
         run: |
           set -euo pipefail
           arch="$(dpkg --print-architecture)"
@@ -948,14 +953,12 @@ jobs:
           rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
 
       - name: Download / Server
-        if: matrix.group == 'live'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: mobile-e2e-build
           path: ${{ runner.temp }}
 
       - name: Start / Server stack
-        if: matrix.group == 'live'
         run: |
           set -euo pipefail
           tar -xzf "${RUNNER_TEMP}/mobile-e2e-build.tgz"
@@ -979,12 +982,12 @@ jobs:
           arch: ${{ steps.emulator-packages.outputs.arch }}
           profile: pixel_6
           disable-animations: true
-          script: task mobile:test-integration -- ${{ matrix.args }}
+          script: task mobile:test-integration -- --plain-name 'live public API'
         env:
-          PUBLIRA_LIVE_API: ${{ matrix.live-api }}
+          PUBLIRA_LIVE_API: "true"
 
       - name: Teardown / Server stack
-        if: always() && matrix.group == 'live'
+        if: always()
         run: |
           bash e2e/scripts/worker.sh stop || true
           bash e2e/scripts/server.sh stop || true
@@ -994,7 +997,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: mobile-e2e-artifacts-${{ matrix.group }}
+          name: mobile-e2e-artifacts-live
           path: |
             mobile/.run/artifacts/
             mobile/.run/logs/
@@ -1645,8 +1648,9 @@ jobs:
       - test-db-migrations
       - test-mobile
       - test-mobile-android
+      - test-mobile-e2e-device
       - test-mobile-e2e-build
-      - test-mobile-e2e
+      - test-mobile-e2e-live
       - test-mobile-ios
       - test-e2e-build
       - test-e2e
@@ -1671,8 +1675,9 @@ jobs:
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_MOBILE_ANDROID: ${{ needs.test-mobile-android.result }}
+          TEST_MOBILE_E2E_DEVICE: ${{ needs.test-mobile-e2e-device.result }}
           TEST_MOBILE_E2E_BUILD: ${{ needs.test-mobile-e2e-build.result }}
-          TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
+          TEST_MOBILE_E2E_LIVE: ${{ needs.test-mobile-e2e-live.result }}
           TEST_MOBILE_IOS: ${{ needs.test-mobile-ios.result }}
           TEST_E2E_BUILD: ${{ needs.test-e2e-build.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
@@ -1697,8 +1702,9 @@ jobs:
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / Mobile Android=${TEST_MOBILE_ANDROID}" \
+            "Test / Mobile E2E (device)=${TEST_MOBILE_E2E_DEVICE}" \
             "Test / Mobile E2E Build=${TEST_MOBILE_E2E_BUILD}" \
-            "Test / Mobile E2E=${TEST_MOBILE_E2E}" \
+            "Test / Mobile E2E (live)=${TEST_MOBILE_E2E_LIVE}" \
             "Test / Mobile iOS=${TEST_MOBILE_IOS}" \
             "Test / E2E Build=${TEST_E2E_BUILD}" \
             "Test / E2E=${TEST_E2E}" \
