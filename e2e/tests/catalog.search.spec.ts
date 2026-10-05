@@ -16,11 +16,11 @@ import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import { hostPath, PUBLIC_API_BASE_URL, WEB_ADMIN_BASE_URL } from "../src/urls";
 
 /**
- * Which backend the server searches with. `scripts/lib.sh` sets it from
+ * Which engine the server searches with. `scripts/db-setup.sh` saves it from
  * `PUBLIRA_E2E_SEARCH_BACKEND`: `opensearch` under `task e2e:search`, `sql`
  * in every other run.
  */
-const onOpenSearch = process.env.PUBLIRA_SEARCH_BACKEND === "opensearch";
+const onOpenSearch = process.env.PUBLIRA_E2E_SEARCH_BACKEND === "opensearch";
 
 /**
  * Wait until the public API's search for `query` answers with the series
@@ -77,7 +77,7 @@ const waitUntilSearchAnswers = async (
 const deleteSeriesDocuments = async (
   publicIds: readonly string[]
 ): Promise<void> => {
-  const url = process.env.PUBLIRA_OPENSEARCH_URL;
+  const url = process.env.PUBLIRA_E2E_OPENSEARCH_URL;
   if (!onOpenSearch || !url || publicIds.length === 0) {
     return;
   }
@@ -87,7 +87,8 @@ const deleteSeriesDocuments = async (
   `)
     .split("\n")
     .filter(Boolean);
-  const index = process.env.PUBLIRA_OPENSEARCH_INDEX || "publira-catalog";
+  // The alias `publiractl search set` saves when it is given none.
+  const index = "publira-catalog";
   // The worker may still be rewriting one of them for an event a later write
   // queued, which the engine reports as a version conflict; the next attempt
   // deletes what that write left.

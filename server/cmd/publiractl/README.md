@@ -71,6 +71,7 @@ go -C server run ./cmd/publiractl setup
 | --- | --- | --- | --- |
 | Platform defaults | yes | The default locale, and the time zone new tenants start on (`UTC` unless given) | `platform set` |
 | Object store | yes | The bucket and how to reach it, after a connection test it has to pass; a store that fails the test is not saved | `storage set`, `storage test` |
+| Search | no | The catalog search engine, `sql` unless one is given, after a connection test an engine with an index has to pass; the worker builds that index once it is saved | `search set`, `search test` |
 | SMTP | yes | The SMTP settings, then a test message when an address is given for one | `smtp set`, `smtp test` |
 | Web Push | no | The subject, generating the VAPID key pair | `webpush init` |
 | Tenant | yes | A tenant on the platform's time zone and locale unless given | `tenant create` |
@@ -89,7 +90,7 @@ publiractl setup --non-interactive \
   --admin-email owner@comics.example.com --admin-name Owner --generate-admin-password
 ```
 
-Every flag is spelled as the command that saves the value spells it, except where two steps' commands spell one alike: `--tenant-name`, `--tenant-default-locale`, `--tenant-timezone`, `--smtp-password-stdin` and `--smtp-password-file`, `--smtp-test-to`, and every flag of the first administrator (`--admin-email`, `--admin-name`, `--admin-password-stdin`, `--admin-password-file`, `--generate-admin-password`). `publiractl setup -h` lists them all.
+Every flag is spelled as the command that saves the value spells it, except where two steps' commands spell one alike: `--tenant-name`, `--tenant-default-locale`, `--tenant-timezone`, `--search-username`, `--search-password-stdin` and `--search-password-file`, `--smtp-password-stdin` and `--smtp-password-file`, `--smtp-test-to`, and every flag of the first administrator (`--admin-email`, `--admin-name`, `--admin-password-stdin`, `--admin-password-file`, `--generate-admin-password`). `publiractl setup -h` lists them all.
 
 Each step whose row is already saved, and whose flags are not given, is kept without a question: a tenant whose domain exists, and an administrator whose email exists or a tenant that already has one, are reported and not created again. An `--admin-email` that belongs to a user of the tenant without the `tenant_admin` role is refused rather than kept. A run that stopped halfway is therefore finished by running it again, which asks only for the steps still missing, and a run on a finished install changes no row, sends no test message, and runs no connection test.
 
@@ -98,7 +99,7 @@ What each step did goes to stderr as it happens, and the summary to stdout: ever
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
-- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password and the secret access key. Required: set the values the servers run with.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password, the secret access key, and the search engine's password. Required: set the values the servers run with.
 - `PUBLIRA_TENANT_URL_SCHEME`: the scheme of the tenant site and console URLs the summary prints. A value no URL can be built on stops the run before anything is saved. Set the value the servers run with.
 
 ## platform
@@ -191,26 +192,45 @@ Environment variables:
 
 ## search
 
-Rebuilds the OpenSearch catalog index from the database. The worker keeps the index in step with every catalog write through `catalog_index_sync` events, so this is for what those events cannot do: fill the index of a deployment moving to `PUBLIRA_SEARCH_BACKEND=opensearch`, apply an index definition that changed, or recover after the index was lost.
+Saves, tests, and rebuilds the engine the public catalog searches find their hits through. `search set`, `search show`, and `search test` do what `PlatformSearchSettingsService` does from the Platform Console, through the same implementation, `internal/platformsearch`; see [Catalog search](../../README.md#catalog-search) for how a saved engine reaches the processes that search.
 
 ```bash
 eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl search set --engine opensearch --url https://search.example.com --username publira --password-stdin < /run/secrets/search-password
+go -C server run ./cmd/publiractl search test
+go -C server run ./cmd/publiractl search show
 go -C server run ./cmd/publiractl search reindex
 go -C server run ./cmd/publiractl search reindex --tenant comics.example.com
 ```
 
-| Command | What it does |
-| --- | --- |
-| `search reindex` | Creates a new index beside the one the alias names, fills it with every tenant's published series, creators, and labels, and moves the alias onto it in one step, deleting the index it named before. Searches answer from the old index until the move. Each tenant is then written again on the new index, which picks up what changed while it was being filled |
-| `search reindex --tenant` | Rewrites one tenant's documents in the index the alias names, by public ID or domain, writing what is published and a tombstone no search finds for the rest. It creates no index, so it cannot apply a changed definition |
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `search set` | `UpdatePlatformSearchSettings` | Replaces every saved setting with the flags given. On `sql`, or on the engine, URL, and index the search already answers from with other credentials, the search moves onto it at once; on any other engine the worker builds the index first, and the search keeps answering from where it is until the build has completed. Saving what is already saved changes nothing and files nothing |
+| `search show` | `GetPlatformSearchSettings` | Prints the saved engine, whether a password is saved but never the password, the engine the search answers from, and the build that is due or that failed, with its error |
+| `search test` | `TestPlatformSearchConnection` | Asks the saved engine what it is and which plugins every node has, prints the product, the version, and whether `analysis-kuromoji` and `analysis-icu` are installed, and exits `1` when the engine does not answer, is another product, or lacks either plugin. On `sql` it exits `1`, as there is nothing to connect to |
+| `search reindex` |  | Builds a new index on the saved engine beside the one the alias names, fills it with every tenant's published series, creators, and labels, moves the alias onto it in one step, deleting the index it named before, and moves the search onto the saved engine. Searches answer from where they were until the move. Each tenant is then written again on the new index, which picks up what changed while it was being filled. It is for what the worker's build does not do: apply an index definition that changed, or recover after the index was lost. On `sql` it exits `1`, as there is no index to build |
+| `search reindex --tenant` |  | Rewrites one tenant's documents in the index the search answers from, by public ID or domain, writing what is published and a tombstone no search finds for the rest. It creates no index, so it cannot apply a changed definition |
 
-Either form can run while the worker drains events. Run one rebuild at a time.
+`search set` takes these flags:
+
+| Flag | What it sets |
+| --- | --- |
+| `--engine` | `sql` or `opensearch`. Required; any other value is refused, naming the ones accepted |
+| `--url` | The engine's `http://` or `https://` URL, without userinfo. Required on every engine but `sql`, and refused on `sql` |
+| `--index` | The alias of the index holding every tenant's catalog, `publira-catalog` when left out. Give each environment sharing a cluster an alias of its own |
+| `--username` | The HTTP basic auth user. It needs an `https://` URL, over which the credential does not cross the network in cleartext. Left out, the engine is reached without credentials and a saved password is removed |
+
+With `--username`, the password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one, which only goes with the username it was saved with.
+
+The engine needs the `analysis-kuromoji` and `analysis-icu` plugins on every node. `search test` reports a missing one before a save, and a build on an engine without them fails and is reported by `search show` rather than leaving the search on an empty index.
+
+`search set` files `platform_search_settings_updated` and every `search test` files `platform_search_connection_tested` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written. Either form of `search reindex` can run while the worker drains events. A rebuild holds a lock the worker's build holds too: a `search reindex` started while a build runs exits `1`, and the worker's pass skips while a rebuild runs.
 
 Environment variables:
 
-- `PUBLIRA_SEARCH_BACKEND`: has to be `opensearch`; on `sql` the command exits `1`, as there is no index to build.
-- `PUBLIRA_OPENSEARCH_URL`, `PUBLIRA_OPENSEARCH_USERNAME`, `PUBLIRA_OPENSEARCH_PASSWORD`, `PUBLIRA_OPENSEARCH_INDEX`: the values the server and the worker run with; see [Catalog search](../../README.md#catalog-search).
-- `PUBLIRA_CONTENT_STATS_DB_URL`: the `publira_content_stats` connection the catalog is read on. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection `search set`, `search show`, and `search test` use. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: the `publira_content_stats` connection `search reindex` reads the catalog on and moves the search with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the password `search set` stores, and decrypt the one the other commands connect with. Required only when a password is saved: set the values the servers run with.
 
 ## smtp
 
@@ -391,6 +411,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `sync-google-play-voided-purchases` | Takes back the purchases Google Play refunded in the last 30 days |
+| `build-search-index` | Builds the catalog index on the saved search engine, if one is due, and moves the search onto it |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -725,3 +746,17 @@ Environment variables:
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the service account key each tenant saved.
 
 The structured log records each tenant that failed, then how many tenants the run went through, how many voided purchases it read, how many of them had no purchase yet, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.
+
+## build-search-index
+
+Builds the catalog index on the search engine the platform saved, when the search does not answer from it yet, and moves the search onto it once the index holds the catalog: the build `search set` leaves for the worker, which runs this job every 30 seconds on a queue of its own. A run with nothing due does nothing, and so does one that finds another build holding the lock. A build that fails is recorded on the search settings, where `search show` and the Platform Console report it, and the search keeps answering from where it was; the next run tries again, so an engine fixed in place is picked up without saving the settings again.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl job build-search-index
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the search engine's password, when one is saved.

@@ -304,3 +304,30 @@ func (w *syncGooglePlayVoidedPurchasesWorker) Work(ctx context.Context, job *riv
 		return w.jobs.googlePlayVoidedPurchases.Run(ctx, deps)
 	})
 }
+
+// BuildSearchIndexArgs builds the catalog index on the search engine the
+// platform saved, when the search does not answer from it yet.
+type BuildSearchIndexArgs struct{}
+
+func (BuildSearchIndexArgs) Kind() string { return kindBuildSearchIndex }
+
+func (BuildSearchIndexArgs) InsertOpts() river.InsertOpts {
+	opts := insertOpts()
+	opts.Queue = SearchIndexQueueName
+	return opts
+}
+
+type buildSearchIndexWorker struct {
+	river.WorkerDefaults[BuildSearchIndexArgs]
+	jobs *Jobs
+}
+
+func (w *buildSearchIndexWorker) Timeout(*river.Job[BuildSearchIndexArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *buildSearchIndexWorker) Work(ctx context.Context, job *river.Job[BuildSearchIndexArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameBuildSearchIndex, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.searchIndex.Run(ctx, deps)
+	})
+}

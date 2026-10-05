@@ -42,10 +42,12 @@ type CatalogIndexer interface {
 
 // NewCatalogIndexSyncHandler writes the documents the events name.
 //
-// A nil indexer is a worker on the SQL search backend, which keeps no index:
-// every event is done as soon as it is claimed. A deployment that moves to
-// OpenSearch later builds the index with a reindex, not from these events.
-// Pass the interface as nil rather than a nil *catalogindex.Syncer.
+// A nil indexer is a worker with no index to write to: every event is done as
+// soon as it is claimed. The worker passes one that resolves the platform's
+// search engine for each event and has nothing to write on the SQL engine,
+// which keeps no index; a move to an engine that does is built from the
+// database rather than from these events. Pass the interface as nil rather
+// than a nil *catalogindex.Syncer.
 func NewCatalogIndexSyncHandler(indexer CatalogIndexer) Handler {
 	if indexer == nil {
 		return func(context.Context, dbmodels.OutboxEvent) error { return nil }

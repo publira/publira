@@ -584,6 +584,9 @@ type Querier interface {
 	// which the server answers with its built-in defaults.
 	GetPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
+	// Returns no rows when the platform has never saved a search engine, which is
+	// the SQL engine every process searches with until one is.
+	GetPlatformSearchConfig(ctx context.Context) (PlatformSearchConfig, error)
 	// Returns no rows when the platform has never saved an object store, which is
 	// the "not configured" state the console shows.
 	GetPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
@@ -944,6 +947,13 @@ type Querier interface {
 	// to lock, so a losing racer must fail on the primary key rather than
 	// overwrite the row the winner just created.
 	InsertPlatformSMTPConfig(ctx context.Context, arg InsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
+	// No ON CONFLICT clause: an absent row leaves LockPlatformSearchConfig nothing
+	// to lock, so a losing racer must fail on the primary key rather than
+	// overwrite the row the winner just created. serve moves the search onto the
+	// saved configuration in the same write, which is what a save that needs no
+	// index built asks for; otherwise the search stays on the SQL engine an absent
+	// row stood for.
+	InsertPlatformSearchConfig(ctx context.Context, arg InsertPlatformSearchConfigParams) (PlatformSearchConfig, error)
 	// Creates the settings row with the platform default time zone and locale.
 	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 	// absent, so a losing racer must fail on the primary key rather than overwrite
@@ -2081,6 +2091,9 @@ type Querier interface {
 	LockPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
+	LockPlatformSearchConfig(ctx context.Context) (PlatformSearchConfig, error)
+	// Reads the row for update, so the revision a save compares against cannot
+	// change between the comparison and the write.
 	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
 	// Serializes the password reset requests for one operator for the rest of the
 	// transaction, so two of them cannot each leave a live link behind.
@@ -2306,6 +2319,9 @@ type Querier interface {
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.
 	RecordOutboxEventProgress(ctx context.Context, arg RecordOutboxEventProgressParams) (int64, error)
+	// Records why the build of a revision failed, unless a save has moved the
+	// revision on since, which leaves the failure about nothing.
+	RecordPlatformSearchBuildFailure(ctx context.Context, arg RecordPlatformSearchBuildFailureParams) (int64, error)
 	// Records what the provider has refunded against one purchase, matched by the
 	// payment the refund notification names. Nothing matches when the payment
 	// belongs to another tenant, another provider, or no purchase here, and the
@@ -2394,6 +2410,10 @@ type Querier interface {
 	// writes the current page on a timer would otherwise reorder the reader's
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
+	// Moves the search onto the saved configuration once the index it names has
+	// been built, provided it is still the one built: no rows when a save has
+	// moved the revision on since the build read it, whose own build comes next.
+	ServePlatformSearchConfig(ctx context.Context, revision int64) (PlatformSearchConfig, error)
 	// Hands a message to a member of staff, or back to nobody with a NULL. Stated
 	// rather than toggled like the handled flag, and independent of it: marking a
 	// message handled or reopening it leaves the assignee where it is.
@@ -2495,6 +2515,13 @@ type Querier interface {
 	// Writes every value over the existing row. The revision moves with every
 	// write, which is what makes a save based on an earlier read detectable.
 	UpdatePlatformSMTPConfig(ctx context.Context, arg UpdatePlatformSMTPConfigParams) (PlatformSmtpConfig, error)
+	// Writes every saved value over the existing row. The revision moves with
+	// every write, which is what makes a save based on an earlier read detectable,
+	// and a build failure recorded for an earlier revision is cleared, since
+	// nothing is building that revision any more. serve moves the search onto the
+	// saved configuration in the same write; otherwise it stays where it is until
+	// the worker has built the index the save names.
+	UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlatformSearchConfigParams) (PlatformSearchConfig, error)
 	// Writes the platform default time zone and locale over the existing row. The
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.

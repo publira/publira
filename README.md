@@ -82,9 +82,6 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 # Tenant links are built on the edge, which serves plain HTTP.
 export PUBLIRA_TENANT_URL_SCHEME="http"
-# Optional: search the catalog on OpenSearch (`docker compose --profile search up -d`).
-# export PUBLIRA_SEARCH_BACKEND="opensearch"
-# export PUBLIRA_OPENSEARCH_URL="http://127.0.0.1:9200"
 ```
 
 The role users come from `db/seeds/baseline` and their development passwords from `db/seeds/dev/000_role_passwords.sql`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection — `task db:*` and `publiractl db` connect with it — and the `publiractl job` subcommands are the only other readers, as a fallback. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
@@ -192,7 +189,7 @@ See [server/README.md](server/README.md) for the list of server-side environment
 
 ## Catalog search engine (OpenSearch)
 
-The catalog search runs on PostgreSQL unless `PUBLIRA_SEARCH_BACKEND` says otherwise, so nothing here is needed for ordinary development. To work on the OpenSearch backend, start the engine in the `search` profile of `compose.yaml`:
+The catalog search runs on PostgreSQL until another engine is saved as the platform's, so nothing here is needed for ordinary development. To work on the OpenSearch backend, start the engine in the `search` profile of `compose.yaml`:
 
 ```bash
 docker compose --profile search up -d
@@ -203,7 +200,7 @@ docker compose --profile search up -d
 - The index is kept in the `opensearch-data` volume
 - Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address
 
-Then export `PUBLIRA_SEARCH_BACKEND=opensearch` and `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:9200` for `task dev`, and fill the index from the seeded database once with `go -C server run ./cmd/publiractl search reindex`; the worker keeps it in step after that. The variables are described in [server/README.md](server/README.md#catalog-search).
+Then save it as the platform's engine with `go -C server run ./cmd/publiractl search set --engine opensearch --url http://127.0.0.1:9200`. A running worker builds the index from the seeded database within 30 seconds and the search moves onto it once it is built; `go -C server run ./cmd/publiractl search reindex` builds it at once instead. The worker keeps it in step after that, and `publiractl search set --engine sql` moves the search back to PostgreSQL. The settings are described in [server/README.md](server/README.md#catalog-search).
 
 ## Distributed tracing (Jaeger)
 

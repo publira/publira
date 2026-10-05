@@ -27,6 +27,7 @@ var jobGroup = commandGroup{
 		jobCommand("build-recommend-features", "Rebuild the daily user and item recommend feature snapshots", runBuildRecommendFeatures),
 		jobCommand("close-royalty-statements", "Close the royalty statements tenants on automatic closing are owed", runCloseRoyaltyStatements),
 		jobCommand("sync-google-play-voided-purchases", "Take back the purchases Google Play refunded in the last 30 days", runSyncGooglePlayVoidedPurchases),
+		jobCommand("build-search-index", "Build the catalog index on the saved search engine, if one is due, and move the search onto it", runBuildSearchIndex),
 	},
 }
 

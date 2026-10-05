@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	"github.com/publira/publira/server/config"
-	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
@@ -22,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -74,30 +74,12 @@ func runWorker() int {
 		return 1
 	}
 
-	// The worker writes the documents the catalog_index_sync events name into
-	// the engine the server searches. The variable is read before any pool is
-	// opened, as the server reads it, so a value naming no backend stops the
-	// process with the variable's name.
-	searchIndex, err := openSearchFromEnv()
-	if err != nil {
-		logger.Error("failed to initialize the search backend", "error", err)
-		return 1
-	}
-
 	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		return 1
 	}
 	defer db.Close() //nolint:errcheck
-
-	// Declared as the interface, never as *catalogindex.Syncer, so the SQL
-	// backend, which keeps no index, leaves it nil and the handler marks those
-	// events done as it claims them.
-	var catalogIndexer outbox.CatalogIndexer
-	if searchIndex != nil {
-		catalogIndexer = catalogindex.NewSyncer(db, searchIndex)
-	}
 
 	// The periodic jobs get a pool of their own rather than sharing the one
 	// above. publira_outbox owns River's schema and holds CREATE on the public
@@ -159,6 +141,21 @@ func runWorker() int {
 			return 1
 		}
 		encryptor = manager
+	}
+
+	// The worker writes the documents the catalog_index_sync events name into
+	// the engines the platform's search settings name. The row is reread for
+	// every event rather than on the resolvers' interval: a build reads the
+	// catalog once and relies on every write that commits after that read
+	// reaching the index it is building.
+	catalogIndexer := platformsearch.Indexer{
+		DB: db,
+		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
+			Queries:  dbmodels.New(db),
+			Secrets:  encryptor,
+			Interval: -1,
+			Logger:   logger,
+		}),
 	}
 
 	// The bucket the orphan image sweep reclaims is read from the platform's

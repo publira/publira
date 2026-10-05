@@ -14,12 +14,14 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformsmtp"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/platformtenants"
@@ -55,6 +57,10 @@ type setupFlags struct {
 	accessKeyID     string
 	secretAccessKey *secret
 
+	search         platformsearch.Settings
+	searchEngine   string
+	searchPassword *secret
+
 	smtp         emailsettings.SMTPSettings
 	smtpPort     string
 	smtpPassword *secret
@@ -83,6 +89,12 @@ func setupSetup(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&fl.storage.PublicBaseURL, "public-base-url", "", "the URL stored objects are readable from, when something serves them directly")
 	f.StringVar(&fl.accessKeyID, "access-key-id", "", "the access key requests are signed with; left out, every process signs with its own AWS credential")
 	fl.secretAccessKey = f.Secret("secret-access-key", "secret access key")
+
+	f.StringVar(&fl.searchEngine, "engine", "", "the engine the catalog search runs on, one of "+engineNames()+" (default \""+string(platformsearch.EngineSQL)+"\")")
+	f.StringVar(&fl.search.URL, "url", "", "the search engine's http:// or https:// URL, on every engine but sql")
+	f.StringVar(&fl.search.Index, "index", "", "the alias of the index holding the catalog (default \""+opensearchbackend.DefaultIndex+"\")")
+	f.StringVar(&fl.search.Username, "search-username", "", "the search engine's HTTP basic auth user, over https:// only")
+	fl.searchPassword = f.Secret("search-password", "search engine password")
 
 	f.StringVar(&fl.smtp.Host, "host", "", "the SMTP server's host")
 	f.StringVar(&fl.smtpPort, "port", "", "the SMTP server's port `number`")
@@ -184,7 +196,7 @@ func (r *setupRun) run(ctx context.Context) error {
 	defer db.Close() //nolint:errcheck
 	r.db = db
 
-	for _, step := range []func(context.Context) error{r.platformStep, r.storageStep, r.smtpStep, r.webPushStep, r.tenantStep} {
+	for _, step := range []func(context.Context) error{r.platformStep, r.storageStep, r.searchStep, r.smtpStep, r.webPushStep, r.tenantStep} {
 		if err := step(ctx); err != nil {
 			return err
 		}
@@ -412,6 +424,129 @@ func (r *setupRun) storageStep(ctx context.Context) error {
 	}
 	r.done("Object store", outcome(found, stored.Revision, saved.Revision), saved.Bucket)
 	return nil
+}
+
+// setupSearchFlags names the setup flag each field a search engine is refused
+// over is given through.
+var setupSearchFlags = map[string]string{
+	platformsearch.FieldEngine:   "--engine",
+	platformsearch.FieldURL:      "--url",
+	platformsearch.FieldIndex:    "--index",
+	platformsearch.FieldUsername: "--search-username",
+}
+
+func (r *setupRun) searchStep(ctx context.Context) error {
+	q := dbmodels.New(r.db)
+	row, found, err := platformsearch.Get(ctx, q)
+	if err != nil {
+		return err
+	}
+	password := r.flags.searchPassword
+	base := platformsearch.Unsaved()
+	if found {
+		base = platformsearch.FromConfig(row)
+	}
+	// Nothing saved already searches on sql, so a run that asks nothing leaves
+	// it that way; one that asks saves the answer, so the next run need not.
+	if !r.anyGiven("engine", "url", "index", "search-username") && !password.given() && (found || !r.interactive) {
+		r.done("Search", outcomeKept, searchDetail(base))
+		return nil
+	}
+
+	flags, settings := r.flags, base.Settings
+	engine, err := r.value("engine", "Search engine ("+engineNames()+")", flags.searchEngine, string(base.Engine), true)
+	if err != nil {
+		return err
+	}
+	settings.Engine = platformsearch.Engine(strings.TrimSpace(engine))
+	nameSearch := func(err error) error {
+		return password.refusal(err, platformsearch.FieldPassword, func(err error) error { return named(err, setupSearchFlags) })
+	}
+	if !settings.Engine.Known() {
+		return nameSearch(platformsearch.UnknownEngineError(string(settings.Engine)))
+	}
+	params := platformsearch.SaveParams{SecretMode: secretupdate.Clear}
+	if settings.Engine.HasIndex() {
+		if settings.URL, err = r.value("url", "Search engine URL", flags.search.URL, base.URL, true); err != nil {
+			return err
+		}
+		if settings.Index, err = r.value("index", "Index alias", flags.search.Index, orDefault(base.Index, opensearchbackend.DefaultIndex), false); err != nil {
+			return err
+		}
+		if settings.Username, err = r.value("search-username", "Search engine username (blank reaches it without credentials)", flags.search.Username, base.Username, false); err != nil {
+			return err
+		}
+		settings.Username = strings.TrimSpace(settings.Username)
+		switch {
+		case settings.Username == "" && password.given():
+			return nameSearch(&fielderr.Invalid{Field: platformsearch.FieldUsername, Err: platformsearch.ErrUsernameRequired})
+		case settings.Username == "":
+		case !password.given() && base.HasPassword && base.Username == settings.Username:
+			params.SecretMode = secretupdate.Unchanged
+		default:
+			if params.Password, err = r.readSecret(password); err != nil {
+				return err
+			}
+			params.SecretMode = secretupdate.Replace
+		}
+	} else {
+		settings = platformsearch.Settings{Engine: settings.Engine}
+	}
+	params.Settings = settings
+
+	// The engine is tested before it is saved, and only when it changes, so a
+	// refused engine is never saved and a finished install files no test.
+	changes, err := platformsearch.Changes(ctx, q, r.secrets, params)
+	if err != nil {
+		return nameSearch(err)
+	}
+	if !changes {
+		r.done("Search", outcomeKept, searchDetail(base))
+		return nil
+	}
+	if settings.Engine.HasIndex() {
+		tester := platformsearch.Tester{Secrets: r.secrets, Recorder: auditlog.New(q, r.env.logger)}
+		result, err := tester.Test(ctx, q, auditlog.SystemPlatformActor, platformsearch.TestParams{
+			Settings:   params.Settings,
+			SecretMode: params.SecretMode,
+			Password:   params.Password,
+		})
+		if err != nil {
+			return nameSearch(err)
+		}
+		if err := printSearchTest(r.env.console.stderr, result); err != nil {
+			return fmt.Errorf("%w; nothing was saved", err)
+		}
+	}
+	saved, err := platformsearch.Save(ctx, r.db, r.env.logger, r.secrets, auditlog.SystemPlatformActor, params)
+	if err != nil {
+		return nameSearch(err)
+	}
+	r.done("Search", outcome(found, row.Revision, saved.Revision), searchDetail(platformsearch.FromConfig(saved)))
+	return nil
+}
+
+// searchDetail names the saved engine for the summary, and says when the
+// search does not answer from it yet.
+func searchDetail(stored platformsearch.Stored) string {
+	detail := string(stored.Engine)
+	if stored.Engine.HasIndex() {
+		detail += " at " + stored.URL + ", index " + stored.Index
+	}
+	switch stored.State {
+	case platformsearch.Building:
+		detail += "; the worker builds the index, and the search answers from " + string(stored.Serving.Engine) + " until then"
+	case platformsearch.BuildFailed:
+		detail += "; building the index failed, so the search answers from " + string(stored.Serving.Engine)
+	}
+	return detail
+}
+
+func orDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func (r *setupRun) smtpStep(ctx context.Context) error {

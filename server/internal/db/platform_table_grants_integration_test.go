@@ -78,15 +78,16 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // readablePlatformTables are, per role, the platform tables it reads: the
 // policy the storefront's and the tenant console's rate limits and the
 // tenant-admin MFA requirement come from, the retention defaults the tenant
-// console and the purge batches resolve a tenant's periods from, and the object
-// store the image server and the orphan image sweep resolve. The last holds its
-// secret encrypted under keys the database does not have. The storefront also
+// console and the purge batches resolve a tenant's periods from, the object
+// store the image server and the orphan image sweep resolve, and the search
+// engine the maintenance role builds the catalog index on. The last two hold
+// their secret encrypted under keys the database does not have. The storefront also
 // reads the Web Push settings, but only the columns that publish the public
 // key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to.
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_policy_config", "platform_webpush_config"},
 	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_storage_config"},
-	"publira_content_stats": {"platform_retention_config", "platform_storage_config"},
+	"publira_content_stats": {"platform_retention_config", "platform_search_config", "platform_storage_config"},
 }
 
 // The storefront and the tenant console reach the database as publira_public and
@@ -151,9 +152,11 @@ const outboxDBRole = "publira_outbox"
 // outboxReadableTables are the platform tables the mail paths in internal/outbox
 // read: the console's own password reset and email change mail, and the platform
 // relay every mail leaves over when the tenant overrides nothing. The member
-// push handler reads the VAPID key pair every Web Push delivery is signed with.
+// push handler reads the VAPID key pair every Web Push delivery is signed with,
+// and the catalog index handler the search engine it writes documents into.
 var outboxReadableTables = []string{
 	"platform_config",
+	"platform_search_config",
 	"platform_smtp_config",
 	"platform_user_email_change_tokens",
 	"platform_user_password_reset_tokens",
@@ -228,4 +231,37 @@ func TestPlatformRoleKeepsThePlatformTables(t *testing.T) {
 	); err != nil {
 		t.Fatalf("rename an operator as the platform role: %v", err)
 	}
+}
+
+// The search index build moves the serving configuration once it has built the
+// index, and records a build that failed, as publira_content_stats. What an
+// operator saved stays out of its reach, and the worker, which only reads the
+// row to know where to write, may change none of it.
+func TestOnlyTheBuildMovesTheServingSearchEngine(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if _, err := pg.OpenPlatformDB(t).ExecContext(ctx,
+		`INSERT INTO platform_search_config (engine, url, index_alias) VALUES ('opensearch', 'http://search:9200', 'publira-catalog')`,
+	); err != nil {
+		t.Fatalf("save the search engine as the platform role: %v", err)
+	}
+
+	contentStats := pg.OpenContentStatsDB(t)
+	if _, err := contentStats.ExecContext(ctx,
+		`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_since = now()`,
+	); err != nil {
+		t.Fatalf("move the serving configuration as the maintenance role: %v", err)
+	}
+	if _, err := contentStats.ExecContext(ctx,
+		`UPDATE platform_search_config SET build_failed_revision = revision, build_error = 'refused', build_failed_at = now()`,
+	); err != nil {
+		t.Fatalf("record a failed build as the maintenance role: %v", err)
+	}
+	assertRefused(t, ctx, contentStats, "publira_content_stats", `UPDATE platform_search_config SET url = 'http://elsewhere:9200'`)
+	assertRefused(t, ctx, contentStats, "publira_content_stats", `UPDATE platform_search_config SET revision = revision + 1`)
+	assertRefused(t, ctx, pg.OpenOutboxDB(t), outboxDBRole, `UPDATE platform_search_config SET serving_engine = 'sql'`)
 }

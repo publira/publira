@@ -49,8 +49,12 @@ func TestNewRejectsAMistypedTunable(t *testing.T) {
 func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 	for _, args := range everyArgs() {
 		opts := insertOptsOf(t, args)
-		if opts.Queue != QueueName {
-			t.Fatalf("%s queue = %q, want %q", args.Kind(), opts.Queue, QueueName)
+		wantQueue := QueueName
+		if _, ok := args.(BuildSearchIndexArgs); ok {
+			wantQueue = SearchIndexQueueName
+		}
+		if opts.Queue != wantQueue {
+			t.Fatalf("%s queue = %q, want %q", args.Kind(), opts.Queue, wantQueue)
 		}
 		if opts.MaxAttempts != maxAttempts {
 			t.Fatalf("%s max attempts = %d, want %d", args.Kind(), opts.MaxAttempts, maxAttempts)
@@ -73,6 +77,7 @@ func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
 		AggregateRankingsArgs{},
 		BuildRecommendFeaturesArgs{},
 		CloseRoyaltyStatementsArgs{},
+		BuildSearchIndexArgs{},
 	} {
 		opts := insertOptsOf(t, args)
 		if !slices.Equal(opts.UniqueOpts.ByState, inFlight()) {
@@ -110,19 +115,24 @@ func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 
 // A rebuild walks every tenant and a purge drains a table, so they run on a
 // queue of their own rather than holding workers the outbox drain is sized for.
+// The search index build has a second one, so a saved engine is not waiting
+// behind the daily rebuilds, and one worker on it, so two builds never fill
+// the same alias.
 func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
 	queues := jobs.Queues()
-	if len(queues) != 1 {
-		t.Fatalf("queues = %v, want exactly one", queues)
+	if len(queues) != 2 {
+		t.Fatalf("queues = %v, want exactly two", queues)
 	}
-	queue, ok := queues[QueueName]
-	if !ok {
-		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
-	}
-	if queue.MaxWorkers != queueMaxWorkers {
-		t.Fatalf("%s max workers = %d, want %d", QueueName, queue.MaxWorkers, queueMaxWorkers)
+	for name, maxWorkers := range map[string]int{QueueName: queueMaxWorkers, SearchIndexQueueName: 1} {
+		queue, ok := queues[name]
+		if !ok {
+			t.Fatalf("queues = %v, want one named %q", queues, name)
+		}
+		if queue.MaxWorkers != maxWorkers {
+			t.Fatalf("%s max workers = %d, want %d", name, queue.MaxWorkers, maxWorkers)
+		}
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -130,13 +140,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 }
 
 // Only the head of the daily rebuild chain is scheduled, since each link
-// enqueues the next, and every purge, the automatic royalty close, and the
-// voided purchase sync are scheduled on their own.
-func TestTheChainHeadEveryPurgeTheRoyaltyCloseAndTheVoidedPurchaseSyncAreScheduled(t *testing.T) {
+// enqueues the next, and every purge, the automatic royalty close, the voided
+// purchase sync, and the search index build are scheduled on their own.
+func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 8; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, and the voided purchase sync", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, the voided purchase sync, and the search index build", got, want)
 	}
 }
 
@@ -306,6 +316,7 @@ func everyArgs() []river.JobArgs {
 		PurgeOrphanImagesArgs{},
 		CloseRoyaltyStatementsArgs{},
 		SyncGooglePlayVoidedPurchasesArgs{},
+		BuildSearchIndexArgs{},
 	}
 }
 
@@ -346,6 +357,9 @@ func probes() map[string]func(*river.Workers) error {
 		},
 		kindSyncGooglePlayVoidedPurchases: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &syncGooglePlayVoidedPurchasesWorker{})
+		},
+		kindBuildSearchIndex: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &buildSearchIndexWorker{})
 		},
 	}
 }

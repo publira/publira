@@ -126,6 +126,7 @@ func TestSetupWithEveryFlagAndThenOnTheFinishedInstall(t *testing.T) {
 	for _, want := range []string{
 		"Platform defaults    created  en, Asia/Tokyo\n",
 		"Object store         created  publiractl-setup\n",
+		"Search               kept     sql\n",
 		"SMTP                 created  " + env.smtp.Host + ":" + strconv.Itoa(int(env.smtp.Port)) + ", test message sent to operator@example.com\n",
 		"Web Push             created  mailto:push@example.com\n",
 		"Tenant               created  Example Comics (comics.example.com)\n",
@@ -178,7 +179,7 @@ func TestSetupWithEveryFlagAndThenOnTheFinishedInstall(t *testing.T) {
 	if after := installState(t, env.pg); after != before {
 		t.Fatalf("state after the second run = %s, want %s", after, before)
 	}
-	if got := strings.Count(stdout, " kept "); got != 6 {
+	if got := strings.Count(stdout, " kept "); got != 7 {
 		t.Fatalf("second summary = \n%s\nwant every step kept", stdout)
 	}
 	if strings.Contains(stdout, "Administrator password") {
@@ -265,13 +266,14 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 		"y",                // path style
 		"",                 // public base URL
 		env.s3.AccessKey,   // access key ID
+		"",                 // search engine, sql
 	}, "\n") + "\n"
 	code, _ := runSetup(t, terminalConsole(&stderr, first, env.s3.SecretKey))
 	if code != 1 || !strings.Contains(stderr.String(), `stdin closed before "SMTP host" was answered`) {
 		t.Fatalf("first run: exit code = %d, stderr = \n%s", code, stderr.String())
 	}
-	if got := installState(t, env.pg); got != "1,1,0,0,0,0,0,3" {
-		t.Fatalf("state after the first run = %s, want the platform defaults and the store", got)
+	if got := installState(t, env.pg); got != "1,1,0,0,0,0,0,4" {
+		t.Fatalf("state after the first run = %s, want the platform defaults, the store, and the search engine", got)
 	}
 
 	stderr.Reset()
@@ -296,7 +298,7 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("second run: exit code = %d\n%s", code, stderr.String())
 	}
-	for _, asked := range []string{"Default locale", "Bucket", "Tenant name"} {
+	for _, asked := range []string{"Default locale", "Bucket", "Search engine", "Tenant name"} {
 		if strings.Contains(stderr.String(), asked) {
 			t.Fatalf("second run asked for %s:\n%s", asked, stderr.String())
 		}
@@ -304,6 +306,7 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 	for _, want := range []string{
 		"Platform defaults    kept     en, UTC\n",
 		"Object store         kept     publiractl-setup\n",
+		"Search               kept     sql\n",
 		"Web Push             skipped  publiractl webpush init turns it on\n",
 		"Tenant               created  Example Comics (comics.example.com)\n",
 		"First administrator  created  owner@comics.example.com\n",
@@ -329,7 +332,7 @@ func TestSetupRefusesMismatchedAdministratorPasswords(t *testing.T) {
 	var stderr bytes.Buffer
 	// Every required value is a flag, so the terminal is asked only for the
 	// optional ones and whether to generate the password.
-	answers := strings.Repeat("\n", 5) + "n\n"
+	answers := strings.Repeat("\n", 6) + "n\n"
 	code, _ := runSetup(t, terminalConsole(&stderr, answers, "owner-password", "another"), env.everyFlag(t)...)
 	if code != 1 || !strings.Contains(stderr.String(), "the two administrator passwords do not match") {
 		t.Fatalf("exit code = %d, stderr = \n%s", code, stderr.String())
@@ -360,5 +363,20 @@ func TestSetupRefusesAnExistingUserWithoutTheAdminRole(t *testing.T) {
 	}
 	if strings.Contains(stdout, "First administrator") {
 		t.Fatalf("summary reports the administrator:\n%s", stdout)
+	}
+}
+
+// An engine is tested before it is saved, so one that does not answer stops
+// the run with nothing saved for it, and the search stays on sql.
+func TestSetupRefusesASearchEngineThatFailsItsTest(t *testing.T) {
+	env := startSetupEnv(t)
+	var stderr bytes.Buffer
+	args := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password", "--engine", "opensearch", "--url", "http://"+testutil.FreeAddr(t))
+	code, _ := runSetup(t, pipedConsole("", &stderr), args...)
+	if code != 1 || !strings.Contains(stderr.String(), "SEARCH_TEST_UNREACHABLE") || !strings.Contains(stderr.String(), "nothing was saved") {
+		t.Fatalf("exit code = %d, stderr = \n%s", code, stderr.String())
+	}
+	if got := countPlatformRows(t, env.pg, `SELECT count(*) FROM platform_search_config`); got != 0 {
+		t.Fatalf("search settings rows = %d, want none", got)
 	}
 }
