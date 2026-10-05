@@ -116,7 +116,7 @@ formatDuration({ hours: 23 }, { locale }); // "23 hours"
 formatDuration({ hours: 5, minutes: 12 }, { locale, style: "short" }); // "5 hr 12 min"
 ```
 
-`formatDuration` words a span rather than an instant, so it takes no time zone. The units and their plural forms come from `Intl`, because a catalog message cannot choose between "1 hour" and "2 hours".
+`formatDuration` words a span rather than an instant, so it takes no time zone.
 
 ### Picking and validating a time zone
 
