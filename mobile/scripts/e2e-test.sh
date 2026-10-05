@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Run Flutter integration tests. The public API must already be listening
 # when PUBLIRA_LIVE_API=true (the default for this script).
+#
+# Arguments go to `flutter test` after the script's own, so a run can take
+# one group: `e2e-test.sh --plain-name 'live public API'`.
 set -euo pipefail
 
 MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -132,7 +135,8 @@ set +e
     --reporter expanded \
     --dart-define="PUBLIRA_LIVE_API=${PUBLIRA_LIVE_API}" \
     --dart-define="PUBLIRA_BASE_URL=${PUBLIRA_BASE_URL}" \
-    --dart-define="PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}"
+    --dart-define="PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}" \
+    "$@"
 )
 status=$?
 set -e
