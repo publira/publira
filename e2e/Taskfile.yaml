@@ -28,7 +28,8 @@ tasks:
     deps:
       - task: prepare
     cmds:
-      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh
+      # Arguments after `--` reach Playwright, the way CI passes `--shard`.
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
   search:
     desc: Full lifecycle on the OpenSearch search backend, running the catalog search spec alone
