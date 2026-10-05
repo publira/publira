@@ -39,6 +39,8 @@ This always tears down app processes and compose volumes, including on failure o
 | Command | Purpose |
 | --- | --- |
 | `task e2e:prepare` | Build server binaries, the web apps, and email-renderer; install Playwright Chromium. |
+| `task e2e:build` / `task e2e:browsers` | The two halves of `prepare`. |
+| `task e2e:run-built` | The lifecycle of `task e2e` without the build, on what `task e2e:build` left in the tree. |
 | `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, the Traefik edge, and the screenshot browser only. |
 | `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, name the stand-in's disposable-domain list in the platform policy, create the S3 bucket and upload the seed's images (`task storage:seed`), and pin the timestamps the screenshot baseline records. |
 | `task e2e:start-apps` | Start the server, email-renderer, the worker, and the three web apps in the background. |
@@ -105,9 +107,33 @@ Host-based URL constants are in `src/urls.ts`. web-host resolves the tenant thro
 
 `playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches the four vCPUs CI's `ubuntu-latest` runner has on a public repository; temporarily serialize with `task e2e:test -- --workers=1`.
 
-The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the three ordinary projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
+### Groups
 
-Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
+Every project belongs to one of five groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)):
+
+| Group | Projects | What it needs of its stack |
+| --- | --- | --- |
+| `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
+| `main` | `web-host`, `web-platform`, `catalog-search` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
+| `admin` | `web-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
+| `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
+| `performance` | `viewer-performance` | A machine with nothing else running on it. |
+
+`PUBLIRA_E2E_GROUP` runs one group alone, through `task e2e` or `task e2e:test`; a name that is not a group fails the run before any test starts:
+
+```bash
+PUBLIRA_E2E_GROUP=exclusive task e2e
+```
+
+A dependency between projects of two groups only orders work on a stack they share, so a group run drops it and keeps the dependencies inside the group. A project therefore must not need anything a project of another group leaves behind. Without `PUBLIRA_E2E_GROUP`, every group runs on one stack, ordered by the whole graph described below.
+
+`server-logs` belongs to every group. It is the teardown of every other project, so it reads the logs once everything before it has finished — in a run of the whole graph, in a group run, and in each shard of one.
+
+### Order on one stack
+
+The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the `main` and `admin` projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
+
+Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. In an `exclusive` group run the same chain starts at `catalog-outage`. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
 A spec that changes state the whole console reads gets an isolated project for the same reason, and seven do:
 
@@ -117,7 +143,7 @@ A spec that changes state the whole console reads gets an isolated project for t
 - `platform-webpush-settings` (`platform.webpush-settings.spec.ts`): `platform_webpush_config` holds the installation's one VAPID key pair and subject, which the storefront's browser notification switch depends on, and the spec clears the subject to see the unconfigured state, so it follows `platform-storage-settings`, runs after the `web-host` project whose member settings suite subscribes a browser, and puts the row `task e2e:db` saved back on teardown.
 - `platform-configuration-status` (`platform.configuration-status.spec.ts`): the configuration overview is read from those same two rows, and the spec empties the object store and clears the Web Push subject to see an unfinished installation, then saves the store again, so it follows `platform-webpush-settings` and puts both rows `task e2e:db` saved back on teardown.
 - `admin-mfa-sign-in` (`admin.mfa-sign-in.spec.ts`): `platform_policy_config` decides whether a tenant administrator without an authenticator is held at `/mfa` for an enrollment, and the spec requires it of every tenant administrator to enroll one, so it follows `admin-age-verification`, precedes `viewer-performance`, and clears the requirement again on teardown.
-- `platform-setup` (`platform.setup.spec.ts`): `/setup` renders only while `platform_users` is empty, so the spec empties it and creates the platform's first operator through the form. Every console sign-in in the suite reads that table, so this project runs after every other one — `viewer-performance` included — and restores the development seed's platform rows on teardown.
+- `platform-setup` (`platform.setup.spec.ts`): `/setup` renders only while `platform_users` is empty, so the spec empties it and creates the platform's first operator through the form. Every console sign-in in the suite reads that table, so this project runs after every other one but `server-logs` — `viewer-performance` included, when that shares the stack — and restores the development seed's platform rows on teardown.
 
 ## Catalog search on OpenSearch
 
@@ -130,7 +156,7 @@ The stack searches the catalog on PostgreSQL. `PUBLIRA_E2E_SEARCH_BACKEND` selec
 
 On `opensearch`, `task e2e:db` ends with `publiractl search reindex`, since the seed writes straight to Postgres and queues none of the events that keep the index in step; everything a spec writes through a console reaches the index through the worker. The engine is the image [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds, with no volume.
 
-`task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and runs the `catalog-search` project with `--no-deps`. That project is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL, after the screenshot projects like the other three ordinary projects: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone.
+`task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and runs the `catalog-search` project with `--no-deps`. That project is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL, in the `main` group: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone.
 
 To keep a stack on the engine while iterating, export the variable for every step:
 
@@ -184,7 +210,7 @@ Run it against a stack that has just been seeded — a stack the whole suite has
 
 `tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader. The four budgets are `BUDGET` at the top of that file, which is also where each one says what it measures and why it sits where it does.
 
-It runs as its own Playwright project, `viewer-performance`, after every other project has finished, so nothing else on the machine is being measured with it.
+It runs as its own Playwright project, `viewer-performance`, so nothing else on the machine is being measured with it: in CI it is the `performance` group, on a runner of its own, and on a stack every group shares it runs after every other project but `platform-setup` and `server-logs` has finished.
 
 `Seed Episode 001-02` is free and the suite reads it signed out, and the server encrypts a free body as readily as a paid one, so every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn.
 
@@ -202,7 +228,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 ## Adding scenarios
 
 1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
-2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do.
+2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do, in the `exclusive` group. A new project joins the group whose stack it can share (see [Groups](#groups)); a group of its own also needs an entry in the `Test / E2E` matrix.
 3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
 4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify edge routing in [`routing/`](./routing/README.md), not here.
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
@@ -217,11 +243,13 @@ Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering
 Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
-- Failure artifact: `e2e-artifacts` (report, test results, and app logs).
+- **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
+- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
+- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.
+- Every entry also uploads a Playwright blob report, `e2e-blob-<entry>`. When an entry fails, **Test / E2E Report** merges them into one HTML report, `e2e-report`, whose tests carry the tag of the group they ran in.
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
-- The three screenshot projects run first, in the browser image compose builds; the rest of the suite waits on them.
-- Outage and error-boundary scenarios run as isolated dependent projects after the three ordinary projects, `platform-locale-switching` and then `platform-operator-management` follow the platform chain, `viewer-performance` runs after all of those so nothing competes with it for the runner, and `platform-setup` runs last of everything.
-- The required branch check is the final **Summary** job, as with all CI jobs.
+- The `screenshots` entry renders in the browser image compose builds.
+- The required branch check is the final **Summary** job, as with all CI jobs; it reports the matrix as one `Test / E2E` result.
 
 Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts` and the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
 

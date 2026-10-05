@@ -1,3 +1,4 @@
+import type { PlaywrightTestProject } from "@playwright/test";
 import { defineConfig, devices } from "@playwright/test";
 
 import {
@@ -95,7 +96,8 @@ const platformSetupSpecs = /platform\.setup\./u;
 /**
  * Timing suites. They report how long the browser took, so they must not share
  * a machine with the other projects; the viewer-performance project below runs
- * them after everything else has finished.
+ * them in a group of their own, and after everything else when every group
+ * shares one stack.
  */
 const performanceSpecs = /\.viewer-performance\./u;
 
@@ -114,10 +116,11 @@ const serverLogSpecs = /\/logs\./u;
 const catalogSearchSpecs = /catalog\.search\./u;
 
 /**
- * The suites that record what a screen looks like. They run before every other
- * project, as its dependency, because the state they photograph is the one
- * `task e2e:db` seeded: the admin console lists the series the publishing
- * suites create, and the public catalogue lists the episodes they publish.
+ * The suites that record what a screen looks like. In a run of the whole
+ * graph they run before every other project, as its dependency, because the
+ * state they photograph is the one `task e2e:db` seeded: the admin console
+ * lists the series the publishing suites create, and the public catalogue
+ * lists the episodes they publish.
  *
  * They also render in a different browser from the rest — the pinned image of
  * `browser/Dockerfile`, reached over `connectOptions` — so a baseline taken on
@@ -146,6 +149,417 @@ const screenshotDependencies = [
  */
 const workers = 3;
 
+// First, and in the pinned browser: what they record is the state
+// `task e2e:db` left, before a publishing suite has put another series in
+// the console's list or another episode on the public catalogue.
+const screenshotProjects: PlaywrightTestProject[] = [
+  {
+    name: "screenshots-host",
+    testMatch: [/host\.screenshots\./u],
+    use: {
+      ...screenshotProjectUse,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  {
+    name: "screenshots-admin",
+    testMatch: [/admin\.screenshots\./u],
+    timeout: 120_000,
+    use: {
+      ...screenshotProjectUse,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  {
+    name: "screenshots-platform",
+    testMatch: [/platform\.screenshots\./u],
+    timeout: 120_000,
+    use: {
+      ...screenshotProjectUse,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+];
+
+const mainProjects: PlaywrightTestProject[] = [
+  {
+    dependencies: screenshotDependencies,
+    name: "web-host",
+    testIgnore: [
+      /admin\./u,
+      /platform\./u,
+      processIsolatedSpecs,
+      performanceSpecs,
+      screenshotSpecs,
+      serverLogSpecs,
+      catalogSearchSpecs,
+    ],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  // After the screenshots for the reason the three projects around it are:
+  // it publishes series of its own on the seed tenant, whose catalogue the
+  // screenshot projects photograph.
+  {
+    dependencies: screenshotDependencies,
+    name: "catalog-search",
+    testMatch: [catalogSearchSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  {
+    dependencies: screenshotDependencies,
+    name: "web-platform",
+    testIgnore: [
+      processIsolatedSpecs,
+      platformLocaleSwitchingSpecs,
+      platformOperatorManagementSpecs,
+      platformStorageSettingsSpecs,
+      platformWebPushSettingsSpecs,
+      platformConfigurationStatusSpecs,
+      platformSetupSpecs,
+      performanceSpecs,
+      screenshotSpecs,
+      serverLogSpecs,
+    ],
+    testMatch: [/platform\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+];
+
+// The slowest of the ordinary projects, by more than the other three
+// together, so a group of its own: Playwright shards by test count, which
+// only splits a run evenly when its tests take about as long as each other.
+const adminProjects: PlaywrightTestProject[] = [
+  {
+    dependencies: screenshotDependencies,
+    name: "web-admin",
+    testIgnore: [
+      processIsolatedSpecs,
+      commentModerationSpecs,
+      ageVerificationSpecs,
+      adminMfaSignInSpecs,
+      performanceSpecs,
+      screenshotSpecs,
+      serverLogSpecs,
+    ],
+    testMatch: [/admin\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+];
+
+const exclusiveProjects: PlaywrightTestProject[] = [
+  // Backend outage. Every file below calls stopServer, which takes all three
+  // namespaces down with the one process, so they form a single chain
+  // through `dependencies` — one project per filename, because Playwright
+  // has no per-project workers and a shared project would still fan its
+  // files across the global worker pool.
+  {
+    dependencies: ["web-host", "web-admin", "web-platform"],
+    fullyParallel: false,
+    name: "catalog-outage",
+    testMatch: [/catalog\.outage\./u],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  {
+    dependencies: ["catalog-outage"],
+    fullyParallel: false,
+    name: "catalog-error-boundary",
+    testMatch: [/catalog\.error-boundary\./u],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  {
+    dependencies: ["catalog-error-boundary"],
+    fullyParallel: false,
+    name: "admin-outage",
+    testMatch: [/admin\.outage\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  {
+    dependencies: ["admin-outage"],
+    fullyParallel: false,
+    name: "admin-error-boundary",
+    testMatch: [/admin\.error-boundary\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  {
+    dependencies: ["admin-error-boundary"],
+    fullyParallel: false,
+    name: "platform-outage",
+    testMatch: [/platform\.outage\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  {
+    dependencies: ["platform-outage"],
+    fullyParallel: false,
+    name: "platform-error-boundary",
+    testMatch: [/platform\.error-boundary\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // Changes the saved platform default locale, which every web-platform
+  // screen without a `publira_locale` cookie renders in. Chained after the
+  // platform outage projects rather than run beside them: those stop the
+  // platform API, and the rest of the web-platform project reads the console
+  // in the language this spec briefly replaces.
+  {
+    dependencies: ["platform-error-boundary"],
+    fullyParallel: false,
+    name: "platform-locale-switching",
+    testMatch: [platformLocaleSwitchingSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // Rewrites the role and the status of the scenario operators the parallel
+  // web-platform project re-seeds, so it takes the same treatment as the
+  // locale spec above and follows it in the platform chain.
+  {
+    dependencies: ["platform-locale-switching"],
+    fullyParallel: false,
+    name: "platform-operator-management",
+    testMatch: [platformOperatorManagementSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // Rewrites the installation's object store, which every upload and image
+  // read resolves, so it follows the operator spec in the platform chain and
+  // precedes every project that reads an image.
+  {
+    dependencies: ["platform-operator-management"],
+    fullyParallel: false,
+    name: "platform-storage-settings",
+    testMatch: [platformStorageSettingsSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // Rewrites the installation's Web Push subject, which the storefront reads
+  // to offer browser notifications, so it follows the storage spec in the
+  // platform chain.
+  {
+    dependencies: ["platform-storage-settings"],
+    fullyParallel: false,
+    name: "platform-webpush-settings",
+    testMatch: [platformWebPushSettingsSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // Empties the object store and the Web Push subject once more to show the
+  // configuration overview an unfinished installation, so it follows the
+  // Web Push spec in the platform chain.
+  {
+    dependencies: ["platform-webpush-settings"],
+    fullyParallel: false,
+    name: "platform-configuration-status",
+    testMatch: [platformConfigurationStatusSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // This round trip changes a tenant-wide setting and asks web-host to read
+  // both values through its cache. It follows every parallel project so
+  // concurrent requests cannot race either cache revalidation.
+  {
+    dependencies: [
+      "catalog-error-boundary",
+      "admin-error-boundary",
+      "platform-configuration-status",
+    ],
+    fullyParallel: false,
+    name: "admin-comment-moderation",
+    testMatch: [commentModerationSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  // The same shape, on the tenant that makes readers prove an age: the
+  // console writes the rule and the storefront is asked to read it back. It
+  // follows the moderation round trip rather than running beside it, so the
+  // two cache revalidations are never in flight at once.
+  {
+    dependencies: ["admin-comment-moderation"],
+    fullyParallel: false,
+    name: "admin-age-verification",
+    testMatch: [ageVerificationSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
+    },
+  },
+  // Requires MFA of every tenant administrator for as long as it runs, so it
+  // follows the last console round trip rather than running beside one.
+  {
+    dependencies: ["admin-age-verification"],
+    fullyParallel: false,
+    name: "admin-mfa-sign-in",
+    testMatch: [adminMfaSignInSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  // After everything, including the timing suite when that shares the
+  // stack: it leaves the platform with no operator for as long as it takes
+  // to create one through `/setup`, and every console screen in the suite
+  // needs one to sign in as. It restores the development seed's platform
+  // rows on teardown.
+  {
+    dependencies: ["admin-mfa-sign-in", "viewer-performance"],
+    fullyParallel: false,
+    name: "platform-setup",
+    testMatch: [platformSetupSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+];
+
+const performanceProjects: PlaywrightTestProject[] = [
+  // On its own: it measures elapsed time, so nothing else may be competing
+  // for the CPU. On a stack it shares, depending on the tail of every chain
+  // above is what empties the worker pool for it.
+  {
+    dependencies: [
+      "catalog-error-boundary",
+      "admin-error-boundary",
+      "platform-configuration-status",
+      "admin-mfa-sign-in",
+    ],
+    fullyParallel: false,
+    name: "viewer-performance",
+    testMatch: [performanceSpecs],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+];
+
+/**
+ * The projects CI runs as separate jobs, each on a runner of its own with a
+ * stack of its own. `PUBLIRA_E2E_GROUP` names one of them, and the run is then
+ * that group's projects alone.
+ *
+ * The `dependencies` between groups only order work on one shared stack: the
+ * screenshot projects before the publishing suites, the outage and
+ * deployment-wide suites after the parallel ones, the timing suite after
+ * everything. A group run drops them, since another group's projects are not
+ * on its stack, and keeps the ones inside the group. A project therefore may
+ * not need what another group's project leaves behind.
+ *
+ * Without `PUBLIRA_E2E_GROUP` the run is every group on one stack, ordered by
+ * the whole graph, which is what `task e2e` does.
+ */
+const groups = {
+  admin: adminProjects,
+  exclusive: exclusiveProjects,
+  main: mainProjects,
+  performance: performanceProjects,
+  screenshots: screenshotProjects,
+} satisfies Record<string, PlaywrightTestProject[]>;
+
+type GroupName = keyof typeof groups;
+
+const isGroupName = (name: string): name is GroupName =>
+  Object.hasOwn(groups, name);
+
+const groupName = process.env.PUBLIRA_E2E_GROUP?.trim() || undefined;
+
+if (groupName !== undefined && !isGroupName(groupName)) {
+  throw new Error(
+    `PUBLIRA_E2E_GROUP=${groupName} names no group; use one of ${Object.keys(groups).join(", ")}`
+  );
+}
+
+const withinGroup = (
+  projects: PlaywrightTestProject[]
+): PlaywrightTestProject[] => {
+  const names = new Set(projects.map(({ name }) => name));
+  return projects.map((project) => ({
+    ...project,
+    dependencies: project.dependencies?.filter((name) => names.has(name)),
+  }));
+};
+
+const selectedProjects =
+  groupName === undefined
+    ? [
+        ...screenshotProjects,
+        ...mainProjects,
+        ...adminProjects,
+        ...exclusiveProjects,
+        ...performanceProjects,
+      ]
+    : withinGroup(groups[groupName]);
+
+/**
+ * Reads what the server processes logged, so every request the run makes has
+ * to have been answered first. It is the teardown of every other project —
+ * Playwright starts a teardown once the projects naming it and everything
+ * depending on them have finished — rather than a project depending on them:
+ * a dependency of a sharded project would run in full in every shard, while a
+ * teardown runs once per shard, after that shard's own tests, against that
+ * shard's own stack.
+ */
+const serverLogs: PlaywrightTestProject = {
+  fullyParallel: false,
+  name: "server-logs",
+  testMatch: [serverLogSpecs],
+};
+
 export default defineConfig({
   expect: {
     timeout: 15_000,
@@ -156,338 +570,20 @@ export default defineConfig({
   // a process are kept off this pool by the isolated projects below.
   fullyParallel: false,
   projects: [
-    // First, and in the pinned browser: what they record is the state
-    // `task e2e:db` left, before a publishing suite has put another series in
-    // the console's list or another episode on the public catalogue.
-    {
-      name: "screenshots-host",
-      testMatch: [/host\.screenshots\./u],
-      use: {
-        ...screenshotProjectUse,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    {
-      name: "screenshots-admin",
-      testMatch: [/admin\.screenshots\./u],
-      timeout: 120_000,
-      use: {
-        ...screenshotProjectUse,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    {
-      name: "screenshots-platform",
-      testMatch: [/platform\.screenshots\./u],
-      timeout: 120_000,
-      use: {
-        ...screenshotProjectUse,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    {
-      dependencies: screenshotDependencies,
-      name: "web-host",
-      testIgnore: [
-        /admin\./u,
-        /platform\./u,
-        processIsolatedSpecs,
-        performanceSpecs,
-        screenshotSpecs,
-        serverLogSpecs,
-        catalogSearchSpecs,
-      ],
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    // After the screenshots for the reason the three projects around it are:
-    // it publishes series of its own on the seed tenant, whose catalogue the
-    // screenshot projects photograph.
-    {
-      dependencies: screenshotDependencies,
-      name: "catalog-search",
-      testMatch: [catalogSearchSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    {
-      dependencies: screenshotDependencies,
-      name: "web-admin",
-      testIgnore: [
-        processIsolatedSpecs,
-        commentModerationSpecs,
-        ageVerificationSpecs,
-        adminMfaSignInSpecs,
-        performanceSpecs,
-        screenshotSpecs,
-        serverLogSpecs,
-      ],
-      testMatch: [/admin\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    {
-      dependencies: screenshotDependencies,
-      name: "web-platform",
-      testIgnore: [
-        processIsolatedSpecs,
-        platformLocaleSwitchingSpecs,
-        platformOperatorManagementSpecs,
-        platformStorageSettingsSpecs,
-        platformWebPushSettingsSpecs,
-        platformConfigurationStatusSpecs,
-        platformSetupSpecs,
-        performanceSpecs,
-        screenshotSpecs,
-        serverLogSpecs,
-      ],
-      testMatch: [/platform\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Backend outage. Every file below calls stopServer, which takes all three
-    // namespaces down with the one process, so they form a single chain
-    // through `dependencies` — one project per filename, because Playwright
-    // has no per-project workers and a shared project would still fan its
-    // files across the global worker pool.
-    {
-      dependencies: ["web-host", "web-admin", "web-platform"],
-      fullyParallel: false,
-      name: "catalog-outage",
-      testMatch: [/catalog\.outage\./u],
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    {
-      dependencies: ["catalog-outage"],
-      fullyParallel: false,
-      name: "catalog-error-boundary",
-      testMatch: [/catalog\.error-boundary\./u],
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    {
-      dependencies: ["catalog-error-boundary"],
-      fullyParallel: false,
-      name: "admin-outage",
-      testMatch: [/admin\.outage\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    {
-      dependencies: ["admin-outage"],
-      fullyParallel: false,
-      name: "admin-error-boundary",
-      testMatch: [/admin\.error-boundary\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    {
-      dependencies: ["admin-error-boundary"],
-      fullyParallel: false,
-      name: "platform-outage",
-      testMatch: [/platform\.outage\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    {
-      dependencies: ["platform-outage"],
-      fullyParallel: false,
-      name: "platform-error-boundary",
-      testMatch: [/platform\.error-boundary\./u],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Changes the saved platform default locale, which every web-platform
-    // screen without a `publira_locale` cookie renders in. Chained after the
-    // platform outage projects rather than run beside them: those stop the
-    // platform API, and the rest of the web-platform project reads the console
-    // in the language this spec briefly replaces.
-    {
-      dependencies: ["platform-error-boundary"],
-      fullyParallel: false,
-      name: "platform-locale-switching",
-      testMatch: [platformLocaleSwitchingSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Rewrites the role and the status of the scenario operators the parallel
-    // web-platform project re-seeds, so it takes the same treatment as the
-    // locale spec above and follows it in the platform chain.
-    {
-      dependencies: ["platform-locale-switching"],
-      fullyParallel: false,
-      name: "platform-operator-management",
-      testMatch: [platformOperatorManagementSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Rewrites the installation's object store, which every upload and image
-    // read resolves, so it follows the operator spec in the platform chain and
-    // precedes every project that reads an image.
-    {
-      dependencies: ["platform-operator-management"],
-      fullyParallel: false,
-      name: "platform-storage-settings",
-      testMatch: [platformStorageSettingsSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Rewrites the installation's Web Push subject, which the storefront reads
-    // to offer browser notifications, so it follows the storage spec in the
-    // platform chain.
-    {
-      dependencies: ["platform-storage-settings"],
-      fullyParallel: false,
-      name: "platform-webpush-settings",
-      testMatch: [platformWebPushSettingsSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Empties the object store and the Web Push subject once more to show the
-    // configuration overview an unfinished installation, so it follows the
-    // Web Push spec in the platform chain.
-    {
-      dependencies: ["platform-webpush-settings"],
-      fullyParallel: false,
-      name: "platform-configuration-status",
-      testMatch: [platformConfigurationStatusSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // This round trip changes a tenant-wide setting and asks web-host to read
-    // both values through its cache. It follows every parallel project so
-    // concurrent requests cannot race either cache revalidation.
-    {
-      dependencies: [
-        "catalog-error-boundary",
-        "admin-error-boundary",
-        "platform-configuration-status",
-      ],
-      fullyParallel: false,
-      name: "admin-comment-moderation",
-      testMatch: [commentModerationSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    // The same shape, on the tenant that makes readers prove an age: the
-    // console writes the rule and the storefront is asked to read it back. It
-    // follows the moderation round trip rather than running beside it, so the
-    // two cache revalidations are never in flight at once.
-    {
-      dependencies: ["admin-comment-moderation"],
-      fullyParallel: false,
-      name: "admin-age-verification",
-      testMatch: [ageVerificationSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
-      },
-    },
-    // Requires MFA of every tenant administrator for as long as it runs, so it
-    // follows the last console round trip rather than running beside one.
-    {
-      dependencies: ["admin-age-verification"],
-      fullyParallel: false,
-      name: "admin-mfa-sign-in",
-      testMatch: [adminMfaSignInSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_ADMIN_BASE_URL,
-      },
-    },
-    // Last, and on its own: it measures elapsed time, so nothing else may be
-    // competing for the CPU. Depending on the tail of every chain above is what
-    // empties the worker pool for it.
-    {
-      dependencies: [
-        "catalog-error-boundary",
-        "admin-error-boundary",
-        "platform-configuration-status",
-        "admin-mfa-sign-in",
-      ],
-      fullyParallel: false,
-      name: "viewer-performance",
-      testMatch: [performanceSpecs],
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_HOST_BASE_URL,
-      },
-    },
-    // After everything, including the timing suite: it leaves the platform with
-    // no operator for as long as it takes to create one through `/setup`, and
-    // every console screen in the suite needs one to sign in as. It restores the
-    // development seed's platform rows on teardown.
-    {
-      dependencies: ["viewer-performance"],
-      fullyParallel: false,
-      name: "platform-setup",
-      testMatch: [platformSetupSpecs],
-      timeout: 120_000,
-      use: {
-        ...desktopChrome,
-        baseURL: WEB_PLATFORM_BASE_URL,
-      },
-    },
-    // Truly last: it asserts on what the server processes logged, so every
-    // request the suite makes has to have been answered before it reads them.
-    {
-      dependencies: ["platform-setup"],
-      fullyParallel: false,
-      name: "server-logs",
-      testMatch: [serverLogSpecs],
-    },
+    ...selectedProjects.map((project) => ({
+      ...project,
+      teardown: serverLogs.name,
+    })),
+    serverLogs,
   ],
   reporter: [
     ["list"],
     ["html", { open: "never", outputFolder: "playwright-report" }],
+    // One per CI job, which the E2E report job merges into one HTML report
+    // when a job fails. The job names the file through
+    // PLAYWRIGHT_BLOB_OUTPUT_NAME, since every job would otherwise write the
+    // same `report.zip`.
+    ...(isCi ? [["blob"] as const] : []),
   ],
   retries: isCi ? 1 : 0,
   // One directory per screenshot project, named after the screen. The default
@@ -495,6 +591,8 @@ export default defineConfig({
   // on, which would claim these are per-platform baselines; they are not, since
   // every one of them is rendered by the Linux browser image.
   snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{arg}{ext}",
+  // Which job a test ran in, once the reports of every job are merged.
+  tag: groupName === undefined ? undefined : `@${groupName}`,
   testDir: "./tests",
   timeout: 60_000,
   use: {

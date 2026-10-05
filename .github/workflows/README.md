@@ -135,7 +135,9 @@ Implementation:
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed, then a production APK from `mobile/config/app.example.yaml` through `task mobile:build`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile iOS` | `task mobile:test-ios-build` on macOS: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. | [`mobile/README.md`](../../mobile/README.md) |
-| `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
+| `Test / E2E Build` | `task e2e:build` once, uploaded as `e2e-build` for every `Test / E2E` entry. | [`e2e/README.md`](../../e2e/README.md#ci) |
+| `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main` or `admin`: readiness, Playwright, teardown, on a stack of its own. | [`e2e/README.md`](../../e2e/README.md#groups) |
+| `Test / E2E Report` | Only when a `Test / E2E` entry failed: every entry's blob report merged into one HTML report. | [`e2e/README.md`](../../e2e/README.md#ci) |
 | `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search spec alone. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
@@ -263,7 +265,8 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |
    | `Test / Mobile iOS` | `task mobile:deps` then `task mobile:test-ios-build`, on a Mac with Xcode |
-   | `Test / E2E` | `task e2e` |
+   | `Test / E2E Build` | `task e2e:build` |
+   | `Test / E2E (<group> <shard>)` | `PUBLIRA_E2E_GROUP=<group> task e2e -- --shard=<shard>` |
    | `Test / E2E Search` | `task e2e:search` |
    | `Test / Bootstrap` | `task e2e:bootstrap` (`PUBLIRA_BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
    | `Test / Routing` | `task e2e:routing` |
