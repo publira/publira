@@ -149,12 +149,10 @@ const screenshotDependencies = [
  */
 const workers = 3;
 
-type Project = PlaywrightTestProject;
-
 // First, and in the pinned browser: what they record is the state
 // `task e2e:db` left, before a publishing suite has put another series in
 // the console's list or another episode on the public catalogue.
-const screenshotProjects: Project[] = [
+const screenshotProjects: PlaywrightTestProject[] = [
   {
     name: "screenshots-host",
     testMatch: [/host\.screenshots\./u],
@@ -183,7 +181,7 @@ const screenshotProjects: Project[] = [
   },
 ];
 
-const mainProjects: Project[] = [
+const mainProjects: PlaywrightTestProject[] = [
   {
     dependencies: screenshotDependencies,
     name: "web-host",
@@ -241,7 +239,7 @@ const mainProjects: Project[] = [
 // The slowest of the ordinary projects, by more than the other three
 // together, so a group of its own: Playwright shards by test count, which
 // only splits a run evenly when its tests take about as long as each other.
-const adminProjects: Project[] = [
+const adminProjects: PlaywrightTestProject[] = [
   {
     dependencies: screenshotDependencies,
     name: "web-admin",
@@ -263,7 +261,7 @@ const adminProjects: Project[] = [
   },
 ];
 
-const exclusiveProjects: Project[] = [
+const exclusiveProjects: PlaywrightTestProject[] = [
   // Backend outage. Every file below calls stopServer, which takes all three
   // namespaces down with the one process, so they form a single chain
   // through `dependencies` — one project per filename, because Playwright
@@ -469,7 +467,7 @@ const exclusiveProjects: Project[] = [
   },
 ];
 
-const performanceProjects: Project[] = [
+const performanceProjects: PlaywrightTestProject[] = [
   // On its own: it measures elapsed time, so nothing else may be competing
   // for the CPU. On a stack it shares, depending on the tail of every chain
   // above is what empties the worker pool for it.
@@ -511,7 +509,7 @@ const groups = {
   main: mainProjects,
   performance: performanceProjects,
   screenshots: screenshotProjects,
-} satisfies Record<string, Project[]>;
+} satisfies Record<string, PlaywrightTestProject[]>;
 
 type GroupName = keyof typeof groups;
 
@@ -526,7 +524,9 @@ if (groupName !== undefined && !isGroupName(groupName)) {
   );
 }
 
-const withinGroup = (projects: Project[]): Project[] => {
+const withinGroup = (
+  projects: PlaywrightTestProject[]
+): PlaywrightTestProject[] => {
   const names = new Set(projects.map(({ name }) => name));
   return projects.map((project) => ({
     ...project,
@@ -554,7 +554,7 @@ const selectedProjects =
  * teardown runs once per shard, after that shard's own tests, against that
  * shard's own stack.
  */
-const serverLogs: Project = {
+const serverLogs: PlaywrightTestProject = {
   fullyParallel: false,
   name: "server-logs",
   testMatch: [serverLogSpecs],
