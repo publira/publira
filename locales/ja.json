@@ -3104,6 +3104,7 @@
       "find_series": "シリーズを探す",
       "free": "無料",
       "free_episode_count": "無料{$count}話",
+      "free_until": "{$date}まで無料",
       "mark_all_read": "すべて既読にする",
       "mark_read": "既読にする",
       "next_page": "次のページ",

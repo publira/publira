@@ -600,9 +600,11 @@ const SeriesDetailContent = async (
                             <span className="flex items-baseline gap-3">
                               <span className="tabular-nums">
                                 <EpisodePrice
+                                  freeUntil={episode.freeUntil}
                                   locale={locale}
                                   price={episode.price}
                                   purchaseSurface={episode.purchaseSurface}
+                                  timeZone={timeZone}
                                 />
                               </span>
                               <Suspense fallback={null}>

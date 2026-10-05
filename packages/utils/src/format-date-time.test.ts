@@ -6,6 +6,7 @@ import {
   endOfDayIsoString,
   formatDate,
   formatDateTime,
+  formatDateTimeWithWeekday,
   formatPlainDate,
   formatPlainYearMonth,
   formatRelativeTime,
@@ -100,6 +101,53 @@ describe("formatDateTime", () => {
         timeStyle: "short",
         timeZone: "UTC",
       }).format(instant.epochMilliseconds)
+    );
+  });
+});
+
+describe("formatDateTimeWithWeekday", () => {
+  // 14:59 UTC on Sunday 11 October is 23:59 that Sunday in Tokyo and still
+  // 07:59 that morning in Los Angeles.
+  const SUNDAY_LATE_IN_TOKYO = "2026-10-11T14:59:00Z";
+
+  it("names the weekday, the day, and the time in the given time zone", () => {
+    // ICU releases disagree on whether a narrow no-break space or a plain
+    // one stands before "PM", and which one is not what this asserts.
+    expect(
+      formatDateTimeWithWeekday(SUNDAY_LATE_IN_TOKYO, {
+        locale: "en",
+        timeZone: "Asia/Tokyo",
+      }).replaceAll(/\s/gu, " ")
+    ).toBe("Sun, Oct 11, 11:59 PM");
+    expect(
+      formatDateTimeWithWeekday(SUNDAY_LATE_IN_TOKYO, {
+        locale: "ja",
+        timeZone: "Asia/Tokyo",
+      })
+    ).toBe("10月11日(日) 23:59");
+  });
+
+  it("reads the weekday off the time zone rather than off UTC", () => {
+    expect(
+      formatDateTimeWithWeekday("2026-10-11T16:00:00Z", {
+        locale: "ja",
+        timeZone: "Asia/Tokyo",
+      })
+    ).toBe("10月12日(月) 1:00");
+    expect(
+      formatDateTimeWithWeekday("2026-10-11T16:00:00Z", {
+        locale: "ja",
+        timeZone: "America/Los_Angeles",
+      })
+    ).toBe("10月11日(日) 9:00");
+  });
+
+  it("returns fallback for empty or invalid values", () => {
+    expect(formatDateTimeWithWeekday("", { fallback: "-", locale: "en" })).toBe(
+      "-"
+    );
+    expect(formatDateTimeWithWeekday("not-a-date", { locale: "en" })).toBe(
+      "not-a-date"
     );
   });
 });

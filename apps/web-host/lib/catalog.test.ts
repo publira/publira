@@ -180,6 +180,37 @@ describe("catalog.getSeriesDetail", () => {
       result.ok && result.value?.episodes.map((e) => e.purchaseSurface)
     ).toEqual(["app", "all"]);
   });
+
+  it("Carries the end of the free reading period open on a listed episode", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        {
+          freeUntil: "2026-10-11T14:59:00Z",
+          orderIndex: 1,
+          price: 300,
+          publicId: "EP_001",
+        },
+        { freeUntil: "", orderIndex: 2, price: 300, publicId: "EP_002" },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(
+      result.ok &&
+        result.value?.episodes.map(({ freeUntil, price }) => ({
+          freeUntil,
+          price,
+        }))
+    ).toEqual([
+      { freeUntil: "2026-10-11T14:59:00Z", price: 300 },
+      { freeUntil: undefined, price: 300 },
+    ]);
+  });
 });
 
 describe("catalog.getEpisodeDetail", () => {
@@ -253,6 +284,30 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+  });
+
+  it("Carries the end of the free reading period open on the episode", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        freeUntil: "2026-10-11T14:59:00Z",
+        price: 300,
+        publicId: "EP_001",
+      },
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.access).toBe("free");
+    expect(detail?.episode.price).toBe(300);
+    expect(detail?.episode.freeUntil).toBe("2026-10-11T14:59:00Z");
   });
 
   it("Carries an episode sold in the app alone", async () => {

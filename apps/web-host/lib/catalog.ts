@@ -206,6 +206,14 @@ export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
   );
 
 export interface EpisodeItem {
+  /**
+   * When the free reading period open on this priced episode ends, as an
+   * RFC3339 instant. Absent when none is open, and always absent on an
+   * episode whose price is 0, which is not free until anything. `price` stays
+   * the stored price meanwhile: it is what the episode costs once the period
+   * ends.
+   */
+  freeUntil?: string;
   id: string;
   publicId: string;
   title: string;
@@ -234,6 +242,14 @@ export interface EpisodeDetail {
    * the series lists today.
    */
   credits: CreatorCredit[];
+  /**
+   * When the free reading period open on this priced episode ends, as an
+   * RFC3339 instant. Absent when none is open, and always absent on an
+   * episode whose price is 0, which is not free until anything. `price` stays
+   * the stored price meanwhile: it is what the episode costs once the period
+   * ends.
+   */
+  freeUntil?: string;
   id: string;
   orderIndex: number;
   price: number;
@@ -268,6 +284,7 @@ export interface EpisodeDetail {
 type RawEpisode = Pick<
   Episode,
   | "creators"
+  | "freeUntil"
   | "id"
   | "orderIndex"
   | "price"
@@ -329,6 +346,7 @@ export const toEpisodePurchaseSurface = (
 
 const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
+  freeUntil: episode.freeUntil || undefined,
   id: episode.id ?? "",
   orderIndex: episode.orderIndex ?? 0,
   price: episode.price ?? 0,
@@ -1625,6 +1643,7 @@ export const getSeriesDetail = async (
   const result = {
     episodes: (response.episodes ?? [])
       .map((e) => ({
+        freeUntil: e.freeUntil || undefined,
         id: e.id ?? "",
         orderIndex: e.orderIndex ?? 0,
         price: e.price ?? 0,

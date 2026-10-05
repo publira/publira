@@ -590,6 +590,54 @@ describe("catalog-top section loaders", () => {
     ]);
   });
 
+  it("getCatalogTopNewEpisodes carries the end of a free reading period open on an episode", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: seriesFixture },
+    });
+    mockGetSeriesDetail.mockImplementation(
+      (_tenantId: string, seriesId: string) => {
+        if (seriesId === "SERIES_1") {
+          return Promise.resolve({
+            ok: true,
+            value: {
+              ...detailSeries1,
+              episodes: detailSeries1.episodes.map((episode) =>
+                episode.publicId === "EP_1_2"
+                  ? {
+                      ...episode,
+                      freeUntil: "2026-10-11T14:59:00Z",
+                      price: 300,
+                    }
+                  : episode
+              ),
+            },
+          });
+        }
+        return Promise.resolve({ ok: true, value: detailSeries2 });
+      }
+    );
+
+    const result = await getCatalogTopNewEpisodes("TENANT_001", {
+      detailFetchLimit: 4,
+      locale: "en",
+      maxNewEpisodes: 4,
+      seriesLimit: 10,
+    });
+
+    expect(
+      result.ok &&
+        result.value.map(({ episodeId, freeUntil }) => ({
+          episodeId,
+          freeUntil,
+        }))
+    ).toEqual([
+      { episodeId: "EP_2_1", freeUntil: undefined },
+      { episodeId: "EP_1_2", freeUntil: "2026-10-11T14:59:00Z" },
+      { episodeId: "EP_1_1", freeUntil: undefined },
+    ]);
+  });
+
   it("getCatalogTopUpdatedSeries returns the latest episodes in order of update", async () => {
     mockListPublishedSeries.mockResolvedValue({
       ok: true,

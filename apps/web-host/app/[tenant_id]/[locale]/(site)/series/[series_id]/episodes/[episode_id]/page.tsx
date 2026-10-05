@@ -323,12 +323,14 @@ const EpisodeContent = async (
         access={access}
         checkoutSessionId={checkoutSessionId}
         episodePublicId={episode.publicId}
+        freeUntil={episode.freeUntil}
         locale={locale}
         previewImages={previewImages}
         rating={series.ageRating}
         readingDirection={episode.readingDirection}
         seriesPublicId={series.publicId}
         tenantId={tenantId}
+        timeZone={timeZone}
       >
         <EpisodeAgeRatingConfirmation series={series} />
         <AgeRatingGateContent>
@@ -403,9 +405,11 @@ const EpisodeContent = async (
                 <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span className="tabular-nums">
                     <EpisodePrice
+                      freeUntil={episode.freeUntil}
                       locale={locale}
                       price={episode.price}
                       purchaseSurface={episode.purchaseSurface}
+                      timeZone={timeZone}
                     />
                   </span>
                   <Suspense fallback={null}>
