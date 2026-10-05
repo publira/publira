@@ -55,7 +55,7 @@ func (m sqlMarker) SearchLabels(context.Context, catalogsearch.Request) (catalog
 
 type env struct {
 	pg       *testutil.PostgresEnv
-	search   *testutil.OpenSearchEnv
+	engine   testutil.SearchEngine
 	platform *dbmodels.Queries
 	secrets  *secretcrypto.Manager
 	marker   sqlMarker
@@ -63,18 +63,25 @@ type env struct {
 	tenantID uuid.UUID
 }
 
-func newEnv(t *testing.T) *env {
+// newEnv is a test's database and engine, OpenSearch unless engine names
+// another.
+func newEnv(t *testing.T, engine ...testutil.SearchEngine) *env {
 	t.Helper()
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	search := testutil.StartOpenSearch(t)
+	search := testutil.SearchEngine{Name: string(platformsearch.EngineOpenSearch)}
+	if len(engine) > 0 {
+		search = engine[0]
+	} else {
+		search.URL = testutil.StartOpenSearch(t).URL
+	}
 	secrets := testEncryptor(t)
 	platform := pg.OpenPlatformDB(t)
 	marker := sqlMarker{id: uuid.New()}
 	tenant := pg.SeedTenant(t, "SEARCHSET001", "search-settings.example.com", "Search Settings Tenant")
 	return &env{
 		pg:       pg,
-		search:   search,
+		engine:   search,
 		platform: dbmodels.New(platform),
 		secrets:  secrets,
 		marker:   marker,
@@ -110,7 +117,7 @@ func (e *env) alias(t *testing.T) string {
 
 func (e *env) client(t *testing.T) *opensearchapi.Client {
 	t.Helper()
-	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: opensearch.Config{Addresses: []string{e.search.URL}, DiscoverNodesOnStart: new(false)}})
+	client, err := opensearchapi.NewClient(opensearchapi.Config{Client: opensearch.Config{Addresses: []string{e.engine.URL}, DiscoverNodesOnStart: new(false)}})
 	if err != nil {
 		t.Fatalf("client: %v", err)
 	}
@@ -158,12 +165,22 @@ func openSearch(url, alias string) platformsearch.Settings {
 	return platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: url, Index: alias}
 }
 
+// saved is the engine's settings on alias.
+func (e *env) saved(alias string) platformsearch.Settings {
+	return platformsearch.Settings{Engine: platformsearch.Engine(e.engine.Name), URL: e.engine.URL, Index: alias}
+}
+
 // A switch to OpenSearch does not leave the storefront answering from an empty
 // index: the search stays on SQL while the index is built from the database,
 // moves onto it once the build completes, and moves back to SQL as soon as SQL
 // is saved again.
 func TestTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T) {
-	e := newEnv(t)
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		testTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t, newEnv(t, engine))
+	})
+}
+
+func testTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T, e *env) {
 	series := e.pg.SeedSeries(t, e.tenantID, testutil.SeriesSeed{PublicID: "SEARCHSET002", Title: "Seed Garden", Published: true})
 	alias := e.alias(t)
 
@@ -171,7 +188,7 @@ func TestTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T) {
 		t.Fatalf("search before any save = %v, want the SQL engine's answer", got)
 	}
 
-	saved := e.save(t, openSearch(e.search.URL, alias))
+	saved := e.save(t, e.saved(alias))
 	if stored := platformsearch.FromConfig(saved); stored.State != platformsearch.Building || stored.Serving.Engine != platformsearch.EngineSQL {
 		t.Fatalf("saved = %+v, want a build due and the search still on sql", stored)
 	}
@@ -186,11 +203,11 @@ func TestTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T) {
 	if !result.Built || !result.Serving || result.Alias != alias {
 		t.Fatalf("Build = %+v, want the index built behind %s and served", result, alias)
 	}
-	if stored := e.stored(t); stored.State != platformsearch.Serving || stored.Serving.Engine != platformsearch.EngineOpenSearch || stored.Serving.Revision != saved.Revision {
+	if stored := e.stored(t); stored.State != platformsearch.Serving || stored.Serving.Engine != platformsearch.Engine(e.engine.Name) || stored.Serving.Revision != saved.Revision {
 		t.Fatalf("stored = %+v, want the search on the saved revision", stored)
 	}
 	if got := e.searchSeries(t, "Seed"); !slices.Equal(got, []uuid.UUID{series.ID}) {
-		t.Fatalf("search after the build = %v, want %v from OpenSearch", got, series.ID)
+		t.Fatalf("search after the build = %v, want %v from %s", got, series.ID, e.engine.Name)
 	}
 
 	// A pass with nothing to build does nothing.
@@ -250,11 +267,11 @@ func TestAFailedBuildLeavesTheSearchWhereItWas(t *testing.T) {
 func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 	e := newEnv(t)
 	first, second := e.alias(t), e.alias(t)
-	e.save(t, openSearch(e.search.URL, first))
+	e.save(t, openSearch(e.engine.URL, first))
 	if _, err := e.build(t); err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	e.save(t, openSearch(e.search.URL, second))
+	e.save(t, openSearch(e.engine.URL, second))
 
 	series := e.pg.SeedSeries(t, e.tenantID, testutil.SeriesSeed{PublicID: "SEARCHSET003", Title: "Seed Garden", Published: true})
 	outbox := e.pg.OpenOutboxDB(t)
@@ -271,7 +288,7 @@ func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 		if _, err := client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{alias}}); err != nil {
 			t.Fatalf("refresh %s: %v", alias, err)
 		}
-		backend, err := opensearchbackend.New(context.Background(), opensearchbackend.Config{URL: e.search.URL, Index: alias})
+		backend, err := opensearchbackend.New(context.Background(), opensearchbackend.Config{URL: e.engine.URL, Index: alias})
 		if err != nil {
 			t.Fatalf("New(%s): %v", alias, err)
 		}
@@ -354,23 +371,57 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 }
 
 // The Platform Console and publiractl search test ask the same question: what
-// the engine is and whether it has the plugins the index is built from.
+// the engine is and whether it has the plugins the index is built from. An
+// engine that answers as another product than the one named fails the test.
 func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
+	products := map[string]string{
+		"opensearch":    opensearchbackend.ProductOpenSearch,
+		"elasticsearch": opensearchbackend.ProductElasticsearch,
+	}
+	others := map[string]platformsearch.Engine{
+		"opensearch":    platformsearch.EngineElasticsearch,
+		"elasticsearch": platformsearch.EngineOpenSearch,
+	}
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		e := newEnv(t, engine)
+		tester := platformsearch.Tester{Secrets: e.secrets, Recorder: auditlog.New(e.platform, slog.Default())}
+		ctx := context.Background()
+
+		result, err := tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{
+			Settings: platformsearch.Settings{Engine: platformsearch.Engine(engine.Name), URL: engine.URL},
+		})
+		if err != nil {
+			t.Fatalf("Test: %v", err)
+		}
+		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" || !result.KuromojiPresent || !result.ICUPresent {
+			t.Fatalf("Test = %+v, want %s with both plugins", result, products[engine.Name])
+		}
+
+		result, err = tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{
+			Settings: platformsearch.Settings{Engine: others[engine.Name], URL: engine.URL},
+		})
+		if err != nil {
+			t.Fatalf("Test: %v", err)
+		}
+		if result.Reason != platformsearch.ReasonWrongProduct || result.Product != products[engine.Name] {
+			t.Fatalf("Test naming %s = %+v, want %s", others[engine.Name], result, platformsearch.ReasonWrongProduct)
+		}
+	})
+}
+
+// A test of an engine that does not answer, or of sql, which connects to
+// nothing, is reported as such, and every test that ran files its entry.
+func TestTheConnectionTestReportsAnEngineThatDoesNotAnswer(t *testing.T) {
 	e := newEnv(t)
-	recorder := auditlog.New(e.platform, slog.Default())
-	tester := platformsearch.Tester{Secrets: e.secrets, Recorder: recorder}
+	tester := platformsearch.Tester{Secrets: e.secrets, Recorder: auditlog.New(e.platform, slog.Default())}
 	ctx := context.Background()
 
 	result, err := tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{
-		Settings: platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: e.search.URL},
+		Settings: platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: e.engine.URL},
 	})
-	if err != nil {
-		t.Fatalf("Test: %v", err)
+	if err != nil || !result.Succeeded() {
+		t.Fatalf("Test = (%+v, %v), want it to succeed", result, err)
 	}
-	if !result.Succeeded() || result.Product != opensearchbackend.ProductOpenSearch || result.Version == "" || !result.KuromojiPresent || !result.ICUPresent {
-		t.Fatalf("Test = %+v, want OpenSearch with both plugins", result)
-	}
-
 	result, err = tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{
 		Settings: platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: "http://" + testutil.FreeAddr(t)},
 	})

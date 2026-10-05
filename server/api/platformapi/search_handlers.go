@@ -15,8 +15,9 @@ import (
 )
 
 var searchEngineProto = map[platformsearch.Engine]publirasplatformv1.PlatformSearchEngine{
-	platformsearch.EngineSQL:        publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_SQL,
-	platformsearch.EngineOpenSearch: publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+	platformsearch.EngineSQL:           publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_SQL,
+	platformsearch.EngineOpenSearch:    publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+	platformsearch.EngineElasticsearch: publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_ELASTICSEARCH,
 }
 
 var searchBuildStateProto = map[platformsearch.BuildState]publirasplatformv1.PlatformSearchBuildState{

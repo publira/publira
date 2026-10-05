@@ -157,7 +157,7 @@ func TestDBUpdatePlatformSearchSettingsRefusesAnUnknownEngineAndAStaleRevision(t
 	unknown.Engine = publirasplatformv1.PlatformSearchEngine(99)
 	_, err := updateSearchSettings(client, operator, unknown)
 	assertFieldViolation(t, err, platformsearch.FieldEngine)
-	if !strings.Contains(err.Error(), "sql, opensearch") {
+	if !strings.Contains(err.Error(), "sql, opensearch, elasticsearch") {
 		t.Fatalf("error = %v, want every engine named", err)
 	}
 
@@ -225,4 +225,21 @@ func countAuditActions(t *testing.T, pg *testutil.PostgresEnv, action string) in
 		t.Fatalf("count audit entries: %v", err)
 	}
 	return n
+}
+
+// Elasticsearch is offered wherever the engine is chosen, so the API saves it
+// and answers it back as the value it was saved as.
+func TestDBUpdatePlatformSearchSettingsSavesElasticsearch(t *testing.T) {
+	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
+
+	req := searchUpdateRequest(0)
+	req.Engine = publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_ELASTICSEARCH
+	saved, err := updateSearchSettings(client, operator, req)
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings: %v", err)
+	}
+	if saved.GetEngine() != publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_ELASTICSEARCH ||
+		saved.GetBuildState() != publirasplatformv1.PlatformSearchBuildState_PLATFORM_SEARCH_BUILD_STATE_BUILDING {
+		t.Fatalf("saved = %+v, want elasticsearch with its build due", saved)
+	}
 }

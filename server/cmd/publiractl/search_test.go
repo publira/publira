@@ -35,7 +35,7 @@ func TestSearchSetRefusesAnUnknownEngine(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1; stderr:\n%s", code, stderr)
 	}
-	if !strings.Contains(stderr, "--engine") || !strings.Contains(stderr, "sql, opensearch") {
+	if !strings.Contains(stderr, "--engine") || !strings.Contains(stderr, "sql, opensearch, elasticsearch") {
 		t.Fatalf("stderr = %q, want the flag and every engine named", stderr)
 	}
 }
@@ -140,5 +140,45 @@ func TestSearchSetStoresThePasswordEncrypted(t *testing.T) {
 	show := mustSearchCommand(t, "", "show")
 	if strings.Contains(show, testSecretValue) || !strings.Contains(show, "Password:") || !strings.Contains(show, "saved") {
 		t.Fatalf("show = %q, want the password reported as saved and never printed", show)
+	}
+}
+
+// Elasticsearch is saved, tested, and rebuilt the way OpenSearch is, and the
+// test names the product that answered.
+func TestSearchReindexBuildsTheIndexOnElasticsearch(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	search := testutil.StartElasticsearch(t)
+	alias := "catalog-publiractl-" + uuid.NewString()
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", pg.ContentStatsURL)
+	t.Cleanup(func() {
+		req, err := http.NewRequest(http.MethodDelete, search.URL+"/"+alias+"-*", nil)
+		if err == nil {
+			if resp, err := http.DefaultClient.Do(req); err == nil {
+				_ = resp.Body.Close()
+			}
+		}
+	})
+	tenant := pg.SeedTenant(t, "SEARCHCTL101", "search-es.example.com", "Search Tenant")
+	pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SEARCHCTL102", Title: "Seed Garden", Published: true})
+
+	mustSearchCommand(t, "", "set", "--engine", "elasticsearch", "--url", search.URL, "--index", alias)
+	if test := mustSearchCommand(t, "", "test"); !strings.Contains(test, "Elasticsearch") {
+		t.Fatalf("test = %q, want Elasticsearch named", test)
+	}
+	stdout := mustSearchCommand(t, "", "reindex")
+	if !strings.HasPrefix(stdout, "Rebuilt the catalog index; "+alias+" now names "+alias+"-") {
+		t.Fatalf("reindex stdout = %q", stdout)
+	}
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "elasticsearch at "+search.URL) || !strings.Contains(show, "none due") {
+		t.Fatalf("show after the reindex = %q, want the search on elasticsearch", show)
+	}
+
+	// The same node saved as OpenSearch fails its test, naming the product.
+	mustSearchCommand(t, "", "set", "--engine", "opensearch", "--url", search.URL, "--index", alias)
+	code, stdout, stderr := searchCommand(t, "", "test")
+	if code != 1 || !strings.Contains(stdout, "Elasticsearch") || !strings.Contains(stderr, "SEARCH_TEST_WRONG_PRODUCT") {
+		t.Fatalf("test of opensearch on Elasticsearch: exit code = %d, stdout = %q, stderr = %q", code, stdout, stderr)
 	}
 }

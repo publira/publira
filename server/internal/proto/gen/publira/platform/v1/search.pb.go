@@ -34,6 +34,9 @@ const (
 	// OpenSearch with the analysis-kuromoji and analysis-icu plugins, ranked by
 	// relevance, matching a title written in kanji from a query typed in kana.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH PlatformSearchEngine = 2
+	// Elasticsearch with the same two plugins, searched and written exactly as
+	// OpenSearch is: everything the backend sends is common to both.
+	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_ELASTICSEARCH PlatformSearchEngine = 3
 )
 
 // Enum value maps for PlatformSearchEngine.
@@ -42,11 +45,13 @@ var (
 		0: "PLATFORM_SEARCH_ENGINE_UNSPECIFIED",
 		1: "PLATFORM_SEARCH_ENGINE_SQL",
 		2: "PLATFORM_SEARCH_ENGINE_OPENSEARCH",
+		3: "PLATFORM_SEARCH_ENGINE_ELASTICSEARCH",
 	}
 	PlatformSearchEngine_value = map[string]int32{
-		"PLATFORM_SEARCH_ENGINE_UNSPECIFIED": 0,
-		"PLATFORM_SEARCH_ENGINE_SQL":         1,
-		"PLATFORM_SEARCH_ENGINE_OPENSEARCH":  2,
+		"PLATFORM_SEARCH_ENGINE_UNSPECIFIED":   0,
+		"PLATFORM_SEARCH_ENGINE_SQL":           1,
+		"PLATFORM_SEARCH_ENGINE_OPENSEARCH":    2,
+		"PLATFORM_SEARCH_ENGINE_ELASTICSEARCH": 3,
 	}
 )
 
@@ -713,7 +718,9 @@ type TestPlatformSearchConnectionResponse struct {
 	// A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
 	// never carries the engine's own message.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The product and version the engine reported, empty when it did not answer.
+	// The product and version the engine reported, empty when it did not
+	// answer: "OpenSearch" or "Elasticsearch", or empty for an engine that names
+	// neither. A product other than the one the request names fails the test.
 	Product string `protobuf:"bytes,3,opt,name=product,proto3" json:"product,omitempty"`
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	// Whether every node has the plugin installed. Both are false when the
@@ -846,11 +853,12 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\aproduct\x18\x03 \x01(\tR\aproduct\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion\x12>\n" +
 	"\x1banalysis_kuromoji_installed\x18\x05 \x01(\bR\x19analysisKuromojiInstalled\x124\n" +
-	"\x16analysis_icu_installed\x18\x06 \x01(\bR\x14analysisIcuInstalled*\x85\x01\n" +
+	"\x16analysis_icu_installed\x18\x06 \x01(\bR\x14analysisIcuInstalled*\xaf\x01\n" +
 	"\x14PlatformSearchEngine\x12&\n" +
 	"\"PLATFORM_SEARCH_ENGINE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPLATFORM_SEARCH_ENGINE_SQL\x10\x01\x12%\n" +
-	"!PLATFORM_SEARCH_ENGINE_OPENSEARCH\x10\x02*\xc2\x01\n" +
+	"!PLATFORM_SEARCH_ENGINE_OPENSEARCH\x10\x02\x12(\n" +
+	"$PLATFORM_SEARCH_ENGINE_ELASTICSEARCH\x10\x03*\xc2\x01\n" +
 	"\x18PlatformSearchBuildState\x12+\n" +
 	"'PLATFORM_SEARCH_BUILD_STATE_UNSPECIFIED\x10\x00\x12'\n" +
 	"#PLATFORM_SEARCH_BUILD_STATE_SERVING\x10\x01\x12(\n" +

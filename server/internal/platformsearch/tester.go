@@ -166,7 +166,8 @@ func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings 
 
 // products names the product each engine has to report itself as.
 var products = map[Engine]string{
-	EngineOpenSearch: opensearchbackend.ProductOpenSearch,
+	EngineOpenSearch:    opensearchbackend.ProductOpenSearch,
+	EngineElasticsearch: opensearchbackend.ProductElasticsearch,
 }
 
 func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {

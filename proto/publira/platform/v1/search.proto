@@ -17,6 +17,9 @@ enum PlatformSearchEngine {
   // OpenSearch with the analysis-kuromoji and analysis-icu plugins, ranked by
   // relevance, matching a title written in kanji from a query typed in kana.
   PLATFORM_SEARCH_ENGINE_OPENSEARCH = 2;
+  // Elasticsearch with the same two plugins, searched and written exactly as
+  // OpenSearch is: everything the backend sends is common to both.
+  PLATFORM_SEARCH_ENGINE_ELASTICSEARCH = 3;
 }
 
 // Where a saved configuration stands against the one the search answers from.
@@ -134,7 +137,9 @@ message TestPlatformSearchConnectionResponse {
   // A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
   // never carries the engine's own message.
   string reason = 2;
-  // The product and version the engine reported, empty when it did not answer.
+  // The product and version the engine reported, empty when it did not
+  // answer: "OpenSearch" or "Elasticsearch", or empty for an engine that names
+  // neither. A product other than the one the request names fails the test.
   string product = 3;
   string version = 4;
   // Whether every node has the plugin installed. Both are false when the
