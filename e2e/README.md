@@ -39,6 +39,8 @@ This always tears down app processes and compose volumes, including on failure o
 | Command | Purpose |
 | --- | --- |
 | `task e2e:prepare` | Build server binaries, the web apps, and email-renderer; install Playwright Chromium. |
+| `task e2e:build` / `task e2e:browsers` | The two halves of `prepare`. |
+| `task e2e:run-built` | The lifecycle of `task e2e` without the build, on what `task e2e:build` left in the tree. |
 | `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, the Traefik edge, and the screenshot browser only. |
 | `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, name the stand-in's disposable-domain list in the platform policy, create the S3 bucket and upload the seed's images (`task storage:seed`), and pin the timestamps the screenshot baseline records. |
 | `task e2e:start-apps` | Start the server, email-renderer, the worker, and the three web apps in the background. |
@@ -107,12 +109,13 @@ Host-based URL constants are in `src/urls.ts`. web-host resolves the tenant thro
 
 ### Groups
 
-Every project belongs to one of four groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)):
+Every project belongs to one of five groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)):
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
 | `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
-| `main` | `web-host`, `web-admin`, `web-platform`, `catalog-search` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across three stacks. |
+| `main` | `web-host`, `web-platform`, `catalog-search` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
+| `admin` | `web-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
 | `performance` | `viewer-performance` | A machine with nothing else running on it. |
 
@@ -128,7 +131,7 @@ A dependency between projects of two groups only orders work on a stack they sha
 
 ### Order on one stack
 
-The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the `main` projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
+The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the `main` and `admin` projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
 
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. In an `exclusive` group run the same chain starts at `catalog-outage`. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
@@ -240,8 +243,9 @@ Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering
 Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
-- A matrix with one entry per [group](#groups), and three for `main`, which runs as `--shard=1/3` to `--shard=3/3`. Every entry runs `task e2e:run` with `PUBLIRA_E2E_GROUP` set, so it builds, seeds, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
-- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-main-2`.
+- **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
+- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
+- Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.
 - Every entry also uploads a Playwright blob report, `e2e-blob-<entry>`. When an entry fails, **Test / E2E Report** merges them into one HTML report, `e2e-report`, whose tests carry the tag of the group they ran in.
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.
 - The `screenshots` entry renders in the browser image compose builds.

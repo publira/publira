@@ -28,7 +28,17 @@ tasks:
     deps:
       - task: prepare
     cmds:
-      # Arguments after `--` reach Playwright, the way CI passes `--shard`.
+      # Arguments after `--` reach Playwright.
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
+
+  run-built:
+    desc: The lifecycle of run on what `task e2e:build` already built, without building again
+    deps:
+      - task: browsers
+    cmds:
+      # CI's E2E entries, which receive the build from one job rather than
+      # each building the same binaries and apps. Arguments after `--` reach
+      # Playwright, the way they pass `--shard`.
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
   search:
@@ -47,8 +57,18 @@ tasks:
   prepare:
     desc: Build server binaries, web-host, web-admin, web-platform, email-renderer, and install Playwright Chromium
     cmds:
+      - task: build
+      - task: browsers
+
+  build:
+    desc: Build server binaries, web-host, web-admin, web-platform, and email-renderer
+    cmds:
       - task: :server:build
       - pnpm build --filter @publira/web-host --filter @publira/web-admin --filter @publira/web-platform --filter @publira/email-renderer
+
+  browsers:
+    desc: Install Playwright Chromium
+    cmds:
       # CI: install OS libs (--with-deps needs root). Local: browser only
       # (run `pnpm --dir e2e exec playwright install-deps chromium` once if needed).
       - |

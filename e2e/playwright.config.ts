@@ -216,25 +216,6 @@ const mainProjects: Project[] = [
   },
   {
     dependencies: screenshotDependencies,
-    name: "web-admin",
-    testIgnore: [
-      processIsolatedSpecs,
-      commentModerationSpecs,
-      ageVerificationSpecs,
-      adminMfaSignInSpecs,
-      performanceSpecs,
-      screenshotSpecs,
-      serverLogSpecs,
-    ],
-    testMatch: [/admin\./u],
-    timeout: 120_000,
-    use: {
-      ...desktopChrome,
-      baseURL: WEB_ADMIN_BASE_URL,
-    },
-  },
-  {
-    dependencies: screenshotDependencies,
     name: "web-platform",
     testIgnore: [
       processIsolatedSpecs,
@@ -253,6 +234,31 @@ const mainProjects: Project[] = [
     use: {
       ...desktopChrome,
       baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+];
+
+// The slowest of the ordinary projects, by more than the other three
+// together, so a group of its own: Playwright shards by test count, which
+// only splits a run evenly when its tests take about as long as each other.
+const adminProjects: Project[] = [
+  {
+    dependencies: screenshotDependencies,
+    name: "web-admin",
+    testIgnore: [
+      processIsolatedSpecs,
+      commentModerationSpecs,
+      ageVerificationSpecs,
+      adminMfaSignInSpecs,
+      performanceSpecs,
+      screenshotSpecs,
+      serverLogSpecs,
+    ],
+    testMatch: [/admin\./u],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
     },
   },
 ];
@@ -500,6 +506,7 @@ const performanceProjects: Project[] = [
  * the whole graph, which is what `task e2e` does.
  */
 const groups = {
+  admin: adminProjects,
   exclusive: exclusiveProjects,
   main: mainProjects,
   performance: performanceProjects,
@@ -532,6 +539,7 @@ const selectedProjects =
     ? [
         ...screenshotProjects,
         ...mainProjects,
+        ...adminProjects,
         ...exclusiveProjects,
         ...performanceProjects,
       ]
