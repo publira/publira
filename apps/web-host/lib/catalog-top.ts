@@ -16,6 +16,7 @@ import {
 } from "./catalog";
 import type {
   CreatorCredit,
+  EpisodeItem,
   EyeCatchImageVariant,
   LabelListItem,
   RankedSeriesItem,
@@ -34,6 +35,8 @@ export interface CatalogTopEpisodeItem {
    * tells one row from the next.
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
+  /** The end of the free reading period open on it, as on `EpisodeItem`. */
+  freeUntil?: string;
   publishedAt: string;
   seriesId: string;
   seriesTitle: string;
@@ -131,12 +134,10 @@ const byNewestDateDesc = (
 interface SeriesDetailRow {
   ageRating?: RestrictedAgeRating;
   credits: CreatorCredit[];
-  episodes: {
-    orderIndex: number;
-    publicId: string;
-    publishedAt: string;
-    title: string;
-  }[];
+  episodes: Pick<
+    EpisodeItem,
+    "freeUntil" | "orderIndex" | "publicId" | "publishedAt" | "title"
+  >[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   publicId: string;
   title: string;
@@ -496,6 +497,7 @@ export const getCatalogTopNewEpisodes = async (
                 episodeOrderIndex: episode.orderIndex,
                 episodeTitle: episode.title,
                 eyeCatchImageVariants: row.eyeCatchImageVariants,
+                ...(episode.freeUntil ? { freeUntil: episode.freeUntil } : {}),
                 publishedAt: episode.publishedAt,
                 seriesId: row.publicId,
                 seriesTitle: row.title,

@@ -14,15 +14,26 @@ vi.mock("#components/locale-context", () => ({
 }));
 
 vi.mock("#components/message", () => ({
-  Message: ({ message }: { message: string }) => message,
+  Message: ({
+    message,
+    values,
+  }: {
+    message: string;
+    values?: Record<string, string>;
+  }) => (values?.date ? `${message} ${values.date}` : message),
 }));
 
 afterEach(cleanup);
 
 const props = {
   episodePublicId: "EPISODE_001",
+  locale: "en",
   seriesPublicId: "SERIES_001",
-};
+  timeZone: "Asia/Tokyo",
+} as const;
+
+/** 23:59 on Sunday 11 October in Tokyo. */
+const FREE_UNTIL = "2026-10-11T14:59:00Z";
 
 describe("EpisodeAgeGate", () => {
   it("Sends a guest to sign in", () => {
@@ -69,5 +80,28 @@ describe("EpisodeAgeGate", () => {
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
       ["host.episode.gate.login", "host.episode.to_series_detail"]
     );
+  });
+
+  it("Says until when the episode is free while proving the age can still open it", () => {
+    render(
+      <EpisodeAgeGate
+        {...props}
+        freeUntil={FREE_UNTIL}
+        hasBirthDate={false}
+        signedIn={false}
+      />
+    );
+
+    expect(
+      screen.getByText(/^host\.common\.free_until Sun, Oct 11, 11:59/u)
+    ).toBeDefined();
+  });
+
+  it("Keeps the free period from a reader who is too young to be let in by it", () => {
+    render(
+      <EpisodeAgeGate {...props} freeUntil={FREE_UNTIL} hasBirthDate signedIn />
+    );
+
+    expect(screen.queryByText(/host\.common\.free_until/u)).toBeNull();
   });
 });

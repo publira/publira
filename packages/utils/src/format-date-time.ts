@@ -163,6 +163,48 @@ export const formatDate = (
   );
 };
 
+const weekdayDateTimeFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Format an absolute timestamp as the weekday, the day, and the time it falls
+ * on in `timeZone`: `Sun, Oct 11, 11:59 PM`, `10月11日(日) 23:59`.
+ *
+ * Made for a deadline a reader plans around, such as the end of a free
+ * reading period. The weekday is what they plan by ("until Sunday"), and the
+ * day beside it keeps the weekday from naming next week's Sunday as well.
+ * The year is left out: a deadline shown to a reader is days or weeks ahead,
+ * and the year would only lengthen a badge that has to fit on a list row.
+ *
+ * Invalid or empty input returns `options.fallback` (default: the original
+ * `value`), the same contract as {@link formatDateTime}.
+ */
+export const formatDateTimeWithWeekday = (
+  value: string,
+  options: FormatDateTimeOptions
+): string => {
+  const fallback = options.fallback ?? value;
+  const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
+  const intlLocale = toIntlLocale(options.locale);
+
+  const instant = parseInstant(value);
+  if (!instant) {
+    return fallback;
+  }
+
+  return getCachedFormatter(
+    weekdayDateTimeFormatterCache,
+    intlLocale,
+    timeZone,
+    {
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      weekday: "short",
+    }
+  ).format(instant.epochMilliseconds);
+};
+
 /**
  * Absolute instant → `datetime-local` wall clock (`YYYY-MM-DDTHH:mm`) in `timeZone`.
  * Does not use the host environment's local time zone.

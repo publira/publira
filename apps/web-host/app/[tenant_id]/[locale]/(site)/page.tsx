@@ -21,6 +21,7 @@ import { AgeRatedVisibility } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { FreeUntilBadge } from "#components/free-until-badge";
 import { GenreChips } from "#components/genre-chips";
 import { JsonLd } from "#components/json-ld";
 import { LocaleLink } from "#components/locale-link";
@@ -846,20 +847,31 @@ const NewEpisodesSection = async () => {
                   variants={episode.eyeCatchImageVariants}
                 />
                 <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
-                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-10" />}
-                      >
-                        <Message
-                          message="host.common.episode_number"
-                          values={{ number: episode.episodeOrderIndex }}
-                        />
-                      </Suspense>
+                  {/* The badge of a free period takes a line of its own, so
+                  that on a phone it does not squeeze the title to nothing. */}
+                  <span className="grid min-w-0 flex-1 justify-items-start gap-1">
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-10" />}
+                        >
+                          <Message
+                            message="host.common.episode_number"
+                            values={{ number: episode.episodeOrderIndex }}
+                          />
+                        </Suspense>
+                      </span>
+                      <span className="truncate underline-offset-4 group-hover:underline">
+                        {episode.episodeTitle}
+                      </span>
                     </span>
-                    <span className="truncate underline-offset-4 group-hover:underline">
-                      {episode.episodeTitle}
-                    </span>
+                    {episode.freeUntil ? (
+                      <FreeUntilBadge
+                        freeUntil={episode.freeUntil}
+                        locale={locale}
+                        timeZone={timeZone}
+                      />
+                    ) : null}
                   </span>
                   <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
                     <span className="truncate">{episode.seriesTitle}</span>

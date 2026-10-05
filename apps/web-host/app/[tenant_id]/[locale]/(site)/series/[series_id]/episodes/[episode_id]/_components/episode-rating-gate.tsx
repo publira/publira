@@ -26,12 +26,14 @@ export const EpisodeRatingGate = async ({
   checkoutSessionId,
   children,
   episodePublicId,
+  freeUntil,
   locale,
   previewImages,
   rating,
   readingDirection,
   seriesPublicId,
   tenantId,
+  timeZone,
 }: {
   /** The anonymous read's answer, which is the same for every reader. */
   access: EpisodeAccessState;
@@ -42,6 +44,8 @@ export const EpisodeRatingGate = async ({
    */
   children: ReactNode;
   episodePublicId: string;
+  /** RFC3339 end of the free reading period open on the episode, if any. */
+  freeUntil?: string;
   locale: Locale;
   /** The blurred opening pages the tenant's rule is drawn over. */
   previewImages: EpisodeImageItem[];
@@ -49,6 +53,8 @@ export const EpisodeRatingGate = async ({
   readingDirection: EpisodeDetail["readingDirection"];
   seriesPublicId: string;
   tenantId: string;
+  /** The tenant's time zone, which the end of a free period is written in. */
+  timeZone: string;
 }) => {
   // The anonymous read answers `age_restricted` for everyone on a covered
   // series, so only this reader's own read may skip the confirmation.
@@ -70,9 +76,12 @@ export const EpisodeRatingGate = async ({
       >
         <EpisodeAgeGate
           episodePublicId={episodePublicId}
+          freeUntil={freeUntil}
           hasBirthDate={ageRestriction.hasBirthDate}
+          locale={locale}
           seriesPublicId={seriesPublicId}
           signedIn={ageRestriction.signedIn}
+          timeZone={timeZone}
         />
       </EpisodeGateFrame>
     );

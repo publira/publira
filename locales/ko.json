@@ -3104,6 +3104,7 @@
       "find_series": "시리즈 둘러보기",
       "free": "무료",
       "free_episode_count": "무료 {$count}화",
+      "free_until": "{$date}까지 무료",
       "mark_all_read": "모두 읽음으로 표시",
       "mark_read": "읽음으로 표시",
       "next_page": "다음 페이지",

@@ -3104,6 +3104,7 @@
       "find_series": "Browse series",
       "free": "Free",
       "free_episode_count": "{$count} free episodes",
+      "free_until": "Free until {$date}",
       "mark_all_read": "Mark all as read",
       "mark_read": "Mark as read",
       "next_page": "Next page",

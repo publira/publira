@@ -14,6 +14,7 @@ export {
   endOfDayIsoString,
   formatDate,
   formatDateTime,
+  formatDateTimeWithWeekday,
   formatPlainDate,
   formatPlainYearMonth,
   formatRelativeTime,
