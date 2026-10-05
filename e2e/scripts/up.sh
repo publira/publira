@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Start the stack's containers: every service, or only the ones named.
+#   up.sh [service...]
+# A run that does not use one leaves it out rather than waiting for it. The
+# mobile suite, which drives no web app, starts neither traefik nor the
+# browser, whose image is the one service built rather than pulled.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -40,9 +45,9 @@ http:
           - url: "http://localhost:${PUBLIRA_E2E_PUBLIC_API_PORT}"
 EOF
 
-e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}"
+e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}${*:+ (${*})}"
 # --wait blocks until every service healthcheck (postgres / redis / rustfs) is healthy.
 # --build so an edit to browser/Dockerfile reaches the running browser; every
 # other service pulls a pinned image and has nothing to build.
-compose up -d --wait --build
+compose up -d --wait --build "$@"
 e2e_log "compose dependencies are up"

@@ -1,0 +1,52 @@
+name: Set up the Android build
+description: Install Flutter, the JDK, and Task, restore the Gradle cache, and install the app's dependencies, for a job that builds the Android app.
+
+outputs:
+  gradle-cache-key:
+    description: The key the Gradle cache is saved under.
+    value: ${{ steps.gradle.outputs.cache-primary-key }}
+  gradle-cache-hit:
+    description: Whether the Gradle cache was restored from that exact key.
+    value: ${{ steps.gradle.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup / Flutter
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: bash scripts/setup-flutter.sh
+
+    - name: Setup / Java
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: temurin
+        java-version: "25.0.4+101.0.LTS"
+
+    # The wrapper fetches gradle-*-bin.zip from services.gradle.org, the only
+    # third-party host these jobs still depend on at build time; restoring it
+    # removes the request instead of retrying it. `restore-keys` keeps the
+    # distribution and most dependencies across a build-file edit, since the
+    # exact key only survives while none of the hashed inputs change.
+    #
+    # Restored only: `Test / Mobile E2E (device)` saves it.
+    - name: Cache / Gradle
+      id: gradle
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.gradle/wrapper/dists
+          ~/.gradle/caches
+        key: gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('mobile/android/gradle/wrapper/gradle-wrapper.properties', 'mobile/android/**/*.gradle.kts', 'mobile/android/gradle.properties', 'mobile/pubspec.lock') }}
+        restore-keys: |
+          gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
+
+    - name: Install Task
+      uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+      with:
+        version: ${{ env.TASK_VERSION }}
+
+    - name: Dependencies / Install
+      shell: bash
+      run: task mobile:deps
