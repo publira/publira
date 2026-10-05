@@ -618,12 +618,14 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 			return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
 		deleted = row
-		// Only a window that was open is holding a cached page open, or a
-		// search document saying a free episode is. One still ahead of its
-		// start never reached either, and one already over was closed by
-		// apply-free-windows when it ended.
-		window := freeWindowPeriod{startsAt: row.StartsAt, endsAt: row.EndsAt}
-		if !window.openAt(time.Now()) {
+		// Only a window that has started and that apply-free-windows has not
+		// closed yet is holding a cached page open, or a search document saying
+		// a free episode is. One still ahead of its start never reached either.
+		// One already over is closed only once the batch has applied its end:
+		// past ends_at but not yet applied, deleting the row takes away the
+		// boundary the batch would have acted on, so this is the last chance
+		// to ask for what it would have.
+		if row.StartsAt.After(time.Now()) || row.EndRevalidatedAt.Valid {
 			return nil, nil
 		}
 		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {

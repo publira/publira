@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -116,6 +118,27 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 		}))
 		return err
 	})
+	// A window past its end is still owed a sync until apply-free-windows has
+	// applied that end, because deleting the row takes the boundary away from
+	// the batch. Once the end is applied, the document no longer counts it.
+	deleteWindow := func(windowID uuid.UUID) func() error {
+		return func() error {
+			_, err := client.DeleteEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+				Tenant:       tenant.tenantContext(),
+				FreeWindowId: windowID.String(),
+			}))
+			return err
+		}
+	}
+	episodeUUID := uuid.MustParse(episodeID)
+	unapplied := env.PG.SeedEpisodeFreeWindow(t, tenant.Tenant.ID, episodeUUID, time.Now().Add(-3*time.Hour), time.Now().Add(-2*time.Hour))
+	step("DeleteEpisodeFreeWindow over but not yet closed by the batch", 1, deleteWindow(unapplied))
+	applied := env.PG.SeedEpisodeFreeWindow(t, tenant.Tenant.ID, episodeUUID, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episode_free_windows SET start_revalidated_at = now(), end_revalidated_at = now() WHERE id = $1", applied); err != nil {
+		t.Fatalf("apply the window's boundaries: %v", err)
+	}
+	step("DeleteEpisodeFreeWindow over and closed by the batch", 0, deleteWindow(applied))
+
 	step("CreateSeriesFreeWindows open at once", 1, func() error {
 		_, err := client.CreateSeriesFreeWindows(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
 			Tenant:   tenant.tenantContext(),

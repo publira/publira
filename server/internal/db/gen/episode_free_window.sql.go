@@ -88,6 +88,7 @@ RETURNING w.id,
     w.episode_id,
     w.starts_at,
     w.ends_at,
+    w.end_revalidated_at,
     (
         SELECT e.series_id
         FROM episodes e
@@ -101,18 +102,20 @@ type DeleteEpisodeFreeWindowByIDForTenantParams struct {
 }
 
 type DeleteEpisodeFreeWindowByIDForTenantRow struct {
-	ID        uuid.UUID `json:"id"`
-	PublicID  string    `json:"public_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-	StartsAt  time.Time `json:"starts_at"`
-	EndsAt    time.Time `json:"ends_at"`
-	SeriesID  uuid.UUID `json:"series_id"`
+	ID               uuid.UUID    `json:"id"`
+	PublicID         string       `json:"public_id"`
+	EpisodeID        uuid.UUID    `json:"episode_id"`
+	StartsAt         time.Time    `json:"starts_at"`
+	EndsAt           time.Time    `json:"ends_at"`
+	EndRevalidatedAt sql.NullTime `json:"end_revalidated_at"`
+	SeriesID         uuid.UUID    `json:"series_id"`
 }
 
 // Returns the deleted row so a concurrent second delete is told apart from a
 // window that never existed. What the caller audits and revalidates comes
-// from the read it did first, and the series is the one whose search document
-// a window that was open leaves stale.
+// from the read it did first. end_revalidated_at says whether apply-free-windows
+// has already closed the window, and the series is the one whose search
+// document a window it has not closed yet leaves stale.
 func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByIDForTenant, arg.TenantID, arg.ID)
 	var i DeleteEpisodeFreeWindowByIDForTenantRow
@@ -122,6 +125,7 @@ func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg 
 		&i.EpisodeID,
 		&i.StartsAt,
 		&i.EndsAt,
+		&i.EndRevalidatedAt,
 		&i.SeriesID,
 	)
 	return i, err

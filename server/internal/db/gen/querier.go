@@ -304,8 +304,9 @@ type Querier interface {
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
 	// window that never existed. What the caller audits and revalidates comes
-	// from the read it did first, and the series is the one whose search document
-	// a window that was open leaves stale.
+	// from the read it did first. end_revalidated_at says whether apply-free-windows
+	// has already closed the window, and the series is the one whose search
+	// document a window it has not closed yet leaves stale.
 	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
