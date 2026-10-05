@@ -141,6 +141,7 @@ class EpisodeDetail {
   const EpisodeDetail({
     required this.episode,
     required this.seriesId,
+    this.seriesInternalId = '',
     required this.seriesTitle,
     required this.access,
     required this.images,
@@ -159,6 +160,11 @@ class EpisodeDetail {
 
   final EpisodeItem episode;
   final String seriesId;
+
+  /// Internal id of the series, which the reads about the reader's own
+  /// standing in it take. Empty on a copy read off the device.
+  final String seriesInternalId;
+
   final String seriesTitle;
   final EpisodeAccess access;
 

@@ -19,6 +19,22 @@ const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
 /// the tenant's last active tenant admin.
 const lastTenantAdminReason = 'LAST_TENANT_ADMIN';
 
+/// The ErrorInfo reason `WaitFreeService` refuses a series with when its
+/// wait-for-free rule is off.
+const waitFreeNotOfferedReason = 'WAIT_FREE_NOT_OFFERED';
+
+/// The ErrorInfo reason `UseTicket` refuses with while the reader's next
+/// ticket is not ready.
+const waitFreeNotRechargedReason = 'WAIT_FREE_NOT_RECHARGED';
+
+/// The ErrorInfo reason `UseTicket` refuses one of the latest episodes with,
+/// which the rule keeps a ticket off.
+const waitFreeEpisodeExcludedReason = 'WAIT_FREE_EPISODE_EXCLUDED';
+
+/// The ErrorInfo reason `UseTicket` refuses an episode with that is free to
+/// everyone right now.
+const waitFreeEpisodeFreeReason = 'WAIT_FREE_EPISODE_FREE';
+
 /// The fields the `google.rpc.BadRequest` details of a Connect error body's
 /// `details` name.
 ///

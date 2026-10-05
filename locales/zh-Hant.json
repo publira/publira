@@ -3802,7 +3802,8 @@
       "open_link_failed": "無法開啟連結。",
       "retry": "重試",
       "series_count": "已發布{$count}部系列",
-      "sign_in": "登入"
+      "sign_in": "登入",
+      "free_until": "免費至{$date}"
     },
     "comments": {
       "approval_notice": "留言經審核通過後會顯示在這裡。",
@@ -4219,7 +4220,16 @@
       "progress": "閱讀進度",
       "reload": "重新載入",
       "save_expired": "本章儲存的副本已過期。請在連線狀態下重新開啟。",
-      "title": "章節"
+      "title": "章節",
+      "wait_free": {
+        "ready": "您可以使用本系列的免費券。使用後可閱讀本章至{$date}。",
+        "use": "使用免費券免費閱讀",
+        "recharging": "下一張免費券將在{$time}後可用。",
+        "excluded": "這是最新的章節之一，無法使用免費券閱讀。",
+        "guest": "本系列等待即可免費閱讀：登入後可使用免費券閱讀本章。",
+        "state_failed": "無法確認您在本系列的免費券。",
+        "use_failed": "無法使用免費券。請稍後再試。"
+      }
     },
     "auth": {
       "check_spam": "如果沒有收到郵件，請查看垃圾郵件資料夾。",

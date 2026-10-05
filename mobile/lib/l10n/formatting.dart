@@ -47,6 +47,16 @@ extension AppMessagesFormatting on AppMessages {
   String formatDateTime(DateTime value) =>
       DateFormat.yMMMd(intlLocale).add_jm().format(value.toLocal());
 
+  /// [value] as its weekday, month, day, and time, with no year — `Sun, Oct
+  /// 12, 11:59 PM` under `en-US` — in the zone the device is set to, for the
+  /// reason [formatDateTime] gives.
+  ///
+  /// It is for an instant close enough that the year goes without saying and
+  /// the day of the week is what a reader plans by, such as the end of a free
+  /// window.
+  String formatDateTimeWithWeekday(DateTime value) =>
+      DateFormat.MMMEd(intlLocale).add_jm().format(value.toLocal());
+
   /// A calendar date with no instant behind it, such as a birth date, written
   /// the way this locale writes one. [date] is read by its fields, so no zone
   /// can move it onto the day before.

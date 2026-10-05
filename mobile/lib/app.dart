@@ -64,6 +64,8 @@ import 'package:publira/tenant/tenant_theme.dart';
 import 'package:publira/typography/autospaced_snack_bar_action.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/screen_captures.dart';
+import 'package:publira/wait_free/http_wait_free_repository.dart';
+import 'package:publira/wait_free/wait_free_repository.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -85,6 +87,7 @@ class PubliraApp extends StatefulWidget {
     this.purchases,
     this.checkoutLauncher,
     this.storePurchaser,
+    this.waitFree,
     this.offline,
     this.downloader,
     this.progress,
@@ -178,6 +181,7 @@ class PubliraApp extends StatefulWidget {
       tenants: tenants,
       store: purchaseStore,
     );
+    final waitFree = HttpWaitFreeRepository(client: client, tenants: tenants);
     final catalog = OfflineCatalogRepository(
       origin: HttpCatalogRepository(
         config: resolved,
@@ -187,6 +191,7 @@ class PubliraApp extends StatefulWidget {
       library: library,
       readerId: () => auth.session?.userPublicId ?? '',
       imageRequestHeaders: resolved.publicImageRequestHeaders,
+      waitFree: waitFree,
     );
     return PubliraApp(
       key: key,
@@ -230,6 +235,7 @@ class PubliraApp extends StatefulWidget {
               store: purchaseStore,
               repository: purchases,
             ),
+      waitFree: waitFree,
       offline: library,
       downloader: EpisodeDownloader(catalog: catalog, library: library),
       progress: catalog.outbox,
@@ -341,6 +347,13 @@ class PubliraApp extends StatefulWidget {
   /// platform on iOS or Android. The app starts it on launch and has it
   /// confirm what the store still holds on sign-in and on resume.
   final StorePurchaser? storePurchaser;
+
+  /// The reader's wait-for-free tickets, which a locked episode of a series
+  /// offering the rule is opened with.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, and a locked episode then offers no ticket.
+  final WaitFreeRepository? waitFree;
 
   /// What the device holds for reading without a network.
   ///
@@ -768,11 +781,14 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                                 repository: widget.purchases,
                                 launcher: widget.checkoutLauncher,
                                 storePurchaser: widget.storePurchaser,
-                                child: AgeRatingConfirmationScope(
-                                  controller: _ageRating,
-                                  child: ScreenCaptureScope(
-                                    notices: widget.screenCaptures,
-                                    child: app,
+                                child: WaitFreeScope(
+                                  repository: widget.waitFree,
+                                  child: AgeRatingConfirmationScope(
+                                    controller: _ageRating,
+                                    child: ScreenCaptureScope(
+                                      notices: widget.screenCaptures,
+                                      child: app,
+                                    ),
                                   ),
                                 ),
                               ),

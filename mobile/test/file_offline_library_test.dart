@@ -51,12 +51,14 @@ SavedEpisode _episode(
   String episodeId, {
   String ownerId = '',
   DateTime? checkedAt,
+  DateTime? expiresAt,
   int pages = 1,
   EpisodeAccess access = EpisodeAccess.free,
 }) {
   return SavedEpisode(
     ownerId: ownerId,
     checkedAt: checkedAt ?? DateTime.utc(2026, 9),
+    expiresAt: expiresAt,
     detail: EpisodeDetail(
       episode: EpisodeItem(
         id: episodeId,
@@ -807,6 +809,31 @@ void main() {
       );
     },
   );
+
+  test('readableEpisodeIds leaves out a body whose grant has ended', () async {
+    final library = open();
+    final ends = DateTime.utc(2026, 9, 3);
+    final windowed = _episode('WINDOWED', expiresAt: ends);
+    final ticketed = _episode(
+      'TICKETED',
+      ownerId: 'READER1',
+      access: EpisodeAccess.entitled,
+      expiresAt: ends,
+    );
+    for (final episode in [windowed, ticketed]) {
+      await library.writeEpisode(episode);
+      await library.writePage(episode.pageKeys.single, _bytes(64, 1));
+    }
+
+    Future<Set<String>> readableAt(DateTime now) =>
+        library.readableEpisodeIds(_seriesId, readerId: 'READER1', now: now);
+
+    expect(await readableAt(ends.subtract(const Duration(seconds: 1))), {
+      'WINDOWED',
+      'TICKETED',
+    });
+    expect(await readableAt(ends), isEmpty);
+  });
 
   test('dropping a series takes its episodes and pages with it', () async {
     final library = open();

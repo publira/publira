@@ -10,6 +10,7 @@ import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
+import 'package:publira/catalog/free_until_badge.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/content_views/content_view_recorder.dart';
@@ -33,6 +34,8 @@ import 'package:publira/viewer/episode_read_recorder.dart';
 import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
 import 'package:publira/viewer/screen_capture_notice.dart';
+import 'package:publira/wait_free/wait_free_offer.dart';
+import 'package:publira/wait_free/wait_free_repository.dart';
 
 /// One episode as this screen opens it: its body, and the page the reader
 /// stopped on last time.
@@ -42,6 +45,7 @@ class _OpenEpisode {
     required this.startPage,
     this.readerHasBirthDate = false,
     this.provenRating,
+    this.waitFree,
   });
 
   final EpisodeDetail detail;
@@ -53,6 +57,10 @@ class _OpenEpisode {
 
   /// What that date proves, which opens the rating gate without asking.
   final SeriesAgeRating? provenRating;
+
+  /// What a locked body's gate says about wait-for-free, or `null` when it
+  /// says nothing about it.
+  final WaitFreeOffer? waitFree;
 }
 
 /// How long the viewer waits before each re-read of an episode the browser
@@ -160,7 +168,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
     if (_started && accessToken == _accessToken) {
       if (returned) {
-        _future = _load(catalog, AuthScope.of(context));
+        _future = _load(
+          catalog,
+          AuthScope.of(context),
+          waitFree: WaitFreeScope.maybeOf(context),
+        );
       }
       return;
     }
@@ -189,6 +201,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     _future = _load(
       catalog,
       AuthScope.of(context),
+      waitFree: WaitFreeScope.maybeOf(context),
       confirmPurchase: widget.checkout == CheckoutOutcome.success,
     );
     final purchase = PurchaseScope.maybeOf(context)?.repository;
@@ -282,9 +295,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// [confirmPurchase] reads a body that is still locked again after each of
   /// [checkoutConfirmationDelays], for a reader the browser has just sent
   /// back from paying.
+  ///
+  /// A body that stays locked is asked what [waitFree] offers on it, before
+  /// the gate is drawn rather than after, so the gate does not change under a
+  /// reader already reaching for its button.
   Future<_OpenEpisode?> _load(
     CatalogRepository catalog,
     AuthController auth, {
+    WaitFreeRepository? waitFree,
     bool confirmPurchase = false,
   }) async {
     var detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
@@ -312,11 +330,20 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             isRestrictedAgeRating(detail.ageRating)
         ? await _readerAge(auth)
         : null;
+    final offer = waitFree == null
+        ? null
+        : await readWaitFreeOffer(
+            catalog: catalog,
+            waitFree: waitFree,
+            detail: detail,
+            signedIn: auth.isSignedIn,
+          );
     return _OpenEpisode(
       detail: detail,
       startPage: resumePageIndex(saved, detail.images.length),
       readerHasBirthDate: age?.hasBirthDate ?? false,
       provenRating: age?.provenAgeRating(DateTime.now()),
+      waitFree: offer,
     );
   }
 
@@ -359,7 +386,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   void _reload() {
     setState(() {
-      _future = _load(CatalogScope.of(context), AuthScope.of(context));
+      _future = _load(
+        CatalogScope.of(context),
+        AuthScope.of(context),
+        waitFree: WaitFreeScope.maybeOf(context),
+      );
     });
   }
 
@@ -444,7 +475,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Widget _body(AppMessages messages, _OpenEpisode open) {
     final detail = open.detail;
     if (detail.access == EpisodeAccess.locked) {
-      return _locked(messages, detail);
+      return _locked(messages, detail, open.waitFree);
     }
     if (detail.images.isEmpty) {
       return _ViewerMessage(
@@ -481,10 +512,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   }
 
   /// What stands where the pages would be while the episode is not the
-  /// reader's: its blurred opening pages, and over them why, the purchase that
-  /// opens it where the tenant takes one, and the nearest later episode the
-  /// reader could read instead.
-  Widget _locked(AppMessages messages, EpisodeDetail detail) {
+  /// reader's: its blurred opening pages, and over them why, the
+  /// wait-for-free ticket and the purchase that open it where the series and
+  /// the tenant offer them, and the nearest later episode the reader could
+  /// read instead.
+  Widget _locked(
+    AppMessages messages,
+    EpisodeDetail detail,
+    WaitFreeOffer? waitFree,
+  ) {
     final signedIn = AuthScope.of(context).isSignedIn;
     // The browser reported the payment and the API has not recorded it yet.
     if (signedIn && widget.checkout == CheckoutOutcome.success) {
@@ -536,6 +572,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     } else {
       message = messages.viewerLockedSignedOut;
     }
+    // A ready ticket opens the body for nothing, so it comes before the
+    // purchase that opens it for a price.
+    final ticket = waitFree is WaitFreeReady
+        ? UseWaitFreeTicketButton(
+            episodeInternalId: detail.episode.internalId,
+            onOpened: _reload,
+            onRefused: _reload,
+          )
+        : null;
     final Widget? accessAction;
     if (buy != null) {
       accessAction = buy;
@@ -555,7 +600,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       key: const ValueKey('episode-locked'),
       title: messages.viewerLockedTitle,
       message: message,
-      actions: [?accessAction, _backToSeries(messages)],
+      notice: waitFree == null
+          ? null
+          : WaitFreeNotice(offer: waitFree, onRecharged: _reload),
+      actions: [?ticket, ?accessAction, _backToSeries(messages)],
       footer: nextFree == null
           ? null
           : TextButton(
@@ -598,9 +646,21 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         child: AutospacedText(messages.viewerAgeRestrictedAddBirthDate),
       );
     }
+    // A reader who can still prove their age is told the episode is free
+    // for now, since proving it in time is what reads it for nothing. One the
+    // rule stops for good is not offered what they cannot take.
+    final freeUntil = open.detail.episode.isFreeAt(DateTime.now())
+        ? open.detail.episode.freeUntil
+        : null;
     return _gate(
       open.detail,
       key: const ValueKey('episode-age-restricted'),
+      badge: freeUntil == null || open.readerHasBirthDate
+          ? null
+          : FreeUntilBadge(
+              key: const ValueKey('episode-free-until'),
+              freeUntil: freeUntil,
+            ),
       title: messages.viewerAgeRestrictedTitle,
       message: message,
       actions: [?ageAction, _backToSeries(messages)],
@@ -612,7 +672,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     EpisodeDetail detail, {
     required Key key,
     required String message,
+    Widget? badge,
     String? title,
+    Widget? notice,
     List<Widget> actions = const [],
     Widget? footer,
   }) {
@@ -621,8 +683,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       previewImages: detail.previewImages,
       previewHeaders: detail.previewImageRequestHeaders,
       readingDirection: detail.readingDirection,
+      badge: badge,
       title: title,
       message: message,
+      notice: notice,
       actions: actions,
       footer: footer,
     );

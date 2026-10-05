@@ -10,6 +10,8 @@ import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/progress_outbox.dart';
+import 'package:publira/wait_free/wait_free_failure.dart';
+import 'package:publira/wait_free/wait_free_repository.dart';
 
 /// Reads the public catalog, and keeps what it read so the same screens open
 /// again without a network.
@@ -27,9 +29,15 @@ class OfflineCatalogRepository implements CatalogRepository {
     required this.imageRequestHeaders,
     this._clock = DateTime.now,
     this.grace = offlineGracePeriod,
+    this._waitFree,
   });
 
   final CatalogRepository _origin;
+
+  /// Where the reader's wait-for-free tickets are read, which is the one place
+  /// the API says when a ticket closes the body it opened again. `null` in a
+  /// build without the rule, where a ticketed body keeps the grace window.
+  final WaitFreeRepository? _waitFree;
 
   /// What the device holds. Public so the screens can ask it which episodes
   /// they may mark as saved.
@@ -514,15 +522,14 @@ class OfflineCatalogRepository implements CatalogRepository {
       );
     }
     final reader = _readerId();
-    if (isReadableOffline(
-      saved,
-      readerId: reader,
-      now: _clock(),
-      grace: grace,
-    )) {
+    final now = _clock();
+    if (isReadableOffline(saved, readerId: reader, now: now, grace: grace)) {
       return saved.detail;
     }
-    if (saved.ownerId == reader) {
+    final ended = saved.expiresAt?.isAfter(now) == false;
+    // A grant that has ended is over for whoever holds the device, a free
+    // window included, so the body goes whoever it was saved for.
+    if (ended || saved.ownerId == reader) {
       // The grant was this reader's, and the API has not confirmed it inside
       // the window. Drop it rather than keep an unreadable body on the device.
       await library.removeEpisode(seriesPublicId, episodePublicId);
@@ -560,8 +567,39 @@ class OfflineCatalogRepository implements CatalogRepository {
         detail: _forStorage(detail),
         ownerId: detail.access == EpisodeAccess.entitled ? reader : '',
         checkedAt: _clock(),
+        expiresAt: await _grantEnd(detail),
       ),
     );
+  }
+
+  /// When the grant [detail] was read under ends, where the API names an end.
+  ///
+  /// A priced episode free to everyone is free until its window closes, which
+  /// the read itself says. A body a ticket opened says nothing of the ticket,
+  /// so the reader's wait-for-free tickets on the series are asked; a ticket
+  /// they do not list is one staff granted, whose end the app is never told,
+  /// and the grace window alone bounds it as it bounds a purchase. So does a
+  /// ticket whose end could not be read, since the body was just confirmed.
+  Future<DateTime?> _grantEnd(EpisodeDetail detail) async {
+    switch (detail.access) {
+      case EpisodeAccess.free:
+        return detail.episode.freeUntil;
+      case EpisodeAccess.entitled
+          when detail.entitlementSource ==
+              EpisodeEntitlementSource.accessTicket:
+        final waitFree = _waitFree;
+        if (waitFree == null || detail.seriesInternalId.isEmpty) {
+          return null;
+        }
+        try {
+          final state = await waitFree.ticketState(detail.seriesInternalId);
+          return state.expiryOf(detail.episode.internalId);
+        } on WaitFreeFailure {
+          return null;
+        }
+      case _:
+        return null;
+    }
   }
 
   /// The same series with the headers its cover has to be requested with.
