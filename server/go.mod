@@ -24,9 +24,9 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0
 	github.com/redis/go-redis/v9 v9.23.0
-	github.com/riverqueue/river v0.48.0
-	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.48.0
-	github.com/riverqueue/river/rivertype v0.48.0
+	github.com/riverqueue/river v0.49.0
+	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.49.0
+	github.com/riverqueue/river/rivertype v0.49.0
 	github.com/stripe/stripe-go/v87 v87.0.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
@@ -117,9 +117,9 @@ require (
 	github.com/prometheus/common v0.72.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.48.0 // indirect
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.48.0 // indirect
-	github.com/riverqueue/river/rivershared v0.48.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.49.0 // indirect
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.49.0 // indirect
+	github.com/riverqueue/river/rivershared v0.49.0 // indirect
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
