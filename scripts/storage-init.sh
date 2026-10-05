@@ -36,9 +36,16 @@ fi
 # save_platform_storage points platform_storage_config at the bucket. A save
 # of what is already saved changes nothing, so a rerun leaves every running
 # server's client as it is. `go run` caches the binary it builds, so a rerun
-# does not compile it again.
+# does not compile it again. A caller that already has a built publiractl
+# names it in PUBLIRA_PUBLIRACTL instead: on a machine whose Go build cache is
+# cold, as on a CI job that received its binaries rather than building them,
+# `go run` compiles for most of a minute.
 save_platform_storage() {
-  go -C "${repo_root}/server" run ./cmd/publiractl storage set "${set_args[@]}"
+  if [[ -n "${PUBLIRA_PUBLIRACTL:-}" ]]; then
+    "${PUBLIRA_PUBLIRACTL}" storage set "${set_args[@]}"
+  else
+    go -C "${repo_root}/server" run ./cmd/publiractl storage set "${set_args[@]}"
+  fi
 }
 
 # The Dev Container runs this from postCreate (`task setup`), where

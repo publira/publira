@@ -77,8 +77,15 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
 # Creates the bucket and uploads the images the development seed's rows name:
 # every series' and label's eye-catch, every creator's icon, and every episode's
 # body pages.
+# The bucket is saved with the publiractl the stack's servers were built
+# beside, when there is one, rather than one `go run` compiles.
 e2e_log "running task storage:seed"
-(cd "${REPO_ROOT}" && task storage:seed)
+publiractl="${REPO_ROOT}/server/bin/publiractl"
+if [[ -x "${publiractl}" ]]; then
+  (cd "${REPO_ROOT}" && PUBLIRA_PUBLIRACTL="${publiractl}" task storage:seed)
+else
+  (cd "${REPO_ROOT}" && task storage:seed)
+fi
 
 # The development seed dates its catalogue and its accounts from the moment it
 # runs, which a screenshot compared pixel by pixel cannot absorb. Applied here
@@ -108,7 +115,6 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${web_push_sql}"
 # keep the index in step. A rebuild is what a deployment moving to the engine
 # runs, so the stack is filled the same way.
 if [[ "${PUBLIRA_SEARCH_BACKEND}" == "opensearch" ]]; then
-  publiractl="${REPO_ROOT}/server/bin/publiractl"
   if [[ ! -x "${publiractl}" ]]; then
     e2e_err "publiractl binary not found at ${publiractl}; run: task server:build"
     exit 1

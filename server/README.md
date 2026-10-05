@@ -174,7 +174,7 @@ Creating the bucket is not the application's responsibility (it is never created
 task storage:init
 ```
 
-It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store with `publiractl storage set`, signed with the ambient credential. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
+It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store with `publiractl storage set`, signed with the ambient credential. It runs that command through `go run`, or through the binary `PUBLIRA_PUBLIRACTL` names when that is set, as the E2E stack sets it to its own `server/bin/publiractl`. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
 
 ### Development environment (RustFS)
 
