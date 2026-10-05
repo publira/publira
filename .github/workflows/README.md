@@ -115,7 +115,8 @@ Implementation:
 
 - Workflow: [`ci.yml`](./ci.yml)
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
-- Flutter SDK setup for the two mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
+- Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
+- Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
@@ -133,7 +134,9 @@ Implementation:
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
-| `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed, then a production APK from `mobile/config/app.example.yaml` through `task mobile:build`. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile Android` | A production APK from `mobile/config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key. It saves the Gradle cache the other Android jobs restore. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile E2E Build` | `task server:build` once, uploaded as `mobile-e2e-build` for the `live` entry of `Test / Mobile E2E`. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
+| `Test / Mobile E2E (<group>)` | `task mobile:test-integration` on an Android emulator of its own: `device` runs every group the app answers on the device, and `live` runs the live group against the public API, the worker, and the seed, on a stack of only the containers it reads. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
 | `Test / Mobile iOS` | `task mobile:test-ios-build` on macOS: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E Build` | `task e2e:build` once, uploaded as `e2e-build` for every `Test / E2E` entry. | [`e2e/README.md`](../../e2e/README.md#ci) |
 | `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main` or `admin`: readiness, Playwright, teardown, on a stack of its own. | [`e2e/README.md`](../../e2e/README.md#groups) |
@@ -181,9 +184,9 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
-| `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
+| `Test / Mobile`, `Test / Mobile Android` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Android setup action |
 | `Test / Mobile iOS` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
-| `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh` |
+| `Test / Mobile E2E Build`, `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Android setup action |
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, build inputs, storage init and seed |
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, the outbox handler, the search handlers and commands, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, the catalog search spec with `e2e/src/**`, and `db/seeds/**` |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
@@ -245,7 +248,7 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 ## Flutter SDK setup
 
-`Test / Mobile`, `Test / Mobile E2E`, and `Test / Mobile iOS` install Flutter through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` — the `env` block of [`ci.yml`](./ci.yml) is the single source of truth for the version — and bootstraps the Dart SDK. The script takes its destination, its credentials, and the `PATH` entry from the environment, so it installs the same pinned SDK on a workstation as it does on a runner; the jobs give it `github.token` and let it default to `RUNNER_TEMP` and `GITHUB_PATH`.
+`Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E`, and `Test / Mobile iOS` install Flutter through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` — the `env` block of [`ci.yml`](./ci.yml) is the single source of truth for the version — and bootstraps the Dart SDK. The script takes its destination, its credentials, and the `PATH` entry from the environment, so it installs the same pinned SDK on a workstation as it does on a runner; the jobs give it `github.token` and let it default to `RUNNER_TEMP` and `GITHUB_PATH`.
 
 In CI the clone is authenticated with `github.token`. github.com answers an unauthenticated clone from a shared runner address with a credential prompt often enough to matter (`fatal: could not read Username for 'https://github.com'`), and the job then fails within seconds; an authenticated request is attributed to this repository instead. The token is passed as an `http.<url>.extraheader` on the `git` invocation and not with `git clone -c`, which would persist the header in the cloned repository's own config. On top of that the script retries the clone three times with a short backoff, deleting the partial destination between attempts.
 
@@ -263,7 +266,10 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
-   | `Test / Mobile E2E` | `task mobile:e2e` |
+   | `Test / Mobile Android` | `task mobile:build -- mobile/config/app.example.yaml apk` with an upload key in `PUBLIRA_ANDROID_KEYSTORE` and the variables beside it |
+   | `Test / Mobile E2E Build` | `task server:build` |
+   | `Test / Mobile E2E (device)` | `PUBLIRA_LIVE_API=false task mobile:test-integration`, with an emulator booted and no stack |
+   | `Test / Mobile E2E (live)` | `task mobile:e2e -- --plain-name 'live public API'` |
    | `Test / Mobile iOS` | `task mobile:deps` then `task mobile:test-ios-build`, on a Mac with Xcode |
    | `Test / E2E Build` | `task e2e:build` |
    | `Test / E2E (<group> <shard>)` | `PUBLIRA_E2E_GROUP=<group> task e2e -- --shard=<shard>` |
