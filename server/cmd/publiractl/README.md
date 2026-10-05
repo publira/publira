@@ -46,7 +46,7 @@ An install goes from an empty database to serving in this order, every step from
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl db version
+go -C server run ./cmd/publiractl db version
 ```
 
 Environment variables:
@@ -64,7 +64,7 @@ Brings an install from a migrated, empty database to a tenant site and a tenant 
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl setup
+go -C server run ./cmd/publiractl setup
 ```
 
 | Step | Required | What it saves | The command that saves it alone |
@@ -107,8 +107,8 @@ Saves the platform's default locale, which the Platform Console displays in, and
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl platform set --default-locale en --default-timezone Asia/Tokyo
-go run ./server/cmd/publiractl platform show
+go -C server run ./cmd/publiractl platform set --default-locale en --default-timezone Asia/Tokyo
+go -C server run ./cmd/publiractl platform show
 ```
 
 | Command | RPC | What it does |
@@ -130,8 +130,8 @@ Changes the platform policy: the tenant-admin MFA requirement, the step-up passw
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl policy set --mfa-required-for-tenant-admin --comment-post-per-minute 5
-go run ./server/cmd/publiractl policy show
+go -C server run ./cmd/publiractl policy set --mfa-required-for-tenant-admin --comment-post-per-minute 5
+go -C server run ./cmd/publiractl policy show
 ```
 
 | Command | RPC | What it does |
@@ -172,8 +172,8 @@ Changes the platform's retention defaults: how long each kind of expiring record
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl retention set --content-event-days 30
-go run ./server/cmd/publiractl retention show
+go -C server run ./cmd/publiractl retention set --content-event-days 30
+go -C server run ./cmd/publiractl retention show
 ```
 
 | Command | RPC | What it does |
@@ -195,8 +195,8 @@ Rebuilds the OpenSearch catalog index from the database. The worker keeps the in
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl search reindex
-go run ./server/cmd/publiractl search reindex --tenant comics.example.com
+go -C server run ./cmd/publiractl search reindex
+go -C server run ./cmd/publiractl search reindex --tenant comics.example.com
 ```
 
 | Command | What it does |
@@ -218,14 +218,14 @@ Saves and tests the SMTP settings the worker sends the platform's mail with: the
 
 ```bash
 eval "$(task --silent dev-env:env)"
-printf '%s' "$SMTP_PASSWORD" | go run ./server/cmd/publiractl smtp set \
+printf '%s' "$SMTP_PASSWORD" | go -C server run ./cmd/publiractl smtp set \
   --host smtp.example.com \
   --port 587 \
   --encryption starttls \
   --username mailer \
   --from-address no-reply@example.com \
   --password-stdin
-go run ./server/cmd/publiractl smtp test --to operator@example.com
+go -C server run ./cmd/publiractl smtp test --to operator@example.com
 ```
 
 | Command | RPC | What it does |
@@ -259,12 +259,12 @@ Saves and tests the S3-compatible object store `publira server` uploads to and r
 
 ```bash
 eval "$(task --silent dev-env:env)"
-printf '%s' "$AWS_SECRET_ACCESS_KEY" | go run ./server/cmd/publiractl storage set \
+printf '%s' "$AWS_SECRET_ACCESS_KEY" | go -C server run ./cmd/publiractl storage set \
   --bucket publira-images \
   --region ap-northeast-1 \
   --access-key-id "$AWS_ACCESS_KEY_ID" \
   --secret-access-key-stdin
-go run ./server/cmd/publiractl storage test
+go -C server run ./cmd/publiractl storage test
 ```
 
 | Command | RPC | What it does |
@@ -299,11 +299,11 @@ Does to a tenant what `PlatformTenantService` does from the Platform Console, th
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl tenant create \
+go -C server run ./cmd/publiractl tenant create \
   --name "Example Comics" \
   --domain comics.example.com \
   --default-locale en
-go run ./server/cmd/publiractl tenant admin create \
+go -C server run ./cmd/publiractl tenant admin create \
   --tenant comics.example.com \
   --email owner@comics.example.com \
   --name Owner \
@@ -352,8 +352,8 @@ Turns on Web Push by saving the subject push services reach the platform at, gen
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl webpush init --subject mailto:push@example.com
-go run ./server/cmd/publiractl webpush show
+go -C server run ./cmd/publiractl webpush init --subject mailto:push@example.com
+go -C server run ./cmd/publiractl webpush show
 ```
 
 | Command | RPC | What it does |
@@ -400,7 +400,7 @@ Files the analytics counterpart of every stored episode read that does not have 
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl job project-episode-reads
+go -C server run ./cmd/publiractl job project-episode-reads
 ```
 
 Environment variables:
@@ -422,7 +422,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go run ./server/cmd/publiractl job aggregate-content-stats
+PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go -C server run ./cmd/publiractl job aggregate-content-stats
 ```
 
 Environment variables:
@@ -440,7 +440,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/publiractl job aggregate-rankings
+PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go -C server run ./cmd/publiractl job aggregate-rankings
 ```
 
 Environment variables:
@@ -511,7 +511,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-content-events
+PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-content-events
 ```
 
 Environment variables:
@@ -541,7 +541,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-ranking-snapshots
+PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-ranking-snapshots
 ```
 
 Environment variables:
@@ -564,7 +564,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-mfa-challenges
+PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-mfa-challenges
 ```
 
 Environment variables:
@@ -591,7 +591,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_COMMENT_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-withdrawn-comments
+PUBLIRA_COMMENT_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-withdrawn-comments
 ```
 
 Environment variables:
@@ -612,7 +612,7 @@ Both a database and a bucket are needed. The bucket is the one saved in the plat
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-orphan-images
+PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-orphan-images
 ```
 
 Environment variables:
@@ -636,7 +636,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go run ./server/cmd/publiractl job build-recommend-features
+PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go -C server run ./cmd/publiractl job build-recommend-features
 ```
 
 Environment variables:
@@ -701,7 +701,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl job close-royalty-statements
+go -C server run ./cmd/publiractl job close-royalty-statements
 ```
 
 Environment variables:
@@ -716,7 +716,7 @@ Reads, for every tenant whose Google Play store is enabled and names its app, th
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/publiractl job sync-google-play-voided-purchases
+go -C server run ./cmd/publiractl job sync-google-play-voided-purchases
 ```
 
 Environment variables:
