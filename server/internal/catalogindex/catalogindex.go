@@ -1,9 +1,11 @@
 // Package catalogindex keeps the OpenSearch catalog index in step with the
-// catalog. A write to a series, a creator, or a label queues a
-// catalog_index_sync outbox event in its own transaction (Queue), the worker
-// rewrites the named row's document from the row (Syncer), and publiractl
-// rebuilds the whole index, or one tenant's documents, from the database
-// (Rebuild, SyncTenant).
+// catalog. A write to a series, a creator, or a label, or to an episode or a
+// free window of a series, queues a catalog_index_sync outbox event in its own
+// transaction (Queue), and so does a ticker job whose boundary changes what a
+// series is narrowed or sorted by: a free window opening or closing, and a
+// scheduled episode being published. The worker rewrites the named row's
+// document from the row (Syncer), and publiractl rebuilds the whole index, or
+// one tenant's documents, from the database (Rebuild, SyncTenant).
 //
 // Every document is written with the instant its row was read at as its
 // version, and the engine refuses a write below the version a document holds.
@@ -167,9 +169,16 @@ func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID,
 			return nil, fmt.Errorf("catalogindex: list series: %w", err)
 		}
 		for _, row := range rows {
+			var latestEpisodeAt map[string]time.Time
+			if err := json.Unmarshal(row.LatestEpisodeAtBySurface, &latestEpisodeAt); err != nil {
+				return nil, fmt.Errorf("catalogindex: decode the latest episode instants of series %s: %w", row.ID, err)
+			}
 			docs = append(docs, opensearchbackend.Document{
 				Kind: opensearchbackend.KindSeries, TenantID: tenantID, ID: row.ID, Version: version,
 				Title: row.Title, Synopsis: row.Synopsis, Surfaces: row.Surfaces, PublishedAt: row.PublishedAt,
+				GenrePublicIDs: row.GenrePublicIds, TagSlugs: row.TagSlugs, Status: row.Status,
+				ScheduleWeekdays: row.ScheduleWeekdays, FreeEpisodeSurfaces: row.FreeEpisodeSurfaces,
+				LatestEpisodeAt: latestEpisodeAt,
 			})
 		}
 	}

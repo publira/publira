@@ -77,8 +77,8 @@ func TestIssueAccessTicketSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).
+			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all", uuid.Must(uuid.NewV7())))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
 		WithArgs(tenantID, memberID, episodeID).
@@ -178,8 +178,8 @@ func TestIssueAccessTicketReturnsExistingNonRevoked(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).
+			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all", uuid.Must(uuid.NewV7())))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
 		WithArgs(tenantID, memberID, episodeID).
@@ -241,8 +241,8 @@ func TestIssueAccessTicketRejectsInvalidExpiresAt(t *testing.T) {
 
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 			WithArgs(tenantID, episodeID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).
+				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all", uuid.Must(uuid.NewV7())))
 
 		req := connect.NewRequest(&publiraadminv1.IssueAccessTicketRequest{
 			Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -269,8 +269,8 @@ func TestIssueAccessTicketRejectsInvalidExpiresAt(t *testing.T) {
 
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 			WithArgs(tenantID, episodeID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).
+				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all", uuid.Must(uuid.NewV7())))
 
 		req := connect.NewRequest(&publiraadminv1.IssueAccessTicketRequest{
 			Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},

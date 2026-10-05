@@ -1,13 +1,16 @@
 // Package freewindows applies the boundaries of scheduled episode free windows
-// to the public site caches.
+// to what holds a copy of the catalog: the public site caches and the search
+// index.
 //
 // Nothing in the database has to change when a window opens or closes: the
 // access predicates compare NOW() against the stored period, so the API answers
 // correctly the moment a boundary passes. What does not change on its own is
-// what the web apps already cached — an episode page held under a series tag
-// keeps showing the price, or the free body, until something drops the tag.
-// That is this runner's whole job, and it is why each boundary is recorded as
-// applied: a run that was down over one still catches up on its next pass.
+// what was copied out of it — an episode page held under a series tag keeps
+// showing the price, or the free body, until something drops the tag, and the
+// series' search document keeps saying whether a free episode is open until
+// it is read again. Asking for both is this runner's whole job, and it is why
+// each boundary is recorded as applied: a run that was down over one still
+// catches up on its next pass.
 package freewindows
 
 import (
@@ -19,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
@@ -27,6 +31,7 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/freewindows
 // Queries is the part of the generated querier this runner uses. The
 // connection behind it must bypass RLS: the listing spans every tenant.
 type Queries interface {
+	catalogindex.OutboxInserter
 	ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]dbmodels.ListEpisodeFreeWindowBoundariesDueRow, error)
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
@@ -99,9 +104,10 @@ func (r *Runner) RunOnce(ctx context.Context) {
 	}
 }
 
-// applyTenant records one tenant's drop and then marks the boundaries that
-// drop answers for. The order matters: a boundary marked before the drop is
-// owed would never be retried, and the site would keep serving the side of the
+// applyTenant records one tenant's drop and the search index syncs of the
+// series its windows belong to, and then marks the boundaries they answer for.
+// The order matters: a boundary marked before both are owed would never be
+// retried, and the site and the search would keep serving the side of the
 // window it has already left.
 func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbmodels.ListEpisodeFreeWindowBoundariesDueRow) {
 	if r.reval != nil {
@@ -113,6 +119,18 @@ func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbm
 			)
 			return
 		}
+	}
+	series := make([]catalogindex.Ref, 0, len(rows))
+	for _, row := range rows {
+		series = append(series, catalogindex.SeriesRef(row.SeriesID))
+	}
+	if err := catalogindex.Queue(ctx, r.queries, tenantID, series...); err != nil {
+		r.logger.WarnContext(ctx, "failed to queue a search index sync after a free window boundary",
+			"tenant_id", tenantID.String(),
+			"boundaries", len(rows),
+			"error", err,
+		)
+		return
 	}
 
 	for _, row := range rows {

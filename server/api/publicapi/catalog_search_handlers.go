@@ -85,8 +85,6 @@ func (s *apiServer) searchError(ctx context.Context, msg string, err error, tena
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another query"))
 	case errors.Is(err, catalogsearch.ErrTokenForAnotherNarrowing):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
-	case errors.Is(err, catalogsearch.ErrNarrowingUnsupported):
-		return connect.NewError(connect.CodeUnimplemented, errors.New("this search cannot narrow or sort its results"))
 	case errors.Is(err, catalogsearch.ErrInvalidToken):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	default:

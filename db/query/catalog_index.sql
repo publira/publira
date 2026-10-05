@@ -9,6 +9,15 @@
 -- carries every surface one of its published series is on, from the earliest
 -- of their published_at. A published_at still in the future is written as it
 -- is, and the search filters on it.
+--
+-- A series also carries what the published series list narrows and sorts by,
+-- so a search can do the same. Two of those facts move with the clock rather
+-- than with an edit — whether a free episode is open, and when the latest
+-- episode was published — and are read at the start of the transaction, the
+-- instant the document's version names. The ticker jobs queue an event for a
+-- series whenever one of its free windows opens or closes and whenever one of
+-- its scheduled episodes is published, so the document is read again once the
+-- boundary has passed.
 
 -- name: GetCatalogIndexSnapshotTime :one
 -- The start of the transaction, which precedes its snapshot: every write the
@@ -34,7 +43,61 @@ SELECT s.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
         ORDER BY ss.surface
-    )::text [] AS surfaces
+    )::text [] AS surfaces,
+    COALESCE(sl.status, '')::text AS status,
+    COALESCE(sl.schedule_weekdays, '{}')::int4 [] AS schedule_weekdays,
+    ARRAY(
+        SELECT g.public_id
+        FROM series_genres sg
+            JOIN genres g ON g.id = sg.genre_id
+        WHERE sg.series_id = s.id
+        ORDER BY g.public_id
+    )::text [] AS genre_public_ids,
+    ARRAY(
+        SELECT t.slug
+        FROM series_tags st
+            JOIN tags t ON t.id = st.tag_id
+        WHERE st.series_id = s.id
+        ORDER BY t.slug
+    )::text [] AS tag_slugs,
+    -- The surfaces on which a free episode of the series is open, which is
+    -- what the list's has_free_episodes filter asks of the surface it runs on.
+    ARRAY(
+        SELECT DISTINCT es.surface
+        FROM published_free_episodes fe
+            JOIN episode_surfaces es ON es.episode_id = fe.episode_id
+        WHERE fe.series_id = s.id
+        ORDER BY es.surface
+    )::text [] AS free_episode_surfaces,
+    -- The list's latest_episode_at on each surface the series is shown on: the
+    -- newest episode published there, or the series' own published_at where
+    -- none is.
+    COALESCE(
+        (
+            SELECT jsonb_object_agg(
+                    ss.surface,
+                    COALESCE(
+                        (
+                            SELECT max(el.published_at)
+                            FROM episodes e
+                                JOIN episode_listings el ON el.episode_id = e.id
+                                JOIN episode_surfaces es ON es.episode_id = e.id
+                            WHERE e.series_id = s.id
+                                AND es.surface = ss.surface
+                                AND el.status = 'published'
+                                AND el.published_at IS NOT NULL
+                                AND el.published_at <= NOW()
+                        ),
+                        s.published_at
+                    )
+                )
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+        ),
+        '{}'
+    )::jsonb AS latest_episode_at_by_surface
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')

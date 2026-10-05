@@ -208,8 +208,7 @@ type CatalogServiceClient interface {
 	// sorted by the fields ListPublishedSeries takes. An empty query is
 	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
-	// invalid_argument. A search backend that cannot narrow or sort its hits
-	// answers a request that asks it to with unimplemented.
+	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
@@ -554,8 +553,7 @@ type CatalogServiceHandler interface {
 	// sorted by the fields ListPublishedSeries takes. An empty query is
 	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
-	// invalid_argument. A search backend that cannot narrow or sort its hits
-	// answers a request that asks it to with unimplemented.
+	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule

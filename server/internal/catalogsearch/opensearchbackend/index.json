@@ -63,18 +63,27 @@
   },
   "mappings": {
     "dynamic": "strict",
+    "dynamic_templates": [
+      {
+        "latest_episode_at": {
+          "path_match": "latest_episode_at.*",
+          "mapping": { "type": "date_nanos" }
+        }
+      }
+    ],
     "properties": {
       "kind": { "type": "keyword" },
       "tenant_id": { "type": "keyword" },
       "entity_id": { "type": "keyword" },
       "surfaces": { "type": "keyword" },
-      "published_at": { "type": "date" },
+      "published_at": { "type": "date_nanos" },
       "title": {
         "type": "text",
         "analyzer": "ja_text",
         "fields": {
           "reading": { "type": "text", "analyzer": "ja_reading" },
-          "keyword": { "type": "keyword", "normalizer": "ja_exact" }
+          "keyword": { "type": "keyword", "normalizer": "ja_exact" },
+          "sort": { "type": "keyword" }
         }
       },
       "synopsis": { "type": "text", "analyzer": "ja_text" },
@@ -86,7 +95,13 @@
           "keyword": { "type": "keyword", "normalizer": "ja_exact" }
         }
       },
-      "reading": { "type": "text", "analyzer": "ja_reading" }
+      "reading": { "type": "text", "analyzer": "ja_reading" },
+      "genre_public_ids": { "type": "keyword" },
+      "tag_slugs": { "type": "keyword" },
+      "status": { "type": "keyword" },
+      "schedule_weekdays": { "type": "short" },
+      "free_episode_surfaces": { "type": "keyword" },
+      "latest_episode_at": { "type": "object", "dynamic": true }
     }
   }
 }

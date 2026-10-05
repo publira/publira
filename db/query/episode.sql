@@ -42,6 +42,7 @@ WHERE el.status = 'scheduled'
 SELECT el.episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title,
     t.id AS tenant_id,
@@ -267,7 +268,8 @@ SELECT e.id,
     -- Where the episode may be bought: its own value, NULL where it follows
     -- the series, beside the value resolved through the series and the tenant.
     e.purchase_availability,
-    epa.purchase_availability AS resolved_purchase_availability
+    epa.purchase_availability AS resolved_purchase_availability,
+    e.series_id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -299,7 +301,8 @@ SELECT e.id,
     -- Where the episode may be bought: its own value, NULL where it follows
     -- the series, beside the value resolved through the series and the tenant.
     e.purchase_availability,
-    epa.purchase_availability AS resolved_purchase_availability
+    epa.purchase_availability AS resolved_purchase_availability,
+    e.series_id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id

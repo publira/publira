@@ -80,14 +80,20 @@ func (q *Queries) CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisode
 }
 
 const DeleteEpisodeFreeWindowByIDForTenant = `-- name: DeleteEpisodeFreeWindowByIDForTenant :one
-DELETE FROM episode_free_windows
-WHERE tenant_id = $1
-    AND id = $2
-RETURNING id,
-    public_id,
-    episode_id,
-    starts_at,
-    ends_at
+DELETE FROM episode_free_windows w
+WHERE w.tenant_id = $1
+    AND w.id = $2
+RETURNING w.id,
+    w.public_id,
+    w.episode_id,
+    w.starts_at,
+    w.ends_at,
+    w.end_revalidated_at,
+    (
+        SELECT e.series_id
+        FROM episodes e
+        WHERE e.id = w.episode_id
+    )::uuid AS series_id
 `
 
 type DeleteEpisodeFreeWindowByIDForTenantParams struct {
@@ -96,16 +102,20 @@ type DeleteEpisodeFreeWindowByIDForTenantParams struct {
 }
 
 type DeleteEpisodeFreeWindowByIDForTenantRow struct {
-	ID        uuid.UUID `json:"id"`
-	PublicID  string    `json:"public_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-	StartsAt  time.Time `json:"starts_at"`
-	EndsAt    time.Time `json:"ends_at"`
+	ID               uuid.UUID    `json:"id"`
+	PublicID         string       `json:"public_id"`
+	EpisodeID        uuid.UUID    `json:"episode_id"`
+	StartsAt         time.Time    `json:"starts_at"`
+	EndsAt           time.Time    `json:"ends_at"`
+	EndRevalidatedAt sql.NullTime `json:"end_revalidated_at"`
+	SeriesID         uuid.UUID    `json:"series_id"`
 }
 
 // Returns the deleted row so a concurrent second delete is told apart from a
 // window that never existed. What the caller audits and revalidates comes
-// from the read it did first.
+// from the read it did first. end_revalidated_at says whether apply-free-windows
+// has already closed the window, and the series is the one whose search
+// document a window it has not closed yet leaves stale.
 func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByIDForTenant, arg.TenantID, arg.ID)
 	var i DeleteEpisodeFreeWindowByIDForTenantRow
@@ -115,6 +125,8 @@ func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg 
 		&i.EpisodeID,
 		&i.StartsAt,
 		&i.EndsAt,
+		&i.EndRevalidatedAt,
+		&i.SeriesID,
 	)
 	return i, err
 }
@@ -184,6 +196,7 @@ SELECT w.id,
     w.ends_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     (
         w.start_revalidated_at IS NULL
@@ -215,6 +228,7 @@ type ListEpisodeFreeWindowBoundariesDueRow struct {
 	EndsAt          time.Time    `json:"ends_at"`
 	EpisodePublicID string       `json:"episode_public_id"`
 	EpisodeTitle    string       `json:"episode_title"`
+	SeriesID        uuid.UUID    `json:"series_id"`
 	SeriesPublicID  string       `json:"series_public_id"`
 	StartDue        sql.NullBool `json:"start_due"`
 	EndDue          sql.NullBool `json:"end_due"`
@@ -242,6 +256,7 @@ func (q *Queries) ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]Lis
 			&i.EndsAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.StartDue,
 			&i.EndDue,

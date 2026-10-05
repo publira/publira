@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -331,6 +332,12 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 	}); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("record cache invalidation: %w", err)
+	}
+	// So does the sync of the series' search document, whose latest episode,
+	// and whether a free episode is open, may have changed with this one.
+	if err := catalogindex.Queue(ctx, qtx, row.TenantID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("queue catalog index sync: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
