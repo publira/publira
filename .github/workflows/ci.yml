@@ -773,9 +773,6 @@ jobs:
         id: setup
         uses: ./.github/actions/mobile-android-setup
 
-      - name: Diagnose / Gradle cache size (temporary)
-        run: du -sh ~/.gradle/wrapper/dists/* ~/.gradle/caches/* ~/.gradle/caches/*/* 2> /dev/null | sort -h | tail -40
-
       - name: Build / Tenant Android app
         run: |
           set -euo pipefail
@@ -807,6 +804,44 @@ jobs:
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
           key: ${{ steps.setup.outputs.gradle-cache-key }}
+
+  # Temporary: the integration-test build with the whole Gradle cache, without
+  # the per-version caches (transforms and generated jars), and with none.
+  gradle-cache-experiment:
+    name: Experiment / Gradle cache (${{ matrix.variant }})
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [full, modules-only, none]
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Android build
+        uses: ./.github/actions/mobile-android-setup
+
+      - name: Drop part of the cache
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          du -sh ~/.gradle/caches/9.8.0/* | sort -h | tail -15
+          case "${VARIANT}" in
+            modules-only) rm -rf ~/.gradle/caches/9.8.0 ;;
+            none) rm -rf ~/.gradle/caches ;;
+          esac
+
+      - name: Build
+        working-directory: mobile
+        run: time flutter build apk --debug --target-platform android-x64
+
+      - name: Build again with another entry point
+        working-directory: mobile
+        run: time flutter build apk --debug --target-platform android-x64 -t integration_test/catalog_test.dart
 
   # The binaries the live group's stack runs, built once from the commit under
   # test.
@@ -886,16 +921,6 @@ jobs:
       - name: Setup / Android build
         uses: ./.github/actions/mobile-android-setup
 
-      # Gradle's part of the integration-test build, in the background while
-      # the stack and the emulator come up: `flutter test` builds the app
-      # again for an entry point of its own, and finds everything but the
-      # Dart already built. The test step waits for it, since two Gradle
-      # builds of one project cannot run at once.
-      - name: Build / Integration test app (background)
-        working-directory: mobile
-        run: |
-          nohup bash -c 'flutter build apk --debug --target-platform android-x64 > "${RUNNER_TEMP}/prebuild.log" 2>&1; echo "$?" > "${RUNNER_TEMP}/prebuild.status"' > /dev/null 2>&1 &
-
       # libvips-tools for the libvips the server links: it depends on the
       # library under whatever name the release gives it.
       - name: Setup / Stack packages
@@ -946,7 +971,6 @@ jobs:
         id: emulator-packages
         run: bash mobile/scripts/emulator-packages.sh
 
-      # The runner runs each line of `script` as a command of its own.
       - name: Validate / Mobile E2E
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -955,9 +979,7 @@ jobs:
           arch: ${{ steps.emulator-packages.outputs.arch }}
           profile: pixel_6
           disable-animations: true
-          script: |
-            timeout 600 sh -c 'until [ -e "${RUNNER_TEMP}/prebuild.status" ]; do sleep 1; done'; cat "${RUNNER_TEMP}/prebuild.log"
-            task mobile:test-integration -- ${{ matrix.args }}
+          script: task mobile:test-integration -- ${{ matrix.args }}
         env:
           PUBLIRA_LIVE_API: ${{ matrix.live-api }}
 
