@@ -67,7 +67,7 @@
       {
         "latest_episode_at": {
           "path_match": "latest_episode_at.*",
-          "mapping": { "type": "date" }
+          "mapping": { "type": "date_nanos" }
         }
       }
     ],
@@ -76,13 +76,14 @@
       "tenant_id": { "type": "keyword" },
       "entity_id": { "type": "keyword" },
       "surfaces": { "type": "keyword" },
-      "published_at": { "type": "date" },
+      "published_at": { "type": "date_nanos" },
       "title": {
         "type": "text",
         "analyzer": "ja_text",
         "fields": {
           "reading": { "type": "text", "analyzer": "ja_reading" },
-          "keyword": { "type": "keyword", "normalizer": "ja_exact" }
+          "keyword": { "type": "keyword", "normalizer": "ja_exact" },
+          "sort": { "type": "keyword" }
         }
       },
       "synopsis": { "type": "text", "analyzer": "ja_text" },

@@ -672,3 +672,47 @@ func TestATokenIsBoundToItsOrderAndFilters(t *testing.T) {
 	next := searchNarrowed(t, backend, narrowed(tenantID, publishedseries.TitleAsc, publishedseries.Filter{}, 1, decodeToken(t, byTitle.NextToken)))
 	assertIDs(t, "seed", next.IDs, other.ID)
 }
+
+// Two titles the exact-match normalizer folds together, and two instants
+// inside one millisecond, are two places in the list, so an explicit order
+// keeps them apart rather than leaving them to the id. Each pair is created
+// with the id that would put it in the wrong order on a tie.
+func TestSearchSeriesOrdersWhatTheListTellsApart(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	at := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC).Add(123*time.Millisecond + 456*time.Microsecond)
+
+	lower := publishedSeries(tenantID, "seed a", "")
+	lower.PublishedAt = at
+	lower.LatestEpisodeAt = map[string]time.Time{testSurface: at}
+	upper := publishedSeries(tenantID, "Seed A", "")
+	upper.PublishedAt = at.Add(-time.Microsecond)
+	upper.LatestEpisodeAt = map[string]time.Time{testSurface: at.Add(-time.Microsecond)}
+	put(t, backend, lower, upper)
+
+	for _, test := range []struct {
+		order publishedseries.Order
+		want  []uuid.UUID
+	}{
+		// Code point order puts upper case first, as the list does under a C
+		// collation and on the Alpine images.
+		{order: publishedseries.TitleAsc, want: []uuid.UUID{upper.ID, lower.ID}},
+		{order: publishedseries.TitleDesc, want: []uuid.UUID{lower.ID, upper.ID}},
+		{order: publishedseries.PublishedAtAsc, want: []uuid.UUID{upper.ID, lower.ID}},
+		{order: publishedseries.PublishedAtDesc, want: []uuid.UUID{lower.ID, upper.ID}},
+		{order: publishedseries.LatestEpisodeAtDesc, want: []uuid.UUID{lower.ID, upper.ID}},
+	} {
+		page := searchNarrowed(t, backend, narrowed(tenantID, test.order, publishedseries.Filter{}, 10, pagination.Cursor{}))
+		if !slices.Equal(page.IDs, test.want) {
+			t.Errorf("%s: hits = %v, want %v", test.order.Name, page.IDs, test.want)
+		}
+		// A page of one reaches the second through a token that carries the
+		// first's value at the same precision.
+		first := searchNarrowed(t, backend, narrowed(tenantID, test.order, publishedseries.Filter{}, 1, pagination.Cursor{}))
+		second := searchNarrowed(t, backend, narrowed(tenantID, test.order, publishedseries.Filter{}, 1, decodeToken(t, first.NextToken)))
+		if got := slices.Concat(first.IDs, second.IDs); !slices.Equal(got, test.want) {
+			t.Errorf("%s paged: hits = %v, want %v", test.order.Name, got, test.want)
+		}
+	}
+}

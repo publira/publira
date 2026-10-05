@@ -40,7 +40,7 @@ func TestDecodeBoundaryRejectsATokenItDidNotIssue(t *testing.T) {
 		{name: "no list key", keys: []string{"seed"}, identity: identity, order: relevance, want: catalogsearch.ErrInvalidToken},
 		{name: "unknown last key", keys: []string{"seed", "relevance", "1.5", "beta seed", id, "exclusive"}, identity: identity, order: relevance, want: catalogsearch.ErrInvalidToken},
 		{name: "score is not a number", keys: []string{"seed", "relevance", "high", "beta seed", id}, identity: identity, order: relevance, want: catalogsearch.ErrInvalidToken},
-		{name: "date is not milliseconds", keys: []string{"seed", "published_at_desc", "2026-10-05T00:00:00Z", id}, identity: []string{"seed", "published_at_desc"}, order: byDate, want: catalogsearch.ErrInvalidToken},
+		{name: "instant is not nanoseconds", keys: []string{"seed", "published_at_desc", "2026-10-05T00:00:00Z", id}, identity: []string{"seed", "published_at_desc"}, order: byDate, want: catalogsearch.ErrInvalidToken},
 		{name: "id is not a UUID", keys: []string{"seed", "relevance", "1.5", "beta seed", "not-a-uuid"}, identity: identity, order: relevance, want: catalogsearch.ErrInvalidToken},
 		{name: "another query", keys: []string{"zeta", "relevance", "1.5", "beta seed", id}, identity: identity, order: relevance, want: catalogsearch.ErrTokenForAnotherQuery},
 		{name: "another order", keys: []string{"seed", "title_asc", "beta seed", id}, identity: []string{"seed", "title_desc"}, order: byTitle, want: catalogsearch.ErrTokenForAnotherNarrowing},
@@ -69,7 +69,7 @@ func TestBoundaryRoundTripsThroughAToken(t *testing.T) {
 		want  boundary
 	}{
 		"relevance": {order: orderFor(seriesSearch), want: boundary{valid: true, values: []any{3.1415927410125732, "beta seed"}, id: uuid.Must(uuid.NewV7()), inclusive: true}},
-		"a date":    {order: byDate, want: boundary{valid: true, values: []any{int64(1759622400123)}, id: uuid.Must(uuid.NewV7())}},
+		"a date":    {order: byDate, want: boundary{valid: true, values: []any{int64(1759622400123456000)}, id: uuid.Must(uuid.NewV7())}},
 	} {
 		identity := []string{queryKey("Seed"), "some list"}
 		cursor, err := pagination.Decode(encodeBoundary(pagination.Backward, identity, test.want, test.want.inclusive))
@@ -96,12 +96,12 @@ func TestSortForFollowsTheListOrder(t *testing.T) {
 		backward bool
 		want     string
 	}{
-		{order: publishedseries.TitleAsc, want: `[{"title.keyword":{"order":"asc"}},{"entity_id":{"order":"asc"}}]`},
-		{order: publishedseries.TitleDesc, want: `[{"title.keyword":{"order":"desc"}},{"entity_id":{"order":"desc"}}]`},
-		{order: publishedseries.TitleDesc, backward: true, want: `[{"title.keyword":{"order":"asc"}},{"entity_id":{"order":"asc"}}]`},
-		{order: publishedseries.PublishedAtDesc, want: `[{"published_at":{"order":"desc","unmapped_type":"date"}},{"entity_id":{"order":"desc"}}]`},
-		{order: publishedseries.PublishedAtAsc, want: `[{"published_at":{"order":"asc","unmapped_type":"date"}},{"entity_id":{"order":"asc"}}]`},
-		{order: publishedseries.LatestEpisodeAtDesc, want: `[{"latest_episode_at.web":{"order":"desc","unmapped_type":"date"}},{"entity_id":{"order":"desc"}}]`},
+		{order: publishedseries.TitleAsc, want: `[{"title.sort":{"order":"asc"}},{"entity_id":{"order":"asc"}}]`},
+		{order: publishedseries.TitleDesc, want: `[{"title.sort":{"order":"desc"}},{"entity_id":{"order":"desc"}}]`},
+		{order: publishedseries.TitleDesc, backward: true, want: `[{"title.sort":{"order":"asc"}},{"entity_id":{"order":"asc"}}]`},
+		{order: publishedseries.PublishedAtDesc, want: `[{"published_at":{"order":"desc","unmapped_type":"date_nanos"}},{"entity_id":{"order":"desc"}}]`},
+		{order: publishedseries.PublishedAtAsc, want: `[{"published_at":{"order":"asc","unmapped_type":"date_nanos"}},{"entity_id":{"order":"asc"}}]`},
+		{order: publishedseries.LatestEpisodeAtDesc, want: `[{"latest_episode_at.web":{"order":"desc","unmapped_type":"date_nanos"}},{"entity_id":{"order":"desc"}}]`},
 	} {
 		order, err := seriesOrder(test.order, testSurface)
 		if err != nil {

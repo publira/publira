@@ -188,7 +188,8 @@ const (
 	scoreValue valueType = iota
 	// A keyword, a string.
 	keywordValue
-	// A date, which the engine sorts and answers as epoch milliseconds.
+	// An instant, a date_nanos field the engine sorts and answers as epoch
+	// nanoseconds.
 	dateValue
 )
 
@@ -227,7 +228,7 @@ func seriesOrder(order publishedseries.Order, surface string) (ordering, error) 
 	var key sortKey
 	switch order.Column {
 	case publishedseries.ColumnTitle:
-		key = sortKey{field: seriesSearch.sortField, typ: keywordValue}
+		key = sortKey{field: "title.sort", typ: keywordValue}
 	case publishedseries.ColumnPublishedAt:
 		key = sortKey{field: "published_at", typ: dateValue}
 	case publishedseries.ColumnLatestEpisodeAt:
@@ -449,7 +450,7 @@ func sortFor(order ordering, backward bool) []any {
 	for _, key := range order.keys {
 		spec := map[string]any{"order": direction(key.descending)}
 		if key.typ == dateValue {
-			spec["unmapped_type"] = "date"
+			spec["unmapped_type"] = "date_nanos"
 		}
 		sort = append(sort, map[string]any{key.field: spec})
 	}
@@ -553,10 +554,10 @@ func hitBoundary(order ordering, values []opensearchapi.FieldValue) (boundary, e
 	return hit, nil
 }
 
-// sortValue reads one sort value. A date is read from the JSON as it came, an
-// integer of milliseconds, rather than through a float: the value the engine
-// gives a document missing the field is the largest or the smallest int64,
-// which a float would not carry back exactly.
+// sortValue reads one sort value. An instant is read from the JSON as it came,
+// an integer of nanoseconds, rather than through a float, which carries
+// neither that integer nor the largest or the smallest int64 the engine gives
+// a document missing the field back exactly.
 func sortValue(typ valueType, value opensearchapi.FieldValue) (any, error) {
 	switch typ {
 	case scoreValue:

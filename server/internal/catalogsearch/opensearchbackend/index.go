@@ -40,11 +40,20 @@ import (
 // 「銀河鉄道」 comes out as ギンガ/テツドウ, and only the pairs of the joined
 // reading are the same for both.
 //
-// The keyword sub-fields are the exact match and the sort key, normalized the
-// way the text is so neither depends on case or width.
+// The keyword sub-fields are the exact match and the sort key of a ranked
+// search, normalized the way the text is so neither depends on case or width.
 //
 // A series also carries what the published series list narrows and sorts by.
-// latest_episode_at is an object with one date per surface, mapped by a
+// title.sort is the title as it is written, which an explicit title order
+// sorts by: the list orders the stored title, so two titles the normalizer
+// would fold together are still two places in it. The engine compares it
+// code point by code point, the order PostgreSQL gives the list under a C
+// collation and under the en_US.utf8 locale the Alpine images run on; a
+// database on a linguistic collation orders the list its own way, which the
+// engine cannot follow. The instants are date_nanos rather than date because
+// the list compares them at PostgreSQL's microsecond precision, and two series
+// a millisecond would make equal are two places in it as well.
+// latest_episode_at is an object with one instant per surface, mapped by a
 // dynamic template under an otherwise strict mapping, so the index names no
 // surface of its own: a surface the catalog gains is a key the first document
 // on it adds.
