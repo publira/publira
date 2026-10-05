@@ -773,6 +773,9 @@ jobs:
         id: setup
         uses: ./.github/actions/mobile-android-setup
 
+      - name: Diagnose / Gradle cache size (temporary)
+        run: du -sh ~/.gradle/wrapper/dists/* ~/.gradle/caches/* ~/.gradle/caches/*/* 2> /dev/null | sort -h | tail -40
+
       - name: Build / Tenant Android app
         run: |
           set -euo pipefail
