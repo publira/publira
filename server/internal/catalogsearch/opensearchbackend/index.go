@@ -43,6 +43,12 @@ import (
 // The keyword sub-fields are the exact match and the sort key, normalized the
 // way the text is so neither depends on case or width.
 //
+// A series also carries what the published series list narrows and sorts by.
+// latest_episode_at is an object with one date per surface, mapped by a
+// dynamic template under an otherwise strict mapping, so the index names no
+// surface of its own: a surface the catalog gains is a key the first document
+// on it adds.
+//
 //go:embed index.json
 var indexDefinition []byte
 
@@ -83,6 +89,19 @@ type Document struct {
 	// read before the row was unpublished would bring the document back.
 	Surfaces    []string
 	PublishedAt time.Time
+	// The rest is a series' alone: the facts the published series list narrows
+	// and sorts by, in the shape its filters name them. FreeEpisodeSurfaces are
+	// the surfaces a free episode of the series is open on, and LatestEpisodeAt
+	// the instant of the newest episode published on each surface the series
+	// is, its own PublishedAt where there is none. Both change when a free
+	// window or a scheduled episode passes its instant, which is why a ticker
+	// job queues a sync for the series at each such boundary.
+	GenrePublicIDs      []string
+	TagSlugs            []string
+	Status              string
+	ScheduleWeekdays    []int32
+	FreeEpisodeSurfaces []string
+	LatestEpisodeAt     map[string]time.Time
 	// Version orders the writes of one document: a write is refused when the
 	// document holds a higher version, so a row read before another write can
 	// never overwrite what that write left. It is the instant the row was read
@@ -100,6 +119,13 @@ type documentSource struct {
 	Synopsis    string     `json:"synopsis,omitempty"`
 	Name        string     `json:"name,omitempty"`
 	Reading     string     `json:"reading,omitempty"`
+
+	GenrePublicIDs      []string             `json:"genre_public_ids,omitempty"`
+	TagSlugs            []string             `json:"tag_slugs,omitempty"`
+	Status              string               `json:"status,omitempty"`
+	ScheduleWeekdays    []int32              `json:"schedule_weekdays,omitempty"`
+	FreeEpisodeSurfaces []string             `json:"free_episode_surfaces,omitempty"`
+	LatestEpisodeAt     map[string]time.Time `json:"latest_episode_at,omitempty"`
 }
 
 func (k Kind) valid() bool {
@@ -257,6 +283,17 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error
 			if !doc.PublishedAt.IsZero() {
 				at := doc.PublishedAt.UTC()
 				source.PublishedAt = &at
+			}
+			source.GenrePublicIDs = doc.GenrePublicIDs
+			source.TagSlugs = doc.TagSlugs
+			source.Status = doc.Status
+			source.ScheduleWeekdays = doc.ScheduleWeekdays
+			source.FreeEpisodeSurfaces = doc.FreeEpisodeSurfaces
+			if len(doc.LatestEpisodeAt) > 0 {
+				source.LatestEpisodeAt = make(map[string]time.Time, len(doc.LatestEpisodeAt))
+				for surface, at := range doc.LatestEpisodeAt {
+					source.LatestEpisodeAt[surface] = at.UTC()
+				}
 			}
 		}
 		if err := encoder.Encode(map[string]bulkAction{"index": action}); err != nil {

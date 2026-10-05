@@ -200,15 +200,21 @@ LIMIT sqlc.arg('limit');
 -- name: DeleteEpisodeFreeWindowByIDForTenant :one
 -- Returns the deleted row so a concurrent second delete is told apart from a
 -- window that never existed. What the caller audits and revalidates comes
--- from the read it did first.
-DELETE FROM episode_free_windows
-WHERE tenant_id = $1
-    AND id = $2
-RETURNING id,
-    public_id,
-    episode_id,
-    starts_at,
-    ends_at;
+-- from the read it did first, and the series is the one whose search document
+-- a window that was open leaves stale.
+DELETE FROM episode_free_windows w
+WHERE w.tenant_id = sqlc.arg('tenant_id')
+    AND w.id = sqlc.arg('id')
+RETURNING w.id,
+    w.public_id,
+    w.episode_id,
+    w.starts_at,
+    w.ends_at,
+    (
+        SELECT e.series_id
+        FROM episodes e
+        WHERE e.id = w.episode_id
+    )::uuid AS series_id;
 
 -- name: ListEpisodeFreeWindowBoundariesDue :many
 -- Every window with a boundary the apply-free-windows batch has not dropped
@@ -223,6 +229,7 @@ SELECT w.id,
     w.ends_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     (
         w.start_revalidated_at IS NULL

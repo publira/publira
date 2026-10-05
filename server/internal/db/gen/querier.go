@@ -304,7 +304,8 @@ type Querier interface {
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
 	// window that never existed. What the caller audits and revalidates comes
-	// from the read it did first.
+	// from the read it did first, and the series is the one whose search document
+	// a window that was open leaves stale.
 	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
@@ -382,6 +383,15 @@ type Querier interface {
 	// carries every surface one of its published series is on, from the earliest
 	// of their published_at. A published_at still in the future is written as it
 	// is, and the search filters on it.
+	//
+	// A series also carries what the published series list narrows and sorts by,
+	// so a search can do the same. Two of those facts move with the clock rather
+	// than with an edit — whether a free episode is open, and when the latest
+	// episode was published — and are read at the start of the transaction, the
+	// instant the document's version names. The ticker jobs queue an event for a
+	// series whenever one of its free windows opens or closes and whenever one of
+	// its scheduled episodes is published, so the document is read again once the
+	// boundary has passed.
 	// The start of the transaction, which precedes its snapshot: every write the
 	// snapshot misses commits after this instant, and the outbox event that write
 	// queued is read later still, under a higher version.

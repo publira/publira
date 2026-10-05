@@ -1,4 +1,4 @@
-package catalogindex
+package catalogindex_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/opensearch-project/opensearch-go/v5"
 	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 
+	"github.com/publira/publira/server/internal/catalogindex"
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -130,7 +131,7 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 	pg.Reset(t)
 	idx := newIndex(t)
 	ctx := context.Background()
-	handler := outbox.NewCatalogIndexSyncHandler(NewSyncer(pg.OpenOutboxDB(t), idx.backend))
+	handler := outbox.NewCatalogIndexSyncHandler(catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend))
 
 	tenant := pg.SeedTenant(t, "INDEXSYNC001", "index-sync.example.com", "Index Sync Tenant")
 	label := pg.SeedLabel(t, tenant.ID, testutil.LabelSeed{Name: "Harbor Books"})
@@ -139,13 +140,13 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 	creator := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Ada Lindqvist"})
 	pg.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
 
-	queue := func(refs ...Ref) {
+	queue := func(refs ...catalogindex.Ref) {
 		t.Helper()
-		if err := Queue(ctx, dbmodels.New(pg.DB), tenant.ID, refs...); err != nil {
+		if err := catalogindex.Queue(ctx, dbmodels.New(pg.DB), tenant.ID, refs...); err != nil {
 			t.Fatalf("Queue: %v", err)
 		}
 	}
-	queue(SeriesRef(series.ID), SeriesRef(draft.ID), CreatorRef(creator.ID), LabelRef(label.ID))
+	queue(catalogindex.SeriesRef(series.ID), catalogindex.SeriesRef(draft.ID), catalogindex.CreatorRef(creator.ID), catalogindex.LabelRef(label.ID))
 	drain(t, pg, handler)
 	idx.refresh(t)
 
@@ -157,7 +158,7 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET title = 'Night Train' WHERE id = $1", series.ID); err != nil {
 		t.Fatalf("rename series: %v", err)
 	}
-	queue(SeriesRef(series.ID))
+	queue(catalogindex.SeriesRef(series.ID))
 	drain(t, pg, handler)
 	idx.refresh(t)
 	idx.assertHits(t, searchSeries, tenant.ID, "seed")
@@ -166,7 +167,7 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = false, published_at = NULL WHERE id = $1", series.ID); err != nil {
 		t.Fatalf("unpublish series: %v", err)
 	}
-	queue(SeriesRef(series.ID), CreatorRef(creator.ID), LabelRef(label.ID))
+	queue(catalogindex.SeriesRef(series.ID), catalogindex.CreatorRef(creator.ID), catalogindex.LabelRef(label.ID))
 	drain(t, pg, handler)
 	idx.refresh(t)
 	idx.assertHits(t, searchSeries, tenant.ID, "night train")
@@ -186,7 +187,7 @@ func TestAScheduledSeriesIsFoundOnceItsInstantPasses(t *testing.T) {
 	soon := time.Now().Add(2 * time.Second)
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXSCHED02", Title: "Seed Garden", Published: true, PublishedAt: soon})
 
-	if err := NewSyncer(pg.OpenOutboxDB(t), idx.backend).Sync(ctx, tenant.ID, string(opensearchbackend.KindSeries), series.ID); err != nil {
+	if err := catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend).Sync(ctx, tenant.ID, string(opensearchbackend.KindSeries), series.ID); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	idx.refresh(t)
@@ -202,7 +203,7 @@ func TestSyncRefusesAKindItDoesNotIndexForGood(t *testing.T) {
 	idx := newIndex(t)
 
 	tenant := pg.SeedTenant(t, "INDEXKIND001", "index-kind.example.com", "Index Kind Tenant")
-	err := NewSyncer(pg.OpenOutboxDB(t), idx.backend).Sync(context.Background(), tenant.ID, "episode", uuid.Must(uuid.NewV7()))
+	err := catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend).Sync(context.Background(), tenant.ID, "episode", uuid.Must(uuid.NewV7()))
 	if !outbox.IsPermanent(err) {
 		t.Fatalf("Sync of an unknown kind = %v, want a permanent error", err)
 	}
@@ -229,7 +230,7 @@ func TestRebuildFillsANewIndexFromTheDatabase(t *testing.T) {
 		t.Fatalf("Put: %v", err)
 	}
 
-	name, err := Rebuild(ctx, pg.OpenContentStatsDB(t), idx.backend, slog.New(slog.DiscardHandler))
+	name, err := catalogindex.Rebuild(ctx, pg.OpenContentStatsDB(t), idx.backend, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("Rebuild: %v", err)
 	}
@@ -267,7 +268,7 @@ func TestSyncTenantRewritesOneTenantInPlace(t *testing.T) {
 		t.Fatalf("PutAll: %v", err)
 	}
 
-	written, deleted, err := SyncTenant(ctx, pg.OpenContentStatsDB(t), idx.backend, tenant.ID)
+	written, deleted, err := catalogindex.SyncTenant(ctx, pg.OpenContentStatsDB(t), idx.backend, tenant.ID)
 	if err != nil {
 		t.Fatalf("SyncTenant: %v", err)
 	}

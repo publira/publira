@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/outbox"
@@ -687,7 +688,7 @@ func (s *adminServer) CreateEpisode(
 	}
 	var owed revalidate.Owed
 	if publishNow {
-		owed, err = s.recordEpisodePublication(txCtx, q, tenant.ID, base.ID)
+		owed, err = s.recordEpisodePublication(txCtx, q, tenant.ID, seriesID, base.ID)
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to record the publication of the created episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 		}
@@ -730,10 +731,10 @@ func (s *adminServer) CreateEpisode(
 
 // recordEpisodePublication writes down, in the transaction that publishes the
 // episode, what the scheduled publication job would have done in its own: the
-// drop of the cache that lists the series' episodes, and the notice to the
-// episode's followers, which the worker writes because this connection cannot
-// see them.
-func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodels.Queries, tenantID, episodeID uuid.UUID) (revalidate.Owed, error) {
+// drop of the cache that lists the series' episodes, the sync of the series'
+// search document, and the notice to the episode's followers, which the worker
+// writes because this connection cannot see them.
+func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodels.Queries, tenantID, seriesID, episodeID uuid.UUID) (revalidate.Owed, error) {
 	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{
 		TenantID:  tenantID.String(),
 		EpisodeID: episodeID.String(),
@@ -743,6 +744,9 @@ func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodel
 	}
 	if err := insertAdminOutboxEvent(txCtx, q, tenantID, outbox.EventTypeEpisodePublishedNotification, payload, outbox.EpisodePublishedIdempotencyKey(episodeID)); err != nil {
 		return revalidate.Owed{}, fmt.Errorf("queue episode published notification: %w", err)
+	}
+	if err := catalogindex.Queue(txCtx, q, tenantID, catalogindex.SeriesRef(seriesID)); err != nil {
+		return revalidate.Owed{}, fmt.Errorf("queue catalog index sync: %w", err)
 	}
 	return s.recordRevalidation(txCtx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
 }
@@ -983,6 +987,11 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
 		ep = row
+		// A schedule saved over a published episode takes it down, which can
+		// change its series' latest episode and whether a free one is open.
+		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
 		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -1143,6 +1152,11 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			Availability: availability,
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+		// The surfaces an episode is shown on decide where it counts as its
+		// series' latest episode and as a free one.
+		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(episode.SeriesID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
 		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

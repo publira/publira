@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/pagination"
@@ -167,15 +168,19 @@ func (s *adminServer) recordFreeWindowAudit(
 }
 
 // recordOpenFreeWindow records the drop of the public caches that answer with an
-// episode's price, and writes off each window's start so the batch does not do
-// it again, both on the transaction that wrote the windows. It is called only
-// for a window that is open the moment it is written: a window still ahead of
-// its start changes nothing a cache holds yet, and apply-free-windows is what
-// drops them when it opens.
-func (s *adminServer) recordOpenFreeWindow(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, windowIDs []uuid.UUID) (revalidate.Owed, error) {
+// episode's price and the sync of the series' search document, and writes off
+// each window's start so the batch does not do it again, all on the
+// transaction that wrote the windows. It is called only for a window that is
+// open the moment it is written: a window still ahead of its start changes
+// nothing a cache or the index holds yet, and apply-free-windows is what asks
+// for both when it opens.
+func (s *adminServer) recordOpenFreeWindow(ctx context.Context, q *dbmodels.Queries, tenantID, seriesID uuid.UUID, windowIDs []uuid.UUID) (revalidate.Owed, error) {
 	owed, err := s.reval.Record(ctx, q, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
 	if err != nil {
 		return revalidate.Owed{}, fmt.Errorf("record cache invalidation: %w", err)
+	}
+	if err := catalogindex.Queue(ctx, q, tenantID, catalogindex.SeriesRef(seriesID)); err != nil {
+		return revalidate.Owed{}, fmt.Errorf("queue catalog index sync: %w", err)
 	}
 	for _, windowID := range windowIDs {
 		if err := q.MarkEpisodeFreeWindowStartRevalidated(ctx, windowID); err != nil {
@@ -246,7 +251,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	}
 	var owed revalidate.Owed
 	if period.openAt(time.Now()) {
-		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, []uuid.UUID{created.ID}); err != nil {
+		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, episode.SeriesID, []uuid.UUID{created.ID}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for an open free window", err, "tenant_id", tenant.ID.String(), "free_window_id", created.ID.String())
 		}
 	}
@@ -379,7 +384,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 
 	var owed revalidate.Owed
 	if period.openAt(time.Now()) {
-		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, windowIDs); err != nil {
+		if owed, err = s.recordOpenFreeWindow(ctx, q, tenant.ID, series.ID, windowIDs); err != nil {
 			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for open free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 		}
 	}
@@ -613,12 +618,16 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 			return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
 		deleted = row
-		// Only a window that was open is holding a cached page open. One still
-		// ahead of its start never reached the public site, and one already over
-		// was closed by apply-free-windows when it ended.
+		// Only a window that was open is holding a cached page open, or a
+		// search document saying a free episode is. One still ahead of its
+		// start never reached either, and one already over was closed by
+		// apply-free-windows when it ended.
 		window := freeWindowPeriod{startsAt: row.StartsAt, endsAt: row.EndsAt}
 		if !window.openAt(time.Now()) {
 			return nil, nil
+		}
+		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the free window's series", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
 		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

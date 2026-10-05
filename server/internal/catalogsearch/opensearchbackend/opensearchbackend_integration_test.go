@@ -2,6 +2,7 @@ package opensearchbackend
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"maps"
 	"slices"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/publishedseries"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -462,4 +464,211 @@ func TestRebuildReplacesAnIndexThatHasTheAliasName(t *testing.T) {
 	if want := []string{rebuild.Index()}; !slices.Equal(indices, want) {
 		t.Fatalf("alias names %v, want %v", indices, want)
 	}
+}
+
+func searchNarrowed(t *testing.T, backend *Backend, req catalogsearch.SeriesRequest) catalogsearch.Page {
+	t.Helper()
+	page, err := backend.SearchSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("SearchSeries(%q, %s, %+v): %v", req.Query, req.Order.Name, req.Filter, err)
+	}
+	return page
+}
+
+func narrowed(tenantID uuid.UUID, order publishedseries.Order, filter publishedseries.Filter, limit int32, cursor pagination.Cursor) catalogsearch.SeriesRequest {
+	return catalogsearch.SeriesRequest{
+		Request: catalogsearch.Request{TenantID: tenantID, Surface: testSurface, Query: "seed", Limit: limit, Cursor: cursor},
+		Order:   order,
+		Filter:  filter,
+	}
+}
+
+func TestSearchSeriesKeepsOnlyWhatEachFilterKeeps(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+
+	alpha := publishedSeries(tenantID, "Seed Alpha", "")
+	alpha.GenrePublicIDs = []string{"GENREMYSTERY"}
+	alpha.TagSlugs = []string{"found-family"}
+	alpha.Status = "ongoing"
+	alpha.ScheduleWeekdays = []int32{1, 4}
+	alpha.FreeEpisodeSurfaces = []string{testSurface}
+	// Bravo is free on the app alone, which the web does not count.
+	bravo := publishedSeries(tenantID, "Seed Bravo", "")
+	bravo.GenrePublicIDs = []string{"GENREROMANCE"}
+	bravo.TagSlugs = []string{"slow-burn"}
+	bravo.Status = "completed"
+	bravo.FreeEpisodeSurfaces = []string{"app"}
+	charlie := publishedSeries(tenantID, "Seed Charlie", "")
+	charlie.GenrePublicIDs = []string{"GENREMYSTERY", "GENREROMANCE"}
+	charlie.TagSlugs = []string{"found-family", "slow-burn"}
+	charlie.Status = "completed"
+	charlie.ScheduleWeekdays = []int32{4}
+	put(t, backend, alpha, bravo, charlie)
+
+	text := func(value string) sql.NullString { return sql.NullString{String: value, Valid: true} }
+	weekday := func(value int16) sql.NullInt16 { return sql.NullInt16{Int16: value, Valid: true} }
+	for _, test := range []struct {
+		name   string
+		filter publishedseries.Filter
+		want   []uuid.UUID
+	}{
+		{name: "none", want: []uuid.UUID{alpha.ID, bravo.ID, charlie.ID}},
+		{name: "free on this surface", filter: publishedseries.Filter{HasFreeEpisodes: true}, want: []uuid.UUID{alpha.ID}},
+		{name: "a genre", filter: publishedseries.Filter{GenrePublicID: text("GENREMYSTERY")}, want: []uuid.UUID{alpha.ID, charlie.ID}},
+		{name: "a tag", filter: publishedseries.Filter{TagSlug: text("slow-burn")}, want: []uuid.UUID{bravo.ID, charlie.ID}},
+		{name: "a status", filter: publishedseries.Filter{Status: text("completed")}, want: []uuid.UUID{bravo.ID, charlie.ID}},
+		{name: "a weekday", filter: publishedseries.Filter{Weekday: weekday(4)}, want: []uuid.UUID{alpha.ID, charlie.ID}},
+		// Sunday is 0, which is a weekday to keep rather than no filter.
+		{name: "sunday", filter: publishedseries.Filter{Weekday: weekday(0)}},
+		{name: "every filter at once", filter: publishedseries.Filter{GenrePublicID: text("GENREMYSTERY"), TagSlug: text("found-family"), Status: text("ongoing"), Weekday: weekday(1), HasFreeEpisodes: true}, want: []uuid.UUID{alpha.ID}},
+		{name: "two filters no series satisfies both", filter: publishedseries.Filter{GenrePublicID: text("GENREROMANCE"), Status: text("ongoing")}},
+	} {
+		page := searchNarrowed(t, backend, narrowed(tenantID, publishedseries.TitleAsc, test.filter, 10, pagination.Cursor{}))
+		if !slices.Equal(page.IDs, test.want) {
+			t.Errorf("%s: hits = %v, want %v", test.name, page.IDs, test.want)
+		}
+	}
+}
+
+func TestSearchSeriesSortsByEveryListOrder(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	alpha := publishedSeries(tenantID, "Seed Alpha", "")
+	alpha.PublishedAt = now.Add(-3 * time.Hour)
+	alpha.LatestEpisodeAt = map[string]time.Time{testSurface: now.Add(-10 * time.Minute)}
+	bravo := publishedSeries(tenantID, "Seed Bravo", "")
+	bravo.PublishedAt = now.Add(-1 * time.Hour)
+	bravo.LatestEpisodeAt = map[string]time.Time{testSurface: now.Add(-30 * time.Minute)}
+	// Charlie's latest episode differs by surface, and Delta is on the app
+	// alone, so each surface sorts by its own instants.
+	charlie := publishedSeries(tenantID, "Seed Charlie", "")
+	charlie.PublishedAt = now.Add(-2 * time.Hour)
+	charlie.Surfaces = []string{"app", testSurface}
+	charlie.LatestEpisodeAt = map[string]time.Time{testSurface: now.Add(-5 * time.Minute), "app": now.Add(-100 * time.Minute)}
+	delta := publishedSeries(tenantID, "Seed Delta", "")
+	delta.Surfaces = []string{"app"}
+	delta.LatestEpisodeAt = map[string]time.Time{"app": now.Add(-time.Minute)}
+	put(t, backend, alpha, bravo, charlie, delta)
+
+	for _, test := range []struct {
+		order publishedseries.Order
+		want  []uuid.UUID
+	}{
+		{order: publishedseries.TitleAsc, want: []uuid.UUID{alpha.ID, bravo.ID, charlie.ID}},
+		{order: publishedseries.TitleDesc, want: []uuid.UUID{charlie.ID, bravo.ID, alpha.ID}},
+		{order: publishedseries.PublishedAtDesc, want: []uuid.UUID{bravo.ID, charlie.ID, alpha.ID}},
+		{order: publishedseries.PublishedAtAsc, want: []uuid.UUID{alpha.ID, charlie.ID, bravo.ID}},
+		{order: publishedseries.LatestEpisodeAtDesc, want: []uuid.UUID{charlie.ID, alpha.ID, bravo.ID}},
+	} {
+		page := searchNarrowed(t, backend, narrowed(tenantID, test.order, publishedseries.Filter{}, 10, pagination.Cursor{}))
+		if !slices.Equal(page.IDs, test.want) {
+			t.Errorf("%s: hits = %v, want %v", test.order.Name, page.IDs, test.want)
+		}
+	}
+
+	app := narrowed(tenantID, publishedseries.LatestEpisodeAtDesc, publishedseries.Filter{}, 10, pagination.Cursor{})
+	app.Surface = "app"
+	assertIDs(t, "seed on app", searchNarrowed(t, backend, app).IDs, delta.ID, charlie.ID)
+}
+
+// A sorted search pages forward and back through ties on the sorted value,
+// which the id breaks in the order's direction.
+func TestPagesThroughASortedSearchInBothDirections(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	at := time.Now().Add(-time.Hour).Truncate(time.Millisecond)
+
+	var docs []Document
+	for _, title := range []string{"Seed One", "Seed Two", "Seed Three", "Seed Four", "Seed Five"} {
+		doc := publishedSeries(tenantID, title, "")
+		doc.LatestEpisodeAt = map[string]time.Time{testSurface: at}
+		docs = append(docs, doc)
+	}
+	put(t, backend, docs...)
+
+	order := publishedseries.LatestEpisodeAtDesc
+	all := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 10, pagination.Cursor{}))
+	// Every instant is the same, so the order is the ids, newest first.
+	want := make([]uuid.UUID, 0, len(docs))
+	for index := len(docs) - 1; index >= 0; index-- {
+		want = append(want, docs[index].ID)
+	}
+	assertIDs(t, "seed", all.IDs, want...)
+
+	first := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 2, pagination.Cursor{}))
+	second := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 2, decodeToken(t, first.NextToken)))
+	third := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 2, decodeToken(t, second.NextToken)))
+	if third.NextToken != "" {
+		t.Fatalf("third page = %+v, want no next token", third)
+	}
+	assertIDs(t, "seed", slices.Concat(first.IDs, second.IDs, third.IDs), want...)
+
+	back := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 2, decodeToken(t, third.PreviousToken)))
+	assertIDs(t, "seed", back.IDs, second.IDs...)
+	back = searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 2, decodeToken(t, back.PreviousToken)))
+	assertIDs(t, "seed", back.IDs, first.IDs...)
+	if back.PreviousToken != "" {
+		t.Fatalf("page back to the start = %+v, want no previous token", back)
+	}
+
+	// The last hit gone, the page after the second is empty and hands back a
+	// token that includes the second page's last hit.
+	for _, id := range third.IDs {
+		if err := backend.Delete(context.Background(), KindSeries, tenantID, id, 0); err != nil {
+			t.Fatalf("Delete: %v", err)
+		}
+	}
+	refresh(t, backend)
+	empty := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 1, decodeToken(t, second.NextToken)))
+	if len(empty.IDs) != 0 {
+		t.Fatalf("page past the last hit = %v, want none", empty.IDs)
+	}
+	recovered := searchNarrowed(t, backend, narrowed(tenantID, order, publishedseries.Filter{}, 1, decodeToken(t, empty.PreviousToken)))
+	assertIDs(t, "seed", recovered.IDs, second.IDs[len(second.IDs)-1])
+}
+
+// A token names the order and the filters it was issued under, and another
+// order or another filter is refused rather than read as a boundary that sits
+// elsewhere in that list.
+func TestATokenIsBoundToItsOrderAndFilters(t *testing.T) {
+	t.Parallel()
+	backend := newTestBackend(t)
+	tenantID := uuid.Must(uuid.NewV7())
+
+	free := publishedSeries(tenantID, "Seed Alpha", "")
+	free.FreeEpisodeSurfaces = []string{testSurface}
+	other := publishedSeries(tenantID, "Seed Bravo", "")
+	other.FreeEpisodeSurfaces = []string{testSurface}
+	put(t, backend, free, other)
+
+	byTitle := searchNarrowed(t, backend, narrowed(tenantID, publishedseries.TitleAsc, publishedseries.Filter{}, 1, pagination.Cursor{}))
+	byRelevance := searchNarrowed(t, backend, narrowed(tenantID, publishedseries.Order{}, publishedseries.Filter{}, 1, pagination.Cursor{}))
+	onlyFree := publishedseries.Filter{HasFreeEpisodes: true}
+	for _, test := range []struct {
+		name   string
+		token  string
+		order  publishedseries.Order
+		filter publishedseries.Filter
+	}{
+		{name: "another order", token: byTitle.NextToken, order: publishedseries.TitleDesc},
+		{name: "a filter added", token: byTitle.NextToken, order: publishedseries.TitleAsc, filter: onlyFree},
+		{name: "the order dropped", token: byTitle.NextToken},
+		{name: "an order added", token: byRelevance.NextToken, order: publishedseries.TitleAsc},
+		{name: "a filter added to relevance", token: byRelevance.NextToken, filter: onlyFree},
+	} {
+		_, err := backend.SearchSeries(context.Background(), narrowed(tenantID, test.order, test.filter, 1, decodeToken(t, test.token)))
+		if !errors.Is(err, catalogsearch.ErrTokenForAnotherNarrowing) {
+			t.Errorf("%s: error = %v, want %v", test.name, err, catalogsearch.ErrTokenForAnotherNarrowing)
+		}
+	}
+
+	// The same order and filters accept it.
+	next := searchNarrowed(t, backend, narrowed(tenantID, publishedseries.TitleAsc, publishedseries.Filter{}, 1, decodeToken(t, byTitle.NextToken)))
+	assertIDs(t, "seed", next.IDs, other.ID)
 }

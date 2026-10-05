@@ -124,7 +124,8 @@ SELECT e.id,
     -- Where the episode may be bought: its own value, NULL where it follows
     -- the series, beside the value resolved through the series and the tenant.
     e.purchase_availability,
-    epa.purchase_availability AS resolved_purchase_availability
+    epa.purchase_availability AS resolved_purchase_availability,
+    e.series_id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -157,6 +158,7 @@ type GetEpisodeByIDForTenantRow struct {
 	Availability                 sql.NullString `json:"availability"`
 	PurchaseAvailability         sql.NullString `json:"purchase_availability"`
 	ResolvedPurchaseAvailability string         `json:"resolved_purchase_availability"`
+	SeriesID                     uuid.UUID      `json:"series_id"`
 }
 
 func (q *Queries) GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error) {
@@ -179,6 +181,7 @@ func (q *Queries) GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByI
 		&i.Availability,
 		&i.PurchaseAvailability,
 		&i.ResolvedPurchaseAvailability,
+		&i.SeriesID,
 	)
 	return i, err
 }
@@ -205,7 +208,8 @@ SELECT e.id,
     -- Where the episode may be bought: its own value, NULL where it follows
     -- the series, beside the value resolved through the series and the tenant.
     e.purchase_availability,
-    epa.purchase_availability AS resolved_purchase_availability
+    epa.purchase_availability AS resolved_purchase_availability,
+    e.series_id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -238,6 +242,7 @@ type GetEpisodeByPublicIDForTenantRow struct {
 	Availability                 sql.NullString `json:"availability"`
 	PurchaseAvailability         sql.NullString `json:"purchase_availability"`
 	ResolvedPurchaseAvailability string         `json:"resolved_purchase_availability"`
+	SeriesID                     uuid.UUID      `json:"series_id"`
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error) {
@@ -260,6 +265,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 		&i.Availability,
 		&i.PurchaseAvailability,
 		&i.ResolvedPurchaseAvailability,
+		&i.SeriesID,
 	)
 	return i, err
 }
@@ -983,6 +989,7 @@ const ListEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPu
 SELECT el.episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title,
     t.id AS tenant_id,
@@ -1002,6 +1009,7 @@ type ListEpisodesReadyToPublishWithTenantInfoRow struct {
 	EpisodeID       uuid.UUID `json:"episode_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
 	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
 	SeriesPublicID  string    `json:"series_public_id"`
 	SeriesTitle     string    `json:"series_title"`
 	TenantID        uuid.UUID `json:"tenant_id"`
@@ -1023,6 +1031,7 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.TenantID,

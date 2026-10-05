@@ -875,7 +875,6 @@ func TestCatalogSearchAnswersABackendFailure(t *testing.T) {
 	}{
 		{name: "token for another query", err: catalogsearch.ErrTokenForAnotherQuery, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token was issued for another query"},
 		{name: "token for another order or filter", err: catalogsearch.ErrTokenForAnotherNarrowing, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token was issued for another order or filter"},
-		{name: "narrowing the backend cannot do", err: catalogsearch.ErrNarrowingUnsupported, wantCode: connect.CodeUnimplemented, wantMsg: "unimplemented: this search cannot narrow or sort its results"},
 		{name: "invalid token", err: catalogsearch.ErrInvalidToken, wantCode: connect.CodeInvalidArgument, wantMsg: "invalid_argument: token is invalid"},
 		{name: "engine failure", err: errors.New("connection refused"), wantCode: connect.CodeInternal, wantMsg: "internal: internal server error"},
 	} {

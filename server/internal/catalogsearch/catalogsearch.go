@@ -27,11 +27,6 @@ var ErrTokenForAnotherQuery = errors.New("catalogsearch: token was issued for an
 // request asks for, the same way a list's token does.
 var ErrTokenForAnotherNarrowing = errors.New("catalogsearch: token was issued for another order or filter")
 
-// ErrNarrowingUnsupported is returned by a backend that cannot narrow or sort a
-// series search for a request that asks it to. Ignoring the request instead
-// would answer with hits the reader filtered out.
-var ErrNarrowingUnsupported = errors.New("catalogsearch: this backend cannot narrow or sort a series search")
-
 // Request is one page of a search.
 type Request struct {
 	TenantID uuid.UUID
@@ -57,12 +52,6 @@ type SeriesRequest struct {
 	Order publishedseries.Order
 	// Filter keeps only the hits the list would keep under it.
 	Filter publishedseries.Filter
-}
-
-// Narrowed reports whether the request asks for anything beyond the backend's
-// own order of every hit.
-func (r SeriesRequest) Narrowed() bool {
-	return r.Order != (publishedseries.Order{}) || r.Filter != (publishedseries.Filter{})
 }
 
 // Page is the hits of one page in display order, with the pagination.Encode

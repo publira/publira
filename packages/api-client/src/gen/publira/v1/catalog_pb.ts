@@ -4401,8 +4401,7 @@ export const CatalogService: GenService<{
    * sorted by the fields ListPublishedSeries takes. An empty query is
    * invalid_argument. A token carries the Unicode-lowercased query it was
    * built for; sending it with a query that lowers to a different string is
-   * invalid_argument. A search backend that cannot narrow or sort its hits
-   * answers a request that asks it to with unimplemented.
+   * invalid_argument.
    *
    * @generated from rpc publira.v1.CatalogService.SearchPublishedSeries
    */

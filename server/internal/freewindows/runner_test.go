@@ -3,14 +3,18 @@ package freewindows
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 )
 
 type stubQueries struct {
@@ -19,6 +23,29 @@ type stubQueries struct {
 	startMark []uuid.UUID
 	endMark   []uuid.UUID
 	markErr   error
+	// synced are the series a catalog_index_sync event was queued for, in
+	// order, and syncErr fails every one of them.
+	synced  []uuid.UUID
+	syncErr error
+}
+
+func (s *stubQueries) InsertOutboxEvent(_ context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error) {
+	if s.syncErr != nil {
+		return dbmodels.OutboxEvent{}, s.syncErr
+	}
+	if arg.EventType != outbox.EventTypeCatalogIndexSync {
+		return dbmodels.OutboxEvent{}, fmt.Errorf("unexpected outbox event %s", arg.EventType)
+	}
+	var payload outbox.CatalogIndexSyncPayload
+	if err := json.Unmarshal(arg.Payload, &payload); err != nil {
+		return dbmodels.OutboxEvent{}, err
+	}
+	id, err := uuid.Parse(payload.ID)
+	if err != nil {
+		return dbmodels.OutboxEvent{}, err
+	}
+	s.synced = append(s.synced, id)
+	return dbmodels.OutboxEvent{}, nil
 }
 
 func (s *stubQueries) ListEpisodeFreeWindowBoundariesDue(context.Context) ([]dbmodels.ListEpisodeFreeWindowBoundariesDueRow, error) {
@@ -67,10 +94,13 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEveryBoundary(t *testing.T) {
 	closed := uuid.Must(uuid.NewV7())
 	both := uuid.Must(uuid.NewV7())
 
+	seriesA := uuid.Must(uuid.NewV7())
+	seriesB := uuid.Must(uuid.NewV7())
+
 	queries := &stubQueries{due: []dbmodels.ListEpisodeFreeWindowBoundariesDueRow{
-		{ID: opened, TenantID: tenantA, StartDue: yes(), EndDue: no()},
-		{ID: closed, TenantID: tenantA, StartDue: no(), EndDue: yes()},
-		{ID: both, TenantID: tenantB, StartDue: yes(), EndDue: yes()},
+		{ID: opened, TenantID: tenantA, SeriesID: seriesA, StartDue: yes(), EndDue: no()},
+		{ID: closed, TenantID: tenantA, SeriesID: seriesA, StartDue: no(), EndDue: yes()},
+		{ID: both, TenantID: tenantB, SeriesID: seriesB, StartDue: yes(), EndDue: yes()},
 	}}
 	reval := &stubRevalidator{}
 
@@ -92,6 +122,12 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEveryBoundary(t *testing.T) {
 		if call[0] != RevalidateTags(reval.tenants[index])[0] {
 			t.Fatalf("revalidated %v under tenant %s, want the tenant the tag names", call, reval.tenants[index])
 		}
+	}
+
+	// Whether a free episode is open is on the series' search document, which
+	// is read again once per series however many of its windows passed.
+	if want := []uuid.UUID{seriesA, seriesB}; !slices.Equal(queries.synced, want) {
+		t.Errorf("series synced = %v, want %v", queries.synced, want)
 	}
 
 	if len(queries.startMark) != 2 || queries.startMark[0] != opened || queries.startMark[1] != both {
@@ -122,12 +158,29 @@ func TestRunOnceLeavesBoundariesUnmarkedWhenRevalidationFails(t *testing.T) {
 	}
 }
 
+// A boundary marked before its series' search document is owed a sync would
+// leave the search answering from the side of the window it has left.
+func TestRunOnceLeavesBoundariesUnmarkedWhenTheSyncCannotBeQueued(t *testing.T) {
+	queries := &stubQueries{
+		due: []dbmodels.ListEpisodeFreeWindowBoundariesDueRow{
+			{ID: uuid.Must(uuid.NewV7()), TenantID: uuid.Must(uuid.NewV7()), SeriesID: uuid.Must(uuid.NewV7()), StartDue: yes(), EndDue: no()},
+		},
+		syncErr: errors.New("connection reset"),
+	}
+
+	New(queries, &stubRevalidator{}, quietLogger()).RunOnce(context.Background())
+
+	if len(queries.startMark) != 0 || len(queries.endMark) != 0 {
+		t.Fatalf("marked %v / %v after a failed sync, want none", queries.startMark, queries.endMark)
+	}
+}
+
 // Revalidation can be turned off entirely. There is then nothing to drop, and a
 // pass that kept collecting the boundaries it crossed would grow without end.
 func TestRunOnceMarksBoundariesWithoutARevalidator(t *testing.T) {
 	windowID := uuid.Must(uuid.NewV7())
 	queries := &stubQueries{due: []dbmodels.ListEpisodeFreeWindowBoundariesDueRow{
-		{ID: windowID, TenantID: uuid.Must(uuid.NewV7()), StartDue: yes(), EndDue: no()},
+		{ID: windowID, TenantID: uuid.Must(uuid.NewV7()), SeriesID: uuid.Must(uuid.NewV7()), StartDue: yes(), EndDue: no()},
 	}}
 
 	New(queries, nil, quietLogger()).RunOnce(context.Background())

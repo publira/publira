@@ -264,7 +264,7 @@ The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`,
 
 - `PUBLIRA_SEARCH_BACKEND`
   - `sql` (the default when unset): a substring match in PostgreSQL, ordered by title or name. A series search can be narrowed and sorted by every filter and order `ListPublishedSeries` takes. It needs nothing else
-  - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship; [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds one that does, and the root `compose.yaml` runs it in its `search` profile. It does not narrow or sort a series search yet (#3619), and answers a search that asks it to with `unimplemented`
+  - `opensearch`: OpenSearch, ranked by relevance, matching a title written in kanji from a query typed in kana and a Latin word with one wrong character. The engine needs the `analysis-kuromoji` and `analysis-icu` plugins, which the `opensearchproject/opensearch` image does not ship; [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds one that does, and the root `compose.yaml` runs it in its `search` profile. A series search can be narrowed and sorted by every filter and order `ListPublishedSeries` takes, and is ranked by relevance when it names no order
   - Any other value stops the process at startup
 - `PUBLIRA_OPENSEARCH_URL`
   - The engine's URL, `http://` or `https://`. Required with `opensearch`; the server and the worker connect at startup, create the index when it does not exist, and stop when the engine does not answer
@@ -273,7 +273,7 @@ The public catalog searches (`SearchPublishedSeries`, `SearchPublishedCreators`,
 - `PUBLIRA_OPENSEARCH_INDEX`
   - The alias of the index holding every tenant's series, creators, and labels. Default: `publira-catalog`. Give each environment sharing a cluster an alias of its own
 
-Set the same values on `publira server` and `publira worker`. Every write to a series, a creator, or a label queues a `catalog_index_sync` outbox event in its own transaction, and the worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere; on `sql` the worker marks those events done as it claims them. `publiractl search reindex` builds the index from the database, for a deployment moving to `opensearch` or an index definition that changed; see [publiractl](cmd/publiractl/README.md#search).
+Set the same values on `publira server` and `publira worker`. Every write to a series, a creator, or a label, and every write to an episode or a free window that changes what its series is narrowed or sorted by, queues a `catalog_index_sync` outbox event in its own transaction; so do the ticker jobs when a free window opens or closes and when a scheduled episode is published. The worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere; on `sql` the worker marks those events done as it claims them. `publiractl search reindex` builds the index from the database, for a deployment moving to `opensearch` or an index definition that changed; see [publiractl](cmd/publiractl/README.md#search).
 
 ## Disposable email domains
 
