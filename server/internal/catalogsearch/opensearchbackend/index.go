@@ -192,7 +192,7 @@ func alreadyExists(err error) bool {
 // Put writes doc, replacing the document of the same row, or a tombstone in
 // its place when doc is published on no surface.
 func (b *Backend) Put(ctx context.Context, doc Document) error {
-	return b.write(ctx, b.index, []Document{doc})
+	return b.write(ctx, b.index, []Document{doc}, "")
 }
 
 // Delete replaces the document of a row with a tombstone, unless the document
@@ -203,7 +203,17 @@ func (b *Backend) Delete(ctx context.Context, kind Kind, tenantID, id uuid.UUID,
 
 // PutAll writes docs the way Put writes each of them.
 func (b *Backend) PutAll(ctx context.Context, docs []Document) error {
-	return b.write(ctx, b.index, docs)
+	return b.write(ctx, b.index, docs, "")
+}
+
+// PutAllSearchable writes docs the way PutAll does, and returns only once a
+// search can find them. The engine shows a written document to a search after
+// the index next refreshes, and this holds the response until then instead of
+// refreshing at once: a caller about to tell a cache that the search's answer
+// changed waits one refresh interval at most, and costs the engine no refresh
+// of its own.
+func (b *Backend) PutAllSearchable(ctx context.Context, docs []Document) error {
+	return b.write(ctx, b.index, docs, "wait_for")
 }
 
 // bulkBatchSize bounds the documents one bulk request carries, so a tenant's
@@ -222,16 +232,18 @@ type bulkAction struct {
 	VersionType string `json:"version_type"`
 }
 
-func (b *Backend) write(ctx context.Context, index string, docs []Document) error {
+// write sends docs to index in batches. refresh is the bulk request's refresh
+// parameter, empty to answer as soon as the engine holds the documents.
+func (b *Backend) write(ctx context.Context, index string, docs []Document, refresh string) error {
 	for start := 0; start < len(docs); start += bulkBatchSize {
-		if err := b.bulk(ctx, index, docs[start:min(start+bulkBatchSize, len(docs))]); err != nil {
+		if err := b.bulk(ctx, index, docs[start:min(start+bulkBatchSize, len(docs))], refresh); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error {
+func (b *Backend) bulk(ctx context.Context, index string, docs []Document, refresh string) error {
 	var body bytes.Buffer
 	encoder := json.NewEncoder(&body)
 	for _, doc := range docs {
@@ -284,7 +296,11 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document) error
 	// A document that refuses its write comes back as a partial failure, with
 	// the response still read, so which items failed is taken from the
 	// response rather than from the error.
-	resp, err := b.client.Doc.Bulk(ctx, opensearchapi.BulkReq{Body: &body})
+	req := opensearchapi.BulkReq{Body: &body}
+	if refresh != "" {
+		req.Params = &opensearchapi.BulkParams{Refresh: refresh}
+	}
+	resp, err := b.client.Doc.Bulk(ctx, req)
 	var partial *opensearchapi.PartialBulkError
 	if err != nil && !errors.As(err, &partial) {
 		return fmt.Errorf("opensearchbackend: write to %q: %w", index, err)

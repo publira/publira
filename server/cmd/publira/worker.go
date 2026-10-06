@@ -196,6 +196,19 @@ func runWorker() int {
 	if revalidateClient != nil {
 		invalidator = revalidateClient
 	}
+	// The catalog index handler owes the storefront's searches a drop once the
+	// document it wrote can be found. It records the drop on this pool and
+	// leaves the sending to the handler above, the way the ticker jobs do; the
+	// same typed-nil guard applies, since NewRequester answers nil when
+	// revalidation is off.
+	var searchCacheRecorder outbox.CacheInvalidationRecorder
+	if requester := revalidate.NewRequester(revalidate.RequesterConfig{
+		Client:  revalidateClient,
+		Queries: dbmodels.New(db),
+		Logger:  logger,
+	}); requester != nil {
+		searchCacheRecorder = requester
+	}
 	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, []outbox.PeriodicRegistrar{jobs, maintenanceJobs}, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
@@ -206,7 +219,7 @@ func runWorker() int {
 		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
-		invalidator, catalogIndexer))
+		invalidator, catalogIndexer, searchCacheRecorder))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
 		return 1
@@ -253,6 +266,7 @@ func workerConfig(
 	appleSignInHandlers outbox.AppleSignInHandlerConfig,
 	invalidator outbox.CacheInvalidator,
 	catalogIndexer outbox.CatalogIndexer,
+	searchCacheRecorder outbox.CacheInvalidationRecorder,
 ) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
@@ -281,7 +295,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.Register(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
-	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer))
+	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer, searchCacheRecorder))
 	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	googlePlayHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))

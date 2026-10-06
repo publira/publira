@@ -99,6 +99,16 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 	return backend, err
 }
 
+// Targets are the backends a catalog write goes to.
+type Targets struct {
+	// Serving is the backend the search answers from, nil while the search is
+	// on the SQL engine.
+	Serving *opensearchbackend.Backend
+	// Building is the backend being built on a target of its own, nil while no
+	// such build is due.
+	Building *opensearchbackend.Backend
+}
+
 // Targets answers every backend a catalog write goes to: the one the search
 // answers from, and the one being built while a build is due on a target of
 // its own. A build on the target the search answers from, of another
@@ -108,39 +118,43 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 // build failed is left out, so an engine that refused the index does not hold
 // up every write until an operator fixes it; the build that follows the fix
 // writes the whole catalog there anyway.
-func (r *Resolver) Targets(ctx context.Context) ([]*opensearchbackend.Backend, error) {
+func (r *Resolver) Targets(ctx context.Context) (Targets, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.refresh(ctx); err != nil {
-		return nil, err
+		return Targets{}, err
 	}
 	stored := r.stored()
 	var configs []opensearchbackend.Config
-	var backends []*opensearchbackend.Backend
-	add := func(settings Settings, encrypted, analysis string, building bool) error {
+	var targets Targets
+	add := func(settings Settings, encrypted, analysis string, building bool) (*opensearchbackend.Backend, error) {
 		cfg, err := r.config(settings, encrypted, analysis)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		backend, err := r.backend(ctx, cfg, building)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		configs, backends = append(configs, cfg), append(backends, backend)
-		return nil
+		configs = append(configs, cfg)
+		return backend, nil
 	}
 	if stored.Serving.Engine.HasIndex() {
-		if err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, false); err != nil {
-			return nil, err
+		backend, err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, false)
+		if err != nil {
+			return Targets{}, err
 		}
+		targets.Serving = backend
 	}
 	if stored.State == Building && stored.Engine.HasIndex() && stored.Target() != stored.Serving.Target() {
-		if err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, true); err != nil {
-			return nil, err
+		backend, err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, true)
+		if err != nil {
+			return Targets{}, err
 		}
+		targets.Building = backend
 	}
 	r.prune(configs...)
-	return backends, nil
+	return targets, nil
 }
 
 // refresh rereads the row once the interval has passed. A failed reread keeps

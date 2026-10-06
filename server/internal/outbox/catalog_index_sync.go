@@ -34,21 +34,57 @@ func CatalogIndexSyncIdempotencyKey(eventID uuid.UUID) string {
 }
 
 // CatalogIndexer rewrites the search document of one catalog row from the row.
-// *catalogindex.Syncer satisfies it, and taking the interface is what lets that
-// package, which queues these events, import this one.
+// platformsearch.Indexer satisfies it, and taking the interface is what lets
+// the packages that queue these events import this one.
 type CatalogIndexer interface {
-	Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) error
+	// Sync reports whether it wrote into the index the public search answers
+	// from, and does so only once a search can find what it wrote.
+	Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) (searched bool, err error)
 }
 
-// NewCatalogIndexSyncHandler writes the documents the events name.
+// CacheInvalidationRecorder records the cache tags a tenant's change left
+// stale, for the next_cache_revalidation handler to send. *revalidate.Requester
+// satisfies it, and taking the interface is what lets that package, which
+// produces those events, import this one.
+type CacheInvalidationRecorder interface {
+	RevalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) error
+}
+
+// catalogSearchCacheTags names the tag web-host holds the public search of
+// kind under. A search answers documents of one kind, and a document changes
+// only through an event naming its kind, so that kind's tag reaches every
+// search the event can have changed. The other tags a search carries answer
+// for what the database tells it, and the writes that change it drop them.
+func catalogSearchCacheTags(tenantID uuid.UUID, kind string) []string {
+	switch kind {
+	case "series":
+		return []string{fmt.Sprintf("tenant:%s:series:list", tenantID)}
+	case "creator":
+		return []string{fmt.Sprintf("tenant:%s:creators", tenantID)}
+	case "label":
+		return []string{fmt.Sprintf("tenant:%s:labels", tenantID)}
+	default:
+		return nil
+	}
+}
+
+// NewCatalogIndexSyncHandler writes the documents the events name, and then
+// drops the storefront's cached searches over them.
 //
 // A nil indexer is a worker with no index to write to: every event is done as
 // soon as it is claimed. The worker passes one that resolves the platform's
 // search engine for each event and has nothing to write on the SQL engine,
 // which keeps no index; a move to an engine that does is built from the
-// database rather than from these events. Pass the interface as nil rather
-// than a nil *catalogindex.Syncer.
-func NewCatalogIndexSyncHandler(indexer CatalogIndexer) Handler {
+// database rather than from these events.
+//
+// The drop is owed because the change that queued the event dropped the same
+// tags when it committed, before the document was written: a search sent in
+// between is answered from the index as it was and cached under tags nothing
+// drops again. It is recorded rather than sent, the way every caller inside
+// the worker records one, and a write into an index the search does not answer
+// from, or none at all, owes nothing. A nil recorder is a worker with
+// revalidation turned off, which drops nothing on any path.
+func NewCatalogIndexSyncHandler(indexer CatalogIndexer, recorder CacheInvalidationRecorder) Handler {
 	if indexer == nil {
 		return func(context.Context, dbmodels.OutboxEvent) error { return nil }
 	}
@@ -65,8 +101,17 @@ func NewCatalogIndexSyncHandler(indexer CatalogIndexer) Handler {
 		if err != nil {
 			return Permanent(fmt.Errorf("catalog index sync payload id: %w", err))
 		}
-		if err := indexer.Sync(ctx, tenantID, payload.Kind, id); err != nil {
+		searched, err := indexer.Sync(ctx, tenantID, payload.Kind, id)
+		if err != nil {
 			return fmt.Errorf("sync the catalog index for %s %s: %w", payload.Kind, id, err)
+		}
+		if !searched || recorder == nil {
+			return nil
+		}
+		// A failure retries the event, which writes the document again from
+		// the row, and the version keeps that write from going backwards.
+		if err := recorder.RevalidateTags(ctx, tenantID, catalogSearchCacheTags(tenantID, payload.Kind)); err != nil {
+			return fmt.Errorf("record the search cache drop for %s %s: %w", payload.Kind, id, err)
 		}
 		return nil
 	}

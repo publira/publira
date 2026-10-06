@@ -11,9 +11,8 @@ import {
   publishedAtOneHourAgo,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
-import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { hostPath, PUBLIC_API_BASE_URL, WEB_ADMIN_BASE_URL } from "../src/urls";
+import { hostPath, WEB_ADMIN_BASE_URL } from "../src/urls";
 
 /**
  * Which engine the server searches with. `scripts/db-setup.sh` saves it from
@@ -21,51 +20,6 @@ import { hostPath, PUBLIC_API_BASE_URL, WEB_ADMIN_BASE_URL } from "../src/urls";
  * in every other run.
  */
 const onOpenSearch = process.env.PUBLIRA_E2E_SEARCH_BACKEND === "opensearch";
-
-/**
- * Wait until the public API's search for `query` answers with the series
- * `publicId`, or no longer does.
- *
- * Asked of the API rather than the storefront: on OpenSearch the worker writes
- * the document after the console's write has committed, and the engine shows
- * it to a search only once the index refreshes. A storefront search sent before
- * then is answered from the old index and held under `"use cache"`, and
- * nothing drops that entry when the document lands.
- */
-const waitUntilSearchAnswers = async (
-  query: string,
-  publicId: string,
-  found: boolean
-): Promise<void> => {
-  await expect
-    .poll(
-      async () => {
-        const response = await fetch(
-          `${PUBLIC_API_BASE_URL}/publira.v1.CatalogService/SearchPublishedSeries`,
-          {
-            body: JSON.stringify({
-              limit: 20,
-              query,
-              surface: "CLIENT_SURFACE_WEB",
-              tenant: { tenantId: SEED_TENANT_ID },
-            }),
-            headers: { "content-type": "application/json" },
-            method: "POST",
-          }
-        );
-        expect(response.ok, await response.clone().text()).toBe(true);
-        const { series = [] } = (await response.json()) as {
-          series?: { publicId: string }[];
-        };
-        return series.some((item) => item.publicId === publicId);
-      },
-      {
-        message: `the search for ${query} did not ${found ? "find" : "lose"} series ${publicId}`,
-        timeout: 30_000,
-      }
-    )
-    .toBe(found);
-};
 
 /**
  * Delete the index documents of the series `publicIds` name, before the rows
@@ -117,6 +71,11 @@ const deleteSeriesDocuments = async (
  * A write drops the cache tags the search is held under, but revalidation
  * marks the entry stale rather than removing it, so the load right after one
  * can still show the old answer. Loading again is what reads the new one.
+ *
+ * On OpenSearch the worker writes the document after the console's write has
+ * committed, and a search sent before then is answered from the index as it
+ * was. The worker drops the same tags again once a search can find what it
+ * wrote, so a load after the event has drained reads the new answer.
  */
 const expectSeriesResult = async (
   page: Page,
@@ -175,7 +134,6 @@ test.describe("catalog search", () => {
     const title = `E2E Search Harbor ${uniqueSuffix()}`;
     const publicId = await createPublishedSeries(page, title);
 
-    await waitUntilSearchAnswers(title, publicId, true);
     await expectSeriesResult(page, title, title, true);
 
     // An empty publication date is what takes a series down. The date field
@@ -199,7 +157,6 @@ test.describe("catalog search", () => {
       timeout: 30_000,
     });
 
-    await waitUntilSearchAnswers(title, publicId, false);
     await expectSeriesResult(page, title, title, false);
   });
 
@@ -214,9 +171,8 @@ test.describe("catalog search", () => {
     // dictionary's reading is the behaviour under test. No reading is entered
     // in the console, so the analyzer is the only thing that knows it.
     const title = "吾輩は猫である";
-    const publicId = await createPublishedSeries(page, title);
+    await createPublishedSeries(page, title);
 
-    await waitUntilSearchAnswers("わがはいはねこ", publicId, true);
     await expectSeriesResult(page, "わがはいはねこ", title, true);
   });
 
