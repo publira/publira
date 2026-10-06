@@ -129,7 +129,7 @@ export const verifyMfaAction = async (
     await finishMfaChallenge(challenge);
     return {
       message: t("admin.auth.mfa.recovery_used_description", {
-        count: String(result.remainingRecoveryCodes),
+        count: result.remainingRecoveryCodes,
       }),
       ok: true,
     };

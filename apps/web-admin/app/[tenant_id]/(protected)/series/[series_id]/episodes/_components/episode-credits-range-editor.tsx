@@ -388,7 +388,7 @@ const EpisodeSelectionFields = ({
                 count: String(MAX_BULK_EPISODE_CREDIT_EPISODES),
               })
             : t("admin.series.episodes.credits.selection_count", {
-                count: String(selectedCount),
+                count: selectedCount,
               })}
         </p>
       ) : null}

@@ -103,7 +103,7 @@ export const TenantRetentionSettingsForm = ({
                 <Message
                   message="admin.settings.policy.retention.platform_days"
                   values={{
-                    days: String(platformDefaults.withdrawnCommentDays),
+                    days: platformDefaults.withdrawnCommentDays,
                   }}
                 />
               </Suspense>
@@ -150,7 +150,7 @@ export const TenantRetentionSettingsForm = ({
               <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
                 <Message
                   message="admin.settings.policy.retention.platform_days"
-                  values={{ days: String(platformDefaults.contentEventDays) }}
+                  values={{ days: platformDefaults.contentEventDays }}
                 />
               </Suspense>
             </PolicyOverridePlatformValue>
@@ -197,7 +197,7 @@ export const TenantRetentionSettingsForm = ({
                 <Message
                   message="admin.settings.policy.retention.platform_days"
                   values={{
-                    days: String(platformDefaults.dailyRankingSnapshotDays),
+                    days: platformDefaults.dailyRankingSnapshotDays,
                   }}
                 />
               </Suspense>
@@ -247,7 +247,7 @@ export const TenantRetentionSettingsForm = ({
                 <Message
                   message="admin.settings.policy.retention.platform_days"
                   values={{
-                    days: String(platformDefaults.weeklyRankingSnapshotDays),
+                    days: platformDefaults.weeklyRankingSnapshotDays,
                   }}
                 />
               </Suspense>

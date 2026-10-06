@@ -698,7 +698,7 @@ export const createSeriesFreeWindowsAction = async (
   updateTag(episodeFreeWindowsCacheTag(tenantId));
   return {
     message: t("admin.series.episodes.free_windows.bulk_created", {
-      count: String(result.freeWindows.length),
+      count: result.freeWindows.length,
     }),
     ok: true,
   };

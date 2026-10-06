@@ -266,14 +266,10 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
       </StatusChip>
       <span className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
-          {report.comment.openReportCount === 1 ? (
-            <Message message="admin.comments.reports.open_count_one" />
-          ) : (
-            <Message
-              message="admin.comments.reports.open_count"
-              values={{ count: report.comment.openReportCount }}
-            />
-          )}
+          <Message
+            message="admin.comments.reports.open_count"
+            values={{ count: report.comment.openReportCount }}
+          />
         </Suspense>
       </span>
     </div>

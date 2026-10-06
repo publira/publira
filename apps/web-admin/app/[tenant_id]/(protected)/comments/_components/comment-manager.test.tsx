@@ -254,6 +254,35 @@ describe("CommentManager", () => {
     }
   });
 
+  it("words a single day left as one day", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(
+      Temporal.Instant.from("2026-06-07T09:00:00Z").epochMilliseconds
+    );
+    try {
+      render(
+        await CommentManager({
+          canModerate: true,
+          canViewReaders: true,
+          comments: [
+            comment("withdrawn", {
+              purgeDueAt: "2026-06-08T09:00:00Z",
+              withdrawnAt: "2026-05-09T09:00:00Z",
+            }),
+          ],
+          locale: "en",
+          pageSize: 20,
+          tenantId: "TENANT001",
+          timeZone: "UTC",
+        })
+      );
+
+      expect(screen.getByText(/Purged for good in 1 day,/u)).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("links the episode to its page in the console", async () => {
     render(
       await CommentManager({

@@ -56,10 +56,10 @@ const getUnitListFormatter = (
 /**
  * Format a span of whole hours and minutes: "23 hours", "5 hr 12 min".
  *
- * The units and their plurals come from `Intl`, not from the message catalog,
- * because a catalog message cannot select a plural form: "1 hours" is what a
- * `{$hours} hours` message says for one. A zero part is left out, and a span
- * of no time at all is "0 minutes" rather than an empty string.
+ * The units and their plurals come from `Intl`, not from the message catalog:
+ * a duration needs a formatting function not every reader of the catalog has,
+ * so it reaches a message already written out. A zero part is left out, and a
+ * span of no time at all is "0 minutes" rather than an empty string.
  *
  * This is `Intl.DurationFormat` assembled from the formatters every supported
  * runtime and TypeScript library already carry.

@@ -218,7 +218,7 @@ describe("EpisodeCreditsRangeForm", () => {
     expect(
       screen.getByText(
         t("admin.series.episodes.credits.preview_replace", {
-          count: "11",
+          count: 11,
           from_creator: "Artist B",
           from_role: "Artist",
           to_creator: "Artist C",

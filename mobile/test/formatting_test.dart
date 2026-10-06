@@ -55,8 +55,8 @@ void main() {
   test('a formatted value reaches the message as its placeholder', () {
     final messages = AppMessages.forLocale(const Locale('en'))!;
     expect(
-      messages.seriesEpisodeCount(count: messages.formatInteger(1200)),
-      '1,200 episodes',
+      messages.commonSeriesCount(count: messages.formatInteger(1200)),
+      '1,200 published series',
     );
   });
 

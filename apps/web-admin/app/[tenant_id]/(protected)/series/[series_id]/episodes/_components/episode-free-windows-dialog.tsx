@@ -107,7 +107,7 @@ const EpisodeFreeWindowsForm = ({
                 {
                   description: t(
                     "admin.series.episodes.free_windows.target_selected_description",
-                    { count: String(selectedCount) }
+                    { count: selectedCount }
                   ),
                   disabled: selectedCount === 0,
                   label: t(

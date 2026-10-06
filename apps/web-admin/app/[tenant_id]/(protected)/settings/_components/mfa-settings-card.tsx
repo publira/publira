@@ -183,7 +183,7 @@ const MfaStatusSummary = ({ status }: { status: AdminMfaStatus }) => (
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
           <Message
             message="admin.settings.mfa.remaining_recovery_codes"
-            values={{ count: String(status.remainingRecoveryCodes) }}
+            values={{ count: status.remainingRecoveryCodes }}
           />
         </Suspense>
       </p>

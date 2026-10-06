@@ -312,8 +312,8 @@ class _DownloadTile extends StatelessWidget {
             AutospacedText(
               key: ValueKey('downloads-partial-${detail.episode.id}'),
               messages.downloadsPartial(
-                saved: messages.formatInteger(stored.savedPages),
-                total: messages.formatInteger(stored.pageCount),
+                saved: stored.savedPages,
+                total: stored.pageCount,
               ),
               style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
             ),

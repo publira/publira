@@ -186,13 +186,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         const SizedBox(height: 8),
         AutospacedText(
           key: const ValueKey('episode-reaction-count'),
-          ratingCount == 1
-              ? messages.viewerReactionCountSingle(
-                  count: messages.formatInteger(ratingCount),
-                )
-              : messages.viewerReactionCount(
-                  count: messages.formatInteger(ratingCount),
-                ),
+          messages.viewerReactionCount(count: ratingCount),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
