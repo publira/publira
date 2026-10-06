@@ -45,7 +45,7 @@ Test in-app purchase with the stores' own test buyers: a sandbox account on an i
 
 ## Sign in with Apple and Google
 
-**Integrations** › **Sign-in** offers Apple and Google to readers of the site and the app at once. The app offers a provider only when the tenant offers it — **Offer Sign in with Apple** or **Offer Sign in with Google** is on and complete — and only where the setup covers the phone the app runs on:
+**Integrations** › **Sign-in** offers Apple and Google to readers of the site and the app at once, and [Sign-in with Apple and Google](../4-console/6-sign-in.md) covers setting it up for the site. The app offers a provider only when the tenant offers it — **Offer Sign in with Apple** or **Offer Sign in with Google** is on and complete — and only where the setup covers the phone the app runs on:
 
 |  | Apple | Google |
 | --- | --- | --- |

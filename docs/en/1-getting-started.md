@@ -26,4 +26,5 @@ An optional Platform Console lets the operator manage every tenant from a browse
 
 - [Deployments](./2-deployments/index.md) covers what an install is made of and how to bring one into service.
 - [Operations](./3-operations/index.md) covers running an install once it is serving: adding tenants, giving their staff access, and the operators of the Platform Console.
+- [Tenant console](./4-console/index.md) covers the console a publisher's staff run their site from.
 - [Mobile app](./5-mobile-app/index.md) covers building a tenant's own iOS and Android app and publishing it on the App Store and Google Play.
