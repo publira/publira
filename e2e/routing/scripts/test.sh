@@ -44,6 +44,7 @@ assert_route "view beacon stays on web-host" POST localhost /api/v1/views web-ho
 assert_route "read beacon stays on web-host" POST localhost /api/v1/series/SERIES_001/episodes/EPISODE_001/read web-host /api/v1/series/SERIES_001/episodes/EPISODE_001/read
 assert_route "payment webhook stays on web-host" POST localhost /api/v1/webhook/payment/stripe web-host /api/v1/webhook/payment/stripe
 assert_route "legacy stripe webhook stays on web-host" POST localhost /api/v1/webhook/stripe web-host /api/v1/webhook/stripe
+assert_route "inbound email webhook stays on web-host" POST localhost /api/v1/webhook/email/sendgrid web-host /api/v1/webhook/email/sendgrid
 assert_route "bare /api/v1 stays on web-host" GET localhost /api/v1 web-host /api/v1
 
 # The exception ends at the path segment: /api/v1abc is not one of the Route
@@ -57,6 +58,14 @@ assert_route "images on default host" GET localhost /images/cover api /images/co
 assert_route "images on platform host" GET platform.localhost /images/cover api /images/cover
 assert_route "images on admin host" GET admin.localhost /images/cover api /images/cover
 assert_route "images on numbered admin host" GET admin1.localhost /images/x api /images/x
+
+# An inbound email provider posts a reader's reply with the headers its token
+# or signature travels in, and SendGrid posts the mail with its attachments,
+# up to its own 30 MB limit; web-host reads up to 32 MiB of it. Each post has
+# to reach web-host whole.
+assert_webhook_delivered "SendGrid post reaches web-host intact" localhost /api/v1/webhook/email/sendgrid web-host 4096 "${PUBLIRA_ROUTING_SENDGRID_HEADERS[@]}"
+assert_webhook_delivered "Resend post reaches web-host intact" localhost /api/v1/webhook/email/resend web-host 1024 "${PUBLIRA_ROUTING_RESEND_HEADERS[@]}"
+assert_webhook_delivered "SendGrid post of 32 MiB reaches web-host whole" localhost /api/v1/webhook/email/sendgrid web-host 33554432 "${PUBLIRA_ROUTING_SENDGRID_HEADERS[@]}"
 
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The
 # Go servers adopt an inbound `traceparent` as the parent span, so a caller

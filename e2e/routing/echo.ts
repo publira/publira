@@ -6,8 +6,8 @@
  * The routing check puts one proxy in front of this process, which listens on
  * every backend port the contract names and echoes what arrived — the path,
  * and the headers the edge is supposed to have removed or set. That is how the
- * suite asserts the path each backend receives, host matching, and the request
- * headers each backend is promised.
+ * suite asserts the path each backend receives, host matching, the request
+ * headers each backend is promised, and how much of a body got through.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -28,6 +28,20 @@ const FORWARDED_HEADERS = [
   "x-forwarded-host",
   "x-forwarded-proto",
   "x-forwarded-for",
+];
+
+/**
+ * The headers an inbound email provider authenticates and describes its post
+ * with: the content type a multipart body is split by, SendGrid's basic auth
+ * token, and Resend's Svix signature. Echoing them is how the suite asserts
+ * the edge passed them through untouched.
+ */
+const WEBHOOK_HEADERS = [
+  "authorization",
+  "content-type",
+  "svix-id",
+  "svix-signature",
+  "svix-timestamp",
 ];
 
 /**
@@ -59,11 +73,9 @@ const respond = (
   backend: string,
   port: number,
   req: IncomingMessage,
-  res: ServerResponse
+  res: ServerResponse,
+  bodyBytes: number
 ): void => {
-  // The body is never read; drain it so the response is not held up.
-  req.resume();
-
   // Close after every response. A proxy pools upstream connections for
   // longer than Node.js keeps an idle one open, and a request sent on a
   // connection this side has just closed comes back from the edge as a 502
@@ -79,12 +91,17 @@ const respond = (
 
   const payload: Record<string, number | string> = {
     backend,
+    bytes: bodyBytes,
     host: firstHeader(req, "host"),
     method: req.method ?? "",
     path: req.url ?? "",
     port,
   };
-  for (const name of [...TRACE_CONTEXT_HEADERS, ...FORWARDED_HEADERS]) {
+  for (const name of [
+    ...TRACE_CONTEXT_HEADERS,
+    ...FORWARDED_HEADERS,
+    ...WEBHOOK_HEADERS,
+  ]) {
     payload[name] = firstHeader(req, name);
   }
   const raw = Buffer.from(JSON.stringify(payload));
@@ -106,7 +123,15 @@ for (const [port, backend] of BACKENDS) {
         `${backend}:${port} ${req.method} ${req.url} HTTP/${req.httpVersion} ${res.statusCode}`
       );
     });
-    respond(backend, port, req, res);
+    // Count the body rather than keep it, and answer once it has all
+    // arrived, so a probe learns how much of a large one the edge let through.
+    let bodyBytes = 0;
+    req.on("data", (chunk: Buffer) => {
+      bodyBytes += chunk.byteLength;
+    });
+    req.on("end", () => {
+      respond(backend, port, req, res, bodyBytes);
+    });
   });
   server.listen(port, "0.0.0.0", () => {
     console.log(`listening ${backend} on :${port}`);

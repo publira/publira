@@ -139,6 +139,22 @@ PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "X-Forwarded-Proto: https"
 )
 
+# The headers SendGrid Inbound Parse posts a mail with, its webhook token as
+# basic auth among them, and the ones Resend posts an event with, signed by
+# Svix. echo.ts reports each back, so a probe can assert the edge passed them
+# through as they were: the API server reads the token and the signature from
+# them.
+PUBLIRA_ROUTING_SENDGRID_HEADERS=(
+  "Authorization: Basic aW5ib3VuZDpzZ190b2tlbg=="
+  "Content-Type: multipart/form-data; boundary=xYzZY"
+)
+PUBLIRA_ROUTING_RESEND_HEADERS=(
+  "Content-Type: application/json"
+  "svix-id: msg_2mN8xQe5Rk3vTqLw"
+  "svix-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4="
+  "svix-timestamp: 1791195151"
+)
+
 routing_log() {
   printf '[routing:%s] %s\n' "${PUBLIRA_ROUTING_PROXY}" "$*"
 }
@@ -196,6 +212,12 @@ port_in_use() {
 json_string_field() {
   local json="$1" key="$2"
   printf '%s' "${json}" | sed -n "s/.*\"${key}\":\"\\([^\"]*\\)\".*/\\1/p"
+}
+
+# Compact JSON number field.
+json_number_field() {
+  local json="$1" key="$2"
+  printf '%s' "${json}" | sed -n "s/.*\"${key}\":\([0-9][0-9]*\).*/\1/p"
 }
 
 # Routers Traefik has currently advertised on the insecure API.
@@ -343,6 +365,63 @@ assert_forwarded_headers() {
   fi
 
   routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"
+}
+
+# A POST carrying a body of `bytes` bytes and the given `Header: value` lines:
+# the backend has to receive all of the body and every header as it was sent.
+# A webhook provider signs or authenticates its request with those headers, and
+# a body the edge refuses for its size is a delivery the provider retries for
+# days and then drops.
+assert_webhook_delivered() {
+  local name="$1" host="$2" path="$3" want_backend="$4" bytes="$5"
+  shift 5
+  local header_args=() header field want value
+  for header in "$@"; do
+    header_args+=(-H "${header}")
+  done
+
+  local payload response code body actual_backend actual_path actual_bytes
+  payload="$(mktemp)"
+  response="$(mktemp)"
+  head -c "${bytes}" /dev/zero > "${payload}"
+  code="$(
+    curl -sS -o "${response}" -w '%{http_code}' --max-time 60 \
+      -X POST \
+      -H "Host: ${host}" \
+      "${header_args[@]}" \
+      --data-binary "@${payload}" \
+      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2> /dev/null || true
+  )"
+  body="$(cat "${response}" 2> /dev/null || true)"
+  rm -f "${payload}" "${response}"
+
+  if [[ "${code}" != "200" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 200) host=${host} POST ${path} bytes=${bytes} body=${body}"
+  fi
+
+  actual_backend="$(json_string_field "${body}" backend)"
+  actual_path="$(json_string_field "${body}" path)"
+  actual_bytes="$(json_number_field "${body}" bytes)"
+  if [[ "${actual_backend}" != "${want_backend}" ]]; then
+    routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') host=${host} POST ${path} body=${body}"
+  fi
+  if [[ "${actual_path}" != "${path}" ]]; then
+    routing_fail "${name}: path '${actual_path}' (want '${path}') host=${host} POST ${path} body=${body}"
+  fi
+  if [[ "${actual_bytes}" != "${bytes}" ]]; then
+    routing_fail "${name}: backend received ${actual_bytes:-no} bytes (want ${bytes}) host=${host} POST ${path} body=${body}"
+  fi
+
+  for header in "$@"; do
+    field="$(printf '%s' "${header%%:*}" | tr '[:upper:]' '[:lower:]')"
+    want="${header#*: }"
+    value="$(json_string_field "${body}" "${field}")"
+    if [[ "${value}" != "${want}" ]]; then
+      routing_fail "${name}: backend saw ${field} '${value}' (want '${want}') host=${host} POST ${path} body=${body}"
+    fi
+  done
+
+  routing_log "ok: ${name} → ${want_backend}${path} with ${bytes} bytes and its headers intact"
 }
 
 # The edge answers and the catch-all reaches web-host. Readiness for the
