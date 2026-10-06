@@ -33,14 +33,16 @@ const controlsWhere = (
         }
         const rect = control.getBoundingClientRect();
         const wrong =
-          kind === "short" ? rect.height < bound : rect.right > bound;
+          kind === "short"
+            ? rect.height < bound
+            : rect.left < 0 || rect.right > bound;
         if (wrong) {
           const label =
             control.getAttribute("aria-label") ??
             control.textContent?.trim() ??
             control.tagName;
           found.push(
-            `${label} (${Math.round(rect.height)}x${Math.round(rect.width)} ending at ${Math.round(rect.right)})`
+            `${label} (${Math.round(rect.height)}x${Math.round(rect.width)} from ${Math.round(rect.left)} to ${Math.round(rect.right)})`
           );
         }
       }
@@ -49,7 +51,7 @@ const controlsWhere = (
     { check, limit }
   );
 
-/** No control `region` draws runs past the right edge of a `width` screen. */
+/** No control `region` draws runs past either edge of a `width` screen. */
 export const expectNoControlOffscreen = async (
   region: Locator,
   width: number
