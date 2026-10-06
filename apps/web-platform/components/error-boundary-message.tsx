@@ -98,7 +98,8 @@ export const ErrorBoundaryMessage = ({
   message: PlatformMessageKey;
   values?: MessageValues;
 }) => {
-  const t = bindMessages(use(platformCatalog(readClientLocale())));
+  const locale = readClientLocale();
+  const t = bindMessages(use(platformCatalog(locale)), locale);
 
   return t(message, values);
 };

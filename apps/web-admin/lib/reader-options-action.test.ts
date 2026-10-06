@@ -7,7 +7,8 @@ const { mockListReaders } = vi.hoisted(() => ({
 }));
 
 vi.mock("./messages", () => ({
-  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
 vi.mock("./auth-session", () => ({

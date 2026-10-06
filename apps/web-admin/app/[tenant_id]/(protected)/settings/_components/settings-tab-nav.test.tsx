@@ -12,7 +12,7 @@ import { SettingsTabNav } from "./settings-tab-nav";
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 vi.mock("next/link", () => ({

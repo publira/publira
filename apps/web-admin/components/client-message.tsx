@@ -4,7 +4,10 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
-import { AdminMessagesContext } from "#components/admin-locale-context";
+import {
+  AdminMessagesContext,
+  useAdminLocale,
+} from "#components/admin-locale-context";
 import type {
   AdminClientMessageAccessor,
   AdminClientMessageKey,
@@ -13,7 +16,7 @@ import type {
 
 /**
  * The accessor a Client Component resolves its copy through, bound to the
- * catalog `AdminLocaleProvider` carries.
+ * catalog `AdminLocaleProvider` carries and the locale it carries beside it.
  *
  * On the server this waits on that read under the boundary the surrounding
  * section already sits behind. The read has settled in the payload by the time
@@ -30,7 +33,7 @@ export const useClientMessages = (): AdminClientMessageAccessor => {
   }
 
   const catalog: AdminClientMessages = use(messages);
-  return bindMessages(catalog);
+  return bindMessages(catalog, useAdminLocale());
 };
 
 /** One catalog string rendered by a Client Component. */

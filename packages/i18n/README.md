@@ -34,10 +34,10 @@ Nothing here reads request state. `cookies()`, `headers()`, and `next/root-param
 
 | Export | What it is |
 | --- | --- |
-| `getMessage(catalog, key, values?)` | The string at a dotted key, with `{$name}` substituted from `values` |
-| `bindMessages(catalog)` | The same lookup with the catalog closed over: `(key, values?) => string`. What an app's `getMessages()` answers with |
+| `getMessage(catalog, locale, key, values?)` | The string at a dotted key, formatted in `locale` — the locale `catalog` is written in — with `{$name}` substituted from `values` |
+| `bindMessages(catalog, locale)` | The same lookup with the catalog and its locale closed over: `(key, values?) => string`. What an app's `getMessages()` answers with |
 | `MessageAccessor<T>` | The type of that bound accessor. Its key parameter is `MessageKey<T>` alone, so an unknown key is a type error as well as a runtime one |
-| `formatMessage(template, values?)` | The same substitution against a template the caller already holds |
+| `formatMessage(template, locale, values?)` | The same formatting against a template the caller already holds |
 | `MessageKey<T>` | The dotted key of every string leaf of a catalog, for autocomplete and typed wrappers |
 | `MessageTree` / `MessageValues` / `CatalogModule` / `ExactCatalog` / `LocaleCatalogImporters` | The catalog shapes. `ExactCatalog` is what rejects a locale file with a missing or extra key |
 | `loadMessages(locale, importers)` | Loads one locale through a static `import()` map, so a bundler keeps the other locales out of the chunk |
@@ -74,7 +74,7 @@ export const loadHostMessages = (locale: Locale): Promise<HostMessages> =>
 ```tsx
 import { bindMessages } from "@publira/i18n";
 
-const t = bindMessages(await loadHostMessages(locale));
+const t = bindMessages(await loadHostMessages(locale), locale);
 
 <h1>{t("host.series.list_title")}</h1>;
 <p>{t("host.series.list_description", { site })}</p>;
@@ -82,7 +82,7 @@ const t = bindMessages(await loadHostMessages(locale));
 
 Apps do not bind a catalog themselves. Each one exports a `getMessages()` that resolves the request's locale and answers the bound accessor, so a Server Component writes `const t = await getMessages();` and nothing else.
 
-A `{$name}` placeholder is substituted as a string. Format a date or a number with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
+A message is formatted in the locale it is bound with, which reaches MF2 as that locale's `intl` tag. A number value is handed over as a number, so a placeholder writes it the way that locale does (`12,345` in `en`) and a selector compares it by value. Format a date with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
 
 ### The shared catalog (`./catalog`)
 

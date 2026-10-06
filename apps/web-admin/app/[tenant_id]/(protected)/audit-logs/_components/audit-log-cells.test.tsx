@@ -13,7 +13,10 @@ const messageLocale = vi.hoisted(() => ({ current: "en" as Locale }));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog(messageLocale.current))(message),
+    bindMessages(
+      sharedCatalog(messageLocale.current),
+      messageLocale.current
+    )(message),
 }));
 
 afterEach(() => {

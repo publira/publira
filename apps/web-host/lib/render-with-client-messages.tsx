@@ -16,10 +16,10 @@ import { loadHostClientMessages } from "./messages";
  * after an interaction.
  */
 export const renderWithClientMessages = async (ui: ReactNode) => {
-  const catalog = await loadHostClientMessages("en");
-  const messages = Object.assign(Promise.resolve(catalog), {
+  const loaded = await loadHostClientMessages("en");
+  const messages = Object.assign(Promise.resolve(loaded), {
     status: "fulfilled",
-    value: catalog,
+    value: loaded,
   }) satisfies Promise<HostClientMessages>;
 
   return render(ui, {

@@ -92,7 +92,7 @@ test.describe("web-host contact form", () => {
     await page.getByRole("button", { exact: true, name: "Send" }).click();
 
     await expect(
-      page.getByText("Keep the message to 4000 characters or fewer.")
+      page.getByText("Keep the message to 4,000 characters or fewer.")
     ).toBeVisible();
     await expect(email).toHaveValue(CONTACT_FORM_GUEST_EMAIL);
     await expect(page.getByLabel("Subject (optional)")).toHaveValue(subject);

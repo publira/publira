@@ -4,7 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { Suspense } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { loadPlatformMessages } from "#lib/messages";
+import { loadPlatformClientMessages } from "#lib/messages";
 
 import { ClientMessage } from "./client-message";
 import { PlatformMessagesContextProvider } from "./platform-messages-context";
@@ -15,7 +15,7 @@ describe("ClientMessage", () => {
   });
 
   it("renders from the catalog the provider carries", async () => {
-    const messages = loadPlatformMessages("en");
+    const messages = loadPlatformClientMessages("en");
 
     await act(async () => {
       render(

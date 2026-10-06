@@ -97,7 +97,8 @@ export const ErrorBoundaryMessage = ({
   message: AdminMessageKey;
   values?: MessageValues;
 }) => {
-  const t = bindMessages(use(adminCatalog(readClientLocale())));
+  const locale = readClientLocale();
+  const t = bindMessages(use(adminCatalog(locale)), locale);
 
   return t(message, values);
 };

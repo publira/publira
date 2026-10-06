@@ -39,9 +39,10 @@ describe("ClientMessage", () => {
 });
 
 describe("loadHostClientMessages", () => {
-  it("carries the host namespace alone", async () => {
+  it("carries the host namespace alone, with its locale", async () => {
     const messages = await loadHostClientMessages("en");
 
-    expect(Object.keys(messages)).toEqual(["host"]);
+    expect(Object.keys(messages.catalog)).toEqual(["host"]);
+    expect(messages.locale).toBe("en");
   });
 });

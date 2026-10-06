@@ -28,12 +28,18 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog(mockLocale.current))(message, values),
+  }) =>
+    bindMessages(sharedCatalog(mockLocale.current), mockLocale.current)(
+      message,
+      values
+    ),
 }));
 
 vi.mock("#lib/messages", () => ({
   getMessagesFor: () =>
-    Promise.resolve(bindMessages(sharedCatalog(mockLocale.current))),
+    Promise.resolve(
+      bindMessages(sharedCatalog(mockLocale.current), mockLocale.current)
+    ),
   loadAdminMessages: () => Promise.resolve(sharedCatalog(mockLocale.current)),
 }));
 
@@ -44,8 +50,13 @@ vi.mock("#components/client-message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog(mockLocale.current))(message, values),
-  useClientMessages: () => bindMessages(sharedCatalog(mockLocale.current)),
+  }) =>
+    bindMessages(sharedCatalog(mockLocale.current), mockLocale.current)(
+      message,
+      values
+    ),
+  useClientMessages: () =>
+    bindMessages(sharedCatalog(mockLocale.current), mockLocale.current),
 }));
 
 const action = () => Promise.resolve(null);

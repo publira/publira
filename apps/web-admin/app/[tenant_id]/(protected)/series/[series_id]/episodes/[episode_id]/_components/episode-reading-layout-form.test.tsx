@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EpisodeReadingLayoutForm } from "./episode-reading-layout-form";
 
 vi.mock("#components/client-message", () => ({
-  useClientMessages: () => bindMessages(sharedCatalog("en")),
+  useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
 vi.mock("#components/message", () => ({
@@ -27,7 +27,7 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 const action = () => Promise.resolve(null);

@@ -18,7 +18,7 @@ import {
   getLocales,
 } from "./__generated__/locale-registry";
 import type { Locale } from "./__generated__/locale-registry";
-import { formatSimpleMessage } from "./mf2";
+import { formatMessageSource } from "./mf2";
 import type { MessageValues } from "./mf2";
 
 export { getLocales } from "./__generated__/locale-registry";
@@ -277,9 +277,16 @@ const lookupMessage = (
 };
 
 /**
- * Format an already-resolved message as a MessageFormat 2 simple message:
- * `{$name}` placeholders are substituted from `values`, and `\\`, `\{`, `\}`
- * become the characters they escape.
+ * Format an already-resolved message as MessageFormat 2 in `locale`, the
+ * locale of the catalog the template came from: `{$name}` placeholders are
+ * substituted from `values`, and `\\`, `\{`, `\}` become the characters they
+ * escape.
+ *
+ * `locale` is passed to MF2 as its BCP 47 tag ({@link toIntlLocale}), so a
+ * number value formats and selects a plural variant in the catalog's language
+ * rather than the host's. It is required: a template is always written in
+ * some locale, and a default would answer every caller that left it out in
+ * the same language.
  *
  * {@link getMessage} is the normal entry point. This one is for the rare
  * caller that holds a template rather than a catalog — a Client Component
@@ -295,10 +302,11 @@ const lookupMessage = (
  */
 export const formatMessage = (
   template: string,
+  locale: Locale,
   values?: MessageValues
 ): string => {
   try {
-    return formatSimpleMessage(template, values);
+    return formatMessageSource(template, getIntlLocale(locale), values);
   } catch (error) {
     if (process.env.NODE_ENV === "production") {
       return template;
@@ -317,7 +325,8 @@ const missingMessage = (key: string): string => {
 };
 
 /**
- * Return the string for `key`, with `{$name}` replaced from `values`.
+ * Return the string for `key` in `catalog`, formatted in `locale` — the
+ * locale `catalog` is written in — with `{$name}` replaced from `values`.
  *
  * Unknown keys throw outside production so a typo fails the request in
  * development. In production the key itself is returned, so a stale client
@@ -325,6 +334,7 @@ const missingMessage = (key: string): string => {
  */
 export const getMessage = <TCatalog extends MessageTree>(
   catalog: TCatalog,
+  locale: Locale,
   key: MessageKey<TCatalog> | string,
   values?: MessageValues
 ): string => {
@@ -337,7 +347,7 @@ export const getMessage = <TCatalog extends MessageTree>(
     return missingMessage(key);
   }
 
-  return formatMessage(message, values);
+  return formatMessage(message, locale, values);
 };
 
 /**
@@ -355,7 +365,8 @@ export type MessageAccessor<TCatalog> = (
 ) => string;
 
 /**
- * Bind `catalog` into a {@link MessageAccessor}.
+ * Bind `catalog`, and the `locale` it is written in, into a
+ * {@link MessageAccessor}.
  *
  * {@link getMessage} stays the primitive this is built on, and an unknown key
  * behaves exactly as it does there — a throw outside production, the key itself
@@ -369,7 +380,8 @@ export type MessageAccessor<TCatalog> = (
  */
 export const bindMessages =
   <TCatalog extends MessageTree>(
-    catalog: TCatalog
+    catalog: TCatalog,
+    locale: Locale
   ): MessageAccessor<TCatalog> =>
   (key, values) =>
-    getMessage(catalog, key, values);
+    getMessage(catalog, locale, key, values);

@@ -333,47 +333,74 @@ describe("loadMessages", () => {
     });
 
     expect(loaded).toEqual(catalogWithDefault);
-    expect(getMessage(loaded, "default.greeting")).toBe("既定");
+    expect(getMessage(loaded, "ja", "default.greeting")).toBe("既定");
   });
 });
 
+// Outside the catalog's subset, so `pnpm locales:check` would reject it as a
+// leaf; formatMessage takes it, which is what shows the locale reaching MF2.
+const EPISODE_COUNT =
+  ".input {$count :integer}\n.match $count\none {{{$count} episode}}\n* {{{$count} episodes}}";
+
 describe("formatMessage", () => {
+  it("selects the plural variant of the locale it is given", () => {
+    expect(formatMessage(EPISODE_COUNT, "en", { count: 1 })).toBe("1 episode");
+    expect(formatMessage(EPISODE_COUNT, "en", { count: 2 })).toBe("2 episodes");
+    // Japanese has no `one` category, so every count takes the catch-all.
+    expect(formatMessage(EPISODE_COUNT, "ja", { count: 1 })).toBe("1 episodes");
+  });
+
+  it("keeps a formatter per locale for the same template", () => {
+    expect(formatMessage(EPISODE_COUNT, "ja", { count: 1 })).toBe("1 episodes");
+    expect(formatMessage(EPISODE_COUNT, "en", { count: 1 })).toBe("1 episode");
+  });
+
+  it("formats a number value in the locale it is given", () => {
+    expect(formatMessage("{$count} views", "en", { count: 12_345 })).toBe(
+      "12,345 views"
+    );
+  });
+
   it("substitutes {$name} placeholders in a template", () => {
     expect(
-      formatMessage("{$first} / {$total} pages", { first: 3, total: 12 })
+      formatMessage("{$first} / {$total} pages", "en", { first: 3, total: 12 })
     ).toBe("3 / 12 pages");
   });
 
   it("unescapes the reserved characters", () => {
-    expect(formatMessage("\\{ {$count} \\}", { count: 2 })).toBe("{ 2 }");
-    expect(formatMessage("100\\\\200")).toBe("100\\200");
+    expect(formatMessage("\\{ {$count} \\}", "en", { count: 2 })).toBe("{ 2 }");
+    expect(formatMessage("100\\\\200", "en")).toBe("100\\200");
   });
 
   it("falls back to the variable reference when the value is missing", () => {
-    expect(formatMessage("{$first} / {$total}", { first: 3 })).toBe(
+    expect(formatMessage("{$first} / {$total}", "en", { first: 3 })).toBe(
       "3 / {$total}"
     );
-    expect(formatMessage("{$first} / {$total}")).toBe("{$first} / {$total}");
+    expect(formatMessage("{$first} / {$total}", "en")).toBe(
+      "{$first} / {$total}"
+    );
   });
 
   it("throws on a message that is not well-formed MF2", () => {
-    expect(() => formatMessage("unread } items")).toThrow("parse-error");
+    expect(() => formatMessage("unread } items", "en")).toThrow("parse-error");
   });
 
   it("returns the source for an unparseable message in production", () => {
     vi.stubEnv("NODE_ENV", "production");
-    expect(formatMessage("unread } items")).toBe("unread } items");
+    expect(formatMessage("unread } items", "en")).toBe("unread } items");
     vi.unstubAllEnvs();
   });
 });
 
 describe("getMessage", () => {
   it("returns the string for a top-level key", () => {
-    expect(getMessage(jaFixture, "greeting")).toBe("こんにちは、{$name}さん");
+    expect(getMessage(jaFixture, "ja", "greeting")).toBe(
+      "こんにちは、{$name}さん"
+    );
   });
 
   it("walks dotted keys into nested objects", () => {
-    expect(getMessage(jaFixture, "nav.home")).toBe("ホーム");
+    expect(getMessage(jaFixture, "ja", "nav.home")).toBe("ホーム");
   });
 
   it("prefers an exact top-level key over a dotted path", () => {
@@ -381,49 +408,51 @@ describe("getMessage", () => {
       nav: { home: "Nested" },
       "nav.home": "Flat",
     };
-    expect(getMessage(catalog, "nav.home")).toBe("Flat");
+    expect(getMessage(catalog, "en", "nav.home")).toBe("Flat");
   });
 
   it("interpolates {$name} placeholders only", () => {
-    expect(getMessage(jaFixture, "greeting", { name: "山田" })).toBe(
+    expect(getMessage(jaFixture, "ja", "greeting", { name: "山田" })).toBe(
       "こんにちは、山田さん"
     );
-    expect(getMessage(enFixture, "greeting", { name: "Ada" })).toBe(
+    expect(getMessage(enFixture, "en", "greeting", { name: "Ada" })).toBe(
       "Hello, Ada"
     );
   });
 
   it("falls back to the variable reference when the value is missing", () => {
-    expect(getMessage(jaFixture, "greeting", {})).toBe(
+    expect(getMessage(jaFixture, "ja", "greeting", {})).toBe(
       "こんにちは、{$name}さん"
     );
-    expect(getMessage(jaFixture, "greeting")).toBe("こんにちは、{$name}さん");
+    expect(getMessage(jaFixture, "ja", "greeting")).toBe(
+      "こんにちは、{$name}さん"
+    );
   });
 
   it("reads the shared root catalogs by dotted key", () => {
     expect(enMatchesJa).toBe(enCatalog);
     expect(koMatchesEn).toBe(koCatalog);
     expect(zhHansMatchesEn).toBe(zhHansCatalog);
-    expect(getMessage(zhHansCatalog, "errors.validation")).toBe(
+    expect(getMessage(zhHansCatalog, "zh-Hans", "errors.validation")).toBe(
       "请检查您输入的内容。"
     );
     expect(zhHantMatchesEn).toBe(zhHantCatalog);
-    expect(getMessage(zhHantCatalog, "errors.validation")).toBe(
+    expect(getMessage(zhHantCatalog, "zh-Hant", "errors.validation")).toBe(
       "請檢查您輸入的內容。"
     );
-    expect(getMessage(koCatalog, "errors.validation")).toBe(
+    expect(getMessage(koCatalog, "ko", "errors.validation")).toBe(
       "입력한 내용을 확인해 주세요."
     );
-    expect(getMessage(jaCatalog, "errors.rpc.unauthenticated")).toBe(
+    expect(getMessage(jaCatalog, "ja", "errors.rpc.unauthenticated")).toBe(
       "セッションが無効です。再ログインしてください。"
     );
-    expect(getMessage(enCatalog, "errors.rpc.unauthenticated")).toBe(
+    expect(getMessage(enCatalog, "en", "errors.rpc.unauthenticated")).toBe(
       "Your session is no longer valid. Please sign in again."
     );
-    expect(getMessage(jaCatalog, "errors.validation")).toBe(
+    expect(getMessage(jaCatalog, "ja", "errors.validation")).toBe(
       "入力内容を確認してください。"
     );
-    expect(getMessage(enCatalog, "errors.validation")).toBe(
+    expect(getMessage(enCatalog, "en", "errors.validation")).toBe(
       "Please check the information you entered."
     );
   });
@@ -435,39 +464,52 @@ describe("getMessage", () => {
 
     it("throws outside production", () => {
       vi.stubEnv("NODE_ENV", "development");
-      expect(() => getMessage(jaFixture, "missing")).toThrow(
+      expect(() => getMessage(jaFixture, "ja", "missing")).toThrow(
         "Unknown message key: missing"
       );
-      expect(() => getMessage(jaFixture, "nav.missing")).toThrow(
+      expect(() => getMessage(jaFixture, "ja", "nav.missing")).toThrow(
         "Unknown message key: nav.missing"
       );
-      expect(() => getMessage(jaFixture, "")).toThrow("Unknown message key: ");
+      expect(() => getMessage(jaFixture, "ja", "")).toThrow(
+        "Unknown message key: "
+      );
     });
 
     it("returns the key in production", () => {
       vi.stubEnv("NODE_ENV", "production");
-      expect(getMessage(jaFixture, "missing")).toBe("missing");
-      expect(getMessage(jaFixture, "nav.missing")).toBe("nav.missing");
+      expect(getMessage(jaFixture, "ja", "missing")).toBe("missing");
+      expect(getMessage(jaFixture, "ja", "nav.missing")).toBe("nav.missing");
     });
   });
 });
 
 describe("bindMessages", () => {
   it("resolves a key against the bound catalog", () => {
-    const t = bindMessages(jaFixture);
+    const t = bindMessages(jaFixture, "ja");
 
     expect(t("nav.home")).toBe("ホーム");
   });
 
   it("substitutes values the same way getMessage does", () => {
-    const t = bindMessages(enFixture);
+    const t = bindMessages(enFixture, "en");
 
     expect(t("greeting", { name: "Ada" })).toBe("Hello, Ada");
   });
 
+  it("formats in the locale it was bound with", () => {
+    const catalog = { episodes: EPISODE_COUNT };
+
+    expect(bindMessages(catalog, "en")("episodes", { count: 1 })).toBe(
+      "1 episode"
+    );
+    expect(bindMessages(catalog, "ja")("episodes", { count: 1 })).toBe(
+      "1 episodes"
+    );
+  });
+
   it("binds one locale per accessor", () => {
-    expect(bindMessages(jaFixture)("nav.home")).toBe("ホーム");
-    expect(bindMessages(enFixture)("nav.home")).toBe("Home");
+    expect(bindMessages(jaFixture, "ja")("nav.home")).toBe("ホーム");
+    expect(bindMessages(enFixture, "en")("nav.home")).toBe("Home");
   });
 
   describe("unknown keys", () => {
@@ -477,7 +519,7 @@ describe("bindMessages", () => {
 
     it("throws outside production", () => {
       vi.stubEnv("NODE_ENV", "development");
-      const t = bindMessages(jaFixture) as (key: string) => string;
+      const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(() => t("nav.missing")).toThrow(
         "Unknown message key: nav.missing"
@@ -486,7 +528,7 @@ describe("bindMessages", () => {
 
     it("returns the key in production", () => {
       vi.stubEnv("NODE_ENV", "production");
-      const t = bindMessages(jaFixture) as (key: string) => string;
+      const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(t("nav.missing")).toBe("nav.missing");
     });

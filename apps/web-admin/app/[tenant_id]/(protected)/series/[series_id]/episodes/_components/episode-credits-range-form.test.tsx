@@ -90,7 +90,7 @@ vi.mock("@publira/ui-components/dialog", () => ({
   ),
 }));
 
-const t = bindMessages(sharedCatalog("en"));
+const t = bindMessages(sharedCatalog("en"), "en");
 
 const episodes = Array.from({ length: 40 }, (_, index) => ({
   id: `EP${String(index + 1).padStart(2, "0")}-ID`,

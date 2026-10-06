@@ -44,13 +44,13 @@ vi.mock("#components/client-message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
-  useClientMessages: () => bindMessages(sharedCatalog("en")),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 const render = (ui: ReactNode) =>

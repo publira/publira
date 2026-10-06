@@ -25,7 +25,7 @@ vi.mock("#components/locale-context", () => ({
 // reader actually sees.
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 const { toggleFollowAction } = vi.hoisted(() => ({

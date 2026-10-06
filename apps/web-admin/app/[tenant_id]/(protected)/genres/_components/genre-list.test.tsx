@@ -20,12 +20,12 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 // A thumbnail's `alt` is resolved from the request's catalog.
 vi.mock("#lib/get-messages", () => ({
-  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
 vi.mock("next/link", () => ({

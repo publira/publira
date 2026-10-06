@@ -35,7 +35,7 @@ vi.mock("#components/locale-context", () => ({
 }));
 
 vi.mock("./client-message", () => ({
-  useClientMessages: () => bindMessages(sharedCatalog("en")),
+  useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
 const { rateEpisodeAction } = vi.hoisted(() => ({

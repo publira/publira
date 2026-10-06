@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  formatSimpleMessage,
+  formatMessageSource,
   messageVariables,
   simpleMessageParts,
   simpleMessageSyntaxError,
@@ -52,41 +52,56 @@ describe("simpleMessageSyntaxError", () => {
   });
 });
 
-describe("formatSimpleMessage", () => {
+describe("formatMessageSource", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("substitutes values and stringifies numbers", () => {
+  it("substitutes values", () => {
     expect(
-      formatSimpleMessage("{$first} / {$total} pages", { first: 3, total: 12 })
+      formatMessageSource("{$first} / {$total} pages", "en-US", {
+        first: 3,
+        total: 12,
+      })
     ).toBe("3 / 12 pages");
   });
 
-  it("does not localize a number, so the host locale cannot leak in", () => {
-    expect(formatSimpleMessage("{$count} items", { count: 12_345 })).toBe(
-      "12345 items"
+  it("formats a number in the locale it is given, not the host's", () => {
+    expect(formatMessageSource("{$count}", "en-US", { count: 12_345.5 })).toBe(
+      "12,345.5"
     );
+    expect(formatMessageSource("{$count}", "de-DE", { count: 12_345.5 })).toBe(
+      "12.345,5"
+    );
+  });
+
+  it("selects by the number a value holds", () => {
+    const source =
+      ".input {$count :integer}\n.match $count\n0 {{none}}\none {{one}}\n* {{many}}";
+
+    expect(formatMessageSource(source, "en-US", { count: 0 })).toBe("none");
+    expect(formatMessageSource(source, "en-US", { count: 1 })).toBe("one");
+    expect(formatMessageSource(source, "en-US", { count: 7 })).toBe("many");
   });
 
   it("does not isolate a placeholder, so no bidi controls reach the copy", () => {
-    expect(formatSimpleMessage("Hello {$name}!", { name: "محمد" })).toBe(
-      "Hello محمد!"
-    );
+    expect(
+      formatMessageSource("Hello {$name}!", "en-US", { name: "محمد" })
+    ).toBe("Hello محمد!");
   });
 
   it("formats an unresolved variable as its fallback value", () => {
-    expect(formatSimpleMessage("{$first} / {$total}", { first: 3 })).toBe(
-      "3 / {$total}"
-    );
-    expect(formatSimpleMessage("{$name}")).toBe("{$name}");
+    expect(
+      formatMessageSource("{$first} / {$total}", "en-US", { first: 3 })
+    ).toBe("3 / {$total}");
+    expect(formatMessageSource("{$name}", "en-US")).toBe("{$name}");
   });
 
   it("does not report an unresolved variable as a warning", () => {
     const emitWarning = vi.spyOn(process, "emitWarning");
     const warn = vi.spyOn(console, "warn");
 
-    expect(formatSimpleMessage("Page {$first} of {$total}")).toBe(
+    expect(formatMessageSource("Page {$first} of {$total}", "en-US")).toBe(
       "Page {$first} of {$total}"
     );
     expect(emitWarning).not.toHaveBeenCalled();
@@ -94,16 +109,16 @@ describe("formatSimpleMessage", () => {
   });
 
   it("resolves escape sequences", () => {
-    expect(formatSimpleMessage("\\{100\\}")).toBe("{100}");
-    expect(formatSimpleMessage("C:\\\\Users")).toBe("C:\\Users");
+    expect(formatMessageSource("\\{100\\}", "en-US")).toBe("{100}");
+    expect(formatMessageSource("C:\\\\Users", "en-US")).toBe("C:\\Users");
   });
 
   it("returns plain text unchanged", () => {
-    expect(formatSimpleMessage("Home", { unused: 1 })).toBe("Home");
+    expect(formatMessageSource("Home", "en-US", { unused: 1 })).toBe("Home");
   });
 
   it("throws on a message that is not well-formed MF2", () => {
-    expect(() => formatSimpleMessage("a } b")).toThrow();
+    expect(() => formatMessageSource("a } b", "en-US")).toThrow();
   });
 });
 
