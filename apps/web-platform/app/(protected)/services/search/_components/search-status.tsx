@@ -98,17 +98,14 @@ export const SearchStatus = ({
       </dl>
 
       {settings.buildState === "building" ? (
-        <>
-          <FormMessage className="sm:max-w-3xl" variant="info">
-            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-              <Message
-                message="platform.search.status.building"
-                values={{ engine: savedEngine, serving: servingEngine }}
-              />
-            </Suspense>
-          </FormMessage>
-          <SearchBuildRefresh />
-        </>
+        <FormMessage className="sm:max-w-3xl" variant="info">
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <Message
+              message="platform.search.status.building"
+              values={{ engine: savedEngine, serving: servingEngine }}
+            />
+          </Suspense>
+        </FormMessage>
       ) : null}
 
       {settings.buildState === "failed" ? (
@@ -145,6 +142,10 @@ export const SearchStatus = ({
           </span>
         </FormMessage>
       ) : null}
+
+      {/* A failed build is retried on the worker's every pass, so a page left
+          open on the failure still notices an engine that was repaired. */}
+      {settings.buildState === "serving" ? null : <SearchBuildRefresh />}
     </PlatformSection>
   );
 };
