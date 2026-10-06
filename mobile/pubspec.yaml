@@ -29,7 +29,7 @@ dependencies:
   in_app_purchase_storekit: 0.4.13
   intl: 0.20.3
   path_provider: 2.1.6
-  app_links: 7.2.1
+  app_links: 7.2.2
   share_plus: 13.3.1
   timezone: 0.11.1
   url_launcher: 6.3.3
