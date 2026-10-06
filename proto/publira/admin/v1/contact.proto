@@ -8,9 +8,9 @@ import "publira/types/v1/types.proto";
 
 // One message a reader sent the tenant, as staff read it.
 //
-// Publira carries no reply of its own, so the message is the whole record: what
-// the reader wrote, the address to answer at, who on the staff owns it, and
-// whether anyone has dealt with it yet.
+// The message is what the reader first wrote, the address to answer at, who on
+// the staff owns it, and whether anyone has dealt with it yet. Everything said
+// after it is an entry under it.
 //
 // Where the message stands is derived rather than stored: status reads
 // handled_at and the assignee together, so it cannot disagree with them.
@@ -50,6 +50,31 @@ message ContactMessage {
   // The values are the ListContactMessagesRequest.status filter's, and a
   // message lists under the filter its own status names.
   string status = 14;
+  // The exchange that followed the message, oldest first, so the newest is
+  // last. Only a read of one message carries it: every list leaves it empty and
+  // says how long it is in entry_count instead.
+  repeated ContactMessageEntry entries = 15;
+  // How many entries the message has. Zero until somebody answers it, because
+  // the reader can only write back to an answer.
+  int32 entry_count = 16;
+}
+
+// One turn of the exchange after a contact message: an answer staff sent, or a
+// reply the reader mailed back.
+message ContactMessageEntry {
+  string id = 1;
+  // Who wrote it, one of:
+  //   staff  - an answer sent from the console
+  //   reader - a reply the reader mailed back to one
+  string direction = 2;
+  // The member of staff who wrote a staff entry. All three are empty on a
+  // reader entry, and on a staff entry whose author's account has been deleted
+  // since. author_user_id is the TenantMember.user_id.
+  string author_user_id = 3;
+  string author_public_id = 4;
+  string author_name = 5;
+  string body = 6;
+  string created_at = 7;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -126,6 +151,20 @@ message UpdateContactMessageStaffNoteResponse {
   ContactMessage message = 1;
 }
 
+message ReplyToContactMessageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The message's primary key (ContactMessage.id).
+  string contact_message_id = 2;
+  // The answer. Surrounding whitespace is trimmed; what is left is required and
+  // at most 4000 characters, the bounds of the reader's own message.
+  string body = 3;
+}
+
+message ReplyToContactMessageResponse {
+  // The message with the answer as its newest entry.
+  ContactMessage message = 1;
+}
+
 service AdminContactService {
   // Lists the messages readers sent the tenant, newest first.
   //
@@ -162,4 +201,16 @@ service AdminContactService {
   //
   // Minimum role: tenant_admin.
   rpc UpdateContactMessageStaffNote(UpdateContactMessageStaffNoteRequest) returns (UpdateContactMessageStaffNoteResponse) {}
+  // Answers one message: stores the answer as a staff entry under it, marks the
+  // message handled, and queues the mail that takes the answer to the reader's
+  // reply-to address.
+  //
+  // The mail is sent afterwards rather than by this call, so the answer is
+  // stored whether or not the mail server is reachable, and it goes out from
+  // the tenant's SMTP settings like every other mail of the tenant. The
+  // reader's reply reaches the caller's own account address. A message already
+  // handled keeps the time and the member of staff it was first marked with.
+  //
+  // Minimum role: tenant_admin.
+  rpc ReplyToContactMessage(ReplyToContactMessageRequest) returns (ReplyToContactMessageResponse) {}
 }

@@ -48,6 +48,9 @@ const (
 	// AdminContactServiceUpdateContactMessageStaffNoteProcedure is the fully-qualified name of the
 	// AdminContactService's UpdateContactMessageStaffNote RPC.
 	AdminContactServiceUpdateContactMessageStaffNoteProcedure = "/publira.admin.v1.AdminContactService/UpdateContactMessageStaffNote"
+	// AdminContactServiceReplyToContactMessageProcedure is the fully-qualified name of the
+	// AdminContactService's ReplyToContactMessage RPC.
+	AdminContactServiceReplyToContactMessageProcedure = "/publira.admin.v1.AdminContactService/ReplyToContactMessage"
 )
 
 // AdminContactServiceClient is a client for the publira.admin.v1.AdminContactService service.
@@ -87,6 +90,18 @@ type AdminContactServiceClient interface {
 	//
 	// Minimum role: tenant_admin.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
+	// Answers one message: stores the answer as a staff entry under it, marks the
+	// message handled, and queues the mail that takes the answer to the reader's
+	// reply-to address.
+	//
+	// The mail is sent afterwards rather than by this call, so the answer is
+	// stored whether or not the mail server is reachable, and it goes out from
+	// the tenant's SMTP settings like every other mail of the tenant. The
+	// reader's reply reaches the caller's own account address. A message already
+	// handled keeps the time and the member of staff it was first marked with.
+	//
+	// Minimum role: tenant_admin.
+	ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error)
 }
 
 // NewAdminContactServiceClient constructs a client for the publira.admin.v1.AdminContactService
@@ -130,6 +145,12 @@ func NewAdminContactServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
 			connect.WithClientOptions(opts...),
 		),
+		replyToContactMessage: connect.NewClient[v1.ReplyToContactMessageRequest, v1.ReplyToContactMessageResponse](
+			httpClient,
+			baseURL+AdminContactServiceReplyToContactMessageProcedure,
+			connect.WithSchema(adminContactServiceMethods.ByName("ReplyToContactMessage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -140,6 +161,7 @@ type adminContactServiceClient struct {
 	markContactMessageHandled     *connect.Client[v1.MarkContactMessageHandledRequest, v1.MarkContactMessageHandledResponse]
 	assignContactMessage          *connect.Client[v1.AssignContactMessageRequest, v1.AssignContactMessageResponse]
 	updateContactMessageStaffNote *connect.Client[v1.UpdateContactMessageStaffNoteRequest, v1.UpdateContactMessageStaffNoteResponse]
+	replyToContactMessage         *connect.Client[v1.ReplyToContactMessageRequest, v1.ReplyToContactMessageResponse]
 }
 
 // ListContactMessages calls publira.admin.v1.AdminContactService.ListContactMessages.
@@ -166,6 +188,11 @@ func (c *adminContactServiceClient) AssignContactMessage(ctx context.Context, re
 // publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote.
 func (c *adminContactServiceClient) UpdateContactMessageStaffNote(ctx context.Context, req *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
 	return c.updateContactMessageStaffNote.CallUnary(ctx, req)
+}
+
+// ReplyToContactMessage calls publira.admin.v1.AdminContactService.ReplyToContactMessage.
+func (c *adminContactServiceClient) ReplyToContactMessage(ctx context.Context, req *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error) {
+	return c.replyToContactMessage.CallUnary(ctx, req)
 }
 
 // AdminContactServiceHandler is an implementation of the publira.admin.v1.AdminContactService
@@ -206,6 +233,18 @@ type AdminContactServiceHandler interface {
 	//
 	// Minimum role: tenant_admin.
 	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
+	// Answers one message: stores the answer as a staff entry under it, marks the
+	// message handled, and queues the mail that takes the answer to the reader's
+	// reply-to address.
+	//
+	// The mail is sent afterwards rather than by this call, so the answer is
+	// stored whether or not the mail server is reachable, and it goes out from
+	// the tenant's SMTP settings like every other mail of the tenant. The
+	// reader's reply reaches the caller's own account address. A message already
+	// handled keeps the time and the member of staff it was first marked with.
+	//
+	// Minimum role: tenant_admin.
+	ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error)
 }
 
 // NewAdminContactServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -245,6 +284,12 @@ func NewAdminContactServiceHandler(svc AdminContactServiceHandler, opts ...conne
 		connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminContactServiceReplyToContactMessageHandler := connect.NewUnaryHandler(
+		AdminContactServiceReplyToContactMessageProcedure,
+		svc.ReplyToContactMessage,
+		connect.WithSchema(adminContactServiceMethods.ByName("ReplyToContactMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminContactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminContactServiceListContactMessagesProcedure:
@@ -257,6 +302,8 @@ func NewAdminContactServiceHandler(svc AdminContactServiceHandler, opts ...conne
 			adminContactServiceAssignContactMessageHandler.ServeHTTP(w, r)
 		case AdminContactServiceUpdateContactMessageStaffNoteProcedure:
 			adminContactServiceUpdateContactMessageStaffNoteHandler.ServeHTTP(w, r)
+		case AdminContactServiceReplyToContactMessageProcedure:
+			adminContactServiceReplyToContactMessageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -284,4 +331,8 @@ func (UnimplementedAdminContactServiceHandler) AssignContactMessage(context.Cont
 
 func (UnimplementedAdminContactServiceHandler) UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote is not implemented"))
+}
+
+func (UnimplementedAdminContactServiceHandler) ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.ReplyToContactMessage is not implemented"))
 }

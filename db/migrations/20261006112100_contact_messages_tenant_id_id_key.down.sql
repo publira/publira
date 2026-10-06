@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS contact_messages_tenant_id_id_key;

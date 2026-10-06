@@ -155,6 +155,13 @@
       "subject": "{$tenant_name} contact message",
       "subject_line": "Subject: {$subject}"
     },
+    "staff_contact_reply": {
+      "footnote": "To answer, reply to this email.",
+      "preview": "{$tenant_name} answered your message.",
+      "quote_intro": "On {$received_at}, you wrote:",
+      "subject": "Re: {$subject}",
+      "subject_untitled": "Re: Your message to {$tenant_name}"
+    },
     "tenant_admin_invitation": {
       "action": "Accept invitation",
       "body": "You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.",

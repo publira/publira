@@ -155,6 +155,13 @@
       "subject": "{$tenant_name} 문의",
       "subject_line": "제목: {$subject}"
     },
+    "staff_contact_reply": {
+      "footnote": "이 메일에 답장하여 문의를 이어갈 수 있습니다.",
+      "preview": "{$tenant_name}에서 문의에 대한 답변을 보냈습니다.",
+      "quote_intro": "{$received_at}에 보내신 내용:",
+      "subject": "Re: {$subject}",
+      "subject_untitled": "Re: {$tenant_name}에 보낸 문의"
+    },
     "tenant_admin_invitation": {
       "action": "초대 수락하기",
       "body": "{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.",

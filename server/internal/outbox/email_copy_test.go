@@ -241,6 +241,34 @@ var emailCopyCases = []struct {
 			},
 		},
 	},
+	{
+		name:     "staff_contact_reply to a titled message",
+		subjects: map[string]string{"en": "Re: Wrong date of birth", "ja": "Re: Wrong date of birth"},
+		request: emailrenderer.Request{
+			Template: "staff_contact_reply",
+			Data: map[string]any{
+				"body":                 "We have corrected the date of birth on your account.",
+				"original_body":        "The date of birth on my account is wrong.",
+				"original_received_at": copyReceivedAt,
+				"original_subject":     "Wrong date of birth",
+				"tenant_name":          "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "staff_contact_reply to an untitled message",
+		subjects: map[string]string{"en": "Re: Your message to Aoto Press", "ja": "Re: Aoto Pressへのお問い合わせ"},
+		request: emailrenderer.Request{
+			Template: "staff_contact_reply",
+			Data: map[string]any{
+				"body":                 "Every episode marked free can be read without an account.",
+				"original_body":        "Which episodes can I read without an account?",
+				"original_received_at": copyReceivedAt,
+				"original_subject":     "",
+				"tenant_name":          "Aoto Press",
+			},
+		},
+	},
 }
 
 func TestEmailCopyWritesTheWholeMail(t *testing.T) {
@@ -295,6 +323,34 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
 			}
 		})
+	}
+}
+
+// An answer opens with what staff wrote and quotes the reader's message under
+// it, line by line, the way a reply from a mail client does.
+func TestEmailCopyQuotesTheMessageAStaffReplyAnswers(t *testing.T) {
+	email, err := emailCopy(emailrenderer.Request{
+		Template: "staff_contact_reply",
+		Locale:   "en",
+		Data: map[string]any{
+			"body":                 "We have corrected it.\nSorry for the trouble.",
+			"original_body":        "The date of birth on my account is wrong.\n\nCould you correct it?",
+			"original_received_at": copyReceivedAt,
+			"original_subject":     "Wrong date of birth",
+			"tenant_name":          "Aoto Press",
+		},
+		TimeZone: "UTC",
+	})
+	if err != nil {
+		t.Fatalf("emailCopy: %v", err)
+	}
+	want := "Aoto Press\n\nWe have corrected it.\nSorry for the trouble.\n\n" +
+		"On Jan 15, 2030, 12:00\u202fPM, you wrote:\n\n" +
+		"> The date of birth on my account is wrong.\n>\n> Could you correct it?\n\n" +
+		"To answer, reply to this email.\n\n" +
+		"This email was sent by Aoto Press."
+	if email.Text != want {
+		t.Errorf("text =\n%q\nwant\n%q", email.Text, want)
 	}
 }
 

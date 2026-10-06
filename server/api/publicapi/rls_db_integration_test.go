@@ -226,6 +226,10 @@ var publicDataTables = []struct {
 	// storefront's connection is what stores. A missing policy here would put
 	// one tenant's messages, and the addresses on them, in another's inbox.
 	{name: "contact_messages", count: "SELECT count(*) FROM contact_messages"},
+	// The exchange after a message: staff answers, and the replies a reader
+	// mails back, which the public site's inbound mail webhook stores on this
+	// connection.
+	{name: "contact_message_entries", count: "SELECT count(*) FROM contact_message_entries"},
 	// The auth mails and the staff alerts a reader's comment raises are queued
 	// here on the storefront's connection.
 	{name: "outbox_events", count: "SELECT count(*) FROM outbox_events"},
@@ -366,7 +370,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("notification settings", "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID)
 	bellID := insertTenantNotification(t, env, first.ID, member.ID, "episode_published", "episode:EPISODEA0001", `{"episode_id":"EPISODEA0001"}`)
 	seed("notification read", "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", bellID, member.ID, first.ID)
-	seed("contact message", "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A.")
+	contactMessageID := uuid.Must(uuid.NewV7())
+	seed("contact message", "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", contactMessageID, first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A.")
+	seed("contact message entry", "INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body) VALUES ($1, $2, $3, 'reader', $4)", uuid.Must(uuid.NewV7()), first.ID, contactMessageID, "A follow-up for Tenant A.")
 	seed("outbox event", "INSERT INTO outbox_events (id, tenant_id, event_type, payload, idempotency_key) VALUES ($1, $2, 'rls_probe', $3, 'rls:probe')", uuid.Must(uuid.NewV7()), first.ID, `{"tenant_id":"`+first.ID.String()+`"}`)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

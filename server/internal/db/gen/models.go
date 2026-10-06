@@ -77,6 +77,17 @@ type ContactMessage struct {
 	StaffNote    sql.NullString `json:"staff_note"`
 }
 
+type ContactMessageEntry struct {
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	ContactMessageID uuid.UUID      `json:"contact_message_id"`
+	Direction        string         `json:"direction"`
+	AuthorID         uuid.NullUUID  `json:"author_id"`
+	Body             string         `json:"body"`
+	MessageID        sql.NullString `json:"message_id"`
+	CreatedAt        time.Time      `json:"created_at"`
+}
+
 type ContentDailyStat struct {
 	ID                uuid.UUID `json:"id"`
 	TenantID          uuid.UUID `json:"tenant_id"`

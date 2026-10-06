@@ -39,6 +39,16 @@ type RenderedEmail struct {
 	Subject string
 	HTML    string
 	Text    string
+	// ReplyTo is where this one mail's answer goes. Empty leaves the Reply-To
+	// of the SMTP settings in charge, which is every mail that names none.
+	ReplyTo string
+	// MessageID, InReplyTo and References place the mail in a thread. Each is
+	// an RFC 5322 msg-id without its angle brackets, and an empty one leaves its
+	// header out: the server that relays a mail with no Message-ID adds one of
+	// its own, which nobody here can answer to.
+	MessageID  string
+	InReplyTo  string
+	References []string
 }
 
 type Client struct {
@@ -73,6 +83,9 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 	}
 	if strings.TrimSpace(email.Text) == "" {
 		return errors.New("body is required")
+	}
+	if err := validateThreadHeaders(email); err != nil {
+		return err
 	}
 
 	addr := net.JoinHostPort(settings.Host, fmt.Sprintf("%d", settings.Port))
@@ -169,8 +182,26 @@ func buildMessage(settings emailsettings.SMTPSettings, recipient string, email R
 		fmt.Sprintf("Subject: %s", mime.QEncoding.Encode("UTF-8", email.Subject)),
 		"MIME-Version: 1.0",
 	}
-	if settings.ReplyTo != "" {
+	switch {
+	case email.ReplyTo != "":
+		headers = append(headers, fmt.Sprintf("Reply-To: %s", email.ReplyTo))
+	case settings.ReplyTo != "":
 		headers = append(headers, fmt.Sprintf("Reply-To: %s", settings.ReplyTo))
+	}
+	if email.MessageID != "" {
+		headers = append(headers, fmt.Sprintf("Message-ID: <%s>", email.MessageID))
+	}
+	if email.InReplyTo != "" {
+		headers = append(headers, fmt.Sprintf("In-Reply-To: <%s>", email.InReplyTo))
+	}
+	if len(email.References) > 0 {
+		// One id per folded line, so a long thread cannot push the header past
+		// the line length RFC 5322 allows.
+		references := make([]string, 0, len(email.References))
+		for _, id := range email.References {
+			references = append(references, "<"+id+">")
+		}
+		headers = append(headers, "References: "+strings.Join(references, "\r\n "))
 	}
 	if email.HTML == "" {
 		headers = append(headers, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: quoted-printable")
@@ -197,6 +228,45 @@ func buildMessage(settings emailsettings.SMTPSettings, recipient string, email R
 		"",
 	}
 	return strings.Join(headers, "\r\n") + "\r\n\r\n" + strings.Join(parts, "\r\n"), nil
+}
+
+// validateThreadHeaders refuses a per-mail header that would break the header
+// block it is written into: an address that is not one, or a msg-id carrying
+// whitespace or the brackets the writer adds around it.
+func validateThreadHeaders(email RenderedEmail) error {
+	if email.ReplyTo != "" {
+		address, err := mail.ParseAddress(email.ReplyTo)
+		if err != nil || address.Name != "" || address.Address != email.ReplyTo {
+			return errors.New("reply-to must be a bare email address")
+		}
+	}
+	ids := append([]string{email.MessageID, email.InReplyTo}, email.References...)
+	for index, id := range ids {
+		// The first two are optional; a References entry is not.
+		if id == "" && index < 2 {
+			continue
+		}
+		if !validMsgID(id) {
+			return fmt.Errorf("%q is not a message id", id)
+		}
+	}
+	return nil
+}
+
+// validMsgID accepts the inside of an RFC 5322 msg-id: a left and a right
+// part around one "@", with nothing in either that would end the header or
+// the id early.
+func validMsgID(id string) bool {
+	left, right, ok := strings.Cut(id, "@")
+	if !ok || left == "" || right == "" || strings.Contains(right, "@") {
+		return false
+	}
+	for _, r := range id {
+		if r <= ' ' || r >= 0x7f || r == '<' || r == '>' {
+			return false
+		}
+	}
+	return true
 }
 
 func encodeQuotedPrintable(body string) (string, error) {

@@ -72,10 +72,37 @@ func deliverEmail(
 	recipient string,
 	request emailrenderer.Request,
 ) error {
+	return deliverEmailWithHeaders(ctx, cfg, settings, recipient, request, mailHeaders{})
+}
+
+// mailHeaders are the headers one mail names for itself instead of taking them
+// from the tenant's settings or leaving them to the relay: who the answer goes
+// to, and where the mail sits in a thread.
+type mailHeaders struct {
+	ReplyTo    string
+	MessageID  string
+	InReplyTo  string
+	References []string
+}
+
+// deliverEmailWithHeaders is deliverEmail for a mail that is part of an
+// exchange.
+func deliverEmailWithHeaders(
+	ctx context.Context,
+	cfg EmailHandlerConfig,
+	settings emailsettings.SMTPSettings,
+	recipient string,
+	request emailrenderer.Request,
+	headers mailHeaders,
+) error {
 	email, err := emailCopy(request)
 	if err != nil {
 		return Permanent(err)
 	}
+	email.ReplyTo = headers.ReplyTo
+	email.MessageID = headers.MessageID
+	email.InReplyTo = headers.InReplyTo
+	email.References = headers.References
 	if cfg.Renderer != nil {
 		rendered, err := cfg.Renderer.Render(ctx, request)
 		if err != nil {

@@ -155,6 +155,13 @@
       "subject": "{$tenant_name}咨询",
       "subject_line": "主题：{$subject}"
     },
+    "staff_contact_reply": {
+      "footnote": "直接回复此邮件即可继续沟通。",
+      "preview": "{$tenant_name}回复了您的咨询。",
+      "quote_intro": "您于{$received_at}写道：",
+      "subject": "Re: {$subject}",
+      "subject_untitled": "Re: 您向{$tenant_name}发送的咨询"
+    },
     "tenant_admin_invitation": {
       "action": "接受邀请",
       "body": "您被邀请成为{$tenant_name}的租户管理员。请打开下方按钮接受邀请。",
