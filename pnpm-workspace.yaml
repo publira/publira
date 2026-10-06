@@ -38,7 +38,7 @@ catalog:
   react-markdown: 10.1.0
   redis: 6.3.0
   remark-gfm: 4.0.1
-  schema-dts: 2.0.0
+  schema-dts: 2.1.0
   tailwindcss: 4.3.3
   temporal-polyfill: 1.0.5
   tsdown: 0.23.0
