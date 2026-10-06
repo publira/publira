@@ -3,3 +3,12 @@
 package gen
 
 var Supported = []string{"ja", "en", "ko", "zh-Hans", "zh-Hant"}
+
+// Intl is the `intl` value of each locale code in locales/index.json.
+var Intl = map[string]string{
+	"ja":      "ja-JP",
+	"en":      "en-US",
+	"ko":      "ko-KR",
+	"zh-Hans": "zh-Hans-CN",
+	"zh-Hant": "zh-Hant-TW",
+}

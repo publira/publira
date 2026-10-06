@@ -40,3 +40,24 @@ export const goString = (value: string): string => {
 
   return `${literal}"`;
 };
+
+/**
+ * The elements of a Go map literal keyed by locale code, one per line, with
+ * each value already written as Go source. `gofmt` pads the keys of such a
+ * block into a column, and stops doing so only past a key length no locale
+ * code comes near, so the column is as wide as the longest code.
+ */
+export const goLocaleEntries = (
+  entries: readonly (readonly [code: string, value: string])[],
+  indent: string
+): string[] => {
+  const keyed = entries.map(([code, value]) => ({
+    key: `${goString(code)}:`,
+    value,
+  }));
+  const width = Math.max(...keyed.map(({ key }) => key.length));
+
+  return keyed.map(
+    ({ key, value }) => `${indent}${key.padEnd(width)} ${value},`
+  );
+};
