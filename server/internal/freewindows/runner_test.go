@@ -106,21 +106,21 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEveryBoundary(t *testing.T) {
 
 	New(queries, reval, quietLogger()).RunOnce(context.Background())
 
-	// Every cached read of an episode carries its tenant's series tag, so the
-	// two windows of tenant A are answered by one request.
-	if len(reval.calls) != 2 {
-		t.Fatalf("revalidations = %d, want one per tenant", len(reval.calls))
+	// Every cached read of an episode carries its tenant's series detail tag,
+	// and every cached series list its series list tag, so the two windows of
+	// tenant A are answered by one request. The list is what the free-episode
+	// count on a series card and the "Free to read" module are cached under.
+	wantTenants := []uuid.UUID{tenantA, tenantB}
+	if !slices.Equal(reval.tenants, wantTenants) {
+		t.Fatalf("revalidated tenants = %v, want one request each for %v", reval.tenants, wantTenants)
 	}
-	wantTags := map[string]bool{
-		RevalidateTags(tenantA)[0]: true,
-		RevalidateTags(tenantB)[0]: true,
-	}
-	for index, call := range reval.calls {
-		if len(call) != 1 || !wantTags[call[0]] {
-			t.Fatalf("revalidated %v, want one of the two tenant tags", call)
+	for index, tenantID := range wantTenants {
+		want := []string{
+			fmt.Sprintf("tenant:%s:series:detail", tenantID),
+			fmt.Sprintf("tenant:%s:series:list", tenantID),
 		}
-		if call[0] != RevalidateTags(reval.tenants[index])[0] {
-			t.Fatalf("revalidated %v under tenant %s, want the tenant the tag names", call, reval.tenants[index])
+		if !slices.Equal(reval.calls[index], want) {
+			t.Errorf("revalidated %v for tenant %s, want %v", reval.calls[index], tenantID, want)
 		}
 	}
 
