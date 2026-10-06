@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -453,5 +454,122 @@ func TestTheConnectionTestReportsAnEngineThatDoesNotAnswer(t *testing.T) {
 	}
 	if !slices.Equal(outcomes, []string{"success", "failure"}) {
 		t.Fatalf("audit outcomes = %v, want one entry per test that ran", outcomes)
+	}
+}
+
+// koreanAnalysis is a definition built on analysis-nori, which splits 「별을」
+// into the noun and its particle where the default keeps it one token.
+const koreanAnalysis = `{
+  "analyzer": {
+    "written_form": {"type": "custom", "tokenizer": "nori_tokenizer", "filter": ["nori_part_of_speech", "lowercase"]},
+    "alternate_form": {"type": "custom", "tokenizer": "nori_tokenizer", "filter": ["nori_part_of_speech", "lowercase"]}
+  },
+  "normalizer": {"exact_match": {"type": "custom", "filter": ["lowercase"]}}
+}`
+
+func (e *env) saveParams(t *testing.T, p platformsearch.SaveParams) (dbmodels.PlatformSearchConfig, error) {
+	t.Helper()
+	return platformsearch.Save(context.Background(), e.pg.OpenPlatformDB(t), slog.Default(), e.secrets, auditlog.SystemPlatformActor, p)
+}
+
+// A saved analysis is built into a new index behind the alias the search
+// already answers from, and the storefront answers from the index it has until
+// that one holds the catalog.
+func TestAChangedAnalysisIsRebuiltBeforeTheSearchMovesOntoIt(t *testing.T) {
+	e := newEnv(t)
+	series := e.pg.SeedSeries(t, e.tenantID, testutil.SeriesSeed{PublicID: "SEARCHSET004", Title: "별을 쫓는 아이", Published: true})
+	alias := e.alias(t)
+	e.save(t, e.saved(alias))
+	if _, err := e.build(t); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if got := e.searchSeries(t, "별"); len(got) != 0 {
+		t.Fatalf("search on the default analysis = %v, want nothing", got)
+	}
+
+	saved, err := e.saveParams(t, platformsearch.SaveParams{Settings: e.saved(alias), AnalysisMode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis})
+	if err != nil {
+		t.Fatalf("Save the Korean analysis: %v", err)
+	}
+	stored := platformsearch.FromConfig(saved)
+	if stored.State != platformsearch.Building || stored.Analysis == "" || stored.Serving.Analysis != "" {
+		t.Fatalf("saved = %+v, want a build due and the search still on the default analysis", stored)
+	}
+	if got := e.searchSeries(t, "별"); len(got) != 0 {
+		t.Fatalf("search while the build is due = %v, want the previous index's answer", got)
+	}
+
+	result, err := e.build(t)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if !result.Built || !result.Serving || result.Alias != alias {
+		t.Fatalf("Build = %+v, want the index rebuilt behind %s and served", result, alias)
+	}
+	if stored := e.stored(t); stored.State != platformsearch.Serving || stored.Serving.Analysis != stored.Analysis {
+		t.Fatalf("stored = %+v, want the search on the Korean analysis", stored)
+	}
+	if got := e.searchSeries(t, "별"); !slices.Equal(got, []uuid.UUID{series.ID}) {
+		t.Fatalf("search after the build = %v, want %v", got, series.ID)
+	}
+
+	// A save that says nothing about the analysis keeps it, and changes
+	// nothing.
+	if kept := e.save(t, e.saved(alias)); kept.Revision != saved.Revision || kept.Analysis != saved.Analysis {
+		t.Fatalf("save without the analysis = revision %d, analysis %q, want revision %d kept", kept.Revision, kept.Analysis.String, saved.Revision)
+	}
+
+	// Going back to the default is another analysis again.
+	back, err := e.saveParams(t, platformsearch.SaveParams{Settings: e.saved(alias), AnalysisMode: platformsearch.AnalysisDefault})
+	if err != nil {
+		t.Fatalf("Save the default analysis: %v", err)
+	}
+	if stored := platformsearch.FromConfig(back); stored.State != platformsearch.Building || stored.Analysis != "" {
+		t.Fatalf("saved = %+v, want a build due on the default analysis", stored)
+	}
+}
+
+// A definition the engine refuses, or one that leaves a role undefined, is
+// refused on save, and the stored row is left as it was.
+func TestAnAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
+	e := newEnv(t)
+	alias := e.alias(t)
+	saved := e.save(t, e.saved(alias))
+
+	for name, test := range map[string]struct {
+		analysis string
+		reason   string
+	}{
+		"an unknown tokenizer": {
+			analysis: `{"analyzer":{"written_form":{"type":"custom","tokenizer":"no_such_tokenizer"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`,
+			reason:   "no_such_tokenizer",
+		},
+		"a missing role": {
+			analysis: `{"analyzer":{"written_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`,
+			reason:   opensearchbackend.AnalyzerAlternateForm,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := e.saveParams(t, platformsearch.SaveParams{Settings: e.saved(alias), AnalysisMode: platformsearch.AnalysisReplace, Analysis: test.analysis})
+			if fielderr.Field(err) != platformsearch.FieldAnalysis || !strings.Contains(err.Error(), test.reason) {
+				t.Fatalf("Save = %v, want the analysis refused naming %s", err, test.reason)
+			}
+			if stored := e.stored(t); stored.Revision != saved.Revision || stored.Analysis != "" {
+				t.Fatalf("stored = %+v, want revision %d with the default analysis", stored, saved.Revision)
+			}
+		})
+	}
+
+	// An engine that does not answer cannot say, and nothing is saved.
+	unreachable := openSearch("http://"+testutil.FreeAddr(t), alias)
+	if _, err := e.saveParams(t, platformsearch.SaveParams{Settings: unreachable, AnalysisMode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}); !errors.Is(err, platformsearch.ErrAnalysisUnchecked) {
+		t.Fatalf("Save on an engine that does not answer = %v, want ErrAnalysisUnchecked", err)
+	}
+	if stored := e.stored(t); stored.Revision != saved.Revision {
+		t.Fatalf("stored = %+v, want revision %d", stored, saved.Revision)
+	}
+
+	if _, err := e.saveParams(t, platformsearch.SaveParams{Settings: platformsearch.Settings{Engine: platformsearch.EngineSQL}, AnalysisMode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}); fielderr.Field(err) != platformsearch.FieldAnalysis {
+		t.Fatalf("Save of an analysis on sql = %v, want the analysis refused", err)
 	}
 }

@@ -36,8 +36,9 @@ type BuildParams struct {
 	Secrets Decrypter
 	Logger  *slog.Logger
 	// Force rebuilds the index of the saved configuration even when the search
-	// already answers from it, for an index definition that changed or an
-	// index that was lost. Without it a build is made only while one is due.
+	// already answers from it, for a mapping a new release changed or an index
+	// that was lost. Without it a build is made only while one is due, which a
+	// save of another target or another analysis leaves.
 	Force bool
 }
 
@@ -140,7 +141,7 @@ func resync(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend)
 
 func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (*opensearchbackend.Backend, string, error) {
 	stored := FromConfig(row)
-	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username}
+	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username, Analysis: stored.Analysis}
 	if encrypted := strings.TrimSpace(row.PasswordEncrypted.String); encrypted != "" {
 		if p.Secrets == nil {
 			return nil, "", ErrSecretManagerUnavailable

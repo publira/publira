@@ -243,3 +243,93 @@ func TestDBUpdatePlatformSearchSettingsSavesElasticsearch(t *testing.T) {
 		t.Fatalf("saved = %+v, want elasticsearch with its build due", saved)
 	}
 }
+
+// The read answers the analysis an engine with an index builds it with, the
+// default until one is saved, and a save that says nothing about it keeps it.
+// A definition the engine refuses, or one missing a role, is refused on the
+// field analysis with nothing saved.
+func TestDBUpdatePlatformSearchSettingsSavesAndRefusesAnAnalysis(t *testing.T) {
+	client, pg, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
+	engine := testutil.StartOpenSearch(t)
+
+	get := func() *publirasplatformv1.PlatformSearchSettings {
+		t.Helper()
+		resp, err := client.GetPlatformSearchSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformSearchSettingsRequest{}))
+		if err != nil {
+			t.Fatalf("GetPlatformSearchSettings: %v", err)
+		}
+		return resp.Msg.GetSettings()
+	}
+	if settings := get(); settings.GetAnalysis() != "" || settings.GetDefaultAnalysis() {
+		t.Fatalf("settings on sql = %+v, want no analysis", settings)
+	}
+
+	alias := "catalog-api-test-" + strings.ToLower(t.Name())
+	request := func(revision int64) *publirasplatformv1.UpdatePlatformSearchSettingsRequest {
+		return &publirasplatformv1.UpdatePlatformSearchSettingsRequest{
+			Engine:           publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+			Url:              engine.URL,
+			Index:            alias,
+			ExpectedRevision: revision,
+		}
+	}
+	saved, err := updateSearchSettings(client, operator, request(0))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings: %v", err)
+	}
+	if saved.GetAnalysis() != string(opensearchbackend.DefaultAnalysis()) || !saved.GetDefaultAnalysis() {
+		t.Fatalf("saved = %+v, want the default analysis", saved)
+	}
+
+	for name, analysis := range map[string]string{
+		"refused by the engine": `{"analyzer":{"written_form":{"type":"custom","tokenizer":"no_such_tokenizer"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`,
+		"missing a role":        `{"analyzer":{"written_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom"}}}`,
+		"not JSON":              `{`,
+	} {
+		req := request(saved.GetRevision())
+		req.AnalysisUpdateMode = publirasplatformv1.PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE
+		req.Analysis = analysis
+		_, err := updateSearchSettings(client, operator, req)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("%s: UpdatePlatformSearchSettings = %v, want invalid_argument", name, err)
+		}
+		assertFieldViolation(t, err, platformsearch.FieldAnalysis)
+	}
+	if settings := get(); settings.GetRevision() != saved.GetRevision() || !settings.GetDefaultAnalysis() {
+		t.Fatalf("settings = %+v, want revision %d on the default analysis", settings, saved.GetRevision())
+	}
+
+	analysis := `{"analyzer":{"written_form":{"type":"standard"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`
+	req := request(saved.GetRevision())
+	req.AnalysisUpdateMode = publirasplatformv1.PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE
+	req.Analysis = analysis
+	replaced, err := updateSearchSettings(client, operator, req)
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings with an analysis: %v", err)
+	}
+	if replaced.GetDefaultAnalysis() || !strings.Contains(replaced.GetAnalysis(), `"standard"`) {
+		t.Fatalf("replaced = %+v, want the saved analysis", replaced)
+	}
+	if got := countAuditActions(t, pg, "platform_search_settings_updated"); got != 2 {
+		t.Fatalf("audit entries = %d, want 2", got)
+	}
+
+	// The Platform Console's form sends no analysis, which keeps it.
+	kept, err := updateSearchSettings(client, operator, request(replaced.GetRevision()))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings without an analysis: %v", err)
+	}
+	if kept.GetRevision() != replaced.GetRevision() || kept.GetAnalysis() != replaced.GetAnalysis() {
+		t.Fatalf("kept = %+v, want revision %d and the saved analysis", kept, replaced.GetRevision())
+	}
+
+	req = request(kept.GetRevision())
+	req.AnalysisUpdateMode = publirasplatformv1.PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT
+	reset, err := updateSearchSettings(client, operator, req)
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings back to the default: %v", err)
+	}
+	if !reset.GetDefaultAnalysis() || reset.GetRevision() != kept.GetRevision()+1 {
+		t.Fatalf("reset = %+v, want the default analysis at the next revision", reset)
+	}
+}

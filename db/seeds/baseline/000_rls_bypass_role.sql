@@ -273,6 +273,7 @@ GRANT UPDATE (
     serving_index_alias,
     serving_username,
     serving_password_encrypted,
+    serving_analysis,
     serving_since,
     build_failed_revision,
     build_error,

@@ -23,11 +23,20 @@ import (
 const testSurface = "web"
 
 // newTestBackend connects to the engine's shared node with an index of the
-// test's own, created through New the way a starting process creates it.
-func newTestBackend(t *testing.T, engine testutil.SearchEngine) *Backend {
+// test's own, created through New the way a starting process creates it, with
+// the analysis given or the default.
+func newTestBackend(t *testing.T, engine testutil.SearchEngine, analysis ...string) *Backend {
 	t.Helper()
 	ctx := context.Background()
-	backend, err := New(ctx, Config{URL: engine.URL, Index: "catalog-test-" + uuid.NewString()})
+	cfg := Config{URL: engine.URL, Index: "catalog-test-" + uuid.NewString()}
+	if len(analysis) > 0 {
+		canonical, err := ParseAnalysis([]byte(analysis[0]))
+		if err != nil {
+			t.Fatalf("ParseAnalysis: %v", err)
+		}
+		cfg.Analysis = canonical
+	}
+	backend, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -468,7 +477,11 @@ func TestRebuildReplacesAnIndexThatHasTheAliasName(t *testing.T) {
 		}
 		backend := &Backend{client: client, index: "catalog-test-" + uuid.NewString()}
 		t.Cleanup(func() { deleteIndices(backend) })
-		if err := backend.createIndex(ctx, backend.index, indexDefinition); err != nil {
+		body, err := indexDefinition("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := backend.createIndex(ctx, backend.index, body); err != nil {
 			t.Fatalf("create the index under the alias name: %v", err)
 		}
 
@@ -746,6 +759,128 @@ func TestSearchSeriesOrdersWhatTheListTellsApart(t *testing.T) {
 			if got := slices.Concat(first.IDs, second.IDs); !slices.Equal(got, test.want) {
 				t.Errorf("%s paged: hits = %v, want %v", test.order.Name, got, test.want)
 			}
+		}
+	})
+}
+
+// A definition built on analysis-nori splits a Korean title into its words, so
+// one word of it finds it.
+func TestAKoreanDefinitionFindsAHangulTitleByOneOfItsWords(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		tenantID := uuid.Must(uuid.NewV7())
+		song := publishedSeries(tenantID, "바다의 노래", "")
+		other := publishedSeries(tenantID, "별을 쫓는 아이", "")
+
+		korean := newTestBackend(t, engine, koreanAnalysis)
+		put(t, korean, song, other)
+		for _, query := range []string{"바다", "노래", "바다의 노래"} {
+			assertIDs(t, query, searchSeries(t, korean, tenantID, query, 10, pagination.Cursor{}).IDs, song.ID)
+		}
+		for _, query := range []string{"별", "아이"} {
+			assertIDs(t, query, searchSeries(t, korean, tenantID, query, 10, pagination.Cursor{}).IDs, other.ID)
+		}
+		// One edit is another word in Hangul, never a typo of this one.
+		assertIDs(t, "바디", searchSeries(t, korean, tenantID, "바디", 10, pagination.Cursor{}).IDs)
+	})
+}
+
+// A definition built on analysis-smartcn splits a Chinese title into its words,
+// so one word of it finds it.
+func TestAChineseDefinitionFindsATitleByOneOfItsWords(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		tenantID := uuid.Must(uuid.NewV7())
+		earth := publishedSeries(tenantID, "流浪地球的故事", "")
+		other := publishedSeries(tenantID, "三体问题", "")
+
+		chinese := newTestBackend(t, engine, chineseAnalysis)
+		put(t, chinese, earth, other)
+		for _, query := range []string{"地球", "故事", "流浪地球的故事"} {
+			assertIDs(t, query, searchSeries(t, chinese, tenantID, query, 10, pagination.Cursor{}).IDs, earth.ID)
+		}
+	})
+}
+
+// A rebuild builds its index with the analysis the backend was configured
+// with, which is how a changed definition reaches the index the alias names.
+// The default definition keeps 「별을」 one token, so a query of the noun alone
+// finds the title only once the alias names an index built on analysis-nori.
+func TestARebuildBuildsTheIndexWithTheConfiguredAnalysis(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		ctx := context.Background()
+		tenantID := uuid.Must(uuid.NewV7())
+		star := publishedSeries(tenantID, "별을 쫓는 아이", "")
+		japanese := newTestBackend(t, engine)
+		put(t, japanese, star)
+		assertIDs(t, "별", searchSeries(t, japanese, tenantID, "별", 10, pagination.Cursor{}).IDs)
+
+		korean, err := ParseAnalysis([]byte(koreanAnalysis))
+		if err != nil {
+			t.Fatal(err)
+		}
+		reconfigured := &Backend{client: japanese.client, index: japanese.index, analysis: korean}
+		rebuild, err := reconfigured.StartRebuild(ctx)
+		if err != nil {
+			t.Fatalf("StartRebuild: %v", err)
+		}
+		if err := rebuild.PutAll(ctx, []Document{star}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		if err := rebuild.Swap(ctx); err != nil {
+			t.Fatalf("Swap: %v", err)
+		}
+		assertIDs(t, "별", searchSeries(t, japanese, tenantID, "별", 10, pagination.Cursor{}).IDs, star.ID)
+	})
+}
+
+func TestCheckAnalysisAcceptsWhatTheEngineBuildsAnIndexFrom(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newTestBackend(t, engine)
+		for name, analysis := range map[string]string{"default": "", "korean": koreanAnalysis, "chinese": chineseAnalysis} {
+			cfg := Config{URL: engine.URL, Index: backend.index}
+			if analysis != "" {
+				canonical, err := ParseAnalysis([]byte(analysis))
+				if err != nil {
+					t.Fatal(err)
+				}
+				cfg.Analysis = canonical
+			}
+			if err := CheckAnalysis(context.Background(), cfg); err != nil {
+				t.Fatalf("CheckAnalysis(%s): %v", name, err)
+			}
+		}
+		// The scratch indices are gone, and the catalog index is untouched.
+		resp, err := backend.client.Indices.Get(context.Background(), &opensearchapi.IndicesGetReq{Indices: []string{backend.index + scratchIndexInfix + "*"}})
+		if err != nil {
+			t.Fatalf("list scratch indices: %v", err)
+		}
+		if len(resp.Entries) != 0 {
+			t.Fatalf("scratch indices left behind: %v", slices.Collect(maps.Keys(resp.Entries)))
+		}
+	})
+}
+
+func TestCheckAnalysisReportsTheEnginesReason(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newTestBackend(t, engine)
+		analysis, err := ParseAnalysis([]byte(`{
+		  "analyzer": {
+		    "written_form": {"type": "custom", "tokenizer": "no_such_tokenizer"},
+		    "alternate_form": {"type": "custom", "tokenizer": "standard"}
+		  },
+		  "normalizer": {"exact_match": {"type": "custom", "filter": ["lowercase"]}}
+		}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = CheckAnalysis(context.Background(), Config{URL: engine.URL, Index: backend.index, Analysis: analysis})
+		var refused *AnalysisRefusedError
+		if !errors.As(err, &refused) || !strings.Contains(refused.Reason, "no_such_tokenizer") {
+			t.Fatalf("CheckAnalysis error = %v, want the engine's refusal naming no_such_tokenizer", err)
 		}
 	})
 }

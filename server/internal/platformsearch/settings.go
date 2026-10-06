@@ -21,10 +21,10 @@ const (
 	// the database, keeps no index, and is what an install searches with until
 	// it saves another engine.
 	EngineSQL Engine = "sql"
-	// EngineOpenSearch is an OpenSearch node with the analysis-kuromoji and
-	// analysis-icu plugins.
+	// EngineOpenSearch is an OpenSearch node with the plugins its analysis is
+	// built on: analysis-kuromoji and analysis-icu for the default one.
 	EngineOpenSearch Engine = "opensearch"
-	// EngineElasticsearch is an Elasticsearch node with the same two plugins,
+	// EngineElasticsearch is an Elasticsearch node with the same plugins,
 	// which the OpenSearch backend searches and writes unchanged: the index
 	// definition, the queries, the bulk writes, and the alias swaps are common
 	// to both engines. The value is a promise that the backend is tested
@@ -60,6 +60,8 @@ const (
 	FieldPassword           = "password"
 	FieldPasswordUpdateMode = "password_update_mode"
 	FieldExpectedRevision   = "expected_revision"
+	FieldAnalysis           = "analysis"
+	FieldAnalysisUpdateMode = "analysis_update_mode"
 )
 
 var (
@@ -71,6 +73,9 @@ var (
 	errSQLTakesNoUser    = errors.New("the sql engine connects to nothing beside the database and takes no credentials")
 	errCredentialsInHTTP = errors.New("credentials need an https:// URL; over http:// they would cross the network in cleartext")
 	errIndexInvalid      = errors.New("the index alias is not a name the engine accepts: lowercase, without spaces, and not starting with -, _, or +")
+
+	errSQLTakesNoAnalysis  = errors.New("the sql engine keeps no index to analyze")
+	errInvalidAnalysisMode = errors.New("invalid analysis update mode")
 
 	// ErrUsernameRequired refuses a password stated without the username it
 	// belongs to.
@@ -201,6 +206,8 @@ const (
 // ServingSettings is the configuration the search answers from.
 type ServingSettings struct {
 	Settings
+	// Analysis is what its index was built with, empty for the default.
+	Analysis string
 	// Revision is the saved revision it was saved at, zero for the SQL engine
 	// of a row that has never served another.
 	Revision int64
@@ -217,6 +224,10 @@ type BuildFailure struct {
 // Stored is a saved row as a reader may see it, without either password.
 type Stored struct {
 	Settings
+	// Analysis is the saved settings.analysis of the catalog index, as
+	// [opensearchbackend.ParseAnalysis] answered it, and empty for the
+	// default, which is all the SQL engine keeps.
+	Analysis    string
 	HasPassword bool
 	Revision    int64
 	Serving     ServingSettings
@@ -234,6 +245,7 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 			Index:    row.IndexAlias.String,
 			Username: row.Username.String,
 		},
+		Analysis:    row.Analysis.String,
 		HasPassword: strings.TrimSpace(row.PasswordEncrypted.String) != "",
 		Revision:    row.Revision,
 		Serving: ServingSettings{
@@ -243,6 +255,7 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 				Index:    row.ServingIndexAlias.String,
 				Username: row.ServingUsername.String,
 			},
+			Analysis: row.ServingAnalysis.String,
 			Revision: row.ServingRevision,
 			Since:    row.ServingSince.Time,
 		},
@@ -257,6 +270,39 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 		stored.State = Building
 	}
 	return stored
+}
+
+// AnalysisMode is what a save does to the analysis, matching the
+// PlatformSearchAnalysisUpdateMode enum of publira.platform.v1.
+type AnalysisMode int32
+
+const (
+	// AnalysisUnspecified is what a request that says nothing about the
+	// analysis carries, and it keeps the saved one.
+	AnalysisUnspecified AnalysisMode = 0
+	AnalysisUnchanged   AnalysisMode = 1
+	// AnalysisReplace saves the definition the request gives.
+	AnalysisReplace AnalysisMode = 2
+	// AnalysisDefault goes back to the default.
+	AnalysisDefault AnalysisMode = 3
+)
+
+func (m AnalysisMode) known() bool {
+	return m >= AnalysisUnspecified && m <= AnalysisDefault
+}
+
+// EffectiveAnalysis is the definition the saved configuration builds its index
+// with, as JSON: the saved one, or the default where none is saved. It is
+// empty on the SQL engine, which builds none.
+func (s Stored) EffectiveAnalysis() string {
+	switch {
+	case !s.Engine.HasIndex():
+		return ""
+	case s.Analysis != "":
+		return s.Analysis
+	default:
+		return string(opensearchbackend.DefaultAnalysis())
+	}
 }
 
 // Unsaved is what an install that has saved nothing reads as: the SQL engine,

@@ -15,11 +15,11 @@ import (
 // backend is tested against.
 const defaultElasticsearchImage = "elasticsearch:9.1.5"
 
-// elasticsearchEntrypoint installs the two analysis plugins the catalog index's
-// analyzers are built from before the image's own entrypoint starts the node.
-// Like OpenSearch's, the published image ships neither, and a plugin can only
-// be installed while the node is stopped.
-const elasticsearchEntrypoint = "bin/elasticsearch-plugin install --batch analysis-kuromoji analysis-icu" +
+// elasticsearchEntrypoint installs the analysis plugins openSearchEntrypoint
+// does before the image's own entrypoint starts the node. Like OpenSearch's,
+// the published image ships none of them, and a plugin can only be installed
+// while the node is stopped.
+const elasticsearchEntrypoint = "bin/elasticsearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn" +
 	" && exec /bin/tini -- /usr/local/bin/docker-entrypoint.sh eswrapper"
 
 type ElasticsearchEnv struct {
@@ -34,10 +34,10 @@ var (
 )
 
 // StartElasticsearch starts or returns a shared single-node Elasticsearch
-// container with analysis-kuromoji and analysis-icu installed and security off,
-// so it answers plain HTTP without credentials, the way StartOpenSearch does
-// for OpenSearch. Tests share the node and stay apart by each using an index of
-// its own.
+// container with the analysis plugins StartOpenSearch installs and security
+// off, so it answers plain HTTP without credentials, the way StartOpenSearch
+// does for OpenSearch. Tests share the node and stay apart by each using an
+// index of its own.
 // Skips when -short is set or Docker is unavailable.
 func StartElasticsearch(t *testing.T) *ElasticsearchEnv {
 	t.Helper()

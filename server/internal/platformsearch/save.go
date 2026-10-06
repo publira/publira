@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/fielderr"
@@ -19,6 +20,10 @@ var (
 	// ErrConflict refuses a save based on a revision the stored row has moved
 	// past.
 	ErrConflict = errors.New("platform search settings have changed since they were read")
+
+	// ErrAnalysisUnchecked refuses a save whose analysis the engine could not
+	// be asked about: one that does not answer, or refuses the credentials.
+	ErrAnalysisUnchecked = errors.New("the search engine could not be asked whether it builds an index from the analysis")
 
 	errNegativeRevision = errors.New("expected_revision must not be negative")
 )
@@ -53,11 +58,14 @@ func Get(ctx context.Context, q Querier) (dbmodels.PlatformSearchConfig, bool, e
 }
 
 // SaveParams replaces the saved settings. The password is SecretMode applied
-// to Password.
+// to Password, and the analysis AnalysisMode applied to Analysis.
 type SaveParams struct {
-	Settings   Settings
-	SecretMode secretupdate.Mode
-	Password   string
+	Settings     Settings
+	SecretMode   secretupdate.Mode
+	Password     string
+	AnalysisMode AnalysisMode
+	// Analysis is the settings.analysis AnalysisReplace saves, as JSON.
+	Analysis string
 	// ExpectedRevision is the revision Settings were read at, 0 when none were
 	// saved. Nil saves over whatever is stored, for a caller that read nothing.
 	ExpectedRevision *int64
@@ -65,7 +73,11 @@ type SaveParams struct {
 
 // Validate refuses p without reading anything.
 func (p SaveParams) Validate() error {
-	if err := Validate(Normalize(p.Settings)); err != nil {
+	settings := Normalize(p.Settings)
+	if err := Validate(settings); err != nil {
+		return err
+	}
+	if _, err := p.analysis(settings, ""); err != nil {
 		return err
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision < 0 {
@@ -134,6 +146,9 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor SecretManager, p 
 		if err != nil {
 			return dbmodels.PlatformSearchConfig{}, false, err
 		}
+		if err := checkAnalysis(ctx, settings, params, dbmodels.PlatformSearchConfig{}, encryptor); err != nil {
+			return dbmodels.PlatformSearchConfig{}, false, err
+		}
 		// Nothing saved is the SQL engine, which is all a first save can
 		// share a target with.
 		params.Serve = !settings.Engine.HasIndex()
@@ -161,12 +176,81 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor SecretManager, p 
 	if params == storedParams(current) {
 		return current, false, nil
 	}
-	params.Serve = !settings.Engine.HasIndex() || settings.Target() == FromConfig(current).Serving.Target()
+	if err := checkAnalysis(ctx, settings, params, current, encryptor); err != nil {
+		return dbmodels.PlatformSearchConfig{}, false, err
+	}
+	// Another analysis is another index, even on the target the search
+	// answers from: the one it has was built with the analysis it was.
+	serving := FromConfig(current).Serving
+	params.Serve = !settings.Engine.HasIndex() || settings.Target() == serving.Target() && params.Analysis.String == serving.Analysis
 	updated, err := q.UpdatePlatformSearchConfig(ctx, params)
 	if err != nil {
 		return dbmodels.PlatformSearchConfig{}, false, fmt.Errorf("update platform search config: %w", err)
 	}
 	return updated, true, nil
+}
+
+// analysis answers the definition the row ends up holding, given the one it
+// holds now: what the request gives, the default, or what is saved. The SQL
+// engine keeps none.
+func (p SaveParams) analysis(settings Settings, current string) (string, error) {
+	if !p.AnalysisMode.known() {
+		return "", &fielderr.Invalid{Field: FieldAnalysisUpdateMode, Err: fmt.Errorf("%w: %d", errInvalidAnalysisMode, p.AnalysisMode)}
+	}
+	if !settings.Engine.HasIndex() {
+		if p.AnalysisMode == AnalysisReplace {
+			return "", &fielderr.Invalid{Field: FieldAnalysis, Err: errSQLTakesNoAnalysis}
+		}
+		return "", nil
+	}
+	switch p.AnalysisMode {
+	case AnalysisReplace:
+		analysis, err := opensearchbackend.ParseAnalysis([]byte(p.Analysis))
+		if err != nil {
+			return "", &fielderr.Invalid{Field: FieldAnalysis, Err: err}
+		}
+		return analysis, nil
+	case AnalysisDefault:
+		return "", nil
+	default:
+		return current, nil
+	}
+}
+
+// checkAnalysis has the engine create an empty index from the analysis a save
+// writes, and drop it again, whenever the save changes the analysis or takes a
+// saved one to another target: a definition the engine refuses is refused
+// here, with the engine's reason, rather than by the build that would follow.
+// The default taken to a target of its own is left to the connection test,
+// which names the plugins it needs.
+func checkAnalysis(ctx context.Context, settings Settings, params dbmodels.UpdatePlatformSearchConfigParams, current dbmodels.PlatformSearchConfig, encryptor SecretManager) error {
+	analysis := params.Analysis.String
+	moved := settings.Target() != FromConfig(current).Target()
+	if !settings.Engine.HasIndex() || analysis == current.Analysis.String && (!moved || analysis == "") {
+		return nil
+	}
+	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis}
+	if encrypted := params.PasswordEncrypted.String; encrypted != "" {
+		if encryptor == nil {
+			return ErrSecretManagerUnavailable
+		}
+		password, err := encryptor.DecryptString(encrypted)
+		if err != nil {
+			return fmt.Errorf("decrypt the search engine password: %w", err)
+		}
+		cfg.Password = password
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, connectTimeout)
+	defer cancel()
+	err := opensearchbackend.CheckAnalysis(checkCtx, cfg)
+	var refused *opensearchbackend.AnalysisRefusedError
+	switch {
+	case errors.As(err, &refused):
+		return &fielderr.Invalid{Field: FieldAnalysis, Err: refused}
+	case err != nil:
+		return fmt.Errorf("%w: %w", ErrAnalysisUnchecked, err)
+	}
+	return nil
 }
 
 // Changes reports whether [Save] would write p over the stored row, refusing
@@ -188,11 +272,15 @@ func Changes(ctx context.Context, q Querier, encryptor SecretManager, p SavePara
 	return params != storedParams(current), nil
 }
 
-// configParams resolves the password the row ends up holding and refuses a
-// credential that is only half stated, or whose halves no longer belong
-// together. current is the zero row when nothing is saved yet. Serve is left
-// for the caller to decide.
+// configParams resolves the password and the analysis the row ends up
+// holding, and refuses a credential that is only half stated, or whose halves
+// no longer belong together. current is the zero row when nothing is saved
+// yet. Serve is left for the caller to decide.
 func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSearchConfig, encryptor SecretManager) (dbmodels.UpdatePlatformSearchConfigParams, error) {
+	analysis, err := p.analysis(settings, current.Analysis.String)
+	if err != nil {
+		return dbmodels.UpdatePlatformSearchConfigParams{}, err
+	}
 	encrypted, err := resolvePassword(settings.Username, p.SecretMode, p.Password, current, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSearchConfigParams{}, err
@@ -203,6 +291,7 @@ func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSear
 		IndexAlias:        nullable(settings.Index),
 		Username:          nullable(settings.Username),
 		PasswordEncrypted: nullable(encrypted),
+		Analysis:          nullable(analysis),
 	}, nil
 }
 
@@ -260,5 +349,6 @@ func storedParams(row dbmodels.PlatformSearchConfig) dbmodels.UpdatePlatformSear
 		IndexAlias:        row.IndexAlias,
 		Username:          row.Username,
 		PasswordEncrypted: row.PasswordEncrypted,
+		Analysis:          row.Analysis,
 	}
 }

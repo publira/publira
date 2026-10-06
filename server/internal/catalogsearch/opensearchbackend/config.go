@@ -4,14 +4,20 @@ package opensearchbackend
 // it names none.
 const DefaultIndex = "publira-catalog"
 
-// Config is where the engine is and which index holds the catalog. Whoever
-// builds one has validated it: the URL is http:// or https:// without
-// userinfo, and the credentials come in a pair and only over https://.
+// Config is where the engine is, which index holds the catalog, and the
+// analysis an index the backend creates is built with. Whoever builds one has
+// validated it: the URL is http:// or https:// without userinfo, the
+// credentials come in a pair and only over https://, and Analysis is empty or
+// what [ParseAnalysis] answered.
 type Config struct {
 	URL      string
 	Username string
 	Password string
 	Index    string
+	// Analysis is the settings.analysis of an index the backend creates, as
+	// JSON. Empty is [DefaultAnalysis]. A search never depends on it: the
+	// index it searches was created with whatever it was created with.
+	Analysis string
 }
 
 // String leaves the password out, so a Config that reaches a log line or an

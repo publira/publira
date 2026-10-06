@@ -31,11 +31,12 @@ const (
 	// nothing beside the database and is what an install searches with until
 	// another engine is saved.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_SQL PlatformSearchEngine = 1
-	// OpenSearch with the analysis-kuromoji and analysis-icu plugins, ranked by
-	// relevance, matching a title written in kanji from a query typed in kana.
+	// OpenSearch, ranked by relevance. With the default analysis it needs the
+	// analysis-kuromoji and analysis-icu plugins and matches a title written in
+	// kanji from a query typed in kana.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH PlatformSearchEngine = 2
-	// Elasticsearch with the same two plugins, searched and written exactly as
-	// OpenSearch is: everything the backend sends is common to both.
+	// Elasticsearch, searched and written exactly as OpenSearch is: everything
+	// the backend sends is common to both.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_ELASTICSEARCH PlatformSearchEngine = 3
 )
 
@@ -82,6 +83,63 @@ func (PlatformSearchEngine) EnumDescriptor() ([]byte, []int) {
 	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{0}
 }
 
+// What a save does to the analysis of the catalog index.
+type PlatformSearchAnalysisUpdateMode int32
+
+const (
+	// Keeps the saved analysis, which is what a request that says nothing about
+	// it carries.
+	PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED PlatformSearchAnalysisUpdateMode = 0
+	PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED   PlatformSearchAnalysisUpdateMode = 1
+	// Saves the definition in analysis.
+	PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE PlatformSearchAnalysisUpdateMode = 2
+	// Goes back to the default the server ships.
+	PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT PlatformSearchAnalysisUpdateMode = 3
+)
+
+// Enum value maps for PlatformSearchAnalysisUpdateMode.
+var (
+	PlatformSearchAnalysisUpdateMode_name = map[int32]string{
+		0: "PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED",
+		1: "PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED",
+		2: "PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE",
+		3: "PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT",
+	}
+	PlatformSearchAnalysisUpdateMode_value = map[string]int32{
+		"PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED": 0,
+		"PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED":   1,
+		"PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE":     2,
+		"PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT":     3,
+	}
+)
+
+func (x PlatformSearchAnalysisUpdateMode) Enum() *PlatformSearchAnalysisUpdateMode {
+	p := new(PlatformSearchAnalysisUpdateMode)
+	*p = x
+	return p
+}
+
+func (x PlatformSearchAnalysisUpdateMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PlatformSearchAnalysisUpdateMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_platform_v1_search_proto_enumTypes[1].Descriptor()
+}
+
+func (PlatformSearchAnalysisUpdateMode) Type() protoreflect.EnumType {
+	return &file_publira_platform_v1_search_proto_enumTypes[1]
+}
+
+func (x PlatformSearchAnalysisUpdateMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PlatformSearchAnalysisUpdateMode.Descriptor instead.
+func (PlatformSearchAnalysisUpdateMode) EnumDescriptor() ([]byte, []int) {
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{1}
+}
+
 // Where a saved configuration stands against the one the search answers from.
 type PlatformSearchBuildState int32
 
@@ -124,11 +182,11 @@ func (x PlatformSearchBuildState) String() string {
 }
 
 func (PlatformSearchBuildState) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_platform_v1_search_proto_enumTypes[1].Descriptor()
+	return file_publira_platform_v1_search_proto_enumTypes[2].Descriptor()
 }
 
 func (PlatformSearchBuildState) Type() protoreflect.EnumType {
-	return &file_publira_platform_v1_search_proto_enumTypes[1]
+	return &file_publira_platform_v1_search_proto_enumTypes[2]
 }
 
 func (x PlatformSearchBuildState) Number() protoreflect.EnumNumber {
@@ -137,7 +195,7 @@ func (x PlatformSearchBuildState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PlatformSearchBuildState.Descriptor instead.
 func (PlatformSearchBuildState) EnumDescriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{1}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{2}
 }
 
 // The configuration the search answers from, which trails the saved one while
@@ -296,9 +354,18 @@ type PlatformSearchSettings struct {
 	Serving    *PlatformSearchServing   `protobuf:"bytes,7,opt,name=serving,proto3" json:"serving,omitempty"`
 	BuildState PlatformSearchBuildState `protobuf:"varint,8,opt,name=build_state,json=buildState,proto3,enum=publira.platform.v1.PlatformSearchBuildState" json:"build_state,omitempty"`
 	// Set alongside PLATFORM_SEARCH_BUILD_STATE_FAILED and only then.
-	BuildFailure  *PlatformSearchBuildFailure `protobuf:"bytes,9,opt,name=build_failure,json=buildFailure,proto3" json:"build_failure,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BuildFailure *PlatformSearchBuildFailure `protobuf:"bytes,9,opt,name=build_failure,json=buildFailure,proto3" json:"build_failure,omitempty"`
+	// The settings.analysis the catalog index is built with, as a JSON object:
+	// the saved one, or the default the server ships when none is saved, which
+	// is built for Japanese on analysis-kuromoji and analysis-icu. Empty on the
+	// SQL engine, which has no index. It defines the analyzers written_form and
+	// alternate_form and the normalizer exact_match, which the mapping refers
+	// to.
+	Analysis string `protobuf:"bytes,10,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	// Whether analysis is the default rather than a saved definition.
+	DefaultAnalysis bool `protobuf:"varint,11,opt,name=default_analysis,json=defaultAnalysis,proto3" json:"default_analysis,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *PlatformSearchSettings) Reset() {
@@ -394,6 +461,20 @@ func (x *PlatformSearchSettings) GetBuildFailure() *PlatformSearchBuildFailure {
 	return nil
 }
 
+func (x *PlatformSearchSettings) GetAnalysis() string {
+	if x != nil {
+		return x.Analysis
+	}
+	return ""
+}
+
+func (x *PlatformSearchSettings) GetDefaultAnalysis() bool {
+	if x != nil {
+		return x.DefaultAnalysis
+	}
+	return false
+}
+
 type GetPlatformSearchSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -475,9 +556,10 @@ func (x *GetPlatformSearchSettingsResponse) GetSettings() *PlatformSearchSetting
 }
 
 // A save takes effect at once when it needs no index built: the SQL engine,
-// or the engine, URL, and index the search already answers from with other
-// credentials. Any other target is built by the worker from the database
-// first, and the search moves onto it once the build has completed.
+// or the engine, URL, index, and analysis the search already answers from with
+// other credentials. Any other target, or another analysis, is built by the
+// worker from the database into a new index first, and the search moves onto
+// it once the build has completed.
 type UpdatePlatformSearchSettingsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. A value the server does not know is refused, naming the ones it
@@ -500,8 +582,19 @@ type UpdatePlatformSearchSettingsRequest struct {
 	// configuration is expected to exist yet. The write is refused with
 	// FAILED_PRECONDITION when the stored row moved on.
 	ExpectedRevision int64 `protobuf:"varint,7,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// REPLACE saves analysis, refused on the SQL engine; DEFAULT goes back to
+	// the default; anything else keeps the saved one. A save to SQL keeps none.
+	AnalysisUpdateMode PlatformSearchAnalysisUpdateMode `protobuf:"varint,8,opt,name=analysis_update_mode,json=analysisUpdateMode,proto3,enum=publira.platform.v1.PlatformSearchAnalysisUpdateMode" json:"analysis_update_mode,omitempty"`
+	// The settings.analysis to build the catalog index with, as a JSON object
+	// of at most 64 KiB defining the analyzers written_form and alternate_form
+	// and the normalizer exact_match. It is refused with INVALID_ARGUMENT, on
+	// the field analysis, when it does not define every one of them or when the
+	// engine refuses to create an index with it, with the engine's reason; the
+	// check creates an empty index beside the alias and drops it again. An
+	// engine the check cannot reach is UNAVAILABLE. Either way nothing is saved.
+	Analysis      string `protobuf:"bytes,9,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdatePlatformSearchSettingsRequest) Reset() {
@@ -581,6 +674,20 @@ func (x *UpdatePlatformSearchSettingsRequest) GetExpectedRevision() int64 {
 		return x.ExpectedRevision
 	}
 	return 0
+}
+
+func (x *UpdatePlatformSearchSettingsRequest) GetAnalysisUpdateMode() PlatformSearchAnalysisUpdateMode {
+	if x != nil {
+		return x.AnalysisUpdateMode
+	}
+	return PlatformSearchAnalysisUpdateMode_PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED
+}
+
+func (x *UpdatePlatformSearchSettingsRequest) GetAnalysis() string {
+	if x != nil {
+		return x.Analysis
+	}
+	return ""
 }
 
 type UpdatePlatformSearchSettingsResponse struct {
@@ -712,8 +819,10 @@ func (x *TestPlatformSearchConnectionRequest) GetPassword() string {
 // tested at all.
 type TestPlatformSearchConnectionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether the engine answered, is the engine the request names, and has both
-	// analysis plugins the catalog index is built from.
+	// Whether the engine answered, is the engine the request names, and, while
+	// the saved analysis is the default, has both plugins it is built from. A
+	// saved analysis of another kind was checked against the engine when it was
+	// saved.
 	Succeeded bool `protobuf:"varint,1,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
 	// A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
 	// never carries the engine's own message.
@@ -816,7 +925,7 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\x05since\x18\x05 \x01(\tR\x05since\"O\n" +
 	"\x1aPlatformSearchBuildFailure\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error\x12\x1b\n" +
-	"\tfailed_at\x18\x02 \x01(\tR\bfailedAt\"\xca\x03\n" +
+	"\tfailed_at\x18\x02 \x01(\tR\bfailedAt\"\x91\x04\n" +
 	"\x16PlatformSearchSettings\x12A\n" +
 	"\x06engine\x18\x01 \x01(\x0e2).publira.platform.v1.PlatformSearchEngineR\x06engine\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -827,10 +936,13 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\aserving\x18\a \x01(\v2*.publira.platform.v1.PlatformSearchServingR\aserving\x12N\n" +
 	"\vbuild_state\x18\b \x01(\x0e2-.publira.platform.v1.PlatformSearchBuildStateR\n" +
 	"buildState\x12T\n" +
-	"\rbuild_failure\x18\t \x01(\v2/.publira.platform.v1.PlatformSearchBuildFailureR\fbuildFailure\"\"\n" +
+	"\rbuild_failure\x18\t \x01(\v2/.publira.platform.v1.PlatformSearchBuildFailureR\fbuildFailure\x12\x1a\n" +
+	"\banalysis\x18\n" +
+	" \x01(\tR\banalysis\x12)\n" +
+	"\x10default_analysis\x18\v \x01(\bR\x0fdefaultAnalysis\"\"\n" +
 	" GetPlatformSearchSettingsRequest\"l\n" +
 	"!GetPlatformSearchSettingsResponse\x12G\n" +
-	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\xce\x02\n" +
+	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\xd3\x03\n" +
 	"#UpdatePlatformSearchSettingsRequest\x12A\n" +
 	"\x06engine\x18\x01 \x01(\x0e2).publira.platform.v1.PlatformSearchEngineR\x06engine\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -838,7 +950,9 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\busername\x18\x04 \x01(\tR\busername\x12W\n" +
 	"\x14password_update_mode\x18\x05 \x01(\x0e2%.publira.platform.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
 	"\bpassword\x18\x06 \x01(\tR\bpassword\x12+\n" +
-	"\x11expected_revision\x18\a \x01(\x03R\x10expectedRevision\"o\n" +
+	"\x11expected_revision\x18\a \x01(\x03R\x10expectedRevision\x12g\n" +
+	"\x14analysis_update_mode\x18\b \x01(\x0e25.publira.platform.v1.PlatformSearchAnalysisUpdateModeR\x12analysisUpdateMode\x12\x1a\n" +
+	"\banalysis\x18\t \x01(\tR\banalysis\"o\n" +
 	"$UpdatePlatformSearchSettingsResponse\x12G\n" +
 	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\x8b\x02\n" +
 	"#TestPlatformSearchConnectionRequest\x12A\n" +
@@ -858,7 +972,12 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\"PLATFORM_SEARCH_ENGINE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPLATFORM_SEARCH_ENGINE_SQL\x10\x01\x12%\n" +
 	"!PLATFORM_SEARCH_ENGINE_OPENSEARCH\x10\x02\x12(\n" +
-	"$PLATFORM_SEARCH_ENGINE_ELASTICSEARCH\x10\x03*\xc2\x01\n" +
+	"$PLATFORM_SEARCH_ENGINE_ELASTICSEARCH\x10\x03*\xf0\x01\n" +
+	" PlatformSearchAnalysisUpdateMode\x124\n" +
+	"0PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED\x10\x00\x122\n" +
+	".PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED\x10\x01\x120\n" +
+	",PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE\x10\x02\x120\n" +
+	",PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT\x10\x03*\xc2\x01\n" +
 	"\x18PlatformSearchBuildState\x12+\n" +
 	"'PLATFORM_SEARCH_BUILD_STATE_UNSPECIFIED\x10\x00\x12'\n" +
 	"#PLATFORM_SEARCH_BUILD_STATE_SERVING\x10\x01\x12(\n" +
@@ -881,45 +1000,47 @@ func file_publira_platform_v1_search_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_search_proto_rawDescData
 }
 
-var file_publira_platform_v1_search_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_publira_platform_v1_search_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_publira_platform_v1_search_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_publira_platform_v1_search_proto_goTypes = []any{
 	(PlatformSearchEngine)(0),                    // 0: publira.platform.v1.PlatformSearchEngine
-	(PlatformSearchBuildState)(0),                // 1: publira.platform.v1.PlatformSearchBuildState
-	(*PlatformSearchServing)(nil),                // 2: publira.platform.v1.PlatformSearchServing
-	(*PlatformSearchBuildFailure)(nil),           // 3: publira.platform.v1.PlatformSearchBuildFailure
-	(*PlatformSearchSettings)(nil),               // 4: publira.platform.v1.PlatformSearchSettings
-	(*GetPlatformSearchSettingsRequest)(nil),     // 5: publira.platform.v1.GetPlatformSearchSettingsRequest
-	(*GetPlatformSearchSettingsResponse)(nil),    // 6: publira.platform.v1.GetPlatformSearchSettingsResponse
-	(*UpdatePlatformSearchSettingsRequest)(nil),  // 7: publira.platform.v1.UpdatePlatformSearchSettingsRequest
-	(*UpdatePlatformSearchSettingsResponse)(nil), // 8: publira.platform.v1.UpdatePlatformSearchSettingsResponse
-	(*TestPlatformSearchConnectionRequest)(nil),  // 9: publira.platform.v1.TestPlatformSearchConnectionRequest
-	(*TestPlatformSearchConnectionResponse)(nil), // 10: publira.platform.v1.TestPlatformSearchConnectionResponse
-	(SecretUpdateMode)(0),                        // 11: publira.platform.v1.SecretUpdateMode
+	(PlatformSearchAnalysisUpdateMode)(0),        // 1: publira.platform.v1.PlatformSearchAnalysisUpdateMode
+	(PlatformSearchBuildState)(0),                // 2: publira.platform.v1.PlatformSearchBuildState
+	(*PlatformSearchServing)(nil),                // 3: publira.platform.v1.PlatformSearchServing
+	(*PlatformSearchBuildFailure)(nil),           // 4: publira.platform.v1.PlatformSearchBuildFailure
+	(*PlatformSearchSettings)(nil),               // 5: publira.platform.v1.PlatformSearchSettings
+	(*GetPlatformSearchSettingsRequest)(nil),     // 6: publira.platform.v1.GetPlatformSearchSettingsRequest
+	(*GetPlatformSearchSettingsResponse)(nil),    // 7: publira.platform.v1.GetPlatformSearchSettingsResponse
+	(*UpdatePlatformSearchSettingsRequest)(nil),  // 8: publira.platform.v1.UpdatePlatformSearchSettingsRequest
+	(*UpdatePlatformSearchSettingsResponse)(nil), // 9: publira.platform.v1.UpdatePlatformSearchSettingsResponse
+	(*TestPlatformSearchConnectionRequest)(nil),  // 10: publira.platform.v1.TestPlatformSearchConnectionRequest
+	(*TestPlatformSearchConnectionResponse)(nil), // 11: publira.platform.v1.TestPlatformSearchConnectionResponse
+	(SecretUpdateMode)(0),                        // 12: publira.platform.v1.SecretUpdateMode
 }
 var file_publira_platform_v1_search_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.PlatformSearchServing.engine:type_name -> publira.platform.v1.PlatformSearchEngine
 	0,  // 1: publira.platform.v1.PlatformSearchSettings.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	2,  // 2: publira.platform.v1.PlatformSearchSettings.serving:type_name -> publira.platform.v1.PlatformSearchServing
-	1,  // 3: publira.platform.v1.PlatformSearchSettings.build_state:type_name -> publira.platform.v1.PlatformSearchBuildState
-	3,  // 4: publira.platform.v1.PlatformSearchSettings.build_failure:type_name -> publira.platform.v1.PlatformSearchBuildFailure
-	4,  // 5: publira.platform.v1.GetPlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
+	3,  // 2: publira.platform.v1.PlatformSearchSettings.serving:type_name -> publira.platform.v1.PlatformSearchServing
+	2,  // 3: publira.platform.v1.PlatformSearchSettings.build_state:type_name -> publira.platform.v1.PlatformSearchBuildState
+	4,  // 4: publira.platform.v1.PlatformSearchSettings.build_failure:type_name -> publira.platform.v1.PlatformSearchBuildFailure
+	5,  // 5: publira.platform.v1.GetPlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
 	0,  // 6: publira.platform.v1.UpdatePlatformSearchSettingsRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	11, // 7: publira.platform.v1.UpdatePlatformSearchSettingsRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
-	4,  // 8: publira.platform.v1.UpdatePlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
-	0,  // 9: publira.platform.v1.TestPlatformSearchConnectionRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	11, // 10: publira.platform.v1.TestPlatformSearchConnectionRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
-	5,  // 11: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:input_type -> publira.platform.v1.GetPlatformSearchSettingsRequest
-	7,  // 12: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:input_type -> publira.platform.v1.UpdatePlatformSearchSettingsRequest
-	9,  // 13: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:input_type -> publira.platform.v1.TestPlatformSearchConnectionRequest
-	6,  // 14: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:output_type -> publira.platform.v1.GetPlatformSearchSettingsResponse
-	8,  // 15: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:output_type -> publira.platform.v1.UpdatePlatformSearchSettingsResponse
-	10, // 16: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:output_type -> publira.platform.v1.TestPlatformSearchConnectionResponse
-	14, // [14:17] is the sub-list for method output_type
-	11, // [11:14] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	12, // 7: publira.platform.v1.UpdatePlatformSearchSettingsRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
+	1,  // 8: publira.platform.v1.UpdatePlatformSearchSettingsRequest.analysis_update_mode:type_name -> publira.platform.v1.PlatformSearchAnalysisUpdateMode
+	5,  // 9: publira.platform.v1.UpdatePlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
+	0,  // 10: publira.platform.v1.TestPlatformSearchConnectionRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
+	12, // 11: publira.platform.v1.TestPlatformSearchConnectionRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
+	6,  // 12: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:input_type -> publira.platform.v1.GetPlatformSearchSettingsRequest
+	8,  // 13: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:input_type -> publira.platform.v1.UpdatePlatformSearchSettingsRequest
+	10, // 14: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:input_type -> publira.platform.v1.TestPlatformSearchConnectionRequest
+	7,  // 15: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:output_type -> publira.platform.v1.GetPlatformSearchSettingsResponse
+	9,  // 16: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:output_type -> publira.platform.v1.UpdatePlatformSearchSettingsResponse
+	11, // 17: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:output_type -> publira.platform.v1.TestPlatformSearchConnectionResponse
+	15, // [15:18] is the sub-list for method output_type
+	12, // [12:15] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_search_proto_init() }
@@ -933,7 +1054,7 @@ func file_publira_platform_v1_search_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_search_proto_rawDesc), len(file_publira_platform_v1_search_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,

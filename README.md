@@ -195,7 +195,7 @@ The catalog search runs on PostgreSQL until another engine is saved as the platf
 docker compose --profile search up -d
 ```
 
-- The image is built from [`infra/docker/opensearch/Dockerfile`](infra/docker/opensearch/Dockerfile): the published `opensearchproject/opensearch` with the `analysis-kuromoji` and `analysis-icu` plugins the catalog index needs
+- The image is built from [`infra/docker/opensearch/Dockerfile`](infra/docker/opensearch/Dockerfile): the published `opensearchproject/opensearch` with the `analysis-kuromoji` and `analysis-icu` plugins the catalog index's default analysis needs
 - One node with the security plugin off, so it answers plain HTTP without credentials on `http://127.0.0.1:9200`, loopback only like the rest of the stack
 - The index is kept in the `opensearch-data` volume
 - Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address

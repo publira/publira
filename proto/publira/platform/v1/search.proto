@@ -14,12 +14,25 @@ enum PlatformSearchEngine {
   // nothing beside the database and is what an install searches with until
   // another engine is saved.
   PLATFORM_SEARCH_ENGINE_SQL = 1;
-  // OpenSearch with the analysis-kuromoji and analysis-icu plugins, ranked by
-  // relevance, matching a title written in kanji from a query typed in kana.
+  // OpenSearch, ranked by relevance. With the default analysis it needs the
+  // analysis-kuromoji and analysis-icu plugins and matches a title written in
+  // kanji from a query typed in kana.
   PLATFORM_SEARCH_ENGINE_OPENSEARCH = 2;
-  // Elasticsearch with the same two plugins, searched and written exactly as
-  // OpenSearch is: everything the backend sends is common to both.
+  // Elasticsearch, searched and written exactly as OpenSearch is: everything
+  // the backend sends is common to both.
   PLATFORM_SEARCH_ENGINE_ELASTICSEARCH = 3;
+}
+
+// What a save does to the analysis of the catalog index.
+enum PlatformSearchAnalysisUpdateMode {
+  // Keeps the saved analysis, which is what a request that says nothing about
+  // it carries.
+  PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED = 0;
+  PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED = 1;
+  // Saves the definition in analysis.
+  PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE = 2;
+  // Goes back to the default the server ships.
+  PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT = 3;
 }
 
 // Where a saved configuration stands against the one the search answers from.
@@ -76,6 +89,15 @@ message PlatformSearchSettings {
   PlatformSearchBuildState build_state = 8;
   // Set alongside PLATFORM_SEARCH_BUILD_STATE_FAILED and only then.
   PlatformSearchBuildFailure build_failure = 9;
+  // The settings.analysis the catalog index is built with, as a JSON object:
+  // the saved one, or the default the server ships when none is saved, which
+  // is built for Japanese on analysis-kuromoji and analysis-icu. Empty on the
+  // SQL engine, which has no index. It defines the analyzers written_form and
+  // alternate_form and the normalizer exact_match, which the mapping refers
+  // to.
+  string analysis = 10;
+  // Whether analysis is the default rather than a saved definition.
+  bool default_analysis = 11;
 }
 
 message GetPlatformSearchSettingsRequest {}
@@ -85,9 +107,10 @@ message GetPlatformSearchSettingsResponse {
 }
 
 // A save takes effect at once when it needs no index built: the SQL engine,
-// or the engine, URL, and index the search already answers from with other
-// credentials. Any other target is built by the worker from the database
-// first, and the search moves onto it once the build has completed.
+// or the engine, URL, index, and analysis the search already answers from with
+// other credentials. Any other target, or another analysis, is built by the
+// worker from the database into a new index first, and the search moves onto
+// it once the build has completed.
 message UpdatePlatformSearchSettingsRequest {
   // Required. A value the server does not know is refused, naming the ones it
   // accepts.
@@ -109,6 +132,17 @@ message UpdatePlatformSearchSettingsRequest {
   // configuration is expected to exist yet. The write is refused with
   // FAILED_PRECONDITION when the stored row moved on.
   int64 expected_revision = 7;
+  // REPLACE saves analysis, refused on the SQL engine; DEFAULT goes back to
+  // the default; anything else keeps the saved one. A save to SQL keeps none.
+  PlatformSearchAnalysisUpdateMode analysis_update_mode = 8;
+  // The settings.analysis to build the catalog index with, as a JSON object
+  // of at most 64 KiB defining the analyzers written_form and alternate_form
+  // and the normalizer exact_match. It is refused with INVALID_ARGUMENT, on
+  // the field analysis, when it does not define every one of them or when the
+  // engine refuses to create an index with it, with the engine's reason; the
+  // check creates an empty index beside the alias and drops it again. An
+  // engine the check cannot reach is UNAVAILABLE. Either way nothing is saved.
+  string analysis = 9;
 }
 
 message UpdatePlatformSearchSettingsResponse {
@@ -131,8 +165,10 @@ message TestPlatformSearchConnectionRequest {
 // went; it fails only when the request states a configuration that cannot be
 // tested at all.
 message TestPlatformSearchConnectionResponse {
-  // Whether the engine answered, is the engine the request names, and has both
-  // analysis plugins the catalog index is built from.
+  // Whether the engine answered, is the engine the request names, and, while
+  // the saved analysis is the default, has both plugins it is built from. A
+  // saved analysis of another kind was checked against the engine when it was
+  // saved.
   bool succeeded = 1;
   // A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
   // never carries the engine's own message.

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -180,5 +182,79 @@ func TestSearchReindexBuildsTheIndexOnElasticsearch(t *testing.T) {
 	code, stdout, stderr := searchCommand(t, "", "test")
 	if code != 1 || !strings.Contains(stdout, "Elasticsearch") || !strings.Contains(stderr, "SEARCH_TEST_WRONG_PRODUCT") {
 		t.Fatalf("test of opensearch on Elasticsearch: exit code = %d, stdout = %q, stderr = %q", code, stdout, stderr)
+	}
+}
+
+// A definition built on analysis-nori is saved from a file and rebuilt into a
+// new index behind the alias the search answers from, which keeps answering
+// from the index it has until the rebuild has moved the alias.
+func TestSearchSetSavesAnAnalysisFileAndReindexBuildsIt(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	search := testutil.StartOpenSearch(t)
+	alias := "catalog-publiractl-" + uuid.NewString()
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", pg.ContentStatsURL)
+	t.Cleanup(func() {
+		req, err := http.NewRequest(http.MethodDelete, search.URL+"/"+alias+"-*", nil)
+		if err == nil {
+			if resp, err := http.DefaultClient.Do(req); err == nil {
+				_ = resp.Body.Close()
+			}
+		}
+	})
+	mustSearchCommand(t, "", "set", "--engine", "opensearch", "--url", search.URL, "--index", alias)
+	mustSearchCommand(t, "", "reindex")
+
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	korean := write("korean.json", `{
+  "analyzer": {
+    "written_form": {"type": "custom", "tokenizer": "nori_tokenizer", "filter": ["nori_part_of_speech", "lowercase"]},
+    "alternate_form": {"type": "custom", "tokenizer": "nori_tokenizer", "filter": ["nori_part_of_speech", "lowercase"]}
+  },
+  "normalizer": {"exact_match": {"type": "custom", "filter": ["lowercase"]}}
+}`)
+	settings := []string{"set", "--engine", "opensearch", "--url", search.URL, "--index", alias}
+
+	code, _, stderr := searchCommand(t, "", append(settings, "--analysis-file", korean, "--default-analysis")...)
+	if code != 1 || !strings.Contains(stderr, "cannot both be given") {
+		t.Fatalf("set with both analysis flags: exit code = %d, stderr = %q", code, stderr)
+	}
+	missing := write("missing.json", `{"analyzer": {"written_form": {"type": "standard"}}}`)
+	code, _, stderr = searchCommand(t, "", append(settings, "--analysis-file", missing)...)
+	if code != 1 || !strings.Contains(stderr, "--analysis-file") || !strings.Contains(stderr, "alternate_form") {
+		t.Fatalf("set with a role missing: exit code = %d, stderr = %q, want --analysis-file and the role named", code, stderr)
+	}
+	refused := write("refused.json", `{"analyzer": {"written_form": {"type": "custom", "tokenizer": "no_such_tokenizer"}, "alternate_form": {"type": "standard"}}, "normalizer": {"exact_match": {"type": "custom"}}}`)
+	code, _, stderr = searchCommand(t, "", append(settings, "--analysis-file", refused)...)
+	if code != 1 || !strings.Contains(stderr, "no_such_tokenizer") {
+		t.Fatalf("set with a refused analysis: exit code = %d, stderr = %q, want the engine's reason", code, stderr)
+	}
+
+	saved := mustSearchCommand(t, "", append(settings, "--analysis-file", korean)...)
+	if !strings.Contains(saved, "revision 2.") || !strings.Contains(saved, "The worker builds the index") {
+		t.Fatalf("set with the Korean analysis = %q, want a build due", saved)
+	}
+	show := mustSearchCommand(t, "", "show")
+	for _, want := range []string{"Analysis:\tsaved", "default analysis (revision 1)", "due; the worker builds the index of revision 2"} {
+		if !strings.Contains(strings.Join(strings.Fields(show), " "), strings.Join(strings.Fields(want), " ")) {
+			t.Fatalf("show = %q, want it to contain %q", show, want)
+		}
+	}
+	mustSearchCommand(t, "", "reindex")
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "saved analysis (revision 2)") || !strings.Contains(show, "none due") {
+		t.Fatalf("show after the reindex = %q, want the search on the saved analysis", show)
+	}
+
+	if saved := mustSearchCommand(t, "", append(settings, "--default-analysis")...); !strings.Contains(saved, "revision 3.") {
+		t.Fatalf("set --default-analysis = %q, want revision 3", saved)
 	}
 }

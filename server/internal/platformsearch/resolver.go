@@ -90,7 +90,7 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 		r.prune()
 		return nil, nil
 	}
-	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String)
+	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,11 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 }
 
 // Targets answers every backend a catalog write goes to: the one the search
-// answers from, and the one being built while a build is due. A target whose
+// answers from, and the one being built while a build is due on a target of
+// its own. A build on the target the search answers from, of another
+// analysis, fills a new index behind the same alias and writes every tenant
+// again once it has moved the alias, so the writes go to that alias alone
+// meanwhile. A target whose
 // build failed is left out, so an engine that refused the index does not hold
 // up every write until an operator fixes it; the build that follows the fix
 // writes the whole catalog there anyway.
@@ -113,8 +117,8 @@ func (r *Resolver) Targets(ctx context.Context) ([]*opensearchbackend.Backend, e
 	stored := r.stored()
 	var configs []opensearchbackend.Config
 	var backends []*opensearchbackend.Backend
-	add := func(settings Settings, encrypted string, building bool) error {
-		cfg, err := r.config(settings, encrypted)
+	add := func(settings Settings, encrypted, analysis string, building bool) error {
+		cfg, err := r.config(settings, encrypted, analysis)
 		if err != nil {
 			return err
 		}
@@ -126,12 +130,12 @@ func (r *Resolver) Targets(ctx context.Context) ([]*opensearchbackend.Backend, e
 		return nil
 	}
 	if stored.Serving.Engine.HasIndex() {
-		if err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, false); err != nil {
+		if err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, false); err != nil {
 			return nil, err
 		}
 	}
 	if stored.State == Building && stored.Engine.HasIndex() && stored.Target() != stored.Serving.Target() {
-		if err := add(stored.Settings, r.row.PasswordEncrypted.String, true); err != nil {
+		if err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, true); err != nil {
 			return nil, err
 		}
 	}
@@ -172,9 +176,10 @@ func (r *Resolver) stored() Stored {
 	return FromConfig(r.row)
 }
 
-// config is the client configuration of settings, with encrypted decrypted.
-func (r *Resolver) config(settings Settings, encrypted string) (opensearchbackend.Config, error) {
-	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username}
+// config is the client configuration of settings, with encrypted decrypted
+// and the analysis an index it creates is built with.
+func (r *Resolver) config(settings Settings, encrypted, analysis string) (opensearchbackend.Config, error) {
+	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis}
 	if strings.TrimSpace(encrypted) == "" {
 		return cfg, nil
 	}
