@@ -294,7 +294,7 @@ const lookupMessage = (
  * so the syntax stays in one place instead of being re-implemented against
  * the same shape.
  *
- * A message that is not a well-formed simple message throws outside
+ * A message that is not well-formed MF2 throws outside
  * production, the way an unknown key does. In production the source is
  * returned: the spec lets the formatting context supply the fallback string
  * for a message it could not parse, and a stale client should not take the

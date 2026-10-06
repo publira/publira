@@ -2,7 +2,7 @@
 
 The package that reads the repository-root [`locales/`](../../locales) catalogs from the TypeScript side, and holds the locale registry generated from `locales/index.json`.
 
-The catalog itself — the file format, the MessageFormat 2 subset the leaves are written in, and how keys are organized — is documented in [`locales/README.md`](../../locales/README.md). This package is the reader: it parses a locale, loads the catalog for it, and formats one message.
+The catalog itself — the file format, the MessageFormat 2 syntax and catalog policy the leaves are written to, and how keys are organized — is documented in [`locales/README.md`](../../locales/README.md). This package is the reader: it parses a locale, loads the catalog for it, and formats one message.
 
 Nothing here reads request state. `cookies()`, `headers()`, and `next/root-params` stay in the app, which resolves the locale and passes it in as an argument, so every function is safe to call from a `"use cache"` scope — the cache key is the locale, not a cookie.
 
@@ -82,7 +82,7 @@ const t = bindMessages(await loadHostMessages(locale), locale);
 
 Apps do not bind a catalog themselves. Each one exports a `getMessages()` that resolves the request's locale and answers the bound accessor, so a Server Component writes `const t = await getMessages();` and nothing else.
 
-A message is formatted in the locale it is bound with, which reaches MF2 as that locale's `intl` tag. A number value is handed over as a number, so a placeholder writes it the way that locale does (`12,345` in `en`) and a selector compares it by value. Format a date with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
+A message is formatted in the locale it is bound with, which reaches MF2 as that locale's `intl` tag. A number value is handed over as a number, so `{$count :integer}` writes it the way that locale does (`12,345` in `en`) and a selector compares it by value. Format a date with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
 
 ### The shared catalog (`./catalog`)
 
@@ -133,7 +133,7 @@ Adding a locale or a key is described under "Adding a key" and "Adding a locale"
 ## Commands
 
 ```bash
-pnpm locales:check   # every leaf is a valid simple message
+pnpm locales:check   # every leaf is valid MF2 within the catalog policy
 pnpm locales:generate # regenerate src/__generated__/
 
 pnpm run test --filter @publira/i18n

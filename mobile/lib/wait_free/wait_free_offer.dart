@@ -103,7 +103,7 @@ Future<WaitFreeOffer?> readWaitFreeOffer({
 /// `22:41:05`. The hours run on past a day rather than turning into one.
 ///
 /// Digits and colons read the same in every locale the app ships, and a clock
-/// needs no unit word, whose plural form the catalog has no way to select.
+/// needs no unit word.
 String formatCountdown(Duration remaining) {
   final seconds = remaining.isNegative ? 0 : remaining.inSeconds;
   String twoDigits(int value) => value.toString().padLeft(2, '0');

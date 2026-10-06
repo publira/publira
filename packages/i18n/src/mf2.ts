@@ -9,9 +9,9 @@
  *
  * What this module adds is the catalog's own policy on top of it:
  *
- * - Messages are restricted to the *simple message* subset — text, escapes and
- *   `{$name}` variable references. {@link simpleMessageSyntaxError} rejects
- *   selection, functions, markup and declarations, and `pnpm locales:check`
+ * - A message may use any of MF2 — declarations, selection, markup — with the
+ *   functions every reader of the catalog implements by default.
+ *   {@link catalogMessageError} states the policy, and `pnpm locales:check`
  *   runs it over every leaf of every locale.
  * - A message is formatted in the locale of the catalog it came from, never in
  *   the host's: every formatter is constructed with that locale's BCP 47 tag,
@@ -24,8 +24,7 @@
  */
 
 import {
-  isMarkup,
-  isSelectMessage,
+  isLiteral,
   isVariableRef,
   MessageFormat,
   MessageResolutionError,
@@ -69,107 +68,58 @@ const formatterFor = (locale: string, source: string): MessageFormat => {
 };
 
 /**
- * Why `message` uses more of MF2 than the catalog allows, or `undefined` when
- * it stays inside the subset.
+ * The functions a catalog message may call: the ones every reader formats
+ * with by default. LDML 48.2 marks `:currency` and `:percent` Stable too, but
+ * `messageformat` v4 still files them with its Draft functions, outside its
+ * defaults, so a message calling one would format on the server and in the
+ * app and fall back in the web apps. The date and time functions are Draft,
+ * and a date is formatted against the tenant's display time zone before it
+ * reaches a message rather than by MF2.
  */
-const unsupportedConstruct = (
-  message: Model.PatternMessage
-): string | undefined => {
-  if (message.declarations.length > 0) {
-    return "declarations ('.input' / '.local') are not part of the catalog's subset";
-  }
-
-  for (const part of message.pattern) {
-    if (typeof part === "string") {
-      continue;
-    }
-
-    if (isMarkup(part)) {
-      return "markup ('{#tag}') is not part of the catalog's subset";
-    }
-
-    if (part.functionRef) {
-      return `functions (':${part.functionRef.name}') are not part of the catalog's subset`;
-    }
-
-    if (!isVariableRef(part.arg)) {
-      return "literal expressions ('{|text|}') are not part of the catalog's subset";
-    }
-  }
-
-  return undefined;
-};
+const CATALOG_FUNCTIONS = new Set(["integer", "number", "offset", "string"]);
+const CATALOG_FUNCTION_LIST = [...CATALOG_FUNCTIONS]
+  .map((name) => `:${name}`)
+  .join(", ");
 
 /**
- * The data model of `source` when it is a message this catalog accepts, or
- * the reason it is not: MF2 syntax and data model errors from `messageformat`,
- * then the subset rules above.
+ * Why `source` is not a message this catalog accepts, or `undefined` when it
+ * is: an MF2 syntax or data model error from `messageformat`, a function
+ * outside {@link CATALOG_FUNCTIONS}, or a placeholder that is a bare literal.
+ *
+ * `{name}` is how a placeholder was written before the catalog moved to MF2.
+ * In MF2 it is a literal expression that formats to the word `name` without
+ * any error, so it is rejected as the likely mistake it is; a literal brace is
+ * written `\{` / `\}`.
  */
-const parseSimpleMessage = (
-  source: string
-): { message: Model.PatternMessage } | { problem: string } => {
+export const catalogMessageError = (source: string): string | undefined => {
   let message: Model.Message;
   try {
     message = parseMessage(source);
     validate(message);
   } catch (error) {
-    return { problem: error instanceof Error ? error.message : String(error) };
+    return error instanceof Error ? error.message : String(error);
   }
 
-  if (isSelectMessage(message)) {
-    return {
-      problem: "selection ('.match') is not part of the catalog's subset",
-    };
-  }
-
-  const problem = unsupportedConstruct(message);
-
-  return problem === undefined ? { message } : { problem };
-};
-
-/**
- * Why `source` is not a message this catalog accepts, or `undefined` when it
- * is.
- */
-export const simpleMessageSyntaxError = (
-  source: string
-): string | undefined => {
-  const parsed = parseSimpleMessage(source);
-
-  return "problem" in parsed ? parsed.problem : undefined;
-};
-
-/** One piece of a simple message: literal text, or a `{$name}` placeholder. */
-export type SimpleMessagePart = string | { readonly variable: string };
-
-/**
- * The text and placeholders of `source` in order, with MF2 escapes resolved.
- *
- * This is how a generator that compiles the catalog into another language
- * reads a message: `messageformat` does the parsing, and the generator only
- * writes out what it was handed, so no reader of the catalog needs a parser of
- * its own. Throws when `source` is outside the catalog's subset, with the
- * reason {@link simpleMessageSyntaxError} reports.
- */
-export const simpleMessageParts = (source: string): SimpleMessagePart[] => {
-  const parsed = parseSimpleMessage(source);
-  if ("problem" in parsed) {
-    throw new Error(parsed.problem);
-  }
-
-  return parsed.message.pattern.map((part) => {
-    if (typeof part === "string") {
-      return part;
-    }
-
-    // `unsupportedConstruct` has already rejected markup, functions and
-    // literal expressions, so what is left is a variable reference.
-    if (isMarkup(part) || !isVariableRef(part.arg)) {
-      throw new Error(`unexpected ${part.type} in a simple message`);
-    }
-
-    return { variable: part.arg.name };
+  let problem: string | undefined;
+  visit(message, {
+    expression: (expression, context) => {
+      if (
+        problem === undefined &&
+        context === "placeholder" &&
+        expression.functionRef === undefined &&
+        isLiteral(expression.arg)
+      ) {
+        problem = `'{${expression.arg.value}}' formats to the literal text '${expression.arg.value}'; write '{$${expression.arg.value}}' for a variable or '\\{' / '\\}' for a brace`;
+      }
+    },
+    functionRef: (functionRef) => {
+      if (problem === undefined && !CATALOG_FUNCTIONS.has(functionRef.name)) {
+        problem = `':${functionRef.name}' is not one of the catalog's functions (${CATALOG_FUNCTION_LIST})`;
+      }
+    },
   });
+
+  return problem;
 };
 
 /**
@@ -200,8 +150,8 @@ export interface MessageVariable {
  *
  * This is how a generator that emits typed accessors in another language
  * learns each accessor's parameters, while formatting stays with that
- * language's MF2 implementation. Accepts any valid MF2 message, not only the
- * catalog's subset, and throws on a syntax or data model error.
+ * language's MF2 implementation. Accepts any valid MF2 message, and throws on
+ * a syntax or data model error.
  */
 export const messageVariables = (source: string): MessageVariable[] => {
   const message = parseMessage(source);
