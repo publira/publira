@@ -88,7 +88,7 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 	}
 	defer unlock()
 
-	index, err := build(ctx, p, row, logger)
+	backend, index, err := build(ctx, p, row, logger)
 	if err != nil {
 		recordCtx := context.WithoutCancel(ctx)
 		if _, recordErr := q.RecordPlatformSearchBuildFailure(recordCtx, dbmodels.RecordPlatformSearchBuildFailureParams{
@@ -112,19 +112,42 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 	}
 	result.Serving = true
 	logger.InfoContext(ctx, "catalog search moved onto the built index", "revision", row.Revision, "engine", row.Engine, "index", index)
+
+	// Every tenant is written once more now that the search answers from the
+	// new index. The worker writes into an index being built only while its
+	// build is due, and a build retried after a failure is not: an event drained
+	// between a tenant's resync after the swap and the move above reached the
+	// previous engine alone. From the move on, every event reads the row and
+	// writes here, and any write that committed before it is read again below.
+	if err := resync(ctx, p.DB, backend); err != nil {
+		return result, fmt.Errorf("the search moved onto %s, but writing every tenant again failed, which may leave a write made during the build out of it; run publiractl search reindex: %w", index, err)
+	}
 	return result, nil
 }
 
-func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (string, error) {
+func resync(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend) error {
+	tenantIDs, err := dbmodels.New(db).ListCatalogIndexTenantIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("list tenants: %w", err)
+	}
+	for _, tenantID := range tenantIDs {
+		if _, _, err := catalogindex.SyncTenant(ctx, db, backend, tenantID); err != nil {
+			return fmt.Errorf("sync tenant %s: %w", tenantID, err)
+		}
+	}
+	return nil
+}
+
+func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (*opensearchbackend.Backend, string, error) {
 	stored := FromConfig(row)
 	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username}
 	if encrypted := strings.TrimSpace(row.PasswordEncrypted.String); encrypted != "" {
 		if p.Secrets == nil {
-			return "", ErrSecretManagerUnavailable
+			return nil, "", ErrSecretManagerUnavailable
 		}
 		password, err := p.Secrets.DecryptString(encrypted)
 		if err != nil {
-			return "", fmt.Errorf("decrypt the search engine password: %w", err)
+			return nil, "", fmt.Errorf("decrypt the search engine password: %w", err)
 		}
 		cfg.Password = password
 	}
@@ -132,10 +155,11 @@ func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig
 	backend, err := opensearchbackend.New(connectCtx, cfg)
 	cancel()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	logger.InfoContext(ctx, "catalog index build started", "revision", row.Revision, "engine", row.Engine, "alias", cfg.Index)
-	return catalogindex.Rebuild(ctx, p.DB, backend, logger)
+	index, err := catalogindex.Rebuild(ctx, p.DB, backend, logger)
+	return backend, index, err
 }
 
 // lockBuild takes the build lock on a connection of its own, which holds it
