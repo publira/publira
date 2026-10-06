@@ -206,15 +206,6 @@ When the install outgrows one host, the same processes run against a managed Pos
 
 ## Next steps
 
-On every later release, check out that release in the repository, set `PUBLIRA_IMAGE_TAG` to its tag, and then run:
-
-```bash
-docker compose pull
-docker compose run --rm publiractl db migrate
-docker compose run --rm publiractl db roles
-docker compose up -d
-```
-
-`db roles` without flags keeps every password and only brings the roles' grants up to the new release.
+On every later release, [Upgrading](./5-upgrading.md#on-the-docker-compose-install) takes the install to it: checking out the release, the backup, the migrations, and restarting on the new images.
 
 The full list of variables the Compose file reads, and the checks the repository runs against it, are in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose).

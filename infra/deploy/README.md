@@ -110,7 +110,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
 5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
-On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start.
+On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 
 ## Running it with Docker Compose
 
@@ -150,6 +150,6 @@ docker compose run --rm publiractl setup \
 
 The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
 
-On every later release, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull`, `db migrate`, `db roles` with no flags, and `docker compose up -d`.
+On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull`, `db migrate`, `db roles` with no flags, `docker compose up -d`, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
 `task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, and that image delivery resizes and converts an image through libvips.
