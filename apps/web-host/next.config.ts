@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
     cachedNavigations: false,
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
+    // `proxy.ts` runs ahead of the webhook Route Handlers, and Next.js buffers
+    // each body it sees up to this size, cutting a longer one short without an
+    // error. The inbound email webhook takes a whole mail, so this sits one MiB
+    // above `MAX_INBOUND_EMAIL_PAYLOAD_BYTES` in `lib/inbound-email-webhook.ts`,
+    // which explains the margin.
+    proxyClientMaxBodySize: "33mb",
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,
