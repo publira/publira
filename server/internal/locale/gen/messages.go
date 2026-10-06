@@ -2,2355 +2,959 @@
 
 package gen
 
-// Part is one piece of a message: literal Text, or the value the variable
-// Variable names.
-type Part struct {
-	Text     string
-	Variable string
-}
-
-// Messages is the `email` namespace of every catalog, keyed by locale
-// code and then by the message key.
-var Messages = map[string]map[string][]Part{
-	"ja": {
-		"email.admin_console_email_change_confirmation.action": {
-			{Text: "メールアドレス変更を確認する"},
-		},
-		"email.admin_console_email_change_confirmation.body_current_email": {
-			{Text: "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.admin_console_email_change_confirmation.body_new_email": {
-			{Text: "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.admin_console_email_change_confirmation.current_email": {
-			{Text: "現在のメールアドレス: "},
-			{Variable: "current_email"},
-		},
-		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.admin_console_email_change_confirmation.heading": {
-			{Text: "管理画面メールアドレス変更の確認"},
-		},
-		"email.admin_console_email_change_confirmation.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.admin_console_email_change_confirmation.intro": {
-			{Text: "管理画面アカウントのメールアドレス変更リクエストを受け付けました。"},
-		},
-		"email.admin_console_email_change_confirmation.new_email": {
-			{Text: "新しいメールアドレス: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_change_confirmation.preview": {
-			{Text: "管理画面のメールアドレス変更の確認を完了してください。"},
-		},
-		"email.admin_console_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理画面メールアドレス変更確認"},
-		},
-		"email.admin_console_email_changed_notice.body": {
-			{Text: "管理画面アカウントのメールアドレスが変更されました。"},
-		},
-		"email.admin_console_email_changed_notice.heading": {
-			{Text: "管理画面メールアドレス変更の完了"},
-		},
-		"email.admin_console_email_changed_notice.new_email": {
-			{Text: "変更後: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_changed_notice.preview": {
-			{Text: "管理画面アカウントのメールアドレスが変更されました。"},
-		},
-		"email.admin_console_email_changed_notice.previous_email": {
-			{Text: "変更前: "},
-			{Variable: "previous_email"},
-		},
-		"email.admin_console_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理画面メールアドレス変更完了"},
-		},
-		"email.admin_console_email_changed_notice.warning": {
-			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
-		},
-		"email.admin_console_password_reset.action": {
-			{Text: "パスワードを再設定する"},
-		},
-		"email.admin_console_password_reset.body": {
-			{Text: "以下のボタンから新しいパスワードを設定してください。"},
-		},
-		"email.admin_console_password_reset.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.admin_console_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.admin_console_password_reset.heading": {
-			{Text: "管理画面パスワードの再設定"},
-		},
-		"email.admin_console_password_reset.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.admin_console_password_reset.intro": {
-			{Text: "管理画面アカウントのパスワード再設定リクエストを受け付けました。"},
-		},
-		"email.admin_console_password_reset.preview": {
-			{Text: "管理画面の新しいパスワードを設定してください。"},
-		},
-		"email.admin_console_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理画面パスワード再設定"},
-		},
-		"email.layout.brand": {
-			{Text: "Publira"},
-		},
-		"email.layout.footer": {
-			{Text: "このメールは"},
-			{Variable: "brand"},
-			{Text: "から送信されています。"},
-		},
-		"email.platform_console_email_change_confirmation.action": {
-			{Text: "メールアドレス変更を確認する"},
-		},
-		"email.platform_console_email_change_confirmation.body_current_email": {
-			{Text: "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.platform_console_email_change_confirmation.body_new_email": {
-			{Text: "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.platform_console_email_change_confirmation.current_email": {
-			{Text: "現在のメールアドレス: "},
-			{Variable: "current_email"},
-		},
-		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "プラットフォーム管理画面メールアドレス変更の確認"},
-		},
-		"email.platform_console_email_change_confirmation.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "プラットフォーム管理画面アカウントのメールアドレス変更リクエストを受け付けました。"},
-		},
-		"email.platform_console_email_change_confirmation.new_email": {
-			{Text: "新しいメールアドレス: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "プラットフォーム管理画面のメールアドレス変更の確認を完了してください。"},
-		},
-		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publiraプラットフォーム管理画面メールアドレス変更確認"},
-		},
-		"email.platform_console_email_changed_notice.body": {
-			{Text: "プラットフォーム管理画面アカウントのメールアドレスが変更されました。"},
-		},
-		"email.platform_console_email_changed_notice.heading": {
-			{Text: "プラットフォーム管理画面メールアドレス変更の完了"},
-		},
-		"email.platform_console_email_changed_notice.new_email": {
-			{Text: "変更後: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_changed_notice.preview": {
-			{Text: "プラットフォーム管理画面アカウントのメールアドレスが変更されました。"},
-		},
-		"email.platform_console_email_changed_notice.previous_email": {
-			{Text: "変更前: "},
-			{Variable: "previous_email"},
-		},
-		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publiraプラットフォーム管理画面メールアドレス変更完了"},
-		},
-		"email.platform_console_email_changed_notice.warning": {
-			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
-		},
-		"email.platform_console_password_reset.action": {
-			{Text: "パスワードを再設定する"},
-		},
-		"email.platform_console_password_reset.body": {
-			{Text: "以下のボタンから新しいパスワードを設定してください。"},
-		},
-		"email.platform_console_password_reset.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.platform_console_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.platform_console_password_reset.heading": {
-			{Text: "プラットフォーム管理画面パスワードの再設定"},
-		},
-		"email.platform_console_password_reset.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.platform_console_password_reset.intro": {
-			{Text: "プラットフォーム管理画面アカウントのパスワード再設定リクエストを受け付けました。"},
-		},
-		"email.platform_console_password_reset.preview": {
-			{Text: "プラットフォーム管理画面の新しいパスワードを設定してください。"},
-		},
-		"email.platform_console_password_reset.subject": {
-			{Text: "Publiraプラットフォーム管理画面パスワード再設定"},
-		},
-		"email.reader_email_change_confirmation.action": {
-			{Text: "メールアドレス変更を確認する"},
-		},
-		"email.reader_email_change_confirmation.body_current_email": {
-			{Text: "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.reader_email_change_confirmation.body_new_email": {
-			{Text: "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。"},
-		},
-		"email.reader_email_change_confirmation.current_email": {
-			{Text: "現在のメールアドレス: "},
-			{Variable: "current_email"},
-		},
-		"email.reader_email_change_confirmation.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.reader_email_change_confirmation.heading": {
-			{Text: "メールアドレス変更の確認"},
-		},
-		"email.reader_email_change_confirmation.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.reader_email_change_confirmation.intro": {
-			{Text: "メールアドレス変更のリクエストを受け付けました。"},
-		},
-		"email.reader_email_change_confirmation.new_email": {
-			{Text: "新しいメールアドレス: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_change_confirmation.preview": {
-			{Text: "メールアドレス変更の確認を完了してください。"},
-		},
-		"email.reader_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "メールアドレス変更確認"},
-		},
-		"email.reader_email_changed_notice.body": {
-			{Text: "アカウントのメールアドレスが変更されました。"},
-		},
-		"email.reader_email_changed_notice.heading": {
-			{Text: "メールアドレス変更の完了"},
-		},
-		"email.reader_email_changed_notice.new_email": {
-			{Text: "変更後: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_changed_notice.preview": {
-			{Text: "アカウントのメールアドレスが変更されました。"},
-		},
-		"email.reader_email_changed_notice.previous_email": {
-			{Text: "変更前: "},
-			{Variable: "previous_email"},
-		},
-		"email.reader_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "メールアドレス変更完了"},
-		},
-		"email.reader_email_changed_notice.warning": {
-			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
-		},
-		"email.reader_email_verification.action": {
-			{Text: "メールアドレスを確認する"},
-		},
-		"email.reader_email_verification.body": {
-			{Text: "以下のボタンからメールアドレスの確認を完了してください。"},
-		},
-		"email.reader_email_verification.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.reader_email_verification.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.reader_email_verification.heading": {
-			{Text: "メールアドレスの確認"},
-		},
-		"email.reader_email_verification.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.reader_email_verification.intro": {
-			{Variable: "tenant_name"},
-			{Text: "のご登録ありがとうございます。"},
-		},
-		"email.reader_email_verification.preview": {
-			{Text: "メールアドレスの確認を完了してください。"},
-		},
-		"email.reader_email_verification.subject": {
-			{Variable: "tenant_name"},
-			{Text: "メールアドレス確認"},
-		},
-		"email.reader_password_changed_notice.action": {
-			{Text: "パスワードを再設定する"},
-		},
-		"email.reader_password_changed_notice.body": {
-			{Text: "アカウントのパスワードが変更されました。"},
-		},
-		"email.reader_password_changed_notice.email": {
-			{Text: "メールアドレス: "},
-			{Variable: "email"},
-		},
-		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.reader_password_changed_notice.heading": {
-			{Text: "パスワード変更の完了"},
-		},
-		"email.reader_password_changed_notice.preview": {
-			{Text: "アカウントのパスワードが変更されました。"},
-		},
-		"email.reader_password_changed_notice.sessions": {
-			{Text: "他の端末はサインアウトされました。再びサインインするには新しいパスワードが必要です。"},
-		},
-		"email.reader_password_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "パスワード変更完了"},
-		},
-		"email.reader_password_changed_notice.warning": {
-			{Text: "この変更に心当たりがない場合は、すぐにパスワードを再設定してください。"},
-		},
-		"email.reader_password_reset.action": {
-			{Text: "パスワードを再設定する"},
-		},
-		"email.reader_password_reset.body": {
-			{Text: "以下のボタンから新しいパスワードを設定してください。"},
-		},
-		"email.reader_password_reset.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.reader_password_reset.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.reader_password_reset.heading": {
-			{Text: "パスワードの再設定"},
-		},
-		"email.reader_password_reset.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.reader_password_reset.intro": {
-			{Text: "パスワード再設定のリクエストを受け付けました。"},
-		},
-		"email.reader_password_reset.preview": {
-			{Text: "新しいパスワードを設定してください。"},
-		},
-		"email.reader_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "パスワード再設定"},
-		},
-		"email.reader_signup_attempt_notice.action_confirmed": {
-			{Text: "パスワードを再設定する"},
-		},
-		"email.reader_signup_attempt_notice.action_unconfirmed": {
-			{Text: "確認メールを再送する"},
-		},
-		"email.reader_signup_attempt_notice.body_confirmed": {
-			{Text: "すでにアカウントが存在するため、新しいアカウントは作成されず、既存のアカウントにも変更はありません。"},
-		},
-		"email.reader_signup_attempt_notice.body_unconfirmed": {
-			{Text: "すでにアカウントが存在するため、新しいアカウントは作成されていません。そのアカウントはメールアドレスの確認が済んでいないため、まだサインインできません。"},
-		},
-		"email.reader_signup_attempt_notice.email": {
-			{Text: "メールアドレス: "},
-			{Variable: "email"},
-		},
-		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_confirmed": {
-			{Text: "お心当たりがあり、パスワードが分からない場合は、上のボタンから再設定してください。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_unconfirmed": {
-			{Text: "お心当たりがある場合は、上のボタンから確認メールを送り直してください。"},
-		},
-		"email.reader_signup_attempt_notice.heading": {
-			{Text: "登録済みのメールアドレスでの登録"},
-		},
-		"email.reader_signup_attempt_notice.ignore": {
-			{Text: "心当たりがない場合、対応は不要です。パスワードを知らない限り、このアカウントにはサインインできません。"},
-		},
-		"email.reader_signup_attempt_notice.intro": {
-			{Variable: "tenant_name"},
-			{Text: "で、このメールアドレスを使ったアカウント登録が試みられました。"},
-		},
-		"email.reader_signup_attempt_notice.preview": {
-			{Text: "登録済みのメールアドレスで登録が試みられました。"},
-		},
-		"email.reader_signup_attempt_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "アカウント登録の試行"},
-		},
-		"email.staff_contact_message_notice.body_heading": {
-			{Text: "本文"},
-		},
-		"email.staff_contact_message_notice.footnote": {
-			{Text: "返信は、ご自身のメールソフトから上記の返信先アドレス宛に送ってください。管理画面から返信することはできません。"},
-		},
-		"email.staff_contact_message_notice.heading": {
-			{Text: "お問い合わせが届きました"},
-		},
-		"email.staff_contact_message_notice.intro": {
-			{Variable: "tenant_name"},
-			{Text: "のお問い合わせフォームから、読者がメッセージを送信しました。"},
-		},
-		"email.staff_contact_message_notice.preview": {
-			{Variable: "tenant_name"},
-			{Text: "に読者からメッセージが届きました。"},
-		},
-		"email.staff_contact_message_notice.received": {
-			{Text: "受信日時: "},
-			{Variable: "received_at"},
-		},
-		"email.staff_contact_message_notice.reply_to": {
-			{Text: "返信先: "},
-			{Variable: "reply_to_email"},
-		},
-		"email.staff_contact_message_notice.sender": {
-			{Text: "サインイン中のアカウント: "},
-			{Variable: "sender_name"},
-		},
-		"email.staff_contact_message_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "お問い合わせ"},
-		},
-		"email.staff_contact_message_notice.subject_line": {
-			{Text: "件名: "},
-			{Variable: "subject"},
-		},
-		"email.tenant_admin_invitation.action": {
-			{Text: "招待を承諾する"},
-		},
-		"email.tenant_admin_invitation.body": {
-			{Variable: "tenant_name"},
-			{Text: "のテナント管理者として招待されています。以下のボタンから招待を承諾してください。"},
-		},
-		"email.tenant_admin_invitation.expires": {
-			{Text: "このリンクの有効期限は"},
-			{Variable: "expires_at"},
-			{Text: "です。"},
-		},
-		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。"},
-		},
-		"email.tenant_admin_invitation.heading": {
-			{Text: "管理者への招待"},
-		},
-		"email.tenant_admin_invitation.ignore": {
-			{Text: "心当たりがない場合、このメールは破棄してください。"},
-		},
-		"email.tenant_admin_invitation.intro": {
-			{Variable: "tenant_name"},
-			{Text: "の管理画面へ招待されました。"},
-		},
-		"email.tenant_admin_invitation.preview": {
-			{Variable: "tenant_name"},
-			{Text: "の管理画面へ招待されました。"},
-		},
-		"email.tenant_admin_invitation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理者招待"},
-		},
+// Messages is the MessageFormat 2 source of every message in the `email`
+// namespace, keyed by the message key and then by locale code.
+var Messages = map[string]map[string]string{
+	"email.admin_console_email_change_confirmation.action": {
+		"ja":      "メールアドレス変更を確認する",
+		"en":      "Confirm email address change",
+		"ko":      "이메일 주소 변경 확인하기",
+		"zh-Hans": "确认邮箱地址变更",
+		"zh-Hant": "確認電子郵件地址變更",
 	},
-	"en": {
-		"email.admin_console_email_change_confirmation.action": {
-			{Text: "Confirm email address change"},
-		},
-		"email.admin_console_email_change_confirmation.body_current_email": {
-			{Text: "This change needs confirmation from your current address. Open the button below to confirm it."},
-		},
-		"email.admin_console_email_change_confirmation.body_new_email": {
-			{Text: "This change needs confirmation from your new address. Open the button below to confirm it."},
-		},
-		"email.admin_console_email_change_confirmation.current_email": {
-			{Text: "Current email address: "},
-			{Variable: "current_email"},
-		},
-		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.admin_console_email_change_confirmation.heading": {
-			{Text: "Confirm your admin console email address change"},
-		},
-		"email.admin_console_email_change_confirmation.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.admin_console_email_change_confirmation.intro": {
-			{Text: "We received a request to change the email address on your admin console account."},
-		},
-		"email.admin_console_email_change_confirmation.new_email": {
-			{Text: "New email address: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_change_confirmation.preview": {
-			{Text: "Confirm your admin console email address change."},
-		},
-		"email.admin_console_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " admin console email address change confirmation"},
-		},
-		"email.admin_console_email_changed_notice.body": {
-			{Text: "The email address on your admin console account was changed."},
-		},
-		"email.admin_console_email_changed_notice.heading": {
-			{Text: "Your admin console email address was changed"},
-		},
-		"email.admin_console_email_changed_notice.new_email": {
-			{Text: "After: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_changed_notice.preview": {
-			{Text: "The email address on your admin console account was changed."},
-		},
-		"email.admin_console_email_changed_notice.previous_email": {
-			{Text: "Before: "},
-			{Variable: "previous_email"},
-		},
-		"email.admin_console_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " admin console email address changed"},
-		},
-		"email.admin_console_email_changed_notice.warning": {
-			{Text: "If you did not make this change, reset your password right away."},
-		},
-		"email.admin_console_password_reset.action": {
-			{Text: "Reset password"},
-		},
-		"email.admin_console_password_reset.body": {
-			{Text: "Open the button below to set a new password."},
-		},
-		"email.admin_console_password_reset.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.admin_console_password_reset.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.admin_console_password_reset.heading": {
-			{Text: "Reset your admin console password"},
-		},
-		"email.admin_console_password_reset.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.admin_console_password_reset.intro": {
-			{Text: "We received a request to reset the password for your admin console account."},
-		},
-		"email.admin_console_password_reset.preview": {
-			{Text: "Set a new admin console password."},
-		},
-		"email.admin_console_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: " admin console password reset"},
-		},
-		"email.layout.brand": {
-			{Text: "Publira"},
-		},
-		"email.layout.footer": {
-			{Text: "This email was sent by "},
-			{Variable: "brand"},
-			{Text: "."},
-		},
-		"email.platform_console_email_change_confirmation.action": {
-			{Text: "Confirm email address change"},
-		},
-		"email.platform_console_email_change_confirmation.body_current_email": {
-			{Text: "This change needs confirmation from your current address. Open the button below to confirm it."},
-		},
-		"email.platform_console_email_change_confirmation.body_new_email": {
-			{Text: "This change needs confirmation from your new address. Open the button below to confirm it."},
-		},
-		"email.platform_console_email_change_confirmation.current_email": {
-			{Text: "Current email address: "},
-			{Variable: "current_email"},
-		},
-		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "Confirm your Platform Console email address change"},
-		},
-		"email.platform_console_email_change_confirmation.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "We received a request to change the email address on your Platform Console account."},
-		},
-		"email.platform_console_email_change_confirmation.new_email": {
-			{Text: "New email address: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "Confirm your Platform Console email address change."},
-		},
-		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira Platform Console email address change confirmation"},
-		},
-		"email.platform_console_email_changed_notice.body": {
-			{Text: "The email address on your Platform Console account was changed."},
-		},
-		"email.platform_console_email_changed_notice.heading": {
-			{Text: "Your Platform Console email address was changed"},
-		},
-		"email.platform_console_email_changed_notice.new_email": {
-			{Text: "After: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_changed_notice.preview": {
-			{Text: "The email address on your Platform Console account was changed."},
-		},
-		"email.platform_console_email_changed_notice.previous_email": {
-			{Text: "Before: "},
-			{Variable: "previous_email"},
-		},
-		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira Platform Console email address changed"},
-		},
-		"email.platform_console_email_changed_notice.warning": {
-			{Text: "If you did not make this change, reset your password right away."},
-		},
-		"email.platform_console_password_reset.action": {
-			{Text: "Reset password"},
-		},
-		"email.platform_console_password_reset.body": {
-			{Text: "Open the button below to set a new password."},
-		},
-		"email.platform_console_password_reset.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.platform_console_password_reset.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.platform_console_password_reset.heading": {
-			{Text: "Reset your Platform Console password"},
-		},
-		"email.platform_console_password_reset.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.platform_console_password_reset.intro": {
-			{Text: "We received a request to reset the password for your Platform Console account."},
-		},
-		"email.platform_console_password_reset.preview": {
-			{Text: "Set a new Platform Console password."},
-		},
-		"email.platform_console_password_reset.subject": {
-			{Text: "Publira Platform Console password reset"},
-		},
-		"email.reader_email_change_confirmation.action": {
-			{Text: "Confirm email address change"},
-		},
-		"email.reader_email_change_confirmation.body_current_email": {
-			{Text: "This change needs confirmation from your current address. Open the button below to confirm it."},
-		},
-		"email.reader_email_change_confirmation.body_new_email": {
-			{Text: "This change needs confirmation from your new address. Open the button below to confirm it."},
-		},
-		"email.reader_email_change_confirmation.current_email": {
-			{Text: "Current email address: "},
-			{Variable: "current_email"},
-		},
-		"email.reader_email_change_confirmation.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.reader_email_change_confirmation.heading": {
-			{Text: "Confirm your email address change"},
-		},
-		"email.reader_email_change_confirmation.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.reader_email_change_confirmation.intro": {
-			{Text: "We received a request to change your email address."},
-		},
-		"email.reader_email_change_confirmation.new_email": {
-			{Text: "New email address: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_change_confirmation.preview": {
-			{Text: "Confirm your email address change."},
-		},
-		"email.reader_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " email address change confirmation"},
-		},
-		"email.reader_email_changed_notice.body": {
-			{Text: "The email address on your account was changed."},
-		},
-		"email.reader_email_changed_notice.heading": {
-			{Text: "Your email address was changed"},
-		},
-		"email.reader_email_changed_notice.new_email": {
-			{Text: "After: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_changed_notice.preview": {
-			{Text: "The email address on your account was changed."},
-		},
-		"email.reader_email_changed_notice.previous_email": {
-			{Text: "Before: "},
-			{Variable: "previous_email"},
-		},
-		"email.reader_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " email address changed"},
-		},
-		"email.reader_email_changed_notice.warning": {
-			{Text: "If you did not make this change, reset your password right away."},
-		},
-		"email.reader_email_verification.action": {
-			{Text: "Verify email address"},
-		},
-		"email.reader_email_verification.body": {
-			{Text: "Open the button below to finish verifying your email address."},
-		},
-		"email.reader_email_verification.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.reader_email_verification.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.reader_email_verification.heading": {
-			{Text: "Verify your email address"},
-		},
-		"email.reader_email_verification.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.reader_email_verification.intro": {
-			{Text: "Thank you for signing up for "},
-			{Variable: "tenant_name"},
-			{Text: "."},
-		},
-		"email.reader_email_verification.preview": {
-			{Text: "Finish verifying your email address."},
-		},
-		"email.reader_email_verification.subject": {
-			{Variable: "tenant_name"},
-			{Text: " email address verification"},
-		},
-		"email.reader_password_changed_notice.action": {
-			{Text: "Reset password"},
-		},
-		"email.reader_password_changed_notice.body": {
-			{Text: "The password on your account was changed."},
-		},
-		"email.reader_password_changed_notice.email": {
-			{Text: "Email address: "},
-			{Variable: "email"},
-		},
-		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.reader_password_changed_notice.heading": {
-			{Text: "Your password was changed"},
-		},
-		"email.reader_password_changed_notice.preview": {
-			{Text: "The password on your account was changed."},
-		},
-		"email.reader_password_changed_notice.sessions": {
-			{Text: "Your other devices were signed out and need the new password to sign in again."},
-		},
-		"email.reader_password_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " password changed"},
-		},
-		"email.reader_password_changed_notice.warning": {
-			{Text: "If you did not make this change, set a new password right away."},
-		},
-		"email.reader_password_reset.action": {
-			{Text: "Reset password"},
-		},
-		"email.reader_password_reset.body": {
-			{Text: "Open the button below to set a new password."},
-		},
-		"email.reader_password_reset.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.reader_password_reset.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.reader_password_reset.heading": {
-			{Text: "Reset your password"},
-		},
-		"email.reader_password_reset.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.reader_password_reset.intro": {
-			{Text: "We received a request to reset your password."},
-		},
-		"email.reader_password_reset.preview": {
-			{Text: "Set a new password."},
-		},
-		"email.reader_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: " password reset"},
-		},
-		"email.reader_signup_attempt_notice.action_confirmed": {
-			{Text: "Reset password"},
-		},
-		"email.reader_signup_attempt_notice.action_unconfirmed": {
-			{Text: "Send a new confirmation email"},
-		},
-		"email.reader_signup_attempt_notice.body_confirmed": {
-			{Text: "Your account already exists, so no second account was created and nothing about yours changed."},
-		},
-		"email.reader_signup_attempt_notice.body_unconfirmed": {
-			{Text: "Your account already exists, so no second account was created. Its email address is not confirmed yet, which is why signing in does not work."},
-		},
-		"email.reader_signup_attempt_notice.email": {
-			{Text: "Email address: "},
-			{Variable: "email"},
-		},
-		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.reader_signup_attempt_notice.forgot_confirmed": {
-			{Text: "If this was you and you cannot remember your password, use the button above to set a new one."},
-		},
-		"email.reader_signup_attempt_notice.forgot_unconfirmed": {
-			{Text: "If this was you, use the button above to have a new confirmation email sent."},
-		},
-		"email.reader_signup_attempt_notice.heading": {
-			{Text: "A sign-up used your email address"},
-		},
-		"email.reader_signup_attempt_notice.ignore": {
-			{Text: "If it was not you, there is nothing to do. Nobody can sign in without your password."},
-		},
-		"email.reader_signup_attempt_notice.intro": {
-			{Text: "Someone tried to create an account on "},
-			{Variable: "tenant_name"},
-			{Text: " with this email address."},
-		},
-		"email.reader_signup_attempt_notice.preview": {
-			{Text: "A sign-up used your email address."},
-		},
-		"email.reader_signup_attempt_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " sign-up attempt"},
-		},
-		"email.staff_contact_message_notice.body_heading": {
-			{Text: "Message"},
-		},
-		"email.staff_contact_message_notice.footnote": {
-			{Text: "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console."},
-		},
-		"email.staff_contact_message_notice.heading": {
-			{Text: "New contact message"},
-		},
-		"email.staff_contact_message_notice.intro": {
-			{Text: "A reader sent "},
-			{Variable: "tenant_name"},
-			{Text: " a message through the contact form."},
-		},
-		"email.staff_contact_message_notice.preview": {
-			{Text: "A reader sent "},
-			{Variable: "tenant_name"},
-			{Text: " a message."},
-		},
-		"email.staff_contact_message_notice.received": {
-			{Text: "Received at "},
-			{Variable: "received_at"},
-			{Text: "."},
-		},
-		"email.staff_contact_message_notice.reply_to": {
-			{Text: "Reply to: "},
-			{Variable: "reply_to_email"},
-		},
-		"email.staff_contact_message_notice.sender": {
-			{Text: "Signed in as "},
-			{Variable: "sender_name"},
-			{Text: "."},
-		},
-		"email.staff_contact_message_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " contact message"},
-		},
-		"email.staff_contact_message_notice.subject_line": {
-			{Text: "Subject: "},
-			{Variable: "subject"},
-		},
-		"email.tenant_admin_invitation.action": {
-			{Text: "Accept invitation"},
-		},
-		"email.tenant_admin_invitation.body": {
-			{Text: "You are invited as a tenant admin of "},
-			{Variable: "tenant_name"},
-			{Text: ". Open the button below to accept the invitation."},
-		},
-		"email.tenant_admin_invitation.expires": {
-			{Text: "This link expires at "},
-			{Variable: "expires_at"},
-			{Text: "."},
-		},
-		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "If the button does not work, paste this URL into your browser."},
-		},
-		"email.tenant_admin_invitation.heading": {
-			{Text: "Admin invitation"},
-		},
-		"email.tenant_admin_invitation.ignore": {
-			{Text: "If you were not expecting this email, you can ignore it."},
-		},
-		"email.tenant_admin_invitation.intro": {
-			{Text: "You have been invited to the admin console of "},
-			{Variable: "tenant_name"},
-			{Text: "."},
-		},
-		"email.tenant_admin_invitation.preview": {
-			{Text: "You have been invited to the admin console of "},
-			{Variable: "tenant_name"},
-			{Text: "."},
-		},
-		"email.tenant_admin_invitation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " admin invitation"},
-		},
+	"email.admin_console_email_change_confirmation.body_current_email": {
+		"ja":      "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your current address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",
 	},
-	"ko": {
-		"email.admin_console_email_change_confirmation.action": {
-			{Text: "이메일 주소 변경 확인하기"},
-		},
-		"email.admin_console_email_change_confirmation.body_current_email": {
-			{Text: "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.admin_console_email_change_confirmation.body_new_email": {
-			{Text: "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.admin_console_email_change_confirmation.current_email": {
-			{Text: "현재 이메일 주소: "},
-			{Variable: "current_email"},
-		},
-		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.admin_console_email_change_confirmation.heading": {
-			{Text: "관리자 콘솔 이메일 주소 변경 확인"},
-		},
-		"email.admin_console_email_change_confirmation.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.admin_console_email_change_confirmation.intro": {
-			{Text: "관리자 콘솔 계정의 이메일 주소 변경 요청을 접수했습니다."},
-		},
-		"email.admin_console_email_change_confirmation.new_email": {
-			{Text: "새 이메일 주소: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_change_confirmation.preview": {
-			{Text: "관리자 콘솔 이메일 주소 변경을 확인해 주세요."},
-		},
-		"email.admin_console_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 관리자 콘솔 이메일 주소 변경 확인"},
-		},
-		"email.admin_console_email_changed_notice.body": {
-			{Text: "관리자 콘솔 계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.admin_console_email_changed_notice.heading": {
-			{Text: "관리자 콘솔 이메일 주소가 변경되었습니다"},
-		},
-		"email.admin_console_email_changed_notice.new_email": {
-			{Text: "변경 후: "},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_changed_notice.preview": {
-			{Text: "관리자 콘솔 계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.admin_console_email_changed_notice.previous_email": {
-			{Text: "변경 전: "},
-			{Variable: "previous_email"},
-		},
-		"email.admin_console_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 관리자 콘솔 이메일 주소 변경 완료"},
-		},
-		"email.admin_console_email_changed_notice.warning": {
-			{Text: "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."},
-		},
-		"email.admin_console_password_reset.action": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.admin_console_password_reset.body": {
-			{Text: "아래 버튼을 열어 새 비밀번호를 설정해 주세요."},
-		},
-		"email.admin_console_password_reset.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.admin_console_password_reset.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.admin_console_password_reset.heading": {
-			{Text: "관리자 콘솔 비밀번호 재설정"},
-		},
-		"email.admin_console_password_reset.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.admin_console_password_reset.intro": {
-			{Text: "관리자 콘솔 계정의 비밀번호 재설정 요청을 접수했습니다."},
-		},
-		"email.admin_console_password_reset.preview": {
-			{Text: "새 관리자 콘솔 비밀번호를 설정해 주세요."},
-		},
-		"email.admin_console_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 관리자 콘솔 비밀번호 재설정"},
-		},
-		"email.layout.brand": {
-			{Text: "Publira"},
-		},
-		"email.layout.footer": {
-			{Text: "이 메일은 "},
-			{Variable: "brand"},
-			{Text: "에서 보냈습니다."},
-		},
-		"email.platform_console_email_change_confirmation.action": {
-			{Text: "이메일 주소 변경 확인하기"},
-		},
-		"email.platform_console_email_change_confirmation.body_current_email": {
-			{Text: "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.platform_console_email_change_confirmation.body_new_email": {
-			{Text: "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.platform_console_email_change_confirmation.current_email": {
-			{Text: "현재 이메일 주소: "},
-			{Variable: "current_email"},
-		},
-		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "플랫폼 콘솔 이메일 주소 변경 확인"},
-		},
-		"email.platform_console_email_change_confirmation.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "플랫폼 콘솔 계정의 이메일 주소 변경 요청을 접수했습니다."},
-		},
-		"email.platform_console_email_change_confirmation.new_email": {
-			{Text: "새 이메일 주소: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "플랫폼 콘솔 이메일 주소 변경을 확인해 주세요."},
-		},
-		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira 플랫폼 콘솔 이메일 주소 변경 확인"},
-		},
-		"email.platform_console_email_changed_notice.body": {
-			{Text: "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.platform_console_email_changed_notice.heading": {
-			{Text: "플랫폼 콘솔 이메일 주소가 변경되었습니다"},
-		},
-		"email.platform_console_email_changed_notice.new_email": {
-			{Text: "변경 후: "},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_changed_notice.preview": {
-			{Text: "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.platform_console_email_changed_notice.previous_email": {
-			{Text: "변경 전: "},
-			{Variable: "previous_email"},
-		},
-		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira 플랫폼 콘솔 이메일 주소 변경 완료"},
-		},
-		"email.platform_console_email_changed_notice.warning": {
-			{Text: "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."},
-		},
-		"email.platform_console_password_reset.action": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.platform_console_password_reset.body": {
-			{Text: "아래 버튼을 열어 새 비밀번호를 설정해 주세요."},
-		},
-		"email.platform_console_password_reset.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.platform_console_password_reset.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.platform_console_password_reset.heading": {
-			{Text: "플랫폼 콘솔 비밀번호 재설정"},
-		},
-		"email.platform_console_password_reset.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.platform_console_password_reset.intro": {
-			{Text: "플랫폼 콘솔 계정의 비밀번호 재설정 요청을 접수했습니다."},
-		},
-		"email.platform_console_password_reset.preview": {
-			{Text: "새 플랫폼 콘솔 비밀번호를 설정해 주세요."},
-		},
-		"email.platform_console_password_reset.subject": {
-			{Text: "Publira 플랫폼 콘솔 비밀번호 재설정"},
-		},
-		"email.reader_email_change_confirmation.action": {
-			{Text: "이메일 주소 변경 확인하기"},
-		},
-		"email.reader_email_change_confirmation.body_current_email": {
-			{Text: "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.reader_email_change_confirmation.body_new_email": {
-			{Text: "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요."},
-		},
-		"email.reader_email_change_confirmation.current_email": {
-			{Text: "현재 이메일 주소: "},
-			{Variable: "current_email"},
-		},
-		"email.reader_email_change_confirmation.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.reader_email_change_confirmation.heading": {
-			{Text: "이메일 주소 변경 확인"},
-		},
-		"email.reader_email_change_confirmation.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.reader_email_change_confirmation.intro": {
-			{Text: "이메일 주소 변경 요청을 접수했습니다."},
-		},
-		"email.reader_email_change_confirmation.new_email": {
-			{Text: "새 이메일 주소: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_change_confirmation.preview": {
-			{Text: "이메일 주소 변경을 확인해 주세요."},
-		},
-		"email.reader_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 이메일 주소 변경 확인"},
-		},
-		"email.reader_email_changed_notice.body": {
-			{Text: "계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.reader_email_changed_notice.heading": {
-			{Text: "이메일 주소가 변경되었습니다"},
-		},
-		"email.reader_email_changed_notice.new_email": {
-			{Text: "변경 후: "},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_changed_notice.preview": {
-			{Text: "계정의 이메일 주소가 변경되었습니다."},
-		},
-		"email.reader_email_changed_notice.previous_email": {
-			{Text: "변경 전: "},
-			{Variable: "previous_email"},
-		},
-		"email.reader_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 이메일 주소 변경 완료"},
-		},
-		"email.reader_email_changed_notice.warning": {
-			{Text: "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."},
-		},
-		"email.reader_email_verification.action": {
-			{Text: "이메일 주소 확인하기"},
-		},
-		"email.reader_email_verification.body": {
-			{Text: "아래 버튼을 열어 이메일 주소 확인을 완료해 주세요."},
-		},
-		"email.reader_email_verification.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.reader_email_verification.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.reader_email_verification.heading": {
-			{Text: "이메일 주소 확인"},
-		},
-		"email.reader_email_verification.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.reader_email_verification.intro": {
-			{Variable: "tenant_name"},
-			{Text: "에 가입해 주셔서 감사합니다."},
-		},
-		"email.reader_email_verification.preview": {
-			{Text: "이메일 주소 확인을 완료해 주세요."},
-		},
-		"email.reader_email_verification.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 이메일 주소 확인"},
-		},
-		"email.reader_password_changed_notice.action": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.reader_password_changed_notice.body": {
-			{Text: "계정의 비밀번호가 변경되었습니다."},
-		},
-		"email.reader_password_changed_notice.email": {
-			{Text: "이메일 주소: "},
-			{Variable: "email"},
-		},
-		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.reader_password_changed_notice.heading": {
-			{Text: "비밀번호가 변경되었습니다"},
-		},
-		"email.reader_password_changed_notice.preview": {
-			{Text: "계정의 비밀번호가 변경되었습니다."},
-		},
-		"email.reader_password_changed_notice.sessions": {
-			{Text: "다른 기기는 로그아웃되었으며, 다시 로그인하려면 새 비밀번호가 필요합니다."},
-		},
-		"email.reader_password_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 비밀번호 변경 완료"},
-		},
-		"email.reader_password_changed_notice.warning": {
-			{Text: "이 변경을 요청하지 않으셨다면 즉시 새 비밀번호를 설정해 주세요."},
-		},
-		"email.reader_password_reset.action": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.reader_password_reset.body": {
-			{Text: "아래 버튼을 열어 새 비밀번호를 설정해 주세요."},
-		},
-		"email.reader_password_reset.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.reader_password_reset.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.reader_password_reset.heading": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.reader_password_reset.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.reader_password_reset.intro": {
-			{Text: "비밀번호 재설정 요청을 접수했습니다."},
-		},
-		"email.reader_password_reset.preview": {
-			{Text: "새 비밀번호를 설정해 주세요."},
-		},
-		"email.reader_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 비밀번호 재설정"},
-		},
-		"email.reader_signup_attempt_notice.action_confirmed": {
-			{Text: "비밀번호 재설정"},
-		},
-		"email.reader_signup_attempt_notice.action_unconfirmed": {
-			{Text: "확인 메일 다시 보내기"},
-		},
-		"email.reader_signup_attempt_notice.body_confirmed": {
-			{Text: "이미 계정이 있으므로 두 번째 계정은 만들어지지 않았고, 기존 계정도 그대로입니다."},
-		},
-		"email.reader_signup_attempt_notice.body_unconfirmed": {
-			{Text: "이미 계정이 있으므로 두 번째 계정은 만들어지지 않았습니다. 그 계정은 이메일 주소가 아직 확인되지 않아 로그인할 수 없습니다."},
-		},
-		"email.reader_signup_attempt_notice.email": {
-			{Text: "이메일 주소: "},
-			{Variable: "email"},
-		},
-		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.reader_signup_attempt_notice.forgot_confirmed": {
-			{Text: "본인이 시도했고 비밀번호가 기억나지 않는다면 위 버튼으로 새 비밀번호를 설정해 주세요."},
-		},
-		"email.reader_signup_attempt_notice.forgot_unconfirmed": {
-			{Text: "본인이 시도했다면 위 버튼으로 확인 메일을 다시 받아 주세요."},
-		},
-		"email.reader_signup_attempt_notice.heading": {
-			{Text: "회원가입에 이 이메일 주소가 사용되었습니다"},
-		},
-		"email.reader_signup_attempt_notice.ignore": {
-			{Text: "본인이 아니라면 따로 하실 일은 없습니다. 비밀번호를 모르는 한 누구도 로그인할 수 없습니다."},
-		},
-		"email.reader_signup_attempt_notice.intro": {
-			{Variable: "tenant_name"},
-			{Text: "에서 이 이메일 주소로 계정을 만들려는 시도가 있었습니다."},
-		},
-		"email.reader_signup_attempt_notice.preview": {
-			{Text: "회원가입에 이 이메일 주소가 사용되었습니다."},
-		},
-		"email.reader_signup_attempt_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 회원가입 시도"},
-		},
-		"email.staff_contact_message_notice.body_heading": {
-			{Text: "본문"},
-		},
-		"email.staff_contact_message_notice.footnote": {
-			{Text: "답장은 위의 회신 주소로 사용 중인 메일 프로그램에서 직접 보내 주세요. 관리 콘솔에서는 답장할 수 없습니다."},
-		},
-		"email.staff_contact_message_notice.heading": {
-			{Text: "새 문의가 도착했습니다"},
-		},
-		"email.staff_contact_message_notice.intro": {
-			{Variable: "tenant_name"},
-			{Text: "의 문의 양식으로 독자가 메시지를 보냈습니다."},
-		},
-		"email.staff_contact_message_notice.preview": {
-			{Variable: "tenant_name"},
-			{Text: "에 독자의 메시지가 도착했습니다."},
-		},
-		"email.staff_contact_message_notice.received": {
-			{Text: "수신 일시: "},
-			{Variable: "received_at"},
-		},
-		"email.staff_contact_message_notice.reply_to": {
-			{Text: "회신 주소: "},
-			{Variable: "reply_to_email"},
-		},
-		"email.staff_contact_message_notice.sender": {
-			{Text: "로그인한 계정: "},
-			{Variable: "sender_name"},
-		},
-		"email.staff_contact_message_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 문의"},
-		},
-		"email.staff_contact_message_notice.subject_line": {
-			{Text: "제목: "},
-			{Variable: "subject"},
-		},
-		"email.tenant_admin_invitation.action": {
-			{Text: "초대 수락하기"},
-		},
-		"email.tenant_admin_invitation.body": {
-			{Variable: "tenant_name"},
-			{Text: "의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요."},
-		},
-		"email.tenant_admin_invitation.expires": {
-			{Text: "이 링크는 "},
-			{Variable: "expires_at"},
-			{Text: "에 만료됩니다."},
-		},
-		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
-		},
-		"email.tenant_admin_invitation.heading": {
-			{Text: "관리자 초대"},
-		},
-		"email.tenant_admin_invitation.ignore": {
-			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
-		},
-		"email.tenant_admin_invitation.intro": {
-			{Variable: "tenant_name"},
-			{Text: "의 관리자 콘솔에 초대되었습니다."},
-		},
-		"email.tenant_admin_invitation.preview": {
-			{Variable: "tenant_name"},
-			{Text: "의 관리자 콘솔에 초대되었습니다."},
-		},
-		"email.tenant_admin_invitation.subject": {
-			{Variable: "tenant_name"},
-			{Text: " 관리자 초대"},
-		},
+	"email.admin_console_email_change_confirmation.body_new_email": {
+		"ja":      "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your new address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
 	},
-	"zh-Hans": {
-		"email.admin_console_email_change_confirmation.action": {
-			{Text: "确认邮箱地址变更"},
-		},
-		"email.admin_console_email_change_confirmation.body_current_email": {
-			{Text: "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.admin_console_email_change_confirmation.body_new_email": {
-			{Text: "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.admin_console_email_change_confirmation.current_email": {
-			{Text: "当前邮箱地址："},
-			{Variable: "current_email"},
-		},
-		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.admin_console_email_change_confirmation.heading": {
-			{Text: "确认管理控制台邮箱地址变更"},
-		},
-		"email.admin_console_email_change_confirmation.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.admin_console_email_change_confirmation.intro": {
-			{Text: "我们收到了变更您管理控制台账户邮箱地址的请求。"},
-		},
-		"email.admin_console_email_change_confirmation.new_email": {
-			{Text: "新的邮箱地址："},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_change_confirmation.preview": {
-			{Text: "确认管理控制台邮箱地址变更。"},
-		},
-		"email.admin_console_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理控制台邮箱地址变更确认"},
-		},
-		"email.admin_console_email_changed_notice.body": {
-			{Text: "您管理控制台账户的邮箱地址已变更。"},
-		},
-		"email.admin_console_email_changed_notice.heading": {
-			{Text: "管理控制台邮箱地址已变更"},
-		},
-		"email.admin_console_email_changed_notice.new_email": {
-			{Text: "变更后："},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_changed_notice.preview": {
-			{Text: "您管理控制台账户的邮箱地址已变更。"},
-		},
-		"email.admin_console_email_changed_notice.previous_email": {
-			{Text: "变更前："},
-			{Variable: "previous_email"},
-		},
-		"email.admin_console_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理控制台邮箱地址已变更"},
-		},
-		"email.admin_console_email_changed_notice.warning": {
-			{Text: "如果这不是您本人的操作，请立即重设密码。"},
-		},
-		"email.admin_console_password_reset.action": {
-			{Text: "重设密码"},
-		},
-		"email.admin_console_password_reset.body": {
-			{Text: "请打开下方按钮设置新密码。"},
-		},
-		"email.admin_console_password_reset.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.admin_console_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.admin_console_password_reset.heading": {
-			{Text: "重设管理控制台密码"},
-		},
-		"email.admin_console_password_reset.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.admin_console_password_reset.intro": {
-			{Text: "我们收到了重设您管理控制台账户密码的请求。"},
-		},
-		"email.admin_console_password_reset.preview": {
-			{Text: "设置新的管理控制台密码。"},
-		},
-		"email.admin_console_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理控制台密码重设"},
-		},
-		"email.layout.brand": {
-			{Text: "Publira"},
-		},
-		"email.layout.footer": {
-			{Text: "这封邮件由"},
-			{Variable: "brand"},
-			{Text: "发送。"},
-		},
-		"email.platform_console_email_change_confirmation.action": {
-			{Text: "确认邮箱地址变更"},
-		},
-		"email.platform_console_email_change_confirmation.body_current_email": {
-			{Text: "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.platform_console_email_change_confirmation.body_new_email": {
-			{Text: "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.platform_console_email_change_confirmation.current_email": {
-			{Text: "当前邮箱地址："},
-			{Variable: "current_email"},
-		},
-		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "确认平台控制台邮箱地址变更"},
-		},
-		"email.platform_console_email_change_confirmation.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "我们收到了变更您平台控制台账户邮箱地址的请求。"},
-		},
-		"email.platform_console_email_change_confirmation.new_email": {
-			{Text: "新的邮箱地址："},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "确认平台控制台邮箱地址变更。"},
-		},
-		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira平台控制台邮箱地址变更确认"},
-		},
-		"email.platform_console_email_changed_notice.body": {
-			{Text: "您平台控制台账户的邮箱地址已变更。"},
-		},
-		"email.platform_console_email_changed_notice.heading": {
-			{Text: "平台控制台邮箱地址已变更"},
-		},
-		"email.platform_console_email_changed_notice.new_email": {
-			{Text: "变更后："},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_changed_notice.preview": {
-			{Text: "您平台控制台账户的邮箱地址已变更。"},
-		},
-		"email.platform_console_email_changed_notice.previous_email": {
-			{Text: "变更前："},
-			{Variable: "previous_email"},
-		},
-		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira平台控制台邮箱地址已变更"},
-		},
-		"email.platform_console_email_changed_notice.warning": {
-			{Text: "如果这不是您本人的操作，请立即重设密码。"},
-		},
-		"email.platform_console_password_reset.action": {
-			{Text: "重设密码"},
-		},
-		"email.platform_console_password_reset.body": {
-			{Text: "请打开下方按钮设置新密码。"},
-		},
-		"email.platform_console_password_reset.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.platform_console_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.platform_console_password_reset.heading": {
-			{Text: "重设平台控制台密码"},
-		},
-		"email.platform_console_password_reset.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.platform_console_password_reset.intro": {
-			{Text: "我们收到了重设您平台控制台账户密码的请求。"},
-		},
-		"email.platform_console_password_reset.preview": {
-			{Text: "设置新的平台控制台密码。"},
-		},
-		"email.platform_console_password_reset.subject": {
-			{Text: "Publira平台控制台密码重设"},
-		},
-		"email.reader_email_change_confirmation.action": {
-			{Text: "确认邮箱地址变更"},
-		},
-		"email.reader_email_change_confirmation.body_current_email": {
-			{Text: "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.reader_email_change_confirmation.body_new_email": {
-			{Text: "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。"},
-		},
-		"email.reader_email_change_confirmation.current_email": {
-			{Text: "当前邮箱地址："},
-			{Variable: "current_email"},
-		},
-		"email.reader_email_change_confirmation.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.reader_email_change_confirmation.heading": {
-			{Text: "确认邮箱地址变更"},
-		},
-		"email.reader_email_change_confirmation.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.reader_email_change_confirmation.intro": {
-			{Text: "我们收到了变更您邮箱地址的请求。"},
-		},
-		"email.reader_email_change_confirmation.new_email": {
-			{Text: "新的邮箱地址："},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_change_confirmation.preview": {
-			{Text: "确认邮箱地址变更。"},
-		},
-		"email.reader_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "邮箱地址变更确认"},
-		},
-		"email.reader_email_changed_notice.body": {
-			{Text: "您账户的邮箱地址已变更。"},
-		},
-		"email.reader_email_changed_notice.heading": {
-			{Text: "邮箱地址已变更"},
-		},
-		"email.reader_email_changed_notice.new_email": {
-			{Text: "变更后："},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_changed_notice.preview": {
-			{Text: "您账户的邮箱地址已变更。"},
-		},
-		"email.reader_email_changed_notice.previous_email": {
-			{Text: "变更前："},
-			{Variable: "previous_email"},
-		},
-		"email.reader_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "邮箱地址已变更"},
-		},
-		"email.reader_email_changed_notice.warning": {
-			{Text: "如果这不是您本人的操作，请立即重设密码。"},
-		},
-		"email.reader_email_verification.action": {
-			{Text: "验证邮箱地址"},
-		},
-		"email.reader_email_verification.body": {
-			{Text: "请打开下方按钮完成邮箱地址验证。"},
-		},
-		"email.reader_email_verification.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_email_verification.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.reader_email_verification.heading": {
-			{Text: "验证您的邮箱地址"},
-		},
-		"email.reader_email_verification.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.reader_email_verification.intro": {
-			{Text: "感谢您注册"},
-			{Variable: "tenant_name"},
-			{Text: "。"},
-		},
-		"email.reader_email_verification.preview": {
-			{Text: "完成邮箱地址验证。"},
-		},
-		"email.reader_email_verification.subject": {
-			{Variable: "tenant_name"},
-			{Text: "邮箱地址验证"},
-		},
-		"email.reader_password_changed_notice.action": {
-			{Text: "重设密码"},
-		},
-		"email.reader_password_changed_notice.body": {
-			{Text: "您账户的密码已变更。"},
-		},
-		"email.reader_password_changed_notice.email": {
-			{Text: "邮箱地址："},
-			{Variable: "email"},
-		},
-		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.reader_password_changed_notice.heading": {
-			{Text: "密码已变更"},
-		},
-		"email.reader_password_changed_notice.preview": {
-			{Text: "您账户的密码已变更。"},
-		},
-		"email.reader_password_changed_notice.sessions": {
-			{Text: "您其他设备上的登录已退出，需要使用新密码重新登录。"},
-		},
-		"email.reader_password_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "密码已变更"},
-		},
-		"email.reader_password_changed_notice.warning": {
-			{Text: "如果这不是您本人的操作，请立即设置新密码。"},
-		},
-		"email.reader_password_reset.action": {
-			{Text: "重设密码"},
-		},
-		"email.reader_password_reset.body": {
-			{Text: "请打开下方按钮设置新密码。"},
-		},
-		"email.reader_password_reset.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_password_reset.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.reader_password_reset.heading": {
-			{Text: "重设密码"},
-		},
-		"email.reader_password_reset.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.reader_password_reset.intro": {
-			{Text: "我们收到了重设您密码的请求。"},
-		},
-		"email.reader_password_reset.preview": {
-			{Text: "设置新密码。"},
-		},
-		"email.reader_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "密码重设"},
-		},
-		"email.reader_signup_attempt_notice.action_confirmed": {
-			{Text: "重设密码"},
-		},
-		"email.reader_signup_attempt_notice.action_unconfirmed": {
-			{Text: "重新发送确认邮件"},
-		},
-		"email.reader_signup_attempt_notice.body_confirmed": {
-			{Text: "您的账户已存在，因此没有创建第二个账户，您的账户也没有任何变化。"},
-		},
-		"email.reader_signup_attempt_notice.body_unconfirmed": {
-			{Text: "您的账户已存在，因此没有创建第二个账户。该账户的邮箱地址尚未确认，所以无法登录。"},
-		},
-		"email.reader_signup_attempt_notice.email": {
-			{Text: "邮箱地址："},
-			{Variable: "email"},
-		},
-		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_confirmed": {
-			{Text: "如果这是您本人的操作，而您忘记了密码，请通过上方按钮设置新密码。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_unconfirmed": {
-			{Text: "如果这是您本人的操作，请通过上方按钮重新发送确认邮件。"},
-		},
-		"email.reader_signup_attempt_notice.heading": {
-			{Text: "有人使用您的邮箱地址注册"},
-		},
-		"email.reader_signup_attempt_notice.ignore": {
-			{Text: "如果这不是您本人的操作，则无需处理。没有您的密码，任何人都无法登录。"},
-		},
-		"email.reader_signup_attempt_notice.intro": {
-			{Text: "有人尝试使用这个邮箱地址在"},
-			{Variable: "tenant_name"},
-			{Text: "创建账户。"},
-		},
-		"email.reader_signup_attempt_notice.preview": {
-			{Text: "有人使用您的邮箱地址注册。"},
-		},
-		"email.reader_signup_attempt_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "账户注册尝试"},
-		},
-		"email.staff_contact_message_notice.body_heading": {
-			{Text: "正文"},
-		},
-		"email.staff_contact_message_notice.footnote": {
-			{Text: "请从您自己的邮件客户端向上述回复地址回信。管理控制台无法直接回复。"},
-		},
-		"email.staff_contact_message_notice.heading": {
-			{Text: "收到新的咨询"},
-		},
-		"email.staff_contact_message_notice.intro": {
-			{Text: "有读者通过"},
-			{Variable: "tenant_name"},
-			{Text: "的咨询表单发送了消息。"},
-		},
-		"email.staff_contact_message_notice.preview": {
-			{Variable: "tenant_name"},
-			{Text: "收到了读者的消息。"},
-		},
-		"email.staff_contact_message_notice.received": {
-			{Text: "接收时间："},
-			{Variable: "received_at"},
-		},
-		"email.staff_contact_message_notice.reply_to": {
-			{Text: "回复地址："},
-			{Variable: "reply_to_email"},
-		},
-		"email.staff_contact_message_notice.sender": {
-			{Text: "登录账号："},
-			{Variable: "sender_name"},
-		},
-		"email.staff_contact_message_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "咨询"},
-		},
-		"email.staff_contact_message_notice.subject_line": {
-			{Text: "主题："},
-			{Variable: "subject"},
-		},
-		"email.tenant_admin_invitation.action": {
-			{Text: "接受邀请"},
-		},
-		"email.tenant_admin_invitation.body": {
-			{Text: "您被邀请成为"},
-			{Variable: "tenant_name"},
-			{Text: "的租户管理员。请打开下方按钮接受邀请。"},
-		},
-		"email.tenant_admin_invitation.expires": {
-			{Text: "此链接将于"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。"},
-		},
-		"email.tenant_admin_invitation.heading": {
-			{Text: "管理员邀请"},
-		},
-		"email.tenant_admin_invitation.ignore": {
-			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
-		},
-		"email.tenant_admin_invitation.intro": {
-			{Text: "您被邀请加入"},
-			{Variable: "tenant_name"},
-			{Text: "的管理控制台。"},
-		},
-		"email.tenant_admin_invitation.preview": {
-			{Text: "您被邀请加入"},
-			{Variable: "tenant_name"},
-			{Text: "的管理控制台。"},
-		},
-		"email.tenant_admin_invitation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理员邀请"},
-		},
+	"email.admin_console_email_change_confirmation.current_email": {
+		"ja":      "現在のメールアドレス: {$current_email}",
+		"en":      "Current email address: {$current_email}",
+		"ko":      "현재 이메일 주소: {$current_email}",
+		"zh-Hans": "当前邮箱地址：{$current_email}",
+		"zh-Hant": "目前的電子郵件地址：{$current_email}",
 	},
-	"zh-Hant": {
-		"email.admin_console_email_change_confirmation.action": {
-			{Text: "確認電子郵件地址變更"},
-		},
-		"email.admin_console_email_change_confirmation.body_current_email": {
-			{Text: "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.admin_console_email_change_confirmation.body_new_email": {
-			{Text: "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.admin_console_email_change_confirmation.current_email": {
-			{Text: "目前的電子郵件地址："},
-			{Variable: "current_email"},
-		},
-		"email.admin_console_email_change_confirmation.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.admin_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.admin_console_email_change_confirmation.heading": {
-			{Text: "確認管理主控台的電子郵件地址變更"},
-		},
-		"email.admin_console_email_change_confirmation.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.admin_console_email_change_confirmation.intro": {
-			{Text: "我們收到了變更您管理主控台帳戶電子郵件地址的請求。"},
-		},
-		"email.admin_console_email_change_confirmation.new_email": {
-			{Text: "新的電子郵件地址："},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_change_confirmation.preview": {
-			{Text: "確認管理主控台的電子郵件地址變更。"},
-		},
-		"email.admin_console_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理主控台電子郵件地址變更確認"},
-		},
-		"email.admin_console_email_changed_notice.body": {
-			{Text: "您管理主控台帳戶的電子郵件地址已變更。"},
-		},
-		"email.admin_console_email_changed_notice.heading": {
-			{Text: "管理主控台的電子郵件地址已變更"},
-		},
-		"email.admin_console_email_changed_notice.new_email": {
-			{Text: "變更後："},
-			{Variable: "new_email"},
-		},
-		"email.admin_console_email_changed_notice.preview": {
-			{Text: "您管理主控台帳戶的電子郵件地址已變更。"},
-		},
-		"email.admin_console_email_changed_notice.previous_email": {
-			{Text: "變更前："},
-			{Variable: "previous_email"},
-		},
-		"email.admin_console_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理主控台電子郵件地址已變更"},
-		},
-		"email.admin_console_email_changed_notice.warning": {
-			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
-		},
-		"email.admin_console_password_reset.action": {
-			{Text: "重設密碼"},
-		},
-		"email.admin_console_password_reset.body": {
-			{Text: "請開啟下方按鈕設定新密碼。"},
-		},
-		"email.admin_console_password_reset.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.admin_console_password_reset.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.admin_console_password_reset.heading": {
-			{Text: "重設管理主控台的密碼"},
-		},
-		"email.admin_console_password_reset.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.admin_console_password_reset.intro": {
-			{Text: "我們收到了重設您管理主控台帳戶密碼的請求。"},
-		},
-		"email.admin_console_password_reset.preview": {
-			{Text: "設定新的管理主控台密碼。"},
-		},
-		"email.admin_console_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理主控台密碼重設"},
-		},
-		"email.layout.brand": {
-			{Text: "Publira"},
-		},
-		"email.layout.footer": {
-			{Text: "這封郵件由"},
-			{Variable: "brand"},
-			{Text: "寄出。"},
-		},
-		"email.platform_console_email_change_confirmation.action": {
-			{Text: "確認電子郵件地址變更"},
-		},
-		"email.platform_console_email_change_confirmation.body_current_email": {
-			{Text: "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.platform_console_email_change_confirmation.body_new_email": {
-			{Text: "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.platform_console_email_change_confirmation.current_email": {
-			{Text: "目前的電子郵件地址："},
-			{Variable: "current_email"},
-		},
-		"email.platform_console_email_change_confirmation.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.platform_console_email_change_confirmation.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "確認平台主控台的電子郵件地址變更"},
-		},
-		"email.platform_console_email_change_confirmation.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "我們收到了變更您平台主控台帳戶電子郵件地址的請求。"},
-		},
-		"email.platform_console_email_change_confirmation.new_email": {
-			{Text: "新的電子郵件地址："},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "確認平台主控台的電子郵件地址變更。"},
-		},
-		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira平台主控台電子郵件地址變更確認"},
-		},
-		"email.platform_console_email_changed_notice.body": {
-			{Text: "您平台主控台帳戶的電子郵件地址已變更。"},
-		},
-		"email.platform_console_email_changed_notice.heading": {
-			{Text: "平台主控台的電子郵件地址已變更"},
-		},
-		"email.platform_console_email_changed_notice.new_email": {
-			{Text: "變更後："},
-			{Variable: "new_email"},
-		},
-		"email.platform_console_email_changed_notice.preview": {
-			{Text: "您平台主控台帳戶的電子郵件地址已變更。"},
-		},
-		"email.platform_console_email_changed_notice.previous_email": {
-			{Text: "變更前："},
-			{Variable: "previous_email"},
-		},
-		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira平台主控台電子郵件地址已變更"},
-		},
-		"email.platform_console_email_changed_notice.warning": {
-			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
-		},
-		"email.platform_console_password_reset.action": {
-			{Text: "重設密碼"},
-		},
-		"email.platform_console_password_reset.body": {
-			{Text: "請開啟下方按鈕設定新密碼。"},
-		},
-		"email.platform_console_password_reset.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.platform_console_password_reset.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.platform_console_password_reset.heading": {
-			{Text: "重設平台主控台的密碼"},
-		},
-		"email.platform_console_password_reset.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.platform_console_password_reset.intro": {
-			{Text: "我們收到了重設您平台主控台帳戶密碼的請求。"},
-		},
-		"email.platform_console_password_reset.preview": {
-			{Text: "設定新的平台主控台密碼。"},
-		},
-		"email.platform_console_password_reset.subject": {
-			{Text: "Publira平台主控台密碼重設"},
-		},
-		"email.reader_email_change_confirmation.action": {
-			{Text: "確認電子郵件地址變更"},
-		},
-		"email.reader_email_change_confirmation.body_current_email": {
-			{Text: "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.reader_email_change_confirmation.body_new_email": {
-			{Text: "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。"},
-		},
-		"email.reader_email_change_confirmation.current_email": {
-			{Text: "目前的電子郵件地址："},
-			{Variable: "current_email"},
-		},
-		"email.reader_email_change_confirmation.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_email_change_confirmation.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.reader_email_change_confirmation.heading": {
-			{Text: "確認電子郵件地址變更"},
-		},
-		"email.reader_email_change_confirmation.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.reader_email_change_confirmation.intro": {
-			{Text: "我們收到了變更您電子郵件地址的請求。"},
-		},
-		"email.reader_email_change_confirmation.new_email": {
-			{Text: "新的電子郵件地址："},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_change_confirmation.preview": {
-			{Text: "確認電子郵件地址變更。"},
-		},
-		"email.reader_email_change_confirmation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "電子郵件地址變更確認"},
-		},
-		"email.reader_email_changed_notice.body": {
-			{Text: "您帳戶的電子郵件地址已變更。"},
-		},
-		"email.reader_email_changed_notice.heading": {
-			{Text: "電子郵件地址已變更"},
-		},
-		"email.reader_email_changed_notice.new_email": {
-			{Text: "變更後："},
-			{Variable: "new_email"},
-		},
-		"email.reader_email_changed_notice.preview": {
-			{Text: "您帳戶的電子郵件地址已變更。"},
-		},
-		"email.reader_email_changed_notice.previous_email": {
-			{Text: "變更前："},
-			{Variable: "previous_email"},
-		},
-		"email.reader_email_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "電子郵件地址已變更"},
-		},
-		"email.reader_email_changed_notice.warning": {
-			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
-		},
-		"email.reader_email_verification.action": {
-			{Text: "驗證電子郵件地址"},
-		},
-		"email.reader_email_verification.body": {
-			{Text: "請開啟下方按鈕完成電子郵件地址驗證。"},
-		},
-		"email.reader_email_verification.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_email_verification.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.reader_email_verification.heading": {
-			{Text: "驗證您的電子郵件地址"},
-		},
-		"email.reader_email_verification.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.reader_email_verification.intro": {
-			{Text: "感謝您註冊"},
-			{Variable: "tenant_name"},
-			{Text: "。"},
-		},
-		"email.reader_email_verification.preview": {
-			{Text: "完成電子郵件地址驗證。"},
-		},
-		"email.reader_email_verification.subject": {
-			{Variable: "tenant_name"},
-			{Text: "電子郵件地址驗證"},
-		},
-		"email.reader_password_changed_notice.action": {
-			{Text: "重設密碼"},
-		},
-		"email.reader_password_changed_notice.body": {
-			{Text: "您帳戶的密碼已變更。"},
-		},
-		"email.reader_password_changed_notice.email": {
-			{Text: "電子郵件地址："},
-			{Variable: "email"},
-		},
-		"email.reader_password_changed_notice.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.reader_password_changed_notice.heading": {
-			{Text: "密碼已變更"},
-		},
-		"email.reader_password_changed_notice.preview": {
-			{Text: "您帳戶的密碼已變更。"},
-		},
-		"email.reader_password_changed_notice.sessions": {
-			{Text: "您其他裝置上的登入已登出，需要使用新密碼重新登入。"},
-		},
-		"email.reader_password_changed_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "密碼已變更"},
-		},
-		"email.reader_password_changed_notice.warning": {
-			{Text: "如果這不是您本人的操作，請立即設定新密碼。"},
-		},
-		"email.reader_password_reset.action": {
-			{Text: "重設密碼"},
-		},
-		"email.reader_password_reset.body": {
-			{Text: "請開啟下方按鈕設定新密碼。"},
-		},
-		"email.reader_password_reset.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.reader_password_reset.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.reader_password_reset.heading": {
-			{Text: "重設密碼"},
-		},
-		"email.reader_password_reset.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.reader_password_reset.intro": {
-			{Text: "我們收到了重設您密碼的請求。"},
-		},
-		"email.reader_password_reset.preview": {
-			{Text: "設定新密碼。"},
-		},
-		"email.reader_password_reset.subject": {
-			{Variable: "tenant_name"},
-			{Text: "密碼重設"},
-		},
-		"email.reader_signup_attempt_notice.action_confirmed": {
-			{Text: "重設密碼"},
-		},
-		"email.reader_signup_attempt_notice.action_unconfirmed": {
-			{Text: "重新寄送確認郵件"},
-		},
-		"email.reader_signup_attempt_notice.body_confirmed": {
-			{Text: "您的帳戶已存在，因此沒有建立第二個帳戶，您的帳戶也沒有任何變動。"},
-		},
-		"email.reader_signup_attempt_notice.body_unconfirmed": {
-			{Text: "您的帳戶已存在，因此沒有建立第二個帳戶。該帳戶的電子郵件地址尚未確認，所以無法登入。"},
-		},
-		"email.reader_signup_attempt_notice.email": {
-			{Text: "電子郵件地址："},
-			{Variable: "email"},
-		},
-		"email.reader_signup_attempt_notice.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_confirmed": {
-			{Text: "如果這是您本人的操作，而您忘了密碼，請透過上方按鈕設定新密碼。"},
-		},
-		"email.reader_signup_attempt_notice.forgot_unconfirmed": {
-			{Text: "如果這是您本人的操作，請透過上方按鈕重新寄送確認郵件。"},
-		},
-		"email.reader_signup_attempt_notice.heading": {
-			{Text: "有人使用您的電子郵件地址註冊"},
-		},
-		"email.reader_signup_attempt_notice.ignore": {
-			{Text: "如果這不是您本人的操作，則無需處理。沒有您的密碼，任何人都無法登入。"},
-		},
-		"email.reader_signup_attempt_notice.intro": {
-			{Text: "有人嘗試使用這個電子郵件地址在"},
-			{Variable: "tenant_name"},
-			{Text: "建立帳戶。"},
-		},
-		"email.reader_signup_attempt_notice.preview": {
-			{Text: "有人使用您的電子郵件地址註冊。"},
-		},
-		"email.reader_signup_attempt_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "帳戶註冊嘗試"},
-		},
-		"email.staff_contact_message_notice.body_heading": {
-			{Text: "內文"},
-		},
-		"email.staff_contact_message_notice.footnote": {
-			{Text: "請從您自己的郵件軟體向上述回覆地址回信。管理主控台無法直接回覆。"},
-		},
-		"email.staff_contact_message_notice.heading": {
-			{Text: "收到新的諮詢"},
-		},
-		"email.staff_contact_message_notice.intro": {
-			{Text: "有讀者透過"},
-			{Variable: "tenant_name"},
-			{Text: "的諮詢表單傳送了訊息。"},
-		},
-		"email.staff_contact_message_notice.preview": {
-			{Variable: "tenant_name"},
-			{Text: "收到了讀者的訊息。"},
-		},
-		"email.staff_contact_message_notice.received": {
-			{Text: "接收時間："},
-			{Variable: "received_at"},
-		},
-		"email.staff_contact_message_notice.reply_to": {
-			{Text: "回覆地址："},
-			{Variable: "reply_to_email"},
-		},
-		"email.staff_contact_message_notice.sender": {
-			{Text: "登入帳號："},
-			{Variable: "sender_name"},
-		},
-		"email.staff_contact_message_notice.subject": {
-			{Variable: "tenant_name"},
-			{Text: "諮詢"},
-		},
-		"email.staff_contact_message_notice.subject_line": {
-			{Text: "主旨："},
-			{Variable: "subject"},
-		},
-		"email.tenant_admin_invitation.action": {
-			{Text: "接受邀請"},
-		},
-		"email.tenant_admin_invitation.body": {
-			{Text: "您受邀成為"},
-			{Variable: "tenant_name"},
-			{Text: "的租戶管理員。請開啟下方按鈕接受邀請。"},
-		},
-		"email.tenant_admin_invitation.expires": {
-			{Text: "此連結將於"},
-			{Variable: "expires_at"},
-			{Text: "失效。"},
-		},
-		"email.tenant_admin_invitation.fallback_link": {
-			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
-		},
-		"email.tenant_admin_invitation.heading": {
-			{Text: "管理員邀請"},
-		},
-		"email.tenant_admin_invitation.ignore": {
-			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
-		},
-		"email.tenant_admin_invitation.intro": {
-			{Text: "您受邀加入"},
-			{Variable: "tenant_name"},
-			{Text: "的管理主控台。"},
-		},
-		"email.tenant_admin_invitation.preview": {
-			{Text: "您受邀加入"},
-			{Variable: "tenant_name"},
-			{Text: "的管理主控台。"},
-		},
-		"email.tenant_admin_invitation.subject": {
-			{Variable: "tenant_name"},
-			{Text: "管理員邀請"},
-		},
+	"email.admin_console_email_change_confirmation.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.admin_console_email_change_confirmation.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.admin_console_email_change_confirmation.heading": {
+		"ja":      "管理画面メールアドレス変更の確認",
+		"en":      "Confirm your admin console email address change",
+		"ko":      "관리자 콘솔 이메일 주소 변경 확인",
+		"zh-Hans": "确认管理控制台邮箱地址变更",
+		"zh-Hant": "確認管理主控台的電子郵件地址變更",
+	},
+	"email.admin_console_email_change_confirmation.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.admin_console_email_change_confirmation.intro": {
+		"ja":      "管理画面アカウントのメールアドレス変更リクエストを受け付けました。",
+		"en":      "We received a request to change the email address on your admin console account.",
+		"ko":      "관리자 콘솔 계정의 이메일 주소 변경 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了变更您管理控制台账户邮箱地址的请求。",
+		"zh-Hant": "我們收到了變更您管理主控台帳戶電子郵件地址的請求。",
+	},
+	"email.admin_console_email_change_confirmation.new_email": {
+		"ja":      "新しいメールアドレス: {$new_email}",
+		"en":      "New email address: {$new_email}",
+		"ko":      "새 이메일 주소: {$new_email}",
+		"zh-Hans": "新的邮箱地址：{$new_email}",
+		"zh-Hant": "新的電子郵件地址：{$new_email}",
+	},
+	"email.admin_console_email_change_confirmation.preview": {
+		"ja":      "管理画面のメールアドレス変更の確認を完了してください。",
+		"en":      "Confirm your admin console email address change.",
+		"ko":      "관리자 콘솔 이메일 주소 변경을 확인해 주세요.",
+		"zh-Hans": "确认管理控制台邮箱地址变更。",
+		"zh-Hant": "確認管理主控台的電子郵件地址變更。",
+	},
+	"email.admin_console_email_change_confirmation.subject": {
+		"ja":      "{$tenant_name}管理画面メールアドレス変更確認",
+		"en":      "{$tenant_name} admin console email address change confirmation",
+		"ko":      "{$tenant_name} 관리자 콘솔 이메일 주소 변경 확인",
+		"zh-Hans": "{$tenant_name}管理控制台邮箱地址变更确认",
+		"zh-Hant": "{$tenant_name}管理主控台電子郵件地址變更確認",
+	},
+	"email.admin_console_email_changed_notice.body": {
+		"ja":      "管理画面アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your admin console account was changed.",
+		"ko":      "관리자 콘솔 계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您管理控制台账户的邮箱地址已变更。",
+		"zh-Hant": "您管理主控台帳戶的電子郵件地址已變更。",
+	},
+	"email.admin_console_email_changed_notice.heading": {
+		"ja":      "管理画面メールアドレス変更の完了",
+		"en":      "Your admin console email address was changed",
+		"ko":      "관리자 콘솔 이메일 주소가 변경되었습니다",
+		"zh-Hans": "管理控制台邮箱地址已变更",
+		"zh-Hant": "管理主控台的電子郵件地址已變更",
+	},
+	"email.admin_console_email_changed_notice.new_email": {
+		"ja":      "変更後: {$new_email}",
+		"en":      "After: {$new_email}",
+		"ko":      "변경 후: {$new_email}",
+		"zh-Hans": "变更后：{$new_email}",
+		"zh-Hant": "變更後：{$new_email}",
+	},
+	"email.admin_console_email_changed_notice.preview": {
+		"ja":      "管理画面アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your admin console account was changed.",
+		"ko":      "관리자 콘솔 계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您管理控制台账户的邮箱地址已变更。",
+		"zh-Hant": "您管理主控台帳戶的電子郵件地址已變更。",
+	},
+	"email.admin_console_email_changed_notice.previous_email": {
+		"ja":      "変更前: {$previous_email}",
+		"en":      "Before: {$previous_email}",
+		"ko":      "변경 전: {$previous_email}",
+		"zh-Hans": "变更前：{$previous_email}",
+		"zh-Hant": "變更前：{$previous_email}",
+	},
+	"email.admin_console_email_changed_notice.subject": {
+		"ja":      "{$tenant_name}管理画面メールアドレス変更完了",
+		"en":      "{$tenant_name} admin console email address changed",
+		"ko":      "{$tenant_name} 관리자 콘솔 이메일 주소 변경 완료",
+		"zh-Hans": "{$tenant_name}管理控制台邮箱地址已变更",
+		"zh-Hant": "{$tenant_name}管理主控台電子郵件地址已變更",
+	},
+	"email.admin_console_email_changed_notice.warning": {
+		"ja":      "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。",
+		"en":      "If you did not make this change, reset your password right away.",
+		"ko":      "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요.",
+		"zh-Hans": "如果这不是您本人的操作，请立即重设密码。",
+		"zh-Hant": "如果這不是您本人的操作，請立即重設密碼。",
+	},
+	"email.admin_console_password_reset.action": {
+		"ja":      "パスワードを再設定する",
+		"en":      "Reset password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.admin_console_password_reset.body": {
+		"ja":      "以下のボタンから新しいパスワードを設定してください。",
+		"en":      "Open the button below to set a new password.",
+		"ko":      "아래 버튼을 열어 새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "请打开下方按钮设置新密码。",
+		"zh-Hant": "請開啟下方按鈕設定新密碼。",
+	},
+	"email.admin_console_password_reset.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.admin_console_password_reset.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.admin_console_password_reset.heading": {
+		"ja":      "管理画面パスワードの再設定",
+		"en":      "Reset your admin console password",
+		"ko":      "관리자 콘솔 비밀번호 재설정",
+		"zh-Hans": "重设管理控制台密码",
+		"zh-Hant": "重設管理主控台的密碼",
+	},
+	"email.admin_console_password_reset.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.admin_console_password_reset.intro": {
+		"ja":      "管理画面アカウントのパスワード再設定リクエストを受け付けました。",
+		"en":      "We received a request to reset the password for your admin console account.",
+		"ko":      "관리자 콘솔 계정의 비밀번호 재설정 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了重设您管理控制台账户密码的请求。",
+		"zh-Hant": "我們收到了重設您管理主控台帳戶密碼的請求。",
+	},
+	"email.admin_console_password_reset.preview": {
+		"ja":      "管理画面の新しいパスワードを設定してください。",
+		"en":      "Set a new admin console password.",
+		"ko":      "새 관리자 콘솔 비밀번호를 설정해 주세요.",
+		"zh-Hans": "设置新的管理控制台密码。",
+		"zh-Hant": "設定新的管理主控台密碼。",
+	},
+	"email.admin_console_password_reset.subject": {
+		"ja":      "{$tenant_name}管理画面パスワード再設定",
+		"en":      "{$tenant_name} admin console password reset",
+		"ko":      "{$tenant_name} 관리자 콘솔 비밀번호 재설정",
+		"zh-Hans": "{$tenant_name}管理控制台密码重设",
+		"zh-Hant": "{$tenant_name}管理主控台密碼重設",
+	},
+	"email.layout.brand": {
+		"ja":      "Publira",
+		"en":      "Publira",
+		"ko":      "Publira",
+		"zh-Hans": "Publira",
+		"zh-Hant": "Publira",
+	},
+	"email.layout.footer": {
+		"ja":      "このメールは{$brand}から送信されています。",
+		"en":      "This email was sent by {$brand}.",
+		"ko":      "이 메일은 {$brand}에서 보냈습니다.",
+		"zh-Hans": "这封邮件由{$brand}发送。",
+		"zh-Hant": "這封郵件由{$brand}寄出。",
+	},
+	"email.platform_console_email_change_confirmation.action": {
+		"ja":      "メールアドレス変更を確認する",
+		"en":      "Confirm email address change",
+		"ko":      "이메일 주소 변경 확인하기",
+		"zh-Hans": "确认邮箱地址变更",
+		"zh-Hant": "確認電子郵件地址變更",
+	},
+	"email.platform_console_email_change_confirmation.body_current_email": {
+		"ja":      "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your current address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",
+	},
+	"email.platform_console_email_change_confirmation.body_new_email": {
+		"ja":      "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your new address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
+	},
+	"email.platform_console_email_change_confirmation.current_email": {
+		"ja":      "現在のメールアドレス: {$current_email}",
+		"en":      "Current email address: {$current_email}",
+		"ko":      "현재 이메일 주소: {$current_email}",
+		"zh-Hans": "当前邮箱地址：{$current_email}",
+		"zh-Hant": "目前的電子郵件地址：{$current_email}",
+	},
+	"email.platform_console_email_change_confirmation.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.platform_console_email_change_confirmation.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.platform_console_email_change_confirmation.heading": {
+		"ja":      "プラットフォーム管理画面メールアドレス変更の確認",
+		"en":      "Confirm your Platform Console email address change",
+		"ko":      "플랫폼 콘솔 이메일 주소 변경 확인",
+		"zh-Hans": "确认平台控制台邮箱地址变更",
+		"zh-Hant": "確認平台主控台的電子郵件地址變更",
+	},
+	"email.platform_console_email_change_confirmation.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.platform_console_email_change_confirmation.intro": {
+		"ja":      "プラットフォーム管理画面アカウントのメールアドレス変更リクエストを受け付けました。",
+		"en":      "We received a request to change the email address on your Platform Console account.",
+		"ko":      "플랫폼 콘솔 계정의 이메일 주소 변경 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了变更您平台控制台账户邮箱地址的请求。",
+		"zh-Hant": "我們收到了變更您平台主控台帳戶電子郵件地址的請求。",
+	},
+	"email.platform_console_email_change_confirmation.new_email": {
+		"ja":      "新しいメールアドレス: {$new_email}",
+		"en":      "New email address: {$new_email}",
+		"ko":      "새 이메일 주소: {$new_email}",
+		"zh-Hans": "新的邮箱地址：{$new_email}",
+		"zh-Hant": "新的電子郵件地址：{$new_email}",
+	},
+	"email.platform_console_email_change_confirmation.preview": {
+		"ja":      "プラットフォーム管理画面のメールアドレス変更の確認を完了してください。",
+		"en":      "Confirm your Platform Console email address change.",
+		"ko":      "플랫폼 콘솔 이메일 주소 변경을 확인해 주세요.",
+		"zh-Hans": "确认平台控制台邮箱地址变更。",
+		"zh-Hant": "確認平台主控台的電子郵件地址變更。",
+	},
+	"email.platform_console_email_change_confirmation.subject": {
+		"ja":      "Publiraプラットフォーム管理画面メールアドレス変更確認",
+		"en":      "Publira Platform Console email address change confirmation",
+		"ko":      "Publira 플랫폼 콘솔 이메일 주소 변경 확인",
+		"zh-Hans": "Publira平台控制台邮箱地址变更确认",
+		"zh-Hant": "Publira平台主控台電子郵件地址變更確認",
+	},
+	"email.platform_console_email_changed_notice.body": {
+		"ja":      "プラットフォーム管理画面アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your Platform Console account was changed.",
+		"ko":      "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您平台控制台账户的邮箱地址已变更。",
+		"zh-Hant": "您平台主控台帳戶的電子郵件地址已變更。",
+	},
+	"email.platform_console_email_changed_notice.heading": {
+		"ja":      "プラットフォーム管理画面メールアドレス変更の完了",
+		"en":      "Your Platform Console email address was changed",
+		"ko":      "플랫폼 콘솔 이메일 주소가 변경되었습니다",
+		"zh-Hans": "平台控制台邮箱地址已变更",
+		"zh-Hant": "平台主控台的電子郵件地址已變更",
+	},
+	"email.platform_console_email_changed_notice.new_email": {
+		"ja":      "変更後: {$new_email}",
+		"en":      "After: {$new_email}",
+		"ko":      "변경 후: {$new_email}",
+		"zh-Hans": "变更后：{$new_email}",
+		"zh-Hant": "變更後：{$new_email}",
+	},
+	"email.platform_console_email_changed_notice.preview": {
+		"ja":      "プラットフォーム管理画面アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your Platform Console account was changed.",
+		"ko":      "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您平台控制台账户的邮箱地址已变更。",
+		"zh-Hant": "您平台主控台帳戶的電子郵件地址已變更。",
+	},
+	"email.platform_console_email_changed_notice.previous_email": {
+		"ja":      "変更前: {$previous_email}",
+		"en":      "Before: {$previous_email}",
+		"ko":      "변경 전: {$previous_email}",
+		"zh-Hans": "变更前：{$previous_email}",
+		"zh-Hant": "變更前：{$previous_email}",
+	},
+	"email.platform_console_email_changed_notice.subject": {
+		"ja":      "Publiraプラットフォーム管理画面メールアドレス変更完了",
+		"en":      "Publira Platform Console email address changed",
+		"ko":      "Publira 플랫폼 콘솔 이메일 주소 변경 완료",
+		"zh-Hans": "Publira平台控制台邮箱地址已变更",
+		"zh-Hant": "Publira平台主控台電子郵件地址已變更",
+	},
+	"email.platform_console_email_changed_notice.warning": {
+		"ja":      "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。",
+		"en":      "If you did not make this change, reset your password right away.",
+		"ko":      "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요.",
+		"zh-Hans": "如果这不是您本人的操作，请立即重设密码。",
+		"zh-Hant": "如果這不是您本人的操作，請立即重設密碼。",
+	},
+	"email.platform_console_password_reset.action": {
+		"ja":      "パスワードを再設定する",
+		"en":      "Reset password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.platform_console_password_reset.body": {
+		"ja":      "以下のボタンから新しいパスワードを設定してください。",
+		"en":      "Open the button below to set a new password.",
+		"ko":      "아래 버튼을 열어 새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "请打开下方按钮设置新密码。",
+		"zh-Hant": "請開啟下方按鈕設定新密碼。",
+	},
+	"email.platform_console_password_reset.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.platform_console_password_reset.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.platform_console_password_reset.heading": {
+		"ja":      "プラットフォーム管理画面パスワードの再設定",
+		"en":      "Reset your Platform Console password",
+		"ko":      "플랫폼 콘솔 비밀번호 재설정",
+		"zh-Hans": "重设平台控制台密码",
+		"zh-Hant": "重設平台主控台的密碼",
+	},
+	"email.platform_console_password_reset.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.platform_console_password_reset.intro": {
+		"ja":      "プラットフォーム管理画面アカウントのパスワード再設定リクエストを受け付けました。",
+		"en":      "We received a request to reset the password for your Platform Console account.",
+		"ko":      "플랫폼 콘솔 계정의 비밀번호 재설정 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了重设您平台控制台账户密码的请求。",
+		"zh-Hant": "我們收到了重設您平台主控台帳戶密碼的請求。",
+	},
+	"email.platform_console_password_reset.preview": {
+		"ja":      "プラットフォーム管理画面の新しいパスワードを設定してください。",
+		"en":      "Set a new Platform Console password.",
+		"ko":      "새 플랫폼 콘솔 비밀번호를 설정해 주세요.",
+		"zh-Hans": "设置新的平台控制台密码。",
+		"zh-Hant": "設定新的平台主控台密碼。",
+	},
+	"email.platform_console_password_reset.subject": {
+		"ja":      "Publiraプラットフォーム管理画面パスワード再設定",
+		"en":      "Publira Platform Console password reset",
+		"ko":      "Publira 플랫폼 콘솔 비밀번호 재설정",
+		"zh-Hans": "Publira平台控制台密码重设",
+		"zh-Hant": "Publira平台主控台密碼重設",
+	},
+	"email.reader_email_change_confirmation.action": {
+		"ja":      "メールアドレス変更を確認する",
+		"en":      "Confirm email address change",
+		"ko":      "이메일 주소 변경 확인하기",
+		"zh-Hans": "确认邮箱地址变更",
+		"zh-Hant": "確認電子郵件地址變更",
+	},
+	"email.reader_email_change_confirmation.body_current_email": {
+		"ja":      "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your current address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",
+	},
+	"email.reader_email_change_confirmation.body_new_email": {
+		"ja":      "新しいメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
+		"en":      "This change needs confirmation from your new address. Open the button below to confirm it.",
+		"ko":      "이 변경에는 새 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
+		"zh-Hans": "此变更需要由新的邮箱地址确认。请打开下方按钮完成确认。",
+		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
+	},
+	"email.reader_email_change_confirmation.current_email": {
+		"ja":      "現在のメールアドレス: {$current_email}",
+		"en":      "Current email address: {$current_email}",
+		"ko":      "현재 이메일 주소: {$current_email}",
+		"zh-Hans": "当前邮箱地址：{$current_email}",
+		"zh-Hant": "目前的電子郵件地址：{$current_email}",
+	},
+	"email.reader_email_change_confirmation.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.reader_email_change_confirmation.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.reader_email_change_confirmation.heading": {
+		"ja":      "メールアドレス変更の確認",
+		"en":      "Confirm your email address change",
+		"ko":      "이메일 주소 변경 확인",
+		"zh-Hans": "确认邮箱地址变更",
+		"zh-Hant": "確認電子郵件地址變更",
+	},
+	"email.reader_email_change_confirmation.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.reader_email_change_confirmation.intro": {
+		"ja":      "メールアドレス変更のリクエストを受け付けました。",
+		"en":      "We received a request to change your email address.",
+		"ko":      "이메일 주소 변경 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了变更您邮箱地址的请求。",
+		"zh-Hant": "我們收到了變更您電子郵件地址的請求。",
+	},
+	"email.reader_email_change_confirmation.new_email": {
+		"ja":      "新しいメールアドレス: {$new_email}",
+		"en":      "New email address: {$new_email}",
+		"ko":      "새 이메일 주소: {$new_email}",
+		"zh-Hans": "新的邮箱地址：{$new_email}",
+		"zh-Hant": "新的電子郵件地址：{$new_email}",
+	},
+	"email.reader_email_change_confirmation.preview": {
+		"ja":      "メールアドレス変更の確認を完了してください。",
+		"en":      "Confirm your email address change.",
+		"ko":      "이메일 주소 변경을 확인해 주세요.",
+		"zh-Hans": "确认邮箱地址变更。",
+		"zh-Hant": "確認電子郵件地址變更。",
+	},
+	"email.reader_email_change_confirmation.subject": {
+		"ja":      "{$tenant_name}メールアドレス変更確認",
+		"en":      "{$tenant_name} email address change confirmation",
+		"ko":      "{$tenant_name} 이메일 주소 변경 확인",
+		"zh-Hans": "{$tenant_name}邮箱地址变更确认",
+		"zh-Hant": "{$tenant_name}電子郵件地址變更確認",
+	},
+	"email.reader_email_changed_notice.body": {
+		"ja":      "アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your account was changed.",
+		"ko":      "계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您账户的邮箱地址已变更。",
+		"zh-Hant": "您帳戶的電子郵件地址已變更。",
+	},
+	"email.reader_email_changed_notice.heading": {
+		"ja":      "メールアドレス変更の完了",
+		"en":      "Your email address was changed",
+		"ko":      "이메일 주소가 변경되었습니다",
+		"zh-Hans": "邮箱地址已变更",
+		"zh-Hant": "電子郵件地址已變更",
+	},
+	"email.reader_email_changed_notice.new_email": {
+		"ja":      "変更後: {$new_email}",
+		"en":      "After: {$new_email}",
+		"ko":      "변경 후: {$new_email}",
+		"zh-Hans": "变更后：{$new_email}",
+		"zh-Hant": "變更後：{$new_email}",
+	},
+	"email.reader_email_changed_notice.preview": {
+		"ja":      "アカウントのメールアドレスが変更されました。",
+		"en":      "The email address on your account was changed.",
+		"ko":      "계정의 이메일 주소가 변경되었습니다.",
+		"zh-Hans": "您账户的邮箱地址已变更。",
+		"zh-Hant": "您帳戶的電子郵件地址已變更。",
+	},
+	"email.reader_email_changed_notice.previous_email": {
+		"ja":      "変更前: {$previous_email}",
+		"en":      "Before: {$previous_email}",
+		"ko":      "변경 전: {$previous_email}",
+		"zh-Hans": "变更前：{$previous_email}",
+		"zh-Hant": "變更前：{$previous_email}",
+	},
+	"email.reader_email_changed_notice.subject": {
+		"ja":      "{$tenant_name}メールアドレス変更完了",
+		"en":      "{$tenant_name} email address changed",
+		"ko":      "{$tenant_name} 이메일 주소 변경 완료",
+		"zh-Hans": "{$tenant_name}邮箱地址已变更",
+		"zh-Hant": "{$tenant_name}電子郵件地址已變更",
+	},
+	"email.reader_email_changed_notice.warning": {
+		"ja":      "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。",
+		"en":      "If you did not make this change, reset your password right away.",
+		"ko":      "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요.",
+		"zh-Hans": "如果这不是您本人的操作，请立即重设密码。",
+		"zh-Hant": "如果這不是您本人的操作，請立即重設密碼。",
+	},
+	"email.reader_email_verification.action": {
+		"ja":      "メールアドレスを確認する",
+		"en":      "Verify email address",
+		"ko":      "이메일 주소 확인하기",
+		"zh-Hans": "验证邮箱地址",
+		"zh-Hant": "驗證電子郵件地址",
+	},
+	"email.reader_email_verification.body": {
+		"ja":      "以下のボタンからメールアドレスの確認を完了してください。",
+		"en":      "Open the button below to finish verifying your email address.",
+		"ko":      "아래 버튼을 열어 이메일 주소 확인을 완료해 주세요.",
+		"zh-Hans": "请打开下方按钮完成邮箱地址验证。",
+		"zh-Hant": "請開啟下方按鈕完成電子郵件地址驗證。",
+	},
+	"email.reader_email_verification.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.reader_email_verification.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.reader_email_verification.heading": {
+		"ja":      "メールアドレスの確認",
+		"en":      "Verify your email address",
+		"ko":      "이메일 주소 확인",
+		"zh-Hans": "验证您的邮箱地址",
+		"zh-Hant": "驗證您的電子郵件地址",
+	},
+	"email.reader_email_verification.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.reader_email_verification.intro": {
+		"ja":      "{$tenant_name}のご登録ありがとうございます。",
+		"en":      "Thank you for signing up for {$tenant_name}.",
+		"ko":      "{$tenant_name}에 가입해 주셔서 감사합니다.",
+		"zh-Hans": "感谢您注册{$tenant_name}。",
+		"zh-Hant": "感謝您註冊{$tenant_name}。",
+	},
+	"email.reader_email_verification.preview": {
+		"ja":      "メールアドレスの確認を完了してください。",
+		"en":      "Finish verifying your email address.",
+		"ko":      "이메일 주소 확인을 완료해 주세요.",
+		"zh-Hans": "完成邮箱地址验证。",
+		"zh-Hant": "完成電子郵件地址驗證。",
+	},
+	"email.reader_email_verification.subject": {
+		"ja":      "{$tenant_name}メールアドレス確認",
+		"en":      "{$tenant_name} email address verification",
+		"ko":      "{$tenant_name} 이메일 주소 확인",
+		"zh-Hans": "{$tenant_name}邮箱地址验证",
+		"zh-Hant": "{$tenant_name}電子郵件地址驗證",
+	},
+	"email.reader_password_changed_notice.action": {
+		"ja":      "パスワードを再設定する",
+		"en":      "Reset password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.reader_password_changed_notice.body": {
+		"ja":      "アカウントのパスワードが変更されました。",
+		"en":      "The password on your account was changed.",
+		"ko":      "계정의 비밀번호가 변경되었습니다.",
+		"zh-Hans": "您账户的密码已变更。",
+		"zh-Hant": "您帳戶的密碼已變更。",
+	},
+	"email.reader_password_changed_notice.email": {
+		"ja":      "メールアドレス: {$email}",
+		"en":      "Email address: {$email}",
+		"ko":      "이메일 주소: {$email}",
+		"zh-Hans": "邮箱地址：{$email}",
+		"zh-Hant": "電子郵件地址：{$email}",
+	},
+	"email.reader_password_changed_notice.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.reader_password_changed_notice.heading": {
+		"ja":      "パスワード変更の完了",
+		"en":      "Your password was changed",
+		"ko":      "비밀번호가 변경되었습니다",
+		"zh-Hans": "密码已变更",
+		"zh-Hant": "密碼已變更",
+	},
+	"email.reader_password_changed_notice.preview": {
+		"ja":      "アカウントのパスワードが変更されました。",
+		"en":      "The password on your account was changed.",
+		"ko":      "계정의 비밀번호가 변경되었습니다.",
+		"zh-Hans": "您账户的密码已变更。",
+		"zh-Hant": "您帳戶的密碼已變更。",
+	},
+	"email.reader_password_changed_notice.sessions": {
+		"ja":      "他の端末はサインアウトされました。再びサインインするには新しいパスワードが必要です。",
+		"en":      "Your other devices were signed out and need the new password to sign in again.",
+		"ko":      "다른 기기는 로그아웃되었으며, 다시 로그인하려면 새 비밀번호가 필요합니다.",
+		"zh-Hans": "您其他设备上的登录已退出，需要使用新密码重新登录。",
+		"zh-Hant": "您其他裝置上的登入已登出，需要使用新密碼重新登入。",
+	},
+	"email.reader_password_changed_notice.subject": {
+		"ja":      "{$tenant_name}パスワード変更完了",
+		"en":      "{$tenant_name} password changed",
+		"ko":      "{$tenant_name} 비밀번호 변경 완료",
+		"zh-Hans": "{$tenant_name}密码已变更",
+		"zh-Hant": "{$tenant_name}密碼已變更",
+	},
+	"email.reader_password_changed_notice.warning": {
+		"ja":      "この変更に心当たりがない場合は、すぐにパスワードを再設定してください。",
+		"en":      "If you did not make this change, set a new password right away.",
+		"ko":      "이 변경을 요청하지 않으셨다면 즉시 새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "如果这不是您本人的操作，请立即设置新密码。",
+		"zh-Hant": "如果這不是您本人的操作，請立即設定新密碼。",
+	},
+	"email.reader_password_reset.action": {
+		"ja":      "パスワードを再設定する",
+		"en":      "Reset password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.reader_password_reset.body": {
+		"ja":      "以下のボタンから新しいパスワードを設定してください。",
+		"en":      "Open the button below to set a new password.",
+		"ko":      "아래 버튼을 열어 새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "请打开下方按钮设置新密码。",
+		"zh-Hant": "請開啟下方按鈕設定新密碼。",
+	},
+	"email.reader_password_reset.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.reader_password_reset.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.reader_password_reset.heading": {
+		"ja":      "パスワードの再設定",
+		"en":      "Reset your password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.reader_password_reset.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.reader_password_reset.intro": {
+		"ja":      "パスワード再設定のリクエストを受け付けました。",
+		"en":      "We received a request to reset your password.",
+		"ko":      "비밀번호 재설정 요청을 접수했습니다.",
+		"zh-Hans": "我们收到了重设您密码的请求。",
+		"zh-Hant": "我們收到了重設您密碼的請求。",
+	},
+	"email.reader_password_reset.preview": {
+		"ja":      "新しいパスワードを設定してください。",
+		"en":      "Set a new password.",
+		"ko":      "새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "设置新密码。",
+		"zh-Hant": "設定新密碼。",
+	},
+	"email.reader_password_reset.subject": {
+		"ja":      "{$tenant_name}パスワード再設定",
+		"en":      "{$tenant_name} password reset",
+		"ko":      "{$tenant_name} 비밀번호 재설정",
+		"zh-Hans": "{$tenant_name}密码重设",
+		"zh-Hant": "{$tenant_name}密碼重設",
+	},
+	"email.reader_signup_attempt_notice.action_confirmed": {
+		"ja":      "パスワードを再設定する",
+		"en":      "Reset password",
+		"ko":      "비밀번호 재설정",
+		"zh-Hans": "重设密码",
+		"zh-Hant": "重設密碼",
+	},
+	"email.reader_signup_attempt_notice.action_unconfirmed": {
+		"ja":      "確認メールを再送する",
+		"en":      "Send a new confirmation email",
+		"ko":      "확인 메일 다시 보내기",
+		"zh-Hans": "重新发送确认邮件",
+		"zh-Hant": "重新寄送確認郵件",
+	},
+	"email.reader_signup_attempt_notice.body_confirmed": {
+		"ja":      "すでにアカウントが存在するため、新しいアカウントは作成されず、既存のアカウントにも変更はありません。",
+		"en":      "Your account already exists, so no second account was created and nothing about yours changed.",
+		"ko":      "이미 계정이 있으므로 두 번째 계정은 만들어지지 않았고, 기존 계정도 그대로입니다.",
+		"zh-Hans": "您的账户已存在，因此没有创建第二个账户，您的账户也没有任何变化。",
+		"zh-Hant": "您的帳戶已存在，因此沒有建立第二個帳戶，您的帳戶也沒有任何變動。",
+	},
+	"email.reader_signup_attempt_notice.body_unconfirmed": {
+		"ja":      "すでにアカウントが存在するため、新しいアカウントは作成されていません。そのアカウントはメールアドレスの確認が済んでいないため、まだサインインできません。",
+		"en":      "Your account already exists, so no second account was created. Its email address is not confirmed yet, which is why signing in does not work.",
+		"ko":      "이미 계정이 있으므로 두 번째 계정은 만들어지지 않았습니다. 그 계정은 이메일 주소가 아직 확인되지 않아 로그인할 수 없습니다.",
+		"zh-Hans": "您的账户已存在，因此没有创建第二个账户。该账户的邮箱地址尚未确认，所以无法登录。",
+		"zh-Hant": "您的帳戶已存在，因此沒有建立第二個帳戶。該帳戶的電子郵件地址尚未確認，所以無法登入。",
+	},
+	"email.reader_signup_attempt_notice.email": {
+		"ja":      "メールアドレス: {$email}",
+		"en":      "Email address: {$email}",
+		"ko":      "이메일 주소: {$email}",
+		"zh-Hans": "邮箱地址：{$email}",
+		"zh-Hant": "電子郵件地址：{$email}",
+	},
+	"email.reader_signup_attempt_notice.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.reader_signup_attempt_notice.forgot_confirmed": {
+		"ja":      "お心当たりがあり、パスワードが分からない場合は、上のボタンから再設定してください。",
+		"en":      "If this was you and you cannot remember your password, use the button above to set a new one.",
+		"ko":      "본인이 시도했고 비밀번호가 기억나지 않는다면 위 버튼으로 새 비밀번호를 설정해 주세요.",
+		"zh-Hans": "如果这是您本人的操作，而您忘记了密码，请通过上方按钮设置新密码。",
+		"zh-Hant": "如果這是您本人的操作，而您忘了密碼，請透過上方按鈕設定新密碼。",
+	},
+	"email.reader_signup_attempt_notice.forgot_unconfirmed": {
+		"ja":      "お心当たりがある場合は、上のボタンから確認メールを送り直してください。",
+		"en":      "If this was you, use the button above to have a new confirmation email sent.",
+		"ko":      "본인이 시도했다면 위 버튼으로 확인 메일을 다시 받아 주세요.",
+		"zh-Hans": "如果这是您本人的操作，请通过上方按钮重新发送确认邮件。",
+		"zh-Hant": "如果這是您本人的操作，請透過上方按鈕重新寄送確認郵件。",
+	},
+	"email.reader_signup_attempt_notice.heading": {
+		"ja":      "登録済みのメールアドレスでの登録",
+		"en":      "A sign-up used your email address",
+		"ko":      "회원가입에 이 이메일 주소가 사용되었습니다",
+		"zh-Hans": "有人使用您的邮箱地址注册",
+		"zh-Hant": "有人使用您的電子郵件地址註冊",
+	},
+	"email.reader_signup_attempt_notice.ignore": {
+		"ja":      "心当たりがない場合、対応は不要です。パスワードを知らない限り、このアカウントにはサインインできません。",
+		"en":      "If it was not you, there is nothing to do. Nobody can sign in without your password.",
+		"ko":      "본인이 아니라면 따로 하실 일은 없습니다. 비밀번호를 모르는 한 누구도 로그인할 수 없습니다.",
+		"zh-Hans": "如果这不是您本人的操作，则无需处理。没有您的密码，任何人都无法登录。",
+		"zh-Hant": "如果這不是您本人的操作，則無需處理。沒有您的密碼，任何人都無法登入。",
+	},
+	"email.reader_signup_attempt_notice.intro": {
+		"ja":      "{$tenant_name}で、このメールアドレスを使ったアカウント登録が試みられました。",
+		"en":      "Someone tried to create an account on {$tenant_name} with this email address.",
+		"ko":      "{$tenant_name}에서 이 이메일 주소로 계정을 만들려는 시도가 있었습니다.",
+		"zh-Hans": "有人尝试使用这个邮箱地址在{$tenant_name}创建账户。",
+		"zh-Hant": "有人嘗試使用這個電子郵件地址在{$tenant_name}建立帳戶。",
+	},
+	"email.reader_signup_attempt_notice.preview": {
+		"ja":      "登録済みのメールアドレスで登録が試みられました。",
+		"en":      "A sign-up used your email address.",
+		"ko":      "회원가입에 이 이메일 주소가 사용되었습니다.",
+		"zh-Hans": "有人使用您的邮箱地址注册。",
+		"zh-Hant": "有人使用您的電子郵件地址註冊。",
+	},
+	"email.reader_signup_attempt_notice.subject": {
+		"ja":      "{$tenant_name}アカウント登録の試行",
+		"en":      "{$tenant_name} sign-up attempt",
+		"ko":      "{$tenant_name} 회원가입 시도",
+		"zh-Hans": "{$tenant_name}账户注册尝试",
+		"zh-Hant": "{$tenant_name}帳戶註冊嘗試",
+	},
+	"email.staff_contact_message_notice.body_heading": {
+		"ja":      "本文",
+		"en":      "Message",
+		"ko":      "본문",
+		"zh-Hans": "正文",
+		"zh-Hant": "內文",
+	},
+	"email.staff_contact_message_notice.footnote": {
+		"ja":      "返信は、ご自身のメールソフトから上記の返信先アドレス宛に送ってください。管理画面から返信することはできません。",
+		"en":      "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console.",
+		"ko":      "답장은 위의 회신 주소로 사용 중인 메일 프로그램에서 직접 보내 주세요. 관리 콘솔에서는 답장할 수 없습니다.",
+		"zh-Hans": "请从您自己的邮件客户端向上述回复地址回信。管理控制台无法直接回复。",
+		"zh-Hant": "請從您自己的郵件軟體向上述回覆地址回信。管理主控台無法直接回覆。",
+	},
+	"email.staff_contact_message_notice.heading": {
+		"ja":      "お問い合わせが届きました",
+		"en":      "New contact message",
+		"ko":      "새 문의가 도착했습니다",
+		"zh-Hans": "收到新的咨询",
+		"zh-Hant": "收到新的諮詢",
+	},
+	"email.staff_contact_message_notice.intro": {
+		"ja":      "{$tenant_name}のお問い合わせフォームから、読者がメッセージを送信しました。",
+		"en":      "A reader sent {$tenant_name} a message through the contact form.",
+		"ko":      "{$tenant_name}의 문의 양식으로 독자가 메시지를 보냈습니다.",
+		"zh-Hans": "有读者通过{$tenant_name}的咨询表单发送了消息。",
+		"zh-Hant": "有讀者透過{$tenant_name}的諮詢表單傳送了訊息。",
+	},
+	"email.staff_contact_message_notice.preview": {
+		"ja":      "{$tenant_name}に読者からメッセージが届きました。",
+		"en":      "A reader sent {$tenant_name} a message.",
+		"ko":      "{$tenant_name}에 독자의 메시지가 도착했습니다.",
+		"zh-Hans": "{$tenant_name}收到了读者的消息。",
+		"zh-Hant": "{$tenant_name}收到了讀者的訊息。",
+	},
+	"email.staff_contact_message_notice.received": {
+		"ja":      "受信日時: {$received_at}",
+		"en":      "Received at {$received_at}.",
+		"ko":      "수신 일시: {$received_at}",
+		"zh-Hans": "接收时间：{$received_at}",
+		"zh-Hant": "接收時間：{$received_at}",
+	},
+	"email.staff_contact_message_notice.reply_to": {
+		"ja":      "返信先: {$reply_to_email}",
+		"en":      "Reply to: {$reply_to_email}",
+		"ko":      "회신 주소: {$reply_to_email}",
+		"zh-Hans": "回复地址：{$reply_to_email}",
+		"zh-Hant": "回覆地址：{$reply_to_email}",
+	},
+	"email.staff_contact_message_notice.sender": {
+		"ja":      "サインイン中のアカウント: {$sender_name}",
+		"en":      "Signed in as {$sender_name}.",
+		"ko":      "로그인한 계정: {$sender_name}",
+		"zh-Hans": "登录账号：{$sender_name}",
+		"zh-Hant": "登入帳號：{$sender_name}",
+	},
+	"email.staff_contact_message_notice.subject": {
+		"ja":      "{$tenant_name}お問い合わせ",
+		"en":      "{$tenant_name} contact message",
+		"ko":      "{$tenant_name} 문의",
+		"zh-Hans": "{$tenant_name}咨询",
+		"zh-Hant": "{$tenant_name}諮詢",
+	},
+	"email.staff_contact_message_notice.subject_line": {
+		"ja":      "件名: {$subject}",
+		"en":      "Subject: {$subject}",
+		"ko":      "제목: {$subject}",
+		"zh-Hans": "主题：{$subject}",
+		"zh-Hant": "主旨：{$subject}",
+	},
+	"email.tenant_admin_invitation.action": {
+		"ja":      "招待を承諾する",
+		"en":      "Accept invitation",
+		"ko":      "초대 수락하기",
+		"zh-Hans": "接受邀请",
+		"zh-Hant": "接受邀請",
+	},
+	"email.tenant_admin_invitation.body": {
+		"ja":      "{$tenant_name}のテナント管理者として招待されています。以下のボタンから招待を承諾してください。",
+		"en":      "You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.",
+		"ko":      "{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.",
+		"zh-Hans": "您被邀请成为{$tenant_name}的租户管理员。请打开下方按钮接受邀请。",
+		"zh-Hant": "您受邀成為{$tenant_name}的租戶管理員。請開啟下方按鈕接受邀請。",
+	},
+	"email.tenant_admin_invitation.expires": {
+		"ja":      "このリンクの有効期限は{$expires_at}です。",
+		"en":      "This link expires at {$expires_at}.",
+		"ko":      "이 링크는 {$expires_at}에 만료됩니다.",
+		"zh-Hans": "此链接将于{$expires_at}失效。",
+		"zh-Hant": "此連結將於{$expires_at}失效。",
+	},
+	"email.tenant_admin_invitation.fallback_link": {
+		"ja":      "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+		"en":      "If the button does not work, paste this URL into your browser.",
+		"ko":      "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+		"zh-Hans": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+		"zh-Hant": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+	},
+	"email.tenant_admin_invitation.heading": {
+		"ja":      "管理者への招待",
+		"en":      "Admin invitation",
+		"ko":      "관리자 초대",
+		"zh-Hans": "管理员邀请",
+		"zh-Hant": "管理員邀請",
+	},
+	"email.tenant_admin_invitation.ignore": {
+		"ja":      "心当たりがない場合、このメールは破棄してください。",
+		"en":      "If you were not expecting this email, you can ignore it.",
+		"ko":      "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
+		"zh-Hans": "如果您并未预期收到这封邮件，可以忽略它。",
+		"zh-Hant": "如果您並未預期收到這封郵件，可以直接忽略。",
+	},
+	"email.tenant_admin_invitation.intro": {
+		"ja":      "{$tenant_name}の管理画面へ招待されました。",
+		"en":      "You have been invited to the admin console of {$tenant_name}.",
+		"ko":      "{$tenant_name}의 관리자 콘솔에 초대되었습니다.",
+		"zh-Hans": "您被邀请加入{$tenant_name}的管理控制台。",
+		"zh-Hant": "您受邀加入{$tenant_name}的管理主控台。",
+	},
+	"email.tenant_admin_invitation.preview": {
+		"ja":      "{$tenant_name}の管理画面へ招待されました。",
+		"en":      "You have been invited to the admin console of {$tenant_name}.",
+		"ko":      "{$tenant_name}의 관리자 콘솔에 초대되었습니다.",
+		"zh-Hans": "您被邀请加入{$tenant_name}的管理控制台。",
+		"zh-Hant": "您受邀加入{$tenant_name}的管理主控台。",
+	},
+	"email.tenant_admin_invitation.subject": {
+		"ja":      "{$tenant_name}管理者招待",
+		"en":      "{$tenant_name} admin invitation",
+		"ko":      "{$tenant_name} 관리자 초대",
+		"zh-Hans": "{$tenant_name}管理员邀请",
+		"zh-Hant": "{$tenant_name}管理員邀請",
 	},
 }

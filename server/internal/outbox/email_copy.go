@@ -22,7 +22,7 @@ func emailCopy(request emailrenderer.Request) (internalsmtp.RenderedEmail, error
 
 	mail := &emailComposer{data: request.Data, locale: request.Locale, timeZone: request.TimeZone}
 	compose(mail)
-	mail.line("email.layout.footer", map[string]string{"brand": mail.brand})
+	mail.line("email.layout.footer", map[string]any{"brand": mail.brand})
 	if mail.err != nil {
 		return internalsmtp.RenderedEmail{}, fmt.Errorf("compose %s email: %w", request.Template, mail.err)
 	}
@@ -49,7 +49,7 @@ func (c *emailComposer) fail(err error) {
 	}
 }
 
-func (c *emailComposer) message(key string, values map[string]string) string {
+func (c *emailComposer) message(key string, values map[string]any) string {
 	rendered, err := locale.Message(c.locale, key, values)
 	if err != nil {
 		c.fail(err)
@@ -92,11 +92,11 @@ func (c *emailComposer) from(brand string) {
 	c.lines = append(c.lines, brand)
 }
 
-func (c *emailComposer) setSubject(key string, values map[string]string) {
+func (c *emailComposer) setSubject(key string, values map[string]any) {
 	c.subject = c.message(key, values)
 }
 
-func (c *emailComposer) line(key string, values map[string]string) {
+func (c *emailComposer) line(key string, values map[string]any) {
 	c.lines = append(c.lines, c.message(key, values))
 }
 
@@ -109,7 +109,7 @@ func (c *emailComposer) text(value string) {
 
 // linkLine is a line the recipient is meant to open: the sentence, then the URL
 // it points at. The HTML shows the same pair as a button.
-func (c *emailComposer) linkLine(key string, values map[string]string, url string) {
+func (c *emailComposer) linkLine(key string, values map[string]any, url string) {
 	c.lines = append(c.lines, c.message(key, values)+" "+url)
 }
 
@@ -139,18 +139,18 @@ var emailTemplates = map[string]func(*emailComposer){
 // second, and a labelled blank would read as a value that went missing.
 func staffContactMessageNoticeCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
-	c.setSubject("email.staff_contact_message_notice.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.staff_contact_message_notice.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.staff_contact_message_notice.heading", nil)
-	c.line("email.staff_contact_message_notice.intro", map[string]string{"tenant_name": brand})
-	c.line("email.staff_contact_message_notice.reply_to", map[string]string{"reply_to_email": c.value("reply_to_email")})
+	c.line("email.staff_contact_message_notice.intro", map[string]any{"tenant_name": brand})
+	c.line("email.staff_contact_message_notice.reply_to", map[string]any{"reply_to_email": c.value("reply_to_email")})
 	if sender := c.value("sender_name"); sender != "" {
-		c.line("email.staff_contact_message_notice.sender", map[string]string{"sender_name": sender})
+		c.line("email.staff_contact_message_notice.sender", map[string]any{"sender_name": sender})
 	}
 	if subject := c.value("subject"); subject != "" {
-		c.line("email.staff_contact_message_notice.subject_line", map[string]string{"subject": subject})
+		c.line("email.staff_contact_message_notice.subject_line", map[string]any{"subject": subject})
 	}
-	c.line("email.staff_contact_message_notice.received", map[string]string{"received_at": c.instant("received_at")})
+	c.line("email.staff_contact_message_notice.received", map[string]any{"received_at": c.instant("received_at")})
 	c.line("email.staff_contact_message_notice.body_heading", nil)
 	c.text(c.value("body"))
 	c.line("email.staff_contact_message_notice.footnote", nil)
@@ -159,13 +159,13 @@ func staffContactMessageNoticeCopy(c *emailComposer) {
 func tenantAdminInvitationCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	inviteURL := c.value("invite_url")
-	c.setSubject("email.tenant_admin_invitation.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.tenant_admin_invitation.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.tenant_admin_invitation.heading", nil)
-	c.line("email.tenant_admin_invitation.intro", map[string]string{"tenant_name": brand})
-	c.line("email.tenant_admin_invitation.body", map[string]string{"tenant_name": brand})
+	c.line("email.tenant_admin_invitation.intro", map[string]any{"tenant_name": brand})
+	c.line("email.tenant_admin_invitation.body", map[string]any{"tenant_name": brand})
 	c.linkLine("email.tenant_admin_invitation.action", nil, inviteURL)
-	c.line("email.tenant_admin_invitation.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.tenant_admin_invitation.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.tenant_admin_invitation.ignore", nil)
 	c.linkLine("email.tenant_admin_invitation.fallback_link", nil, inviteURL)
 }
@@ -173,13 +173,13 @@ func tenantAdminInvitationCopy(c *emailComposer) {
 func readerEmailVerificationCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	verifyURL := c.value("verify_url")
-	c.setSubject("email.reader_email_verification.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_email_verification.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_email_verification.heading", nil)
-	c.line("email.reader_email_verification.intro", map[string]string{"tenant_name": brand})
+	c.line("email.reader_email_verification.intro", map[string]any{"tenant_name": brand})
 	c.line("email.reader_email_verification.body", nil)
 	c.linkLine("email.reader_email_verification.action", nil, verifyURL)
-	c.line("email.reader_email_verification.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.reader_email_verification.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.reader_email_verification.ignore", nil)
 	c.linkLine("email.reader_email_verification.fallback_link", nil, verifyURL)
 }
@@ -187,7 +187,7 @@ func readerEmailVerificationCopy(c *emailComposer) {
 func readerEmailChangeConfirmationCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	confirmURL := c.value("confirm_url")
-	c.setSubject("email.reader_email_change_confirmation.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_email_change_confirmation.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_email_change_confirmation.heading", nil)
 	c.line("email.reader_email_change_confirmation.intro", nil)
@@ -197,34 +197,34 @@ func readerEmailChangeConfirmationCopy(c *emailComposer) {
 		c.line("email.reader_email_change_confirmation.body_new_email", nil)
 	}
 	c.linkLine("email.reader_email_change_confirmation.action", nil, confirmURL)
-	c.line("email.reader_email_change_confirmation.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.reader_email_change_confirmation.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.reader_email_change_confirmation.ignore", nil)
-	c.line("email.reader_email_change_confirmation.current_email", map[string]string{"current_email": c.value("current_email")})
-	c.line("email.reader_email_change_confirmation.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.reader_email_change_confirmation.current_email", map[string]any{"current_email": c.value("current_email")})
+	c.line("email.reader_email_change_confirmation.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.linkLine("email.reader_email_change_confirmation.fallback_link", nil, confirmURL)
 }
 
 func readerEmailChangedNoticeCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
-	c.setSubject("email.reader_email_changed_notice.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_email_changed_notice.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_email_changed_notice.heading", nil)
 	c.line("email.reader_email_changed_notice.body", nil)
-	c.line("email.reader_email_changed_notice.previous_email", map[string]string{"previous_email": c.value("previous_email")})
-	c.line("email.reader_email_changed_notice.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.reader_email_changed_notice.previous_email", map[string]any{"previous_email": c.value("previous_email")})
+	c.line("email.reader_email_changed_notice.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.line("email.reader_email_changed_notice.warning", nil)
 }
 
 func readerPasswordResetCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	resetURL := c.value("reset_url")
-	c.setSubject("email.reader_password_reset.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_password_reset.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_password_reset.heading", nil)
 	c.line("email.reader_password_reset.intro", nil)
 	c.line("email.reader_password_reset.body", nil)
 	c.linkLine("email.reader_password_reset.action", nil, resetURL)
-	c.line("email.reader_password_reset.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.reader_password_reset.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.reader_password_reset.ignore", nil)
 	c.linkLine("email.reader_password_reset.fallback_link", nil, resetURL)
 }
@@ -232,11 +232,11 @@ func readerPasswordResetCopy(c *emailComposer) {
 func readerPasswordChangedNoticeCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	resetURL := c.value("reset_url")
-	c.setSubject("email.reader_password_changed_notice.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_password_changed_notice.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_password_changed_notice.heading", nil)
 	c.line("email.reader_password_changed_notice.body", nil)
-	c.line("email.reader_password_changed_notice.email", map[string]string{"email": c.value("email")})
+	c.line("email.reader_password_changed_notice.email", map[string]any{"email": c.value("email")})
 	c.line("email.reader_password_changed_notice.sessions", nil)
 	c.line("email.reader_password_changed_notice.warning", nil)
 	c.linkLine("email.reader_password_changed_notice.action", nil, resetURL)
@@ -247,16 +247,16 @@ func readerSignupAttemptNoticeCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	actionURL := c.value("action_url")
 	confirmed := c.value("account_state") == "confirmed"
-	c.setSubject("email.reader_signup_attempt_notice.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.reader_signup_attempt_notice.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.reader_signup_attempt_notice.heading", nil)
-	c.line("email.reader_signup_attempt_notice.intro", map[string]string{"tenant_name": brand})
+	c.line("email.reader_signup_attempt_notice.intro", map[string]any{"tenant_name": brand})
 	if confirmed {
 		c.line("email.reader_signup_attempt_notice.body_confirmed", nil)
 	} else {
 		c.line("email.reader_signup_attempt_notice.body_unconfirmed", nil)
 	}
-	c.line("email.reader_signup_attempt_notice.email", map[string]string{"email": c.value("email")})
+	c.line("email.reader_signup_attempt_notice.email", map[string]any{"email": c.value("email")})
 	if confirmed {
 		c.linkLine("email.reader_signup_attempt_notice.action_confirmed", nil, actionURL)
 		c.line("email.reader_signup_attempt_notice.forgot_confirmed", nil)
@@ -271,13 +271,13 @@ func readerSignupAttemptNoticeCopy(c *emailComposer) {
 func adminConsolePasswordResetCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	resetURL := c.value("reset_url")
-	c.setSubject("email.admin_console_password_reset.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.admin_console_password_reset.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.admin_console_password_reset.heading", nil)
 	c.line("email.admin_console_password_reset.intro", nil)
 	c.line("email.admin_console_password_reset.body", nil)
 	c.linkLine("email.admin_console_password_reset.action", nil, resetURL)
-	c.line("email.admin_console_password_reset.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.admin_console_password_reset.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.admin_console_password_reset.ignore", nil)
 	c.linkLine("email.admin_console_password_reset.fallback_link", nil, resetURL)
 }
@@ -285,7 +285,7 @@ func adminConsolePasswordResetCopy(c *emailComposer) {
 func adminConsoleEmailChangeConfirmationCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	confirmURL := c.value("confirm_url")
-	c.setSubject("email.admin_console_email_change_confirmation.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.admin_console_email_change_confirmation.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.admin_console_email_change_confirmation.heading", nil)
 	c.line("email.admin_console_email_change_confirmation.intro", nil)
@@ -295,21 +295,21 @@ func adminConsoleEmailChangeConfirmationCopy(c *emailComposer) {
 		c.line("email.admin_console_email_change_confirmation.body_new_email", nil)
 	}
 	c.linkLine("email.admin_console_email_change_confirmation.action", nil, confirmURL)
-	c.line("email.admin_console_email_change_confirmation.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.admin_console_email_change_confirmation.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.admin_console_email_change_confirmation.ignore", nil)
-	c.line("email.admin_console_email_change_confirmation.current_email", map[string]string{"current_email": c.value("current_email")})
-	c.line("email.admin_console_email_change_confirmation.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.admin_console_email_change_confirmation.current_email", map[string]any{"current_email": c.value("current_email")})
+	c.line("email.admin_console_email_change_confirmation.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.linkLine("email.admin_console_email_change_confirmation.fallback_link", nil, confirmURL)
 }
 
 func adminConsoleEmailChangedNoticeCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
-	c.setSubject("email.admin_console_email_changed_notice.subject", map[string]string{"tenant_name": brand})
+	c.setSubject("email.admin_console_email_changed_notice.subject", map[string]any{"tenant_name": brand})
 	c.from(brand)
 	c.line("email.admin_console_email_changed_notice.heading", nil)
 	c.line("email.admin_console_email_changed_notice.body", nil)
-	c.line("email.admin_console_email_changed_notice.previous_email", map[string]string{"previous_email": c.value("previous_email")})
-	c.line("email.admin_console_email_changed_notice.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.admin_console_email_changed_notice.previous_email", map[string]any{"previous_email": c.value("previous_email")})
+	c.line("email.admin_console_email_changed_notice.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.line("email.admin_console_email_changed_notice.warning", nil)
 }
 
@@ -321,7 +321,7 @@ func platformConsolePasswordResetCopy(c *emailComposer) {
 	c.line("email.platform_console_password_reset.intro", nil)
 	c.line("email.platform_console_password_reset.body", nil)
 	c.linkLine("email.platform_console_password_reset.action", nil, resetURL)
-	c.line("email.platform_console_password_reset.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.platform_console_password_reset.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.platform_console_password_reset.ignore", nil)
 	c.linkLine("email.platform_console_password_reset.fallback_link", nil, resetURL)
 }
@@ -338,10 +338,10 @@ func platformConsoleEmailChangeConfirmationCopy(c *emailComposer) {
 		c.line("email.platform_console_email_change_confirmation.body_new_email", nil)
 	}
 	c.linkLine("email.platform_console_email_change_confirmation.action", nil, confirmURL)
-	c.line("email.platform_console_email_change_confirmation.expires", map[string]string{"expires_at": c.instant("expires_at")})
+	c.line("email.platform_console_email_change_confirmation.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.platform_console_email_change_confirmation.ignore", nil)
-	c.line("email.platform_console_email_change_confirmation.current_email", map[string]string{"current_email": c.value("current_email")})
-	c.line("email.platform_console_email_change_confirmation.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.platform_console_email_change_confirmation.current_email", map[string]any{"current_email": c.value("current_email")})
+	c.line("email.platform_console_email_change_confirmation.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.linkLine("email.platform_console_email_change_confirmation.fallback_link", nil, confirmURL)
 }
 
@@ -350,7 +350,7 @@ func platformConsoleEmailChangedNoticeCopy(c *emailComposer) {
 	c.from(c.message("email.layout.brand", nil))
 	c.line("email.platform_console_email_changed_notice.heading", nil)
 	c.line("email.platform_console_email_changed_notice.body", nil)
-	c.line("email.platform_console_email_changed_notice.previous_email", map[string]string{"previous_email": c.value("previous_email")})
-	c.line("email.platform_console_email_changed_notice.new_email", map[string]string{"new_email": c.value("new_email")})
+	c.line("email.platform_console_email_changed_notice.previous_email", map[string]any{"previous_email": c.value("previous_email")})
+	c.line("email.platform_console_email_changed_notice.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.line("email.platform_console_email_changed_notice.warning", nil)
 }

@@ -100,10 +100,10 @@ Use import attributes (`with { type: "json" }`) for JSON imports in generated fi
 
 ### Go
 
-The server reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `email` namespace into `server/internal/locale/gen/messages.go`, with every message already parsed into its text and its `{$name}` references, so the server ships no message parser either. `locale.Message` renders one, and a variable with no value is an error rather than the placeholder MessageFormat would fall back to.
+The server reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `email` namespace into `server/internal/locale/gen/messages.go`, which holds every locale's messages as their MessageFormat 2 source, and writes each locale's `intl` tag into `server/internal/locale/gen/locales.go`. `locale.Message` formats a message with [`github.com/kaptinlin/messageformat-go`](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) in that tag. A variable with no value, or any other error the library reports, is an error rather than the fallback text MessageFormat would write in its place.
 
 ```go
-subject, err := locale.Message(code, "email.reader_password_reset.subject", map[string]string{
+subject, err := locale.Message(code, "email.reader_password_reset.subject", map[string]any{
 	"tenant_name": tenantName,
 })
 ```
