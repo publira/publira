@@ -11,7 +11,11 @@ import {
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { connection } from "next/server";
@@ -112,13 +116,19 @@ const ConfirmPasswordForm = ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="newPassword"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="newPassword"
+                placeholder="••••••••"
+                required
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="host.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 
@@ -129,13 +139,19 @@ const ConfirmPasswordForm = ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="confirmPassword"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="confirmPassword"
+                placeholder="••••••••"
+                required
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="host.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 

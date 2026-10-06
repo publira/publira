@@ -5,6 +5,11 @@ import {
 } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -50,13 +55,19 @@ export const LoginForm = ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="current-password"
-              name="password"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="current-password"
+                name="password"
+                placeholder="••••••••"
+                required
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="platform.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 

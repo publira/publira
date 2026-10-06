@@ -653,6 +653,7 @@
         "unset": "无角色"
       },
       "cancel": "取消",
+      "show_password": "显示密码",
       "sortable": {
         "instructions": "按空格键或Enter键拿起一行。用方向键移动，再按一次空格键或Enter键放到新位置，按Esc键取消。",
         "role_description": "可拖动",
@@ -3136,6 +3137,7 @@
       "read": "阅读",
       "retry": "重试",
       "series_count": "已发布{$count}部系列",
+      "show_password": "显示密码",
       "site_fallback": "站点",
       "sold_in_app": "在应用内销售",
       "unread": "未读",
@@ -4690,6 +4692,7 @@
       "saved": "已保存。",
       "saving": "正在保存…",
       "select_placeholder": "请选择",
+      "show_password": "显示密码",
       "status": "状态",
       "submit": "提交",
       "suspend": "暂停",
