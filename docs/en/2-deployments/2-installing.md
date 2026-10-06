@@ -111,7 +111,7 @@ docker run --rm -it \
   publira/publiractl:local setup
 ```
 
-On a terminal it asks for every value. The same run can be made unattended, from a CI job or an init container, with every value given as a flag; that form is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup). If you serve the tenant over plain HTTP behind something else that terminates TLS, set `PUBLIRA_TENANT_URL_SCHEME` to the value the processes run with, so the links it prints are right.
+On a terminal it asks for every value. The same run can be made unattended, from a CI job or an init container, with every value given as a flag; that form is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup). The links it prints are built on `PUBLIRA_TENANT_URL_SCHEME`, the scheme readers' browsers reach the tenant on, which is `https` unless set. It describes the public address, not how the proxy reaches the processes, so a plain HTTP hop behind the TLS terminator does not change it. Set it to `http` only when browsers really open the tenant over HTTP, and then on `publiractl` and the processes alike.
 
 A run that stops halfway, because a connection test failed for instance, is finished by running it again: it keeps every step already saved and asks only for the rest.
 
@@ -129,7 +129,7 @@ Terminate TLS for both host names at the proxy. The [routing contract](https://g
 
 ### 6. Sign in
 
-Open `https://admin.<domain>` and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and from there its staff can be invited and the site configured. The tenant's public site answers at `https://<domain>`.
+Open the tenant console URL the `setup` summary printed — `https://admin.<domain>`, or the console host you gave it with `--admin-domain` — and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and from there its staff can be invited and the site configured. The tenant's public site answers at `https://<domain>`.
 
 ## Turning on the optional processes
 
@@ -143,7 +143,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 
 `web-platform` is the Platform Console, where operators manage tenants and platform settings from a browser rather than from `publiractl`. To run it:
 
-- Generate a session key for it, and give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
+- Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
 - Point a `platform.` host name at the reverse proxy and route it to `web-platform`.
 
