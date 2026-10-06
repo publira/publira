@@ -42,6 +42,32 @@ describe("staffContactReplyDataSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
+  // The server counts characters as code points, so an answer of emoji it
+  // stored at the limit is one this schema must accept, and one past it is not.
+  it("counts the limits in characters the way the server does", () => {
+    const emoji = "\u{1F600}";
+
+    expect(
+      staffContactReplyDataSchema.safeParse({
+        ...data,
+        body: emoji.repeat(4000),
+        original_subject: emoji.repeat(200),
+      }).success
+    ).toBe(true);
+    expect(
+      staffContactReplyDataSchema.safeParse({
+        ...data,
+        body: emoji.repeat(4001),
+      }).success
+    ).toBe(false);
+    expect(
+      staffContactReplyDataSchema.safeParse({
+        ...data,
+        original_subject: emoji.repeat(201),
+      }).success
+    ).toBe(false);
+  });
+
   it("rejects an original time that is not a timestamp", () => {
     const parsed = staffContactReplyDataSchema.safeParse({
       ...data,
