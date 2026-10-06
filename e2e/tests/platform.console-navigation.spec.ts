@@ -15,6 +15,7 @@ const SETTINGS_PAGES = [
   { heading: "General settings", label: "General", path: "/general" },
   { heading: "Email delivery", label: "Email", path: "/services/email" },
   { heading: "Image storage", label: "Storage", path: "/services/storage" },
+  { heading: "Catalog search", label: "Search", path: "/services/search" },
   {
     heading: "Browser notifications",
     label: "Web Push",
@@ -60,6 +61,7 @@ test.describe("web-platform console navigation", () => {
       "General",
       "Email",
       "Storage",
+      "Search",
       "Web Push",
       "Security",
       "Community",
