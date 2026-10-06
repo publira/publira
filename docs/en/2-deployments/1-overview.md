@@ -42,4 +42,4 @@ You create the database and the bucket; Publira creates everything inside them. 
 
 ## Next steps
 
-The environment variables each process reads, and the order an empty install is brought into service in, are described in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md).
+[Installing](./2-installing.md) brings an empty install into service, step by step. The environment variables each process reads are listed in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md).
