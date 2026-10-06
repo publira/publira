@@ -22,6 +22,7 @@ export {
   EmailFallbackLink,
   EmailHeading,
   EmailIntro,
+  EmailLetter,
   EmailMeta,
   EmailQuote,
 } from "./text";

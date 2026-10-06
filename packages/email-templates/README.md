@@ -6,7 +6,7 @@ The shared React Email layout and templates. `renderEmail` turns them into HTML;
 
 ## What it provides
 
-- `EmailLayout` / `EmailButton`, and the blocks a template puts inside the card: `EmailHeading`, `EmailIntro`, `EmailBody`, `EmailDetail`, `EmailMeta`, `EmailFallbackLink`
+- `EmailLayout` / `EmailButton`, and the blocks a template puts inside the card: `EmailHeading`, `EmailIntro`, `EmailBody`, `EmailDetail`, `EmailMeta`, `EmailFallbackLink`, `EmailLetter`, `EmailQuote`
 - `resolveEmail` / `renderEmail` — validate the proto's `template` and `data`, then render
 - `TEMPLATE_IDS` / `isTemplateId` — the list of template IDs, and whether a string is one of them
 - `loadEmailMessages` — `import()` one locale out of the repo-root `locales/`, bound to that locale
@@ -30,6 +30,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `platform_console_email_changed_notice` | platform console, to the previous address | `previous_email`, `new_email` |
 | `platform_console_password_reset` | platform console password reset | `reset_url`, `expires_at` |
 | `staff_contact_message_notice` | to the tenant's staff, when a reader sends a message through the contact form | `tenant_name`, `sender_name`, `reply_to_email`, `subject`, `body`, `received_at` |
+| `staff_contact_reply` | to a reader, with the answer a member of staff wrote in the console | `tenant_name`, `body`, `original_subject`, `original_body`, `original_received_at` |
 
 Template IDs and variable names are snake_case. The copy lives under `email.*` in the repo-root `locales/*.json`, and rendering takes the catalog, the locale, and the time zone as arguments — the package embeds no copy of its own and reads no environment. `timeZone` is an IANA name, and every `expires_at` (RFC3339) is displayed in that zone.
 

@@ -28,6 +28,7 @@ describe("TEMPLATE_IDS", () => {
       "platform_console_email_changed_notice",
       "platform_console_password_reset",
       "staff_contact_message_notice",
+      "staff_contact_reply",
     ]);
     expect(isTemplateId("tenant_admin_invitation")).toBe(true);
     expect(isTemplateId("missing")).toBe(false);

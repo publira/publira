@@ -5,6 +5,18 @@ import { isHttpUrl } from "../http-url";
 import { hasNoLineBreaks } from "../single-line";
 
 /**
+ * How many characters `value` holds as the server counts them: code points,
+ * which is what PostgreSQL's `length` and Go's rune count measure. Zod's own
+ * `max` counts UTF-16 code units instead, so a text of emoji the server stored
+ * within its limit would be refused here, and its mail never rendered.
+ */
+const withinCharacters = (name: string, max: number) =>
+  [
+    (value: string) => [...value].length <= max,
+    { error: `${name} must be at most ${max} characters` },
+  ] as const;
+
+/**
  * The field builders every template's `data` schema is assembled from. Each one
  * takes the variable name so the message names the field the sender got wrong,
  * which is all a sender sees when `resolveEmail` answers `invalid_data`.
@@ -47,7 +59,7 @@ export const displayNameField = (name: string) =>
     .string()
     .trim()
     .min(1)
-    .max(255)
+    .refine(...withinCharacters(name, 255))
     .refine(hasNoLineBreaks, {
       error: `${name} must not contain CR or LF`,
     });
@@ -77,7 +89,7 @@ export const optionalSingleLineField = (name: string, max: number) =>
   z
     .string()
     .trim()
-    .max(max)
+    .refine(...withinCharacters(name, max))
     .refine(hasNoLineBreaks, {
       error: `${name} must not contain CR or LF`,
     });
@@ -93,4 +105,4 @@ export const quotedTextField = (name: string, max: number) =>
     .string()
     .trim()
     .min(1, { error: `${name} is required` })
-    .max(max);
+    .refine(...withinCharacters(name, max));
