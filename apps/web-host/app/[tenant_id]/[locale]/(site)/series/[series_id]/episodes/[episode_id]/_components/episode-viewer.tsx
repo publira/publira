@@ -171,9 +171,11 @@ export const EpisodeViewer = async ({
             ? images.length
             : resumePageIndex(savedPageIndex, images.length)
         }
+        nextEpisodeHref={nextHref}
         pages={toViewerPages(episode.title, images, (values) =>
           t("host.episode.viewer.page_title", values)
         )}
+        previousEpisodeHref={previousHref}
         readingDirection={episode.readingDirection}
         saveWideViewer={
           accessToken ? saveWideViewerAction.bind(null, tenantId) : undefined

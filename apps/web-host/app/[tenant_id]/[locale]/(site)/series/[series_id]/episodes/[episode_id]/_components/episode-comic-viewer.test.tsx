@@ -437,3 +437,80 @@ describe("EpisodeComicViewer progress slider", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 });
+
+describe("EpisodeComicViewer neighbouring episodes", () => {
+  it("hands the control that has run out of pages over to the episode before", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        nextEpisodeHref="/series/SR01/episodes/EP03"
+        pages={pages}
+        previousEpisodeHref="/series/SR01/episodes/EP01"
+        readingDirection="rtl"
+        spreadStartIndex={0}
+        wideViewerEnabled={false}
+      />
+    );
+
+    // The controls start hidden, which takes them out of the accessibility
+    // tree until a tap brings them out.
+    const previous = screen.getByRole("link", {
+      hidden: true,
+      name: "Previous episode",
+    });
+    expect(previous.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
+    expect(
+      screen.queryByRole("button", { hidden: true, name: "Previous page" })
+    ).toBeNull();
+    // The other end still has pages to turn.
+    expect(
+      screen.getByRole("button", { hidden: true, name: "Next page" })
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("link", { hidden: true, name: "Next episode" })
+    ).toBeNull();
+  });
+
+  it("hands the control over to the episode after on the last page", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        initialPageIndex={pages.length - 1}
+        nextEpisodeHref="/series/SR01/episodes/EP03"
+        pages={pages}
+        previousEpisodeHref="/series/SR01/episodes/EP01"
+        readingDirection="ltr"
+        spreadStartIndex={0}
+        wideViewerEnabled={false}
+      />
+    );
+
+    const next = screen.getByRole("link", {
+      hidden: true,
+      name: "Next episode",
+    });
+    expect(next.getAttribute("href")).toBe("/series/SR01/episodes/EP03");
+    expect(
+      screen.queryByRole("button", { hidden: true, name: "Next page" })
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { hidden: true, name: "Previous page" })
+    ).toBeDefined();
+  });
+
+  it("keeps the page-turn control where there is no episode to hand over to", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={0}
+        wideViewerEnabled={false}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { hidden: true, name: "Previous page" })
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("link", { hidden: true, name: "Previous episode" })
+    ).toBeNull();
+  });
+});

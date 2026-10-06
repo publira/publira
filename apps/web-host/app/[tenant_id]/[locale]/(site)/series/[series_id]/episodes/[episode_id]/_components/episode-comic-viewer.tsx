@@ -38,6 +38,7 @@ import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import { LocaleLink } from "#components/locale-link";
 import type { HostClientMessageAccessor } from "#lib/messages";
 import { useWebStorage, writeWebStorage } from "#lib/web-storage";
 
@@ -275,16 +276,18 @@ const ViewerToolbar = ({
 
   return (
     // On a narrow screen a centred slider would run under the buttons on the
-    // right, so the toolbar keeps their width clear and the slider takes the rest.
-    <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0 max-sm:pr-26">
+    // right, so the toolbar keeps their width clear and the slider takes the
+    // rest — the wider width where a coarse pointer grows the buttons to 44px.
+    <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0 max-sm:pr-26 max-sm:pointer-coarse:pr-30">
       <PageProgress
         aria-label={t("host.episode.viewer.progress")}
         className="mx-auto min-w-0 shrink basis-3/5 max-sm:basis-full"
       >
         {/* The toolbar runs rtl so the thumb moves, and the fill grows, the
             way pages turn; the status text still reads left to right. The
-            input is taller than its thumb so a finger can catch it. */}
-        <PageProgressSlider className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background" />
+            input is taller than its thumb so a finger can catch it, and both
+            grow where the pointer is a finger. */}
+        <PageProgressSlider className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] pointer-coarse:h-11 [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background pointer-coarse:[&::-moz-range-thumb]:size-5 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background pointer-coarse:[&::-webkit-slider-thumb]:-mt-2 pointer-coarse:[&::-webkit-slider-thumb]:size-5" />
         <PageStatus
           className="block text-center text-sm text-background tabular-nums [direction:ltr]"
           format={buildPageStatusFormatter(t)}
@@ -300,40 +303,84 @@ const ViewerToolbar = ({
   );
 };
 
-/** The page-turn pair, as the outline buttons the rest of the site uses. */
-const ViewerPageNavigation = () => {
+/**
+ * The page-turn pair, as the outline buttons the rest of the site uses.
+ *
+ * At either end of the episode the control that has run out of pages hands
+ * over to the neighbouring episode, where there is one: it is what a reader
+ * holding a tablet has in place of the arrow key that does the same past the
+ * last page, and it is drawn and hidden with the controls a tap reveals. It
+ * says in words where it goes, because the chevron alone would promise another
+ * page.
+ */
+const ViewerPageNavigation = ({
+  nextEpisodeHref,
+  previousEpisodeHref,
+}: {
+  nextEpisodeHref?: string;
+  previousEpisodeHref?: string;
+}) => {
   const t = useClientMessages();
-  const { readingDirection } = useViewerContext();
+  const { currentIndex, maxIndex, minIndex, readingDirection } =
+    useViewerContext();
   const buttonClassName = cn(
     buttonVariants({ size: "icon", variant: "outline" }),
     "pointer-events-auto absolute top-1/2"
   );
+  const episodeLinkClassName = cn(
+    buttonVariants({ variant: "outline" }),
+    "pointer-events-auto absolute top-1/2"
+  );
+  const backwardIcon =
+    readingDirection === "rtl" ? (
+      <ChevronRightIcon aria-hidden="true" className="size-5" />
+    ) : (
+      <ChevronLeftIcon aria-hidden="true" className="size-5" />
+    );
+  const forwardIcon =
+    readingDirection === "rtl" ? (
+      <ChevronLeftIcon aria-hidden="true" className="size-5" />
+    ) : (
+      <ChevronRightIcon aria-hidden="true" className="size-5" />
+    );
 
   return (
     <PageNavigation
       aria-label={t("host.episode.viewer.navigation")}
       className="pointer-events-none absolute inset-0 z-10 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0"
     >
-      <PreviousPageButton
-        aria-label={t("host.common.previous_page")}
-        className={cn(buttonClassName, "start-3")}
-      >
-        {readingDirection === "rtl" ? (
-          <ChevronRightIcon aria-hidden="true" className="size-5" />
-        ) : (
-          <ChevronLeftIcon aria-hidden="true" className="size-5" />
-        )}
-      </PreviousPageButton>
-      <NextPageButton
-        aria-label={t("host.common.next_page")}
-        className={cn(buttonClassName, "end-3")}
-      >
-        {readingDirection === "rtl" ? (
-          <ChevronLeftIcon aria-hidden="true" className="size-5" />
-        ) : (
-          <ChevronRightIcon aria-hidden="true" className="size-5" />
-        )}
-      </NextPageButton>
+      {previousEpisodeHref !== undefined && currentIndex <= minIndex ? (
+        <LocaleLink
+          className={cn(episodeLinkClassName, "start-3")}
+          href={previousEpisodeHref}
+        >
+          {backwardIcon}
+          <ClientMessage message="host.episode.navigation.previous" />
+        </LocaleLink>
+      ) : (
+        <PreviousPageButton
+          aria-label={t("host.common.previous_page")}
+          className={cn(buttonClassName, "start-3")}
+        >
+          {backwardIcon}
+        </PreviousPageButton>
+      )}
+      {nextEpisodeHref !== undefined && currentIndex >= maxIndex ? (
+        <LocaleLink
+          className={cn(episodeLinkClassName, "end-3")}
+          href={nextEpisodeHref}
+        >
+          <ClientMessage message="host.episode.navigation.next" />
+          {forwardIcon}
+        </LocaleLink>
+      ) : (
+        <NextPageButton
+          aria-label={t("host.common.next_page")}
+          className={cn(buttonClassName, "end-3")}
+        >
+          {forwardIcon}
+        </NextPageButton>
+      )}
     </PageNavigation>
   );
 };
@@ -369,12 +416,17 @@ const ViewerPageNavigation = () => {
  *
  * `wideViewerEnabled` is the choice the server read; one made in this tab since
  * wins over it, so the reader never waits on `saveWideViewer`.
+ *
+ * `nextEpisodeHref` and `previousEpisodeHref` are the neighbouring episodes'
+ * bare paths, offered by the page-turn control at the end that has run out.
  */
 export const EpisodeComicViewer = ({
   children,
   endPage,
   initialPageIndex = 0,
+  nextEpisodeHref,
   pages,
+  previousEpisodeHref,
   readingDirection,
   saveWideViewer,
   spreadStartIndex,
@@ -385,7 +437,11 @@ export const EpisodeComicViewer = ({
   endPage?: ReactNode;
   /** Zero-based page the reader opens at. */
   initialPageIndex?: number;
+  /** Absent on the last published episode of the series. */
+  nextEpisodeHref?: string;
   pages: ViewerPage[];
+  /** Absent on the first one. */
+  previousEpisodeHref?: string;
   readingDirection: ReadingDirection;
   /** Absent for a reader with no session. */
   saveWideViewer?: (enabled: boolean) => Promise<void>;
@@ -469,7 +525,10 @@ export const EpisodeComicViewer = ({
           onToggleFullscreen={toggleFullscreen}
           onToggleWide={toggleWide}
         />
-        <ViewerPageNavigation />
+        <ViewerPageNavigation
+          nextEpisodeHref={nextEpisodeHref}
+          previousEpisodeHref={previousEpisodeHref}
+        />
         {isWide ? <WideViewerMarker /> : null}
         {children}
       </ComicViewerRoot>
