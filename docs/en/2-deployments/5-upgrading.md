@@ -37,11 +37,17 @@ Publira makes no promise yet about running two releases side by side, yet an upg
 - **Between `db migrate` and the restart**, the processes of the release you run serve on the schema of the new one. A migration that only adds tables and columns leaves them working, but a release may also drop or rename a column they still read, and every request that reads it fails until the new processes are up.
 - **During a rolling restart**, the web apps of one release call the `publira server` of the other, and nothing promises that the two agree on the API.
 
-So replace all four processes together, rather than one replica at a time, and keep the window short. If no request may fail during the upgrade, stop the processes before `db migrate` and start those of the new release after `db roles`: the install is then down for as long as the migrations take, rather than serving errors while they run.
+So replace all four processes together, rather than one replica at a time, and keep the window short.
+
+Processes left running also keep writing after you take the backup. If a migration then fails and you go back to the backup, everything written since it is discarded: every sign-up, purchase, comment, and edit made in the meantime, including purchases a payment provider has already charged for.
+
+Stopping the processes before the backup avoids both: no request fails, and the backup holds every write, because nothing writes after it. The install is then down from the backup until the processes of the new release start. Stop them first whenever losing those writes is not acceptable, which on an install that sells episodes is every time.
 
 ## Upgrade
 
 ### 1. Back up the database
+
+If you decided to stop the processes, stop them now, before the backup.
 
 `publiractl` brings the schema forward only, and nothing undoes a migration once it has been applied. The backup you take now is the way back to the release you run.
 
@@ -114,14 +120,17 @@ dirty true
 This is what the database holds then:
 
 - Every migration before the failed one is applied, and stays applied.
-- The failed migration is rolled back. A migration file runs as one transaction, so none of its statements stay. The exception is a migration that builds an index with `CREATE INDEX CONCURRENTLY`, which runs outside a transaction: when it fails, it leaves an invalid index of that name behind.
+- When PostgreSQL refused the failed migration, it is rolled back. A migration file runs as one transaction, so none of its statements stay. The exception is a migration that builds an index with `CREATE INDEX CONCURRENTLY`, which runs outside a transaction: when it fails, it leaves an invalid index of that name behind.
+- When the connection dropped instead, the failed migration may have been committed before the answer was lost, and `db migrate` cannot tell which.
 - The version recorded is the failed migration's, marked dirty, and `db migrate` refuses to run again until the mark is cleared.
 
 The processes you were running keep running on the migrations applied so far, as they do between any `db migrate` and the restart. Do not start the processes of the new release on it.
 
 ### Run it again after fixing the cause
 
-When the cause was outside the migration — the connection dropped, the disk filled up, a statement timed out waiting on a busy table — fix it, set the record back to the migration before the failed one, and run `db migrate` again:
+The log tells the two cases apart. When PostgreSQL refused the migration, the `failed to migrate` line ends with the error it returned and its SQLSTATE, such as `(details: ERROR: canceling statement due to statement timeout (SQLSTATE 57014))`. A dropped connection names a network error instead, with no SQLSTATE.
+
+When PostgreSQL refused the migration for a cause outside it — the disk filled up, a statement timed out waiting on a busy table — fix the cause, set the record back to the migration before the failed one, and run `db migrate` again:
 
 1. Find the version of the migration before the failed one. From the root of a checkout of the new release, this prints it first:
 
@@ -145,9 +154,15 @@ When the cause was outside the migration — the connection dropped, the disk fi
 
 4. Run `db migrate` again. It starts from the migration that failed; once it succeeds, carry on from [step 3](#3-bring-the-roles-up-to-date).
 
+When the connection dropped, look first for the failed migration's changes in the database, reading its `.up.sql` file at the new tag. Since a migration runs as one transaction, either all of them are there or none is:
+
+- **None is there**: the migration was rolled back. Follow the steps above.
+- **All of them are there**: the migration was committed. Set the record to the failed migration itself rather than the one before, with `UPDATE schema_migrations SET version = <failed version>, dirty = false;`, and run `db migrate` again to carry on with the migrations after it.
+- **You cannot tell**, as with a migration that only changes rows and leaves nothing to look for: go back to the release you ran, below. Running such a migration a second time could change the same rows twice.
+
 ### Go back to the release you ran
 
-When the migration itself is at fault, or you cannot find the cause, restore the backup and keep running the release you had. Report the failure in an [issue](https://github.com/publira/publira/issues), with the log of `db migrate` and the output of `db version`.
+When the migration itself is at fault, or you cannot find the cause or tell whether it was applied, restore the backup and keep running the release you had. Restoring discards everything written after the backup, so if the processes kept running through the upgrade, the writes they made since are lost. Report the failure in an [issue](https://github.com/publira/publira/issues), with the log of `db migrate` and the output of `db version`.
 
 1. Stop the processes: a database cannot be dropped while they hold connections to it.
 2. Drop the database, and create it again empty, with the same owner and settings you first created it with.
@@ -189,6 +204,14 @@ If you build the images on the host rather than pull them from a registry, build
 
 ### 3. Back up the database
 
+If you decided to [stop the processes](#decide-whether-to-stop-the-processes-first), stop them first, naming `web-platform` and `email-renderer` too if you run them:
+
+```bash
+docker compose stop server worker web-host web-admin
+```
+
+Then take the backup:
+
 ```bash
 docker compose exec -T postgres pg_dump -U postgres --format=custom publira > publira-before-upgrade.dump
 ```
@@ -196,14 +219,6 @@ docker compose exec -T postgres pg_dump -U postgres --format=custom publira > pu
 `-T` keeps the dump from passing through a terminal, which would corrupt it.
 
 ### 4. Apply the migrations and bring the roles up to date
-
-If no request may fail during the upgrade, stop the processes first, naming `web-platform` and `email-renderer` too if you run them:
-
-```bash
-docker compose stop server worker web-host web-admin
-```
-
-Then:
 
 ```bash
 docker compose run --rm publiractl db migrate
