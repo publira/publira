@@ -17,7 +17,7 @@ Decide these first, since the tenant is served on its host names from the moment
 - **Its default language**, which its site and console start in. Nothing picks one for it. Its administrators can change it later from the tenant console.
 - **Its first administrator**, and how they get access: an invitation mailed to them, or an account you create with a password. [A tenant's staff](./3-tenant-staff.md) compares the two.
 
-Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. No two tenants may share a domain, and no two may share a console host.
+Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. No two tenants may share a domain, and no two may share a console host. Nor may one tenant's domain be another's console host, the `admin.<domain>` a console is given by default included: Publira accepts that pair, but the proxy sends each host name to one app, so one of the two is never reached.
 
 Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-reverse-proxy.md#adding-a-tenant) gives: DNS, certificates, and the proxy's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
 
@@ -86,4 +86,4 @@ Moving the domain also moves everything built on it:
 
 **Suspend** on a tenant's page in the Platform Console, or `publiractl tenant suspend --tenant comics.example.com`, marks the tenant **Suspended**. **Resume**, or `publiractl tenant resume`, marks it active again. The Platform Console's button takes effect as soon as it is pressed, with no confirmation. Either way the change is recorded in **Audit logs**, and the dashboard counts the tenant among its **Suspended tenants**.
 
-Suspension does not stop serving the tenant yet ([#3749](https://github.com/publira/publira/issues/3749)). Its readers keep reading its site and its app, its staff keep signing in to its console, and its scheduled publications and mail go out as before. Nothing about the tenant is deleted or changed by suspending it or resuming it. To take a tenant's site and console offline until then, remove its domain and console host from the proxy's routing, and add them back to bring it back.
+Suspension does not stop serving the tenant yet ([#3749](https://github.com/publira/publira/issues/3749)). Its readers keep reading its site and its app, its staff keep signing in to its console, and its scheduled publications and mail go out as before. Nothing about the tenant is deleted or changed by suspending it or resuming it.
