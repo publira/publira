@@ -132,6 +132,7 @@ jobs:
               - '.gitattributes'
               - 'scripts/check-design-tokens.ts'
               - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/go-setup/**'
             # The pages under docs/ are Markdown, which the check filter leaves
             # out, yet `Check` is where they are validated. A filter of its own,
             # without docs_excluded, starts that job for a change to them alone.
@@ -149,6 +150,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
             test_go:
               - *docs_excluded
               - 'server/**'
@@ -160,6 +162,8 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
+              - '.github/actions/go-build-cache-save/**'
             test_ts:
               - *docs_excluded
               - 'apps/**'
@@ -233,6 +237,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
               - 'scripts/setup-flutter.sh'
               - '.github/actions/mobile-android-setup/**'
             test_e2e:
@@ -262,6 +267,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
             # The OpenSearch backend and what it runs on, and nothing wider:
             # the rest of the stack is Test / E2E's, which runs the same spec
             # on the SQL backend.
@@ -290,6 +296,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
@@ -311,6 +318,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
             test_routing:
               - *docs_excluded
               - 'compose.yaml'
@@ -344,6 +352,8 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
+              - '.github/actions/go-build-cache-save/**'
             docker_web:
               - *docs_excluded
               - 'apps/**'
@@ -465,10 +475,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+        id: go
+        uses: ./.github/actions/go-setup
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -495,6 +503,15 @@ jobs:
 
       - name: Dependencies / Install
         run: task deps
+
+      # Saved here, before anything can fail the job: `go mod tidy` has just
+      # downloaded every module a package or a test imports, on every platform.
+      - name: Cache / Save Go modules
+        if: steps.go.outputs.module-cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go.outputs.module-cache-path }}
+          key: ${{ steps.go.outputs.module-cache-key }}
 
       - name: Validate / Locale Catalog
         run: pnpm locales:check
@@ -550,10 +567,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+        uses: ./.github/actions/go-setup
 
       # scripts/check-go-mod-tidy.sh carries the reasoning; run it locally
       # before pushing a dependency change.
@@ -586,19 +600,29 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        id: go
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: test
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
         with:
           packages: libvips-dev pkg-config
 
+      # `-count=1` because the build cache this job saves would otherwise
+      # carry the results too, and a later run would report a package that
+      # passed on `main` without running its tests.
       - name: Validate / Go Tests
         working-directory: server
-        run: go test ./...
+        run: go test -count=1 ./...
+
+      - name: Cache / Save Go build
+        if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
+        uses: ./.github/actions/go-build-cache-save
+        with:
+          path: ${{ steps.go.outputs.build-cache-path }}
+          key: ${{ steps.go.outputs.build-cache-key }}
 
   test-db-migrations:
     name: Test / DB Migrations
@@ -877,10 +901,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: build
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1051,10 +1074,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: build
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1144,10 +1166,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+        uses: ./.github/actions/go-setup
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1298,10 +1317,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: build
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1395,10 +1413,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: build
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1543,10 +1560,10 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        id: go
+        uses: ./.github/actions/go-setup
         with:
-          go-version: 1.27.1
-          cache-dependency-path: server/go.sum
+          build-cache: build
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
@@ -1573,6 +1590,43 @@ jobs:
 
       - name: Build / Server
         run: task server:build
+
+      # The entry every job that builds the server restores: this one builds
+      # nothing else in Go and runs whenever server/ changes.
+      - name: Cache / Save Go build
+        if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
+        uses: ./.github/actions/go-build-cache-save
+        with:
+          path: ${{ steps.go.outputs.build-cache-path }}
+          key: ${{ steps.go.outputs.build-cache-key }}
+
+  # Every push to main that changes server/ saves one more build cache entry
+  # of each kind, and `restore-keys` only ever reads the newest; the rest are
+  # 150 MB (`build`) and 200 MB (`test`) each that would crowd the Gradle and
+  # Playwright entries out of the repository's 10 GB. Keeping the newest by
+  # creation time keeps the newest commit's, because a run that is no longer
+  # main's tip does not save (`go-build-cache-save`). A job of its own, so the
+  # jobs that run the tree's code never hold a token that can delete caches.
+  prune-go-build-cache:
+    name: Cache / Prune Go build
+    needs: [build, test-go]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' && (needs.build.result == 'success' || needs.test-go.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete superseded entries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for kind in build test; do
+            gh cache list --ref refs/heads/main --key "go-build-${kind}-" \
+              --sort created_at --order desc --limit 100 --json id --jq '.[1:][].id' |
+              xargs -r -n 1 gh cache delete
+          done
 
   docker:
     name: Docker / ${{ matrix.target }}
@@ -1661,6 +1715,7 @@ jobs:
       - test-routing
       - test-deploy
       - build
+      - prune-go-build-cache
       - docker
     runs-on: ubuntu-latest
     steps:
@@ -1688,6 +1743,7 @@ jobs:
           TEST_ROUTING: ${{ needs.test-routing.result }}
           TEST_DEPLOY: ${{ needs.test-deploy.result }}
           BUILD: ${{ needs.build.result }}
+          PRUNE_GO_BUILD_CACHE: ${{ needs.prune-go-build-cache.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
           set -euo pipefail
@@ -1715,6 +1771,7 @@ jobs:
             "Test / Routing=${TEST_ROUTING}" \
             "Test / Deploy=${TEST_DEPLOY}" \
             "Build=${BUILD}" \
+            "Cache / Prune Go build=${PRUNE_GO_BUILD_CACHE}" \
             "Docker=${DOCKER}"
           do
             name="${pair%%=*}"
