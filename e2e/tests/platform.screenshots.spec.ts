@@ -5,7 +5,7 @@ import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import { expectScreenshot, SCREENSHOT_VIEWPORTS } from "../src/screenshots";
 
 /**
- * What the operator console looks like, at a phone width and a desktop width.
+ * What the operator console looks like, at a phone width, a tablet width, and a desktop width.
  *
  * These record the screens rather than assert anything about them; the
  * assertions before each shot only establish that the page finished arriving,

@@ -14,6 +14,18 @@ const isCi = Boolean(process.env.CI);
 const desktopChrome = devices["Desktop Chrome"];
 
 /**
+ * A tablet held upright, with the touch screen and the coarse pointer that
+ * come with one: Chromium reports `pointer: coarse` and `hover: none` for a
+ * context with `hasTouch` and `isMobile`, which is what the layouts' touch
+ * rules key on. The descriptor names WebKit as its browser, and only Chromium
+ * is installed here, so the engine is put back.
+ */
+const tabletChrome = {
+  ...devices["iPad (gen 7)"],
+  browserName: "chromium",
+} as const;
+
+/**
  * Specs that stop the backend (`stopServer`). One process serves all three
  * Connect namespaces and the images, so they cannot overlap with each other or
  * with the three main projects (those still need the API up). Filename is the contract: a new
@@ -136,6 +148,14 @@ const platformSearchSettingsSpecs = /platform\.search-settings\./u;
  */
 const screenshotSpecs = /\.screenshots\./u;
 
+/**
+ * The suites that drive the three apps the way a tablet does: across the
+ * widths a tablet is held at, and by tapping rather than hovering. They run in
+ * projects of their own, under {@link tabletChrome}, so every other project
+ * keeps its desktop pointer.
+ */
+const tabletSpecs = /\.tablet\./u;
+
 /** What a screenshot project shares with the two others. */
 const screenshotProjectUse = {
   ...desktopChrome,
@@ -201,6 +221,7 @@ const mainProjects: PlaywrightTestProject[] = [
       screenshotSpecs,
       serverLogSpecs,
       catalogSearchSpecs,
+      tabletSpecs,
     ],
     use: {
       ...desktopChrome,
@@ -248,11 +269,33 @@ const mainProjects: PlaywrightTestProject[] = [
       performanceSpecs,
       screenshotSpecs,
       serverLogSpecs,
+      tabletSpecs,
     ],
     testMatch: [/platform\./u],
     timeout: 120_000,
     use: {
       ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
+  // After the screenshots for the reason the projects above are: the
+  // episodes these open count as views, which the catalogue ranks by.
+  {
+    dependencies: screenshotDependencies,
+    name: "tablet-host",
+    testMatch: [/host\.tablet\./u],
+    use: {
+      ...tabletChrome,
+      baseURL: WEB_HOST_BASE_URL,
+    },
+  },
+  {
+    dependencies: screenshotDependencies,
+    name: "tablet-platform",
+    testMatch: [/platform\.tablet\./u],
+    timeout: 120_000,
+    use: {
+      ...tabletChrome,
       baseURL: WEB_PLATFORM_BASE_URL,
     },
   },
@@ -273,11 +316,22 @@ const adminProjects: PlaywrightTestProject[] = [
       performanceSpecs,
       screenshotSpecs,
       serverLogSpecs,
+      tabletSpecs,
     ],
     testMatch: [/admin\./u],
     timeout: 120_000,
     use: {
       ...desktopChrome,
+      baseURL: WEB_ADMIN_BASE_URL,
+    },
+  },
+  {
+    dependencies: screenshotDependencies,
+    name: "tablet-admin",
+    testMatch: [/admin\.tablet\./u],
+    timeout: 120_000,
+    use: {
+      ...tabletChrome,
       baseURL: WEB_ADMIN_BASE_URL,
     },
   },

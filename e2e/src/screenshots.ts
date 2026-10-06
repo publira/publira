@@ -4,13 +4,15 @@ import { expect } from "@playwright/test";
 /**
  * The widths every screen is recorded at.
  *
- * A phone, because that is how most of a tenant's readers arrive, and a
- * desktop, because that is where the two consoles are used. The heights only
+ * A phone, because that is how most of a tenant's readers arrive; a tablet
+ * held upright, which is where the layouts change between the two others; and
+ * a desktop, because that is where the two consoles are used. The heights only
  * decide how much of a page is on screen at once; the shots are full-page, so
  * they do not appear in the baseline.
  */
 export const SCREENSHOT_VIEWPORTS = [
   { height: 844, label: "390", width: 390 },
+  { height: 1194, label: "834", width: 834 },
   { height: 900, label: "1280", width: 1280 },
 ] as const;
 

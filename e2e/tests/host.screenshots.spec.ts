@@ -15,7 +15,7 @@ import {
 import { hostPath } from "../src/urls";
 
 /**
- * What the public site looks like, at a phone width and a desktop width.
+ * What the public site looks like, at a phone width, a tablet width, and a desktop width.
  *
  * These record the screens rather than assert anything about them: a change to
  * one arrives as an image next to the image it replaces, instead of as a
