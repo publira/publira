@@ -114,6 +114,7 @@ Implementation:
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
 - Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 - Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
+- Go, the module cache, and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
@@ -124,9 +125,9 @@ Implementation:
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-host. | [`AGENTS.md`](../../AGENTS.md) |
-| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md), [`docs/README.md`](../../docs/README.md) |
+| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Test / Go` | `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
@@ -142,7 +143,8 @@ Implementation:
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
-| `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
+| `Build` | `pnpm build` for Web and `task server:build` for Go; on `main`, saves the `build` Go build cache every job that builds the server restores. | This file |
+| `Cache / Prune Go build` | On `main` only: deletes every Go build cache entry on `main` but the newest of each kind. | This file |
 | `Docker / <target>` | `task docker:build:*`, then web/node/publiractl smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
 
@@ -170,7 +172,7 @@ Nightly full builds find cross-service drift that filters cannot catch. Host CI 
 
 `Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job that installs Ubuntu packages through the [`apt-install`](../actions/apt-install/action.yml) action watches that action too. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job that installs Ubuntu packages through the [`apt-install`](../actions/apt-install/action.yml) action watches that action too, and a job that sets up Go through the [`go-setup`](../actions/go-setup/action.yml) action watches that one. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
 
 | Job | Watched paths |
 | --- | --- |

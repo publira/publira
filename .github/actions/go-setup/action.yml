@@ -1,0 +1,85 @@
+name: Set up Go
+description: Install Go, restore the module cache, and restore the build cache of one kind of compile when the job names one.
+
+inputs:
+  build-cache:
+    description: >-
+      The compile whose build cache to restore: `build` for the server binaries (`task server:build`, and the `go run` of the same commands), or `test` for `go test ./...`. Empty restores the module cache alone.
+    default: ""
+
+outputs:
+  module-cache-path:
+    description: The module cache directory (`go env GOMODCACHE`).
+    value: ${{ steps.env.outputs.gomodcache }}
+  module-cache-key:
+    description: The key the module cache is saved under.
+    value: ${{ steps.modules.outputs.cache-primary-key }}
+  module-cache-hit:
+    description: Whether the module cache was restored from that exact key.
+    value: ${{ steps.modules.outputs.cache-hit }}
+  build-cache-path:
+    description: The build cache directory (`go env GOCACHE`).
+    value: ${{ steps.env.outputs.gocache }}
+  build-cache-key:
+    description: The key the build cache is saved under; empty when none was asked for.
+    value: ${{ steps.build.outputs.cache-primary-key }}
+  build-cache-hit:
+    description: Whether the build cache was restored from that exact key.
+    value: ${{ steps.build.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    # The action's own cache is off: it keeps the module cache and the build
+    # cache together under one key per go.sum, which the first job to finish
+    # saves for every other. That was `Check`, which compiles nothing, so the
+    # jobs that compile the server restored 582 MB of modules and 12 MB of
+    # build cache and rebuilt everything they link.
+    - name: Setup / Go
+      id: go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: 1.27.1
+        cache: false
+
+    - name: Setup / Go cache paths
+      id: env
+      shell: bash
+      run: |
+        {
+          echo "gomodcache=$(go env GOMODCACHE)"
+          echo "gocache=$(go env GOCACHE)"
+        } >> "${GITHUB_OUTPUT}"
+
+    # Exact key only, as the action's own cache had it: the module cache is
+    # never trimmed, so an entry restored from an older go.sum would carry its
+    # superseded versions into every entry saved after it. `Check` saves it,
+    # because `go mod tidy` downloads what every package and test imports.
+    - name: Cache / Go modules
+      id: modules
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.env.outputs.gomodcache }}
+        key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('server/go.sum') }}
+
+    # One entry per kind of compile, keyed by everything under server/, so an
+    # unchanged tree restores exactly what it compiles. A changed tree falls
+    # back to the newest entry of its kind, whose dependencies and untouched
+    # packages still match. Measured on four cores, `task server:build` took
+    # 65 s cold, 30 s with only the dependencies cached, 23 s on an entry five
+    # server commits behind, and 7 s, the link alone, on its own entry.
+    #
+    # Only `main` saves one (the `Build` and `Test / Go` jobs), because only
+    # its entries are readable from a pull request or a merge group, and
+    # `Cache / Prune Go build` keeps the newest of each kind there. Go trims
+    # what it has not used for five days, so restoring an older entry does not
+    # make the saved one grow without bound.
+    - name: Cache / Go build
+      id: build
+      if: inputs.build-cache != ''
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.env.outputs.gocache }}
+        key: go-build-${{ inputs.build-cache }}-${{ runner.os }}-${{ runner.arch }}-go${{ steps.go.outputs.go-version }}-${{ hashFiles('server/**') }}
+        restore-keys: |
+          go-build-${{ inputs.build-cache }}-${{ runner.os }}-${{ runner.arch }}-go${{ steps.go.outputs.go-version }}-
