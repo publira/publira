@@ -176,7 +176,7 @@ comics.example.com, admin.comics.example.com {
 }
 ```
 
-Any other terminator that does the same works too.
+Any other terminator that does the same works too. When you add a tenant later, [Adding a tenant](./4-reverse-proxy.md#adding-a-tenant) lists what the terminator and the proxy need for its host names.
 
 ### 6. Sign in
 

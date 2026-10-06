@@ -125,7 +125,7 @@ Route the two host names to the processes:
 - The tenant's domain to `web-host`.
 - `/api` and `/images` on either host to the edge listener of `publira server`, except `/api/v1`, which belongs to the web app the host picked.
 
-Terminate TLS for both host names at the proxy. The [routing contract](https://github.com/publira/publira/blob/main/infra/proxy/README.md) states the rules in full, and the repository ships sample configurations for Traefik, nginx, and Caddy that you adapt to your hosts.
+Terminate TLS for both host names at the proxy. The repository ships sample configurations for Traefik, nginx, and Caddy, and [Reverse proxy](./4-reverse-proxy.md) takes one of them to HTTPS for these host names.
 
 ### 6. Sign in
 
