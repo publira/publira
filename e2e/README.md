@@ -49,7 +49,7 @@ This always tears down app processes and compose volumes, including on failure o
 | `bash e2e/scripts/sign-in-provider.sh <start\|start-wait\|stop>` | Operate sign-in-provider on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
-| `task e2e:search` | The full lifecycle on the OpenSearch search backend, running `tests/catalog.search.spec.ts` alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
+| `task e2e:search` | The full lifecycle on the OpenSearch search backend, running the `search` group alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
 | `task e2e:test-lib` | Verify `PUBLIRA_E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
 | `task e2e:down` | Stop applications and remove compose resources, including volumes. |
 
@@ -109,15 +109,16 @@ Host-based URL constants are in `src/urls.ts`. web-host resolves the tenant thro
 
 ### Groups
 
-Every project belongs to one of five groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)):
+Every project belongs to one of five groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). A sixth, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
 | `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
-| `main` | `web-host`, `web-platform`, `catalog-search` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
+| `main` | `web-host`, `web-platform`, `catalog-search`, `platform-search-settings` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
 | `admin` | `web-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
 | `performance` | `viewer-performance` | A machine with nothing else running on it. |
+| `search` | `catalog-search`, `platform-search-settings` | The OpenSearch backend `task e2e:search` starts and saves. |
 
 `PUBLIRA_E2E_GROUP` runs one group alone, through `task e2e` or `task e2e:test`; a name that is not a group fails the run before any test starts:
 
@@ -135,13 +136,14 @@ The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects
 
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. In an `exclusive` group run the same chain starts at `catalog-outage`. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
-A spec that changes state the whole console reads gets an isolated project for the same reason, and seven do:
+A spec that changes state the whole console reads gets an isolated project for the same reason, and eight do:
 
 - `platform-locale-switching` (`platform.locale-switching.spec.ts`): `platform_config` holds a single default language for the deployment, and every web-platform screen without a `publira_locale` cookie renders in it, so the spec runs after `platform-error-boundary` rather than beside the specs that read that console.
 - `platform-operator-management` (`platform.operator-management.spec.ts`): it promotes one account seeded by `030_platform_operators.sql` and deactivates another, while `platform.tenant-ops.spec.ts` re-applies that same file from inside its own tests — which would reactivate a deactivated operator half-way through an assertion. It follows `platform-locale-switching`.
 - `platform-storage-settings` (`platform.storage-settings.spec.ts`): `platform_storage_config` is the one object store every upload and every image read resolves, and the spec empties it once to see the unconfigured state, so it follows `platform-operator-management`, precedes every project that reads an image, and puts the row `task e2e:db` saved back on teardown.
 - `platform-webpush-settings` (`platform.webpush-settings.spec.ts`): `platform_webpush_config` holds the installation's one VAPID key pair and subject, which the storefront's browser notification switch depends on, and the spec clears the subject to see the unconfigured state, so it follows `platform-storage-settings`, runs after the `web-host` project whose member settings suite subscribes a browser, and puts the row `task e2e:db` saved back on teardown.
 - `platform-configuration-status` (`platform.configuration-status.spec.ts`): the configuration overview is read from those same two rows, and the spec empties the object store and clears the Web Push subject to see an unfinished installation, then saves the store again, so it follows `platform-webpush-settings` and puts both rows `task e2e:db` saved back on teardown.
+- `platform-search-settings` (`platform.search-settings.spec.ts`): `platform_search_config` names the engine every storefront search answers from, and the spec saves another and moves the search onto it, so it follows `catalog-search` and puts the row `task e2e:db` saved back on teardown — or deletes it, where that saved none.
 - `admin-mfa-sign-in` (`admin.mfa-sign-in.spec.ts`): `platform_policy_config` decides whether a tenant administrator without an authenticator is held at `/mfa` for an enrollment, and the spec requires it of every tenant administrator to enroll one, so it follows `admin-age-verification`, precedes `viewer-performance`, and clears the requirement again on teardown.
 - `platform-setup` (`platform.setup.spec.ts`): `/setup` renders only while `platform_users` is empty, so the spec empties it and creates the platform's first operator through the form. Every console sign-in in the suite reads that table, so this project runs after every other one but `server-logs` — `viewer-performance` included, when that shares the stack — and restores the development seed's platform rows on teardown.
 
@@ -156,7 +158,7 @@ The stack searches the catalog on PostgreSQL. `PUBLIRA_E2E_SEARCH_BACKEND` selec
 
 On `opensearch`, `task e2e:db` ends with `publiractl search set` and `publiractl search reindex`, so the index holds the seed and the search answers from it before any server starts: the seed writes straight to Postgres and queues none of the events that keep the index in step. Everything a spec writes through a console reaches the index through the worker. The engine is the image [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds, with no volume.
 
-`task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and runs the `catalog-search` project with `--no-deps`. That project is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL, in the `main` group: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone.
+`task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and `PUBLIRA_E2E_GROUP=search`, which runs two projects of the `main` group. `catalog-search` is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone. `platform-search-settings` is `tests/platform.search-settings.spec.ts`, which follows it because it moves the whole installation's search: on OpenSearch it moves the search to PostgreSQL and back from the Platform Console, and on SQL, where there is no engine to move to, it saves one nothing listens on and watches its build fail while PostgreSQL keeps answering.
 
 To keep a stack on the engine while iterating, export the variable for every step:
 
@@ -164,7 +166,7 @@ To keep a stack on the engine while iterating, export the variable for every ste
 export PUBLIRA_E2E_SEARCH_BACKEND=opensearch
 task e2e:prepare
 task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
-task e2e:test -- --project=catalog-search --no-deps
+PUBLIRA_E2E_GROUP=search task e2e:test
 task e2e:down
 ```
 
@@ -251,6 +253,6 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - The `screenshots` entry renders in the browser image compose builds.
 - The required branch check is the final **Summary** job, as with all CI jobs; it reports the matrix as one `Test / E2E` result.
 
-Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts` and the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
+Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts`, `tests/platform.search-settings.spec.ts` and the Platform Console screen it drives, the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

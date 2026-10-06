@@ -116,6 +116,14 @@ const serverLogSpecs = /\/logs\./u;
 const catalogSearchSpecs = /catalog\.search\./u;
 
 /**
+ * The spec that rewrites `platform_search_config`, the engine every storefront
+ * search answers from, and under `task e2e:search` moves the search off
+ * OpenSearch and back. It runs after the catalog search suite rather than
+ * beside it, and the `search` group below runs the two on their own.
+ */
+const platformSearchSettingsSpecs = /platform\.search-settings\./u;
+
+/**
  * The suites that record what a screen looks like. In a run of the whole
  * graph they run before every other project, as its dependency, because the
  * state they photograph is the one `task e2e:db` seeded: the admin console
@@ -212,11 +220,25 @@ const mainProjects: PlaywrightTestProject[] = [
       baseURL: WEB_HOST_BASE_URL,
     },
   },
+  // Moves the storefront search from one engine to another, so it follows
+  // the catalog search suite rather than running beside it.
+  {
+    dependencies: ["catalog-search"],
+    fullyParallel: false,
+    name: "platform-search-settings",
+    testMatch: [platformSearchSettingsSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
   {
     dependencies: screenshotDependencies,
     name: "web-platform",
     testIgnore: [
       processIsolatedSpecs,
+      platformSearchSettingsSpecs,
       platformLocaleSwitchingSpecs,
       platformOperatorManagementSpecs,
       platformStorageSettingsSpecs,
@@ -509,6 +531,12 @@ const groups = {
   main: mainProjects,
   performance: performanceProjects,
   screenshots: screenshotProjects,
+  // `task e2e:search`, on the OpenSearch backend: the catalog search suite
+  // and then the suite that moves the search off the engine and back. No CI
+  // matrix entry names it; Test / E2E Search runs it as a job of its own.
+  search: mainProjects.filter(({ name }) =>
+    ["catalog-search", "platform-search-settings"].includes(name ?? "")
+  ),
 } satisfies Record<string, PlaywrightTestProject[]>;
 
 type GroupName = keyof typeof groups;

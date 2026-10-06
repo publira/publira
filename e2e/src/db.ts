@@ -108,6 +108,7 @@ export const quoteSqlLiteral = (value: string): string =>
  * Every server rebuilds what it reads from one of them when its revision moves.
  */
 export type PlatformSettingsTable =
+  | "platform_search_config"
   | "platform_storage_config"
   | "platform_webpush_config";
 

@@ -59,6 +59,9 @@ export const revalidatePlatformTags = (
 /** The tag web-platform holds the SMTP settings under. */
 export const platformEmailSettingsTag = "platform:email-settings";
 
+/** The tag web-platform holds the search settings under. */
+export const platformSearchSettingsTag = "platform:search-settings";
+
 /** The tag web-platform holds the storage settings under. */
 export const platformStorageSettingsTag = "platform:storage-settings";
 
