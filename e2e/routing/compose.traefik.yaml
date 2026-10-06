@@ -20,6 +20,12 @@
 
 services:
   traefik:
+    # The hosts the probes expect, in place of the Dev Container's own
+    # (scripts/lib.sh lists them).
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_ROUTING_SITE_HOSTS:?}
+      PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_ROUTING_ADMIN_HOSTS:?}
+      PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_ROUTING_PLATFORM_HOSTS?}
     ports:
       - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:3080"
       - "127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-18080}:8080"

@@ -146,6 +146,12 @@ services:
     environment:
       # Where services.yaml sends every backend: the host's processes.
       PUBLIRA_EDGE_BACKEND_HOST: host.docker.internal
+      # The hosts routes.yaml serves: the development seed's tenant site and
+      # console (db/seeds/dev), and the Platform Console. A host in no list
+      # reaches no app, so a tenant added by hand needs its two hosts here.
+      PUBLIRA_EDGE_SITE_HOSTS: localhost
+      PUBLIRA_EDGE_ADMIN_HOSTS: admin.localhost
+      PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
     # Docker Desktop resolves host.docker.internal itself; Docker Engine on
     # Linux resolves it through this mapping.
     extra_hosts:

@@ -18,6 +18,9 @@ export default defineConfig({
     "**/gen/**",
     ".agents/skills/**",
     ".devcontainer/devcontainer-lock.json",
+    // A Go template Traefik renders when it loads it, and YAML only after
+    // that: the routers it writes depend on the hosts in the environment.
+    "infra/proxy/traefik/dynamic/routes.yaml",
   ],
   sortTailwindcss,
 });

@@ -1,10 +1,24 @@
 # A sample of the routing in infra/proxy/README.md for Caddy, which a
-# deployment adapts to its own hosts.
+# deployment adapts.
 #
 # Backend addresses come from the environment rather than from a second file:
 # a Caddyfile substitutes {$VAR}, and the value after the first colon is the
 # default. The defaults are the Dev Container's, where every backend is a
 # process inside the one `app` container.
+#
+# So do the hosts each app answers: PUBLIRA_EDGE_SITE_HOSTS,
+# PUBLIRA_EDGE_ADMIN_HOSTS, and PUBLIRA_EDGE_PLATFORM_HOSTS, each a list of host
+# names separated by spaces. The substitution happens before the Caddyfile is
+# parsed, so a list becomes that many arguments of its `host` matcher. None of
+# them has a default.
+#
+# Every `host` matcher starts with `no/host`, a name no request can carry, since
+# a Host header with a slash is refused before any matcher runs. Caddy rejects
+# a `host` matcher with no names at all, and this one keeps the matcher valid
+# when a list is empty: an install that runs no web-platform leaves
+# PUBLIRA_EDGE_PLATFORM_HOSTS empty and keeps its block. A host may appear in
+# one list only, since Caddy refuses a name repeated within one matcher, and
+# @unlisted below names all three lists.
 #
 # Caddy has no equivalent of Traefik's numeric router priorities. `route`
 # evaluates the handle blocks inside it in the order they are written, and
@@ -35,12 +49,12 @@
 }
 
 :80 {
-	# `\d*` is zero or more digits, so admin.example.com and
-	# admin2.example.com are both consoles while administrator.example.com is
-	# a tenant site. The Host header carries a port that the trailing `.*`
-	# absorbs.
-	@admin header_regexp Host ^admin\d*\..*$
-	@platform header_regexp Host ^platform\..*$
+	# The host matcher ignores the port the Host header carries, so
+	# admin.localhost:3080 is a console host when admin.localhost is listed.
+	@site host no/host {$PUBLIRA_EDGE_SITE_HOSTS}
+	@admin host no/host {$PUBLIRA_EDGE_ADMIN_HOSTS}
+	@platform host no/host {$PUBLIRA_EDGE_PLATFORM_HOSTS}
+	@unlisted not host no/host {$PUBLIRA_EDGE_SITE_HOSTS} {$PUBLIRA_EDGE_ADMIN_HOSTS} {$PUBLIRA_EDGE_PLATFORM_HOSTS}
 
 	@images path /images*
 
@@ -53,8 +67,15 @@
 	}
 
 	route {
-		# Host-agnostic, like the API, and answered by the same process, with
-		# the path as it is: the server's own routes carry /images.
+		# A host in no list: the edge answers it itself, and no backend sees
+		# the request, /api and /images included.
+		handle @unlisted {
+			respond 404
+		}
+
+		# On every listed host, like the API, and answered by the same
+		# process, with the path as it is: the server's own routes carry
+		# /images.
 		handle @images {
 			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
 				import publira_forwarded
@@ -75,15 +96,15 @@
 			}
 		}
 
-		# An install that runs no web-platform omits this block and the @platform
-		# matcher, and a platform. host then reaches web-host below.
+		# An install that runs no web-platform leaves PUBLIRA_EDGE_PLATFORM_HOSTS
+		# empty, and this block then answers nothing.
 		handle @platform {
 			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_PLATFORM:app:4100} {
 				import publira_forwarded
 			}
 		}
 
-		handle {
+		handle @site {
 			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_HOST:app:3000} {
 				import publira_forwarded
 			}

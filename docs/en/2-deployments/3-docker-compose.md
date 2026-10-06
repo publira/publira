@@ -58,6 +58,17 @@ chmod 600 .env
 
 Leave `PUBLIRA_TENANT_URL_SCHEME` empty when browsers reach the install over HTTPS, which they do through a TLS terminator. It is the scheme of the links Publira builds, in mail and in the `setup` summary, not of the plain HTTP hop between the terminator and the proxy. Set it to `http` only when browsers really open the install over HTTP, as in [Trying it on one machine](#trying-it-on-one-machine).
 
+### The host names
+
+`PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS` are the host names the proxy routes to the tenant site and to the tenant console: the tenant's domain, such as `comics.example.com`, and its console host, `admin.comics.example.com` unless you will give it another with `--admin-domain`. Write the names without a port. Each variable takes several names separated by spaces, one per tenant, and the proxy answers any host in neither with a 404 of its own.
+
+```text
+PUBLIRA_EDGE_SITE_HOSTS=comics.example.com
+PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com
+```
+
+`PUBLIRA_EDGE_PLATFORM_HOSTS` is the Platform Console's, and stays empty unless you run it.
+
 ### The secrets
 
 Generate every one of these with the command beside it, a fresh value for every install:
@@ -82,7 +93,7 @@ Every value above is required. While one of them is empty, every `docker compose
 error while interpolating services.postgres.environment.POSTGRES_PASSWORD: required variable PUBLIRA_POSTGRES_PASSWORD is missing a value
 ```
 
-The rest of the file may stay empty: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, and the variables of the optional processes, which the next section fills in when you turn one on.
+The rest of the file may stay empty: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, and the variables of the optional processes, which the next section fills in when you turn one on.
 
 A variable exported in the shell you run `docker compose` from takes precedence over the same variable in `.env`. If a value you wrote in `.env` seems to be ignored, look for a `PUBLIRA_*` variable in your shell's environment.
 
@@ -93,7 +104,7 @@ The optional processes run when `COMPOSE_PROFILES` names them, as a comma-separa
 | Profile | What it adds | What else to set in `.env` |
 | --- | --- | --- |
 | `email-renderer` | An HTML part in every mail | `PUBLIRA_EMAIL_RENDERER_URL=http://email-renderer:8080` |
-| `web-platform` | The Platform Console | `PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://web-platform:4100`, `PUBLIRA_PLATFORM_APP_URL` set to the address operators open it at, such as `https://platform.example.com`, and `PUBLIRA_WEB_PLATFORM_AUTH_SECRET` from `openssl rand -base64 32` |
+| `web-platform` | The Platform Console | `PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://web-platform:4100`, `PUBLIRA_PLATFORM_APP_URL` set to the address operators open it at, such as `https://platform.example.com`, `PUBLIRA_EDGE_PLATFORM_HOSTS` set to the host name in that address, such as `platform.example.com`, and `PUBLIRA_WEB_PLATFORM_AUTH_SECRET` from `openssl rand -base64 32` |
 
 For example, to run both:
 
@@ -101,7 +112,7 @@ For example, to run both:
 COMPOSE_PROFILES=web-platform,email-renderer
 ```
 
-`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it. The Platform Console also needs a `platform.` host name, such as `platform.example.com`, pointing at the host, and a certificate on the TLS terminator like the other host names.
+`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it. Its host name also needs DNS pointing at the host, and a certificate on the TLS terminator like the other host names.
 
 You can choose these now or later. To turn one on in an install that is already running, add it to `COMPOSE_PROFILES`, set its variables, and run `docker compose up -d` again: it starts the new process and restarts the ones whose variables changed. What each process does once it runs is in [Turning on the optional processes](./2-installing.md#turning-on-the-optional-processes).
 
@@ -156,7 +167,7 @@ docker compose run --rm publiractl setup \
 
 `setup` asks on the terminal for everything the flags do not give: the platform's default locale and time zone, the SMTP settings, whether to set up Web Push, the tenant's name and domain, and its first administrator. It also asks for the object store's public base URL, which you leave blank, since nothing serves the bucket's objects directly, and then tests the bucket before it saves it. [Set the install up](./2-installing.md#4-set-the-install-up) describes each step.
 
-When it asks for the tenant site domain, give the domain readers will open, such as `comics.example.com`. The console host defaults to `admin.<domain>`, which is what the proxy routes to the tenant console.
+When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. The console host defaults to `admin.<domain>`, the name you listed in `PUBLIRA_EDGE_ADMIN_HOSTS`.
 
 The summary at the end names the tenant site and the tenant console, and prints the administrator's password when `setup` generated one. That is the only place it appears, so keep it before you close the terminal.
 
@@ -164,7 +175,7 @@ The summary at the end names the tenant site and the tenant console, and prints 
 
 The proxy speaks plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, and browsers need HTTPS. Run a TLS terminator on the host that:
 
-- Accepts HTTPS for the tenant's domain and `admin.<domain>`, plus the `platform.` host name if you run the Platform Console, with a certificate for each.
+- Accepts HTTPS for the tenant's domain and `admin.<domain>`, plus the Platform Console's host name if you run it, with a certificate for each.
 - Forwards every request to `http://127.0.0.1:<PUBLIRA_EDGE_PORT>`.
 - Keeps the `Host` header the browser sent. The proxy picks the tenant site, the tenant console, or the Platform Console from it, and Publira picks the tenant from it, so a terminator that replaces it with `127.0.0.1` reaches no tenant at all.
 
@@ -188,8 +199,8 @@ If you turned on the Platform Console, open `PUBLIRA_PLATFORM_APP_URL` and creat
 
 To try the install on your own computer, without DNS or certificates, use host names under `.localhost`. Chromium-based browsers and Firefox send every `.localhost` name to the machine itself, and treat it as secure even over plain HTTP, so they keep the session cookie that signing in sets. Over plain HTTP on any other host name, the sign-in seems to succeed, but the next page you open returns you to the sign-in screen.
 
-1. Set `PUBLIRA_TENANT_URL_SCHEME=http` in `.env`.
-2. Follow steps 1 to 4 above, and give `setup` the tenant domain with the edge port, such as `comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443.
+1. Set `PUBLIRA_TENANT_URL_SCHEME=http` in `.env`, and list the `.localhost` names: `PUBLIRA_EDGE_SITE_HOSTS=comics.localhost` and `PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.localhost`, plus `PUBLIRA_EDGE_PLATFORM_HOSTS=platform.localhost` if you run the Platform Console.
+2. Follow steps 1 to 4 above, and give `setup` the tenant domain with the edge port, such as `comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443, though not of the names the proxy lists.
 3. Skip step 5, and open `http://admin.comics.localhost:8080` to sign in.
 
 The tenant site answers at `http://comics.localhost:8080`, and the Platform Console, if you turned it on with `PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:8080`, at that address. Use this only for trying the install: nothing it sends between your browser and the host is encrypted.

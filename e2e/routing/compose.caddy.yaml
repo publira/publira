@@ -1,7 +1,8 @@
 # Caddy in front of the echo backends from compose.echo.yaml.
 #
 # No PUBLIRA_UPSTREAM_* variables: the Caddyfile's defaults already name
-# `app`, so this run exercises the committed file as it stands.
+# `app`, so this run exercises the committed file as it stands. The hosts have
+# no default, and are the ones scripts/lib.sh lists for every proxy.
 #
 # Relative paths resolve against this directory, which is the project
 # directory: compose.echo.yaml is passed first and lives here too.
@@ -12,6 +13,10 @@ services:
     depends_on:
       app:
         condition: service_healthy
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_ROUTING_SITE_HOSTS:?}
+      PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_ROUTING_ADMIN_HOSTS:?}
+      PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_ROUTING_PLATFORM_HOSTS?}
     ports:
       - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
     volumes:

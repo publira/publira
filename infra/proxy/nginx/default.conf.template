@@ -1,0 +1,74 @@
+# A sample of the routing in infra/proxy/README.md for nginx, which a deployment
+# adapts. Drop this directory in as /etc/nginx/templates of the official nginx
+# image: at startup the image replaces each reference to an environment
+# variable below with its value, and writes the result over the stock
+# /etc/nginx/conf.d/default.conf, which the stock nginx.conf includes inside
+# `http`. upstreams.conf and snippets/ are not templates, so they are read from
+# where they were mounted. Elsewhere, render this file with envsubst, giving it
+# the names of PUBLIRA_EDGE_SITE_HOSTS, PUBLIRA_EDGE_ADMIN_HOSTS, and
+# PUBLIRA_EDGE_PLATFORM_HOSTS as its argument so nothing else is replaced, and
+# adjust the include paths. This comment names them without a dollar sign
+# because envsubst would replace them here too.
+#
+# Each variable is a list of host names separated by spaces, which is what
+# server_name takes. Every server_name starts with `~(?!)`, a regular
+# expression no host matches, so a block whose list is empty is still valid
+# and answers nothing: an install that runs no web-platform leaves
+# PUBLIRA_EDGE_PLATFORM_HOSTS empty and keeps its block.
+#
+# nginx has no equivalent of Traefik's numeric router priorities. The same
+# precedence comes from the server block a host selects and, inside it, from
+# nginx's own location ordering; snippets/app-routes.conf carries the paths that
+# resolve identically on every listed host, /images and /api among them.
+#
+# server_name matching ignores the port the Host header carries, so
+# admin.localhost:3080 selects the block that lists admin.localhost.
+
+include /etc/nginx/templates/upstreams.conf;
+
+# A host in no list: the edge answers it itself, and no backend sees the
+# request, /api and /images included.
+server {
+    listen 80 default_server;
+    # TLS terminates here in a deployment:
+    #   listen 443 ssl default_server;
+    #   ssl_certificate     /etc/nginx/tls/fullchain.pem;
+    #   ssl_certificate_key /etc/nginx/tls/privkey.pem;
+
+    return 404;
+}
+
+# The public tenant site.
+server {
+    listen 80;
+    server_name ~(?!) ${PUBLIRA_EDGE_SITE_HOSTS};
+
+    set $publira_app publira_web_host;
+    include /etc/nginx/templates/snippets/proxy-headers.conf;
+
+    include /etc/nginx/templates/snippets/app-routes.conf;
+}
+
+# The tenant console.
+server {
+    listen 80;
+    server_name ~(?!) ${PUBLIRA_EDGE_ADMIN_HOSTS};
+
+    set $publira_app publira_web_admin;
+    include /etc/nginx/templates/snippets/proxy-headers.conf;
+
+    include /etc/nginx/templates/snippets/app-routes.conf;
+}
+
+# The platform console. `$publira_app` names its upstream only once a request
+# arrives, so an install that runs no web-platform can leave the upstream out
+# of upstreams.conf as well.
+server {
+    listen 80;
+    server_name ~(?!) ${PUBLIRA_EDGE_PLATFORM_HOSTS};
+
+    set $publira_app publira_web_platform;
+    include /etc/nginx/templates/snippets/proxy-headers.conf;
+
+    include /etc/nginx/templates/snippets/app-routes.conf;
+}

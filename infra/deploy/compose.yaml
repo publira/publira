@@ -78,10 +78,16 @@ services:
       retries: 5
 
   # The edge. The routing is the repository's own routes.yaml, mounted as it
-  # stands; only the backend addresses in services.yaml are this file's.
+  # stands; only the backend addresses in services.yaml are this file's, and
+  # the hosts each app answers come from .env. A host in no list reaches
+  # nothing.
   proxy:
     image: traefik:v3.7.14@sha256:e849695bc5c317da0cec22bfee4794fd9e15871fe554f864d31b625983e883ff
     restart: unless-stopped
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_EDGE_SITE_HOSTS:?}
+      PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_EDGE_ADMIN_HOSTS:?}
+      PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_EDGE_PLATFORM_HOSTS:-}
     ports:
       # Loopback, like every port the root compose.yaml publishes: whatever
       # terminates TLS on this host forwards here.

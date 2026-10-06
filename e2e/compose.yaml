@@ -161,6 +161,68 @@ services:
       - "--entrypoints.web.http.middlewares=strip-trace-context@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
+    # Every host the suite opens, since routes.yaml routes no other: the
+    # development seed's tenant, each scenario tenant under db/seeds/scenarios,
+    # and the Platform Console. A scenario that adds a tenant adds its two
+    # hosts here. `unknown-tenant.localhost` is a site host no tenant holds,
+    # for the spec that asserts web-host's own answer to one. A spec that needs
+    # a host made up during the run reaches the app on its own port instead.
+    # Each list is folded, one host per line, which the formatter would join
+    # into a single line.
+    # prettier-ignore
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: >-
+        localhost
+        age.localhost
+        announce.localhost
+        app-links.localhost
+        aset.localhost
+        banner.localhost
+        comment.localhost
+        consent.localhost
+        desk.localhost
+        locale.localhost
+        mobile-push.localhost
+        moderate.localhost
+        notify.localhost
+        other.localhost
+        payment.localhost
+        policy.localhost
+        reject.localhost
+        royalty.localhost
+        shared-consent.localhost
+        sign-in.localhost
+        social-consent.localhost
+        social.localhost
+        team.localhost
+        waitfree.localhost
+        unknown-tenant.localhost
+      PUBLIRA_EDGE_ADMIN_HOSTS: >-
+        admin.localhost
+        admin.age.localhost
+        admin.announce.localhost
+        admin.app-links.localhost
+        admin.aset.localhost
+        admin.banner.localhost
+        admin.comment.localhost
+        admin.consent.localhost
+        admin.desk.localhost
+        admin.locale.localhost
+        admin.mobile-push.localhost
+        admin.moderate.localhost
+        admin.notify.localhost
+        admin.other.localhost
+        admin.payment.localhost
+        admin.policy.localhost
+        admin.reject.localhost
+        admin.royalty.localhost
+        admin.shared-consent.localhost
+        admin.sign-in.localhost
+        admin.social-consent.localhost
+        admin.social.localhost
+        admin.team.localhost
+        admin.waitfree.localhost
+      PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
     volumes:
       # The repository's own dynamic directory, with this run's addresses laid
       # over the services.yaml in it. The order matters: a file mount can only

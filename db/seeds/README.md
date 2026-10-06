@@ -55,6 +55,8 @@ task storage:seed        # The images the development seed's rows name
 
 A seeded tenant's host carries the port of the edge browsers reach it on: `PUBLIRA_EDGE_PORT`, or `3080`, the Dev Container's, when it is unset. `task db:seed` passes it to `psql` as `tenant_port`, and a scenario applied by hand takes the same `-v tenant_port=<port>`. A seed that needs a tenant finds it by `public_id`, never by its host.
 
+The edge routes only the hosts it is given, so a seeded tenant's two hosts are listed on the edge that serves it: the development seed's in the root `compose.yaml` and `scripts/dev-env/compose.yaml`, and every scenario tenant's in `e2e/compose.yaml`.
+
 ## Principles
 
 - Add schema changes only to migrations

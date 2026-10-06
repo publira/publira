@@ -5,9 +5,9 @@
 # or, for the edge the repository-root compose.yaml starts in front of a
 # host-side `task dev`, the machine running Docker. PUBLIRA_EDGE_BACKEND_HOST
 # names it, `app` when unset. Another deployment replaces this file with its own
-# addresses and adapts routes.yaml only where its hosts differ; the E2E stack
-# writes its own into the run directory, naming the host ports its processes
-# listen on.
+# addresses and keeps routes.yaml, giving it its hosts through the environment;
+# the E2E stack writes its own into the run directory, naming the host ports its
+# processes listen on.
 http:
   services:
     web-host:

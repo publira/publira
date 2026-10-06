@@ -49,13 +49,15 @@ PUBLIRA_ROUTING_PROXY=caddy task e2e:routing
 | `task e2e:routing:test` | Probe Host, `/api`, and `/images` routes (requires a running stack). |
 | `task e2e:routing:down` | Tear down that proxy's stack. |
 
-Readiness differs by proxy. Traefik is asked through its insecure API for the five routers and the one middleware the file provider loaded, because a partially loaded configuration is otherwise a wall of failing probes. nginx and Caddy have the whole configuration before they accept a connection, so readiness for them is the first request the catch-all answers.
+Readiness differs by proxy. Traefik is asked through its insecure API for the routers the host lists call for, five or four, and the one middleware the file provider loaded, because a partially loaded configuration is otherwise a wall of failing probes. nginx and Caddy have the whole configuration before they accept a connection, so readiness for them is the first request a listed site host answers.
 
 ## What it verifies
 
+Every proxy is given the same hosts, the `PUBLIRA_ROUTING_*_HOSTS` lists in `scripts/lib.sh`, as the `PUBLIRA_EDGE_*_HOSTS` variables the samples read; the Traefik run puts them in place of the Dev Container's own. Each proxy then starts a second time with the platform list empty, the install that runs no web-platform, and `scripts/test-without-platform.sh` checks that the same files start and route the other two apps, and that the platform hosts reach nothing.
+
 The echo server responds with `{"backend","port","path","host","method","bytes"}`, the received `traceparent`, `tracestate`, and `baggage` values, the received `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`, and the received `Authorization`, `Content-Type`, and Svix signature headers, so every probe can assert **which backend received a request**, **the path it saw** after prefix removal, **the headers it was given**, and **how much of the body arrived**.
 
-`scripts/test.sh` is the list of probes, one per row of the contract: host routing including a numbered admin host and a `Host` carrying a port, the `/api` route, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, and the host-agnostic `/images` route, which reaches the same backend as `/api`; no route rewrites the path. An inbound email webhook post from SendGrid and one from Resend must reach `web-host` with the headers their token and signature travel in, and a 32 MiB body — the most `web-host` reads of a mail — must arrive whole. Two probe sets then run against every one of the four backends: forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives, and forged `X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto` values that the edge must have replaced with its own — the client IP a backend records is the first address in `X-Forwarded-For`, and the CSRF origin check reads the other two.
+`scripts/test.sh` is the list of probes, one per row of the contract: host routing for listed hosts whose names follow no convention and a `Host` carrying a port, unlisted hosts that look like a console, the Platform Console, or a site, none of which may reach a backend, the `/api` route, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, and the `/images` route, which reaches the same backend as `/api` on every listed host; no route rewrites the path. An inbound email webhook post from SendGrid and one from Resend must reach `web-host` with the headers their token and signature travel in, and a 32 MiB body — the most `web-host` reads of a mail — must arrive whole. Two probe sets then run against every one of the four backends: forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives, and forged `X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto` values that the edge must have replaced with its own — the client IP a backend records is the first address in `X-Forwarded-For`, and the CSRF origin check reads the other two.
 
 ## Layout
 
@@ -70,8 +72,8 @@ e2e/routing/
 └── scripts/
     ├── lib.sh
     ├── run.sh              # Every proxy in turn
-    ├── run-one.sh          # up → wait-ready → test for one, always followed by teardown
-    ├── up.sh / wait-ready.sh / test.sh
+    ├── run-one.sh          # up → wait-ready → test, then again with no platform hosts, always followed by teardown
+    ├── up.sh / wait-ready.sh / test.sh / test-without-platform.sh
     └── down.sh
 ```
 

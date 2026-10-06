@@ -31,6 +31,7 @@ services:
       - "--providers.file.directory=/etc/traefik/dynamic"
       # An edit to either file takes effect without restarting the stack.
       - "--providers.file.watch=true"
+    # The hosts routes.yaml serves are the root compose.yaml's, merged in.
     environment:
       PUBLIRA_EDGE_BACKEND_HOST: app
     # devcontainer.json forwards traefik:3080.

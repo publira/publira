@@ -10,15 +10,17 @@ The [routing contract](https://github.com/publira/publira/blob/main/infra/proxy/
 
 ## What the proxy routes
 
-The host name picks a web app:
+The host name picks a web app, and the proxy routes only the host names you list for it:
 
-| Host | Process |
-| --- | --- |
-| A tenant's console host: `admin.<domain>`, or the one it was given with `--admin-domain` | `web-admin` |
-| The Platform Console's host, such as `platform.example.com`, when you run it | `web-platform` |
-| A tenant's domain | `web-host` |
+| Host | Listed in | Process |
+| --- | --- | --- |
+| A tenant's domain | `PUBLIRA_EDGE_SITE_HOSTS` | `web-host` |
+| A tenant's console host: `admin.<domain>`, or the one it was given with `--admin-domain` | `PUBLIRA_EDGE_ADMIN_HOSTS` | `web-admin` |
+| The Platform Console's host, such as `platform.example.com`, when you run it | `PUBLIRA_EDGE_PLATFORM_HOSTS` | `web-platform` |
 
-Two path prefixes then go to the edge listener of `publira server`, on every host:
+A host in none of the lists reaches nothing: the proxy answers it with a 404 of its own. Its name does not matter either way, so a console host need not start with `admin.`, and a host that does reaches the console only once it is listed.
+
+Two path prefixes then go to the edge listener of `publira server`, on every listed host:
 
 - `/api`, the public API the browser and the mobile app call, except `/api/v1`. That one stays with the web app the host picked, which answers its own endpoints there, the payment and inbound email webhooks among them.
 - `/images`, every image a page shows.
@@ -46,9 +48,21 @@ Each sample keeps the backend addresses apart from the routing, and the committe
 
 The internal listener of `publira server`, port `8100`, is for the web apps alone. The proxy never forwards to it, so keep it off any network the proxy is reachable from.
 
-The host rules in the samples are examples too. They pick an app by a pattern on the host name, `admin.` and `platform.`, and send every other host to `web-host`, none of which Publira itself relies on: a tenant's site and console are on whichever hosts it was given. Replace them with the host names your install actually serves: every tenant's domain for `web-host`, every tenant's console host for `web-admin`, and the Platform Console's host for `web-platform`.
+The host names come from the proxy's environment, so the routing files need no edit for them. Each of the three variables in the table above holds host names separated by spaces, without a port, and a host belongs to one of them:
 
-An install that does not run the Platform Console leaves out its upstream and its host rule: the `web-platform` router and service in Traefik, the platform `server` block and its upstream in nginx, and the `@platform` matcher and its `handle` block in Caddy.
+```text
+PUBLIRA_EDGE_SITE_HOSTS=comics.example.com manga.example.org
+PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com studio.manga.example.org
+PUBLIRA_EDGE_PLATFORM_HOSTS=platform.example.com
+```
+
+Each sample reads them in its own way:
+
+- **Traefik** renders `dynamic/routes.yaml` as a template, so the variables go in the environment of the Traefik process.
+- **nginx** takes them through the official nginx image, which fills them into `default.conf.template` when the container starts. Mount the `nginx` directory at `/etc/nginx/templates` rather than `/etc/nginx/conf.d`: the image writes the result over its own `conf.d/default.conf`. Without that image, render the file with `envsubst` yourself, as its first comment says.
+- **Caddy** substitutes them into the Caddyfile when it reads it.
+
+An install that does not run the Platform Console leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and can leave the `web-platform` address out of its backend addresses. No routing block is removed for it: every sample is valid with an empty list.
 
 The [Docker Compose](./3-docker-compose.md) install already runs the Traefik sample, on plain HTTP behind a TLS terminator on the host. On that install, the certificates in the next section belong to the terminator, and the rest of this page applies to the Traefik files in your checkout.
 
@@ -87,7 +101,7 @@ The matchers and the `route` block stay as they are. For a certificate issued el
 
 ### nginx
 
-In each of the three `server` blocks of `publira.conf`, change `listen 80` to `listen 443 ssl`, keeping `default_server` on the first block, the tenant site's. Then add the certificate, and a server that redirects plain HTTP, at the end of the same file:
+In each of the four `server` blocks of `default.conf.template`, change `listen 80` to `listen 443 ssl`, keeping `default_server` on the first block, the one that answers hosts in no list. Then add the certificate, and a server that redirects plain HTTP, at the end of the same file:
 
 ```nginx
 ssl_certificate     /etc/nginx/tls/fullchain.pem;
@@ -145,22 +159,11 @@ certificatesResolvers:
         entryPoint: web
 ```
 
-The routers match hosts by pattern, so Traefik cannot tell from them which names to request. List the names on one router in `dynamic/routes.yaml`, such as `web-host`:
+The routers name every listed host in their rules, so Traefik can tell from them which names to request. In the `websecure` entry point above, replace `tls: {}` with the resolver, and every router on it obtains a certificate for its hosts:
 
 ```yaml
-http:
-  routers:
-    web-host:
-      rule: "PathPrefix(`/`)"
-      priority: 1
-      entryPoints: [websecure]
-      service: web-host
-      tls:
-        certResolver: letsencrypt
-        domains:
-          - main: comics.example.com
-            sans:
-              - admin.comics.example.com
+tls:
+  certResolver: letsencrypt
 ```
 
 For certificates issued elsewhere, leave out the resolver, and list the files in a new file in the `dynamic` directory, such as `dynamic/tls.yaml`. Traefik serves each one for the names it carries:
@@ -172,19 +175,19 @@ tls:
       keyFile: /etc/traefik/tls/comics.example.com/privkey.pem
 ```
 
-Traefik watches the `dynamic` directory, so a change to a file there, a new name or a new certificate entry, takes effect without a restart. A change to `traefik.yaml` needs one. Traefik does not notice a certificate file replaced in place, though, so after each renewal update a file in `dynamic/`, such as with `touch dynamic/tls.yaml`, or it keeps serving the old certificate until it expires.
+Traefik watches the `dynamic` directory, so a change to a file there, such as a new certificate entry, takes effect without a restart. A change to `traefik.yaml` needs one. Traefik does not notice a certificate file replaced in place, though, so after each renewal update a file in `dynamic/`, such as with `touch dynamic/tls.yaml`, or it keeps serving the old certificate until it expires.
 
 ## Adding a tenant
 
 A tenant made with `publiractl tenant create` or in the Platform Console is served as soon as it exists, but its two host names reach it only once the proxy is ready for them. Before its staff open the console:
 
 1. **DNS.** Point the tenant's domain and its console host at the proxy.
-2. **Certificates.** Add both names: to the site addresses in Caddy, to the certificate or the per-host directories in nginx, or to the `domains` list or the certificate files in Traefik.
-3. **Routing.** Add its domain to the hosts your configuration sends to `web-host`, and its console host to those it sends to `web-admin`.
+2. **Certificates.** Add both names: to the site addresses in Caddy, or to the certificate or the per-host directories in nginx. Traefik with a resolver requests them once the routing below names them; with certificate files, add those.
+3. **Routing.** Add its domain to `PUBLIRA_EDGE_SITE_HOSTS`, and its console host to `PUBLIRA_EDGE_ADMIN_HOSTS`.
 
-Load each change as you make it. Traefik picks up `dynamic/` on its own; nginx reloads with `nginx -s reload`, and Caddy with `caddy reload --config /etc/caddy/Caddyfile`. Neither reload drops a connection in progress.
+Each sample reads the host lists once, when the proxy starts, so restart it with the new environment after the routing change; a reload keeps the old lists. A certificate added to nginx or Caddy alone still takes a reload: `nginx -s reload`, or `caddy reload --config /etc/caddy/Caddyfile`, neither of which drops a connection in progress.
 
-The [Docker Compose](./3-docker-compose.md) install mounts `routes.yaml` into its proxy as a single file. An editor that saves by writing a new file in its place leaves the running proxy reading the old one, so run `docker compose restart proxy` after each change to it.
+On the [Docker Compose](./3-docker-compose.md) install, the lists are in `.env`, and `docker compose up -d proxy` recreates the proxy with them.
 
 Moving a console host later, with `publiractl tenant update --admin-domain` or in the **Admin domain** field of the Platform Console, follows the same order: add the new name to DNS, the certificates, and the routing before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`.
 

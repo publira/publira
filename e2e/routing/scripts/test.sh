@@ -7,31 +7,42 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 routing_log "=== route probes ==="
 
-# Host-based apps. Everything that is not an admin or a platform host is the
-# public tenant site. `\d*` is zero-or-more, so `admin.localhost` and
-# `admin2.example.com` are both consoles.
-assert_route "web-host default host" GET localhost / web-host /
-assert_route "web-host other tenant host" GET other.localhost /catalog web-host /catalog
-assert_route "web-host unknown tenant host" GET unknown-tenant.localhost / web-host /
-assert_route "web-admin host" GET admin.localhost / web-admin /
-assert_route "web-admin numbered host" GET admin2.example.com /series web-admin /series
-assert_route "web-admin does not match administrator.*" GET administrator.localhost / web-host /
-assert_route "web-platform host" GET platform.localhost / web-platform /
-assert_route "web-platform other domain" GET platform.example.com /tenants web-platform /tenants
+# Host-based apps. Each listed host reaches the app whose list names it, and
+# its name decides nothing: the lists are in lib.sh.
+assert_route "web-host listed host" GET localhost / web-host /
+assert_route "web-host listed host of no convention" GET reader.example.org /catalog web-host /catalog
+assert_route "web-host listed host named like a console" GET admin.reader.example.org / web-host /
+assert_route "web-admin listed host" GET admin.localhost / web-admin /
+assert_route "web-admin listed host of no convention" GET studio.example.com /series web-admin /series
+assert_route "web-platform listed host" GET platform.localhost / web-platform /
+assert_route "web-platform listed host of no convention" GET operators.example.net /tenants web-platform /tenants
 
 # Host matching ignores the port. A browser hitting the forwarded entrypoint
 # sends Host `admin.localhost:3080`.
-assert_route "web-admin host with port" GET admin.localhost:3080 / web-admin /
-assert_route "web-platform host with port" GET platform.localhost:3080 / web-platform /
+assert_route "web-host host with port" GET reader.example.org:3080 / web-host /
+assert_route "web-admin host with port" GET studio.example.com:3080 / web-admin /
+assert_route "web-platform host with port" GET operators.example.net:3080 / web-platform /
 
-# /api reaches the server :8000 with the path intact, on every host: the
-# server's own routes carry the prefix.
+# A host in no list reaches nothing, whatever it looks like: the patterns the
+# samples used to route by name no app, and nothing falls through to web-host.
+assert_unrouted "unlisted admin host" GET admin.example.com /
+assert_unrouted "unlisted numbered admin host" GET admin2.localhost /series
+assert_unrouted "unlisted platform host" GET platform.example.com /tenants
+assert_unrouted "unlisted site host" GET unknown-tenant.localhost /
+assert_unrouted "unlisted host with port" GET unknown-tenant.localhost:3080 /
+assert_unrouted "unlisted host on /api" GET unknown-tenant.localhost /api/foo
+assert_unrouted "unlisted host on /api/v1" POST unknown-tenant.localhost /api/v1/revalidate
+assert_unrouted "unlisted host on /images" GET admin.example.com /images/cover
+
+# /api reaches the server :8000 with the path intact, on every listed host:
+# the server's own routes carry the prefix.
 assert_route "api keeps /api" GET localhost /api api /api
 assert_route "api keeps /api/" GET localhost /api/ api /api/
 assert_route "api keeps a procedure path" GET localhost /api/publira.v1.CatalogService/ListPublishedSeries api /api/publira.v1.CatalogService/ListPublishedSeries
 assert_route "api keeps a deeper path" GET localhost /api/foo/bar api /api/foo/bar
 assert_route "api on admin host" GET admin.localhost /api/foo api /api/foo
 assert_route "api on platform host" GET platform.localhost /api/foo api /api/foo
+assert_route "api on a console host of no convention" GET studio.example.com /api/foo api /api/foo
 
 # /api/v1 is the exception: it is where the Next.js apps mount their Route
 # Handlers, so it stays on the app the host rules picked, prefix intact.
@@ -51,13 +62,13 @@ assert_route "bare /api/v1 stays on web-host" GET localhost /api/v1 web-host /ap
 # Handlers, so it is the public API like any other /api path.
 assert_route "api keeps /api/v1abc" GET localhost /api/v1abc api /api/v1abc
 
-# /images outranks the host routers and is host-agnostic: the api backend
-# answers it for every host with the path intact, and picks the rules it
-# applies from the host name the edge forwarded unrewritten.
+# /images outranks the host routers: the api backend answers it for every
+# listed host with the path intact, and picks the rules it applies from the
+# host name the edge forwarded unrewritten.
 assert_route "images on default host" GET localhost /images/cover api /images/cover
 assert_route "images on platform host" GET platform.localhost /images/cover api /images/cover
 assert_route "images on admin host" GET admin.localhost /images/cover api /images/cover
-assert_route "images on numbered admin host" GET admin1.localhost /images/x api /images/x
+assert_route "images on a site host of no convention" GET reader.example.org /images/x api /images/x
 
 # An inbound email provider posts a reader's reply with the headers its token
 # or signature travels in, and SendGrid posts the mail with its attachments,

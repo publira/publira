@@ -10,7 +10,7 @@ A Publira install is made of four long-lived processes, a handful of services th
 
 | Process | Serves | Reached by |
 | --- | --- | --- |
-| `web-host` | The public site of every tenant | The reverse proxy, on every host that is not a console host |
+| `web-host` | The public site of every tenant | The reverse proxy, on each tenant's domain |
 | `web-admin` | The tenant console | The reverse proxy, on each tenant's console host, `admin.<domain>` unless the tenant was given another |
 | `publira server` | The public API and image delivery on its edge listener, and the API the web apps call on its internal listener | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
 | `publira worker` | Outgoing mail and push notifications, cache revalidation, and every scheduled job | Nothing; it only answers health checks |

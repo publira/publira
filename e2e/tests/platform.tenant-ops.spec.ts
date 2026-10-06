@@ -19,9 +19,8 @@ import {
   uniqueSuffix,
 } from "../src/scenarios/platform-tenants";
 import {
-  tenantHost,
-  WEB_ADMIN_BASE_URL,
-  WEB_HOST_BASE_URL,
+  WEB_ADMIN_INTERNAL_URL,
+  WEB_HOST_INTERNAL_URL,
   WEB_PLATFORM_BASE_URL,
 } from "../src/urls";
 
@@ -202,6 +201,12 @@ test.describe("platform tenant operations", () => {
     await expect(tenantAdminDomainInput(page)).toHaveValue(newAdminDomain);
   });
 
+  /**
+   * The hosts are made up per run, because web-host and web-admin each keep a
+   * host's tenant for minutes and a host reused across runs would answer from
+   * that cache. A made-up host is on no list of the edge's, so the browser
+   * reaches each app on its own port, and the tenant is stored on that port.
+   */
   test("domain / admin_domain reach tenant resolution in web-host and web-admin", async ({
     page,
   }) => {
@@ -209,14 +214,16 @@ test.describe("platform tenant operations", () => {
     const name = `E2E Domain Tenant ${suffix}`;
     const hostname = `e2e-dom-${suffix}.localhost`;
     const adminHostname = `admin.${hostname}`;
-    const domain = tenantHost(hostname);
-    const adminDomain = tenantHost(adminHostname);
+    const hostPort = new URL(WEB_HOST_INTERNAL_URL).port;
+    const adminPort = new URL(WEB_ADMIN_INTERNAL_URL).port;
+    const domain = `${hostname}:${hostPort}`;
+    const adminDomain = `${adminHostname}:${adminPort}`;
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
     );
 
-    const hostBase = withHostname(WEB_HOST_BASE_URL, hostname);
+    const hostBase = withHostname(WEB_HOST_INTERNAL_URL, hostname);
     const hostResponse = await page.goto(`${hostBase}/`);
     expect(hostResponse?.status(), await page.content()).toBe(200);
     // A brand new tenant has no work for the top page to open with, so the
@@ -228,7 +235,7 @@ test.describe("platform tenant operations", () => {
     // shown on the header brand.
     await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
-    const adminBase = withHostname(WEB_ADMIN_BASE_URL, adminHostname);
+    const adminBase = withHostname(WEB_ADMIN_INTERNAL_URL, adminHostname);
     const adminResponse = await page.goto(`${adminBase}/login`);
     expect(adminResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByLabel(/Email address/u)).toBeVisible();
@@ -245,8 +252,8 @@ test.describe("platform tenant operations", () => {
 
     const movedHostname = `e2e-dom2-${suffix}.localhost`;
     const movedAdminHostname = `admin.${movedHostname}`;
-    const movedDomain = tenantHost(movedHostname);
-    const movedAdminDomain = tenantHost(movedAdminHostname);
+    const movedDomain = `${movedHostname}:${hostPort}`;
+    const movedAdminDomain = `${movedAdminHostname}:${adminPort}`;
     await tenantDomainInput(page).fill(movedDomain);
     await tenantAdminDomainInput(page).fill(movedAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
@@ -263,12 +270,12 @@ test.describe("platform tenant operations", () => {
       `)
     ).toBe(`${movedDomain}|${movedAdminDomain}`);
 
-    const movedHost = withHostname(WEB_HOST_BASE_URL, movedHostname);
+    const movedHost = withHostname(WEB_HOST_INTERNAL_URL, movedHostname);
     const movedHostResponse = await page.goto(`${movedHost}/`);
     expect(movedHostResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("link", { exact: true, name })).toBeVisible();
 
-    const movedAdmin = withHostname(WEB_ADMIN_BASE_URL, movedAdminHostname);
+    const movedAdmin = withHostname(WEB_ADMIN_INTERNAL_URL, movedAdminHostname);
     const movedAdminResponse = await page.goto(`${movedAdmin}/login`);
     expect(movedAdminResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByLabel(/Email address/u)).toBeVisible();

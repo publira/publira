@@ -1,15 +1,31 @@
 # The routing in infra/proxy/README.md for Traefik: routers and middlewares,
 # identical in the Dev Container, the E2E stack, and each dev-env profile, and a
-# sample a deployment adapts to its own hosts. The backend addresses live next
-# to this file in services.yaml, which is the half that changes per deployment;
-# the file provider reads the whole directory and merges the two.
+# sample a deployment adapts. The backend addresses live next to this file in
+# services.yaml, which is the half that changes per deployment; the file
+# provider reads the whole directory and merges the two.
 #
 # Router and service names have to match across the two files. `task
 # e2e:routing` fails on a mismatch, because a router whose service is missing
 # answers 503.
 #
-# A rule carrying a regular expression is single-quoted, so YAML leaves its
-# backslashes alone.
+# The file is a Go template the file provider renders when it loads it. The
+# hosts come from the environment of the Traefik process:
+# PUBLIRA_EDGE_SITE_HOSTS, PUBLIRA_EDGE_ADMIN_HOSTS, and
+# PUBLIRA_EDGE_PLATFORM_HOSTS, each a list of host names separated by spaces.
+# A Host matcher names one host, so each list is split below and joined back
+# into one rule per app. An empty list leaves its router out, since Traefik
+# refuses an empty rule; with every list empty, so are /api and /images.
+#
+# A host in no list matches no router, so Traefik answers it with its own 404
+# and no backend sees the request. /api and /images are routed on the listed
+# hosts alone for the same reason.
+{{- define "hosts" -}}
+  {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
+{{- end -}}
+{{- $site := regexSplit "\\s+" (env "PUBLIRA_EDGE_SITE_HOSTS") -1 | compact -}}
+{{- $admin := regexSplit "\\s+" (env "PUBLIRA_EDGE_ADMIN_HOSTS") -1 | compact -}}
+{{- $platform := regexSplit "\\s+" (env "PUBLIRA_EDGE_PLATFORM_HOSTS") -1 | compact -}}
+{{- $listed := concat $site $admin $platform }}
 http:
   middlewares:
     # The trust boundary for W3C Trace Context. Traefik drops a request header
@@ -23,42 +39,49 @@ http:
           traceparent: ""
           tracestate: ""
           baggage: ""
+{{- if $listed }}
 
   routers:
-    # The catch-all. Priority 1 keeps it under every other router.
+{{- if $site }}
     web-host:
-      rule: "PathPrefix(`/`)"
-      priority: 1
+      rule: '{{ template "hosts" $site }}'
+      priority: 100
       entryPoints: [web]
       service: web-host
+{{- end }}
+{{- if $admin }}
 
     web-admin:
-      rule: 'HostRegexp(`^admin\d*\..*$`)'
+      rule: '{{ template "hosts" $admin }}'
       priority: 100
       entryPoints: [web]
       service: web-admin
+{{- end }}
+{{- if $platform }}
 
     web-platform:
-      rule: 'HostRegexp(`^platform\..*$`)'
+      rule: '{{ template "hosts" $platform }}'
       priority: 100
       entryPoints: [web]
       service: web-platform
+{{- end }}
 
-    # The public API is host-agnostic, so priority 105 puts it above the
-    # admin and platform hosts. `/api/v1` is excluded: that space belongs to
-    # the Next.js Route Handlers of whichever app the host rules picked. No
-    # prefix removal, because the server's own routes carry /api.
+    # The public API, on every listed host, so priority 105 puts it above the
+    # host routers. `/api/v1` is excluded: that space belongs to the Next.js
+    # Route Handlers of whichever app the host routers picked. No prefix
+    # removal, because the server's own routes carry /api.
     api:
-      rule: "PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1(/.*)?$`)"
+      rule: '({{ template "hosts" $listed }}) && PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1(/.*)?$`)'
       priority: 105
       entryPoints: [web]
       service: api
 
-    # Host-agnostic, like the API, and answered by the same process: the
-    # server picks the rules it applies to an image from the host name it was
-    # given. No prefix removal, like the API.
+    # On every listed host, like the API, and answered by the same process:
+    # the server picks the rules it applies to an image from the host name it
+    # was given. No prefix removal, like the API.
     images:
-      rule: "PathPrefix(`/images`)"
+      rule: '({{ template "hosts" $listed }}) && PathPrefix(`/images`)'
       priority: 110
       entryPoints: [web]
       service: api
+{{- end }}

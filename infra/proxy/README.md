@@ -1,6 +1,6 @@
 # Edge routing
 
-Every Publira deployment puts one reverse proxy in front of four backends. This directory holds sample configurations of that proxy, one per subdirectory, and a deployment adapts one of them to its own hosts and addresses: they are not rules the application depends on. The routing below is what the three samples share; each subdirectory writes it for one proxy.
+Every Publira deployment puts one reverse proxy in front of four backends. This directory holds sample configurations of that proxy, one per subdirectory, and a deployment gives one of them its own hosts and addresses: they are not rules the application depends on. The routing below is what the three samples share; each subdirectory writes it for one proxy.
 
 | Proxy | Files | Where it runs |
 | --- | --- | --- |
@@ -8,7 +8,7 @@ Every Publira deployment puts one reverse proxy in front of four backends. This 
 | nginx | [`nginx/`](./nginx/) | Sample for a deployment |
 | Caddy | [`caddy/`](./caddy/) | Sample for a deployment |
 
-The Dev Container mounts `traefik/dynamic` into its `traefik` container and runs the file provider with `watch=true`, so an edit to `routes.yaml` or `services.yaml` takes effect without restarting the stack. Where the bind mount delivers no file events, `docker compose restart traefik` picks the edit up.
+The Dev Container mounts `traefik/dynamic` into its `traefik` container and runs the file provider with `watch=true`, so an edit to `routes.yaml` or `services.yaml` takes effect without restarting the stack. Where the bind mount delivers no file events, `docker compose restart traefik` picks the edit up. A change to the hosts is a change to the container's environment, which `docker compose up -d traefik` applies by recreating it.
 
 Image builds are a separate concern and live under [`infra/docker/`](../docker/README.md).
 
@@ -25,19 +25,21 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 
 ### Host rules
 
-The hostname decides which Next.js app answers. Matching ignores the port the `Host` header carries, so `admin.localhost:3080` is an admin host.
+The hostname decides which Next.js app answers, and the hosts are listed rather than recognised: each sample reads one environment variable per app and routes exactly the hosts it names.
 
-| Hostname                                 | App            |
-| ---------------------------------------- | -------------- |
-| `^admin\d*\..*$` — `admin.…`, `admin2.…` | `web-admin`    |
-| `^platform\..*$` — `platform.…`          | `web-platform` |
-| Anything else                            | `web-host`     |
+| Variable                      | App            | Holds                       |
+| ----------------------------- | -------------- | --------------------------- |
+| `PUBLIRA_EDGE_SITE_HOSTS`     | `web-host`     | Every tenant's domain       |
+| `PUBLIRA_EDGE_ADMIN_HOSTS`    | `web-admin`    | Every tenant's console host |
+| `PUBLIRA_EDGE_PLATFORM_HOSTS` | `web-platform` | The Platform Console's host |
 
-`\d*` is zero or more digits, so a numbered console host (`admin2.example.com`) is an admin host while `administrator.example.com` is a tenant site.
+Each is a list of host names separated by spaces, without a port: the form a Caddyfile placeholder and nginx's `server_name` take as they are, and the Traefik template splits. A host belongs to one list. Matching ignores the port the `Host` header carries, so `admin.localhost:3080` is a console host when `admin.localhost` is listed.
 
-The prefix is how the samples recognise a console host, not what makes one: a tenant's console host is the one it was given (`admin_domain`), or `admin.<domain>` without one, and the application answers on whichever it is. A deployment whose tenants use console hosts outside the prefix routes those hosts to `web-admin` as well.
+A listed host reaches its app whatever its name: nothing about `admin.` or `platform.` means anything to the edge. A tenant's console host is the one it was given (`admin_domain`), or `admin.<domain>` without one, and the application answers on whichever it is, so adding a tenant means adding its domain to the first list and its console host to the second.
 
-An install that runs no `web-platform` leaves out the platform row and the `web-platform` upstream, and a `platform.` host then falls to the last row like any other host no tenant holds; every other row stays as it is.
+A host in no list reaches no backend: the edge answers it with a 404 of its own, on every path, `/api` and `/images` included.
+
+An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty. Every sample stays valid with an empty list, so no block is removed for it; the `web-platform` upstream may be left out of the backend addresses as well.
 
 ### Path rules
 
@@ -50,7 +52,7 @@ An install that runs no `web-platform` leaves out the platform row and the `web-
 
 No rule rewrites the path.
 
-`/api` and `/images` are host-agnostic: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/api/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
+The path rules apply on every listed host: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/api/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 
 `/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, on the public site the view beacon, the read beacon, and the payment and inbound email webhooks, and on the tenant console the royalty statement CSV — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/api/publira.v1.<Service>/<Method>`.
 
@@ -64,10 +66,10 @@ A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound em
 
 Highest first. A proxy with no numeric priorities reaches the same result by ordering its blocks this way.
 
-1. `/images…`
-2. `/api` minus the `/api/v1…` exception
-3. Admin or platform host
-4. Everything else
+1. A host in no list, answered by the edge itself
+2. `/images…`
+3. `/api` minus the `/api/v1…` exception
+4. The app whose list names the host
 
 ### Request headers
 
@@ -88,11 +90,12 @@ Each of them is **set**, never appended to. The client is outside the trust boun
 
 ## What an operator supplies
 
-Two things are deployment decisions, and each proxy's files mark them.
+Three things are deployment decisions, and each proxy's files mark them.
 
+- **Hosts.** The three `PUBLIRA_EDGE_*_HOSTS` variables above, read from the proxy's environment: by the Traefik file provider when it renders `routes.yaml`, by the official nginx image when it renders `default.conf.template` at startup, and by Caddy when it parses the Caddyfile. Each proxy reads them once, so a changed list takes effect when the proxy restarts. None of them has a default: the Dev Container, the edge in front of a host-side `task dev`, and each `dev-env` profile list the development seed's tenant and the Platform Console, and the E2E stack every tenant its seeds and scenarios create.
 - **Backend addresses.** They are the half of the configuration that changes per environment, so every proxy here keeps them apart from the routing: Traefik in `traefik/dynamic/services.yaml`, nginx in `nginx/upstreams.conf`, Caddy in the `PUBLIRA_UPSTREAM_*` environment variables. The addresses committed here name the Dev Container's `app` container.
 - **TLS.** Which certificate source, which listen addresses, and which real-IP header apply depend on where the edge runs. Each configuration listens on plain HTTP and carries a commented placeholder where the TLS listener goes.
 
 ## Verification
 
-`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
