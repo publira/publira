@@ -3,12 +3,13 @@
  *
  * `mobile/lib/l10n/gen/app_messages.dart` is compiled from `locales/*.json`
  * the way `packages/i18n/src/__generated__/` is: the namespaces the app reads
- * become one abstract class of typed getters and methods, plus a subclass per
- * locale whose bodies are Dart string literals. `messageformat` parses every
- * message here, so the app never reads a message at runtime — a `{$name}`
- * placeholder becomes a required named parameter, an escape is resolved before
- * the literal is written, and a key present in one catalog and not another
- * fails this generator rather than a screen.
+ * become one class of typed getters and methods, and each locale's messages
+ * are written out as their MessageFormat 2 source. A member formats its
+ * source with `package:messageformat` at runtime, so this generator never
+ * renders a message itself. What it does is type them: `messageformat` parses
+ * every message here, each variable becomes a required named parameter, and a
+ * key present in one catalog and not another fails this generator rather than
+ * a screen.
  *
  * The output has to come back unchanged from `dart format`, because
  * `pnpm locales:check` compares it byte for byte and CI runs the formatter
@@ -18,8 +19,7 @@
  * split. Everything emitted below follows exactly that rule.
  */
 
-import { simpleMessageParts } from "../packages/i18n/src/mf2.ts";
-import type { SimpleMessagePart } from "../packages/i18n/src/mf2.ts";
+import { messageVariables } from "../packages/i18n/src/mf2.ts";
 import { namespaceLeaves } from "./catalog-leaves.ts";
 
 export interface DartLocale {
@@ -54,6 +54,9 @@ const CLASS_MEMBERS = new Set([
   "of",
   "supportedLocales",
 ]);
+
+/** The runtime half of the catalog, which formats a member's source. */
+const RUNTIME_IMPORT = "package:publira/l10n/message_format.dart";
 
 const DART_RESERVED = new Set([
   "abstract",
@@ -193,32 +196,9 @@ const dartText = (text: string): string =>
     .replaceAll("\r", "\\r")
     .replaceAll("\t", "\\t");
 
-/**
- * A single-quoted Dart literal rendering `parts`, with each placeholder
- * interpolating the parameter `parameterOf` names for it. The braces of an
- * interpolation are written only where the text after it would otherwise be
- * read as part of the parameter's name, which is also where the `unnecessary_brace_in_string_interps`
- * lint allows them.
- */
-export const dartStringLiteral = (
-  parts: readonly SimpleMessagePart[],
-  parameterOf: (variable: string) => string
-): string => {
-  let literal = "'";
-  for (const [index, part] of parts.entries()) {
-    if (typeof part === "string") {
-      literal += dartText(part);
-      continue;
-    }
-
-    const parameter = parameterOf(part.variable);
-    const next = parts[index + 1];
-    const glued = typeof next === "string" && /^[A-Za-z0-9_]/u.test(next);
-    literal += glued ? `\${${parameter}}` : `$${parameter}`;
-  }
-
-  return `${literal}'`;
-};
+/** A single-quoted Dart literal holding `text` as written. */
+export const dartStringLiteral = (text: string): string =>
+  `'${dartText(text)}'`;
 
 /** The Dart expression for the locale `code` names, as `dart:ui` spells it. */
 const dartLocale = (code: string): string => {
@@ -306,9 +286,6 @@ const likelyScripts = (
   return scripts;
 };
 
-const subclassName = (code: string): string =>
-  `_${CLASS_NAME}${code.split("-").map(capitalize).join("")}`;
-
 /**
  * `head`, `entries` and `tail` on one line when that fits, otherwise one entry
  * per line with a trailing comma — the two shapes `dart format` settles on.
@@ -331,14 +308,66 @@ const fitted = (
   ].join("\n");
 };
 
+interface Parameter {
+  /** The name the message's source gives the variable. */
+  readonly variable: string;
+  readonly name: string;
+  readonly type: "String" | "num";
+}
+
 interface Message {
   readonly key: string;
   readonly identifier: string;
-  /** Parameter per placeholder, in placeholder name order. */
-  readonly parameters: readonly string[];
-  /** The literal each locale renders, keyed by code. */
-  readonly literals: ReadonlyMap<string, string>;
+  /** One per variable of any locale's source, in variable name order. */
+  readonly parameters: readonly Parameter[];
+  /** The MF2 source each locale formats, keyed by code. */
+  readonly sources: ReadonlyMap<string, string>;
 }
+
+const variablesOf = (key: string, code: string, source: string) => {
+  try {
+    return messageVariables(source);
+  } catch (error) {
+    throw new Error(
+      `${code}: ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    );
+  }
+};
+
+/**
+ * A variable is a `num` when a numeric function takes it in any locale, so a
+ * selector in one translation still compares it by value; a translation that
+ * only inserts it formats the number the way `:number` would.
+ */
+const parametersOf = (
+  key: string,
+  sources: ReadonlyMap<string, string>
+): Parameter[] => {
+  const variables = new Set<string>();
+  const numeric = new Set<string>();
+  for (const [code, source] of sources) {
+    for (const variable of variablesOf(key, code, source)) {
+      variables.add(variable.name);
+      if (variable.numeric) {
+        numeric.add(variable.name);
+      }
+    }
+  }
+
+  const parameters = [...variables].toSorted().map((variable) => ({
+    name: dartParameter(variable),
+    type: numeric.has(variable) ? ("num" as const) : ("String" as const),
+    variable,
+  }));
+  if (new Set(parameters.map(({ name }) => name)).size !== parameters.length) {
+    throw new Error(
+      `${key}: two variables compile into the same parameter (${parameters.map(({ variable }) => variable).join(", ")})`
+    );
+  }
+
+  return parameters;
+};
 
 const collectMessages = (
   locales: readonly DartLocale[],
@@ -362,67 +391,90 @@ const collectMessages = (
     }
     identifiers.set(identifier, key);
 
-    const partsByCode = new Map<string, SimpleMessagePart[]>();
-    const parametersByVariable = new Map<string, string>();
-    for (const [code, leaves] of leavesByCode) {
-      const parts = simpleMessageParts(leaves.get(key) ?? "");
-      partsByCode.set(code, parts);
-      for (const part of parts) {
-        if (typeof part !== "string") {
-          parametersByVariable.set(part.variable, dartParameter(part.variable));
-        }
-      }
-    }
-    const variables = [...parametersByVariable.keys()].toSorted();
-    const parameters = variables.map((variable) => {
-      const parameter = parametersByVariable.get(variable);
-      if (parameter === undefined) {
-        throw new Error(`${key}: no parameter for ${variable}`);
-      }
-
-      return parameter;
-    });
-    if (new Set(parameters).size !== parameters.length) {
-      throw new Error(
-        `${key}: two placeholders compile into the same parameter (${variables.join(", ")})`
-      );
-    }
-
+    const sources = new Map(
+      [...leavesByCode].map(([code, leaves]) => [code, leaves.get(key) ?? ""])
+    );
     messages.push({
       identifier,
       key,
-      literals: new Map(
-        [...partsByCode].map(([code, parts]) => [
-          code,
-          dartStringLiteral(parts, (variable) => {
-            const parameter = parametersByVariable.get(variable);
-            if (parameter === undefined) {
-              throw new Error(`${key}: no parameter for ${variable}`);
-            }
-
-            return parameter;
-          }),
-        ])
-      ),
-      parameters,
+      parameters: parametersOf(key, sources),
+      sources,
     });
   }
 
   return messages;
 };
 
-const signature = (message: Message, tail: string): string => {
+const signature = (message: Message): string => {
   if (message.parameters.length === 0) {
-    return `${INDENT}String get ${message.identifier}${tail}`;
+    return `${INDENT}String get ${message.identifier} {`;
   }
 
   return fitted(
     INDENT,
     `String ${message.identifier}({`,
-    message.parameters.map((parameter) => `required String ${parameter}`),
-    `})${tail}`
+    message.parameters.map(({ name, type }) => `required ${type} ${name}`),
+    "}) {"
   );
 };
+
+/**
+ * The statement a member formats its source with: the key, then the values
+ * map as the formatter lays out a trailing collection — on the call's line
+ * when the call's head fits there, below the key when it does not.
+ */
+const formatStatement = (message: Message): string => {
+  const indent = INDENT.repeat(2);
+  const key = dartStringLiteral(message.key);
+  if (message.parameters.length === 0) {
+    return fitted(indent, "return _format(", [key], ");");
+  }
+
+  const entries = message.parameters.map(
+    ({ name, variable }) => `${dartStringLiteral(variable)}: ${name}`
+  );
+  const line = `${indent}return _format(${key}, {${entries.join(", ")}});`;
+  if (line.length <= LINE_WIDTH) {
+    return line;
+  }
+
+  const head = `${indent}return _format(${key}, {`;
+  if (head.length <= LINE_WIDTH) {
+    return [
+      head,
+      ...entries.map((entry) => `${indent}${INDENT}${entry},`),
+      `${indent}});`,
+    ].join("\n");
+  }
+
+  return [
+    `${indent}return _format(`,
+    `${indent}${INDENT}${key},`,
+    fitted(`${indent}${INDENT}`, "{", entries, "},"),
+    `${indent});`,
+  ].join("\n");
+};
+
+/** One entry of a locale's sources map, split after the key when too long. */
+const sourceEntry = (key: string, source: string): string => {
+  const head = `${INDENT}${dartStringLiteral(key)}:`;
+  const value = `${dartStringLiteral(source)},`;
+  const line = `${head} ${value}`;
+
+  return line.length <= LINE_WIDTH
+    ? line
+    : `${head}\n${INDENT.repeat(3)}${value}`;
+};
+
+const instanceName = (code: string): string =>
+  `_${code
+    .split("-")
+    .map((subtag, index) =>
+      index === 0 ? subtag.toLowerCase() : capitalize(subtag)
+    )
+    .join("")}`;
+
+const sourcesName = (code: string): string => `${instanceName(code)}Sources`;
 
 /** The whole of `mobile/lib/l10n/gen/app_messages.dart`. */
 export const renderDartMessages = (
@@ -437,16 +489,29 @@ export const renderDartMessages = (
     "// Code generated by scripts/generate-locale-registry.ts; DO NOT EDIT.",
     "",
     "import 'package:flutter/widgets.dart';",
+    `import '${RUNTIME_IMPORT}';`,
     "",
     "/// The copy of `locales/*.json` the app shows: one getter or method per key",
-    `/// of the ${namespaces} namespaces, and one subclass per locale.`,
+    `/// of the ${namespaces} namespaces, each formatting that key's`,
+    "/// MessageFormat 2 source with `package:messageformat` in the catalog's",
+    "/// locale.",
     "///",
-    "/// A `{$name}` placeholder is a required named parameter, so a message cannot",
-    "/// render with a value missing. Read the catalog through [of], which answers",
-    "/// with the subclass `MaterialApp.localizationsDelegates` installed for the",
-    "/// resolved locale.",
-    `abstract class ${CLASS_NAME} {`,
-    `${INDENT}const ${CLASS_NAME}();`,
+    "/// Each variable of a message is a required named parameter, so a message",
+    "/// cannot render with a value missing: a `num` where the message hands it to",
+    "/// a numeric function such as `:integer`, and a `String` otherwise. Read the",
+    "/// catalog through [of], which answers with the one",
+    "/// `MaterialApp.localizationsDelegates` installed for the resolved locale.",
+    `final class ${CLASS_NAME} {`,
+    fitted(
+      INDENT,
+      `const ${CLASS_NAME}._({`,
+      [
+        "required this.intlLocale",
+        "required this.localeLabel",
+        "required this._sources",
+      ],
+      "});"
+    ),
     "",
     `${INDENT}/// Every locale of \`locales/index.json\`, in its order.`,
     fitted(
@@ -471,6 +536,23 @@ export const renderDartMessages = (
       ),
       "};"
     ),
+  ];
+  for (const { code, intl, label } of locales) {
+    lines.push(
+      "",
+      fitted(
+        INDENT,
+        `static const ${instanceName(code)} = ${CLASS_NAME}._(`,
+        [
+          `intlLocale: ${dartStringLiteral(intl)}`,
+          `localeLabel: ${dartStringLiteral(label)}`,
+          `sources: ${sourcesName(code)}`,
+        ],
+        ");"
+      )
+    );
+  }
+  lines.push(
     "",
     `${INDENT}/// The catalog whose code is [locale]'s language tag, or \`null\` when`,
     `${INDENT}/// no catalog carries it.`,
@@ -478,7 +560,7 @@ export const renderDartMessages = (
     `${INDENT}${INDENT}return switch (locale.toLanguageTag()) {`,
     ...locales.map(
       ({ code }) =>
-        `${INDENT}${INDENT}${INDENT}'${code}' => const ${subclassName(code)}(),`
+        `${INDENT}${INDENT}${INDENT}'${code}' => ${instanceName(code)},`
     ),
     `${INDENT}${INDENT}${INDENT}_ => null,`,
     `${INDENT}${INDENT}};`,
@@ -488,44 +570,42 @@ export const renderDartMessages = (
     `${INDENT}${INDENT}return Localizations.of<${CLASS_NAME}>(context, ${CLASS_NAME})!;`,
     `${INDENT}}`,
     "",
-    `${INDENT}/// The BCP 47 tag \`intl\` formats numbers and dates with for this catalog.`,
-    `${INDENT}String get intlLocale;`,
+    `${INDENT}/// The BCP 47 tag \`intl\` formats numbers and dates with for this catalog,`,
+    `${INDENT}/// and the locale its messages are formatted in.`,
+    `${INDENT}final String intlLocale;`,
     "",
     `${INDENT}/// This catalog's language, named in itself as \`locales/index.json\``,
     `${INDENT}/// labels it.`,
-    `${INDENT}String get localeLabel;`,
-  ];
+    `${INDENT}final String localeLabel;`,
+    "",
+    `${INDENT}/// The MessageFormat 2 source of each key, as the catalog writes it.`,
+    `${INDENT}final Map<String, String> _sources;`,
+    "",
+    `${INDENT}String _format(String key, [Map<String, Object> values = const {}]) {`,
+    `${INDENT}${INDENT}return formatCatalogMessage(intlLocale, _sources[key]!, values);`,
+    `${INDENT}}`
+  );
   for (const message of messages) {
-    lines.push("", `${INDENT}/// \`${message.key}\``, signature(message, ";"));
+    lines.push(
+      "",
+      `${INDENT}/// \`${message.key}\``,
+      signature(message),
+      formatStatement(message),
+      `${INDENT}}`
+    );
   }
   lines.push("}");
 
-  for (const { code, intl, label } of locales) {
+  for (const { code } of locales) {
     lines.push(
       "",
-      `class ${subclassName(code)} extends ${CLASS_NAME} {`,
-      `${INDENT}const ${subclassName(code)}();`,
-      "",
-      `${INDENT}@override`,
-      `${INDENT}String get intlLocale {`,
-      `${INDENT}${INDENT}return '${intl}';`,
-      `${INDENT}}`,
-      "",
-      `${INDENT}@override`,
-      `${INDENT}String get localeLabel {`,
-      `${INDENT}${INDENT}return '${dartText(label)}';`,
-      `${INDENT}}`
+      `/// The source of every key in \`locales/${code}.json\` the app compiles in.`,
+      `const ${sourcesName(code)} = <String, String>{`,
+      ...messages.map(({ key, sources }) =>
+        sourceEntry(key, sources.get(code) ?? "")
+      ),
+      "};"
     );
-    for (const message of messages) {
-      lines.push(
-        "",
-        `${INDENT}@override`,
-        signature(message, " {"),
-        `${INDENT}${INDENT}return ${message.literals.get(code)};`,
-        `${INDENT}}`
-      );
-    }
-    lines.push("}");
   }
 
   return `${lines.join("\n")}\n`;

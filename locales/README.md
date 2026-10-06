@@ -112,7 +112,7 @@ The same generator writes `server/internal/locale/gen/datetime.go`, the pattern 
 
 ### Flutter
 
-The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `mobile` and `errors` namespaces into `mobile/lib/l10n/gen/app_messages.dart`: a typed class whose members are the keys, whose parameters are the `{$name}` placeholders, and whose subclasses are the locales. `messageformat` parses every message during generation, so the app ships no message parser. `pnpm locales:check` fails when that file is behind the catalogs. The Localization section of `mobile/README.md` covers how the app reads it and resolves its locale.
+The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `mobile` and `errors` namespaces into `mobile/lib/l10n/gen/app_messages.dart`: a typed class whose members are the keys, whose parameters are the variables of each message, and which holds every locale's messages as their MessageFormat 2 source. Each member formats its source with [`package:messageformat`](https://pub.dev/packages/messageformat) in the catalog's `intl` locale. `pnpm locales:check` fails when that file is behind the catalogs. The Localization section of `mobile/README.md` covers how the app reads it and resolves its locale.
 
 ## Adding a key
 

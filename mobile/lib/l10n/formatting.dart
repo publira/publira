@@ -4,9 +4,10 @@ import 'package:publira/models/series_item.dart';
 
 /// Values rendered the way the catalog's locale writes them.
 ///
-/// A placeholder takes an already formatted string, because MF2 functions such
-/// as `:number` are outside the subset the catalog allows, so a screen formats
-/// a number here and hands the result to the message.
+/// A message that inserts a number without a numeric function such as
+/// `:integer` takes it as a `String`, so a screen formats the number here and
+/// hands the result to the message. A variable a numeric function takes is a
+/// `num` parameter instead, formatted by the message itself.
 extension AppMessagesFormatting on AppMessages {
   /// [value] with the digit grouping of this locale — `1,234` under `en-US`.
   String formatInteger(int value) =>

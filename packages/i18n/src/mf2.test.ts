@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   formatSimpleMessage,
+  messageVariables,
   simpleMessageParts,
   simpleMessageSyntaxError,
 } from "./mf2";
@@ -134,5 +135,52 @@ describe("simpleMessageParts", () => {
       "functions (':number')"
     );
     expect(() => simpleMessageParts("a } b")).toThrow("parse-error");
+  });
+});
+
+describe("messageVariables", () => {
+  it("lists the placeholders of a simple message in name order", () => {
+    expect(messageVariables("{$total} / {$first} pages")).toEqual([
+      { name: "first", numeric: false },
+      { name: "total", numeric: false },
+    ]);
+    expect(messageVariables("Home")).toEqual([]);
+  });
+
+  it("marks a variable a numeric function takes, wherever it is used", () => {
+    expect(
+      messageVariables(
+        ".input {$count :integer}\n.match $count\none {{{$count} episode by {$name}}}\n* {{{$count} episodes}}"
+      )
+    ).toEqual([
+      { name: "count", numeric: true },
+      { name: "name", numeric: false },
+    ]);
+    expect(messageVariables("{$ratio :percent} of {$label :string}")).toEqual([
+      { name: "label", numeric: false },
+      { name: "ratio", numeric: true },
+    ]);
+  });
+
+  it("leaves out a local and carries a number back to what it reads", () => {
+    expect(
+      messageVariables(
+        ".local $n = {$count}\n.local $m = {$n}\n{{{$m :number}}}"
+      )
+    ).toEqual([{ name: "count", numeric: true }]);
+  });
+
+  it("includes a variable that only an option reads", () => {
+    expect(
+      messageVariables("{$value :number maximumFractionDigits=$digits}")
+    ).toEqual([
+      { name: "digits", numeric: false },
+      { name: "value", numeric: true },
+    ]);
+  });
+
+  it("throws on a syntax or data model error", () => {
+    expect(() => messageVariables("{$count")).toThrow();
+    expect(() => messageVariables(".match $count\n* {{{$count}}}")).toThrow();
   });
 });
