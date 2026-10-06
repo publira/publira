@@ -10,7 +10,8 @@ import path from "node:path";
 // The package is not built when this runs, so the checker comes from source.
 // Node strips the types and resolves `messageformat` from the package the file
 // lives in.
-import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
+import { catalogMessageError } from "../packages/i18n/src/mf2.ts";
+import { namespaceLeaves, variableMismatches } from "./catalog-leaves.ts";
 import {
   cjkLatinSpaces,
   leavesSpacingToRenderer,
@@ -49,10 +50,10 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
 }
 
 /**
- * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them
- * at render time, so a leaf `messageformat` rejects — or one that reaches for
- * a feature the catalog does not use — would only fail once the screen that
- * shows it renders. A Japanese or Chinese leaf also writes no space between
+ * Every leaf is a MessageFormat 2 message. `@publira/i18n` formats them at
+ * render time, so a leaf `messageformat` rejects — or one that calls a
+ * function some reader of the catalog does not implement — would only fail
+ * once the screen that shows it renders. A Japanese or Chinese leaf also writes no space between
  * CJK text and a Latin or digit run, which the renderer draws. Returns the
  * parsed catalog for the generators that read it.
  */
@@ -66,7 +67,7 @@ const checkCatalog = (code: string): unknown => {
 
   const walk = (node: unknown, key: string) => {
     if (typeof node === "string") {
-      const problem = simpleMessageSyntaxError(node);
+      const problem = catalogMessageError(node);
       if (problem) {
         problems.push(`  ${key}: ${problem}`);
       }
@@ -157,6 +158,21 @@ for (const code of codes) {
 }
 if (catalogCodes.size > 0) {
   fail(`catalogs missing from locales: ${[...catalogCodes].join(", ")}`);
+}
+
+const [firstCatalog] = catalogs.values();
+const mismatches = variableMismatches(
+  namespaceLeaves(
+    locales,
+    catalogs,
+    isRecord(firstCatalog) ? Object.keys(firstCatalog) : []
+  )
+);
+if (mismatches.length > 0) {
+  const lines = mismatches.map((line) => `  ${line}`).join(newline);
+  throw new Error(
+    `Messages that read different variables in different locales:${newline}${lines}`
+  );
 }
 
 const quote = (value: string) => JSON.stringify(value);

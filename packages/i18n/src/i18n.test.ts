@@ -337,8 +337,8 @@ describe("loadMessages", () => {
   });
 });
 
-// Outside the catalog's subset, so `pnpm locales:check` would reject it as a
-// leaf; formatMessage takes it, which is what shows the locale reaching MF2.
+// A count the way the catalog writes one: the locale reaching MF2 is what
+// picks the variant.
 const EPISODE_COUNT =
   ".input {$count :integer}\n.match $count\none {{{$count} episode}}\n* {{{$count} episodes}}";
 

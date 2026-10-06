@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  catalogMessageError,
   formatMessageSource,
   messageVariables,
-  simpleMessageParts,
-  simpleMessageSyntaxError,
 } from "./mf2";
 
-describe("simpleMessageSyntaxError", () => {
-  it("accepts every shape the catalog is allowed to use", () => {
+describe("catalogMessageError", () => {
+  it("accepts text, escapes and variable references", () => {
     for (const source of [
       "Home",
       "{$name} logo",
@@ -19,36 +18,68 @@ describe("simpleMessageSyntaxError", () => {
       "a.b",
       "",
     ]) {
-      expect(simpleMessageSyntaxError(source)).toBeUndefined();
+      expect(catalogMessageError(source)).toBeUndefined();
     }
   });
 
+  it("accepts declarations, selection and markup", () => {
+    for (const source of [
+      ".input {$count :integer}\n.match $count\n0 {{No episodes}}\none {{{$count} episode}}\n* {{{$count} episodes}}",
+      ".local $shown = {$count :number maximumFractionDigits=1}\n{{{$shown} points}}",
+      ".input {$name :string}\n{{Hello, {$name}}}",
+      "{#strong}{$count :integer}{/strong} left",
+    ]) {
+      expect(catalogMessageError(source)).toBeUndefined();
+    }
+  });
+
+  it("accepts every function each reader formats with by default", () => {
+    for (const source of [
+      "{$count :integer}",
+      "{$ratio :number}",
+      "{$count :offset subtract=1}",
+      "{$name :string}",
+    ]) {
+      expect(catalogMessageError(source)).toBeUndefined();
+    }
+  });
+
+  it("rejects a function some reader lacks by default", () => {
+    expect(catalogMessageError("{$at :datetime}")).toContain(
+      "':datetime' is not one of the catalog's functions"
+    );
+    expect(catalogMessageError("{$ratio :percent}")).toContain(":percent");
+    expect(
+      catalogMessageError(".input {$at :date}\n{{Published {$at}}}")
+    ).toContain(":date");
+  });
+
   it("rejects the old bare {name} interpolation", () => {
-    expect(simpleMessageSyntaxError("Notifications, {count} unread")).toContain(
-      "literal expressions"
+    expect(catalogMessageError("Notifications, {count} unread")).toContain(
+      "'{count}' formats to the literal text 'count'"
+    );
+    expect(catalogMessageError("Searched for {|a b|}")).toContain(
+      "literal text 'a b'"
     );
   });
 
-  it("reports the syntax errors messageformat raises", () => {
-    expect(simpleMessageSyntaxError("a } b")).toContain("parse-error");
-    expect(simpleMessageSyntaxError("{$name")).toContain("Missing");
-    expect(simpleMessageSyntaxError("a \\n b")).toContain("bad-escape");
-    expect(simpleMessageSyntaxError("{$}")).toContain("empty-token");
+  it("accepts a literal a function or a declaration takes", () => {
+    expect(catalogMessageError("{|1234| :integer} views")).toBeUndefined();
+    expect(
+      catalogMessageError(".local $unit = {|pages|}\n{{{$count} {$unit}}}")
+    ).toBeUndefined();
   });
 
-  it("rejects the features the catalog does not use", () => {
-    expect(simpleMessageSyntaxError("{$count :number}")).toContain(
-      "functions (':number')"
-    );
-    expect(simpleMessageSyntaxError("{#bold}text{/bold}")).toContain("markup");
+  it("reports the syntax and data model errors messageformat raises", () => {
+    expect(catalogMessageError("a } b")).toContain("parse-error");
+    expect(catalogMessageError("{$name")).toContain("Missing");
+    expect(catalogMessageError("a \\n b")).toContain("bad-escape");
+    expect(catalogMessageError("{$}")).toContain("empty-token");
     expect(
-      simpleMessageSyntaxError(".input {$count :number}\n{{{$count}}}")
-    ).toContain("declarations");
-    expect(
-      simpleMessageSyntaxError(
-        ".input {$count :number}\n.match $count\none {{1 item}}\n* {{{$count} items}}"
+      catalogMessageError(
+        ".input {$count :integer}\n.match $count\none {{1 item}}"
       )
-    ).toContain("selection");
+    ).toContain("missing-fallback");
   });
 });
 
@@ -122,39 +153,8 @@ describe("formatMessageSource", () => {
   });
 });
 
-describe("simpleMessageParts", () => {
-  it("splits a message into its text and its placeholders, in order", () => {
-    expect(simpleMessageParts("{$first} / {$total} pages")).toEqual([
-      { variable: "first" },
-      " / ",
-      { variable: "total" },
-      " pages",
-    ]);
-  });
-
-  it("resolves escapes into the text, so a reader needs no parser", () => {
-    expect(simpleMessageParts("\\{ {$q} \\} C:\\\\Users")).toEqual([
-      "{ ",
-      { variable: "q" },
-      " } C:\\Users",
-    ]);
-  });
-
-  it("returns plain text as one part and an empty message as none", () => {
-    expect(simpleMessageParts("Home")).toEqual(["Home"]);
-    expect(simpleMessageParts("")).toEqual([]);
-  });
-
-  it("throws the same reason simpleMessageSyntaxError reports", () => {
-    expect(() => simpleMessageParts("{$count :number}")).toThrow(
-      "functions (':number')"
-    );
-    expect(() => simpleMessageParts("a } b")).toThrow("parse-error");
-  });
-});
-
 describe("messageVariables", () => {
-  it("lists the placeholders of a simple message in name order", () => {
+  it("lists the placeholders of a message in name order", () => {
     expect(messageVariables("{$total} / {$first} pages")).toEqual([
       { name: "first", numeric: false },
       { name: "total", numeric: false },

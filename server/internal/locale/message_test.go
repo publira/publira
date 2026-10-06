@@ -44,8 +44,8 @@ func TestMessageRefusesRatherThanWordingAMailWrongly(t *testing.T) {
 	}
 }
 
-// The catalog does not accept selection yet, so this fixture stands in for the
-// first message that does, formatted the way Message formats a catalog entry.
+// A count the way the catalog writes one, formatted the way Message formats a
+// catalog entry.
 const episodeCount = `.input {$count :integer}
 .match $count
 0   {{No new episodes}}

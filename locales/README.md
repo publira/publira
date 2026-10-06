@@ -29,13 +29,12 @@ The key `"errors.validation"` refers to the nested `errors.validation`. If a top
 
 ## Message syntax
 
-Leaves use a **simple message** from Unicode MessageFormat 2.0 ([UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html) 48.2, Stable). This is a Unicode standard rather than a vendor-specific format, so Go and Flutter can refer to the same definition when reading a shared catalog.
-
-Only message text, escaping, and variable references are allowed.
+Leaves are messages in Unicode MessageFormat 2.0 ([UTS #35 Part 9](https://www.unicode.org/reports/tr35/tr35-messageFormat.html) 48.2, Stable). This is a Unicode standard rather than a vendor-specific format, so the web apps, the Go server, and the Flutter app each format the catalog with their own implementation of the same specification.
 
 | Intent | Syntax | Message text | In JSON |
 | --- | --- | --- | --- |
-| Insert a value | `{$name}` | `通知、未読{$count}件` | `"通知、未読{$count}件"` |
+| Insert a value | `{$name}` | `{$name}さんのページ` | `"{$name}さんのページ"` |
+| Insert a count | `{$count :integer}` | `通知、未読{$count :integer}件` | `"通知、未読{$count :integer}件"` |
 | A literal brace | `\{` / `\}` | `検索構文は \{query\} です` | `"検索構文は \\{query\\} です"` |
 | A literal backslash | `\\` | `C:\\Users` | `"C:\\\\Users"` |
 
@@ -43,30 +42,51 @@ The final two columns differ because backslashes are also escape characters in J
 
 Variable names follow MF2's `name` rule (by convention, use ASCII identifiers such as `{$series_title}`). The name becomes a key in the `Record` passed to `getMessage`.
 
-When no value is passed for a variable, MF2's fallback renders it as `{$name}`. The rest of the message is not lost. `@publira/utils` formats dates and numbers with `formatDateTime` / `formatDate`, which receive the display time zone, then passes the formatted strings as `{$name}` values.
+When no value is passed for a variable, MF2's fallback renders it as `{$name}`. The rest of the message is not lost.
+
+### Counts
+
+Copy that depends on a number selects a variant with `.match`, on a variable an `.input` declaration gives a numeric function:
+
+```
+.input {$count :integer}
+.match $count
+0   {{No episodes selected.}}
+one {{{$count} episode selected.}}
+*   {{{$count} episodes selected.}}
+```
+
+```json
+".input {$count :integer}\n.match $count\n0 {{No episodes selected.}}\none {{{$count} episode selected.}}\n* {{{$count} episodes selected.}}"
+```
+
+A key is an exact number or one of the CLDR plural categories of the catalog's own language, and `*` is the catch-all every `.match` needs. English has `one`; Japanese, Korean, and Chinese have no category but the catch-all, so their translation of the same key is usually one pattern with no `.match` at all (`{$count :integer}話を選択中です。`). The choice stays in the message: code that picks between two keys by count (`count === 1 ? "…_one" : "…"`) is right for English and wrong for the next language whose plural rules differ.
+
+A message that is not a `.match` and has no declarations cannot begin with `.`, which starts a declaration. Wrap one that has to in a quoted pattern: `{{.htaccess is ignored}}`.
+
+### Catalog policy
+
+`pnpm locales:check` accepts any valid MF2 message — declarations, selection, and markup included — except for the rules below. They are choices this catalog makes, not limits of a reader.
+
+- **Functions are `:integer`, `:number`, `:offset`, and `:string`.** These are the functions every reader formats with by default. LDML 48.2 marks `:currency` and `:percent` Stable as well, but `messageformat` v4 still keeps them with its Draft functions, so the web apps would render the fallback where the server and the app render the value. The date and time functions and `:unit` are Draft
+- **A number is formatted by the message.** A count or any other quantity is passed as a number and written out by `:integer` (or `:number` for a fraction), so the digits a reader sees and the variant `.match` selects come from the same value, in the catalog's locale. A number that is an identifier rather than a quantity, such as a version, is passed as a string. A percentage, a duration, or a byte size needs a function not every reader has, so it arrives formatted, the way a date does
+- **A date is formatted before it reaches a message.** `formatDateTime` / `formatDate` from `@publira/utils` on the web and `locale.FormatDateTime` on the server render it against the display time zone, and the message receives the string. Every conversion to a wall clock names its time zone explicitly (see “Date and time” in the root `AGENTS.md`), and the MF2 date and time functions are Draft in 48.2
+- **A placeholder is never a bare literal.** The legacy `{name}` is valid MF2 as a literal expression and formats to the word `name` without any error, so it is rejected as the mistake it almost always is. A literal a function takes (`{|1| :integer}`) or a `.local` declares is allowed
+- **Every locale reads the same variables.** The variables are the key's interface: every caller passes the same values whatever the locale, and the Flutter catalog compiles them into one method's parameters. A variable only one translation reads is a typo or a value nobody passes, and it shows as `{$name}` in that language alone. A translation with no use for a value still reads it with `.input {$name}`
+
+Markup (`{#strong}…{/strong}`) is valid and formats to nothing: every reader formats a message to a plain string.
 
 ### Implementation
 
 The npm package [`messageformat` v4](https://www.npmjs.com/package/messageformat) parses and formats the syntax. It is maintained by a member of the MessageFormat Working Group, follows the specification as of LDML 48 (2025-10), and can also serve as a polyfill for the TC39 `Intl.MessageFormat` proposal. `@publira/i18n` contains only the catalog-specific policies layered on top of it.
 
 - A message is formatted in the locale of the catalog it was read from. `getMessage`, `bindMessages`, and `formatMessage` take that locale and hand MF2 its `intl` tag from `index.json`, so nothing falls back to the host's locale
-- A number value stays a number, so a placeholder formats it the way that locale writes numbers: `{$count}` with `12345` is `12,345` in `en`. Pass a string for a number that is an identifier rather than a quantity, and format dates with `@publira/utils` against the display time zone
+- A number value stays a number, so `:integer` and `:number` write it, and `.match` selects on it, the way that locale writes and counts numbers: `{$count :integer}` with `12345` is `12,345` in `en`
 - Bidirectional isolation is disabled. This prevents the formatter from adding bidi controls such as U+2068 / U+2069. Every catalog here is LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting those controls. Enable it when adding the first RTL locale
-
-### Unsupported features
-
-Do not use selection (`.match`), functions (`:number` / `:datetime`), markup, or declarations (`.input` / `.local`). `pnpm locales:check` rejects leaves that contain them.
-
-- Functions are not used because MF2 does not know the tenant's display time zone (see “Date and time” in the root `AGENTS.md`). Keep formatting in `@publira/utils`
-- Selection is not enabled in the first phase. Enable it in a separate issue when pluralization is actually needed
-
-Consequently, a message cannot begin with `.` (MF2 must distinguish it from a declaration in a complex message). Begin with a word, punctuation, or another symbol instead.
-
-The legacy `{name}` is syntactically valid in MF2 as a **literal expression** and formats to the string `name`. It does not cause an error, so `pnpm locales:check` rejects it as an expression that is not a variable reference.
 
 ### Validation
 
-`pnpm locales:check` parses and validates every leaf of every locale with `messageformat`, reporting invalid leaves and leaves that use the unsupported features above along with their keys.
+`pnpm locales:check` parses and validates every leaf of every locale with `messageformat`, reports each leaf that is not valid MF2 or breaks the policy above along with its key, and names each key whose locales read different variables.
 
 ## Reading catalogs
 
@@ -119,7 +139,7 @@ The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` 
 
 1. Add the same key to every locale JSON file (do not use an empty string even when a translation is not ready)
 2. Run `pnpm locales:generate` when the key is under `email`, `mobile` or `errors`, which the Go and Flutter catalogs are compiled from
-3. Confirm that `pnpm locales:check` passes (it checks that leaves are valid simple messages and that generated files are current)
+3. Confirm that `pnpm locales:check` passes (it checks every leaf against the message syntax and policy above, and that generated files are current)
 4. Confirm that `pnpm typecheck --filter @publira/i18n` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
 
 ## Adding a locale

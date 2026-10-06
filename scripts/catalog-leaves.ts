@@ -7,6 +7,8 @@
  * language.
  */
 
+import { messageVariables } from "../packages/i18n/src/mf2.ts";
+
 export interface CatalogLocale {
   readonly code: string;
 }
@@ -94,4 +96,38 @@ export const namespaceLeaves = (
   }
 
   return { keys: [...referenceLeaves.keys()].toSorted(), leavesByCode };
+};
+
+/**
+ * One line for each key whose message does not read the same variables in
+ * every locale, naming what each one reads.
+ *
+ * The variables are the message's interface: every reader hands a key the
+ * same values whatever the locale, and the Flutter catalog turns them into
+ * the parameters of one method. A variable only one translation reads is a
+ * typo in that translation or a value no caller passes, and either renders as
+ * `{$name}` in that one language. A translation with no use for a value still
+ * reads it, with `.input {$name}`.
+ */
+export const variableMismatches = ({
+  keys,
+  leavesByCode,
+}: CatalogLeaves): string[] => {
+  const mismatches: string[] = [];
+  for (const key of keys) {
+    const read = [...leavesByCode].map(([code, leaves]): [string, string] => [
+      code,
+      messageVariables(leaves.get(key) ?? "")
+        .map(({ name }) => `$${name}`)
+        .join(", ") || "nothing",
+    ]);
+    if (new Set(read.map(([, variables]) => variables)).size > 1) {
+      const reads = read.map(
+        ([code, variables]) => `${code} reads ${variables}`
+      );
+      mismatches.push(`${key}: ${reads.join("; ")}`);
+    }
+  }
+
+  return mismatches;
 };
