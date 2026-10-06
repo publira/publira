@@ -14,7 +14,7 @@ Build the images from the [image build instructions](https://github.com/publira/
 
 Every `publiractl` step runs the `publiractl` image of the release you are installing. It carries the migrations and the role definitions of that release, so an image from another release would apply a schema the processes do not expect.
 
-To run the whole install on one host, the [Compose file](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose) in the repository provisions the services and wires the variables for you. The steps below are still what it runs.
+To run the whole install on one host, the Compose file in the repository provisions the services and wires the variables for you, as [Docker Compose](./3-docker-compose.md) describes. The steps below are still what it runs.
 
 ## Provision the services
 
