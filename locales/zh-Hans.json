@@ -315,6 +315,7 @@
         "contact_message_assigned": "分配咨询负责人",
         "contact_message_unassigned": "取消咨询负责人分配",
         "contact_message_staff_note_updated": "更新咨询的工作人员备注",
+        "contact_message_replied": "答复咨询",
         "reader_suspended": "暂停了读者",
         "reader_unsuspended": "解除了读者暂停",
         "reader_birth_date_changed": "更改了读者出生日期",
@@ -688,6 +689,7 @@
       "subject_none": "无主题",
       "sender_guest": "访客",
       "assignee_none": "未分配",
+      "answered": "已回复",
       "body": "正文",
       "handled_at": "处理时间",
       "columns": {
@@ -705,7 +707,7 @@
         "reset": "重置"
       },
       "detail_title": "咨询",
-      "detail_description": "查看消息全文、回复地址、负责人、是否已经处理，以及工作人员备注。",
+      "detail_description": "查看消息全文、其下的答复与回信、答复的发送地址、负责人、是否已经处理，以及工作人员备注。",
       "detail_section_title": "消息",
       "detail_error": "无法显示该咨询",
       "detail_failed": "无法加载该咨询。请稍后重试。",
@@ -740,6 +742,26 @@
         "saving": "正在保存…",
         "saved": "已保存工作人员备注。",
         "cleared": "已删除工作人员备注。"
+      },
+      "exchange": {
+        "title": "答复与回信",
+        "description": "按从旧到新的顺序显示工作人员的答复和读者的回信。",
+        "empty": "还没有人答复这条咨询。",
+        "staff_entry": "{$name}的答复",
+        "staff_entry_former": "前工作人员的答复",
+        "reader_entry": "来自{$email}的回信"
+      },
+      "reply": {
+        "label": "答复",
+        "hint": "答复将通过邮件发送至{$email}，并将该咨询标记为已处理。读者回信时，会发送到您自己账户的邮箱地址。最多{$count}个字符。",
+        "submit": "发送答复",
+        "sending": "正在发送…",
+        "sent": "已保存答复，将通过邮件发送给读者。",
+        "failed": "无法发送答复。请稍后重试。",
+        "validation": {
+          "body_required": "请输入答复。",
+          "body_too_long": "答复请控制在{$count}个字符以内。"
+        }
       },
       "validation": {
         "target_missing": "无法确定要操作的咨询。请刷新页面后重试。",

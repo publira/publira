@@ -50,6 +50,7 @@ export const auditActions = [
   "contact_message_assigned",
   "contact_message_unassigned",
   "contact_message_staff_note_updated",
+  "contact_message_replied",
   "reader_suspended",
   "reader_unsuspended",
   "reader_birth_date_changed",

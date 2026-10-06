@@ -12,6 +12,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   assignContactMessage,
   markContactMessageHandled,
+  replyToContactMessage,
   updateContactMessageStaffNote,
 } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
@@ -22,7 +23,10 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
-import { CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH } from "../../contact-message-types";
+import {
+  CONTACT_MESSAGE_REPLY_MAX_LENGTH,
+  CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH,
+} from "../../contact-message-types";
 
 const contactMessageActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -254,5 +258,77 @@ export const updateContactMessageStaffNoteAction = async (
   const flash = parsed.data.staffNote ? "note_saved" : "note_cleared";
   redirect(
     `/contact-messages/${encodeURIComponent(parsed.data.publicId)}?${flash}=1`
+  );
+};
+
+const replyActionSchema = async (locale: Locale) => {
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    contactMessageActionSchema(locale),
+  ]);
+
+  return schema.extend({
+    // The reader's own form bounds the message the same way: required once
+    // trimmed, and counted in code points as the API counts characters.
+    body: z.preprocess(
+      (value) => (typeof value === "string" ? value.trim() : ""),
+      z
+        .string()
+        .min(1, t("admin.contact_messages.reply.validation.body_required"))
+        .refine(
+          (value) => [...value].length <= CONTACT_MESSAGE_REPLY_MAX_LENGTH,
+          t("admin.contact_messages.reply.validation.body_too_long", {
+            count: String(CONTACT_MESSAGE_REPLY_MAX_LENGTH),
+          })
+        )
+    ),
+  });
+};
+
+const replyActionFormFields = {
+  ...contactMessageActionFormFields,
+  body: { kind: "value", name: "body" },
+} as const;
+
+/**
+ * Sends the reader an answer: the API stores it under the message, marks the
+ * message handled, and mails it afterwards.
+ *
+ * Redirects back to the message like the other actions on it, so the new entry
+ * and the handled state are read again rather than drawn from what was typed.
+ */
+export const replyToContactMessageAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await replyActionSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, replyActionFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    replyToContactMessage(
+      {
+        body: parsed.data.body,
+        contactMessageId: parsed.data.contactMessageId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(
+    `/contact-messages/${encodeURIComponent(parsed.data.publicId)}?replied=1`
   );
 };

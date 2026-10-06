@@ -1,5 +1,6 @@
 import type {
   ContactMessage,
+  ContactMessageEntry,
   TenantMember,
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
@@ -12,6 +13,8 @@ import type { Locale } from "@publira/i18n";
 
 import type {
   ContactMessageAssigneeOption,
+  ContactMessageEntryDirection,
+  ContactMessageEntryItem,
   ContactMessageItem,
   ContactMessageStatus,
   GetContactMessageResult,
@@ -38,6 +41,18 @@ import { getAccessToken } from "./session";
  * that path can drop a cache entry web-admin holds.
  */
 
+/** The generated `ContactMessageEntry` fields {@link mapContactMessageEntry} reads. */
+type RawContactMessageEntry = Pick<
+  ContactMessageEntry,
+  | "authorName"
+  | "authorPublicId"
+  | "body"
+  | "createdAt"
+  | "direction"
+  | "fromEmail"
+  | "id"
+>;
+
 /** The generated `ContactMessage` fields {@link mapContactMessage} reads. */
 type RawContactMessage = Pick<
   ContactMessage,
@@ -46,6 +61,7 @@ type RawContactMessage = Pick<
   | "assigneeUserId"
   | "body"
   | "createdAt"
+  | "entryCount"
   | "handledAt"
   | "id"
   | "publicId"
@@ -55,7 +71,7 @@ type RawContactMessage = Pick<
   | "staffNote"
   | "status"
   | "subject"
->;
+> & { entries?: RawContactMessageEntry[] };
 
 const knownStatuses: ReadonlySet<string> = new Set(CONTACT_MESSAGE_STATUSES);
 
@@ -80,12 +96,34 @@ const contactMessageStatus = (
   return item.assigneeUserId ? "in_progress" : "unhandled";
 };
 
+/**
+ * The API names only two directions; anything else is read as the reader's,
+ * so an entry is never shown under a member of staff it does not name.
+ */
+const contactMessageEntryDirection = (
+  direction: string | undefined
+): ContactMessageEntryDirection => (direction === "staff" ? "staff" : "reader");
+
+const mapContactMessageEntry = (
+  entry: RawContactMessageEntry
+): ContactMessageEntryItem => ({
+  authorName: entry.authorName ?? "",
+  authorPublicId: entry.authorPublicId ?? "",
+  body: entry.body ?? "",
+  createdAt: entry.createdAt ?? "",
+  direction: contactMessageEntryDirection(entry.direction),
+  fromEmail: entry.fromEmail ?? "",
+  id: entry.id ?? "",
+});
+
 const mapContactMessage = (item: RawContactMessage): ContactMessageItem => ({
   assigneeName: item.assigneeName ?? "",
   assigneePublicId: item.assigneePublicId ?? "",
   assigneeUserId: item.assigneeUserId ?? "",
   body: item.body ?? "",
   createdAt: item.createdAt ?? "",
+  entries: (item.entries ?? []).map((entry) => mapContactMessageEntry(entry)),
+  entryCount: item.entryCount ?? 0,
   handledAt: item.handledAt ?? "",
   id: item.id ?? "",
   publicId: item.publicId ?? "",
@@ -349,6 +387,58 @@ export const updateContactMessageStaffNote = async (
       message: rpcErrorMessage(
         error,
         t("admin.contact_messages.staff_note_failed"),
+        { locale }
+      ),
+      ok: false,
+    };
+  }
+};
+
+export interface ReplyToContactMessageInput {
+  /** The answer, already trimmed and bounded. */
+  body: string;
+  contactMessageId: string;
+  tenantId: string;
+}
+
+export type ReplyToContactMessageResult =
+  | { message: string; ok: false }
+  | { ok: true };
+
+/**
+ * Answers one message: the API stores the answer under it, marks it handled,
+ * and queues the mail to the reader. A rejected session leaves as a throw so
+ * the Action can send the staff member to sign in again.
+ */
+export const replyToContactMessage = async (
+  input: ReplyToContactMessageInput,
+  locale: Locale
+): Promise<ReplyToContactMessageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.contact.replyToContactMessage(
+      {
+        body: input.body,
+        contactMessageId: input.contactMessageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.contact_messages.reply.failed"),
         { locale }
       ),
       ok: false,

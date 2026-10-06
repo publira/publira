@@ -229,6 +229,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "contact_message_staff_note_updated",
             },
             {
+              label: t("admin.audit.actions.contact_message_replied"),
+              value: "contact_message_replied",
+            },
+            {
               label: t("admin.audit.actions.reader_suspended"),
               value: "reader_suspended",
             },

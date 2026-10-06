@@ -9,7 +9,10 @@ export type {
   AdminComment,
   CommentReport,
 } from "../gen/publira/admin/v1/comment_pb.js";
-export type { ContactMessage } from "../gen/publira/admin/v1/contact_pb.js";
+export type {
+  ContactMessage,
+  ContactMessageEntry,
+} from "../gen/publira/admin/v1/contact_pb.js";
 export type { CreatorAccount } from "../gen/publira/admin/v1/creator_pb.js";
 export type { TenantEmailSettings } from "../gen/publira/admin/v1/email_pb.js";
 export type { EpisodeReadThrough } from "../gen/publira/admin/v1/engagement_pb.js";

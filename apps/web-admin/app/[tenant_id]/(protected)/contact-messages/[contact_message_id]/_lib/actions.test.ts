@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAssertSameOrigin, mockRedirect, mockUpdateStaffNote } = vi.hoisted(
-  () => ({
-    mockAssertSameOrigin: vi.fn(),
-    mockRedirect: vi.fn(),
-    mockUpdateStaffNote: vi.fn(),
-  })
-);
+const {
+  mockAssertSameOrigin,
+  mockRedirect,
+  mockReplyToContactMessage,
+  mockUpdateStaffNote,
+} = vi.hoisted(() => ({
+  mockAssertSameOrigin: vi.fn(),
+  mockRedirect: vi.fn(),
+  mockReplyToContactMessage: vi.fn(),
+  mockUpdateStaffNote: vi.fn(),
+}));
 
 vi.mock("#lib/action-messages", () => ({
   getActionLocale: () => Promise.resolve("en"),
@@ -23,6 +27,7 @@ vi.mock("#lib/auth-session", () => ({
 vi.mock("#lib/contact-message", () => ({
   assignContactMessage: vi.fn(),
   markContactMessageHandled: vi.fn(),
+  replyToContactMessage: mockReplyToContactMessage,
   updateContactMessageStaffNote: mockUpdateStaffNote,
 }));
 
@@ -34,6 +39,15 @@ const staffNoteFormData = (staffNote: string) => {
   formData.set("contact_message_id", contactMessageId);
   formData.set("public_id", "CONTACT0001");
   formData.set("staff_note", staffNote);
+  return formData;
+};
+
+const replyFormData = (body: string) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("contact_message_id", contactMessageId);
+  formData.set("public_id", "CONTACT0001");
+  formData.set("body", body);
   return formData;
 };
 
@@ -128,6 +142,91 @@ describe("updateContactMessageStaffNoteAction", () => {
 
     expect(result).toEqual({
       message: "Could not save the staff note. Please try again later.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("replyToContactMessageAction", () => {
+  it("sends the answer trimmed and returns to the message with the sent toast", async () => {
+    mockReplyToContactMessage.mockResolvedValueOnce({ ok: true });
+
+    const { replyToContactMessageAction } = await import("./actions");
+    await replyToContactMessageAction(
+      null,
+      replyFormData("\n  Every episode marked free.\nThe rest need a ticket.  ")
+    );
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockReplyToContactMessage).toHaveBeenCalledWith(
+      {
+        body: "Every episode marked free.\nThe rest need a ticket.",
+        contactMessageId,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/contact-messages/CONTACT0001?replied=1"
+    );
+  });
+
+  it("refuses an answer that is only whitespace", async () => {
+    const { replyToContactMessageAction } = await import("./actions");
+    const result = await replyToContactMessageAction(
+      null,
+      replyFormData("  \n ")
+    );
+
+    expect(result).toEqual({ message: "Write the answer.", ok: false });
+    expect(mockReplyToContactMessage).not.toHaveBeenCalled();
+  });
+
+  it("counts the limit in characters, as the reader's form does", async () => {
+    mockReplyToContactMessage.mockResolvedValue({ ok: true });
+
+    const { replyToContactMessageAction } = await import("./actions");
+    // 4000 characters, each two UTF-16 code units.
+    await replyToContactMessageAction(null, replyFormData("😀".repeat(4000)));
+    expect(mockReplyToContactMessage).toHaveBeenCalledTimes(1);
+
+    const result = await replyToContactMessageAction(
+      null,
+      replyFormData("a".repeat(4001))
+    );
+    expect(result).toEqual({
+      message: "Keep the answer to 4000 characters or fewer.",
+      ok: false,
+    });
+    expect(mockReplyToContactMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a form that does not say which message it answers", async () => {
+    const formData = replyFormData("An answer.");
+    formData.set("contact_message_id", "");
+
+    const { replyToContactMessageAction } = await import("./actions");
+    const result = await replyToContactMessageAction(null, formData);
+
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+    expect(mockReplyToContactMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps the staff member on the form with the API's refusal", async () => {
+    mockReplyToContactMessage.mockResolvedValueOnce({
+      message: "Could not send the answer. Please try again later.",
+      ok: false,
+    });
+
+    const { replyToContactMessageAction } = await import("./actions");
+    const result = await replyToContactMessageAction(
+      null,
+      replyFormData("An answer.")
+    );
+
+    expect(result).toEqual({
+      message: "Could not send the answer. Please try again later.",
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();

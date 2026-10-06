@@ -52,6 +52,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ContactMessageAssignment } from "./_components/contact-message-assignment";
 import { ContactMessageDetail } from "./_components/contact-message-detail";
+import { ContactMessageExchange } from "./_components/contact-message-exchange";
 import { ContactMessageStaffNote } from "./_components/contact-message-staff-note";
 
 type ContactMessageDetailPageProps =
@@ -148,6 +149,12 @@ const ContactMessageDetailContent = async ({
         tenantId={tenantId}
         timeZone={timeZone}
       />
+      <ContactMessageExchange
+        contactMessage={result.contactMessage}
+        locale={locale}
+        tenantId={tenantId}
+        timeZone={timeZone}
+      />
       <ContactMessageAssignment
         assignees={assigneesResult.assignees}
         assigneesErrorMessage={
@@ -200,6 +207,10 @@ const ContactMessageDetailPage = ({
           <FlashToast
             keyName="handled"
             message="admin.contact_messages.marked_handled"
+          />
+          <FlashToast
+            keyName="replied"
+            message="admin.contact_messages.reply.sent"
           />
           <FlashToast
             keyName="reopened"
