@@ -13,7 +13,7 @@ import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 const renderPreview = async (

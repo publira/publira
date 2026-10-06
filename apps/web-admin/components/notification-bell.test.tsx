@@ -20,11 +20,12 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 vi.mock("#lib/messages", () => ({
-  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
   loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
 }));
 
@@ -35,8 +36,8 @@ vi.mock("#components/client-message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
-  useClientMessages: () => bindMessages(sharedCatalog("en")),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
 vi.mock("#lib/locale", () => ({

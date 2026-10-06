@@ -61,4 +61,4 @@ export const loadAdminClientMessages = async (
 export const getMessagesFor = async (
   locale: Locale
 ): Promise<AdminMessageAccessor> =>
-  bindMessages(await loadAdminMessages(locale));
+  bindMessages(await loadAdminMessages(locale), locale);

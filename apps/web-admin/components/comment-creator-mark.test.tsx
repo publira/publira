@@ -21,7 +21,11 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog(renderLocale.current))(message, values),
+  }) =>
+    bindMessages(sharedCatalog(renderLocale.current), renderLocale.current)(
+      message,
+      values
+    ),
 }));
 
 vi.mock("next/link", () => ({

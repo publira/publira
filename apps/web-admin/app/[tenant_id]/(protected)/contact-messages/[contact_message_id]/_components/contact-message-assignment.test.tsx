@@ -27,11 +27,12 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 vi.mock("#lib/messages", () => ({
-  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
 const staffOne: ContactMessageAssigneeOption = {

@@ -43,7 +43,7 @@ vi.mock("./message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("ja"))(message, values),
+  }) => bindMessages(sharedCatalog("ja"), "ja")(message, values),
 }));
 
 vi.mock("../lib/admin-auth", async (importOriginal) => ({

@@ -49,7 +49,8 @@ When no value is passed for a variable, MF2's fallback renders it as `{$name}`. 
 
 The npm package [`messageformat` v4](https://www.npmjs.com/package/messageformat) parses and formats the syntax. It is maintained by a member of the MessageFormat Working Group, follows the specification as of LDML 48 (2025-10), and can also serve as a polyfill for the TC39 `Intl.MessageFormat` proposal. `@publira/i18n` contains only the catalog-specific policies layered on top of it.
 
-- Convert values to strings before passing them. `getMessage` does not receive a locale, so locale-dependent formatting such as `:number` here would leak the host locale. `@publira/utils` formats numbers and dates first, then inserts the resulting strings
+- A message is formatted in the locale of the catalog it was read from. `getMessage`, `bindMessages`, and `formatMessage` take that locale and hand MF2 its `intl` tag from `index.json`, so nothing falls back to the host's locale
+- A number value stays a number, so a placeholder formats it the way that locale writes numbers: `{$count}` with `12345` is `12,345` in `en`. Pass a string for a number that is an identifier rather than a quantity, and format dates with `@publira/utils` against the display time zone
 - Bidirectional isolation is disabled. This prevents the formatter from adding bidi controls such as U+2068 / U+2069. Every catalog here is LTR, and these strings can also become email subjects and `<title>` values, so this avoids invisibly transporting those controls. Enable it when adding the first RTL locale
 
 ### Unsupported features

@@ -39,7 +39,7 @@ export const sharedCatalog = (locale: Locale): SharedMessages =>
 export const sharedMessage = (
   key: MessageKey<SharedMessages>,
   locale: Locale
-): string => getMessage(sharedCatalog(locale), key);
+): string => getMessage(sharedCatalog(locale), locale, key);
 
 /**
  * Shared wording for one RPC failure category, or `undefined` when that

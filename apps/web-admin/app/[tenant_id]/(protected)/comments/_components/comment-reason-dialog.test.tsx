@@ -41,7 +41,7 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 // The field resolves its placeholder on the server; here it only has to join

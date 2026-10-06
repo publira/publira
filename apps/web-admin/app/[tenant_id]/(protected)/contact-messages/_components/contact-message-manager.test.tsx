@@ -12,7 +12,8 @@ import type { ContactMessageItem } from "../contact-message-types";
 import { ContactMessageManager } from "./contact-message-manager";
 
 vi.mock("#lib/messages", () => ({
-  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
 vi.mock("#components/message", () => ({
@@ -22,7 +23,7 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 vi.mock("next/link", () => ({

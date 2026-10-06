@@ -9,8 +9,8 @@ The shared React Email layout and templates. `renderEmail` turns them into HTML;
 - `EmailLayout` / `EmailButton`, and the blocks a template puts inside the card: `EmailHeading`, `EmailIntro`, `EmailBody`, `EmailDetail`, `EmailMeta`, `EmailFallbackLink`
 - `resolveEmail` / `renderEmail` — validate the proto's `template` and `data`, then render
 - `TEMPLATE_IDS` / `isTemplateId` — the list of template IDs, and whether a string is one of them
-- `loadEmailMessages` — `import()` one locale out of the repo-root `locales/`
-- `emailMessage` — one string out of a loaded catalog, formatted with its placeholders
+- `loadEmailMessages` — `import()` one locale out of the repo-root `locales/`, bound to that locale
+- `emailMessage` — one string out of a loaded catalog, formatted with its placeholders in the catalog's locale
 
 A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole list.
 

@@ -11,7 +11,8 @@ const credit = (name: string): CreatorCredit => ({
   roleName: "Original Author",
 });
 
-const messages = (locale: "en" | "ja") => bindMessages(sharedCatalog(locale));
+const messages = (locale: "en" | "ja") =>
+  bindMessages(sharedCatalog(locale), locale);
 
 describe("shareText", () => {
   it("names the work and the one creator credited on it", () => {

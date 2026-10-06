@@ -24,7 +24,8 @@ vi.mock("#lib/locale", () => ({
 }));
 
 vi.mock("#lib/messages", () => ({
-  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
 const { JsonLd } = await import("./json-ld");

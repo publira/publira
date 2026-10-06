@@ -186,7 +186,7 @@ describe("tenant-email-rejection-settings", () => {
     );
 
     const message =
-      "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
+      "Check the list. Each entry must be one email address or domain, and at most 1,000 can be listed.";
     expect(result).toEqual({ entriesError: message, message, ok: false });
   });
 

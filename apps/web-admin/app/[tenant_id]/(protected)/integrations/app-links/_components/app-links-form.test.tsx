@@ -26,7 +26,7 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog("en"))(message, values),
+  }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
 const FINGERPRINT_A = Array.from({ length: 32 }, () => "AA").join(":");

@@ -18,7 +18,7 @@ import type { SeriesWaitFreeSettings } from "#lib/series-wait-free-shared";
 
 import { SeriesWaitFreeForm } from "./series-wait-free-form";
 
-const translate = bindMessages(sharedCatalog("en"));
+const translate = bindMessages(sharedCatalog("en"), "en");
 
 vi.mock("#components/message", () => ({
   Message: ({

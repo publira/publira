@@ -13,11 +13,10 @@
  *   `{$name}` variable references. {@link simpleMessageSyntaxError} rejects
  *   selection, functions, markup and declarations, and `pnpm locales:check`
  *   runs it over every leaf of every locale.
- * - Values are formatted as strings. The catalog's numbers and dates are
- *   already rendered by `@publira/utils` against the tenant's time zone, and
- *   `getMessage` has no locale to give MF2, so a locale-sensitive `:number`
- *   would have to fall back to the host's locale — the accident the repo's
- *   date policy exists to prevent.
+ * - A message is formatted in the locale of the catalog it came from, never in
+ *   the host's: every formatter is constructed with that locale's BCP 47 tag,
+ *   so a number value formats and selects a plural variant the way the
+ *   catalog's own language does.
  * - Bidi isolation is off, so a formatted message contains exactly the
  *   characters of the copy. Both catalogs are LTR, and these strings also
  *   become email subjects and `<title>` text, where U+2068 / U+2069 would
@@ -43,36 +42,30 @@ const FORMAT_OPTIONS = { bidiIsolation: "none" } as const;
 
 /**
  * Constructing a formatter parses the message, which costs ~1.9µs against
- * ~0.3µs for formatting an already-parsed one. The catalogs hold under a
- * thousand leaves, so the whole working set fits; the cap is there because a
+ * ~0.3µs for formatting an already-parsed one, so a formatter is kept for
+ * every locale and source a process formats. The cap is there because a
  * template can also arrive from a caller rather than from a catalog.
  */
 const MAX_FORMATTERS = 1024;
 const formatters = new Map<string, MessageFormat>();
 
-const formatterFor = (source: string): MessageFormat => {
-  const cached = formatters.get(source);
+const formatterFor = (locale: string, source: string): MessageFormat => {
+  // The same source formats differently in another locale, so the key carries
+  // both. A BCP 47 tag holds only letters, digits and hyphens, so the first
+  // space ends it whatever the source contains.
+  const key = `${locale} ${source}`;
+  const cached = formatters.get(key);
   if (cached) {
     return cached;
   }
 
-  const formatter = new MessageFormat(undefined, source, FORMAT_OPTIONS);
+  const formatter = new MessageFormat(locale, source, FORMAT_OPTIONS);
   if (formatters.size >= MAX_FORMATTERS) {
     formatters.clear();
   }
-  formatters.set(source, formatter);
+  formatters.set(key, formatter);
 
   return formatter;
-};
-
-/** Values reach MF2 as strings, for the reason given at the top of this module. */
-const toParams = (values: MessageValues): Record<string, string> => {
-  const params: Record<string, string> = {};
-  for (const [name, value] of Object.entries(values)) {
-    params[name] = String(value);
-  }
-
-  return params;
 };
 
 /**
@@ -274,15 +267,16 @@ const reportFormatError = (error: unknown) => {
 };
 
 /**
- * Format one message. Throws `MessageSyntaxError` when `source` is not
- * well-formed MF2; an unresolved variable is not an error, and formats to the
- * spec's fallback for it (`{$name}`).
+ * Format one message in `locale`, a BCP 47 tag. Throws `MessageSyntaxError`
+ * when `source` is not well-formed MF2; an unresolved variable is not an
+ * error, and formats to the spec's fallback for it (`{$name}`).
+ *
+ * Values reach MF2 as they were handed in: a number stays a number, so a
+ * selector compares it by value and an unannotated placeholder formats it the
+ * way `:number` does in `locale`.
  */
-export const formatSimpleMessage = (
+export const formatMessageSource = (
   source: string,
+  locale: string,
   values?: MessageValues
-): string =>
-  formatterFor(source).format(
-    values ? toParams(values) : undefined,
-    reportFormatError
-  );
+): string => formatterFor(locale, source).format(values, reportFormatError);

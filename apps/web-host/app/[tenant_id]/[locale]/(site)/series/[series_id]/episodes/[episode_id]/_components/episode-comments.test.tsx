@@ -37,7 +37,11 @@ vi.mock("#components/message", () => ({
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
-  }) => bindMessages(sharedCatalog(messageLocale.current))(message, values),
+  }) =>
+    bindMessages(sharedCatalog(messageLocale.current), messageLocale.current)(
+      message,
+      values
+    ),
 }));
 
 vi.mock("#components/locale-context", () => ({

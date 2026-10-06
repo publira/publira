@@ -99,7 +99,7 @@ describe("submitContactMessageAction", () => {
       formData({ body: "a".repeat(4001) })
     );
     expect(result).toEqual({
-      message: "Keep the message to 4000 characters or fewer.",
+      message: "Keep the message to 4,000 characters or fewer.",
       ok: false,
     });
   });

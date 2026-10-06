@@ -35,7 +35,8 @@ vi.mock("#lib/action-messages", async () => {
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
     getActionLocale: () => Promise.resolve("en"),
-    getActionMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+    getActionMessages: () =>
+      Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
   };
 });
 

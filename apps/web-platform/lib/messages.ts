@@ -30,14 +30,24 @@ export const loadPlatformMessages = (
  * places the provider, so this is written into the RSC payload of every route
  * and carries the console's own copy rather than every app's.
  */
-export type PlatformClientMessages = Pick<PlatformMessages, "platform">;
+export type PlatformClientCatalog = Pick<PlatformMessages, "platform">;
 
 /** Dotted key of a string a Client Component can render. */
-export type PlatformClientMessageKey = MessageKey<PlatformClientMessages>;
+export type PlatformClientMessageKey = MessageKey<PlatformClientCatalog>;
 
 /** What `useClientMessages()` answers with. */
 export type PlatformClientMessageAccessor =
-  MessageAccessor<PlatformClientMessages>;
+  MessageAccessor<PlatformClientCatalog>;
+
+/**
+ * What `PlatformMessagesProvider` hands down: the
+ * {@link PlatformClientCatalog} and the locale it is written in, which the
+ * accessor formats in.
+ */
+export interface PlatformClientMessages {
+  readonly catalog: PlatformClientCatalog;
+  readonly locale: Locale;
+}
 
 /**
  * The {@link PlatformClientMessages} for `locale`, to seed
@@ -48,7 +58,7 @@ export const loadPlatformClientMessages = async (
 ): Promise<PlatformClientMessages> => {
   const { platform } = await loadPlatformMessages(locale);
 
-  return { platform };
+  return { catalog: { platform }, locale };
 };
 
 /**
@@ -68,4 +78,4 @@ export const loadPlatformClientMessages = async (
 export const getMessagesFor = async (
   locale: Locale
 ): Promise<PlatformMessageAccessor> =>
-  bindMessages(await loadPlatformMessages(locale));
+  bindMessages(await loadPlatformMessages(locale), locale);

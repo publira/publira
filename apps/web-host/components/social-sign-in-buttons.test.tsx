@@ -17,7 +17,7 @@ const { mockGetTenantSignInClients } = vi.hoisted(() => ({
 // render; the catalog is the real one.
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 vi.mock("#components/locale-field", () => ({

@@ -31,7 +31,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
-    bindMessages(sharedCatalog("en"))(message),
+    bindMessages(sharedCatalog("en"), "en")(message),
 }));
 
 vi.mock("#lib/tenant-id", () => ({

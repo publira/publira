@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EpisodePurchaseAvailabilityForm } from "./episode-purchase-availability-form";
 
-const translate = bindMessages(sharedCatalog("en"));
+const translate = bindMessages(sharedCatalog("en"), "en");
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({

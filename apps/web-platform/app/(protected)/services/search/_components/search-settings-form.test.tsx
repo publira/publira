@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MessageProps } from "#components/message";
 import { PlatformMessagesContextProvider } from "#components/platform-messages-context";
-import { getMessagesFor, loadPlatformMessages } from "#lib/messages";
+import { getMessagesFor, loadPlatformClientMessages } from "#lib/messages";
 import type { PlatformMessageAccessor } from "#lib/messages";
 import {
   SEARCH_PASSWORD_REPLACE,
@@ -60,7 +60,7 @@ const storedSettings: PlatformSearchSettings = {
   username: "publira",
 };
 
-const messages = loadPlatformMessages("en");
+const messages = loadPlatformClientMessages("en");
 
 const withMessages = (children: ReactNode) => (
   <Suspense fallback={null}>
