@@ -7,7 +7,12 @@ import {
   SEARCH_PASSWORD_UNCHANGED,
 } from "#lib/search-settings-shared";
 
-import { searchFormFields, searchFormSchema } from "./form-schemas";
+import {
+  searchAnalysisFormFields,
+  searchAnalysisFormSchema,
+  searchFormFields,
+  searchFormSchema,
+} from "./form-schemas";
 
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
@@ -169,5 +174,78 @@ describe("searchFormSchema", () => {
         password_update_mode: String(SEARCH_PASSWORD_REPLACE),
       })
     ).resolves.toContain("Enter the username.");
+  });
+});
+
+const parseAnalysis = async (fields: Record<string, string>) => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries({ revision: "3", ...fields })) {
+    data.set(name, value);
+  }
+  const schema = await searchAnalysisFormSchema("en");
+  return schema.safeParse(toFormDataInput(data, searchAnalysisFormFields));
+};
+
+const analysisIssues = async (fields: Record<string, string>) => {
+  const result = await parseAnalysis(fields);
+  return result.error?.issues.map((issue) => issue.message) ?? [];
+};
+
+describe("searchAnalysisFormSchema", () => {
+  it("takes a JSON object to save, with the revision it was edited at", async () => {
+    await expect(
+      parseAnalysis({
+        analysis: '  {"analyzer": {}}\n',
+        intent: "replace",
+      })
+    ).resolves.toMatchObject({
+      data: { analysis: '{"analyzer": {}}', intent: "replace", revision: 3n },
+      success: true,
+    });
+  });
+
+  // Whether the roles are there, and whether the engine builds an index from
+  // them, is the server's to say.
+  it("leaves a definition missing a role to the server", async () => {
+    await expect(
+      analysisIssues({ analysis: "{}", intent: "replace" })
+    ).resolves.toEqual([]);
+  });
+
+  it.each([
+    ["an empty editor", "", "Enter a definition, or reset to the default."],
+    [
+      "something that is not JSON",
+      "{analyzer: {}}",
+      "Enter the definition as one JSON object, starting with { and ending with }.",
+    ],
+    [
+      "a JSON value that is not an object",
+      '["analyzer"]',
+      "Enter the definition as one JSON object, starting with { and ending with }.",
+    ],
+    [
+      "a definition over 64 KiB",
+      JSON.stringify({ filler: "x".repeat(64 * 1024) }),
+      "The definition is larger than 64 KiB.",
+    ],
+  ])("refuses %s", async (_name, analysis, message) => {
+    await expect(
+      analysisIssues({ analysis, intent: "replace" })
+    ).resolves.toEqual([message]);
+  });
+
+  it("ignores the editor when going back to the default", async () => {
+    await expect(
+      parseAnalysis({ analysis: "not json", intent: "default" })
+    ).resolves.toMatchObject({ data: { intent: "default" }, success: true });
+  });
+
+  it("refuses an intent it does not know", async () => {
+    await expect(
+      analysisIssues({ analysis: "{}", intent: "merge" })
+    ).resolves.toEqual([
+      "Choose whether to save the definition or reset to the default.",
+    ]);
   });
 });

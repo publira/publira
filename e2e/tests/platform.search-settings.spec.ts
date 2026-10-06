@@ -93,6 +93,64 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
   return series.some((item) => item.publicId === SEED_TENANT.series.publicId);
 };
 
+/** The alias `scripts/db-setup.sh` saves, which the server defaults to. */
+const OPENSEARCH_ALIAS = "publira-catalog";
+
+/**
+ * A definition built on analysis-nori, which the E2E engine has installed
+ * beside the default's plugins: Korean has no alternate form, so that role
+ * analyzes the text the way the written form does.
+ */
+const NORI_DEFINITION = JSON.stringify(
+  {
+    analyzer: {
+      alternate_form: {
+        filter: ["nori_part_of_speech", "lowercase"],
+        tokenizer: "nori_tokenizer",
+        type: "custom",
+      },
+      written_form: {
+        filter: ["nori_part_of_speech", "lowercase"],
+        tokenizer: "nori_tokenizer",
+        type: "custom",
+      },
+    },
+    normalizer: { exact_match: { filter: ["lowercase"], type: "custom" } },
+  },
+  null,
+  2
+);
+
+/** A definition every role of which is there, on a tokenizer no engine has. */
+const UNKNOWN_TOKENIZER_DEFINITION = NORI_DEFINITION.replaceAll(
+  "nori_tokenizer",
+  "no_such_tokenizer"
+);
+
+/**
+ * The words the index the alias names makes of a Korean title in the written
+ * form. The default definition keeps 「별을」 whole; one built on analysis-nori
+ * takes the particle off, which is how a query of 「별」 finds the title.
+ */
+const writtenFormTokens = async (): Promise<string[]> => {
+  const response = await fetch(
+    `${OPENSEARCH_URL}/${OPENSEARCH_ALIAS}/_analyze`,
+    {
+      body: JSON.stringify({
+        analyzer: "written_form",
+        text: "별을 쫓는 아이",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }
+  );
+  expect(response.ok, await response.clone().text()).toBe(true);
+  const { tokens = [] } = (await response.json()) as {
+    tokens?: { token: string }[];
+  };
+  return tokens.map((item) => item.token);
+};
+
 const expectOpenSearchAnswering = async (answering: boolean): Promise<void> => {
   await expect
     .poll(fuzzyQueryFindsSeedSeries, {
@@ -196,6 +254,82 @@ test.describe("web-platform search settings", () => {
       await expect(
         page.getByText(/The OpenSearch index is being built/u)
       ).toHaveCount(0);
+      await expectOpenSearchAnswering(true);
+    });
+
+    test("the text analysis is replaced with one on analysis-nori and reset to the default from this page alone", async ({
+      page,
+    }) => {
+      test.setTimeout(SWITCH_TIMEOUT * 3);
+
+      await openSearchSettings(page);
+      const editor = page.getByRole("textbox", { name: /^Definition/u });
+      await expect(
+        page.getByText("In use: the default definition.")
+      ).toBeVisible();
+      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect.poll(writtenFormTokens).toContain("별을");
+
+      // A definition the engine refuses is not saved, and stays in the editor
+      // with the engine's reason beside it.
+      await editor.fill(UNKNOWN_TOKENIZER_DEFINITION);
+      await page.getByRole("button", { name: "Save text analysis" }).click();
+      await expect(
+        page.getByText("The definition wasn't saved. Fix it and save again.")
+      ).toBeVisible();
+      await expect(
+        page.getByRole("status").filter({ hasText: /no_such_tokenizer/u })
+      ).toBeVisible();
+      await expect(editor).toHaveValue(UNKNOWN_TOKENIZER_DEFINITION);
+      await expect(
+        page.getByText("In use: the default definition.")
+      ).toBeVisible();
+
+      // A definition on analysis-nori is built into a new index while the
+      // current one keeps answering, and the alias moves onto it.
+      const since = await statusValue(page, "Since").textContent();
+      await editor.fill(NORI_DEFINITION);
+      await page.getByRole("button", { name: "Save text analysis" }).click();
+      await expect(
+        page.getByText(
+          "Text analysis saved. A new index is being built with it, and the search moves onto it once it's ready."
+        )
+      ).toBeVisible();
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toBeVisible();
+      await expect(page.getByText("In use: a saved definition.")).toBeVisible();
+      await expect(editor).toHaveValue(/"nori_tokenizer"/u);
+
+      // The page asks again on its own while the build runs.
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect(statusValue(page, "Answering from")).toHaveText(
+        "OpenSearch"
+      );
+      await expect(statusValue(page, "Since")).not.toHaveText(since ?? "");
+      await expect.poll(writtenFormTokens).toContain("별");
+      await expectOpenSearchAnswering(true);
+
+      // Going back to the default is confirmed first, since it is a rebuild
+      // as well.
+      await page.getByRole("button", { name: "Reset to default" }).click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Reset and rebuild" }).click();
+      await expect(
+        page.getByText(/^Text analysis saved\. A new index is being built/u)
+      ).toBeVisible();
+      await expect(
+        page.getByText("In use: the default definition.")
+      ).toBeVisible();
+      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect.poll(writtenFormTokens).toContain("별을");
       await expectOpenSearchAnswering(true);
     });
     return;

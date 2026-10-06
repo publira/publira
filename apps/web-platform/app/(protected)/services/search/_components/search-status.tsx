@@ -12,7 +12,10 @@ import {
   PlatformSectionHeading,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import { searchEngineName } from "#lib/search-settings-shared";
+import {
+  isSameSearchTarget,
+  searchEngineName,
+} from "#lib/search-settings-shared";
 import type { PlatformSearchSettings } from "#lib/search-settings-shared";
 
 import { SearchBuildRefresh } from "./search-build-refresh";
@@ -39,6 +42,9 @@ export const SearchStatus = ({
   const { serving } = settings;
   const savedEngine = searchEngineName(settings.engine);
   const servingEngine = searchEngineName(serving.engine);
+  // A build for the target the search already answers from is a new index
+  // for another text analysis, beside the one that keeps answering.
+  const rebuild = isSameSearchTarget(settings);
 
   return (
     <PlatformSection>
@@ -99,12 +105,21 @@ export const SearchStatus = ({
 
       {settings.buildState === "building" ? (
         <FormMessage className="sm:max-w-3xl" variant="info">
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message
-              message="platform.search.status.building"
-              values={{ engine: savedEngine, serving: servingEngine }}
-            />
-          </Suspense>
+          {rebuild ? (
+            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+              <Message
+                message="platform.search.status.rebuilding"
+                values={{ engine: savedEngine }}
+              />
+            </Suspense>
+          ) : (
+            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+              <Message
+                message="platform.search.status.building"
+                values={{ engine: savedEngine, serving: servingEngine }}
+              />
+            </Suspense>
+          )}
         </FormMessage>
       ) : null}
 
@@ -112,12 +127,21 @@ export const SearchStatus = ({
         <FormMessage className="sm:max-w-3xl" variant="destructive">
           <span className="grid gap-1">
             <span>
-              <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-                <Message
-                  message="platform.search.status.failed"
-                  values={{ engine: savedEngine, serving: servingEngine }}
-                />
-              </Suspense>
+              {rebuild ? (
+                <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                  <Message
+                    message="platform.search.status.rebuild_failed"
+                    values={{ engine: savedEngine }}
+                  />
+                </Suspense>
+              ) : (
+                <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+                  <Message
+                    message="platform.search.status.failed"
+                    values={{ engine: savedEngine, serving: servingEngine }}
+                  />
+                </Suspense>
+              )}
             </span>
             {settings.buildFailure?.failedAt ? (
               <span>

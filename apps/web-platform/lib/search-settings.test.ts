@@ -1,3 +1,4 @@
+import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,7 +68,10 @@ vi.mock("./api-client", () => ({
 
 /** OpenSearch saved and answering, the way the API reports it. */
 const servingSettings = {
+  analysis:
+    '{"analyzer":{"written_form":{"tokenizer":"ja_search","type":"custom"}},"filter":{}}',
   buildState: 1,
+  defaultAnalysis: true,
   engine: 2,
   hasPassword: true,
   index: "publira-catalog",
@@ -112,8 +116,18 @@ describe("getPlatformSearchSettings", () => {
     await expect(getPlatformSearchSettings()).resolves.toEqual({
       ok: true,
       settings: {
+        analysis: `{
+  "analyzer": {
+    "written_form": {
+      "tokenizer": "ja_search",
+      "type": "custom"
+    }
+  },
+  "filter": {}
+}`,
         buildFailure: null,
         buildState: "serving",
+        defaultAnalysis: true,
         engine: "opensearch",
         hasPassword: true,
         index: "publira-catalog",
@@ -136,6 +150,37 @@ describe("getPlatformSearchSettings", () => {
     expect(platformSearchSettingsCacheTag).toBe("platform:search-settings");
     expect(mockCacheTag).toHaveBeenCalledWith(platformSearchSettingsCacheTag);
     expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+  });
+
+  // Only the whitespace between tokens is the console's: a number keeps the
+  // spelling it was saved with, and a string keeps its escapes and brackets.
+  it("lays the definition out for editing without respelling it", async () => {
+    mockGetPlatformSearchSettings.mockResolvedValueOnce({
+      settings: {
+        ...servingSettings,
+        analysis:
+          '{"filter":{"pairs":{"max_shingle_size":12345678901234567890,"token_separator":"\\",{}[]:\\"x","type":"shingle"}},"tokenizer":{"t":{"stopwords":[]}}}',
+        defaultAnalysis: false,
+      },
+    });
+
+    const result = await getPlatformSearchSettings();
+
+    expect(result).toMatchObject({ settings: { defaultAnalysis: false } });
+    expect(result.ok && result.settings.analysis).toBe(`{
+  "filter": {
+    "pairs": {
+      "max_shingle_size": 12345678901234567890,
+      "token_separator": "\\",{}[]:\\"x",
+      "type": "shingle"
+    }
+  },
+  "tokenizer": {
+    "t": {
+      "stopwords": []
+    }
+  }
+}`);
   });
 
   it("reads a platform with nothing saved as the SQL engine at revision 0", async () => {
@@ -302,6 +347,67 @@ describe("updatePlatformSearchSettings", () => {
     ).resolves.toEqual({
       message:
         "credentials need an https:// URL; over http:// they would cross the network in cleartext",
+      ok: false,
+    });
+  });
+});
+
+describe("updatePlatformSearchSettings with a text analysis", () => {
+  it("sends a definition to save", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      settings: { ...servingSettings, buildState: 2, revision: 4n },
+    });
+
+    await updatePlatformSearchSettings(
+      { ...input, analysis: { definition: "{}", mode: "replace" } },
+      3n,
+      "en"
+    );
+
+    expect(mockUpdatePlatformSearchSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ analysis: "{}", analysisUpdateMode: 2 }),
+      expect.anything()
+    );
+  });
+
+  it("goes back to the default", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      settings: { ...servingSettings, buildState: 2, revision: 4n },
+    });
+
+    await updatePlatformSearchSettings(
+      { ...input, analysis: { mode: "default" } },
+      3n,
+      "en"
+    );
+
+    expect(mockUpdatePlatformSearchSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ analysis: "", analysisUpdateMode: 3 }),
+      expect.anything()
+    );
+  });
+
+  it("hands the engine's reason for a refused definition back as the field's error", async () => {
+    const reason =
+      "the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer]";
+    mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
+      new ConnectError(reason, Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "analysis" }] },
+        },
+      ])
+    );
+
+    await expect(
+      updatePlatformSearchSettings(
+        { ...input, analysis: { definition: "{}", mode: "replace" } },
+        3n,
+        "en"
+      )
+    ).resolves.toEqual({
+      fieldErrors: { analysis: reason },
+      message: reason,
       ok: false,
     });
   });

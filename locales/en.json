@@ -5232,14 +5232,16 @@
         "since": "Since",
         "building": "The {$engine} index is being built for the saved settings. Until it's ready, the search keeps answering from {$serving}. This page checks again every few seconds.",
         "failed": "The {$engine} index couldn't be built, so the search is still answering from {$serving}. The build is tried again every 30 seconds. Fix the engine, or change the settings below.",
-        "failed_at": "Last failed at {$time}."
+        "failed_at": "Last failed at {$time}.",
+        "rebuilding": "A new {$engine} index is being built with the saved text analysis. Until it's ready, the search keeps answering from the current index. This page checks again every few seconds.",
+        "rebuild_failed": "The new {$engine} index couldn't be built, so the search is still answering from the current index. The build is tried again every 30 seconds. Fix the engine, or change the settings below."
       },
       "form": {
         "engine_legend": "Engine",
         "engine_required": "Choose a search engine.",
         "engine_sql_description": "Built in. Matches part of a title or a name in the database, and needs nothing else to run.",
-        "engine_opensearch_description": "Ranks results by relevance, and finds a title written in kanji from a reading typed in kana. Needs the analysis-kuromoji and analysis-icu plugins on every node.",
-        "engine_elasticsearch_description": "The same search as OpenSearch, on Elasticsearch with the same two plugins.",
+        "engine_opensearch_description": "Ranks results by relevance, and with the default text analysis finds a title written in kanji from a reading typed in kana. The default text analysis needs the analysis-kuromoji and analysis-icu plugins on every node.",
+        "engine_elasticsearch_description": "The same search as OpenSearch, on Elasticsearch with the same plugins.",
         "url": "URL",
         "url_help": "The address of the engine, such as https://search.example.com:9200. Don't put a username or a password in it.",
         "url_required": "Enter the engine's URL.",
@@ -5267,10 +5269,11 @@
       },
       "test": {
         "title": "Connection test",
-        "description": "Asks the engine at the URL above what it is, and whether it has the plugins the catalog index needs. Nothing is saved.",
+        "description": "Asks the engine at the URL above what it is, and whether it has the plugins the default text analysis needs. Nothing is saved.",
         "submit": "Test connection",
         "pending": "Testing...",
         "succeeded": "The connection works, and the engine has both plugins the catalog index needs.",
+        "succeeded_saved_analysis": "The connection works. The engine lacks a plugin the default text analysis needs, which the saved text analysis doesn't use.",
         "failed": "Could not run the connection test. Please try again later.",
         "results": "Connection test results",
         "engine": "Engine: {$product} {$version}",
@@ -5285,6 +5288,32 @@
           "plugin_missing": "The engine is missing analysis-kuromoji or analysis-icu, which the catalog index needs.",
           "unknown": "The test failed for a reason Publira doesn't recognize."
         }
+      },
+      "analysis": {
+        "title": "Text analysis",
+        "description": "How the catalog index splits titles, names, and synopses into words. The default is built for Japanese on analysis-kuromoji and analysis-icu. For titles in another language, replace it with a definition built on that language's plugin, such as analysis-nori for Korean or analysis-smartcn for Chinese.",
+        "current_default": "In use: the default definition.",
+        "current_saved": "In use: a saved definition.",
+        "roles_intro": "A definition has to define these three names, which the catalog index refers to:",
+        "role_written_form": "Analyzer for titles, names, and synopses as they're written.",
+        "role_alternate_form": "Analyzer for another form a reader may type a query in, such as the kana reading in Japanese. For a language without one, define it the same way as written_form.",
+        "role_exact_match": "Normalizer for an exact match of a title or a name, which ranks above any partial match.",
+        "definition": "Definition (settings.analysis, JSON)",
+        "definition_help": "Before saving, the engine is asked to create an empty index with this definition, and a definition it refuses isn't saved. A saved definition is built into a new index in the background, and the search keeps answering from the current one until it's ready.",
+        "save": "Save text analysis",
+        "saving": "Checking and saving...",
+        "reset": "Reset to default",
+        "reset_title": "Reset the text analysis to the default?",
+        "reset_description": "The saved definition is discarded, and the catalog index is rebuilt with the default Japanese definition. The search keeps answering from the current index until the new one is ready.",
+        "reset_confirm": "Reset and rebuild",
+        "saved": "Text analysis saved.",
+        "saved_building": "Text analysis saved. A new index is being built with it, and the search moves onto it once it's ready.",
+        "refused": "The definition wasn't saved. Fix it and save again.",
+        "required": "Enter a definition, or reset to the default.",
+        "too_large": "The definition is larger than 64 KiB.",
+        "not_object": "Enter the definition as one JSON object, starting with \\{ and ending with \\}.",
+        "intent_invalid": "Choose whether to save the definition or reset to the default.",
+        "sql_engine": "PostgreSQL keeps no index, so it has no text analysis to save. Save OpenSearch or Elasticsearch first."
       }
     },
     "webpush": {

@@ -55,9 +55,17 @@ export interface PlatformSearchServing {
 }
 
 export interface PlatformSearchSettings {
+  /**
+   * The `settings.analysis` the catalog index is built with, as indented JSON:
+   * the saved definition, or the default when none is saved. Empty on the SQL
+   * engine, which has no index.
+   */
+  analysis: string;
   /** Set while `buildState` is `failed`, and only then. */
   buildFailure: { error: string; failedAt: string } | null;
   buildState: PlatformSearchBuildState;
+  /** Whether `analysis` is the default rather than a saved definition. */
+  defaultAnalysis: boolean;
   engine: PlatformSearchEngine;
   hasPassword: boolean;
   /** Empty on the SQL engine. */
@@ -69,6 +77,24 @@ export interface PlatformSearchSettings {
   url: string;
   username: string;
 }
+
+/**
+ * Whether the saved settings name the engine, URL, and alias the search
+ * answers from, so that a build of them is a new index for the same target:
+ * the one a changed text analysis starts.
+ */
+export const isSameSearchTarget = (
+  settings: Pick<PlatformSearchSettings, "engine" | "index" | "serving" | "url">
+): boolean =>
+  settings.engine === settings.serving.engine &&
+  settings.url === settings.serving.url &&
+  settings.index === settings.serving.index;
+
+/**
+ * The largest definition a save takes, in UTF-8 bytes, matching
+ * `opensearchbackend.MaxAnalysisBytes`.
+ */
+export const SEARCH_ANALYSIS_MAX_BYTES = 64 * 1024;
 
 export const searchCredentialMode = (
   settings: Pick<PlatformSearchSettings, "username">
