@@ -1,11 +1,10 @@
 /**
  * The Go side of the shared catalog.
  *
- * `server/internal/locale/gen/messages.go` is compiled from `locales/*.json`
- * the way `mobile/lib/l10n/gen/app_messages.dart` is: `messageformat` parses
- * every message here and the output holds the text and the variable references
- * it was made of, so the server formats a message without a MessageFormat
- * parser of its own.
+ * `server/internal/locale/gen/messages.go` is compiled from `locales/*.json`:
+ * `messageformat` parses every message here and the output holds the text and
+ * the variable references it was made of, so the server formats a message
+ * without a MessageFormat parser of its own.
  */
 
 import { simpleMessageParts } from "../packages/i18n/src/mf2.ts";

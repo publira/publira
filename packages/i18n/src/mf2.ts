@@ -32,6 +32,7 @@ import {
   MessageResolutionError,
   parseMessage,
   validate,
+  visit,
 } from "messageformat";
 import type { Model } from "messageformat";
 
@@ -176,6 +177,85 @@ export const simpleMessageParts = (source: string): SimpleMessagePart[] => {
 
     return { variable: part.arg.name };
   });
+};
+
+/**
+ * The Stable functions of LDML 48 whose operand is a number. A variable one of
+ * them takes is a number in the values a reader hands the message, so a
+ * selector compares it by value and a placeholder formats it in the locale.
+ */
+const NUMERIC_FUNCTIONS = new Set([
+  "currency",
+  "integer",
+  "number",
+  "offset",
+  "percent",
+]);
+
+/** A variable a message reads from the values it is formatted with. */
+export interface MessageVariable {
+  readonly name: string;
+  /** Whether a numeric function takes the variable as its operand. */
+  readonly numeric: boolean;
+}
+
+/**
+ * The variables `source` reads from the values it is formatted with, in name
+ * order. A `.local` declaration names a variable the message defines itself,
+ * so it is not one of them; a variable it is defined from is numeric when the
+ * local is.
+ *
+ * This is how a generator that emits typed accessors in another language
+ * learns each accessor's parameters, while formatting stays with that
+ * language's MF2 implementation. Accepts any valid MF2 message, not only the
+ * catalog's subset, and throws on a syntax or data model error.
+ */
+export const messageVariables = (source: string): MessageVariable[] => {
+  const message = parseMessage(source);
+  validate(message);
+
+  const referenced = new Set<string>();
+  const numeric = new Set<string>();
+  visit(message, {
+    functionRef: (functionRef, _context, argument) => {
+      if (
+        argument !== undefined &&
+        isVariableRef(argument) &&
+        NUMERIC_FUNCTIONS.has(functionRef.name)
+      ) {
+        numeric.add(argument.name);
+      }
+    },
+    value: (value) => {
+      if (isVariableRef(value)) {
+        referenced.add(value.name);
+      }
+    },
+  });
+
+  // A declaration can only read the ones above it, so walking them bottom up
+  // carries a number through any chain of locals in one pass.
+  const locals = new Set<string>();
+  for (const declaration of message.declarations.toReversed()) {
+    if (declaration.type !== "local") {
+      continue;
+    }
+    locals.add(declaration.name);
+    const { arg, functionRef } = declaration.value;
+    if (
+      numeric.has(declaration.name) &&
+      functionRef === undefined &&
+      arg !== undefined &&
+      isVariableRef(arg)
+    ) {
+      numeric.add(arg.name);
+    }
+  }
+
+  return [...referenced]
+    .filter((name) => !locals.has(name))
+    .toSorted()
+    .map((name) => ({ name, numeric: numeric.has(name) }));
 };
 
 /**
