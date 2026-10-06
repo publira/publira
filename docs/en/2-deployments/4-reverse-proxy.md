@@ -46,7 +46,9 @@ Each sample keeps the backend addresses apart from the routing, and the committe
 
 The internal listener of `publira server`, port `8100`, is for the web apps alone. The proxy never forwards to it, so keep it off any network the proxy is reachable from.
 
-An install that does not run the Platform Console leaves out its upstream and its host rule: the `web-platform` router and service in Traefik, the platform `server` block and its upstream in nginx, and the `@platform` matcher and its `handle` block in Caddy. A `platform.` host then reaches `web-host`, like any host no tenant holds.
+The host rules in the samples are examples too. They pick a console by a pattern on its name, `admin.` and `platform.`, which Publira itself does not use: a tenant's console is on whichever host it was given. Replace the patterns with the host names your install actually serves, every tenant's console host for `web-admin` and the Platform Console's host for `web-platform`, and leave the tenant sites to the rule that catches every other host.
+
+An install that does not run the Platform Console leaves out its upstream and its host rule: the `web-platform` router and service in Traefik, the platform `server` block and its upstream in nginx, and the `@platform` matcher and its `handle` block in Caddy.
 
 The [Docker Compose](./3-docker-compose.md) install already runs the Traefik sample, on plain HTTP behind a TLS terminator on the host. On that install, the certificates in the next section belong to the terminator, and the rest of this page applies to the Traefik files in your checkout.
 
@@ -178,34 +180,11 @@ A tenant made with `publiractl tenant create` or in the Platform Console is serv
 
 1. **DNS.** Point the tenant's domain and its console host at the proxy.
 2. **Certificates.** Add both names: to the site addresses in Caddy, to the certificate or the per-host directories in nginx, or to the `domains` list or the certificate files in Traefik.
-3. **Routing.** Nothing changes while the console host is `admin.<domain>`: the console rule already matches it, and every other host already reaches the tenant site.
-
-A console host given with `--admin-domain`, or in the **Admin domain** field of the Platform Console, that does not start with `admin.` — such as `console.comics.example.com` — matches no console rule, and would reach the tenant site instead. Add it to the console rule of your proxy.
-
-Traefik, the `web-admin` router's rule in `dynamic/routes.yaml`:
-
-```yaml
-http:
-  routers:
-    web-admin:
-      rule: 'HostRegexp(`^admin\d*\..*$`) || Host(`console.comics.example.com`)'
-```
-
-nginx, the `server_name` of the console's `server` block:
-
-```nginx
-server_name ~^admin\d*\..*$ console.comics.example.com;
-```
-
-Caddy, the `@admin` matcher, which takes one pattern, so the new host joins it as an alternative. The `(:\d+)?` keeps a port in the `Host` header from failing the match:
-
-```text
-@admin header_regexp Host ^(admin\d*\..*|console\.comics\.example\.com(:\d+)?)$
-```
+3. **Routing.** Add its console host to the hosts your configuration sends to `web-admin`. Its domain needs no rule of its own: every host not named elsewhere reaches the tenant site.
 
 Load each change as you make it. Traefik picks up `dynamic/` on its own; nginx reloads with `nginx -s reload`, and Caddy with `caddy reload --config /etc/caddy/Caddyfile`. Neither reload drops a connection in progress.
 
-Moving a console host later, with `publiractl tenant update --admin-domain` or in the Platform Console, follows the same order: add the new name to DNS, the certificates, and the rule before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`.
+Moving a console host later, with `publiractl tenant update --admin-domain` or in the **Admin domain** field of the Platform Console, follows the same order: add the new name to DNS, the certificates, and the routing before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`.
 
 ## The headers the proxy owns
 
