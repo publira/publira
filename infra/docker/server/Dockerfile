@@ -46,7 +46,7 @@ RUN CGO_ENABLED=1 go build -trimpath \
 # The Debian release matches the builder's, because the binary is linked
 # against the libvips the builder installed. Debian 13's 64-bit time_t
 # transition renamed the runtime package to libvips42t64.
-FROM debian:13.7-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
+FROM debian:13.7-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates libvips42t64 \
