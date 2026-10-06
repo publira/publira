@@ -315,6 +315,7 @@
         "contact_message_assigned": "문의 담당자 배정",
         "contact_message_unassigned": "문의 담당자 배정 해제",
         "contact_message_staff_note_updated": "문의 스태프 메모 수정",
+        "contact_message_replied": "문의에 답변",
         "reader_suspended": "독자 정지",
         "reader_unsuspended": "독자 정지 해제",
         "reader_birth_date_changed": "독자 생년월일 변경",
@@ -688,6 +689,7 @@
       "subject_none": "제목 없음",
       "sender_guest": "게스트",
       "assignee_none": "미배정",
+      "answered": "답변 완료",
       "body": "본문",
       "handled_at": "처리 일시",
       "columns": {
@@ -705,7 +707,7 @@
         "reset": "초기화"
       },
       "detail_title": "문의",
-      "detail_description": "메시지 전문과 답장할 주소, 담당자, 처리 여부, 그리고 스태프 메모를 확인합니다.",
+      "detail_description": "메시지 전문과 그 아래의 답변과 회신, 답변이 전달될 주소, 담당자, 처리 여부, 그리고 스태프 메모를 확인합니다.",
       "detail_section_title": "메시지",
       "detail_error": "문의를 표시할 수 없습니다",
       "detail_failed": "문의를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
@@ -740,6 +742,26 @@
         "saving": "저장 중…",
         "saved": "스태프 메모를 저장했습니다.",
         "cleared": "스태프 메모를 삭제했습니다."
+      },
+      "exchange": {
+        "title": "답변과 회신",
+        "description": "스태프가 보낸 답변과 독자가 보낸 회신을 오래된 순서로 보여 줍니다.",
+        "empty": "아직 아무도 이 문의에 답변하지 않았습니다.",
+        "staff_entry": "{$name}의 답변",
+        "staff_entry_former": "이전 스태프의 답변",
+        "reader_entry": "{$email}에서 온 회신"
+      },
+      "reply": {
+        "label": "답변",
+        "hint": "답변은 {$email}(으)로 메일로 전송되고 문의는 처리 완료로 표시됩니다. 독자가 회신하면 본인 계정의 이메일 주소로 도착합니다. 최대 {$count}자까지 입력할 수 있습니다.",
+        "submit": "답변 보내기",
+        "sending": "보내는 중…",
+        "sent": "답변을 저장했습니다. 독자에게 메일로 전송됩니다.",
+        "failed": "답변을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "body_required": "답변을 입력하세요.",
+          "body_too_long": "답변은 {$count}자 이내로 입력하세요."
+        }
       },
       "validation": {
         "target_missing": "대상 문의를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",

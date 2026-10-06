@@ -191,11 +191,22 @@ const ContactMessageListBody = ({
             </TableCell>
             <TableCell>{message.replyToEmail}</TableCell>
             <TableCell>
-              <StatusChip status={contactMessageStatusTone(message.status)}>
-                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                  <ContactMessageStatusMessage status={message.status} />
-                </Suspense>
-              </StatusChip>
+              <div className="flex flex-col items-start gap-1">
+                <StatusChip status={contactMessageStatusTone(message.status)}>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <ContactMessageStatusMessage status={message.status} />
+                  </Suspense>
+                </StatusChip>
+                {/* An entry exists only once staff have answered, because the
+                    reader can only write back to an answer. */}
+                {message.entryCount > 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+                      <Message message="admin.contact_messages.answered" />
+                    </Suspense>
+                  </span>
+                ) : null}
+              </div>
             </TableCell>
             <TableCell>
               <ContactMessageAssignee message={message} />

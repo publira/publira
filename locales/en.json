@@ -315,6 +315,7 @@
         "contact_message_assigned": "Contact message assigned",
         "contact_message_unassigned": "Contact message unassigned",
         "contact_message_staff_note_updated": "Contact message staff note updated",
+        "contact_message_replied": "Contact message answered",
         "reader_suspended": "Reader suspended",
         "reader_unsuspended": "Reader suspension lifted",
         "reader_birth_date_changed": "Reader birth date changed",
@@ -688,6 +689,7 @@
       "subject_none": "No subject",
       "sender_guest": "Guest",
       "assignee_none": "Unassigned",
+      "answered": "Answered",
       "body": "Message",
       "handled_at": "Handled on",
       "columns": {
@@ -705,7 +707,7 @@
         "reset": "Reset"
       },
       "detail_title": "Contact message",
-      "detail_description": "The whole message, the address to answer it at, who is working on it, whether it has been dealt with, and the staff's internal note.",
+      "detail_description": "The whole message, the answers and replies under it, the address an answer goes to, who is working on it, whether it has been dealt with, and the staff's internal note.",
       "detail_section_title": "Message",
       "detail_error": "Could not display the contact message",
       "detail_failed": "Could not load the contact message. Please try again later.",
@@ -740,6 +742,26 @@
         "saving": "Saving…",
         "saved": "The staff note has been saved.",
         "cleared": "The staff note has been cleared."
+      },
+      "exchange": {
+        "title": "Answers and replies",
+        "description": "What the staff answered and what the reader wrote back, oldest first.",
+        "empty": "Nobody has answered this message yet.",
+        "staff_entry": "Answer from {$name}",
+        "staff_entry_former": "Answer from a former member of staff",
+        "reader_entry": "Reply from {$email}"
+      },
+      "reply": {
+        "label": "Answer",
+        "hint": "The answer is mailed to {$email} and marks the message handled. When the reader writes back, the reply reaches your own account's email address. Up to {$count} characters.",
+        "submit": "Send answer",
+        "sending": "Sending…",
+        "sent": "The answer has been saved and will be mailed to the reader.",
+        "failed": "Could not send the answer. Please try again later.",
+        "validation": {
+          "body_required": "Write the answer.",
+          "body_too_long": "Keep the answer to {$count} characters or fewer."
+        }
       },
       "validation": {
         "target_missing": "Could not tell which message this applies to. Reload the page and try again.",

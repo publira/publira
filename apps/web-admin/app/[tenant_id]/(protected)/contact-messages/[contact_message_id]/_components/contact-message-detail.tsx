@@ -142,8 +142,9 @@ export const ContactMessageDetail = ({
           </Suspense>
         </dt>
         <dd className={valueClassName}>
-          {/* Staff answer from their own mail client, so the address opens one
-              rather than only being readable. */}
+          {/* The answer form below mails the reader from the console, and
+              the address still opens a mail client for staff who would rather
+              answer from their own. */}
           <a
             className="underline underline-offset-4"
             href={`mailto:${contactMessage.replyToEmail}`}

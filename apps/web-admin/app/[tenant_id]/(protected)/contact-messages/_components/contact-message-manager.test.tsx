@@ -40,6 +40,8 @@ const contactMessage = (
   assigneeUserId: "",
   body: "The second episode will not open for me.",
   createdAt: "2026-06-01T20:00:00Z",
+  entries: [],
+  entryCount: 0,
   handledAt: "",
   id: "018f0f80-0003-7000-8000-000000000001",
   publicId: "CONTACT0001",
@@ -164,6 +166,36 @@ describe("ContactMessageManager", () => {
 
     expect(screen.getByText("Handled")).toBeTruthy();
     expect(screen.getByText("Staff Two")).toBeTruthy();
+  });
+
+  it("marks the messages staff have answered, and only those", async () => {
+    render(
+      await ContactMessageManager({
+        filtered: false,
+        locale: "en",
+        messages: [
+          contactMessage({
+            entryCount: 2,
+            handledAt: "2026-06-03T00:00:00Z",
+            status: "handled",
+          }),
+          contactMessage({
+            id: "018f0f80-0003-7000-8000-000000000002",
+            publicId: "CONTACT0002",
+            subject: "Do you have an app?",
+          }),
+        ],
+        pageSize: 20,
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const answered = screen.getByRole("row", {
+      name: /Cannot open an episode/u,
+    });
+    const waiting = screen.getByRole("row", { name: /Do you have an app\?/u });
+    expect(within(answered).getByText("Answered")).toBeTruthy();
+    expect(within(waiting).queryByText("Answered")).toBeNull();
   });
 
   it("says nothing has arrived yet for a tenant nobody has written to", async () => {

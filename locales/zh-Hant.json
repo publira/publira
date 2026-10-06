@@ -315,6 +315,7 @@
         "contact_message_assigned": "指派諮詢負責人",
         "contact_message_unassigned": "取消諮詢負責人指派",
         "contact_message_staff_note_updated": "更新諮詢的工作人員備註",
+        "contact_message_replied": "答覆諮詢",
         "reader_suspended": "暫停了讀者",
         "reader_unsuspended": "解除了讀者暫停",
         "reader_birth_date_changed": "變更了讀者出生日期",
@@ -688,6 +689,7 @@
       "subject_none": "無主旨",
       "sender_guest": "訪客",
       "assignee_none": "未指派",
+      "answered": "已回覆",
       "body": "內文",
       "handled_at": "處理時間",
       "columns": {
@@ -705,7 +707,7 @@
         "reset": "重設"
       },
       "detail_title": "諮詢",
-      "detail_description": "查看訊息全文、回覆地址、負責人、是否已經處理，以及工作人員備註。",
+      "detail_description": "查看訊息全文、其下的答覆與回信、答覆的寄送地址、負責人、是否已經處理，以及工作人員備註。",
       "detail_section_title": "訊息",
       "detail_error": "無法顯示此諮詢",
       "detail_failed": "無法載入此諮詢。請稍後再試。",
@@ -740,6 +742,26 @@
         "saving": "正在儲存…",
         "saved": "已儲存工作人員備註。",
         "cleared": "已刪除工作人員備註。"
+      },
+      "exchange": {
+        "title": "答覆與回信",
+        "description": "依從舊到新的順序顯示工作人員的答覆和讀者的回信。",
+        "empty": "還沒有人答覆這則諮詢。",
+        "staff_entry": "{$name}的答覆",
+        "staff_entry_former": "前工作人員的答覆",
+        "reader_entry": "來自{$email}的回信"
+      },
+      "reply": {
+        "label": "答覆",
+        "hint": "答覆會以郵件寄送至{$email}，並將此諮詢標記為已處理。讀者回信時，會寄到您自己帳號的電子郵件地址。最多{$count}個字元。",
+        "submit": "寄送答覆",
+        "sending": "正在寄送…",
+        "sent": "已儲存答覆，將以郵件寄送給讀者。",
+        "failed": "無法寄送答覆。請稍後再試。",
+        "validation": {
+          "body_required": "請輸入答覆。",
+          "body_too_long": "答覆請控制在{$count}個字元以內。"
+        }
       },
       "validation": {
         "target_missing": "無法確定要操作的諮詢。請重新整理頁面後再試。",

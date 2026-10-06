@@ -8,6 +8,7 @@ const {
   mockListContactMessages,
   mockListTenantMembers,
   mockMarkContactMessageHandled,
+  mockReplyToContactMessage,
   mockUpdateContactMessageStaffNote,
 } = vi.hoisted(() => ({
   mockAssignContactMessage: vi.fn(),
@@ -16,6 +17,7 @@ const {
   mockListContactMessages: vi.fn(),
   mockListTenantMembers: vi.fn(),
   mockMarkContactMessageHandled: vi.fn(),
+  mockReplyToContactMessage: vi.fn(),
   mockUpdateContactMessageStaffNote: vi.fn(),
 }));
 
@@ -30,6 +32,7 @@ vi.mock("./api", () => ({
       getContactMessage: mockGetContactMessage,
       listContactMessages: mockListContactMessages,
       markContactMessageHandled: mockMarkContactMessageHandled,
+      replyToContactMessage: mockReplyToContactMessage,
       updateContactMessageStaffNote: mockUpdateContactMessageStaffNote,
     },
     members: {
@@ -58,7 +61,11 @@ const adminContactMessage = {
   subject: "Cannot open an episode",
 };
 
-const contactMessageItem = { ...adminContactMessage };
+const contactMessageItem = {
+  ...adminContactMessage,
+  entries: [],
+  entryCount: 0,
+};
 
 describe("contact message lib", () => {
   beforeEach(() => {
@@ -133,6 +140,8 @@ describe("contact message lib", () => {
       assigneeUserId: "",
       body: "Is there an app?",
       createdAt: "2026-06-02T00:00:00Z",
+      entries: [],
+      entryCount: 0,
       handledAt: "",
       id: "018f0f80-0003-7000-8000-000000000002",
       publicId: "CONTACT0002",
@@ -274,6 +283,68 @@ describe("contact message lib", () => {
       contactMessage: {
         ...contactMessageItem,
         staffNote: "Asked the reader for their device.",
+      },
+      ok: true,
+    });
+  });
+
+  it("reads the exchange under the message in the order the API gave it", async () => {
+    mockGetContactMessage.mockResolvedValue({
+      message: {
+        ...adminContactMessage,
+        entries: [
+          {
+            authorName: "Kei Arata",
+            authorPublicId: "STAFF000001",
+            authorUserId: "018f0f80-0001-7000-8000-000000000001",
+            body: "Every episode marked free.",
+            createdAt: "2026-06-02T00:00:00Z",
+            direction: "staff",
+            fromEmail: "",
+            id: "018f0f80-0004-7000-8000-000000000001",
+          },
+          {
+            authorName: "",
+            authorPublicId: "",
+            authorUserId: "",
+            body: "And on the app?",
+            createdAt: "2026-06-03T00:00:00Z",
+            direction: "reader",
+            fromEmail: "reader.work@example.com",
+            id: "018f0f80-0004-7000-8000-000000000002",
+          },
+        ],
+        entryCount: 2,
+      },
+    });
+
+    const { getContactMessage } = await import("./contact-message");
+    const result = await getContactMessage("TENANT001", "en", "CONTACT0001");
+
+    expect(result).toEqual({
+      contactMessage: {
+        ...contactMessageItem,
+        entries: [
+          {
+            authorName: "Kei Arata",
+            authorPublicId: "STAFF000001",
+            body: "Every episode marked free.",
+            createdAt: "2026-06-02T00:00:00Z",
+            direction: "staff",
+            fromEmail: "",
+            id: "018f0f80-0004-7000-8000-000000000001",
+          },
+          {
+            authorName: "",
+            authorPublicId: "",
+            body: "And on the app?",
+            createdAt: "2026-06-03T00:00:00Z",
+            direction: "reader",
+            fromEmail: "reader.work@example.com",
+            id: "018f0f80-0004-7000-8000-000000000002",
+          },
+        ],
+        entryCount: 2,
       },
       ok: true,
     });
@@ -530,6 +601,84 @@ describe("contact message lib", () => {
     );
 
     expect(mockUpdateContactMessageStaffNote).not.toHaveBeenCalled();
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it("sends the answer for the message it names", async () => {
+    mockReplyToContactMessage.mockResolvedValue({});
+
+    const { replyToContactMessage } = await import("./contact-message");
+    const result = await replyToContactMessage(
+      {
+        body: "Every episode marked free.",
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockReplyToContactMessage).toHaveBeenCalledWith(
+      {
+        body: "Every episode marked free.",
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("reports a refused answer as a message", async () => {
+    mockReplyToContactMessage.mockRejectedValue(
+      new ConnectError("mail limit", Code.ResourceExhausted)
+    );
+
+    const { replyToContactMessage } = await import("./contact-message");
+    const result = await replyToContactMessage(
+      {
+        body: "An answer.",
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it("rethrows a session the answer was refused for", async () => {
+    mockReplyToContactMessage.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { replyToContactMessage } = await import("./contact-message");
+
+    await expect(
+      replyToContactMessage(
+        {
+          body: "An answer.",
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      )
+    ).rejects.toThrow();
+  });
+
+  it("does not send an answer when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { replyToContactMessage } = await import("./contact-message");
+    const result = await replyToContactMessage(
+      {
+        body: "An answer.",
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockReplyToContactMessage).not.toHaveBeenCalled();
     expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
   });
 

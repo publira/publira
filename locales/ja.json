@@ -315,6 +315,7 @@
         "contact_message_assigned": "お問い合わせの担当者を割り当て",
         "contact_message_unassigned": "お問い合わせの担当者の割り当てを解除",
         "contact_message_staff_note_updated": "お問い合わせのスタッフメモを更新",
+        "contact_message_replied": "お問い合わせに回答",
         "reader_suspended": "読者の停止",
         "reader_unsuspended": "読者の停止解除",
         "reader_birth_date_changed": "読者の生年月日変更",
@@ -688,6 +689,7 @@
       "subject_none": "件名なし",
       "sender_guest": "ゲスト",
       "assignee_none": "未割り当て",
+      "answered": "回答済み",
       "body": "本文",
       "handled_at": "対応日時",
       "columns": {
@@ -705,7 +707,7 @@
         "reset": "リセット"
       },
       "detail_title": "お問い合わせ",
-      "detail_description": "メッセージの全文と返信先のアドレス、担当者、対応状況、スタッフメモを確認します。",
+      "detail_description": "メッセージの全文とその下のやり取り、回答の送信先アドレス、担当者、対応状況、スタッフメモを確認します。",
       "detail_section_title": "メッセージ",
       "detail_error": "お問い合わせを表示できませんでした",
       "detail_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
@@ -740,6 +742,26 @@
         "saving": "保存しています…",
         "saved": "スタッフメモを保存しました。",
         "cleared": "スタッフメモを削除しました。"
+      },
+      "exchange": {
+        "title": "回答と返信",
+        "description": "スタッフが回答した内容と、読者から届いた返信を古い順に表示します。",
+        "empty": "このお問い合わせにはまだ誰も回答していません。",
+        "staff_entry": "{$name}からの回答",
+        "staff_entry_former": "以前のスタッフからの回答",
+        "reader_entry": "{$email}からの返信"
+      },
+      "reply": {
+        "label": "回答",
+        "hint": "回答は{$email}宛にメールで送られ、お問い合わせは対応済みになります。読者が返信すると、ご自身のアカウントのメールアドレスに届きます。{$count}文字まで入力できます。",
+        "submit": "回答を送信",
+        "sending": "送信しています…",
+        "sent": "回答を保存しました。読者にメールで送られます。",
+        "failed": "回答を送信できませんでした。時間をおいて再試行してください。",
+        "validation": {
+          "body_required": "回答を入力してください。",
+          "body_too_long": "回答は{$count}文字以内で入力してください。"
+        }
       },
       "validation": {
         "target_missing": "対象のお問い合わせを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
