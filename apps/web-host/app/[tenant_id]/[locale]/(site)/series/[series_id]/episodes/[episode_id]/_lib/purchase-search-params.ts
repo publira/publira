@@ -14,9 +14,15 @@ const checkoutSessionIDSchema = searchParamString({
   maxLength: 255,
 });
 
+/** Set by the Action that spends a wait-for-free ticket, when it could not. */
+const waitFreeStateSchema = searchParamEnum(["error"] as const, {
+  fallback: "",
+});
+
 const purchaseSearchParamsSchema = z.object({
   checkout: checkoutStateSchema,
   session_id: checkoutSessionIDSchema,
+  wait_free: waitFreeStateSchema,
 });
 
 export type PurchaseSearchParams = z.output<typeof purchaseSearchParamsSchema>;

@@ -17,19 +17,30 @@ vi.mock("#components/message", () => ({
   Message: ({ message }: { message: string }) => message,
 }));
 
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({ message }: { message: string }) => message,
+}));
+
 vi.mock("#components/locale-field", () => ({
   LocaleField: () => null,
 }));
 
 afterEach(cleanup);
 
+const ticketButton = () =>
+  screen.queryByRole("button", {
+    name: "host.episode.gate.wait_free_use",
+  });
+
 const props = {
   episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   episodePublicId: "EPISODE_001",
+  locale: "en" as const,
   purchaseSurface: "all" as const,
   seriesPublicId: "SERIES_001",
   signedIn: true,
   tenantId: "TENANT_001",
+  timeZone: "UTC",
 };
 
 describe("EpisodeAccessGate", () => {
@@ -226,6 +237,130 @@ describe("EpisodeAccessGate", () => {
           name: "host.episode.gate.next_free_episode",
         })
       ).toBeNull();
+    });
+  });
+
+  describe("wait-for-free", () => {
+    it("Offer a ready ticket as the Shu, ahead of the purchase", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          waitFree={{ accessHours: 72, kind: "ready" }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.wait_free_ready")
+      ).toBeDefined();
+      expect(ticketButton()?.classList.contains("bg-secondary")).toBe(true);
+      expect(
+        screen
+          .getByRole("button", { name: "host.episode.gate.purchase" })
+          .classList.contains("bg-secondary")
+      ).toBe(false);
+      const form = ticketButton()?.closest("form");
+      expect(
+        form?.querySelector<HTMLInputElement>('input[name="episodeId"]')?.value
+      ).toBe(props.episodeId);
+    });
+
+    it("Count down to a ticket that is still recharging", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          waitFree={{
+            accessHours: 72,
+            kind: "recharging",
+            nextAvailableAt: Temporal.Now.instant()
+              .add({ hours: 5 })
+              .toString(),
+          }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.wait_free_recharging_in")
+      ).toBeDefined();
+      expect(ticketButton()).toBeNull();
+      expect(
+        screen
+          .getByRole("button", { name: "host.episode.gate.purchase" })
+          .classList.contains("bg-secondary")
+      ).toBe(true);
+    });
+
+    it("Offer a recharged ticket without taking the Shu from the purchase", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          waitFree={{
+            accessHours: 72,
+            kind: "recharging",
+            nextAvailableAt: Temporal.Now.instant()
+              .subtract({ minutes: 1 })
+              .toString(),
+          }}
+        />
+      );
+
+      expect(ticketButton()?.classList.contains("bg-secondary")).toBe(false);
+      expect(
+        screen
+          .getByRole("button", { name: "host.episode.gate.purchase" })
+          .classList.contains("bg-secondary")
+      ).toBe(true);
+    });
+
+    it("Say a ticket cannot open one of the newest episodes", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          waitFree={{ kind: "excluded" }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.wait_free_excluded")
+      ).toBeDefined();
+      expect(ticketButton()).toBeNull();
+    });
+
+    it("Tell a guest that signing in brings a ticket", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          signedIn={false}
+          waitFree={{ kind: "guest" }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.wait_free_guest")
+      ).toBeDefined();
+      expect(ticketButton()).toBeNull();
+      expect(
+        screen
+          .getByRole("link", { name: "host.episode.gate.login" })
+          .classList.contains("bg-secondary")
+      ).toBe(true);
+    });
+
+    it("Report a ticket state that could not be read", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          waitFree={{ kind: "unavailable", message: "Could not connect." }}
+        />
+      );
+
+      expect(screen.getByRole("status").textContent).toBe("Could not connect.");
+      expect(ticketButton()).toBeNull();
     });
   });
 });

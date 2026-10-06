@@ -45,6 +45,7 @@ import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeCreatorAccess } from "./_components/episode-creator-access";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import { EpisodeRatingGate } from "./_components/episode-rating-gate";
+import { WaitFreeNotice } from "./_components/wait-free-notice";
 import {
   COMMENT_TOKEN_PARAM,
   parseCommentSearchParams,
@@ -214,6 +215,31 @@ const EpisodeAgeRatingConfirmation = ({
   </AgeRatingGateConfirmation>
 );
 
+/**
+ * What the episode page takes from the series read beside its own, with the
+ * answer each one falls back to when that read failed.
+ */
+const fromSeriesRead = (
+  seriesResult: Awaited<ReturnType<typeof getSeriesDetail>>
+) => {
+  const work = seriesResult.ok ? seriesResult.value?.series : undefined;
+  return {
+    // GetSeriesDetail resolves a series override against the tenant default.
+    // If that read failed, do not offer a form whose submission might be
+    // rejected; the next request retries the uncached failure value.
+    commentMode: work?.commentMode ?? "disabled",
+    // A ticket is offered only where the rule is known to hold. The episode's
+    // own access is unaffected: a failed read leaves the gate as it was.
+    waitFree: work?.waitFree,
+    // A share names the work, not the instalment — which one it is, is what
+    // the address and the card carry. `GetEpisodeDetail` answers with the
+    // work's id, title, and rating rather than its credits, so the names come
+    // from the series read beside it, and a read that failed leaves the title
+    // on its own.
+    workCredits: work?.credits ?? [],
+  };
+};
+
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
 ) => {
@@ -268,21 +294,7 @@ const EpisodeContent = async (
     previousEpisode,
     series,
   } = result.value;
-  // GetSeriesDetail resolves a series override against the tenant default.
-  // If that read failed, do not offer a form whose submission might be
-  // rejected; the next request retries the uncached failure value.
-  const commentMode =
-    seriesResult.ok && seriesResult.value
-      ? seriesResult.value.series.commentMode
-      : "disabled";
-  // A share names the work, not the instalment — which one it is, is what the
-  // address and the card carry. `GetEpisodeDetail` answers with the work's id,
-  // title, and rating rather than its credits, so the names come from the
-  // series read beside it, and a read that failed leaves the title on its own.
-  const workCredits =
-    seriesResult.ok && seriesResult.value
-      ? seriesResult.value.series.credits
-      : [];
+  const { commentMode, waitFree, workCredits } = fromSeriesRead(seriesResult);
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -367,6 +379,8 @@ const EpisodeContent = async (
                     previousEpisode={previousEpisode}
                     series={series}
                     tenantId={tenantId}
+                    timeZone={timeZone}
+                    waitFree={waitFree}
                   />
                 </Suspense>
               </SectionErrorBoundary>
@@ -374,6 +388,7 @@ const EpisodeContent = async (
 
             <EpisodeColumn>
               <CheckoutNotice checkout={purchaseSearchParams.checkout} />
+              <WaitFreeNotice waitFree={purchaseSearchParams.wait_free} />
 
               {/* A running head: which instalment this is. The number is part of
               the title line rather than a chip beside it, because a serial

@@ -446,6 +446,11 @@
       ]
     },
     {
+      "name": "Reading an episode free with a wait-for-free ticket",
+      "web": { "rpcs": ["GetMyTicketState", "UseTicket"] },
+      "exception": "Not in the app yet: #1811."
+    },
+    {
       "name": "Signing in and up with Apple or Google",
       "web": {
         "routes": [

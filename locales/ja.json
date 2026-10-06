@@ -3242,7 +3242,14 @@
         "signed_in_app_only_description": "このエピソードはアプリで販売しています。このアカウントでアプリから購入すると、ここでも読めるようになります。",
         "signed_in_payable_description": "閲覧権限がありません。チケットの有効期限が切れているか、まだ付与されていません。購入済みの場合は、別のアカウントでログインしていないか確認してください。",
         "signed_in_title": "このエピソードは閲覧できません",
-        "signed_in_unpayable_description": "現在このサイトでは購入手続きを利用できません。チケットの有効期限が切れているか、まだ付与されていないかを確認してください。"
+        "signed_in_unpayable_description": "現在このサイトでは購入手続きを利用できません。チケットの有効期限が切れているか、まだ付与されていないかを確認してください。",
+        "wait_free_ready": "このシリーズの無料チケットが使えます。使うとこのエピソードを{$access}読めます。",
+        "wait_free_use": "無料チケットで読む",
+        "wait_free_recharging_at": "次の無料チケットは{$date}に使えるようになります。",
+        "wait_free_recharging_in": "次の無料チケットはあと{$duration}で使えるようになります。",
+        "wait_free_excluded": "最新のエピソードのため、無料チケットでは読めません。",
+        "wait_free_guest": "このシリーズは待てば無料です。ログインすると無料チケットでこのエピソードを読めます。",
+        "wait_free_state_failed": "このシリーズの無料チケットを確認できませんでした。"
       },
       "images_empty": "本文画像はまだ公開されていません。",
       "navigation": {
@@ -3285,7 +3292,8 @@
         "page_title": "{$title} {$page}ページ",
         "progress": "読み進み",
         "reload": "再読み込み"
-      }
+      },
+      "wait_free_error": "無料チケットを使えませんでした。しばらくしてからもう一度お試しください。"
     },
     "errors": {
       "not_found_description": "お探しのページは削除されたか、URLが変更された可能性があります。ホームを開いてください。",
@@ -3577,7 +3585,10 @@
         "own": "あなたの評価：{$average}",
         "explanation": "エピソードにリアクションすると、シリーズの評価に反映されます。",
         "failed": "あなたの評価を表示できませんでした"
-      }
+      },
+      "wait_free_rule": "待てば無料：無料チケット1枚で有料のエピソードを1話、{$access}読めます。次のチケットは使ってから{$recharge}後に使えるようになります。",
+      "wait_free_excluded_note": "下の一覧で印の付いた最新のエピソードは、無料チケットでは読めません。",
+      "wait_free_excluded": "無料チケット対象外"
     },
     "share": {
       "action": "共有",

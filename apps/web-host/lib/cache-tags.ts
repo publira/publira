@@ -85,6 +85,15 @@ export const tenantFollowsTag = (tenantId: string) =>
 export const tenantEpisodeRatingsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:episode-ratings`;
 
+/**
+ * The private reads of what the signed-in reader may open: an episode's body
+ * and the wait-for-free ticket they hold on its series. Using a ticket changes
+ * both, for that reader alone, so the Action drops this one tag rather than
+ * the series tags every shared catalog read carries.
+ */
+export const tenantReaderAccessTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:reader-access`;
+
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 

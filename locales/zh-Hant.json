@@ -3242,7 +3242,14 @@
         "signed_in_app_only_description": "本章在應用程式內販售。使用此帳戶在應用程式內購買後，也可以在這裡閱讀。",
         "signed_in_payable_description": "您目前沒有閱讀權限。您的閱讀券已過期或尚未發放。如果您已經購買過本章，請確認是否使用了其他帳戶登入。",
         "signed_in_title": "您無法閱讀本章",
-        "signed_in_unpayable_description": "本網站目前無法受理購買。請確認您的閱讀券是否已過期或尚未發放。"
+        "signed_in_unpayable_description": "本網站目前無法受理購買。請確認您的閱讀券是否已過期或尚未發放。",
+        "wait_free_ready": "你可以使用本系列的免費券。使用後可在{$access}內閱讀本集。",
+        "wait_free_use": "使用免費券免費閱讀",
+        "wait_free_recharging_at": "下一張免費券將於{$date}可用。",
+        "wait_free_recharging_in": "下一張免費券將在{$duration}後可用。",
+        "wait_free_excluded": "這是最新的劇集之一，無法使用免費券閱讀。",
+        "wait_free_guest": "本系列等待即可免費閱讀：登入後可使用免費券閱讀本集。",
+        "wait_free_state_failed": "無法確認你在本系列的免費券。"
       },
       "images_empty": "本章的頁面尚未發布。",
       "navigation": {
@@ -3285,7 +3292,8 @@
         "page_title": "{$title}第{$page}頁",
         "progress": "閱讀進度",
         "reload": "重新載入"
-      }
+      },
+      "wait_free_error": "無法使用免費券。請稍後再試。"
     },
     "errors": {
       "not_found_description": "該頁面可能已被刪除，或其網址已變更。",
@@ -3577,7 +3585,10 @@
         "own": "你的評分：{$average}",
         "explanation": "對章節作出回應即可為本系列評分。",
         "failed": "無法顯示你的評分"
-      }
+      },
+      "wait_free_rule": "等待即可免費：一張免費券可在{$access}內閱讀一集付費劇集，使用後{$recharge}即可獲得下一張。",
+      "wait_free_excluded_note": "下方標記的最新劇集無法使用免費券閱讀。",
+      "wait_free_excluded": "不可用免費券"
     },
     "share": {
       "action": "分享",

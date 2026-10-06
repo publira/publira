@@ -447,3 +447,16 @@ export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
  */
 export const uncachedTenantBaseUrl = (): string =>
   withHostname(WEB_HOST_BASE_URL, `outage-${randomUUID()}.localhost`);
+
+/**
+ * Public site of the wait-for-free tenant from the scenario seed
+ * `db/seeds/scenarios/410_wait_free.sql`.
+ *
+ * The member spends the ticket the series offers, which is state no suite
+ * reading the development seed's episodes should find, so the series is on a
+ * tenant of its own.
+ */
+export const WEB_HOST_WAIT_FREE_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_WAIT_FREE_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "waitfree.localhost")
+);

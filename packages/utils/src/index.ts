@@ -40,6 +40,11 @@ export {
   type FormatPercentOptions,
   type FormatYenOptions,
 } from "./format-number";
+export {
+  formatDuration,
+  type DurationStyle,
+  type FormatDurationOptions,
+} from "./format-duration";
 export { formatList, type FormatListOptions } from "./format-list";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {

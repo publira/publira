@@ -12,6 +12,7 @@ import {
   FollowService,
   PurchaseService,
   RatingService,
+  WaitFreeService,
 } from "../gen/publira/v1/catalog_pb.js";
 import { CommentService } from "../gen/publira/v1/comment_pb.js";
 import { ContactService } from "../gen/publira/v1/contact_pb.js";
@@ -45,6 +46,7 @@ export interface PublicApiClient {
   purchase: Client<typeof PurchaseService>;
   rating: Client<typeof RatingService>;
   tenant: Client<typeof TenantService>;
+  waitFree: Client<typeof WaitFreeService>;
   domain: Client<typeof DomainService>;
 }
 
@@ -94,5 +96,6 @@ export const createPublicApiClient = (
     purchase: createClient(PurchaseService, transportInstance),
     rating: createClient(RatingService, transportInstance),
     tenant: createClient(TenantService, transportInstance),
+    waitFree: createClient(WaitFreeService, transportInstance),
   };
 };

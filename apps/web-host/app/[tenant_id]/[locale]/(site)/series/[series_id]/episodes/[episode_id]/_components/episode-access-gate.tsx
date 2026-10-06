@@ -1,6 +1,8 @@
+import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { QrCode, toQrCodePath } from "@publira/ui-components/qr-code";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatDateTimeWithWeekday, formatDuration } from "@publira/utils";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -10,8 +12,13 @@ import { Message } from "#components/message";
 import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
 
 import { episodeLoginHref } from "../_lib/access-gate";
-import { startEpisodeCheckoutAction } from "../_lib/actions";
+import {
+  openWithWaitFreeTicketAction,
+  startEpisodeCheckoutAction,
+} from "../_lib/actions";
 import { episodePath } from "../_lib/episode-path";
+import type { WaitFreeOffer } from "../_lib/wait-free-offer";
+import { WaitFreeCountdown } from "./wait-free-countdown";
 
 /**
  * The stores the tenant's app is listed in: each one's link, and above it a
@@ -58,6 +65,180 @@ const AppStoreLinks = ({
 );
 
 /**
+ * Why the body is closed, in the six states the gate can be in. Each branch
+ * writes its own key out: a key chosen somewhere else and handed over as a
+ * value is one that nothing reading this file can account for.
+ */
+const ClosedBecause = ({
+  acceptsPayments,
+  signedIn,
+  soldInAppOnly,
+}: {
+  acceptsPayments: boolean;
+  signedIn: boolean;
+  soldInAppOnly: boolean;
+}) => {
+  if (signedIn && soldInAppOnly) {
+    return (
+      <Message message="host.episode.gate.signed_in_app_only_description" />
+    );
+  }
+  if (signedIn && acceptsPayments) {
+    return (
+      <Message message="host.episode.gate.signed_in_payable_description" />
+    );
+  }
+  if (signedIn) {
+    return (
+      <Message message="host.episode.gate.signed_in_unpayable_description" />
+    );
+  }
+  if (soldInAppOnly) {
+    return <Message message="host.episode.gate.guest_app_only_description" />;
+  }
+  if (acceptsPayments) {
+    return <Message message="host.episode.gate.guest_payable_description" />;
+  }
+  return <Message message="host.episode.gate.guest_unpayable_description" />;
+};
+
+/**
+ * The reader's ticket is ready: what it does, and the control that spends it.
+ */
+const WaitFreeTicketForm = ({
+  accessHours,
+  episodeId,
+  episodePublicId,
+  locale,
+  seriesPublicId,
+  tenantId,
+  variant,
+}: {
+  accessHours: number;
+  episodeId: string;
+  episodePublicId: string;
+  locale: Locale;
+  seriesPublicId: string;
+  tenantId: string;
+  variant: "outline" | "secondary";
+}) => (
+  <div className="grid justify-items-center gap-3">
+    <p className="text-sm">
+      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+        <Message
+          message="host.episode.gate.wait_free_ready"
+          values={{
+            access: formatDuration({ hours: accessHours }, { locale }),
+          }}
+        />
+      </Suspense>
+    </p>
+    <form action={openWithWaitFreeTicketAction}>
+      <LocaleField />
+      <input name="tenantId" type="hidden" value={tenantId} />
+      <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
+      <input name="episodePublicId" type="hidden" value={episodePublicId} />
+      <input name="episodeId" type="hidden" value={episodeId} />
+      <Button size="lg" type="submit" variant={variant}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+          <Message message="host.episode.gate.wait_free_use" />
+        </Suspense>
+      </Button>
+    </form>
+  </div>
+);
+
+/**
+ * What the gate says about wait-for-free, in the five states the offer can be
+ * in, each with its own key written out for the reason the gate gives.
+ *
+ * A ticket that is ready is the Shu, which the gate takes from the purchase.
+ * One still recharging becomes ready while the reader looks at the page, after
+ * the gate has given the Shu to whatever else was on screen, so the control it
+ * then offers is outlined; the next load of the page makes it the Shu.
+ */
+const WaitFreeSection = ({
+  episodeId,
+  episodePublicId,
+  locale,
+  offer,
+  seriesPublicId,
+  tenantId,
+  timeZone,
+}: {
+  episodeId: string;
+  episodePublicId: string;
+  locale: Locale;
+  offer: WaitFreeOffer;
+  seriesPublicId: string;
+  tenantId: string;
+  timeZone: string;
+}) => {
+  const ticketProps = {
+    episodeId,
+    episodePublicId,
+    locale,
+    seriesPublicId,
+    tenantId,
+  };
+
+  switch (offer.kind) {
+    case "ready": {
+      return (
+        <WaitFreeTicketForm
+          {...ticketProps}
+          accessHours={offer.accessHours}
+          variant="secondary"
+        />
+      );
+    }
+    case "recharging": {
+      return (
+        <WaitFreeCountdown
+          absolute={formatDateTimeWithWeekday(offer.nextAvailableAt, {
+            fallback: "",
+            locale,
+            timeZone,
+          })}
+          nextAvailableAt={offer.nextAvailableAt}
+        >
+          <WaitFreeTicketForm
+            {...ticketProps}
+            accessHours={offer.accessHours}
+            variant="outline"
+          />
+        </WaitFreeCountdown>
+      );
+    }
+    case "excluded": {
+      return (
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.episode.gate.wait_free_excluded" />
+          </Suspense>
+        </p>
+      );
+    }
+    case "guest": {
+      return (
+        <p className="text-sm">
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.episode.gate.wait_free_guest" />
+          </Suspense>
+        </p>
+      );
+    }
+    default: {
+      return (
+        <output className="block text-sm text-muted-foreground">
+          {offer.message}
+        </output>
+      );
+    }
+  }
+};
+
+/**
  * The card over the preview when the reader may not open the pages: why the
  * body is closed, the one thing that opens it, and the nearest later episode
  * they could read instead.
@@ -67,6 +248,11 @@ const AppStoreLinks = ({
  * do is to get into this one, so the mark moves to the action that does it and
  * the row below carries none. The free episode is a way around this one rather
  * than into it, so it is a link under the actions and not a third button.
+ *
+ * On a series that offers wait-for-free, a ready ticket is the way in that
+ * costs the reader nothing, so it takes the Shu from the purchase. A ticket
+ * still recharging counts down to the moment it is ready and then offers
+ * itself, without taking the Shu from an action already on screen.
  */
 export const EpisodeAccessGate = ({
   acceptsPayments,
@@ -74,11 +260,14 @@ export const EpisodeAccessGate = ({
   episodeId,
   episodePublicId,
   googlePlayUrl,
+  locale,
   nextFreeEpisode,
   purchaseSurface,
   seriesPublicId,
   signedIn,
   tenantId,
+  timeZone,
+  waitFree,
 }: {
   acceptsPayments: boolean;
   /** Where the tenant's app is listed; absent where it is not. */
@@ -86,46 +275,23 @@ export const EpisodeAccessGate = ({
   episodeId: string;
   episodePublicId: string;
   googlePlayUrl?: string;
+  locale: Locale;
   /** Absent when no later episode of the series is free right now. */
   nextFreeEpisode?: EpisodeNeighborItem;
   purchaseSurface: EpisodePurchaseSurface;
   seriesPublicId: string;
   signedIn: boolean;
   tenantId: string;
+  /** The tenant's time zone, which a recharging ticket's instant is written in. */
+  timeZone: string;
+  /** Absent on a series that does not offer wait-for-free. */
+  waitFree?: WaitFreeOffer;
 }) => {
   // The app buys through the same checkout, so a tenant that cannot take
   // payments has nothing to send the reader to the app for.
   const soldInAppOnly = acceptsPayments && purchaseSurface === "app";
 
-  // Why the body is closed, in the six states the gate can be in. Each
-  // branch writes its own key out: a key chosen somewhere else and handed
-  // over as a value is one that nothing reading this file can account for.
-  let closedBecause: ReactNode;
-  if (signedIn && soldInAppOnly) {
-    closedBecause = (
-      <Message message="host.episode.gate.signed_in_app_only_description" />
-    );
-  } else if (signedIn && acceptsPayments) {
-    closedBecause = (
-      <Message message="host.episode.gate.signed_in_payable_description" />
-    );
-  } else if (signedIn) {
-    closedBecause = (
-      <Message message="host.episode.gate.signed_in_unpayable_description" />
-    );
-  } else if (soldInAppOnly) {
-    closedBecause = (
-      <Message message="host.episode.gate.guest_app_only_description" />
-    );
-  } else if (acceptsPayments) {
-    closedBecause = (
-      <Message message="host.episode.gate.guest_payable_description" />
-    );
-  } else {
-    closedBecause = (
-      <Message message="host.episode.gate.guest_unpayable_description" />
-    );
-  }
+  const ticketReady = waitFree?.kind === "ready";
 
   let accessAction: ReactNode = null;
   if (signedIn && acceptsPayments && !soldInAppOnly) {
@@ -136,7 +302,11 @@ export const EpisodeAccessGate = ({
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <input name="episodePublicId" type="hidden" value={episodePublicId} />
         <input name="episodeId" type="hidden" value={episodeId} />
-        <Button size="lg" type="submit" variant="secondary">
+        <Button
+          size="lg"
+          type="submit"
+          variant={ticketReady ? "outline" : "secondary"}
+        >
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="host.episode.gate.purchase" />
           </Suspense>
@@ -175,19 +345,34 @@ export const EpisodeAccessGate = ({
         </p>
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            {closedBecause}
+            <ClosedBecause
+              acceptsPayments={acceptsPayments}
+              signedIn={signedIn}
+              soldInAppOnly={soldInAppOnly}
+            />
           </Suspense>
         </p>
       </div>
       <div className="grid justify-items-center gap-6">
+        {waitFree ? (
+          <WaitFreeSection
+            episodeId={episodeId}
+            episodePublicId={episodePublicId}
+            locale={locale}
+            offer={waitFree}
+            seriesPublicId={seriesPublicId}
+            tenantId={tenantId}
+            timeZone={timeZone}
+          />
+        ) : null}
         {/* Signed in, the store is the one way into this episode and carries
-          the Shu. A guest who bought it in the app still has to sign in, so
-          signing in keeps it. */}
+          the Shu, unless a ready ticket opens it for nothing. A guest who
+          bought it in the app still has to sign in, so signing in keeps it. */}
         {soldInAppOnly && (appStoreUrl || googlePlayUrl) ? (
           <AppStoreLinks
             appStoreUrl={appStoreUrl}
             googlePlayUrl={googlePlayUrl}
-            variant={signedIn ? "secondary" : "outline"}
+            variant={signedIn && !ticketReady ? "secondary" : "outline"}
           />
         ) : null}
         <div className="flex flex-wrap justify-center gap-3">

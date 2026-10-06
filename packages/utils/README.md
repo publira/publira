@@ -8,7 +8,7 @@ The package that provides the shared frontend utilities.
 
 | Import | What it provides |
 | --- | --- |
-| `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent` and `formatYen`, the IANA time zone list and its validation, `decodeBase64Url`, the tenant theme tokens and their contrast rules, and `getTenantDomainCandidates` |
+| `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent`, `formatYen`, and `formatDuration`, the IANA time zone list and its validation, `decodeBase64Url`, the tenant theme tokens and their contrast rules, and `getTenantDomainCandidates` |
 | `@publira/utils/cn` | `cn`, the Tailwind-aware className helper, on its own |
 | `@publira/utils/format-date-time` | The tenant-time-zone-aware date and time helpers on their own |
 | `@publira/utils/theme-css-variables` | The tenant theme colors as `--publira-color-*` custom properties, and `DEFAULT_TENANT_THEME_COLORS` |
@@ -108,6 +108,15 @@ currentWeekday(tenantTimeZone); // 0 to 6, Sunday first
 ```
 
 `currentWeekday` requires the zone because the answer is a calendar day rather than an instant: the tenant and its reader are on different days for part of every one, and a schedule belongs to the tenant. It also answers differently depending on when it is called, so a Server Component that renders one under Cache Components has to be request-time — a weekday resolved during a prerender is written into the shell and keeps pointing at the day that shell was built on. `now` takes the moment to read, so a test states one instead of moving with the clock.
+
+```ts
+import { formatDuration } from "@publira/utils";
+
+formatDuration({ hours: 23 }, { locale }); // "23 hours"
+formatDuration({ hours: 5, minutes: 12 }, { locale, style: "short" }); // "5 hr 12 min"
+```
+
+`formatDuration` words a span rather than an instant, so it takes no time zone.
 
 ### Picking and validating a time zone
 
