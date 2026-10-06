@@ -214,6 +214,25 @@ func TestReplyAddressRoundTrips(t *testing.T) {
 	}
 }
 
+// The longest domain accepted is the longest whose per-message address still
+// fits in a 254-byte mailbox.
+func TestNormalizeDomainKeepsTheReplyAddressInAMailbox(t *testing.T) {
+	longest := strings.Repeat("a", 63) + "." + strings.Repeat("b", 63) + "." + strings.Repeat("c", 63) + "." + strings.Repeat("d", 41)
+	if len(longest) != 233 {
+		t.Fatalf("the fixture is %d characters, want 233", len(longest))
+	}
+	domain, err := NormalizeDomain(longest)
+	if err != nil {
+		t.Fatalf("NormalizeDomain(233 characters): %v", err)
+	}
+	if address := (PublicConfig{Domain: domain}).ReplyAddress("ABCDEFGHJKLM"); len(address) != 254 {
+		t.Fatalf("the reply address is %d bytes, want 254", len(address))
+	}
+	if _, err := NormalizeDomain(longest + "d"); !errors.Is(err, ErrInvalidDomain) {
+		t.Fatalf("NormalizeDomain(234 characters) error = %v, want ErrInvalidDomain", err)
+	}
+}
+
 func TestNormalizeDomainTakesAnInternationalizedName(t *testing.T) {
 	// The handling of a non-ASCII name is what is under test.
 	got, err := NormalizeDomain("返信.example.jp")

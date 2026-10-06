@@ -556,8 +556,9 @@ type UpdateTenantInboundEmailSettingsRequest struct {
 	// clears every field stored for the previous one.
 	Provider string `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 	Enabled  bool   `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// A domain name of at most 253 characters, such as "reply.example.com",
-	// stored in lower case. Required while enabled; an empty value clears it.
+	// A domain name of at most 233 characters, such as "reply.example.com",
+	// stored in lower case: the per-message address on it has to fit in a
+	// 254-byte mailbox. Required while enabled; an empty value clears it.
 	Domain        string                               `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
 	Fields        []*InboundEmailCredentialFieldUpdate `protobuf:"bytes,5,rep,name=fields,proto3" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields

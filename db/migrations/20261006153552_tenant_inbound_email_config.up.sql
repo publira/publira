@@ -10,8 +10,10 @@ CREATE TABLE tenant_inbound_email_config (
     enabled boolean DEFAULT false NOT NULL,
     -- The domain whose mail the tenant routes to the provider. An answer's
     -- Reply-To is an address on it once the settings are ready, so it is
-    -- stored in lower case, the form an address on it is compared in.
-    domain character varying(253),
+    -- stored in lower case, the form an address on it is compared in. 233 is
+    -- what is left of a 254-byte mailbox once "contact+", a 12-character
+    -- public id, and "@" come before it.
+    domain character varying(233),
     -- Field name to a secretcrypto envelope of its value, one envelope per
     -- field so a single field can be replaced or cleared without the others.
     credentials_encrypted jsonb DEFAULT '{}'::jsonb NOT NULL,

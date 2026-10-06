@@ -17,6 +17,8 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/net/idna"
+
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 const (
@@ -27,9 +29,15 @@ const (
 	// before the "+" that separates the message's public id.
 	replyLocalPart = "contact"
 
-	// maxDomainLength is the longest domain name DNS allows, and the width of
-	// tenant_inbound_email_config.domain.
-	maxDomainLength = 253
+	// maxMailboxLength is the longest address a mailbox may have, the bound
+	// contact_messages.reply_to_email holds too.
+	maxMailboxLength = 254
+
+	// maxDomainLength is the longest inbound domain whose per-message address
+	// still fits in a mailbox: the domain follows "contact+", a public id, and
+	// "@". It is shorter than the 253 characters DNS allows, and is the width
+	// of tenant_inbound_email_config.domain.
+	maxDomainLength = maxMailboxLength - len(replyLocalPart) - len("+") - publicid.Length - len("@")
 )
 
 var (
@@ -131,7 +139,7 @@ func (c PublicConfig) MessagePublicID(address string) (string, bool) {
 		return "", false
 	}
 	publicID := local[len(prefix):]
-	if len(publicID) > 12 {
+	if len(publicID) > publicid.Length {
 		return "", false
 	}
 	for _, r := range publicID {
@@ -144,7 +152,9 @@ func (c PublicConfig) MessagePublicID(address string) (string, bool) {
 
 // NormalizeDomain answers domain as it is stored: in lower case, without a
 // trailing dot, and in its ASCII form when it is an internationalized name. An
-// empty domain stays empty.
+// empty domain stays empty. A domain too long for [PublicConfig.ReplyAddress]
+// to fit in a mailbox is refused, since a Reply-To over that length is one a
+// mail server may refuse and a reader's client cannot answer.
 func NormalizeDomain(domain string) (string, error) {
 	domain = strings.TrimSuffix(strings.TrimSpace(domain), ".")
 	if domain == "" {

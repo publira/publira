@@ -3,6 +3,7 @@ package inboundemail_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,5 +44,16 @@ func TestTableRefusesWhatTheStoreNeverWrites(t *testing.T) {
 				t.Fatalf("insert error = %v, want check_violation", err)
 			}
 		})
+	}
+
+	// The column is as wide as a domain whose per-message address fits in a
+	// mailbox, and no wider.
+	_, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_inbound_email_config (tenant_id, provider, domain)
+		VALUES ($1, 'sendgrid', $2)
+	`, tenant.ID, strings.Repeat("a", 230)+".com")
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "22001" {
+		t.Fatalf("insert of a 234-character domain error = %v, want string_data_right_truncation", err)
 	}
 }

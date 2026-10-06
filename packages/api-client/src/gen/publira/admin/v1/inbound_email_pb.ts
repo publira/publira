@@ -301,8 +301,9 @@ export type UpdateTenantInboundEmailSettingsRequest = Message<"publira.admin.v1.
   enabled: boolean;
 
   /**
-   * A domain name of at most 253 characters, such as "reply.example.com",
-   * stored in lower case. Required while enabled; an empty value clears it.
+   * A domain name of at most 233 characters, such as "reply.example.com",
+   * stored in lower case: the per-message address on it has to fit in a
+   * 254-byte mailbox. Required while enabled; an empty value clears it.
    *
    * @generated from field: string domain = 4;
    */

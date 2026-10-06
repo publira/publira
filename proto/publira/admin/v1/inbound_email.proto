@@ -89,8 +89,9 @@ message UpdateTenantInboundEmailSettingsRequest {
   // clears every field stored for the previous one.
   string provider = 2;
   bool enabled = 3;
-  // A domain name of at most 253 characters, such as "reply.example.com",
-  // stored in lower case. Required while enabled; an empty value clears it.
+  // A domain name of at most 233 characters, such as "reply.example.com",
+  // stored in lower case: the per-message address on it has to fit in a
+  // 254-byte mailbox. Required while enabled; an empty value clears it.
   string domain = 4;
   repeated InboundEmailCredentialFieldUpdate fields = 5;
 }
