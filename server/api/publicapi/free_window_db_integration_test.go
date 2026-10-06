@@ -323,6 +323,73 @@ func TestDBSeriesDetailFreeUntilFollowsAWindowAcrossBothBoundaries(t *testing.T)
 	step("after the window", "", true)
 }
 
+// The storefront caches ListPublishedSeries under `tenant:<id>:series:list`,
+// not under the series detail tag, so a window crossing a boundary has to drop
+// that tag too: otherwise a series whose episodes are otherwise all paid stays
+// out of the "Free to read" module after its window opens, and stays in it with
+// a free-episode count it no longer has after the window closes. This walks one
+// window through both boundaries and checks, at each, that the list has moved
+// to the new side and that apply-free-windows records the drop of the list tag.
+func TestDBListedFreeEpisodesFollowAWindowAcrossBothBoundaries(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series, episodes := seedSeriesWithEpisodes(t, env, tenant,
+		testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true},
+		testutil.EpisodeSeed{PublicID: "EPISODEWIN01", Title: "Free For A While", Status: testutil.EpisodeStatusPublished, Price: 500},
+	)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	endsAt := now.Add(2 * time.Hour)
+	windowID := env.PG.SeedEpisodeFreeWindow(t, tenant.ID, episodes[0].ID, now.Add(time.Hour), endsAt)
+
+	reval := &recordingRevalidator{}
+	runner := freewindows.New(dbmodels.New(env.PG.DB), reval, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	wantTag := fmt.Sprintf("tenant:%s:series:list", tenant.ID)
+	movePeriod := func(startsAt, endsAt time.Time) {
+		t.Helper()
+		if _, err := env.PG.DB.ExecContext(context.Background(),
+			"UPDATE episode_free_windows SET starts_at = $2, ends_at = $3 WHERE id = $1",
+			windowID, startsAt, endsAt,
+		); err != nil {
+			t.Fatalf("move free window: %v", err)
+		}
+	}
+	listedAsFree := func() bool {
+		t.Helper()
+		resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+			Tenant:          tenantContext(tenant),
+			HasFreeEpisodes: true,
+		}))
+		if err != nil {
+			t.Fatalf("ListPublishedSeries with the filter: %v", err)
+		}
+		return slices.Contains(seriesPublicIDs(resp.Msg.Series), series.PublicID)
+	}
+	step := func(name string, wantCount int32, wantDrop bool) {
+		t.Helper()
+		if got := freeEpisodeCountOfListedSeries(t, env, tenant, series.PublicID); got != wantCount {
+			t.Fatalf("%s: free_episode_count = %d, want %d", name, got, wantCount)
+		}
+		if got := listedAsFree(); got != (wantCount > 0) {
+			t.Fatalf("%s: listed under has_free_episodes = %v, want %v", name, got, wantCount > 0)
+		}
+		reval.tags = nil
+		runner.RunOnce(context.Background())
+		dropped := slices.Contains(reval.tags, wantTag)
+		if dropped != wantDrop {
+			t.Fatalf("%s: dropped %s = %v, want %v (recorded %v)", name, wantTag, dropped, wantDrop, reval.tags)
+		}
+	}
+
+	step("before the window", 0, false)
+
+	movePeriod(now.Add(-time.Hour), endsAt)
+	step("inside the window", 1, true)
+
+	movePeriod(now.Add(-2*time.Hour), now.Add(-time.Minute))
+	step("after the window", 0, true)
+}
+
 type recordingRevalidator struct {
 	tags []string
 }

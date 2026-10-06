@@ -6,11 +6,12 @@
 // access predicates compare NOW() against the stored period, so the API answers
 // correctly the moment a boundary passes. What does not change on its own is
 // what was copied out of it — an episode page held under a series tag keeps
-// showing the price, or the free body, until something drops the tag, and the
-// series' search document keeps saying whether a free episode is open until
-// it is read again. Asking for both is this runner's whole job, and it is why
-// each boundary is recorded as applied: a run that was down over one still
-// catches up on its next pass.
+// showing the price, or the free body, and a series list keeps its count of
+// free episodes, until something drops the tags they are cached under, and the
+// series' search document keeps saying whether a free episode is open until it
+// is read again. Asking for both is this runner's whole job, and it is why each
+// boundary is recorded as applied: a run that was down over one still catches
+// up on its next pass.
 package freewindows
 
 import (
@@ -60,11 +61,17 @@ func New(queries Queries, reval Revalidator, logger *slog.Logger) *Runner {
 	return &Runner{queries: queries, reval: reval, logger: logger}
 }
 
-// RevalidateTags names what a tenant's public site caches an episode's price
-// under. Every cached read of an episode or of the series it belongs to carries
-// this tag, so one tag per tenant answers for every window that tenant crossed.
+// RevalidateTags names what a tenant's public site caches the answers a free
+// window changes under. Every cached read of an episode or of the series it
+// belongs to carries the series detail tag, and every cached series list — the
+// free-episode count on each card, and the "Free to read" module that selects
+// on it — carries the series list tag. Neither names a series, so one pair per
+// tenant answers for every window that tenant crossed.
 func RevalidateTags(tenantID uuid.UUID) []string {
-	return []string{fmt.Sprintf("tenant:%s:series:detail", tenantID.String())}
+	return []string{
+		fmt.Sprintf("tenant:%s:series:detail", tenantID.String()),
+		fmt.Sprintf("tenant:%s:series:list", tenantID.String()),
+	}
 }
 
 // RunOnce applies every boundary that has passed, one tenant at a time.

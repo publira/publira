@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/freewindows"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
@@ -168,14 +169,15 @@ func (s *adminServer) recordFreeWindowAudit(
 }
 
 // recordOpenFreeWindow records the drop of the public caches that answer with an
-// episode's price and the sync of the series' search document, and writes off
-// each window's start so the batch does not do it again, all on the
+// episode's price or a series' free-episode count — the tags apply-free-windows
+// drops at a boundary — and the sync of the series' search document, and writes
+// off each window's start so the batch does not do it again, all on the
 // transaction that wrote the windows. It is called only for a window that is
 // open the moment it is written: a window still ahead of its start changes
 // nothing a cache or the index holds yet, and apply-free-windows is what asks
 // for both when it opens.
 func (s *adminServer) recordOpenFreeWindow(ctx context.Context, q *dbmodels.Queries, tenantID, seriesID uuid.UUID, windowIDs []uuid.UUID) (revalidate.Owed, error) {
-	owed, err := s.reval.Record(ctx, q, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
+	owed, err := s.reval.Record(ctx, q, tenantID, freewindows.RevalidateTags(tenantID))
 	if err != nil {
 		return revalidate.Owed{}, fmt.Errorf("record cache invalidation: %w", err)
 	}
@@ -631,7 +633,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the free window's series", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
-		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+		return freewindows.RevalidateTags(tenant.ID), nil
 	}); err != nil {
 		return nil, err
 	}
