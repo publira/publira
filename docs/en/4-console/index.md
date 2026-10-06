@@ -28,6 +28,7 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 
 ## In this section
 
+- [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
 - [Sign-in with Apple and Google](./6-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
