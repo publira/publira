@@ -61,6 +61,7 @@ type RawContactMessage = Pick<
   | "assigneeUserId"
   | "body"
   | "createdAt"
+  | "entries"
   | "entryCount"
   | "handledAt"
   | "id"
@@ -71,7 +72,7 @@ type RawContactMessage = Pick<
   | "staffNote"
   | "status"
   | "subject"
-> & { entries?: RawContactMessageEntry[] };
+>;
 
 const knownStatuses: ReadonlySet<string> = new Set(CONTACT_MESSAGE_STATUSES);
 
