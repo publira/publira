@@ -63,6 +63,7 @@ To start over, stop the Dev Container and remove the three volumes from the host
 | --- | --- |
 | `ANDROID_HOME` | Where the SDK is installed and read from. `~/Android/Sdk` when unset |
 | `PUBLIRA_MOBILE_AVD_NAME` | The AVD to create and boot. `publira-pixel-7` when unset |
+| `PUBLIRA_MOBILE_AVD_DEVICE` | The hardware profile `task mobile:android-install` creates the AVD with, as `avdmanager list device` names it. `pixel_7` when unset; an AVD that already exists keeps the profile it was created with |
 
 ### Linux desktop in the Dev Container
 
@@ -716,6 +717,14 @@ task mobile:test-integration
 
 # The address and port forwarding each kind of device is given (no device)
 task mobile:test-device-ports
+```
+
+The app lays itself out for a tablet from a window 600 dp wide. To run the suite at a tablet's width, create a tablet AVD beside the phone one, under a name of its own, and boot it instead:
+
+```bash
+PUBLIRA_MOBILE_AVD_NAME=publira-pixel-tablet PUBLIRA_MOBILE_AVD_DEVICE=pixel_tablet task mobile:android-install
+PUBLIRA_MOBILE_AVD_NAME=publira-pixel-tablet task mobile:emulator-start
+task mobile:test-integration
 ```
 
 ### On the Linux desktop

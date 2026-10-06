@@ -12,9 +12,11 @@ export ANDROID_HOME
 # The image `Test / Mobile E2E` boots, which emulator-packages.sh hands to the
 # emulator runner in ci.yml.
 readonly ANDROID_SYSTEM_IMAGE='system-images;android-34;default;x86_64'
-# The phone `task mobile:screenshot` photographs as when it falls back to a
-# browser, so both paths draw the same screen size.
-readonly ANDROID_DEVICE_PROFILE='pixel_7'
+# The hardware profile the AVD is created with. The default is the phone
+# `task mobile:screenshot` photographs as when it falls back to a browser, so
+# both paths draw the same screen size; a tablet profile such as pixel_tablet,
+# under an AVD name of its own, is how the app is tried at a tablet's width.
+ANDROID_DEVICE_PROFILE="${PUBLIRA_MOBILE_AVD_DEVICE:-pixel_7}"
 ANDROID_AVD_NAME="${PUBLIRA_MOBILE_AVD_NAME:-publira-pixel-7}"
 
 android_log() {
