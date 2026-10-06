@@ -9,5 +9,6 @@ These pages are for the operator who deploys Publira. They describe what an inst
 ## In this section
 
 - [Overview](./1-overview.md): the processes an install runs, the services they depend on, and the processes you can add.
+- [Installing](./2-installing.md): bringing an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
