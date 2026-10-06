@@ -113,6 +113,13 @@ void main() {
 
   Finder tile(String id) => find.byKey(ValueKey('series-tile-$id'));
 
+  Finder title(String id) => find.descendant(
+    of: tile(id),
+    matching: find.text(fixtureSeries.firstWhere((s) => s.id == id).title),
+  );
+
+  Finder label(String id) => find.byKey(ValueKey('series-tile-label-$id'));
+
   ScrollPosition catalogScroll(WidgetTester tester) => tester
       .state<ScrollableState>(
         find
@@ -158,6 +165,11 @@ void main() {
       expect(
         tester.getTopLeft(tile(fixtureSeries[1].id)).dy,
         greaterThan(tester.getBottomLeft(tile(fixtureSeries.first.id)).dy - 1),
+      );
+      // A phone's row has room for the label at its end.
+      expect(
+        tester.getTopLeft(label(seriesId)).dx,
+        greaterThan(tester.getTopRight(title(seriesId)).dx),
       );
     });
   });
@@ -240,6 +252,16 @@ void main() {
       final body = tester.getRect(find.byType(CatalogScreen));
       expect(first.width, closeTo(body.width / 2, 1));
       expect(second.width, closeTo(body.width / 2, 1));
+      // A column narrower than a phone's row leaves the title the width of
+      // the row and puts the label under it.
+      expect(
+        tester.getTopLeft(label(seriesId)).dy,
+        greaterThan(tester.getBottomLeft(title(seriesId)).dy),
+      );
+      expect(
+        tester.getTopLeft(label(seriesId)).dx,
+        closeTo(tester.getTopLeft(title(seriesId)).dx, 1),
+      );
     });
 
     testWidgets('lists search results two series to a row', (tester) async {
