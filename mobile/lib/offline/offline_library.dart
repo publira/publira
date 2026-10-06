@@ -21,6 +21,7 @@ class SavedEpisode {
     required this.detail,
     required this.ownerId,
     required this.checkedAt,
+    this.expiresAt,
   });
 
   /// What the reader saw when the API last answered for this episode. Its
@@ -37,6 +38,17 @@ class SavedEpisode {
 
   /// When the API last confirmed this reader may read this body.
   final DateTime checkedAt;
+
+  /// When the grant the body was read under ends, where the API named an end:
+  /// the close of the free window that held a priced episode open, or the
+  /// expiry of the wait-for-free ticket that opened it. `null` for a grant
+  /// that names none, such as a purchase.
+  ///
+  /// The body closes at this instant even inside [offlineGracePeriod], and
+  /// whoever holds the device: the grace window is how long the device trusts
+  /// a grant it cannot re-check, and this grant was never going to last that
+  /// long.
+  final DateTime? expiresAt;
 
   String get key => savedEpisodeKey(detail.seriesId, detail.episode.id);
 
@@ -55,11 +67,20 @@ class SavedEpisode {
 }
 
 /// The last moment [episode] opens without the API confirming the grant again,
-/// or `null` for a free body, which has no such moment.
+/// or `null` for a free body that names no end, which has no such moment.
+///
+/// It is the sooner of the grant's own end and the grace window.
 DateTime? offlineReadableUntil(
   SavedEpisode episode, {
   Duration grace = offlineGracePeriod,
-}) => episode.ownerId.isEmpty ? null : episode.checkedAt.add(grace);
+}) {
+  final window = episode.ownerId.isEmpty ? null : episode.checkedAt.add(grace);
+  final expiresAt = episode.expiresAt;
+  if (expiresAt == null || window == null) {
+    return expiresAt ?? window;
+  }
+  return expiresAt.isBefore(window) ? expiresAt : window;
+}
 
 /// One saved episode and the bytes its pages hold on the device.
 class StoredEpisode {
@@ -209,6 +230,7 @@ String savedEpisodeKey(String seriesPublicId, String episodePublicId) =>
 /// reaches it. A body that needed an entitlement is closed to anyone but the
 /// reader it was granted to, and closes to them too once
 /// [offlineGracePeriod] has passed since the API last confirmed the grant.
+/// Either closes at [SavedEpisode.expiresAt] when the grant named an end.
 ///
 /// The window is measured against the device's own clock, which the reader
 /// controls. A confirmation dated after [now] is refused rather than trusted,
@@ -222,6 +244,10 @@ bool isReadableOffline(
   required DateTime now,
   Duration grace = offlineGracePeriod,
 }) {
+  final expiresAt = episode.expiresAt;
+  if (expiresAt != null && !now.isBefore(expiresAt)) {
+    return false;
+  }
   if (episode.ownerId.isEmpty) {
     return true;
   }

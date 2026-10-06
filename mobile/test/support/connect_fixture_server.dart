@@ -542,6 +542,21 @@ class ConnectFixtureServer {
   /// same way. An episode missing here answers from [episodes].
   Map<String, Map<String, Object?>> entitledEpisodes;
 
+  /// What `GetMyTicketState` answers the signed-in member on whichever series
+  /// is asked about. Empty is a ticket ready now and none open.
+  Map<String, Object?> ticketState = const {};
+
+  /// The ErrorInfo reason both `WaitFreeService` calls are refused with under
+  /// `failed_precondition`, or `null` to answer them.
+  String? waitFreeRefusal;
+
+  /// How long a ticket `UseTicket` spends opens its episode for.
+  Duration ticketAccess = const Duration(hours: 72);
+
+  /// Episodes `UseTicket` opened, by public id, in order. Each answers the
+  /// member as entitled through an access ticket from then on.
+  final List<String> ticketsUsed = [];
+
   /// Zero-based reading positions of the signed-in member, keyed by episode
   /// public id. `SaveReadingPosition` writes here, so a test can read back
   /// what the viewer recorded.
@@ -1531,6 +1546,11 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.contains('/publira.v1.WaitFreeService/')) {
+      await _writeWaitFree(request, path, body);
+      return;
+    }
+
     if (path.contains('/publira.v1.CommentService/')) {
       await _writeComment(request, path, body);
       return;
@@ -1785,6 +1805,78 @@ class ConnectFixtureServer {
     }
     await _write(request, HttpStatus.ok, {
       'checkoutUrl': checkoutUrlFor(episodeId).toString(),
+    });
+  }
+
+  /// `GetMyTicketState` and `UseTicket` for the signed-in member. A ticket
+  /// spent opens its episode with the pages [populatedEntitledEpisodes] gives
+  /// the paid seed episode, and sets the next one [ticketState] answers a day
+  /// away.
+  Future<void> _writeWaitFree(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (waitFreeRefusal case final reason?) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': reason,
+        'details': [errorInfoDetail(reason)],
+      });
+      return;
+    }
+    if (path.endsWith('/GetMyTicketState')) {
+      await _write(request, HttpStatus.ok, ticketState);
+      return;
+    }
+    final episodeId = publicIdOf(body['episodeId']);
+    final episode = episodes[episodeId];
+    if (episode == null) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'episode not found',
+      });
+      return;
+    }
+    if (entitledEpisodes[episodeId]?['access'] == 'EPISODE_ACCESS_ENTITLED') {
+      await _write(request, HttpStatus.conflict, {
+        'code': 'already_exists',
+        'message': 'episode is already open',
+      });
+      return;
+    }
+    final now = DateTime.now().toUtc();
+    final ticket = {
+      'episodeId': internalIdOf(episodeId),
+      'expiresAt': now.add(ticketAccess).toIso8601String(),
+    };
+    final nextAvailableAt = now
+        .add(const Duration(hours: 23))
+        .toIso8601String();
+    ticketsUsed.add(episodeId);
+    entitledEpisodes = {
+      ...entitledEpisodes,
+      episodeId: {
+        ...episode,
+        'access': 'EPISODE_ACCESS_ENTITLED',
+        'entitlementSource': 'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET',
+        'images': populatedEntitledEpisodes()[paidEpisodeId]!['images'],
+      },
+    };
+    ticketState = {
+      'nextAvailableAt': nextAvailableAt,
+      'openTickets': [ticket],
+    };
+    await _write(request, HttpStatus.ok, {
+      'ticket': ticket,
+      'nextAvailableAt': nextAvailableAt,
     });
   }
 

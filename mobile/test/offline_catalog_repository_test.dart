@@ -4,13 +4,17 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/wait_free/wait_free_repository.dart';
 
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
+import 'support/fake_wait_free.dart';
 
 const _seriesId = 'SeedSERSAAA1';
 const _episodeId = 'SeedEPSDAAA1';
 const _reader = 'SeedMMBRAAA1';
+const _seriesInternalId = 'internal-$_seriesId';
+const _episodeInternalId = 'internal-$_episodeId';
 
 /// What this build sends with a cover request, which is configuration rather
 /// than anything the device saved.
@@ -43,15 +47,20 @@ EpisodeDetail _detail({
   Map<String, String> headers = const {'authorization': 'Bearer reader-token'},
   ReadingDirection readingDirection = ReadingDirection.rtl,
   int spreadStartIndex = 1,
+  int price = 0,
+  DateTime? freeUntil,
 }) {
   return EpisodeDetail(
-    episode: const EpisodeItem(
+    episode: EpisodeItem(
       id: _episodeId,
+      internalId: _episodeInternalId,
       title: 'Seed Episode 001-01',
       orderIndex: 1,
-      price: 0,
+      price: price,
+      freeUntil: freeUntil,
     ),
     seriesId: _seriesId,
+    seriesInternalId: _seriesInternalId,
     seriesTitle: 'Seed Series 001',
     access: access,
     entitlementSource: entitlementSource,
@@ -102,6 +111,7 @@ void main() {
   late InMemoryOfflineLibrary library;
   late String readerId;
   late DateTime now;
+  late FakeWaitFreeRepository waitFree;
 
   setUp(() {
     origin = FakeCatalogRepository(
@@ -120,6 +130,7 @@ void main() {
     library = InMemoryOfflineLibrary();
     readerId = '';
     now = _checkedAt;
+    waitFree = FakeWaitFreeRepository();
   });
 
   OfflineCatalogRepository build() {
@@ -129,6 +140,7 @@ void main() {
       readerId: () => readerId,
       imageRequestHeaders: _imageHeaders,
       clock: () => now,
+      waitFree: waitFree,
     );
   }
 
@@ -505,6 +517,136 @@ void main() {
       origin.episodeError = _network;
       now = _checkedAt.add(offlineGracePeriod + const Duration(seconds: 1));
 
+      expect(
+        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        CatalogFailureKind.saveExpired,
+      );
+      expect(library.episodes, isEmpty);
+    },
+  );
+
+  test(
+    'a body a wait-for-free ticket opened closes offline with the ticket',
+    () async {
+      readerId = _reader;
+      final expiresAt = _checkedAt.add(const Duration(days: 3));
+      waitFree.state = WaitFreeTicketState(
+        nextAvailableAt: _checkedAt.add(const Duration(hours: 23)),
+        openTickets: [
+          WaitFreeTicket(episodeId: _episodeInternalId, expiresAt: expiresAt),
+        ],
+      );
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.entitled,
+          entitlementSource: EpisodeEntitlementSource.accessTicket,
+          price: 500,
+        ),
+      };
+      await build().getEpisode(_seriesId, _episodeId);
+
+      expect(waitFree.stateReads, [_seriesInternalId]);
+      final saved = library.episodes.values.single;
+      expect(saved.expiresAt, expiresAt);
+      expect(offlineReadableUntil(saved), expiresAt);
+
+      origin.episodeError = _network;
+      now = expiresAt.subtract(const Duration(seconds: 1));
+      expect(
+        (await build().getEpisode(_seriesId, _episodeId))?.episode.id,
+        _episodeId,
+      );
+
+      // Well inside the grace window, which the ticket was never going to
+      // last.
+      now = expiresAt;
+      expect(
+        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        CatalogFailureKind.saveExpired,
+      );
+      expect(library.episodes, isEmpty);
+    },
+  );
+
+  test('a ticket the reader\'s wait-for-free tickets do not list keeps the '
+      'offline window', () async {
+    readerId = _reader;
+    origin.episodes = {
+      episodeKey(_seriesId, _episodeId): _detail(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.accessTicket,
+        price: 500,
+      ),
+    };
+    await build().getEpisode(_seriesId, _episodeId);
+
+    final saved = library.episodes.values.single;
+    expect(saved.expiresAt, isNull);
+    expect(offlineReadableUntil(saved), _checkedAt.add(offlineGracePeriod));
+  });
+
+  test('a wait-for-free ticket that closes while its end is asked takes the '
+      'body off the device', () async {
+    readerId = _reader;
+    origin.episodes = {
+      episodeKey(_seriesId, _episodeId): _detail(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.accessTicket,
+        price: 500,
+      ),
+    };
+    // The ticket closes after the body was read and before the reader's
+    // open tickets are listed, so the list no longer names it.
+    waitFree.onStateRead = () {
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.locked,
+          price: 500,
+        ),
+      };
+    };
+
+    await build().getEpisode(_seriesId, _episodeId);
+
+    expect(library.episodes, isEmpty);
+  });
+
+  test('a bought body never asks after a ticket', () async {
+    readerId = _reader;
+    origin.episodes = {
+      episodeKey(_seriesId, _episodeId): _detail(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.purchase,
+        price: 500,
+      ),
+    };
+    await build().getEpisode(_seriesId, _episodeId);
+
+    expect(waitFree.stateReads, isEmpty);
+    expect(library.episodes.values.single.expiresAt, isNull);
+  });
+
+  test(
+    'a priced episode read inside a free window closes offline with it',
+    () async {
+      final freeUntil = _checkedAt.add(const Duration(days: 2));
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          price: 500,
+          freeUntil: freeUntil,
+        ),
+      };
+      await build().getEpisode(_seriesId, _episodeId);
+
+      final saved = library.episodes.values.single;
+      expect(saved.ownerId, isEmpty);
+      expect(offlineReadableUntil(saved), freeUntil);
+
+      origin.episodeError = _network;
+      // Saved by a guest and opened by a reader who has since signed in: a
+      // free body is anyone's, and so is the end of its window.
+      readerId = _reader;
+      now = freeUntil;
       expect(
         await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
         CatalogFailureKind.saveExpired,

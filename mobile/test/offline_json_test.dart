@@ -124,6 +124,48 @@ void main() {
     );
   });
 
+  test('when the grant ends survives the round trip', () {
+    final expiresAt = DateTime.utc(2026, 9, 4, 12);
+    final freeUntil = DateTime.utc(2026, 9, 7, 14, 59);
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: 'SeedMMBRAAA1',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          expiresAt: expiresAt,
+          detail: EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 500,
+              freeUntil: freeUntil,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.entitled,
+            entitlementSource: EpisodeEntitlementSource.accessTicket,
+            images: const [],
+          ),
+        ),
+      },
+    ).toJson();
+
+    final saved = OfflineIndex.fromJson(written)!.episodes.values.single;
+
+    expect(saved.expiresAt, expiresAt);
+    expect(saved.detail.episode.freeUntil?.toUtc(), freeUntil);
+  });
+
+  test('a record saved before grants had an end names none', () {
+    final saved = OfflineIndex.fromJson(
+      _index(_episode(access: 'entitled')),
+    )!.episodes.values.single;
+
+    expect(saved.expiresAt, isNull);
+    expect(saved.detail.episode.freeUntil, isNull);
+  });
+
   test('an entitled record saved before its source was saved names none', () {
     final decoded = OfflineIndex.fromJson(_index(_episode(access: 'entitled')));
 

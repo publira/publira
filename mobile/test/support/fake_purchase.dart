@@ -53,6 +53,10 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// What [seriesEpisodeAccess] answers, whichever series is asked about.
   Map<String, EpisodeAccess> access;
 
+  /// Held open by a test that needs a read of [seriesEpisodeAccess] in
+  /// flight. The read answers [access] as it was when the read was asked.
+  Completer<void>? accessGate;
+
   /// What [seriesOfEpisode] answers from, looked up by episode public id.
   Map<String, String> seriesByEpisode;
 
@@ -84,7 +88,11 @@ class FakePurchaseRepository implements PurchaseRepository {
   @override
   Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
     String seriesInternalId,
-  ) async => access;
+  ) async {
+    final answer = access;
+    await accessGate?.future;
+    return answer;
+  }
 
   @override
   Future<String?> seriesOfEpisode(String episodePublicId) async {

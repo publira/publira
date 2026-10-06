@@ -1074,6 +1074,90 @@ void main() {
       });
     });
 
+    /// The seed series offering wait-for-free, its paid episode locked to the
+    /// member until a ticket opens it.
+    void offerWaitFree() {
+      final detail =
+          ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!;
+      server
+        ..details = {
+          ConnectFixtureServer.seedSeriesId: {
+            ...detail,
+            'waitFree': {'rechargeHours': 23, 'accessHours': 72},
+          },
+        }
+        ..entitledEpisodes = const {};
+    }
+
+    testApp('a member opens a paid episode with their wait-for-free ticket', (
+      tester,
+    ) async {
+      offerWaitFree();
+      await withFailureScreenshot(tester, 'fixture-wait-free', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+          session: memberSession(),
+        );
+        final use = find.byKey(const ValueKey('episode-wait-free-use'));
+        await pumpUntilRouteSettled(tester, use);
+
+        await tapReachable(tester, use);
+        await pumpUntilPagesDrawn(tester);
+
+        expect(server.ticketsUsed, [ConnectFixtureServer.paidEpisodeId]);
+        expect(
+          server.requestsTo('UseTicket').single.body['surface'],
+          'CLIENT_SURFACE_APP',
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a member whose ticket is recharging is counted down to it', (
+      tester,
+    ) async {
+      offerWaitFree();
+      // Spent on the site, which the API answers the app with as well.
+      server.ticketState = {
+        'nextAvailableAt': DateTime.now()
+            .toUtc()
+            .add(const Duration(hours: 5))
+            .toIso8601String(),
+      };
+      await withFailureScreenshot(
+        tester,
+        'fixture-wait-free-recharging',
+        () async {
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.episodeViewerPath(
+              ConnectFixtureServer.seedSeriesId,
+              ConnectFixtureServer.paidEpisodeId,
+            ),
+            session: memberSession(),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('wait-free-recharging')),
+          );
+
+          expect(
+            find.textContaining('Your next free ticket is ready in 4:'),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const ValueKey('episode-wait-free-use')),
+            findsNothing,
+          );
+        },
+      );
+    });
+
     testApp('rejected credentials keep the reader on the form', (tester) async {
       await withFailureScreenshot(tester, 'fixture-sign-in-error', () async {
         await pumpApp(tester, initialLocation: AppRoutes.signIn);

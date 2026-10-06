@@ -578,6 +578,9 @@ abstract class AppMessages {
   /// `mobile.common.free`
   String get commonFree;
 
+  /// `mobile.common.free_until`
+  String commonFreeUntil({required String date});
+
   /// `mobile.common.list_end`
   String commonListEnd({required String first, required String rest});
 
@@ -1723,6 +1726,27 @@ abstract class AppMessages {
 
   /// `mobile.viewer.title`
   String get viewerTitle;
+
+  /// `mobile.viewer.wait_free.excluded`
+  String get viewerWaitFreeExcluded;
+
+  /// `mobile.viewer.wait_free.guest`
+  String get viewerWaitFreeGuest;
+
+  /// `mobile.viewer.wait_free.ready`
+  String viewerWaitFreeReady({required String date});
+
+  /// `mobile.viewer.wait_free.recharging`
+  String viewerWaitFreeRecharging({required String time});
+
+  /// `mobile.viewer.wait_free.state_failed`
+  String get viewerWaitFreeStateFailed;
+
+  /// `mobile.viewer.wait_free.use`
+  String get viewerWaitFreeUse;
+
+  /// `mobile.viewer.wait_free.use_failed`
+  String get viewerWaitFreeUseFailed;
 }
 
 class _AppMessagesJa extends AppMessages {
@@ -2546,6 +2570,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get commonFree {
     return '無料';
+  }
+
+  @override
+  String commonFreeUntil({required String date}) {
+    return '$dateまで無料';
   }
 
   @override
@@ -4451,6 +4480,41 @@ class _AppMessagesJa extends AppMessages {
   String get viewerTitle {
     return 'エピソード';
   }
+
+  @override
+  String get viewerWaitFreeExcluded {
+    return '最新の話のため、無料チケットでは読めません。';
+  }
+
+  @override
+  String get viewerWaitFreeGuest {
+    return 'このシリーズは待てば無料です。サインインすると無料チケットでこの話を読めます。';
+  }
+
+  @override
+  String viewerWaitFreeReady({required String date}) {
+    return 'このシリーズの無料チケットが使えます。使うとこの話を$dateまで読めます。';
+  }
+
+  @override
+  String viewerWaitFreeRecharging({required String time}) {
+    return '次の無料チケットはあと$timeで使えるようになります。';
+  }
+
+  @override
+  String get viewerWaitFreeStateFailed {
+    return 'このシリーズの無料チケットを確認できませんでした。';
+  }
+
+  @override
+  String get viewerWaitFreeUse {
+    return '無料チケットで読む';
+  }
+
+  @override
+  String get viewerWaitFreeUseFailed {
+    return '無料チケットを使えませんでした。しばらくしてからもう一度お試しください。';
+  }
 }
 
 class _AppMessagesEn extends AppMessages {
@@ -5274,6 +5338,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get commonFree {
     return 'Free';
+  }
+
+  @override
+  String commonFreeUntil({required String date}) {
+    return 'Free until $date';
   }
 
   @override
@@ -7179,6 +7248,41 @@ class _AppMessagesEn extends AppMessages {
   String get viewerTitle {
     return 'Episode';
   }
+
+  @override
+  String get viewerWaitFreeExcluded {
+    return 'This is one of the newest episodes, which a free ticket cannot open.';
+  }
+
+  @override
+  String get viewerWaitFreeGuest {
+    return 'This series is free if you wait: sign in to read this episode with a free ticket.';
+  }
+
+  @override
+  String viewerWaitFreeReady({required String date}) {
+    return 'Your free ticket for this series is ready. Using it opens this episode until $date.';
+  }
+
+  @override
+  String viewerWaitFreeRecharging({required String time}) {
+    return 'Your next free ticket is ready in $time.';
+  }
+
+  @override
+  String get viewerWaitFreeStateFailed {
+    return 'Your free ticket for this series could not be checked.';
+  }
+
+  @override
+  String get viewerWaitFreeUse {
+    return 'Read free with a ticket';
+  }
+
+  @override
+  String get viewerWaitFreeUseFailed {
+    return 'Your free ticket could not be used. Try again in a moment.';
+  }
 }
 
 class _AppMessagesKo extends AppMessages {
@@ -8002,6 +8106,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get commonFree {
     return '무료';
+  }
+
+  @override
+  String commonFreeUntil({required String date}) {
+    return '$date까지 무료';
   }
 
   @override
@@ -9907,6 +10016,41 @@ class _AppMessagesKo extends AppMessages {
   String get viewerTitle {
     return '에피소드';
   }
+
+  @override
+  String get viewerWaitFreeExcluded {
+    return '최신 에피소드라서 무료 이용권으로는 읽을 수 없습니다.';
+  }
+
+  @override
+  String get viewerWaitFreeGuest {
+    return '이 시리즈는 기다리면 무료입니다. 로그인하면 무료 이용권으로 이 에피소드를 읽을 수 있습니다.';
+  }
+
+  @override
+  String viewerWaitFreeReady({required String date}) {
+    return '이 시리즈의 무료 이용권을 사용할 수 있습니다. 사용하면 이 에피소드를 $date까지 읽을 수 있습니다.';
+  }
+
+  @override
+  String viewerWaitFreeRecharging({required String time}) {
+    return '다음 무료 이용권은 $time 후에 사용할 수 있습니다.';
+  }
+
+  @override
+  String get viewerWaitFreeStateFailed {
+    return '이 시리즈의 무료 이용권을 확인할 수 없습니다.';
+  }
+
+  @override
+  String get viewerWaitFreeUse {
+    return '무료 이용권으로 읽기';
+  }
+
+  @override
+  String get viewerWaitFreeUseFailed {
+    return '무료 이용권을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
 }
 
 class _AppMessagesZhHans extends AppMessages {
@@ -10730,6 +10874,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get commonFree {
     return '免费';
+  }
+
+  @override
+  String commonFreeUntil({required String date}) {
+    return '免费至$date';
   }
 
   @override
@@ -12635,6 +12784,41 @@ class _AppMessagesZhHans extends AppMessages {
   String get viewerTitle {
     return '章节';
   }
+
+  @override
+  String get viewerWaitFreeExcluded {
+    return '这是最新的章节之一，无法使用免费券阅读。';
+  }
+
+  @override
+  String get viewerWaitFreeGuest {
+    return '本系列等待即可免费阅读：登录后可使用免费券阅读本章。';
+  }
+
+  @override
+  String viewerWaitFreeReady({required String date}) {
+    return '您可以使用本系列的免费券。使用后可阅读本章至$date。';
+  }
+
+  @override
+  String viewerWaitFreeRecharging({required String time}) {
+    return '下一张免费券将在$time后可用。';
+  }
+
+  @override
+  String get viewerWaitFreeStateFailed {
+    return '无法确认您在本系列的免费券。';
+  }
+
+  @override
+  String get viewerWaitFreeUse {
+    return '使用免费券免费阅读';
+  }
+
+  @override
+  String get viewerWaitFreeUseFailed {
+    return '无法使用免费券。请稍后再试。';
+  }
 }
 
 class _AppMessagesZhHant extends AppMessages {
@@ -13458,6 +13642,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get commonFree {
     return '免費';
+  }
+
+  @override
+  String commonFreeUntil({required String date}) {
+    return '免費至$date';
   }
 
   @override
@@ -15362,5 +15551,40 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerTitle {
     return '章節';
+  }
+
+  @override
+  String get viewerWaitFreeExcluded {
+    return '這是最新的章節之一，無法使用免費券閱讀。';
+  }
+
+  @override
+  String get viewerWaitFreeGuest {
+    return '本系列等待即可免費閱讀：登入後可使用免費券閱讀本章。';
+  }
+
+  @override
+  String viewerWaitFreeReady({required String date}) {
+    return '您可以使用本系列的免費券。使用後可閱讀本章至$date。';
+  }
+
+  @override
+  String viewerWaitFreeRecharging({required String time}) {
+    return '下一張免費券將在$time後可用。';
+  }
+
+  @override
+  String get viewerWaitFreeStateFailed {
+    return '無法確認您在本系列的免費券。';
+  }
+
+  @override
+  String get viewerWaitFreeUse {
+    return '使用免費券免費閱讀';
+  }
+
+  @override
+  String get viewerWaitFreeUseFailed {
+    return '無法使用免費券。請稍後再試。';
   }
 }

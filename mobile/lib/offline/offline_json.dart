@@ -350,6 +350,8 @@ Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'orderIndex': episode.orderIndex,
   'price': episode.price,
   'purchaseAvailability': episode.purchaseSurface.wireName,
+  if (episode.freeUntil case final freeUntil?)
+    'freeUntil': freeUntil.toUtc().toIso8601String(),
 };
 
 EpisodeItem? _episodeFromJson(Object? decoded) {
@@ -369,6 +371,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
     purchaseSurface: EpisodePurchaseSurface.fromWire(
       decoded['purchaseAvailability'],
     ),
+    freeUntil: DateTime.tryParse(_string(decoded['freeUntil']))?.toLocal(),
   );
 }
 
@@ -455,6 +458,8 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
   return {
     'ownerId': saved.ownerId,
     'checkedAt': saved.checkedAt.toUtc().toIso8601String(),
+    if (saved.expiresAt case final expiresAt?)
+      'expiresAt': expiresAt.toUtc().toIso8601String(),
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
     'access': detail.access.name,
@@ -502,6 +507,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
   return SavedEpisode(
     ownerId: ownerId,
     checkedAt: checkedAt.toUtc(),
+    expiresAt: DateTime.tryParse(_string(decoded['expiresAt']))?.toUtc(),
     detail: EpisodeDetail(
       episode: episode,
       seriesId: seriesId,

@@ -26,7 +26,9 @@ class EpisodeGateFrame extends StatelessWidget {
     required this.previewHeaders,
     required this.readingDirection,
     required this.message,
+    this.badge,
     this.title,
+    this.notice,
     this.actions = const [],
     this.footer,
   });
@@ -38,11 +40,18 @@ class EpisodeGateFrame extends StatelessWidget {
 
   final ReadingDirection readingDirection;
 
+  /// A mark above [title] about the episode itself rather than the gate.
+  final Widget? badge;
+
   /// What the gate is about, where it has a heading of its own.
   final String? title;
 
   /// Why the body is closed.
   final String message;
+
+  /// One more thing the reader is told under [message], about a way into the
+  /// body the gate offers besides the usual one.
+  final Widget? notice;
 
   /// What the reader can do about it, the one that opens the body first.
   final List<Widget> actions;
@@ -53,7 +62,9 @@ class EpisodeGateFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final badge = this.badge;
     final title = this.title;
+    final notice = this.notice;
     final footer = this.footer;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -92,6 +103,10 @@ class EpisodeGateFrame extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (badge != null) ...[
+                                badge,
+                                const SizedBox(height: 12),
+                              ],
                               if (title != null) ...[
                                 AutospacedText(
                                   title,
@@ -107,6 +122,10 @@ class EpisodeGateFrame extends StatelessWidget {
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
+                              if (notice != null) ...[
+                                const SizedBox(height: 12),
+                                notice,
+                              ],
                               if (actions.isNotEmpty) ...[
                                 const SizedBox(height: 24),
                                 Wrap(

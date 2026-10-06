@@ -12,6 +12,7 @@ import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
+import 'package:publira/catalog/free_until_badge.dart';
 import 'package:publira/content_views/content_view_recorder.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/follow/follow_control.dart';
@@ -241,6 +242,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// one.
   var _acceptsPayments = false;
 
+  /// How many reads of [_access] this screen has started, so that only the
+  /// latest one's answer is shown: the read the screen opened with can answer
+  /// after the one the return from the viewer made, with an episode locked
+  /// that a ticket has since opened.
+  var _purchaseReads = 0;
+
+  /// Fires when the soonest free window open on an episode of this series
+  /// closes, which is when its row is priced again and what the reader may do
+  /// with it has to be asked again.
+  Timer? _windowClose;
+
   /// Where this reader stands in the series. Nothing for a guest, until the
   /// API has answered, and for good when it cannot, which leaves the reading
   /// action on the first episode: what a failure costs is the reader's place,
@@ -291,7 +303,54 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   StreamSubscription<void>? _libraryChanges;
 
   @override
+  void initState() {
+    super.initState();
+    _scheduleWindowClose();
+  }
+
+  @override
+  void didUpdateWidget(_SeriesDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.detail, widget.detail)) {
+      _scheduleWindowClose();
+    }
+  }
+
+  /// Sets [_windowClose] for the soonest window still open, or for none when
+  /// no episode has one. A row is drawn free or priced at build time, so
+  /// without it a screen left open past the close would keep saying the
+  /// episode is free.
+  void _scheduleWindowClose() {
+    _windowClose?.cancel();
+    final now = DateTime.now();
+    DateTime? soonest;
+    for (final episode in widget.detail.episodes) {
+      final freeUntil = episode.freeUntil;
+      if (freeUntil != null &&
+          freeUntil.isAfter(now) &&
+          (soonest == null || freeUntil.isBefore(soonest))) {
+        soonest = freeUntil;
+      }
+    }
+    if (soonest == null) {
+      _windowClose = null;
+      return;
+    }
+    _windowClose = Timer(soonest.difference(now), () {
+      if (!mounted) {
+        return;
+      }
+      setState(_scheduleWindowClose);
+      final purchase = PurchaseScope.maybeOf(context)?.repository;
+      if (purchase != null) {
+        unawaited(_loadPurchase(purchase, _readerId));
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _windowClose?.cancel();
     unawaited(_libraryChanges?.cancel());
     unawaited(_progressWrites?.cancel());
     unawaited(_reactionWrites?.cancel());
@@ -368,6 +427,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     PurchaseRepository purchase,
     String readerId,
   ) async {
+    final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
     final (access, acceptsPayments) = await (
       purchase
@@ -375,7 +435,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           .onError<PurchaseFailure>((_, _) => const {}),
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
     ).wait;
-    if (!mounted || readerId != _readerId) {
+    if (!mounted || read != _purchaseReads || readerId != _readerId) {
       return;
     }
     setState(() {
@@ -441,9 +501,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     });
   }
 
-  /// Opens [location] in the viewer, and asks where the reader stands and how
-  /// they rate the series again once they come back: the viewer is where both
-  /// move.
+  /// Opens [location] in the viewer, and asks where the reader stands, how
+  /// they rate the series, and which episodes they may open again once they
+  /// come back: the viewer is where all three move, the last through a
+  /// wait-for-free ticket used on its gate.
   Future<void> _openEpisode(String location) async {
     _episodesOpen++;
     try {
@@ -455,9 +516,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     if (!mounted || catalog == null) {
       return;
     }
+    final purchase = PurchaseScope.maybeOf(context)?.repository;
     await (
       _loadProgress(catalog, _readerId),
       _loadOwnRating(catalog, _readerId),
+      purchase == null
+          ? Future<void>.value()
+          : _loadPurchase(purchase, _readerId),
     ).wait;
   }
 
@@ -529,6 +594,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final follows = FollowScope.maybeOf(context) != null;
     final downloader = OfflineScope.downloaderOf(context);
     final offer = _progress.offerIn(widget.detail.episodes);
+    // A window that closed since the series was read leaves the row priced
+    // again the next time the screen is drawn.
+    final now = DateTime.now();
 
     return CustomScrollView(
       key: const ValueKey('series-detail-body'),
@@ -734,7 +802,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               if (widget.detail.episodes.isEmpty)
                 AutospacedText(messages.seriesEpisodesEmpty)
               else
-                for (final episode in widget.detail.episodes)
+                for (final (episode, freeUntil) in [
+                  for (final episode in widget.detail.episodes)
+                    (episode, episode.isFreeAt(now) ? episode.freeUntil : null),
+                ])
                   ListTile(
                     key: ValueKey('episode-tile-${episode.id}'),
                     contentPadding: EdgeInsets.zero,
@@ -744,11 +815,24 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                         ? theme.colorScheme.onSurfaceVariant
                         : null,
                     title: AutospacedText(episode.title),
-                    subtitle: _progress.finishedEpisodeIds.contains(episode.id)
-                        ? _FinishedMark(episodeId: episode.id)
-                        : null,
+                    // Any subtitle makes the row two lines tall, so a row with
+                    // nothing to say under its title is given none.
+                    subtitle:
+                        freeUntil == null &&
+                            !_progress.finishedEpisodeIds.contains(episode.id)
+                        ? null
+                        : _EpisodeSubtitle(
+                            episodeId: episode.id,
+                            finished: _progress.finishedEpisodeIds.contains(
+                              episode.id,
+                            ),
+                            freeUntil: freeUntil,
+                          ),
                     trailing: _EpisodeTrailing(
-                      price: episode.price,
+                      // An open window makes the episode free to read, so the
+                      // row shows until when in its subtitle rather than a
+                      // price nobody is charged.
+                      price: freeUntil == null ? episode.price : 0,
                       soldOnWeb:
                           _acceptsPayments &&
                           episode.purchaseSurface == EpisodePurchaseSurface.web,
@@ -983,6 +1067,43 @@ class _FinishedMark extends StatelessWidget {
         const SizedBox(width: 4),
         AutospacedText(AppMessages.of(context).seriesEpisodeFinished),
       ],
+    );
+  }
+}
+
+/// What stands under an episode's title: until when a free window keeps it
+/// free, and whether the reader has finished it.
+class _EpisodeSubtitle extends StatelessWidget {
+  const _EpisodeSubtitle({
+    required this.episodeId,
+    required this.finished,
+    required this.freeUntil,
+  });
+
+  final String episodeId;
+  final bool finished;
+
+  /// The end of the window open on the episode, or `null` when none is.
+  final DateTime? freeUntil;
+
+  @override
+  Widget build(BuildContext context) {
+    final freeUntil = this.freeUntil;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (freeUntil != null)
+            FreeUntilBadge(
+              key: ValueKey('episode-free-until-$episodeId'),
+              freeUntil: freeUntil,
+            ),
+          if (finished) _FinishedMark(episodeId: episodeId),
+        ],
+      ),
     );
   }
 }

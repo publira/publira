@@ -319,6 +319,7 @@ class EpisodeItem {
     required this.price,
     this.purchaseSurface = EpisodePurchaseSurface.all,
     this.ratingCount = 0,
+    this.freeUntil,
   });
 
   /// Public id (`public_id`), used as the route parameter.
@@ -338,14 +339,58 @@ class EpisodeItem {
   /// Readers who reacted to this episode. This is a headcount, not a count of
   /// presses, and lets a signed-out reader see the reaction total.
   final int ratingCount;
+
+  /// The end of the free window open on this episode when the API answered,
+  /// or `null` when none was. [price] stays the stored price meanwhile, since
+  /// that is what the episode costs again once the window closes, so a row
+  /// says how long the episode stays free rather than what it costs.
+  ///
+  /// It is the instant the answer named, and the answer may be older than the
+  /// window: a screen asks [isFreeAt] rather than reading it alone.
+  final DateTime? freeUntil;
+
+  /// Whether a free window still holds the episode open at [now].
+  bool isFreeAt(DateTime now) => freeUntil?.isAfter(now) ?? false;
+}
+
+/// A series' wait-for-free rule as a reader is told it: a signed-in reader may
+/// open one priced episode of the series for [accessHours], and their next
+/// ticket is ready [rechargeHours] after they used one.
+///
+/// It says nothing about the reader. Whether their ticket is ready is asked of
+/// `WaitFreeService.GetMyTicketState`.
+class WaitFreeRule {
+  const WaitFreeRule({
+    required this.rechargeHours,
+    required this.accessHours,
+    this.excludedEpisodeIds = const {},
+  });
+
+  final int rechargeHours;
+  final int accessHours;
+
+  /// Internal ids of the latest episodes the rule keeps a ticket off, which
+  /// `UseTicket` refuses. The API resolves them, so the app never counts.
+  final Set<String> excludedEpisodeIds;
+
+  /// Whether a ticket may open [episodeInternalId] at all, whoever asks.
+  bool covers(String episodeInternalId) =>
+      !excludedEpisodeIds.contains(episodeInternalId);
 }
 
 /// Series plus its published episodes.
 class SeriesDetail {
-  const SeriesDetail({required this.series, required this.episodes});
+  const SeriesDetail({
+    required this.series,
+    required this.episodes,
+    this.waitFree,
+  });
 
   final SeriesItem series;
   final List<EpisodeItem> episodes;
+
+  /// The series' wait-for-free rule, or `null` when it offers none.
+  final WaitFreeRule? waitFree;
 }
 
 /// Where the reader stands in one series, as `GetMySeriesProgressResponse`

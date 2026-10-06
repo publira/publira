@@ -3802,7 +3802,8 @@
       "open_link_failed": "Could not open the link.",
       "retry": "Retry",
       "series_count": "{$count} published series",
-      "sign_in": "Sign in"
+      "sign_in": "Sign in",
+      "free_until": "Free until {$date}"
     },
     "comments": {
       "approval_notice": "A comment appears here once a moderator approves it.",
@@ -4219,7 +4220,16 @@
       "progress": "Reading progress",
       "reload": "Reload",
       "save_expired": "The saved copy of this episode has expired. Open it again while connected.",
-      "title": "Episode"
+      "title": "Episode",
+      "wait_free": {
+        "ready": "Your free ticket for this series is ready. Using it opens this episode until {$date}.",
+        "use": "Read free with a ticket",
+        "recharging": "Your next free ticket is ready in {$time}.",
+        "excluded": "This is one of the newest episodes, which a free ticket cannot open.",
+        "guest": "This series is free if you wait: sign in to read this episode with a free ticket.",
+        "state_failed": "Your free ticket for this series could not be checked.",
+        "use_failed": "Your free ticket could not be used. Try again in a moment."
+      }
     },
     "auth": {
       "check_spam": "If the email does not arrive, check your spam folder.",

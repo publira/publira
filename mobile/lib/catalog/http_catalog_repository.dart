@@ -1220,6 +1220,32 @@ class HttpCatalogRepository implements CatalogRepository {
     return SeriesDetail(
       series: series.copyWith(episodeCount: episodes.length),
       episodes: episodes,
+      waitFree: _parseWaitFreeRule(body['waitFree']),
+    );
+  }
+
+  /// The series' wait-for-free rule, or `null` where protojson omitted the
+  /// unset message, which is how a series without the rule arrives.
+  WaitFreeRule? _parseWaitFreeRule(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    const path = 'waitFree';
+    final json = _expectMap(raw, path);
+    final rawExcluded = json['excludedEpisodeIds'];
+    return WaitFreeRule(
+      rechargeHours: _readInt(json, 'rechargeHours', path),
+      accessHours: _readInt(json, 'accessHours', path),
+      // protojson omits an empty repeated field.
+      excludedEpisodeIds: rawExcluded == null
+          ? const {}
+          : Set.unmodifiable({
+              for (final id in _expectList(
+                rawExcluded,
+                '$path.excludedEpisodeIds',
+              ))
+                if (id is String && id.isNotEmpty) id,
+            }),
     );
   }
 
@@ -1419,6 +1445,10 @@ class HttpCatalogRepository implements CatalogRepository {
         json['purchaseAvailability'],
       ),
       ratingCount: _readCount(json, 'ratingCount', path),
+      // protojson omits an empty string, which is an episode no window holds.
+      freeUntil: DateTime.tryParse(
+        _readString(json, 'freeUntil', path),
+      )?.toLocal(),
     );
   }
 
@@ -1449,6 +1479,7 @@ class HttpCatalogRepository implements CatalogRepository {
     return EpisodeDetail(
       episode: _episodeFromJson(rawEpisode, 'episode'),
       seriesId: seriesId,
+      seriesInternalId: _readString(rawSeries, 'id', 'series'),
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: EpisodeAccess.fromWire(body['access']),
       images: _parseEpisodeImages(body['images'], 'images'),

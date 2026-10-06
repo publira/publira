@@ -840,6 +840,61 @@ void main() {
     expect(detail.episodes.last.price, 500);
   });
 
+  test('getSeries carries until when a free window holds an episode', () async {
+    final detail =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+            .seedSeriesId]!;
+    final episodes = detail['episodes']! as List<Map<String, Object?>>;
+    server.detailResponse = {
+      ...detail,
+      'episodes': [
+        episodes.first,
+        {...episodes.last, 'freeUntil': '2026-10-12T14:59:00Z'},
+      ],
+    };
+
+    final read = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(read!.episodes.first.freeUntil, isNull);
+    final windowed = read.episodes.last;
+    expect(windowed.price, 500);
+    expect(
+      windowed.freeUntil!.isAtSameMomentAs(DateTime.utc(2026, 10, 12, 14, 59)),
+      isTrue,
+    );
+    expect(windowed.isFreeAt(DateTime.utc(2026, 10, 12, 14, 58)), isTrue);
+    expect(windowed.isFreeAt(DateTime.utc(2026, 10, 12, 14, 59)), isFalse);
+  });
+
+  test('getSeries carries the wait-for-free rule of the series', () async {
+    expect(
+      (await catalog.getSeries(ConnectFixtureServer.seedSeriesId))!.waitFree,
+      isNull,
+    );
+
+    server.detailResponse = {
+      ...ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+          .seedSeriesId]!,
+      'waitFree': {
+        'rechargeHours': 23,
+        'accessHours': 72,
+        'excludedLatestCount': 1,
+        'excludedEpisodeIds': ['internal-SeedEPSDAA1A'],
+      },
+    };
+
+    final rule = (await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+    ))!.waitFree!;
+    expect(rule.rechargeHours, 23);
+    expect(rule.accessHours, 72);
+    expect(rule.covers('internal-SeedEPSDAA1A'), isFalse);
+    expect(
+      rule.covers('internal-${ConnectFixtureServer.seedEpisodeId}'),
+      isTrue,
+    );
+  });
+
   test('getSeries returns null for a missing public id', () async {
     expect(await catalog.getSeries('ZZZZZZZZZZZZ'), isNull);
   });
@@ -1764,6 +1819,10 @@ void main() {
 
     expect(detail!.access, EpisodeAccess.locked);
     expect(detail.images, isEmpty);
+    expect(
+      detail.seriesInternalId,
+      ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+    );
   });
 
   test('getEpisode reports a body withheld over the reader\'s age', () async {

@@ -314,7 +314,8 @@ mobile/
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   ├── tenant/                   # The tenant's brand and theme, and the controller that loads them
-│   └── viewer/                   # Paged reader
+│   ├── viewer/                   # Paged reader
+│   └── wait_free/                # WaitFreeRepository and the wait-for-free ticket offered on a locked episode
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
 ├── config/                       # App manifest schema, Publira's default manifest, and an example
@@ -521,7 +522,7 @@ Everything the reader opens is kept on the device, so the same screens open agai
 - The page the reader stopped on is kept beside the episode, against the member it belongs to, so an episode read without a network opens where they left it. The API wins over it wherever it holds a position of its own, which is what carries a page saved on the website into the app
 - A finish and the latest page a signed-in reader records while the API cannot be reached are kept per reader and episode, and sent once it can: on launch, on resume, on sign-in, and after any request the API answers. Only the signed-in reader's own are sent, signing out drops them, and deleting downloads does not
 - The device keeps up to **512 MB** of pages. Over that, the least recently confirmed episodes are dropped whole, and page files no episode claims any more go with them
-- The library's Downloads tab shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
+- The library's Downloads tab shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement or was read inside a free window, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
 
 Everything is written under the app-private directory `path_provider` resolves (`getApplicationSupportDirectory()`), encrypted with a random 32-byte key this install mints on first use and keeps in the OS keychain / Keystore. The stream is the one `lib/api/image_cipher.dart` speaks, under its own domain separator and a per-file key. Like the delivery stream, it protects the files on the device rather than the reader's own access: whoever may open the episode necessarily holds the key that recovers it.
 
