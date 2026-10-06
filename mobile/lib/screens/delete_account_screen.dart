@@ -9,6 +9,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -229,17 +230,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          TextFormField(
+          PasswordField(
             key: const ValueKey('delete-account-password'),
             controller: _passwordController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.deleteAccountPasswordLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.deleteAccountPasswordLabel,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.done,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => (value ?? '').trim().isEmpty
                 ? messages.authPasswordRequired
                 : null,

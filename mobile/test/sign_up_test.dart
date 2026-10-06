@@ -89,6 +89,27 @@ void main() {
     expect(find.byKey(const ValueKey('sign-up-email')), findsOneWidget);
   });
 
+  testWidgets('each password field is revealed on its own', (tester) async {
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('sign-up-submit')));
+
+    final passwordField = find.byKey(const ValueKey('sign-up-password'));
+    final confirmField = find.byKey(const ValueKey('sign-up-password-confirm'));
+    bool obscured(Finder field) => tester
+        .widget<EditableText>(
+          find.descendant(of: field, matching: find.byType(EditableText)),
+        )
+        .obscureText;
+
+    await tester.tap(
+      find.descendant(of: passwordField, matching: find.byType(IconButton)),
+    );
+    await tester.pump();
+
+    expect(obscured(passwordField), isFalse);
+    expect(obscured(confirmField), isTrue);
+  });
+
   testWidgets('an accepted sign-up waits for the confirmation email', (
     tester,
   ) async {

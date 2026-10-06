@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -147,33 +148,21 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            TextFormField(
+            PasswordField(
               key: const ValueKey('confirm-password-password'),
               controller: _passwordController,
-              decoration: InputDecoration(
-                label: AutospacedText(messages.confirmPasswordPasswordLabel),
-                border: const OutlineInputBorder(),
-              ),
-              obscureText: true,
+              label: messages.confirmPasswordPasswordLabel,
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.next,
-              errorBuilder: (context, error) => AutospacedText(error),
               validator: (value) => validateNewPassword(messages, value ?? ''),
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            PasswordField(
               key: const ValueKey('confirm-password-password-confirm'),
               controller: _confirmController,
-              decoration: InputDecoration(
-                label: AutospacedText(
-                  messages.confirmPasswordPasswordConfirmLabel,
-                ),
-                border: const OutlineInputBorder(),
-              ),
-              obscureText: true,
+              label: messages.confirmPasswordPasswordConfirmLabel,
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.done,
-              errorBuilder: (context, error) => AutospacedText(error),
               validator: (value) => validatePasswordConfirmation(
                 messages,
                 value ?? '',
