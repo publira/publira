@@ -21,7 +21,7 @@ export const TAP_TARGET_SIZE = 44;
  */
 const controlsWhere = (
   region: Locator,
-  check: "offscreen" | "short",
+  check: "offscreen" | "small",
   limit: number
 ): Promise<string[]> =>
   region.evaluate(
@@ -33,8 +33,9 @@ const controlsWhere = (
         }
         const rect = control.getBoundingClientRect();
         const wrong =
-          kind === "short"
-            ? rect.height < bound
+          kind === "small"
+            ? rect.height < bound ||
+              (control.tagName === "BUTTON" && rect.width < bound)
             : rect.left < 0 || rect.right > bound;
         if (wrong) {
           const label =
@@ -61,11 +62,16 @@ export const expectNoControlOffscreen = async (
   expect(offscreen, "a control runs off the screen").toEqual([]);
 };
 
-/** Every control `region` draws is at least {@link TAP_TARGET_SIZE} tall. */
+/**
+ * Every control `region` draws is at least {@link TAP_TARGET_SIZE} tall, and
+ * every button that wide as well. A text link is held to the height alone: its
+ * width is the width of its words, and the band around it is what a finger
+ * aims for.
+ */
 export const expectTapTargets = async (region: Locator): Promise<void> => {
-  const short = await controlsWhere(region, "short", TAP_TARGET_SIZE);
+  const small = await controlsWhere(region, "small", TAP_TARGET_SIZE);
 
-  expect(short, "a control is shorter than a fingertip").toEqual([]);
+  expect(small, "a control is smaller than a fingertip").toEqual([]);
 };
 
 /**
