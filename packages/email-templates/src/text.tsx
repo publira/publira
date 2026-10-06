@@ -41,6 +41,15 @@ const metaStyle: CSSProperties = {
   margin: "24px 0 0",
 };
 
+const letterStyle: CSSProperties = {
+  color: emailColors.foreground,
+  fontSize: "15px",
+  lineHeight: "24px",
+  margin: "0 0 24px",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+};
+
 const quoteStyle: CSSProperties = {
   backgroundColor: emailColors.background,
   borderLeft: `3px solid ${emailColors.border}`,
@@ -92,6 +101,15 @@ export const EmailDetail = ({ children }: EmailTextProps) => (
 /** A closing remark: an expiry, or what to do about an unexpected mail. */
 export const EmailMeta = ({ children }: EmailTextProps) => (
   <Text style={metaStyle}>{children}</Text>
+);
+
+/**
+ * What a person wrote to the recipient, which is the whole point of the mail:
+ * an answer from a member of staff. It keeps the line breaks they typed, like
+ * `EmailQuote`, but reads as the mail's own text rather than as a quotation.
+ */
+export const EmailLetter = ({ children }: EmailTextProps) => (
+  <Text style={letterStyle}>{children}</Text>
 );
 
 /**
