@@ -48,9 +48,15 @@ Keep every key the list holds, including one you rotated away from while a value
 
 ## Take a backup
 
-Take the database first and the bucket after it. The keys do not change from one backup to the next: copy them to a safe place of their own when you generate or rotate one.
+Stop `publira worker`, back up the database and then the bucket, and start the worker again. The keys do not change from one backup to the next: copy them to a safe place of their own when you generate or rotate one.
 
-### 1. Back up the database
+### 1. Stop the worker
+
+Stop every `publira worker` replica before the database backup starts, and keep them stopped until the bucket copy has finished. The worker's orphan purge is the only thing that deletes objects from the bucket, and with it stopped, nothing removes an object the database backup names before the copy reaches it. Do not run `publiractl job purge-orphan-images` during the backup either.
+
+The rest of the install keeps serving. What the worker would have done meanwhile — mail, push notifications, cache revalidation, and publishing an episode whose scheduled time arrives — waits in the database and is done as soon as the worker starts again.
+
+### 2. Back up the database
 
 ```bash
 pg_dump --format=custom --file=publira.dump --dbname="$PUBLIRA_DB_URL"
@@ -63,19 +69,21 @@ docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<tag> db version
 
 A snapshot from a managed PostgreSQL does the same job. It is restored the way its provider describes, and carries the roles with it.
 
-### 2. Back up the bucket
+### 3. Back up the bucket
 
-Copy every object in the bucket to storage somewhere else, with any S3 client that copies a whole bucket, such as `aws s3 sync` or `rclone copy`. Use a copy that never deletes from its destination, which neither of those does, and copy into the same destination every time.
+Copy every object in the bucket to storage somewhere else, with any S3 client that copies a whole bucket, such as `aws s3 sync` or `rclone copy`. Use a copy that never deletes from its destination, which neither of those does, and copy into the same destination every time, so that every database backup you keep, not only the newest, finds its objects there.
 
-The order is what makes the two backups fit together. An upload writes the objects first and then the row that names them, and an object is never rewritten, so every object a row in the database backup names was already in the bucket when that backup started. Copied after it, the bucket backup has every one of them.
+The order is what makes the two backups fit together. An upload writes the objects first and then the row that names them, and an object is never rewritten, so every object a row in the database backup names was already in the bucket when that backup started. With the worker stopped, none of them is deleted before the copy reaches it, so the bucket backup has every one of them.
 
-The one exception is an image replaced after the database backup started. Nothing names its old objects any more, and the worker's daily orphan purge deletes objects nothing names. If the purge runs before the copy reaches them, the restored row names objects the copy does not have, unless an earlier copy into the same destination already kept them. That is why the copy goes into a destination it never deletes from.
+That is also why the worker has to stay stopped until the copy ends. An image replaced after the database backup started still has its old objects named in that backup, but by no row in the running database. The orphan purge deletes objects no row names, so a purge running during the copy could delete them before the copy reaches them, and the restored row would name objects neither the bucket nor its backup has.
 
 The bucket backup ends up holding more than the database backup names: every image uploaded while it ran, and every one replaced since the destination was first used. That costs space and nothing else. After a restore, the orphan purge deletes the objects no restored row names.
 
 Copied the other way round, the bucket backup misses every image uploaded between the two backups, and the rows the database backup restores for them name objects that are not there. Those images show as broken on the site and in the console.
 
-A provider's own tools, such as bucket versioning or replication to another region, serve the same purpose, as long as they keep the objects the purge deletes for as long as you keep the database backups that name them.
+### 4. Start the worker
+
+Start every replica you stopped. It sends what waited while it was stopped, and publishes every episode whose scheduled time passed in the meantime.
 
 ## Restore into an empty install
 
@@ -183,14 +191,15 @@ The [Docker Compose](./3-docker-compose.md) install keeps the database in the `p
 ### Take a backup
 
 ```bash
+docker compose stop worker
 docker compose exec -T postgres pg_dump -U postgres --format=custom publira > publira.dump
 docker compose run --rm -T publiractl db version > publira.version
 docker compose stop rustfs
 docker compose run --rm --no-deps -T --entrypoint tar rustfs -czf - -C /data . > publira-bucket.tar.gz
-docker compose start rustfs
+docker compose start rustfs worker
 ```
 
-`-T` keeps the output from passing through a terminal, which would corrupt it.
+The worker is stopped for the reason in [Stop the worker](#1-stop-the-worker). `-T` keeps the output from passing through a terminal, which would corrupt it.
 
 The bucket is backed up as the files RustFS keeps in its volume, rather than object by object, since the RustFS image carries no S3 client. RustFS has to be stopped while they are copied, or the archive could hold an object it was halfway through writing. For that time, uploads in the console fail, and images that Valkey has not cached do not load; the rest of the site keeps serving. The checkout pins the RustFS image, so the same checkout restores the archive with the same RustFS.
 
