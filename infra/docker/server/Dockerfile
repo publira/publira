@@ -21,7 +21,7 @@
 #   docker run --rm publira/publira:local          # publira server
 #   docker run --rm publira/publira:local worker   # publira worker
 
-FROM golang:1.27.1-trixie@sha256:3b77fc618ec235a1ab412de7737f120dd507c57e8d87de4cbb7994fb94275ed5 AS builder
+FROM golang:1.27.1-trixie@sha256:9d41bc0272def1f2aa133746aa2567dff35ddf2ae9893bb306da5b6631981898 AS builder
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libvips-dev pkg-config \
