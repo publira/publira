@@ -99,7 +99,7 @@ export const SiteLayoutBrand = ({
   href?: string;
 }) => (
   <Link
-    className="inline-flex min-w-0 items-center truncate font-serif text-lg font-medium text-foreground transition-colors duration-state ease-state hover:text-muted-foreground"
+    className="inline-flex min-w-0 items-center truncate font-serif text-lg font-medium text-foreground transition-colors duration-state ease-state hover:text-muted-foreground pointer-coarse:min-h-11"
     href={href}
   >
     {children}
@@ -116,6 +116,10 @@ export const SiteLayoutNav = ({ children }: { children: ReactNode }) => (
   </nav>
 );
 
+/**
+ * A text link, grown to the band's 44px tap height where the pointer is
+ * coarse: a finger cannot aim at the 20px line of type a mouse can.
+ */
 export const SiteLayoutNavLink = ({
   children,
   href,
@@ -123,7 +127,10 @@ export const SiteLayoutNavLink = ({
   children: ReactNode;
   href: string;
 }) => (
-  <Link className="underline-offset-4 hover:underline" href={href}>
+  <Link
+    className="inline-flex items-center underline-offset-4 hover:underline pointer-coarse:min-h-11"
+    href={href}
+  >
     {children}
   </Link>
 );
@@ -148,13 +155,18 @@ export const SiteLayoutNavSkeleton = () => (
  * The catalog field's slot in the band. It is the child that gives up width
  * first, and below `md` the band does not draw it at all: the drawer holds the
  * field there, where the row has room for it.
+ *
+ * Between `md` and `lg` it is the width a tablet held upright leaves once the
+ * brand, the navigation, and the account controls are drawn — measured at
+ * 744px in every locale, with the two signed-out buttons, which are the widest
+ * pair the band holds.
  */
 export const SiteLayoutHeaderSearch = ({
   children,
 }: {
   children: ReactNode;
 }) => (
-  <div className="hidden max-w-40 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
+  <div className="hidden max-w-48 min-w-0 flex-1 justify-end md:flex lg:max-w-64">
     {children}
   </div>
 );
@@ -192,8 +204,8 @@ export const SiteLayoutHeaderActionsSkeleton = () => (
     aria-live="polite"
     className="hidden items-center gap-2 md:flex"
   >
-    <Skeleton className="inline-block h-9 w-20 rounded-control" />
-    <Skeleton className="inline-block h-9 w-24 rounded-control" />
+    <Skeleton className="inline-block h-9 w-20 rounded-control pointer-coarse:h-11" />
+    <Skeleton className="inline-block h-9 w-24 rounded-control pointer-coarse:h-11" />
   </div>
 );
 

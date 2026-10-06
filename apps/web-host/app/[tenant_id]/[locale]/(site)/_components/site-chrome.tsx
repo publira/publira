@@ -276,7 +276,11 @@ const HeaderActions = async () => {
       </NotificationBellErrorBoundary>
       <SiteLayoutActions>
         <SiteLayoutUserMenu>
-          <Suspense fallback={<Skeleton className="size-9 rounded-control" />}>
+          <Suspense
+            fallback={
+              <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
+            }
+          >
             <AccountMenuTrigger />
           </Suspense>
           <SiteLayoutUserMenuContent>
@@ -388,22 +392,22 @@ const SiteNav = async () => {
 
 /** Same footprint as the rendered menu button, so the header does not shift. */
 const MobileNavigationOpenButtonSkeleton = () => (
-  <Skeleton className="size-9 rounded-control md:hidden" />
+  <Skeleton className="size-9 rounded-control md:hidden pointer-coarse:size-11" />
 );
 
 /** Same two rows the drawer draws, at the height the links render at. */
 const MobileNavigationLinksSkeleton = () => (
   <div aria-hidden="true" className="grid gap-1">
-    <SkeletonLine className="my-2 h-4 w-12" />
-    <SkeletonLine className="my-2 h-4 w-14" />
+    <SkeletonLine className="my-2 h-4 w-12 pointer-coarse:my-3.5" />
+    <SkeletonLine className="my-2 h-4 w-14 pointer-coarse:my-3.5" />
   </div>
 );
 
 /** Same footprint as the pair it stands in for, at the foot of the drawer. */
 const MobileNavigationAccountActionsSkeleton = () => (
   <div aria-hidden="true" className="mt-auto grid gap-2">
-    <Skeleton className="h-9 rounded-control" />
-    <Skeleton className="h-9 rounded-control" />
+    <Skeleton className="h-9 rounded-control pointer-coarse:h-11" />
+    <Skeleton className="h-9 rounded-control pointer-coarse:h-11" />
   </div>
 );
 
@@ -517,7 +521,11 @@ const SiteMobileNavigation = () => (
             <Message message="host.nav.menu" />
           </Suspense>
         </SiteLayoutMobileNavigationTitle>
-        <Suspense fallback={<Skeleton className="size-9 rounded-control" />}>
+        <Suspense
+          fallback={
+            <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
+          }
+        >
           <MobileNavigationCloseButton />
         </Suspense>
       </SiteLayoutMobileNavigationHeader>

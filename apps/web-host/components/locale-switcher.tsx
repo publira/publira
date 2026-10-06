@@ -45,7 +45,7 @@ import { useLocale, useTenantDefaultLocale } from "./locale-context";
 export const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
-    className="size-9 animate-pulse rounded-control bg-muted"
+    className="size-9 animate-pulse rounded-control bg-muted pointer-coarse:size-11"
   />
 );
 
@@ -62,7 +62,7 @@ export const LocaleSwitcher = () => {
     <Popover>
       <PopoverTrigger
         aria-label={label}
-        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
+        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted pointer-coarse:size-11"
       >
         <LanguageIcon aria-hidden="true" className="size-5" />
       </PopoverTrigger>
@@ -79,8 +79,8 @@ export const LocaleSwitcher = () => {
                 aria-current={current ? "true" : undefined}
                 className={
                   current
-                    ? "rounded-control bg-muted px-3 py-2 text-sm font-medium text-foreground"
-                    : "rounded-control px-3 py-2 text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
+                    ? "rounded-control bg-muted px-3 py-2 text-sm font-medium text-foreground pointer-coarse:py-3"
+                    : "rounded-control px-3 py-2 text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden pointer-coarse:py-3"
                 }
                 href={withLocalePrefix(locale, defaultLocale, barePathname)}
                 hrefLang={locale}

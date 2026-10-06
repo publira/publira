@@ -10,8 +10,8 @@ export const CatalogSearchFormSkeleton = () => (
     aria-hidden="true"
     className="flex max-w-64 min-w-0 flex-1 items-center gap-2"
   >
-    <span className="h-9 min-w-0 flex-1 animate-pulse rounded-control bg-muted" />
-    <span className="h-9 w-14 shrink-0 animate-pulse rounded-control bg-muted" />
+    <span className="h-9 min-w-0 flex-1 animate-pulse rounded-control bg-muted pointer-coarse:h-11" />
+    <span className="h-9 w-14 shrink-0 animate-pulse rounded-control bg-muted pointer-coarse:h-11" />
   </div>
 );
 
@@ -46,7 +46,7 @@ export const CatalogSearchForm = async ({
         </label>
         <input
           autoComplete="off"
-          className="h-9 min-w-0 flex-1 rounded-control border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="h-9 min-w-0 flex-1 rounded-control border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:h-11"
           defaultValue={defaultQuery}
           id={id}
           maxLength={SEARCH_QUERY_MAX_LENGTH}
@@ -55,7 +55,7 @@ export const CatalogSearchForm = async ({
           type="search"
         />
         <button
-          className="h-9 shrink-0 rounded-control border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted"
+          className="h-9 shrink-0 rounded-control border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted pointer-coarse:h-11"
           type="submit"
         >
           {t("host.nav.search_submit")}

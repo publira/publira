@@ -43,7 +43,7 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 | `destructive` | A destructive action, outlined in crimson |
 | `destructiveFilled` | The confirming button inside a `ConfirmDialog` |
 
-`size` is `sm`, `md` (the default), `lg`, or `icon`.
+`size` is `sm`, `md` (the default), `lg`, or `icon`. Where the pointer is coarse, every size is 44px tall (`icon` is 44px square).
 
 An icon-only button is `ghost`, and `outline` only when it floats over artwork or sits on a dark surface, where it needs a backing to be seen.
 

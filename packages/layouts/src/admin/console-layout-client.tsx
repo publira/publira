@@ -61,10 +61,10 @@ export const ConsoleMobileNavigation = ({
   children: ReactNode;
 }) => (
   <BaseDrawer.Portal>
-    <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 lg:hidden" />
+    <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 md:hidden" />
     {/* Viewport is what Base UI binds swipe and touch scroll locking to. */}
-    <BaseDrawer.Viewport className="fixed inset-0 z-40 lg:hidden">
-      <BaseDrawer.Popup className="fixed inset-y-0 left-0 z-40 flex w-60 max-w-[86vw] flex-col border-r border-border bg-surface px-3 py-4 shadow-floating lg:hidden">
+    <BaseDrawer.Viewport className="fixed inset-0 z-40 md:hidden">
+      <BaseDrawer.Popup className="fixed inset-y-0 left-0 z-40 flex w-60 max-w-[86vw] flex-col border-r border-border bg-surface px-3 py-4 shadow-floating md:hidden">
         {children}
         <ConsoleDrawerNavigationTarget />
       </BaseDrawer.Popup>
@@ -83,7 +83,7 @@ export const ConsoleMobileNavigationCloseButton = ({
   return (
     <button
       aria-label={ariaLabel}
-      className="inline-flex size-9 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="inline-flex size-9 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:size-11"
       onClick={close}
       type="button"
     >
@@ -103,7 +103,7 @@ export const ConsoleMobileNavigationOpenButton = ({
   return (
     <button
       aria-label={ariaLabel}
-      className="fixed right-4 bottom-4 z-50 inline-flex size-11 items-center justify-center rounded-control bg-primary text-primary-foreground shadow-floating focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
+      className="fixed right-4 bottom-4 z-50 inline-flex size-11 items-center justify-center rounded-control bg-primary text-primary-foreground shadow-floating focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden"
       onClick={open}
       type="button"
     >
@@ -165,7 +165,7 @@ const ConsoleSidebarNavigationLink = ({
   return (
     <Link
       aria-current={current ? "page" : undefined}
-      className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+      className="group flex items-center gap-2 border-l-[3px] border-transparent py-2 pr-3 pl-[calc(0.75rem-3px)] text-sm text-foreground transition-colors duration-state ease-state hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground pointer-coarse:py-3"
       href={href}
       onClick={mobileNavigation?.close}
     >

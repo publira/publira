@@ -45,6 +45,18 @@ The shell `web-admin` and `web-platform` share: a sidebar, a 48px header, and th
 
 The stylesheet the layouts' classes are defined in, loaded once from the app's global CSS.
 
+## Breakpoints
+
+What each layout draws at each width. `md` and `lg` are the only two steps: `@publira/brand/theme.css` sets `md` to 744px, the narrowest tablet held upright, and `lg` is Tailwind's 1024px, the narrowest tablet held sideways.
+
+| Width | Who holds it | Storefront header | Console |
+| --- | --- | --- | --- |
+| Below `md` (< 744px) | A phone, either way up | Brand, account icons, and the menu button; the catalog field, the navigation, the language, and the signed-out actions are in the drawer | The floating menu button, opening the sidebar in a drawer |
+| `md` to `lg` (744–1023px) | A tablet held upright | Brand, navigation, a catalog field up to 12rem, the language, and the account controls, on one row | The sidebar |
+| From `lg` (≥ 1024px) | A tablet held sideways, and a desktop | The same row, with a catalog field up to 16rem | The sidebar |
+
+Touch is a separate axis from width, because a phone, a tablet, and a touch laptop all have one. Where the pointer is coarse (`pointer-coarse:`), every control the layouts draw — a header icon, a navigation link, a menu or drawer row, a sidebar item — is at least 44px tall, and the same holds for `Button` and `LinkButton` from `@publira/ui-components`. Nothing the layouts draw opens on hover: every menu and popover opens on a press, and `hover:` styles in Tailwind v4 apply only where the device can hover.
+
 ## Usage
 
 ```css

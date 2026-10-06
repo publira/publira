@@ -24,7 +24,7 @@ const useNotificationBellClose = () => {
 export const NotificationBellSkeleton = () => (
   <span
     aria-hidden="true"
-    className="inline-flex size-9 items-center justify-center"
+    className="inline-flex size-9 items-center justify-center pointer-coarse:size-11"
   >
     <SkeletonLine className="size-5 rounded" />
   </span>
@@ -57,7 +57,7 @@ export const NotificationBellTrigger = ({
   const count = Math.max(0, unreadCount);
 
   return (
-    <Popover.Trigger className="relative inline-flex size-9 items-center justify-center rounded-control text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted">
+    <Popover.Trigger className="relative inline-flex size-9 items-center justify-center rounded-control text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11">
       <BellIcon aria-hidden="true" className="size-5" />
       <span className="sr-only">{children}</span>
       {count > 0 ? (
@@ -211,7 +211,7 @@ export const NotificationBellMore = ({
     <>
       <div className="my-1.5 h-px bg-border/70" />
       <Link
-        className="flex items-center justify-center rounded-control px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted"
+        className="flex items-center justify-center rounded-control px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted pointer-coarse:py-3"
         href={href}
         onClick={close}
       >

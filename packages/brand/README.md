@@ -39,6 +39,14 @@ The motion tokens:
 
 `@publira/layouts/styles.css` drops every transition and animation under `prefers-reduced-motion: reduce`.
 
+The breakpoint token:
+
+| Token | Value | Variant | Role |
+| --- | --- | --- | --- |
+| `--breakpoint-md` | `46.5rem` (744px) | `md:` | The narrowest tablet held upright, replacing Tailwind's 768px. `sm`, `lg`, `xl`, and `2xl` keep Tailwind's values |
+
+What each layout draws on either side of it is in the `@publira/layouts` README.
+
 The provisional Publira mark, a stand-in until the commissioned logo (#3406) replaces it:
 
 | Export | Size | Corners | Consumer |

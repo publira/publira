@@ -234,7 +234,11 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => (
           </ConsoleHeaderText>
         </ConsoleHeaderContext>
         <ConsoleHeaderActions>
-          <Suspense fallback={<Skeleton className="size-9 rounded-control" />}>
+          <Suspense
+            fallback={
+              <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
+            }
+          >
             <AdminLocaleSwitcher />
           </Suspense>
           <NotificationBellErrorBoundary>

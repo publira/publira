@@ -81,7 +81,7 @@ export const SiteLayoutMobileNavigationOpenButton = ({
 }) => (
   <BaseDrawer.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden"
+    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden pointer-coarse:size-11"
   >
     <MenuIcon className="size-5" />
   </BaseDrawer.Trigger>
@@ -127,7 +127,7 @@ export const SiteLayoutMobileNavigationCloseButton = ({
 }) => (
   <BaseDrawer.Close
     aria-label={ariaLabel}
-    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:size-11"
   >
     <CloseIcon className="size-4" />
   </BaseDrawer.Close>
@@ -182,7 +182,7 @@ export const SiteLayoutMobileNavigationDisclosureTrigger = ({
 }: {
   children: ReactNode;
 }) => (
-  <Collapsible.Trigger className="group flex w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-panel-open:bg-muted">
+  <Collapsible.Trigger className="group flex w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-panel-open:bg-muted pointer-coarse:py-3">
     {children}
     <ChevronDownIcon
       aria-hidden="true"
@@ -229,7 +229,7 @@ export const SiteLayoutMobileNavigationLink = ({
   return (
     <Link
       aria-current={current ? "true" : undefined}
-      className="rounded-control px-3 py-2 text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:bg-muted focus-visible:outline-hidden aria-[current=true]:bg-muted aria-[current=true]:font-medium"
+      className="rounded-control px-3 py-2 text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:bg-muted focus-visible:outline-hidden aria-[current=true]:bg-muted aria-[current=true]:font-medium pointer-coarse:py-3"
       href={href}
       hrefLang={hrefLang}
       lang={lang}
