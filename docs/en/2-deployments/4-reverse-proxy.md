@@ -172,7 +172,7 @@ tls:
       keyFile: /etc/traefik/tls/comics.example.com/privkey.pem
 ```
 
-Traefik watches the `dynamic` directory, so a change there, a new name or a new certificate, takes effect without a restart. A change to `traefik.yaml` needs one.
+Traefik watches the `dynamic` directory, so a change to a file there, a new name or a new certificate entry, takes effect without a restart. A change to `traefik.yaml` needs one. Traefik does not notice a certificate file replaced in place, though, so after each renewal update a file in `dynamic/`, such as with `touch dynamic/tls.yaml`, or it keeps serving the old certificate until it expires.
 
 ## Adding a tenant
 
@@ -183,6 +183,8 @@ A tenant made with `publiractl tenant create` or in the Platform Console is serv
 3. **Routing.** Add its domain to the hosts your configuration sends to `web-host`, and its console host to those it sends to `web-admin`.
 
 Load each change as you make it. Traefik picks up `dynamic/` on its own; nginx reloads with `nginx -s reload`, and Caddy with `caddy reload --config /etc/caddy/Caddyfile`. Neither reload drops a connection in progress.
+
+The [Docker Compose](./3-docker-compose.md) install mounts `routes.yaml` into its proxy as a single file. An editor that saves by writing a new file in its place leaves the running proxy reading the old one, so run `docker compose restart proxy` after each change to it.
 
 Moving a console host later, with `publiractl tenant update --admin-domain` or in the **Admin domain** field of the Platform Console, follows the same order: add the new name to DNS, the certificates, and the routing before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`.
 
@@ -200,7 +202,7 @@ When a load balancer, a CDN, or a TLS terminator connects to the proxy, as the o
 
 To record the reader's own address:
 
-- **The hop sets `X-Forwarded-For` to the address that connected to it**, rather than appending to the caller's. Caddy does this by default when it trusts no proxy in front of itself.
+- **The hop sets `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself**, to the address that connected to it, the host the browser asked for, and the scheme it used, rather than passing on or appending to the caller's. Trusting the hop trusts all three, and Publira finds the tenant from `X-Forwarded-Host`, so a hop that set only `X-Forwarded-For` would let a caller pick the tenant. Caddy sets all three by default when it trusts no proxy in front of itself.
 - **The proxy trusts that hop's addresses, and no others**, and takes the client address from the hop's header:
   - Traefik: `forwardedHeaders.trustedIPs` on the entry point the hop connects to.
   - nginx: `set_real_ip_from` with the hop's addresses and `real_ip_header X-Forwarded-For`, in a file of its own in the same directory. The sample's `X-Forwarded-For $remote_addr` then carries the reader's address.
