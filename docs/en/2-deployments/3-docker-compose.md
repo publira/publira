@@ -199,7 +199,7 @@ The tenant site answers at `http://comics.localhost:8080`, and the Platform Cons
 The Compose file is a complete install, but every part of it is on one machine:
 
 - **There is no redundancy.** Each process runs once. Docker restarts a process that exits, and restarts the whole install when the host reboots, but while the host is down, so is every tenant's site.
-- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both volumes, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup.
+- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup. [Backup and restore](./6-backup-and-restore.md#on-the-docker-compose-install) has the commands.
 - **`docker compose down -v` deletes the data.** `-v` removes the volumes, and with them every row and every image. Leave it out to stop the install and keep them.
 
 When the install outgrows one host, the same processes run against a managed PostgreSQL and an S3-compatible object store elsewhere; [Installing](./2-installing.md) brings up such an install step by step.

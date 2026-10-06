@@ -152,4 +152,6 @@ The `publiractl` service carries each role's password from `.env` in `/run/secre
 
 On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull`, `db migrate`, `db roles` with no flags, `docker compose up -d`, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
+The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
+
 `task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, and that image delivery resizes and converts an image through libvips.
