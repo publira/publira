@@ -34,6 +34,7 @@ export { PaletteIcon } from "./palette-icon";
 export { PenLineIcon } from "./pen-line-icon";
 export { PlusIcon } from "./plus-icon";
 export { ScrollTextIcon } from "./scroll-text-icon";
+export { SearchIcon } from "./search-icon";
 export { SendIcon } from "./send-icon";
 export { SettingsIcon } from "./settings-icon";
 export { ShapesIcon } from "./shapes-icon";

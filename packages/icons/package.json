@@ -155,6 +155,10 @@
       "types": "./dist/scroll-text-icon.d.mts",
       "default": "./dist/scroll-text-icon.mjs"
     },
+    "./search-icon": {
+      "types": "./dist/search-icon.d.mts",
+      "default": "./dist/search-icon.mjs"
+    },
     "./send-icon": {
       "types": "./dist/send-icon.d.mts",
       "default": "./dist/send-icon.mjs"
