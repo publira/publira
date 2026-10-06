@@ -12,14 +12,14 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/contact.proto.
  */
 export const file_publira_admin_v1_contact: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbnRhY3QucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEirgIKDkNvbnRhY3RNZXNzYWdlEhEKCXB1YmxpY19pZBgBIAEoCRIWCg5yZXBseV90b19lbWFpbBgCIAEoCRIPCgdzdWJqZWN0GAMgASgJEgwKBGJvZHkYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRISCgpoYW5kbGVkX2F0GAYgASgJEhgKEHNlbmRlcl9wdWJsaWNfaWQYByABKAkSEwoLc2VuZGVyX25hbWUYCCABKAkSCgoCaWQYCSABKAkSGAoQYXNzaWduZWVfdXNlcl9pZBgKIAEoCRIaChJhc3NpZ25lZV9wdWJsaWNfaWQYCyABKAkSFQoNYXNzaWduZWVfbmFtZRgMIAEoCRISCgpzdGFmZl9ub3RlGA0gASgJEg4KBnN0YXR1cxgOIAEoCSJ7ChpMaXN0Q29udGFjdE1lc3NhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGc3RhdHVzGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RDb250YWN0TWVzc2FnZXNSZXNwb25zZRIyCghtZXNzYWdlcxgBIAMoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJeChhHZXRDb250YWN0TWVzc2FnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJOChlHZXRDb250YWN0TWVzc2FnZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlIpEBCiBNYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHaGFuZGxlZBgDIAEoCBIaChJjb250YWN0X21lc3NhZ2VfaWQYBCABKAlKBAgCEANSCXB1YmxpY19pZCJWCiFNYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVzcG9uc2USMQoHbWVzc2FnZRgBIAEoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2UihAEKG0Fzc2lnbkNvbnRhY3RNZXNzYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGgoSY29udGFjdF9tZXNzYWdlX2lkGAIgASgJEhgKEGFzc2lnbmVlX3VzZXJfaWQYAyABKAkiUQocQXNzaWduQ29udGFjdE1lc3NhZ2VSZXNwb25zZRIxCgdtZXNzYWdlGAEgASgLMiAucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZSKHAQokVXBkYXRlQ29udGFjdE1lc3NhZ2VTdGFmZk5vdGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIaChJjb250YWN0X21lc3NhZ2VfaWQYAiABKAkSEgoKc3RhZmZfbm90ZRgDIAEoCSJaCiVVcGRhdGVDb250YWN0TWVzc2FnZVN0YWZmTm90ZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlMpIFChNBZG1pbkNvbnRhY3RTZXJ2aWNlEnQKE0xpc3RDb250YWN0TWVzc2FnZXMSLC5wdWJsaXJhLmFkbWluLnYxLkxpc3RDb250YWN0TWVzc2FnZXNSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5MaXN0Q29udGFjdE1lc3NhZ2VzUmVzcG9uc2UiABJuChFHZXRDb250YWN0TWVzc2FnZRIqLnB1YmxpcmEuYWRtaW4udjEuR2V0Q29udGFjdE1lc3NhZ2VSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRDb250YWN0TWVzc2FnZVJlc3BvbnNlIgAShgEKGU1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWQSMi5wdWJsaXJhLmFkbWluLnYxLk1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5NYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVzcG9uc2UiABJ3ChRBc3NpZ25Db250YWN0TWVzc2FnZRItLnB1YmxpcmEuYWRtaW4udjEuQXNzaWduQ29udGFjdE1lc3NhZ2VSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5Bc3NpZ25Db250YWN0TWVzc2FnZVJlc3BvbnNlIgASkgEKHVVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlEjYucHVibGlyYS5hZG1pbi52MS5VcGRhdGVDb250YWN0TWVzc2FnZVN0YWZmTm90ZVJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NvbnRhY3QucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEi+wIKDkNvbnRhY3RNZXNzYWdlEhEKCXB1YmxpY19pZBgBIAEoCRIWCg5yZXBseV90b19lbWFpbBgCIAEoCRIPCgdzdWJqZWN0GAMgASgJEgwKBGJvZHkYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRISCgpoYW5kbGVkX2F0GAYgASgJEhgKEHNlbmRlcl9wdWJsaWNfaWQYByABKAkSEwoLc2VuZGVyX25hbWUYCCABKAkSCgoCaWQYCSABKAkSGAoQYXNzaWduZWVfdXNlcl9pZBgKIAEoCRIaChJhc3NpZ25lZV9wdWJsaWNfaWQYCyABKAkSFQoNYXNzaWduZWVfbmFtZRgMIAEoCRISCgpzdGFmZl9ub3RlGA0gASgJEg4KBnN0YXR1cxgOIAEoCRI2CgdlbnRyaWVzGA8gAygLMiUucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZUVudHJ5EhMKC2VudHJ5X2NvdW50GBAgASgFIp0BChNDb250YWN0TWVzc2FnZUVudHJ5EgoKAmlkGAEgASgJEhEKCWRpcmVjdGlvbhgCIAEoCRIWCg5hdXRob3JfdXNlcl9pZBgDIAEoCRIYChBhdXRob3JfcHVibGljX2lkGAQgASgJEhMKC2F1dGhvcl9uYW1lGAUgASgJEgwKBGJvZHkYBiABKAkSEgoKY3JlYXRlZF9hdBgHIAEoCSJ7ChpMaXN0Q29udGFjdE1lc3NhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGc3RhdHVzGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RDb250YWN0TWVzc2FnZXNSZXNwb25zZRIyCghtZXNzYWdlcxgBIAMoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJeChhHZXRDb250YWN0TWVzc2FnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJOChlHZXRDb250YWN0TWVzc2FnZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlIpEBCiBNYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHaGFuZGxlZBgDIAEoCBIaChJjb250YWN0X21lc3NhZ2VfaWQYBCABKAlKBAgCEANSCXB1YmxpY19pZCJWCiFNYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVzcG9uc2USMQoHbWVzc2FnZRgBIAEoCzIgLnB1YmxpcmEuYWRtaW4udjEuQ29udGFjdE1lc3NhZ2UihAEKG0Fzc2lnbkNvbnRhY3RNZXNzYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGgoSY29udGFjdF9tZXNzYWdlX2lkGAIgASgJEhgKEGFzc2lnbmVlX3VzZXJfaWQYAyABKAkiUQocQXNzaWduQ29udGFjdE1lc3NhZ2VSZXNwb25zZRIxCgdtZXNzYWdlGAEgASgLMiAucHVibGlyYS5hZG1pbi52MS5Db250YWN0TWVzc2FnZSKHAQokVXBkYXRlQ29udGFjdE1lc3NhZ2VTdGFmZk5vdGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIaChJjb250YWN0X21lc3NhZ2VfaWQYAiABKAkSEgoKc3RhZmZfbm90ZRgDIAEoCSJaCiVVcGRhdGVDb250YWN0TWVzc2FnZVN0YWZmTm90ZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlInkKHFJlcGx5VG9Db250YWN0TWVzc2FnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhoKEmNvbnRhY3RfbWVzc2FnZV9pZBgCIAEoCRIMCgRib2R5GAMgASgJIlIKHVJlcGx5VG9Db250YWN0TWVzc2FnZVJlc3BvbnNlEjEKB21lc3NhZ2UYASABKAsyIC5wdWJsaXJhLmFkbWluLnYxLkNvbnRhY3RNZXNzYWdlMo4GChNBZG1pbkNvbnRhY3RTZXJ2aWNlEnQKE0xpc3RDb250YWN0TWVzc2FnZXMSLC5wdWJsaXJhLmFkbWluLnYxLkxpc3RDb250YWN0TWVzc2FnZXNSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5MaXN0Q29udGFjdE1lc3NhZ2VzUmVzcG9uc2UiABJuChFHZXRDb250YWN0TWVzc2FnZRIqLnB1YmxpcmEuYWRtaW4udjEuR2V0Q29udGFjdE1lc3NhZ2VSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRDb250YWN0TWVzc2FnZVJlc3BvbnNlIgAShgEKGU1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWQSMi5wdWJsaXJhLmFkbWluLnYxLk1hcmtDb250YWN0TWVzc2FnZUhhbmRsZWRSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5NYXJrQ29udGFjdE1lc3NhZ2VIYW5kbGVkUmVzcG9uc2UiABJ3ChRBc3NpZ25Db250YWN0TWVzc2FnZRItLnB1YmxpcmEuYWRtaW4udjEuQXNzaWduQ29udGFjdE1lc3NhZ2VSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5Bc3NpZ25Db250YWN0TWVzc2FnZVJlc3BvbnNlIgASkgEKHVVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlEjYucHVibGlyYS5hZG1pbi52MS5VcGRhdGVDb250YWN0TWVzc2FnZVN0YWZmTm90ZVJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNvbnRhY3RNZXNzYWdlU3RhZmZOb3RlUmVzcG9uc2UiABJ6ChVSZXBseVRvQ29udGFjdE1lc3NhZ2USLi5wdWJsaXJhLmFkbWluLnYxLlJlcGx5VG9Db250YWN0TWVzc2FnZVJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLlJlcGx5VG9Db250YWN0TWVzc2FnZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * One message a reader sent the tenant, as staff read it.
  *
- * Publira carries no reply of its own, so the message is the whole record: what
- * the reader wrote, the address to answer at, who on the staff owns it, and
- * whether anyone has dealt with it yet.
+ * The message is what the reader first wrote, the address to answer at, who on
+ * the staff owns it, and whether anyone has dealt with it yet. Everything said
+ * after it is an entry under it.
  *
  * Where the message stands is derived rather than stored: status reads
  * handled_at and the assignee together, so it cannot disagree with them.
@@ -126,6 +126,23 @@ export type ContactMessage = Message<"publira.admin.v1.ContactMessage"> & {
    * @generated from field: string status = 14;
    */
   status: string;
+
+  /**
+   * The exchange that followed the message, oldest first, so the newest is
+   * last. Only a read of one message carries it: every list leaves it empty and
+   * says how long it is in entry_count instead.
+   *
+   * @generated from field: repeated publira.admin.v1.ContactMessageEntry entries = 15;
+   */
+  entries: ContactMessageEntry[];
+
+  /**
+   * How many entries the message has. Zero until somebody answers it, because
+   * the reader can only write back to an answer.
+   *
+   * @generated from field: int32 entry_count = 16;
+   */
+  entryCount: number;
 };
 
 /**
@@ -134,6 +151,64 @@ export type ContactMessage = Message<"publira.admin.v1.ContactMessage"> & {
  */
 export const ContactMessageSchema: GenMessage<ContactMessage> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_contact, 0);
+
+/**
+ * One turn of the exchange after a contact message: an answer staff sent, or a
+ * reply the reader mailed back.
+ *
+ * @generated from message publira.admin.v1.ContactMessageEntry
+ */
+export type ContactMessageEntry = Message<"publira.admin.v1.ContactMessageEntry"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Who wrote it, one of:
+   *   staff  - an answer sent from the console
+   *   reader - a reply the reader mailed back to one
+   *
+   * @generated from field: string direction = 2;
+   */
+  direction: string;
+
+  /**
+   * The member of staff who wrote a staff entry. All three are empty on a
+   * reader entry, and on a staff entry whose author's account has been deleted
+   * since. author_user_id is the TenantMember.user_id.
+   *
+   * @generated from field: string author_user_id = 3;
+   */
+  authorUserId: string;
+
+  /**
+   * @generated from field: string author_public_id = 4;
+   */
+  authorPublicId: string;
+
+  /**
+   * @generated from field: string author_name = 5;
+   */
+  authorName: string;
+
+  /**
+   * @generated from field: string body = 6;
+   */
+  body: string;
+
+  /**
+   * @generated from field: string created_at = 7;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ContactMessageEntry.
+ * Use `create(ContactMessageEntrySchema)` to create a new message.
+ */
+export const ContactMessageEntrySchema: GenMessage<ContactMessageEntry> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 1);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -175,7 +250,7 @@ export type ListContactMessagesRequest = Message<"publira.admin.v1.ListContactMe
  * Use `create(ListContactMessagesRequestSchema)` to create a new message.
  */
 export const ListContactMessagesRequestSchema: GenMessage<ListContactMessagesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 1);
+  messageDesc(file_publira_admin_v1_contact, 2);
 
 /**
  * @generated from message publira.admin.v1.ListContactMessagesResponse
@@ -208,7 +283,7 @@ export type ListContactMessagesResponse = Message<"publira.admin.v1.ListContactM
  * Use `create(ListContactMessagesResponseSchema)` to create a new message.
  */
 export const ListContactMessagesResponseSchema: GenMessage<ListContactMessagesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 2);
+  messageDesc(file_publira_admin_v1_contact, 3);
 
 /**
  * @generated from message publira.admin.v1.GetContactMessageRequest
@@ -230,7 +305,7 @@ export type GetContactMessageRequest = Message<"publira.admin.v1.GetContactMessa
  * Use `create(GetContactMessageRequestSchema)` to create a new message.
  */
 export const GetContactMessageRequestSchema: GenMessage<GetContactMessageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 3);
+  messageDesc(file_publira_admin_v1_contact, 4);
 
 /**
  * @generated from message publira.admin.v1.GetContactMessageResponse
@@ -247,7 +322,7 @@ export type GetContactMessageResponse = Message<"publira.admin.v1.GetContactMess
  * Use `create(GetContactMessageResponseSchema)` to create a new message.
  */
 export const GetContactMessageResponseSchema: GenMessage<GetContactMessageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 4);
+  messageDesc(file_publira_admin_v1_contact, 5);
 
 /**
  * @generated from message publira.admin.v1.MarkContactMessageHandledRequest
@@ -280,7 +355,7 @@ export type MarkContactMessageHandledRequest = Message<"publira.admin.v1.MarkCon
  * Use `create(MarkContactMessageHandledRequestSchema)` to create a new message.
  */
 export const MarkContactMessageHandledRequestSchema: GenMessage<MarkContactMessageHandledRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 5);
+  messageDesc(file_publira_admin_v1_contact, 6);
 
 /**
  * @generated from message publira.admin.v1.MarkContactMessageHandledResponse
@@ -297,7 +372,7 @@ export type MarkContactMessageHandledResponse = Message<"publira.admin.v1.MarkCo
  * Use `create(MarkContactMessageHandledResponseSchema)` to create a new message.
  */
 export const MarkContactMessageHandledResponseSchema: GenMessage<MarkContactMessageHandledResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 6);
+  messageDesc(file_publira_admin_v1_contact, 7);
 
 /**
  * @generated from message publira.admin.v1.AssignContactMessageRequest
@@ -330,7 +405,7 @@ export type AssignContactMessageRequest = Message<"publira.admin.v1.AssignContac
  * Use `create(AssignContactMessageRequestSchema)` to create a new message.
  */
 export const AssignContactMessageRequestSchema: GenMessage<AssignContactMessageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 7);
+  messageDesc(file_publira_admin_v1_contact, 8);
 
 /**
  * @generated from message publira.admin.v1.AssignContactMessageResponse
@@ -347,7 +422,7 @@ export type AssignContactMessageResponse = Message<"publira.admin.v1.AssignConta
  * Use `create(AssignContactMessageResponseSchema)` to create a new message.
  */
 export const AssignContactMessageResponseSchema: GenMessage<AssignContactMessageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 8);
+  messageDesc(file_publira_admin_v1_contact, 9);
 
 /**
  * @generated from message publira.admin.v1.UpdateContactMessageStaffNoteRequest
@@ -379,7 +454,7 @@ export type UpdateContactMessageStaffNoteRequest = Message<"publira.admin.v1.Upd
  * Use `create(UpdateContactMessageStaffNoteRequestSchema)` to create a new message.
  */
 export const UpdateContactMessageStaffNoteRequestSchema: GenMessage<UpdateContactMessageStaffNoteRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 9);
+  messageDesc(file_publira_admin_v1_contact, 10);
 
 /**
  * @generated from message publira.admin.v1.UpdateContactMessageStaffNoteResponse
@@ -396,7 +471,58 @@ export type UpdateContactMessageStaffNoteResponse = Message<"publira.admin.v1.Up
  * Use `create(UpdateContactMessageStaffNoteResponseSchema)` to create a new message.
  */
 export const UpdateContactMessageStaffNoteResponseSchema: GenMessage<UpdateContactMessageStaffNoteResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_contact, 10);
+  messageDesc(file_publira_admin_v1_contact, 11);
+
+/**
+ * @generated from message publira.admin.v1.ReplyToContactMessageRequest
+ */
+export type ReplyToContactMessageRequest = Message<"publira.admin.v1.ReplyToContactMessageRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The message's primary key (ContactMessage.id).
+   *
+   * @generated from field: string contact_message_id = 2;
+   */
+  contactMessageId: string;
+
+  /**
+   * The answer. Surrounding whitespace is trimmed; what is left is required and
+   * at most 4000 characters, the bounds of the reader's own message.
+   *
+   * @generated from field: string body = 3;
+   */
+  body: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ReplyToContactMessageRequest.
+ * Use `create(ReplyToContactMessageRequestSchema)` to create a new message.
+ */
+export const ReplyToContactMessageRequestSchema: GenMessage<ReplyToContactMessageRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 12);
+
+/**
+ * @generated from message publira.admin.v1.ReplyToContactMessageResponse
+ */
+export type ReplyToContactMessageResponse = Message<"publira.admin.v1.ReplyToContactMessageResponse"> & {
+  /**
+   * The message with the answer as its newest entry.
+   *
+   * @generated from field: publira.admin.v1.ContactMessage message = 1;
+   */
+  message?: ContactMessage | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.ReplyToContactMessageResponse.
+ * Use `create(ReplyToContactMessageResponseSchema)` to create a new message.
+ */
+export const ReplyToContactMessageResponseSchema: GenMessage<ReplyToContactMessageResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_contact, 13);
 
 /**
  * @generated from service publira.admin.v1.AdminContactService
@@ -476,6 +602,26 @@ export const AdminContactService: GenService<{
     methodKind: "unary";
     input: typeof UpdateContactMessageStaffNoteRequestSchema;
     output: typeof UpdateContactMessageStaffNoteResponseSchema;
+  },
+  /**
+   * Answers one message: stores the answer as a staff entry under it, marks the
+   * message handled, and queues the mail that takes the answer to the reader's
+   * reply-to address.
+   *
+   * The mail is sent afterwards rather than by this call, so the answer is
+   * stored whether or not the mail server is reachable, and it goes out from
+   * the tenant's SMTP settings like every other mail of the tenant. The
+   * reader's reply reaches the caller's own account address. A message already
+   * handled keeps the time and the member of staff it was first marked with.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminContactService.ReplyToContactMessage
+   */
+  replyToContactMessage: {
+    methodKind: "unary";
+    input: typeof ReplyToContactMessageRequestSchema;
+    output: typeof ReplyToContactMessageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_contact, 0);

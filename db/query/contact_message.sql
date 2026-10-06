@@ -13,6 +13,9 @@
 --        idx_contact_messages_tenant_unhandled_created_at for 'unhandled' and
 --        'in_progress', filtering on assigned_to,
 --        idx_contact_messages_tenant_handled_created_at for 'handled'
+--   entry_count, in every read of a message
+--     -> idx_contact_message_entries_tenant_message_created_at, one index-only
+--        count per message on the page
 --   SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
 --   SetContactMessageStaffNoteByIDForTenant
 --     -> contact_messages_pkey
@@ -47,12 +50,19 @@ RETURNING *;
 -- What the outbox worker reads to word the staff mail. It is by primary key
 -- because the event names the row it was queued for, and it carries the
 -- sender's name so the mail can say who wrote without a second round trip.
--- The assignee is joined too, so every read of a message has the same shape.
+-- The assignee and the entry count are read too, so every read of a message
+-- has the same shape.
 SELECT m.*,
     u.public_id AS sender_public_id,
     u.name AS sender_name,
     a.public_id AS assignee_public_id,
-    a.name AS assignee_name
+    a.name AS assignee_name,
+    (
+        SELECT count(*)
+        FROM contact_message_entries e
+        WHERE e.tenant_id = m.tenant_id
+            AND e.contact_message_id = m.id
+    ) AS entry_count
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
@@ -67,7 +77,13 @@ SELECT m.*,
     u.public_id AS sender_public_id,
     u.name AS sender_name,
     a.public_id AS assignee_public_id,
-    a.name AS assignee_name
+    a.name AS assignee_name,
+    (
+        SELECT count(*)
+        FROM contact_message_entries e
+        WHERE e.tenant_id = m.tenant_id
+            AND e.contact_message_id = m.id
+    ) AS entry_count
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
@@ -93,7 +109,13 @@ SELECT m.*,
     u.public_id AS sender_public_id,
     u.name AS sender_name,
     a.public_id AS assignee_public_id,
-    a.name AS assignee_name
+    a.name AS assignee_name,
+    (
+        SELECT count(*)
+        FROM contact_message_entries e
+        WHERE e.tenant_id = m.tenant_id
+            AND e.contact_message_id = m.id
+    ) AS entry_count
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id
@@ -142,7 +164,13 @@ SELECT m.*,
     u.public_id AS sender_public_id,
     u.name AS sender_name,
     a.public_id AS assignee_public_id,
-    a.name AS assignee_name
+    a.name AS assignee_name,
+    (
+        SELECT count(*)
+        FROM contact_message_entries e
+        WHERE e.tenant_id = m.tenant_id
+            AND e.contact_message_id = m.id
+    ) AS entry_count
 FROM contact_messages m
     LEFT JOIN users u ON u.tenant_id = m.tenant_id
         AND u.id = m.user_id

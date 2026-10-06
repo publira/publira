@@ -130,6 +130,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"reader_password_reset":                      readerPasswordResetCopy,
 	"reader_signup_attempt_notice":               readerSignupAttemptNoticeCopy,
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
+	"staff_contact_reply":                        staffContactReplyCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
 }
 
@@ -154,6 +155,39 @@ func staffContactMessageNoticeCopy(c *emailComposer) {
 	c.line("email.staff_contact_message_notice.body_heading", nil)
 	c.text(c.value("body"))
 	c.line("email.staff_contact_message_notice.footnote", nil)
+}
+
+// staffContactReplyCopy words the answer staff send a reader. The answer is
+// the mail: nothing here introduces it, the way a reply from a person opens
+// with what they wrote. The reader's own message follows it as a quotation, so
+// a reader who wrote to several places can tell which question this answers.
+func staffContactReplyCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	if subject := c.value("original_subject"); subject != "" {
+		c.setSubject("email.staff_contact_reply.subject", map[string]any{"subject": subject})
+	} else {
+		c.setSubject("email.staff_contact_reply.subject_untitled", map[string]any{"tenant_name": brand})
+	}
+	c.from(brand)
+	c.text(c.value("body"))
+	c.line("email.staff_contact_reply.quote_intro", map[string]any{"received_at": c.instant("original_received_at")})
+	c.text(quotePlainText(c.value("original_body")))
+	c.line("email.staff_contact_reply.footnote", nil)
+}
+
+// quotePlainText marks every line of a quotation the way mail clients mark the
+// message a reply answers, so the plain-text part keeps the quotation apart
+// from the answer above it as the HTML part's block does.
+func quotePlainText(text string) string {
+	lines := strings.Split(text, "\n")
+	for index, line := range lines {
+		if line == "" {
+			lines[index] = ">"
+			continue
+		}
+		lines[index] = "> " + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 func tenantAdminInvitationCopy(c *emailComposer) {

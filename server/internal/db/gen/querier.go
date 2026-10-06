@@ -168,6 +168,9 @@ type Querier interface {
 	//        idx_contact_messages_tenant_unhandled_created_at for 'unhandled' and
 	//        'in_progress', filtering on assigned_to,
 	//        idx_contact_messages_tenant_handled_created_at for 'handled'
+	//   entry_count, in every read of a message
+	//     -> idx_contact_message_entries_tenant_message_created_at, one index-only
+	//        count per message on the page
 	//   SetContactMessageHandledByIDForTenant, SetContactMessageAssigneeByIDForTenant,
 	//   SetContactMessageStaffNoteByIDForTenant
 	//     -> contact_messages_pkey
@@ -178,6 +181,18 @@ type Querier interface {
 	// One message as the public API stores it. The sender is nullable because a
 	// guest may write: the reply-to address is the only way back either way.
 	CreateContactMessage(ctx context.Context, arg CreateContactMessageParams) (ContactMessage, error)
+	// The exchange that follows a contact message: the answers staff send and the
+	// replies readers mail back.
+	//
+	// Expected plans:
+	//   CreateContactMessageEntry
+	//     -> contact_message_entries_pkey and
+	//        contact_message_entries_tenant_message_id_key for the uniqueness checks
+	//   ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
+	//     -> idx_contact_message_entries_tenant_message_created_at
+	//   GetContactMessageEntryForTenant
+	//     -> contact_message_entries_pkey, then users_tenant_id_id_key
+	CreateContactMessageEntry(ctx context.Context, arg CreateContactMessageEntryParams) (ContactMessageEntry, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	// A pair that is already linked is no row, so a retried link records nothing.
 	CreateCreatorAccount(ctx context.Context, arg CreateCreatorAccountParams) (int64, error)
@@ -404,10 +419,14 @@ type Querier interface {
 	// What the outbox worker reads to word the staff mail. It is by primary key
 	// because the event names the row it was queued for, and it carries the
 	// sender's name so the mail can say who wrote without a second round trip.
-	// The assignee is joined too, so every read of a message has the same shape.
+	// The assignee and the entry count are read too, so every read of a message
+	// has the same shape.
 	GetContactMessageByIDForTenant(ctx context.Context, arg GetContactMessageByIDForTenantParams) (GetContactMessageByIDForTenantRow, error)
 	// One message as the console reads it, by the identifier its screens carry.
 	GetContactMessageByPublicIDForTenant(ctx context.Context, arg GetContactMessageByPublicIDForTenantParams) (GetContactMessageByPublicIDForTenantRow, error)
+	// What the outbox worker reads to send a staff entry. The author's address and
+	// status come with it, because the address is where the reader's reply goes.
+	GetContactMessageEntryForTenant(ctx context.Context, arg GetContactMessageEntryForTenantParams) (GetContactMessageEntryForTenantRow, error)
 	GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error)
 	GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error)
 	GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error)
@@ -1123,6 +1142,15 @@ type Querier interface {
 	// Every series of the tenant, or the one series_id names.
 	ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error)
 	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
+	// One message's exchange as the console shows it under the message, oldest
+	// first so it reads in the order it was written. The author is joined for the
+	// name the console prints beside a staff entry.
+	ListContactMessageEntries(ctx context.Context, arg ListContactMessageEntriesParams) ([]ListContactMessageEntriesRow, error)
+	// The Message-IDs of the entries written before one entry of the same
+	// message, oldest first: the last is what the entry's mail is In-Reply-To, and
+	// all of them are its References. An entry that came in without one has
+	// nothing to name and is left out.
+	ListContactMessageEntryMessageIDsBefore(ctx context.Context, arg ListContactMessageEntryMessageIDsBeforeParams) ([]string, error)
 	// The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
 	// reverses the returned rows to preserve the newest-first order.
 	ListContactMessagesByCreatedAtAsc(ctx context.Context, arg ListContactMessagesByCreatedAtAscParams) ([]ListContactMessagesByCreatedAtAscRow, error)

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -37,6 +39,13 @@ const (
 	// The length contact_messages_staff_note_check enforces, in characters as
 	// PostgreSQL counts them.
 	maxContactMessageStaffNoteRunes = 4000
+
+	// The length contact_message_entries_body_check enforces, which is the
+	// bound of the reader's own message: an answer is held to what it answers.
+	maxContactMessageReplyRunes = 4000
+
+	// contact_message_entries.direction of an answer sent from the console.
+	contactMessageEntryDirectionStaff = "staff"
 )
 
 // contactMessageRow is the single shape every contact message the console reads
@@ -125,7 +134,42 @@ func contactMessageToProto(row contactMessageRow) *publiraadminv1.ContactMessage
 		message.AssigneeName = row.AssigneeName.String
 	}
 	message.StaffNote = row.StaffNote.String
+	message.EntryCount = int32(row.EntryCount)
 	return message
+}
+
+func contactMessageEntryToProto(row dbmodels.ListContactMessageEntriesRow) *publiraadminv1.ContactMessageEntry {
+	entry := &publiraadminv1.ContactMessageEntry{
+		Id:        row.ID.String(),
+		Direction: row.Direction,
+		Body:      row.Body,
+		CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if row.AuthorID.Valid {
+		entry.AuthorUserId = row.AuthorID.UUID.String()
+		entry.AuthorPublicId = row.AuthorPublicID.String
+		entry.AuthorName = row.AuthorName.String
+	}
+	return entry
+}
+
+// contactMessageDetail is one message as a read of that message answers it:
+// the message, and the exchange under it. A list stops at the message, because
+// the inbox shows whether a message was answered rather than what was said.
+func (s *adminServer) contactMessageDetail(ctx context.Context, row contactMessageRow) (*publiraadminv1.ContactMessage, error) {
+	entries, err := s.queriesFor(ctx).ListContactMessageEntries(ctx, dbmodels.ListContactMessageEntriesParams{
+		TenantID:         row.TenantID,
+		ContactMessageID: row.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the contact message entries", err, "tenant_id", row.TenantID.String(), "contact_message_id", row.ID.String())
+	}
+	message := contactMessageToProto(row)
+	message.Entries = make([]*publiraadminv1.ContactMessageEntry, 0, len(entries))
+	for _, entry := range entries {
+		message.Entries = append(message.Entries, contactMessageEntryToProto(entry))
+	}
+	return message, nil
 }
 
 func (s *adminServer) contactMessagePage(
@@ -329,7 +373,11 @@ func (s *adminServer) GetContactMessage(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.GetContactMessageResponse{Message: contactMessageToProto(row)}), nil
+	message, err := s.contactMessageDetail(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.GetContactMessageResponse{Message: message}), nil
 }
 
 // MarkContactMessageHandled records that staff have dealt with one message, or
@@ -377,7 +425,11 @@ func (s *adminServer) MarkContactMessageHandled(
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
 
-	return connect.NewResponse(&publiraadminv1.MarkContactMessageHandledResponse{Message: contactMessageToProto(updated)}), nil
+	message, err := s.contactMessageDetail(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.MarkContactMessageHandledResponse{Message: message}), nil
 }
 
 // contactMessageAssignee reads the account a request assigns a message to, or
@@ -454,7 +506,11 @@ func (s *adminServer) AssignContactMessage(
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
 
-	return connect.NewResponse(&publiraadminv1.AssignContactMessageResponse{Message: contactMessageToProto(updated)}), nil
+	message, err := s.contactMessageDetail(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.AssignContactMessageResponse{Message: message}), nil
 }
 
 // UpdateContactMessageStaffNote saves, replaces, or clears the internal note on
@@ -498,5 +554,149 @@ func (s *adminServer) UpdateContactMessageStaffNote(
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
 
-	return connect.NewResponse(&publiraadminv1.UpdateContactMessageStaffNoteResponse{Message: contactMessageToProto(updated)}), nil
+	message, err := s.contactMessageDetail(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateContactMessageStaffNoteResponse{Message: message}), nil
+}
+
+// validateContactMessageReply reads the answer a request carries, by the rules
+// the reader's own message is held to.
+func validateContactMessageReply(raw string) (string, error) {
+	body := strings.TrimSpace(raw)
+	if body == "" {
+		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("an answer is required"), "body")
+	}
+	if utf8.RuneCountInString(body) > maxContactMessageReplyRunes {
+		return "", rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("the answer must be at most %d characters", maxContactMessageReplyRunes),
+			"body",
+		)
+	}
+	return body, nil
+}
+
+// storeContactMessageReply writes the answer, marks the message handled by its
+// author, and queues the mail that sends it, all in one transaction: an answer
+// nobody will send cannot be stored, and no mail can go out for an answer that
+// was never written.
+//
+// The Message-ID is chosen here and stored with the entry, so the mail carries
+// the same one however often the worker has to try it.
+func (s *adminServer) storeContactMessageReply(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	messageID, authorID uuid.UUID,
+	body string,
+) error {
+	entryID, err := uuid.NewV7()
+	if err != nil {
+		return s.internalError(ctx, "failed to generate the contact message entry id", err)
+	}
+	mailID, err := outbox.NewContactMessageReplyMessageID(tenant)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin a write transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	// The update goes first: it is what finds no row for a message of another
+	// tenant or one that never existed, which the insert would report as a
+	// foreign key violation instead.
+	if _, err := txq.SetContactMessageHandledByIDForTenant(ctx, dbmodels.SetContactMessageHandledByIDForTenantParams{
+		TenantID:  tenant.ID,
+		ID:        messageID,
+		Handled:   true,
+		HandledBy: uuid.NullUUID{UUID: authorID, Valid: true},
+	}); err != nil {
+		return s.contactMessageUpdateError(ctx, tenant.ID, messageID, err, "mark the answered contact message")
+	}
+	if _, err := txq.CreateContactMessageEntry(ctx, dbmodels.CreateContactMessageEntryParams{
+		ID:               entryID,
+		TenantID:         tenant.ID,
+		ContactMessageID: messageID,
+		Direction:        contactMessageEntryDirectionStaff,
+		AuthorID:         uuid.NullUUID{UUID: authorID, Valid: true},
+		Body:             body,
+		MessageID:        sql.NullString{String: mailID, Valid: true},
+	}); err != nil {
+		return s.internalDBError(ctx, "failed to store the contact message answer", err, "tenant_id", tenant.ID.String(), "contact_message_id", messageID.String())
+	}
+	payload, err := json.Marshal(outbox.ContactMessageReplyEmailPayload{
+		TenantID: tenant.ID.String(),
+		EntryID:  entryID.String(),
+	})
+	if err != nil {
+		return s.internalError(ctx, "failed to marshal the contact message reply email event", err)
+	}
+	if err := insertAdminOutboxEvent(ctx, txq, tenant.ID, outbox.EventTypeContactMessageReplyEmail, payload,
+		outbox.ContactMessageReplyEmailIdempotencyKey(entryID)); err != nil {
+		return s.internalDBError(ctx, "failed to queue the contact message reply email", err, "tenant_id", tenant.ID.String(), "contact_message_id", messageID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit a write transaction", err, "tenant_id", tenant.ID.String())
+	}
+	return nil
+}
+
+// ReplyToContactMessage sends the reader an answer from the console and keeps
+// it under the message.
+func (s *adminServer) ReplyToContactMessage(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ReplyToContactMessageRequest],
+) (*connect.Response[publiraadminv1.ReplyToContactMessageResponse], error) {
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	if err != nil {
+		return nil, err
+	}
+	body, err := validateContactMessageReply(req.Msg.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// The answer goes to an address a reader typed, which the request proved
+	// nothing about, so it spends the mail guard's allowances like every other
+	// form that mails such an address. The message is read first because it is
+	// what names the address, and because a message that does not exist sends
+	// nothing and should cost nothing.
+	answered, err := s.loadContactMessageByID(ctx, tenant.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), answered.ReplyToEmail); err != nil {
+		return nil, err
+	}
+
+	if err := s.storeContactMessageReply(ctx, tenant, messageID, sessionCtx.User.ID, body); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.loadContactMessageByID(ctx, tenant.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	// The audit record names the message and not what was said: the answer is
+	// kept under the message, where only the inbox's own staff can read it.
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, "contact_message_replied", updated.PublicID))
+
+	message, err := s.contactMessageDetail(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.ReplyToContactMessageResponse{Message: message}), nil
 }

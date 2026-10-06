@@ -155,6 +155,13 @@
       "subject": "{$tenant_name}お問い合わせ",
       "subject_line": "件名: {$subject}"
     },
+    "staff_contact_reply": {
+      "footnote": "このメールに返信して、やり取りを続けられます。",
+      "preview": "{$tenant_name}からお問い合わせへの回答が届きました。",
+      "quote_intro": "{$received_at}にお送りいただいた内容:",
+      "subject": "Re: {$subject}",
+      "subject_untitled": "Re: {$tenant_name}へのお問い合わせ"
+    },
     "tenant_admin_invitation": {
       "action": "招待を承諾する",
       "body": "{$tenant_name}のテナント管理者として招待されています。以下のボタンから招待を承諾してください。",

@@ -171,6 +171,29 @@ func TestContactMessageStaffEmailReachesEveryActiveStaffAccount(t *testing.T) {
 	}
 }
 
+// A subject holding a line break is quoted on one line, the way the template
+// that draws the same mail requires it.
+func TestContactMessageStaffEmailPutsAMultiLineSubjectOnOneLine(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	env := newContactMessageEnv(t, ctx, "OUTBOXCT005", "outbox-contact5.example.com", dbmodels.CreateContactMessageParams{
+		PublicID:     "CONTACTMSG05",
+		ReplyToEmail: "reader@example.test",
+		Subject:      sql.NullString{String: "Wrong date\nof birth", Valid: true},
+		Body:         "A question.",
+	})
+	env.pg.SeedTenantAdmin(t, env.tenantID, "OUTBOXSTF06", "staff@aoto.example.com", "Staff")
+
+	mailer := &recordingMailer{}
+	if err := env.handler(mailer)(ctx, env.event(t)); err != nil {
+		t.Fatalf("contact message staff email handler: %v", err)
+	}
+	if text := mailer.sent[0].email.Text; !strings.Contains(text, "Wrong date of birth") {
+		t.Errorf("the mail does not carry the subject on one line:\n%s", text)
+	}
+}
+
 // A tenant whose staff were all deactivated has nobody to tell, and a retry
 // would find the same empty list. The message itself is stored and waiting.
 func TestContactMessageStaffEmailCompletesWithNobodyToTell(t *testing.T) {

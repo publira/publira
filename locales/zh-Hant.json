@@ -155,6 +155,13 @@
       "subject": "{$tenant_name}諮詢",
       "subject_line": "主旨：{$subject}"
     },
+    "staff_contact_reply": {
+      "footnote": "直接回覆此郵件即可繼續溝通。",
+      "preview": "{$tenant_name}回覆了您的諮詢。",
+      "quote_intro": "您於{$received_at}寫道：",
+      "subject": "Re: {$subject}",
+      "subject_untitled": "Re: 您向{$tenant_name}傳送的諮詢"
+    },
     "tenant_admin_invitation": {
       "action": "接受邀請",
       "body": "您受邀成為{$tenant_name}的租戶管理員。請開啟下方按鈕接受邀請。",

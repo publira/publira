@@ -102,6 +102,86 @@ func TestBuildMessageWithoutHTMLRemainsPlainText(t *testing.T) {
 	}
 }
 
+func TestBuildMessageWritesTheThreadHeadersAMailNames(t *testing.T) {
+	message, err := buildMessage(emailsettings.SMTPSettings{FromAddress: "from@example.com", ReplyTo: "desk@example.com"}, "to@example.com", RenderedEmail{
+		Subject:    "Re: Wrong date of birth",
+		Text:       "We have corrected it.",
+		ReplyTo:    "staff@example.com",
+		MessageID:  "third@aoto.example.test",
+		InReplyTo:  "second@reader.example.test",
+		References: []string{"first@aoto.example.test", "second@reader.example.test"},
+	})
+	if err != nil {
+		t.Fatalf("buildMessage: %v", err)
+	}
+
+	parsed, err := mail.ReadMessage(strings.NewReader(message))
+	if err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	for name, want := range map[string]string{
+		"Reply-To":    "staff@example.com",
+		"Message-ID":  "<third@aoto.example.test>",
+		"In-Reply-To": "<second@reader.example.test>",
+		"References":  "<first@aoto.example.test> <second@reader.example.test>",
+	} {
+		if got := parsed.Header.Get(name); got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+}
+
+func TestBuildMessageFallsBackToTheSettingsReplyTo(t *testing.T) {
+	message, err := buildMessage(emailsettings.SMTPSettings{FromAddress: "from@example.com", ReplyTo: "desk@example.com"}, "to@example.com", RenderedEmail{
+		Subject: "Test",
+		Text:    "Plain text",
+	})
+	if err != nil {
+		t.Fatalf("buildMessage: %v", err)
+	}
+
+	parsed, err := mail.ReadMessage(strings.NewReader(message))
+	if err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if got := parsed.Header.Get("Reply-To"); got != "desk@example.com" {
+		t.Errorf("Reply-To = %q, want the settings' address", got)
+	}
+	for _, name := range []string{"Message-ID", "In-Reply-To", "References"} {
+		if got := parsed.Header.Get(name); got != "" {
+			t.Errorf("%s = %q, want no header for a mail that names none", name, got)
+		}
+	}
+}
+
+func TestSendRenderedEmailRejectsThreadHeaderInjection(t *testing.T) {
+	settings := emailsettings.SMTPSettings{
+		Host:        "smtp.example.com",
+		Port:        587,
+		Encryption:  "starttls",
+		FromAddress: "from@example.com",
+	}
+	for name, email := range map[string]RenderedEmail{
+		"reply-to with a header":     {ReplyTo: "staff@example.com\r\nBcc: victim@example.com"},
+		"reply-to with a name":       {ReplyTo: "Staff <staff@example.com>"},
+		"message id with a header":   {MessageID: "id@example.com>\r\nBcc: victim@example.com"},
+		"message id with no domain":  {MessageID: "id"},
+		"in-reply-to with brackets":  {InReplyTo: "<id@example.com>"},
+		"an empty references entry":  {References: []string{""}},
+		"a references entry spacing": {References: []string{"id@example.com other@example.com"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			email.Subject = "Re: Question"
+			email.Text = "Answer"
+			// The check runs before the dial, so no server is needed to see it.
+			err := NewClient().SendRenderedEmail(t.Context(), settings, "to@example.com", email)
+			if err == nil || (!strings.Contains(err.Error(), "reply-to must be") && !strings.Contains(err.Error(), "is not a message id")) {
+				t.Fatalf("SendRenderedEmail error = %v, want the header refused", err)
+			}
+		})
+	}
+}
+
 func TestSendEmailRejectsSubjectHeaderInjection(t *testing.T) {
 	err := NewClient().SendEmail(t.Context(), emailsettings.SMTPSettings{
 		Host:        "smtp.example.com",
