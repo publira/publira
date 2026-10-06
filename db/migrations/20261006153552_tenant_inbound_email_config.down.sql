@@ -1,0 +1,1 @@
+DROP TABLE tenant_inbound_email_config;

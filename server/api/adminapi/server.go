@@ -17,6 +17,8 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/inboundprovider"
+	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
@@ -61,6 +63,9 @@ type adminServer struct {
 	mail *mailguard.Guard
 	// paymentProviders are the providers a tenant's payment settings may name.
 	paymentProviders *paymentprovider.Registry
+	// inboundProviders are the providers a tenant's inbound email settings may
+	// name.
+	inboundProviders *inboundprovider.Registry
 }
 
 func invalidSessionError() error {
@@ -344,6 +349,7 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		policy:           policy,
 		mail:             mail,
 		paymentProviders: providers.Registry(),
+		inboundProviders: inboundproviders.Registry(),
 	}
 	return &API{server: server}, nil
 }
@@ -459,6 +465,15 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		),
 	)
 	mux.Handle(paymentPath, paymentHandler)
+	inboundEmailPath, inboundEmailHandler := publiraadminv1connect.NewAdminInboundEmailSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
+		),
+	)
+	mux.Handle(inboundEmailPath, inboundEmailHandler)
 	fcmPath, fcmHandler := publiraadminv1connect.NewAdminFcmSettingsServiceHandler(
 		server,
 		traced,

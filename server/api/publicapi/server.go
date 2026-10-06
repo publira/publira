@@ -20,6 +20,8 @@ import (
 	"github.com/publira/publira/server/internal/emailrejection"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/inboundprovider"
+	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
@@ -52,6 +54,9 @@ type apiServer struct {
 	webPushKeys webPushPublicKeySource
 	// paymentProviders are the providers a tenant's payment settings may name.
 	paymentProviders *paymentprovider.Registry
+	// inboundProviders are the providers a tenant's inbound email settings may
+	// name.
+	inboundProviders *inboundprovider.Registry
 	// stores verify the transactions the app buys through the App Store and
 	// Google Play.
 	stores storeClients
@@ -225,6 +230,7 @@ func newAPIServer(
 		reval:            revalidator,
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
 		paymentProviders: providers.Registry(),
+		inboundProviders: inboundproviders.Registry(),
 		stores:           defaultStoreClients(),
 		search:           search,
 		idTokens:         signin.NewVerifier(signin.VerifierConfig{}),

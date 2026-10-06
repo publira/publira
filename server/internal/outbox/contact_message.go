@@ -30,9 +30,13 @@ const EventTypeContactMessageStaffEmail = "contact_message_staff_email"
 // ContactMessageStaffEmailPayload names the stored message the mail is about
 // and nothing else. The worker reloads it, so a message purged between the
 // submission and the send cannot be mailed out after it is gone.
+//
+// EntryID names the reader's emailed reply the mail is about instead of the
+// message itself, and is empty for the message as the reader first sent it.
 type ContactMessageStaffEmailPayload struct {
 	TenantID  string `json:"tenant_id"`
 	MessageID string `json:"message_id"`
+	EntryID   string `json:"entry_id,omitempty"`
 }
 
 // ContactMessageStaffEmailIdempotencyKey is the outbox key for one message's
@@ -42,8 +46,17 @@ func ContactMessageStaffEmailIdempotencyKey(messageID uuid.UUID) string {
 	return EventTypeContactMessageStaffEmail + ":" + messageID.String()
 }
 
+// ContactMessageReplyStaffEmailIdempotencyKey is the outbox key for the mail
+// about one reader reply. It names the entry, so each reply is announced once
+// and none of them collides with the message's own announcement.
+func ContactMessageReplyStaffEmailIdempotencyKey(entryID uuid.UUID) string {
+	return EventTypeContactMessageStaffEmail + ":entry:" + entryID.String()
+}
+
 // NewContactMessageStaffEmailHandler sends one tenant's staff the message a
-// reader addressed to them.
+// reader addressed to them, or the reply a reader mailed back to an answer,
+// which is announced with the same mail: it is the reader writing in again,
+// and the message it reopened is waiting for staff as a new one would.
 //
 // Every recipient gets the same mail, so it is composed once and delivered per
 // address. A send that fails partway fails the event, and the retry mails the
@@ -56,7 +69,7 @@ func NewContactMessageStaffEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err := cfg.require("contact message staff email"); err != nil {
 			return err
 		}
-		tenantID, messageID, err := contactMessageStaffEmailIDs(event)
+		tenantID, messageID, entryID, err := contactMessageStaffEmailIDs(event)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -77,6 +90,23 @@ func NewContactMessageStaffEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		if err != nil {
 			return fmt.Errorf("load contact message: %w", err)
+		}
+		writing := contactMessageWriting{body: message.Body, receivedAt: message.CreatedAt}
+		if entryID.Valid {
+			entry, err := queries.GetContactMessageEntryForTenant(ctx, dbmodels.GetContactMessageEntryForTenantParams{
+				TenantID: tenantID,
+				ID:       entryID.UUID,
+			})
+			if errors.Is(err, sql.ErrNoRows) {
+				return Permanent(fmt.Errorf("contact message entry %s no longer exists", entryID.UUID))
+			}
+			if err != nil {
+				return fmt.Errorf("load contact message entry: %w", err)
+			}
+			if entry.Direction != "reader" || entry.ContactMessageID != messageID {
+				return Permanent(fmt.Errorf("contact message entry %s is not a reader reply to message %s", entryID.UUID, messageID))
+			}
+			writing = contactMessageWriting{body: entry.Body, receivedAt: entry.CreatedAt}
 		}
 
 		// Before the SMTP settings, which fail retriably: a tenant locale no
@@ -104,7 +134,7 @@ func NewContactMessageStaffEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("resolve smtp settings: %w", err)
 		}
-		request := contactMessageStaffEmailRequest(ctx, queries, tenant, message, tenantLocale)
+		request := contactMessageStaffEmailRequest(ctx, queries, tenant, message, writing, tenantLocale)
 		for _, recipient := range recipients {
 			if err := deliverEmail(ctx, cfg, settings, recipient, request); err != nil {
 				return err
@@ -117,20 +147,35 @@ func NewContactMessageStaffEmailHandler(cfg EmailHandlerConfig) Handler {
 // contactMessageStaffEmailIDs takes the tenant from the event row and checks
 // the payload agrees. The table already enforces the pair, so a disagreement is
 // a row written around the producer.
-func contactMessageStaffEmailIDs(event dbmodels.OutboxEvent) (uuid.UUID, uuid.UUID, error) {
+func contactMessageStaffEmailIDs(event dbmodels.OutboxEvent) (uuid.UUID, uuid.UUID, uuid.NullUUID, error) {
 	var payload ContactMessageStaffEmailPayload
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("decode contact message staff email payload: %w", err)
+		return uuid.Nil, uuid.Nil, uuid.NullUUID{}, fmt.Errorf("decode contact message staff email payload: %w", err)
 	}
 	tenantID, err := uuid.Parse(strings.TrimSpace(payload.TenantID))
 	if err != nil || !event.TenantID.Valid || tenantID != event.TenantID.UUID {
-		return uuid.Nil, uuid.Nil, errors.New("contact message staff email payload has an invalid tenant_id")
+		return uuid.Nil, uuid.Nil, uuid.NullUUID{}, errors.New("contact message staff email payload has an invalid tenant_id")
 	}
 	messageID, err := uuid.Parse(strings.TrimSpace(payload.MessageID))
 	if err != nil {
-		return uuid.Nil, uuid.Nil, errors.New("contact message staff email payload has an invalid message_id")
+		return uuid.Nil, uuid.Nil, uuid.NullUUID{}, errors.New("contact message staff email payload has an invalid message_id")
 	}
-	return tenantID, messageID, nil
+	var entryID uuid.NullUUID
+	if raw := strings.TrimSpace(payload.EntryID); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, uuid.Nil, uuid.NullUUID{}, errors.New("contact message staff email payload has an invalid entry_id")
+		}
+		entryID = uuid.NullUUID{UUID: parsed, Valid: true}
+	}
+	return tenantID, messageID, entryID, nil
+}
+
+// contactMessageWriting is what the reader wrote that a staff mail announces:
+// the message itself, or a reply they mailed back to an answer.
+type contactMessageWriting struct {
+	body       string
+	receivedAt time.Time
 }
 
 // contactMessageStaffEmailRequest fills the mail in. The sender's name and the
@@ -141,6 +186,7 @@ func contactMessageStaffEmailRequest(
 	queries *dbmodels.Queries,
 	tenant dbmodels.Tenant,
 	message dbmodels.GetContactMessageByIDForTenantRow,
+	writing contactMessageWriting,
 	tenantLocale string,
 ) emailrenderer.Request {
 	tenantName := strings.TrimSpace(tenant.Name)
@@ -151,8 +197,8 @@ func contactMessageStaffEmailRequest(
 		Template: "staff_contact_message_notice",
 		Locale:   tenantLocale,
 		Data: map[string]any{
-			"body":           message.Body,
-			"received_at":    message.CreatedAt.UTC().Format(time.RFC3339Nano),
+			"body":           writing.body,
+			"received_at":    writing.receivedAt.UTC().Format(time.RFC3339Nano),
 			"reply_to_email": message.ReplyToEmail,
 			"sender_name":    strings.TrimSpace(message.SenderName.String),
 			"subject":        contactMessageSubjectLine(message.Subject.String),

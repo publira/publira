@@ -1,0 +1,92 @@
+--xYzZY
+Content-Disposition: form-data; name="dkim"
+
+{@example.net : pass}
+--xYzZY
+Content-Disposition: form-data; name="email"
+
+Received: from DM6PR02MB.example.outlook.com by mx0047p1mdw1.sendgrid.net
+From: Alex Reader <alex.reader@example.net>
+To: "contact+7Hn3QzW9kPfa@reply.example.com" <contact+7Hn3QzW9kPfa@reply.example.com>
+Subject: =?utf-8?Q?Re:_About_my_purchase?=
+Thread-Topic: About my purchase
+Date: Mon, 5 Oct 2026 10:40:02 +0000
+Message-ID: <DM6PR02MB4433A1B2C3D4E5F6@DM6PR02MB.example.outlook.com>
+References: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+In-Reply-To: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+Content-Type: multipart/mixed; boundary="_004_DM6PR02MB_"
+MIME-Version: 1.0
+
+--_004_DM6PR02MB_
+Content-Type: multipart/alternative; boundary="_000_DM6PR02MB_"
+
+--_000_DM6PR02MB_
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+I tried again and it still fails on my tablet. The error says the episode i=
+s not available in my region, which seems wrong.
+
+________________________________
+From: Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>
+Sent: Monday, October 5, 2026 6:30 PM
+To: Alex Reader <alex.reader@example.net>
+Subject: Re: About my purchase
+
+We have restored your purchase. Please open the episode again.
+
+--_000_DM6PR02MB_
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><body><p>I tried again and it still fails on my tablet.</p></body></html>
+
+--_000_DM6PR02MB_--
+
+--_004_DM6PR02MB_
+Content-Type: image/png; name="screenshot.png"
+Content-Disposition: attachment; filename="screenshot.png"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgpub3QgcmVhbGx5IGEgcG5n
+
+--_004_DM6PR02MB_--
+
+--xYzZY
+Content-Disposition: form-data; name="to"
+
+"contact+7Hn3QzW9kPfa@reply.example.com" <contact+7Hn3QzW9kPfa@reply.example.com>
+--xYzZY
+Content-Disposition: form-data; name="from"
+
+Alex Reader <alex.reader@example.net>
+--xYzZY
+Content-Disposition: form-data; name="sender_ip"
+
+209.85.222.169
+--xYzZY
+Content-Disposition: form-data; name="spam_report"
+
+Spam detection software, running on the system "mx0047p1mdw1.sendgrid.net",
+has NOT identified this incoming email as spam.
+--xYzZY
+Content-Disposition: form-data; name="envelope"
+
+{"to":["contact+7Hn3QzW9kPfa@reply.example.com"],"from":"alex.reader@example.net"}
+--xYzZY
+Content-Disposition: form-data; name="subject"
+
+Re: About my purchase
+--xYzZY
+Content-Disposition: form-data; name="spam_score"
+
+0.1
+--xYzZY
+Content-Disposition: form-data; name="charsets"
+
+{"to":"UTF-8","subject":"UTF-8","from":"UTF-8"}
+--xYzZY
+Content-Disposition: form-data; name="SPF"
+
+pass
+--xYzZY--

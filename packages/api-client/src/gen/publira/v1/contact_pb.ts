@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/contact.proto.
  */
 export const file_publira_v1_contact: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NvbnRhY3QucHJvdG8SCnB1YmxpcmEudjEihQEKG1N1Ym1pdENvbnRhY3RNZXNzYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFgoOcmVwbHlfdG9fZW1haWwYAiABKAkSDwoHc3ViamVjdBgDIAEoCRIMCgRib2R5GAQgASgJIh4KHFN1Ym1pdENvbnRhY3RNZXNzYWdlUmVzcG9uc2UyfQoOQ29udGFjdFNlcnZpY2USawoUU3VibWl0Q29udGFjdE1lc3NhZ2USJy5wdWJsaXJhLnYxLlN1Ym1pdENvbnRhY3RNZXNzYWdlUmVxdWVzdBooLnB1YmxpcmEudjEuU3VibWl0Q29udGFjdE1lc3NhZ2VSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NvbnRhY3QucHJvdG8SCnB1YmxpcmEudjEihQEKG1N1Ym1pdENvbnRhY3RNZXNzYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFgoOcmVwbHlfdG9fZW1haWwYAiABKAkSDwoHc3ViamVjdBgDIAEoCRIMCgRib2R5GAQgASgJIh4KHFN1Ym1pdENvbnRhY3RNZXNzYWdlUmVzcG9uc2Ui9AEKIVByb2Nlc3NJbmJvdW5kRW1haWxXZWJob29rUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIcHJvdmlkZXIYAiABKAkSDwoHcGF5bG9hZBgDIAEoDBJLCgdoZWFkZXJzGAQgAygLMjoucHVibGlyYS52MS5Qcm9jZXNzSW5ib3VuZEVtYWlsV2ViaG9va1JlcXVlc3QuSGVhZGVyc0VudHJ5Gi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIiQKIlByb2Nlc3NJbmJvdW5kRW1haWxXZWJob29rUmVzcG9uc2Uy/AEKDkNvbnRhY3RTZXJ2aWNlEmsKFFN1Ym1pdENvbnRhY3RNZXNzYWdlEicucHVibGlyYS52MS5TdWJtaXRDb250YWN0TWVzc2FnZVJlcXVlc3QaKC5wdWJsaXJhLnYxLlN1Ym1pdENvbnRhY3RNZXNzYWdlUmVzcG9uc2UiABJ9ChpQcm9jZXNzSW5ib3VuZEVtYWlsV2ViaG9vaxItLnB1YmxpcmEudjEuUHJvY2Vzc0luYm91bmRFbWFpbFdlYmhvb2tSZXF1ZXN0Gi4ucHVibGlyYS52MS5Qcm9jZXNzSW5ib3VuZEVtYWlsV2ViaG9va1Jlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.SubmitContactMessageRequest
@@ -78,6 +78,59 @@ export const SubmitContactMessageResponseSchema: GenMessage<SubmitContactMessage
   messageDesc(file_publira_v1_contact, 1);
 
 /**
+ * `web-host` forwards an inbound email provider's raw request body and headers
+ * to this RPC. Verifying the request and reading the mail out of it stay on
+ * the API server, with the credentials the provider declares.
+ *
+ * @generated from message publira.v1.ProcessInboundEmailWebhookRequest
+ */
+export type ProcessInboundEmailWebhookRequest = Message<"publira.v1.ProcessInboundEmailWebhookRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The id of the provider the request came from, such as `sendgrid`.
+   *
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: bytes payload = 3;
+   */
+  payload: Uint8Array;
+
+  /**
+   * The request headers, keyed by name. Names are matched case-insensitively.
+   *
+   * @generated from field: map<string, string> headers = 4;
+   */
+  headers: { [key: string]: string };
+};
+
+/**
+ * Describes the message publira.v1.ProcessInboundEmailWebhookRequest.
+ * Use `create(ProcessInboundEmailWebhookRequestSchema)` to create a new message.
+ */
+export const ProcessInboundEmailWebhookRequestSchema: GenMessage<ProcessInboundEmailWebhookRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_contact, 2);
+
+/**
+ * @generated from message publira.v1.ProcessInboundEmailWebhookResponse
+ */
+export type ProcessInboundEmailWebhookResponse = Message<"publira.v1.ProcessInboundEmailWebhookResponse"> & {
+};
+
+/**
+ * Describes the message publira.v1.ProcessInboundEmailWebhookResponse.
+ * Use `create(ProcessInboundEmailWebhookResponseSchema)` to create a new message.
+ */
+export const ProcessInboundEmailWebhookResponseSchema: GenMessage<ProcessInboundEmailWebhookResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_contact, 3);
+
+/**
  * @generated from service publira.v1.ContactService
  */
 export const ContactService: GenService<{
@@ -98,6 +151,33 @@ export const ContactService: GenService<{
     methodKind: "unary";
     input: typeof SubmitContactMessageRequestSchema;
     output: typeof SubmitContactMessageResponseSchema;
+  },
+  /**
+   * Stores a reader's emailed reply under the contact message it answers, puts
+   * the message back among the waiting ones, and queues the mail that tells
+   * staff a reply arrived.
+   *
+   * The message is the one whose per-message address
+   * (`contact+<message id>@<inbound domain>`) the mail was sent to, or else
+   * the one an entry named in its In-Reply-To or References belongs to. A mail
+   * that matches no message, a tenant whose inbound email is not ready or uses
+   * another provider, a request the provider sends about something that is not
+   * a received mail, and a mail whose Message-ID is already stored are all
+   * answered with success and store nothing, so the provider does not deliver
+   * them again.
+   *
+   * An unregistered provider is not_found. A request whose signature or token
+   * does not verify is unauthenticated, and one that verifies but cannot be
+   * read is invalid_argument; neither stores anything. unavailable when the
+   * provider's API, which some providers have the mail's content read from,
+   * cannot be reached.
+   *
+   * @generated from rpc publira.v1.ContactService.ProcessInboundEmailWebhook
+   */
+  processInboundEmailWebhook: {
+    methodKind: "unary";
+    input: typeof ProcessInboundEmailWebhookRequestSchema;
+    output: typeof ProcessInboundEmailWebhookResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_contact, 0);

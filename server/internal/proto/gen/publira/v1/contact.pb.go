@@ -140,6 +140,115 @@ func (*SubmitContactMessageResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_contact_proto_rawDescGZIP(), []int{1}
 }
 
+// `web-host` forwards an inbound email provider's raw request body and headers
+// to this RPC. Verifying the request and reading the mail out of it stay on
+// the API server, with the credentials the provider declares.
+type ProcessInboundEmailWebhookRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The id of the provider the request came from, such as `sendgrid`.
+	Provider string `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	Payload  []byte `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
+	// The request headers, keyed by name. Names are matched case-insensitively.
+	Headers       map[string]string `protobuf:"bytes,4,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessInboundEmailWebhookRequest) Reset() {
+	*x = ProcessInboundEmailWebhookRequest{}
+	mi := &file_publira_v1_contact_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessInboundEmailWebhookRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessInboundEmailWebhookRequest) ProtoMessage() {}
+
+func (x *ProcessInboundEmailWebhookRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_contact_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessInboundEmailWebhookRequest.ProtoReflect.Descriptor instead.
+func (*ProcessInboundEmailWebhookRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_contact_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ProcessInboundEmailWebhookRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ProcessInboundEmailWebhookRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ProcessInboundEmailWebhookRequest) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *ProcessInboundEmailWebhookRequest) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+type ProcessInboundEmailWebhookResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessInboundEmailWebhookResponse) Reset() {
+	*x = ProcessInboundEmailWebhookResponse{}
+	mi := &file_publira_v1_contact_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessInboundEmailWebhookResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessInboundEmailWebhookResponse) ProtoMessage() {}
+
+func (x *ProcessInboundEmailWebhookResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_contact_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessInboundEmailWebhookResponse.ProtoReflect.Descriptor instead.
+func (*ProcessInboundEmailWebhookResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_contact_proto_rawDescGZIP(), []int{3}
+}
+
 var File_publira_v1_contact_proto protoreflect.FileDescriptor
 
 const file_publira_v1_contact_proto_rawDesc = "" +
@@ -151,9 +260,19 @@ const file_publira_v1_contact_proto_rawDesc = "" +
 	"\x0ereply_to_email\x18\x02 \x01(\tR\freplyToEmail\x12\x18\n" +
 	"\asubject\x18\x03 \x01(\tR\asubject\x12\x12\n" +
 	"\x04body\x18\x04 \x01(\tR\x04body\"\x1e\n" +
-	"\x1cSubmitContactMessageResponse2}\n" +
+	"\x1cSubmitContactMessageResponse\"\xa4\x02\n" +
+	"!ProcessInboundEmailWebhookRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
+	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x18\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\x12T\n" +
+	"\aheaders\x18\x04 \x03(\v2:.publira.v1.ProcessInboundEmailWebhookRequest.HeadersEntryR\aheaders\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"$\n" +
+	"\"ProcessInboundEmailWebhookResponse2\xfc\x01\n" +
 	"\x0eContactService\x12k\n" +
-	"\x14SubmitContactMessage\x12'.publira.v1.SubmitContactMessageRequest\x1a(.publira.v1.SubmitContactMessageResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x14SubmitContactMessage\x12'.publira.v1.SubmitContactMessageRequest\x1a(.publira.v1.SubmitContactMessageResponse\"\x00\x12}\n" +
+	"\x1aProcessInboundEmailWebhook\x12-.publira.v1.ProcessInboundEmailWebhookRequest\x1a..publira.v1.ProcessInboundEmailWebhookResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_contact_proto_rawDescOnce sync.Once
@@ -167,21 +286,28 @@ func file_publira_v1_contact_proto_rawDescGZIP() []byte {
 	return file_publira_v1_contact_proto_rawDescData
 }
 
-var file_publira_v1_contact_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_publira_v1_contact_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_publira_v1_contact_proto_goTypes = []any{
-	(*SubmitContactMessageRequest)(nil),  // 0: publira.v1.SubmitContactMessageRequest
-	(*SubmitContactMessageResponse)(nil), // 1: publira.v1.SubmitContactMessageResponse
-	(*v1.TenantContext)(nil),             // 2: publira.types.v1.TenantContext
+	(*SubmitContactMessageRequest)(nil),        // 0: publira.v1.SubmitContactMessageRequest
+	(*SubmitContactMessageResponse)(nil),       // 1: publira.v1.SubmitContactMessageResponse
+	(*ProcessInboundEmailWebhookRequest)(nil),  // 2: publira.v1.ProcessInboundEmailWebhookRequest
+	(*ProcessInboundEmailWebhookResponse)(nil), // 3: publira.v1.ProcessInboundEmailWebhookResponse
+	nil,                      // 4: publira.v1.ProcessInboundEmailWebhookRequest.HeadersEntry
+	(*v1.TenantContext)(nil), // 5: publira.types.v1.TenantContext
 }
 var file_publira_v1_contact_proto_depIdxs = []int32{
-	2, // 0: publira.v1.SubmitContactMessageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.v1.ContactService.SubmitContactMessage:input_type -> publira.v1.SubmitContactMessageRequest
-	1, // 2: publira.v1.ContactService.SubmitContactMessage:output_type -> publira.v1.SubmitContactMessageResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 0: publira.v1.SubmitContactMessageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	5, // 1: publira.v1.ProcessInboundEmailWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4, // 2: publira.v1.ProcessInboundEmailWebhookRequest.headers:type_name -> publira.v1.ProcessInboundEmailWebhookRequest.HeadersEntry
+	0, // 3: publira.v1.ContactService.SubmitContactMessage:input_type -> publira.v1.SubmitContactMessageRequest
+	2, // 4: publira.v1.ContactService.ProcessInboundEmailWebhook:input_type -> publira.v1.ProcessInboundEmailWebhookRequest
+	1, // 5: publira.v1.ContactService.SubmitContactMessage:output_type -> publira.v1.SubmitContactMessageResponse
+	3, // 6: publira.v1.ContactService.ProcessInboundEmailWebhook:output_type -> publira.v1.ProcessInboundEmailWebhookResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_contact_proto_init() }
@@ -195,7 +321,7 @@ func file_publira_v1_contact_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_contact_proto_rawDesc), len(file_publira_v1_contact_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

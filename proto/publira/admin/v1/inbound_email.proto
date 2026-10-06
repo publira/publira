@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/admin/v1/email.proto";
+import "publira/types/v1/types.proto";
+
+// One credential an inbound email provider declares.
+message InboundEmailCredentialField {
+  // The key the value is stored and sent under. The console names the field
+  // from its own catalogs by the provider id and this name.
+  string name = 1;
+  // A secret field is stored encrypted and never answered back in full.
+  bool secret = 2;
+  // Every required field has to be stored before the provider's mail is
+  // accepted.
+  bool required = 3;
+}
+
+// An inbound email provider a tenant may choose, as the server registers it.
+message InboundEmailProvider {
+  // The id stored in a tenant's settings and named in the webhook route.
+  string id = 1;
+  string display_name = 2;
+  repeated InboundEmailCredentialField fields = 3;
+  // The path on the tenant's storefront the provider posts received mail to,
+  // such as "/api/v1/webhook/email/sendgrid".
+  string webhook_path = 4;
+}
+
+message ListInboundEmailProvidersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListInboundEmailProvidersResponse {
+  // Ordered by id.
+  repeated InboundEmailProvider providers = 1;
+}
+
+// What is stored for one credential field of the tenant's provider. A secret
+// value never appears here.
+message InboundEmailCredentialFieldState {
+  string name = 1;
+  bool configured = 2;
+  // Display hint derived at write time: prefix + bullets + last four for a
+  // secret field, and the value itself for one that is not secret. Empty when
+  // the field is not stored.
+  string hint = 3;
+}
+
+// Non-secret view of a tenant's inbound email settings.
+message TenantInboundEmailSettings {
+  // The id of the provider the tenant chose, or empty before one is saved.
+  string provider = 1;
+  bool enabled = 2;
+  // The domain the tenant routes to the provider, in lower case, or empty
+  // before one is saved.
+  string domain = 3;
+  // True when enabled, a domain is stored, and every field the provider
+  // requires is stored. Only then does an answer's Reply-To name the
+  // message's own address on the domain, and only then is mail accepted.
+  bool ready = 4;
+  // One entry per field the provider declares, in its declared order.
+  repeated InboundEmailCredentialFieldState fields = 5;
+}
+
+message GetTenantInboundEmailSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantInboundEmailSettingsResponse {
+  TenantInboundEmailSettings settings = 1;
+}
+
+// A change to one credential field. A field the request leaves out is left as
+// it is.
+message InboundEmailCredentialFieldUpdate {
+  string name = 1;
+  SecretUpdateMode mode = 2;
+  // The new value; read only when mode is SECRET_UPDATE_MODE_REPLACE.
+  string value = 3;
+}
+
+message UpdateTenantInboundEmailSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A registered provider id. Choosing a provider other than the stored one
+  // clears every field stored for the previous one.
+  string provider = 2;
+  bool enabled = 3;
+  // A domain name of at most 253 characters, such as "reply.example.com",
+  // stored in lower case. Required while enabled; an empty value clears it.
+  string domain = 4;
+  repeated InboundEmailCredentialFieldUpdate fields = 5;
+}
+
+message UpdateTenantInboundEmailSettingsResponse {
+  TenantInboundEmailSettings settings = 1;
+}
+
+service AdminInboundEmailSettingsService {
+  // Minimum role: tenant_admin.
+  rpc ListInboundEmailProviders(ListInboundEmailProvidersRequest) returns (ListInboundEmailProvidersResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetTenantInboundEmailSettings(GetTenantInboundEmailSettingsRequest) returns (GetTenantInboundEmailSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantInboundEmailSettings(UpdateTenantInboundEmailSettingsRequest) returns (UpdateTenantInboundEmailSettingsResponse) {}
+}
