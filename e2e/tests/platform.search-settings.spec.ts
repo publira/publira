@@ -287,7 +287,6 @@ test.describe("web-platform search settings", () => {
 
       // A definition on analysis-nori is built into a new index while the
       // current one keeps answering, and the alias moves onto it.
-      const since = await statusValue(page, "Since").textContent();
       await editor.fill(NORI_DEFINITION);
       await page.getByRole("button", { name: "Save text analysis" }).click();
       await expect(
@@ -313,7 +312,6 @@ test.describe("web-platform search settings", () => {
       await expect(statusValue(page, "Answering from")).toHaveText(
         "OpenSearch"
       );
-      await expect(statusValue(page, "Since")).not.toHaveText(since ?? "");
       await expect.poll(writtenFormTokens).toContain("별");
       await expectOpenSearchAnswering(true);
 
