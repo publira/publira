@@ -104,8 +104,30 @@ const enabled: AdminMfaStatus = {
   required: false,
 };
 
-const formOf = (buttonName: string) => {
-  const form = screen.getByRole("button", { name: buttonName }).closest("form");
+/**
+ * How long a case waits for something to reach the screen: the card's content
+ * behind its `Suspense` boundaries, or what a mocked Action returned. Both land
+ * well inside the 1000ms `findBy*` default on an idle machine, but not on a
+ * runner busy with the whole `Test / TypeScript` job, where a wait has been
+ * seen to take longer than that.
+ */
+const onScreen = { timeout: 5000 };
+
+/**
+ * The longest case waits on the screen five times, so a case is given room for
+ * every one of those waits to use its whole budget.
+ */
+const caseTimeout = 5 * onScreen.timeout;
+
+// The button is waited for rather than read straight after `render`: until the
+// boundaries around its label resolve, the button has no name to find it by.
+const formOf = async (buttonName: string) => {
+  const button = await screen.findByRole(
+    "button",
+    { name: buttonName },
+    onScreen
+  );
+  const form = button.closest("form");
   if (!form) {
     throw new Error(`${buttonName} is not inside a form`);
   }
@@ -113,8 +135,8 @@ const formOf = (buttonName: string) => {
   return within(form);
 };
 
-const submitCode = (buttonName: string, code: string) => {
-  const form = formOf(buttonName);
+const submitCode = async (buttonName: string, code: string) => {
+  const form = await formOf(buttonName);
   fireEvent.change(form.getByLabelText("Verification code"), {
     target: { value: code },
   });
@@ -126,7 +148,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("MfaSettingsCard", () => {
+describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
   // Confirming the enrollment turns the factor on, and the card that comes
   // back holds the enabled forms instead; the codes are shown only now.
   it("keeps the recovery codes an enrollment issued once the card turns to the enabled forms", async () => {
@@ -147,11 +169,15 @@ describe("MfaSettingsCard", () => {
       <MfaSettingsCard status={disabled} tenantId="TENANT001" />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Set up" }));
-    expect(await screen.findByText("JBSWY3DPEHPK3PXP")).toBeDefined();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Set up" }, onScreen)
+    );
+    expect(
+      await screen.findByText("JBSWY3DPEHPK3PXP", {}, onScreen)
+    ).toBeDefined();
 
-    submitCode("Turn on two-step verification", "123456");
-    expect(await screen.findByText("AAAAA-BBBBB")).toBeDefined();
+    await submitCode("Turn on two-step verification", "123456");
+    expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
 
     const submitted = confirm.mock.calls[0]?.[1];
     expect(submitted?.get("code")).toBe("123456");
@@ -159,10 +185,12 @@ describe("MfaSettingsCard", () => {
 
     rerender(<MfaSettingsCard status={enabled} tenantId="TENANT001" />);
 
+    expect(
+      await screen.findByRole("button", { name: "Regenerate" }, onScreen)
+    ).toBeDefined();
     expect(screen.getByText("Two-step verification is now on.")).toBeDefined();
     expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
     expect(screen.getByText("CCCCC-DDDDD")).toBeDefined();
-    expect(screen.getByRole("button", { name: "Regenerate" })).toBeDefined();
   });
 
   it("keeps the codes a regeneration issued when a later one is refused", async () => {
@@ -176,11 +204,13 @@ describe("MfaSettingsCard", () => {
 
     render(<MfaSettingsCard status={enabled} tenantId="TENANT001" />);
 
-    submitCode("Regenerate", "123456");
-    expect(await screen.findByText("EEEEE-FFFFF")).toBeDefined();
+    await submitCode("Regenerate", "123456");
+    expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
 
-    submitCode("Regenerate", "000000");
-    expect(await screen.findByText("The code is incorrect.")).toBeDefined();
+    await submitCode("Regenerate", "000000");
+    expect(
+      await screen.findByText("The code is incorrect.", {}, onScreen)
+    ).toBeDefined();
     expect(screen.getByText("EEEEE-FFFFF")).toBeDefined();
     expect(
       screen.getByText("New recovery codes have been issued.")
@@ -202,8 +232,8 @@ describe("MfaSettingsCard", () => {
       </Activity>
     );
 
-    submitCode("Regenerate", "123456");
-    expect(await screen.findByText("EEEEE-FFFFF")).toBeDefined();
+    await submitCode("Regenerate", "123456");
+    expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
 
     rerender(
       <Activity mode="hidden">
@@ -216,7 +246,9 @@ describe("MfaSettingsCard", () => {
       </Activity>
     );
 
-    expect(screen.getByRole("button", { name: "Regenerate" })).toBeDefined();
+    expect(
+      await screen.findByRole("button", { name: "Regenerate" }, onScreen)
+    ).toBeDefined();
     expect(screen.queryByText("EEEEE-FFFFF")).toBeNull();
     expect(
       screen.queryByText("New recovery codes have been issued.")
@@ -238,20 +270,26 @@ describe("MfaSettingsCard", () => {
       <MfaSettingsCard status={enabled} tenantId="TENANT001" />
     );
 
-    submitCode("Regenerate", "123456");
-    expect(await screen.findByText("EEEEE-FFFFF")).toBeDefined();
+    await submitCode("Regenerate", "123456");
+    expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
 
-    submitCode("Turn off", "654321");
+    await submitCode("Turn off", "654321");
     expect(
-      await screen.findByText("Two-step verification has been turned off.")
+      await screen.findByText(
+        "Two-step verification has been turned off.",
+        {},
+        onScreen
+      )
     ).toBeDefined();
 
     rerender(<MfaSettingsCard status={disabled} tenantId="TENANT001" />);
 
     expect(
+      await screen.findByRole("button", { name: "Set up" }, onScreen)
+    ).toBeDefined();
+    expect(
       screen.getByText("Two-step verification has been turned off.")
     ).toBeDefined();
     expect(screen.queryByText("EEEEE-FFFFF")).toBeNull();
-    expect(screen.getByRole("button", { name: "Set up" })).toBeDefined();
   });
 });
