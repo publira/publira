@@ -4499,6 +4499,8 @@
         "platform_email_settings_updated": "更新了SMTP設定",
         "platform_policy_updated": "更新了平台政策",
         "platform_retention_defaults_updated": "更新了保留期限預設值",
+        "platform_search_connection_tested": "測試了搜尋連線",
+        "platform_search_settings_updated": "更新了搜尋設定",
         "platform_settings_updated": "更新了平台設定",
         "platform_smtp_test_email_sent": "寄出了SMTP測試郵件",
         "platform_storage_connection_tested": "測試了儲存連線",
@@ -4541,6 +4543,7 @@
         "platform_config": "平台設定",
         "platform_policy": "平台政策",
         "platform_retention": "保留期限預設值",
+        "search_config": "搜尋設定",
         "smtp_config": "SMTP設定",
         "storage_config": "儲存設定",
         "tenant_admin_invitation": "發給{$email}的管理員邀請",
@@ -4743,6 +4746,7 @@
       "platform": "平台",
       "policies": "政策",
       "retention_label": "保留期限",
+      "search_label": "搜尋",
       "security_label": "安全性",
       "services": "外部服務",
       "storage_label": "儲存",
@@ -5195,6 +5199,82 @@
         "steps": "連線測試步驟"
       }
     },
+    "search": {
+      "page_title": "作品搜尋",
+      "heading": "作品搜尋",
+      "page_description": "管理店面搜尋用來尋找作品、作者與品牌的引擎。",
+      "load_failed": "無法載入搜尋設定。請重新載入頁面後再試一次。",
+      "title": "搜尋引擎",
+      "description": "所有租戶的店面都透過此引擎進行搜尋。儲存其他引擎後，會在背景根據資料庫建立其索引，準備就緒後無須重新啟動即切換搜尋。",
+      "save": "儲存搜尋設定",
+      "saved": "已儲存搜尋設定。",
+      "saved_building": "已儲存搜尋設定。正在建立索引，準備就緒後搜尋將切換到新引擎。",
+      "save_failed": "無法儲存搜尋設定。請稍後再試。",
+      "save_conflict": "其他營運人員已變更搜尋設定，因此未儲存。請重新載入頁面後再試一次。",
+      "status": {
+        "title": "搜尋狀態",
+        "description": "店面搜尋目前使用的引擎。",
+        "answering": "目前引擎",
+        "url": "URL",
+        "index": "索引別名",
+        "since": "啟用時間",
+        "building": "正在為已儲存的設定建立{$engine}索引。準備就緒前，搜尋仍使用{$serving}。此頁面每隔幾秒會重新檢查狀態。",
+        "failed": "無法建立{$engine}索引，因此搜尋仍在使用{$serving}。系統每30秒重試一次建立。請修正引擎，或變更下方的設定。",
+        "failed_at": "最近一次失敗時間：{$time}"
+      },
+      "form": {
+        "engine_legend": "引擎",
+        "engine_required": "請選擇搜尋引擎。",
+        "engine_sql_description": "內建。在資料庫中尋找標題或名稱部分相符的結果，無須其他任何元件。",
+        "engine_opensearch_description": "依關聯度排序，並可透過假名讀音找到漢字標題。每個節點都需要安裝analysis-kuromoji與analysis-icu外掛程式。",
+        "engine_elasticsearch_description": "在安裝了相同兩個外掛程式的Elasticsearch上執行與OpenSearch相同的搜尋。",
+        "url": "URL",
+        "url_help": "引擎的位址，例如https://search.example.com:9200。請勿在其中包含使用者名稱或密碼。",
+        "url_required": "請輸入引擎的URL。",
+        "url_invalid": "請輸入以http://或https://開頭，且不含使用者名稱或密碼的URL。",
+        "index": "索引別名（選填）",
+        "index_help": "用於存取目錄索引的名稱。留空則使用publira-catalog。多個環境共用一個叢集時，請為每個環境指定不同的別名。",
+        "index_invalid": "索引別名只能使用小寫字母、數字、連字號、底線與句點，且不能以連字號、底線或加號開頭。",
+        "username_required": "請輸入使用者名稱。",
+        "password_required": "請輸入密碼。",
+        "credentials_need_https": "使用者名稱與密碼只能傳送到https://的URL。"
+      },
+      "credentials": {
+        "legend": "驗證",
+        "none": "不驗證",
+        "none_description": "用於無須登入即可回應的引擎，例如位於私人網路中的引擎。",
+        "basic": "使用者名稱與密碼",
+        "basic_description": "透過https://的URL使用HTTP基本驗證登入。密碼會加密儲存，且不會再次顯示。",
+        "username": "使用者名稱",
+        "password": "密碼",
+        "password_stored": "已儲存（隱藏）",
+        "password_stored_help": "儲存其他變更時，已儲存的密碼會維持不變。若要以其他帳戶登入，請同時替換使用者名稱與密碼。",
+        "password_help": "請輸入此使用者名稱的密碼。",
+        "replace": "替換認證資訊",
+        "keep": "保留已儲存的認證資訊"
+      },
+      "test": {
+        "title": "連線測試",
+        "description": "詢問上方URL處的引擎是什麼，以及是否具備目錄索引所需的外掛程式。不會儲存任何設定。",
+        "submit": "測試連線",
+        "pending": "測試中...",
+        "succeeded": "連線成功，且引擎具備目錄索引所需的兩個外掛程式。",
+        "failed": "無法執行連線測試。請稍後再試。",
+        "results": "連線測試結果",
+        "engine": "引擎：{$product} {$version}",
+        "installed": "已安裝",
+        "missing": "未安裝",
+        "missing_plugins": "引擎缺少目錄索引所需的外掛程式：{$plugins}。請在每個節點上安裝後再次測試。",
+        "reasons": {
+          "unreachable": "連線失敗：無法連線到引擎。請檢查URL，以及此伺服器能否連線到該引擎。",
+          "unauthorized": "驗證失敗：引擎拒絕了使用者名稱與密碼。",
+          "not_a_search_engine": "此URL有回應，但不是搜尋引擎。請確認URL指向的是引擎本身，而不是代理伺服器或網頁。",
+          "wrong_product": "此URL處的引擎與上方選擇的引擎不同。請選擇引擎所回報的產品，或檢查URL。",
+          "plugin_missing": "引擎缺少目錄索引所需的analysis-kuromoji或analysis-icu。",
+          "unknown": "測試因Publira無法辨識的原因失敗。"
+        }
+      }
+    },
     "webpush": {
       "page_title": "瀏覽器通知",
       "heading": "瀏覽器通知",
@@ -5255,6 +5335,13 @@
         "name": "圖片儲存",
         "configured": "上傳的圖片儲存在{$bucket}儲存貯體中。",
         "unconfigured": "尚未儲存儲存設定，因此無法上傳或顯示圖片。"
+      },
+      "search": {
+        "name": "作品搜尋",
+        "defaults": "店面在資料庫中搜尋。僅在需要依關聯度排序的搜尋結果時，才需設定OpenSearch或Elasticsearch。",
+        "configured": "店面使用{$engine}進行搜尋。",
+        "building": "正在建立{$engine}索引。準備就緒前，店面使用{$serving}進行搜尋。",
+        "failed": "無法建立{$engine}索引，因此店面仍使用{$serving}進行搜尋。"
       },
       "webpush": {
         "name": "瀏覽器通知",

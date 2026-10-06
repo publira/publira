@@ -42,6 +42,16 @@ const platformActionName = (action: string) => {
         <Message message="platform.audit.actions.platform_retention_defaults_updated" />
       );
     }
+    case "platform_search_connection_tested": {
+      return (
+        <Message message="platform.audit.actions.platform_search_connection_tested" />
+      );
+    }
+    case "platform_search_settings_updated": {
+      return (
+        <Message message="platform.audit.actions.platform_search_settings_updated" />
+      );
+    }
     case "platform_settings_updated": {
       return (
         <Message message="platform.audit.actions.platform_settings_updated" />

@@ -4499,6 +4499,8 @@
         "platform_email_settings_updated": "SMTP設定を更新",
         "platform_policy_updated": "プラットフォームのポリシーを更新",
         "platform_retention_defaults_updated": "保持期間の既定値を更新",
+        "platform_search_connection_tested": "検索の接続をテスト",
+        "platform_search_settings_updated": "検索設定を更新",
         "platform_settings_updated": "プラットフォーム設定を更新",
         "platform_smtp_test_email_sent": "SMTP接続テストメールを送信",
         "platform_storage_connection_tested": "ストレージの接続をテスト",
@@ -4541,6 +4543,7 @@
         "platform_config": "プラットフォーム設定",
         "platform_policy": "プラットフォームのポリシー",
         "platform_retention": "保持期間の既定値",
+        "search_config": "検索設定",
         "smtp_config": "SMTP設定",
         "storage_config": "ストレージ設定",
         "tenant_admin_invitation": "{$email}への管理者招待",
@@ -4743,6 +4746,7 @@
       "platform": "プラットフォーム",
       "policies": "ポリシー",
       "retention_label": "保持期間",
+      "search_label": "検索",
       "security_label": "セキュリティ",
       "services": "外部サービス",
       "storage_label": "ストレージ",
@@ -5195,6 +5199,82 @@
         "steps": "接続テストの手順"
       }
     },
+    "search": {
+      "page_title": "作品検索",
+      "heading": "作品検索",
+      "page_description": "ストアフロントの検索が作品・著者・レーベルを探すエンジンを管理します。",
+      "load_failed": "検索設定を読み込めませんでした。画面を再読み込みしてもう一度お試しください。",
+      "title": "検索エンジン",
+      "description": "すべてのテナントのストアフロントは、このエンジンで検索します。別のエンジンを保存すると、そのインデックスがデータベースからバックグラウンドで構築され、準備ができしだい再起動なしで検索が切り替わります。",
+      "save": "検索設定を保存",
+      "saved": "検索設定を保存しました。",
+      "saved_building": "検索設定を保存しました。インデックスを構築しています。準備ができしだい、検索は新しいエンジンに切り替わります。",
+      "save_failed": "検索設定を保存できませんでした。しばらくしてからもう一度お試しください。",
+      "save_conflict": "別のオペレーターが検索設定を変更したため、保存されませんでした。画面を再読み込みしてもう一度お試しください。",
+      "status": {
+        "title": "検索の状態",
+        "description": "ストアフロントの検索がいま使っているエンジンです。",
+        "answering": "使用中のエンジン",
+        "url": "URL",
+        "index": "インデックスのエイリアス",
+        "since": "使用開始",
+        "building": "保存した設定の{$engine}インデックスを構築しています。準備ができるまで、検索は引き続き{$serving}を使います。このページは数秒ごとに状態を確認します。",
+        "failed": "{$engine}インデックスを構築できなかったため、検索は引き続き{$serving}を使っています。構築は30秒ごとに再試行されます。エンジンを修正するか、下の設定を変更してください。",
+        "failed_at": "最後に失敗した日時: {$time}"
+      },
+      "form": {
+        "engine_legend": "エンジン",
+        "engine_required": "検索エンジンを選んでください。",
+        "engine_sql_description": "組み込み。データベース内のタイトルや名前の一部に一致するものを探します。ほかに何も必要ありません。",
+        "engine_opensearch_description": "関連度の高い順に並べ、かなで入力した読みから漢字のタイトルも見つけます。すべてのノードにanalysis-kuromojiとanalysis-icuプラグインが必要です。",
+        "engine_elasticsearch_description": "OpenSearchと同じ検索を、同じ2つのプラグインを入れたElasticsearchで行います。",
+        "url": "URL",
+        "url_help": "エンジンのアドレスです（例: https://search.example.com:9200）。ユーザー名やパスワードは含めないでください。",
+        "url_required": "エンジンのURLを入力してください。",
+        "url_invalid": "http://またはhttps://で始まり、ユーザー名やパスワードを含まないURLを入力してください。",
+        "index": "インデックスのエイリアス（任意）",
+        "index_help": "カタログのインデックスを参照する名前です。空欄ならpublira-catalogを使います。1つのクラスターを複数の環境で共有する場合は、環境ごとに別のエイリアスにしてください。",
+        "index_invalid": "インデックスのエイリアスには英小文字・数字・ハイフン・アンダースコア・ドットを使い、ハイフン・アンダースコア・プラス記号で始めないでください。",
+        "username_required": "ユーザー名を入力してください。",
+        "password_required": "パスワードを入力してください。",
+        "credentials_need_https": "ユーザー名とパスワードはhttps://のURLにしか送信できません。"
+      },
+      "credentials": {
+        "legend": "認証",
+        "none": "認証なし",
+        "none_description": "プライベートネットワーク内など、サインインなしで応答するエンジンに使います。",
+        "basic": "ユーザー名とパスワード",
+        "basic_description": "https://のURLに対してHTTPベーシック認証でサインインします。パスワードは暗号化して保存され、再び表示されることはありません。",
+        "username": "ユーザー名",
+        "password": "パスワード",
+        "password_stored": "保存済み（非表示）",
+        "password_stored_help": "ほかの項目を変更して保存しても、保存済みのパスワードはそのまま保持されます。別のアカウントでサインインするには、ユーザー名とパスワードをまとめて差し替えてください。",
+        "password_help": "このユーザー名のパスワードを入力してください。",
+        "replace": "認証情報を差し替える",
+        "keep": "保存済みの認証情報を使う"
+      },
+      "test": {
+        "title": "接続テスト",
+        "description": "上のURLのエンジンに、何のエンジンか、カタログのインデックスに必要なプラグインがあるかを問い合わせます。設定は保存されません。",
+        "submit": "接続をテスト",
+        "pending": "テスト中...",
+        "succeeded": "接続できました。エンジンにはカタログのインデックスに必要な2つのプラグインがそろっています。",
+        "failed": "接続テストを実行できませんでした。しばらくしてからもう一度お試しください。",
+        "results": "接続テストの結果",
+        "engine": "エンジン: {$product} {$version}",
+        "installed": "インストール済み",
+        "missing": "未インストール",
+        "missing_plugins": "カタログのインデックスに必要なプラグインがエンジンにありません: {$plugins}。すべてのノードにインストールしてから、もう一度テストしてください。",
+        "reasons": {
+          "unreachable": "接続エラー: エンジンに接続できませんでした。URLと、このサーバーから接続できるかを確認してください。",
+          "unauthorized": "認証エラー: エンジンがユーザー名とパスワードを受け付けませんでした。",
+          "not_a_search_engine": "このURLから応答はありましたが、検索エンジンではありませんでした。URLがプロキシやWebページではなく、エンジンそのものを指しているか確認してください。",
+          "wrong_product": "このURLのエンジンは、上で選んだエンジンと異なります。エンジンが名乗る製品を選び直すか、URLを確認してください。",
+          "plugin_missing": "カタログのインデックスに必要なanalysis-kuromojiまたはanalysis-icuがエンジンにありません。",
+          "unknown": "Publiraが判別できない理由でテストに失敗しました。"
+        }
+      }
+    },
     "webpush": {
       "page_title": "ブラウザー通知",
       "heading": "ブラウザー通知",
@@ -5255,6 +5335,13 @@
         "name": "画像ストレージ",
         "configured": "アップロードされた画像は{$bucket}バケットに保存されます。",
         "unconfigured": "ストレージが保存されていないため、画像をアップロードも表示もできません。"
+      },
+      "search": {
+        "name": "作品検索",
+        "defaults": "ストアフロントはデータベースで検索しています。関連度順の検索結果が必要な場合にだけ、OpenSearchかElasticsearchを設定してください。",
+        "configured": "ストアフロントは{$engine}で検索しています。",
+        "building": "{$engine}のインデックスを構築しています。準備ができるまで、ストアフロントは{$serving}で検索します。",
+        "failed": "{$engine}のインデックスを構築できなかったため、ストアフロントは引き続き{$serving}で検索しています。"
       },
       "webpush": {
         "name": "ブラウザー通知",

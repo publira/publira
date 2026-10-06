@@ -4499,6 +4499,8 @@
         "platform_email_settings_updated": "Updated SMTP settings",
         "platform_policy_updated": "Updated the platform policy",
         "platform_retention_defaults_updated": "Updated the retention defaults",
+        "platform_search_connection_tested": "Tested the search connection",
+        "platform_search_settings_updated": "Updated search settings",
         "platform_settings_updated": "Updated platform settings",
         "platform_smtp_test_email_sent": "Sent an SMTP test email",
         "platform_storage_connection_tested": "Tested the storage connection",
@@ -4541,6 +4543,7 @@
         "platform_config": "Platform settings",
         "platform_policy": "Platform policy",
         "platform_retention": "Retention defaults",
+        "search_config": "Search settings",
         "smtp_config": "SMTP settings",
         "storage_config": "Storage settings",
         "tenant_admin_invitation": "Admin invitation for {$email}",
@@ -4743,6 +4746,7 @@
       "platform": "Platform",
       "policies": "Policies",
       "retention_label": "Retention",
+      "search_label": "Search",
       "security_label": "Security",
       "services": "Services",
       "storage_label": "Storage",
@@ -5195,6 +5199,82 @@
         "steps": "Connection test steps"
       }
     },
+    "search": {
+      "page_title": "Catalog search",
+      "heading": "Catalog search",
+      "page_description": "Manage the engine the storefront search finds works, authors, and labels with.",
+      "load_failed": "Could not load the search settings. Reload the screen and try again.",
+      "title": "Search engine",
+      "description": "Every tenant's storefront searches through this engine. When you save another engine, its index is built from the database in the background, and the search moves over once it's ready, without a restart.",
+      "save": "Save search settings",
+      "saved": "Search settings saved.",
+      "saved_building": "Search settings saved. The index is being built now, and the search moves to the new engine once it's ready.",
+      "save_failed": "Could not save the search settings. Please try again later.",
+      "save_conflict": "Another operator changed the search settings, so nothing was saved. Reload the screen and try again.",
+      "status": {
+        "title": "Search status",
+        "description": "The engine the storefront search is answering from right now.",
+        "answering": "Answering from",
+        "url": "URL",
+        "index": "Index alias",
+        "since": "Since",
+        "building": "The {$engine} index is being built for the saved settings. Until it's ready, the search keeps answering from {$serving}. This page checks again every few seconds.",
+        "failed": "The {$engine} index couldn't be built, so the search is still answering from {$serving}. The build is tried again every 30 seconds. Fix the engine, or change the settings below.",
+        "failed_at": "Last failed at {$time}."
+      },
+      "form": {
+        "engine_legend": "Engine",
+        "engine_required": "Choose a search engine.",
+        "engine_sql_description": "Built in. Matches part of a title or a name in the database, and needs nothing else to run.",
+        "engine_opensearch_description": "Ranks results by relevance, and finds a title written in kanji from a reading typed in kana. Needs the analysis-kuromoji and analysis-icu plugins on every node.",
+        "engine_elasticsearch_description": "The same search as OpenSearch, on Elasticsearch with the same two plugins.",
+        "url": "URL",
+        "url_help": "The address of the engine, such as https://search.example.com:9200. Don't put a username or a password in it.",
+        "url_required": "Enter the engine's URL.",
+        "url_invalid": "Enter a URL that starts with http:// or https://, without a username or a password in it.",
+        "index": "Index alias (optional)",
+        "index_help": "The name the catalog index is reached by. Leave it empty to use publira-catalog. Give each environment that shares a cluster an alias of its own.",
+        "index_invalid": "An index alias uses lowercase letters, digits, hyphens, underscores, and dots, and doesn't start with a hyphen, an underscore, or a plus sign.",
+        "username_required": "Enter the username.",
+        "password_required": "Enter the password.",
+        "credentials_need_https": "A username and a password can only be sent to an https:// URL."
+      },
+      "credentials": {
+        "legend": "Authentication",
+        "none": "No authentication",
+        "none_description": "The engine answers without signing in, for example on a private network.",
+        "basic": "Username and password",
+        "basic_description": "Sign in with HTTP basic authentication, over an https:// URL. The password is stored encrypted and is never shown again.",
+        "username": "Username",
+        "password": "Password",
+        "password_stored": "Saved (hidden)",
+        "password_stored_help": "The saved password is kept when you save other changes. To sign in as someone else, replace the username and the password together.",
+        "password_help": "Enter the password for this username.",
+        "replace": "Replace credentials",
+        "keep": "Keep saved credentials"
+      },
+      "test": {
+        "title": "Connection test",
+        "description": "Asks the engine at the URL above what it is, and whether it has the plugins the catalog index needs. Nothing is saved.",
+        "submit": "Test connection",
+        "pending": "Testing...",
+        "succeeded": "The connection works, and the engine has both plugins the catalog index needs.",
+        "failed": "Could not run the connection test. Please try again later.",
+        "results": "Connection test results",
+        "engine": "Engine: {$product} {$version}",
+        "installed": "Installed",
+        "missing": "Missing",
+        "missing_plugins": "The engine is missing a plugin the catalog index needs: {$plugins}. Install it on every node and test again.",
+        "reasons": {
+          "unreachable": "Connection failed: the engine couldn't be reached. Check the URL, and that this server can connect to it.",
+          "unauthorized": "Authentication failed: the engine rejected the username and the password.",
+          "not_a_search_engine": "Something answered at this URL, but not a search engine. Check that the URL points at the engine itself rather than at a proxy or a web page.",
+          "wrong_product": "The engine at this URL isn't the one selected above. Choose the engine it reports, or check the URL.",
+          "plugin_missing": "The engine is missing analysis-kuromoji or analysis-icu, which the catalog index needs.",
+          "unknown": "The test failed for a reason Publira doesn't recognize."
+        }
+      }
+    },
     "webpush": {
       "page_title": "Browser notifications",
       "heading": "Browser notifications",
@@ -5255,6 +5335,13 @@
         "name": "Image storage",
         "configured": "Uploaded images are stored in the {$bucket} bucket.",
         "unconfigured": "No storage is saved, so images can't be uploaded or shown."
+      },
+      "search": {
+        "name": "Catalog search",
+        "defaults": "The storefront searches the database. Set up OpenSearch or Elasticsearch only if you want results ranked by relevance.",
+        "configured": "The storefront searches with {$engine}.",
+        "building": "The {$engine} index is being built. The storefront searches with {$serving} until it's ready.",
+        "failed": "The {$engine} index couldn't be built, so the storefront still searches with {$serving}."
       },
       "webpush": {
         "name": "Browser notifications",

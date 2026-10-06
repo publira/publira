@@ -11,6 +11,12 @@ export type {
   MinuteDayLimit,
   PlatformPolicy,
 } from "../gen/publira/platform/v1/policy_pb.js";
+export type {
+  PlatformSearchBuildFailure,
+  PlatformSearchServing,
+  PlatformSearchSettings,
+  TestPlatformSearchConnectionResponse,
+} from "../gen/publira/platform/v1/search_pb.js";
 export type { PlatformSettings } from "../gen/publira/platform/v1/settings_pb.js";
 export type {
   PlatformStorageCheck,

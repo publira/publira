@@ -8,6 +8,8 @@ const ja = "ja" as const;
 
 describe("getAuditActionOptions", () => {
   it.each([
+    ["platform_search_settings_updated", "Updated search settings"],
+    ["platform_search_connection_tested", "Tested the search connection"],
     ["platform_storage_settings_updated", "Updated storage settings"],
     ["platform_storage_connection_tested", "Tested the storage connection"],
     ["platform_webpush_subject_updated", "Updated the Web Push contact"],

@@ -23,6 +23,7 @@ import {
   emailConfigurationState,
   getRequiredConfigurationState,
   policyConfigurationState,
+  searchConfigurationState,
   storageConfigurationState,
   webPushConfigurationState,
 } from "#lib/configuration-status";
@@ -33,6 +34,8 @@ import {
   getPlatformRetentionDefaults,
 } from "#lib/platform-policy";
 import { getPlatformSettings } from "#lib/platform-settings";
+import { getPlatformSearchSettings } from "#lib/search-settings";
+import { searchEngineName } from "#lib/search-settings-shared";
 import { getPlatformStorageSettings } from "#lib/storage-settings";
 import { getPlatformWebPushSettings } from "#lib/webpush-settings";
 
@@ -231,6 +234,80 @@ const StorageRow = async () => {
   );
 };
 
+const SearchRow = async () => {
+  const result = await getPlatformSearchSettings();
+
+  const name = (
+    <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+      <Message message="platform.configuration.search.name" />
+    </Suspense>
+  );
+
+  if (!result.ok) {
+    return (
+      <ConfigurationRow
+        action={
+          <ConfigurationAction href="/services/search" state="unavailable" />
+        }
+        details={result.message}
+        name={name}
+        necessity={<OptionalNecessity />}
+        status={<ConfigurationStatusBadge state="unavailable" />}
+      />
+    );
+  }
+
+  const { settings } = result;
+  const state = searchConfigurationState(settings);
+  const engines = {
+    engine: searchEngineName(settings.engine),
+    serving: searchEngineName(settings.serving.engine),
+  };
+  let details = (
+    <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+      <Message
+        message="platform.configuration.search.configured"
+        values={engines}
+      />
+    </Suspense>
+  );
+  if (settings.buildState === "failed") {
+    details = (
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message
+          message="platform.configuration.search.failed"
+          values={engines}
+        />
+      </Suspense>
+    );
+  } else if (settings.buildState === "building") {
+    details = (
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message
+          message="platform.configuration.search.building"
+          values={engines}
+        />
+      </Suspense>
+    );
+  } else if (state === "defaults") {
+    details = (
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message="platform.configuration.search.defaults" />
+      </Suspense>
+    );
+  }
+
+  return (
+    <ConfigurationRow
+      action={<ConfigurationAction href="/services/search" state={state} />}
+      details={details}
+      name={name}
+      necessity={<OptionalNecessity />}
+      status={<ConfigurationStatusBadge state={state} />}
+    />
+  );
+};
+
 const WebPushRow = async () => {
   const locale = await getPlatformLocale();
   const result = await getPlatformWebPushSettings(locale);
@@ -382,6 +459,9 @@ export const SetupStatusSection = () => (
         </Suspense>
         <Suspense fallback={<ConfigurationRowSkeleton />}>
           <StorageRow />
+        </Suspense>
+        <Suspense fallback={<ConfigurationRowSkeleton />}>
+          <SearchRow />
         </Suspense>
         <Suspense fallback={<ConfigurationRowSkeleton />}>
           <WebPushRow />

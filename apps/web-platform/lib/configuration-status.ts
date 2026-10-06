@@ -1,5 +1,6 @@
 import { getPlatformEmailSettings } from "./email-settings";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
+import type { PlatformSearchSettings } from "./search-settings-shared";
 import { getPlatformStorageSettings } from "./storage-settings";
 import type { PlatformStorageSettings } from "./storage-settings-shared";
 import type { PlatformWebPushSettings } from "./webpush-settings";
@@ -32,6 +33,21 @@ export const storageConfigurationState = (
   settings: Pick<PlatformStorageSettings, "revision">
 ): ConfigurationState =>
   settings.revision === "0" ? "needs_setup" : "configured";
+
+/**
+ * The SQL engine is what an installation searches with until it saves another,
+ * so it is the built-in default rather than something left undone. A build
+ * that failed leaves the storefront on the previous engine until the operator
+ * fixes the engine or the settings.
+ */
+export const searchConfigurationState = (
+  settings: Pick<PlatformSearchSettings, "buildState" | "engine">
+): ConfigurationState => {
+  if (settings.buildState === "failed") {
+    return "needs_setup";
+  }
+  return settings.engine === "sql" ? "defaults" : "configured";
+};
 
 export const webPushConfigurationState = (
   settings: Pick<PlatformWebPushSettings, "configured">

@@ -11,6 +11,7 @@ import { PlatformEmailSettingsService } from "../gen/publira/platform/v1/email_p
 import { PlatformNotificationService } from "../gen/publira/platform/v1/notification_pb.js";
 import { PlatformOperatorService } from "../gen/publira/platform/v1/operator_pb.js";
 import { PlatformPolicyService } from "../gen/publira/platform/v1/policy_pb.js";
+import { PlatformSearchSettingsService } from "../gen/publira/platform/v1/search_pb.js";
 import { PlatformSettingsService } from "../gen/publira/platform/v1/settings_pb.js";
 import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
 import { PlatformStorageSettingsService } from "../gen/publira/platform/v1/storage_pb.js";
@@ -38,6 +39,7 @@ export interface PlatformApiClient {
   notification: Client<typeof PlatformNotificationService>;
   operators: Client<typeof PlatformOperatorService>;
   policy: Client<typeof PlatformPolicyService>;
+  searchSettings: Client<typeof PlatformSearchSettingsService>;
   settings: Client<typeof PlatformSettingsService>;
   setup: Client<typeof PlatformSetupService>;
   storageSettings: Client<typeof PlatformStorageSettingsService>;
@@ -89,6 +91,10 @@ export const createPlatformApiClient = (
     notification: createClient(PlatformNotificationService, transportInstance),
     operators: createClient(PlatformOperatorService, transportInstance),
     policy: createClient(PlatformPolicyService, transportInstance),
+    searchSettings: createClient(
+      PlatformSearchSettingsService,
+      transportInstance
+    ),
     settings: createClient(PlatformSettingsService, transportInstance),
     setup: createClient(PlatformSetupService, transportInstance),
     storageSettings: createClient(

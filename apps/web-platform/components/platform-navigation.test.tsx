@@ -55,6 +55,7 @@ describe("PlatformNavigation", () => {
     expect(sectionHrefs("platform.nav.services")).toEqual([
       "/services/email",
       "/services/storage",
+      "/services/search",
       "/services/webpush",
     ]);
     expect(sectionHrefs("platform.nav.policies")).toEqual([
@@ -84,6 +85,7 @@ describe("PlatformNavigation", () => {
     "/general",
     "/services/email",
     "/services/storage",
+    "/services/search",
     "/services/webpush",
     "/policies/security",
     "/policies/community",
