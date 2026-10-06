@@ -21,20 +21,3 @@ class ResizeObserverStub implements ResizeObserver {
 }
 
 globalThis.ResizeObserver ??= ResizeObserverStub;
-
-/**
- * jsdom implements no `matchMedia` either, and the episode reader asks it
- * whether the window is held upright before it lets the viewport show a
- * spread. A window jsdom has no size for matches no query, which is the
- * answer the server renders with too.
- */
-globalThis.matchMedia ??= (query: string): MediaQueryList => ({
-  addEventListener: observeNothing,
-  addListener: observeNothing,
-  dispatchEvent: () => false,
-  matches: false,
-  media: query,
-  onchange: null,
-  removeEventListener: observeNothing,
-  removeListener: observeNothing,
-});

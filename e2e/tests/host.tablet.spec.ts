@@ -114,7 +114,7 @@ test.describe("web-host comic viewer on a tablet", () => {
     );
   });
 
-  test("shows one page held upright and a spread held sideways", async ({
+  test("shows a spread only in a viewer at least as wide as it is tall", async ({
     page,
   }) => {
     await page.goto(hostPath(VIEWER_EPISODE_PATH));
@@ -125,11 +125,17 @@ test.describe("web-host comic viewer on a tablet", () => {
       .locator('.pcv-viewport [data-rail-slot="current"] [data-view-mode]')
       .first();
 
-    // The project holds the tablet upright: wide enough for two pages, and
-    // taller than it is wide.
+    // The project holds the tablet upright, and the viewer takes the height
+    // that gives it: taller than it is wide.
     await expect(currentSlot).toHaveAttribute("data-view-mode", "single");
 
+    // On its side the viewer is wider than it is tall.
     await page.setViewportSize({ height: 810, width: 1080 });
+    await expect(currentSlot).toHaveAttribute("data-view-mode", "double");
+
+    // A window still held upright, but with a viewer wider than it is tall:
+    // the box decides, not the way the window is held.
+    await page.setViewportSize({ height: 1100, width: 1000 });
     await expect(currentSlot).toHaveAttribute("data-view-mode", "double");
 
     await page.setViewportSize({ height: 1080, width: 810 });
