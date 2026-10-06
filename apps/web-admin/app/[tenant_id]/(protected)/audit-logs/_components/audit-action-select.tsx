@@ -39,6 +39,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "series_free_windows_created",
             },
             {
+              label: t("admin.audit.actions.series_wait_free_settings_updated"),
+              value: "series_wait_free_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.episode_created"),
               value: "episode_created",
             },

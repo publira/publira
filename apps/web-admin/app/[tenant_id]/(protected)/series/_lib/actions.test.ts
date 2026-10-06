@@ -7,6 +7,7 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockUpdateSeries,
+  mockUpdateSeriesWaitFreeSettings,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
+  mockUpdateSeriesWaitFreeSettings: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
@@ -51,6 +53,12 @@ vi.mock("#lib/series", () => ({
     `series-${tenantId}-${publicId}`,
   seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
   updateSeries: mockUpdateSeries,
+}));
+
+vi.mock("#lib/series-wait-free", () => ({
+  seriesWaitFreeSettingsCacheTag: (tenantId: string, seriesId: string) =>
+    `series-wait-free-${tenantId}-${seriesId}`,
+  updateSeriesWaitFreeSettings: mockUpdateSeriesWaitFreeSettings,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -896,5 +904,157 @@ describe("series actions", () => {
       ok: false,
     });
     expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateSeriesWaitFreeSettingsAction", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+
+  const waitFreeFormData = (fields: Record<string, string>) => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("series_public_id", "SERIES001");
+    formData.set("recharge_hours", "23");
+    formData.set("access_hours", "72");
+    formData.set("excluded_latest_count", "1");
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("saves the rule and returns to the series with a notice", async () => {
+    mockUpdateSeriesWaitFreeSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        accessHours: 72,
+        enabled: true,
+        excludedLatestCount: 1,
+        rechargeHours: 23,
+      },
+    });
+
+    const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+    await updateSeriesWaitFreeSettingsAction(
+      null,
+      waitFreeFormData({ enabled: "on" })
+    );
+
+    expect(mockUpdateSeriesWaitFreeSettings).toHaveBeenCalledWith(
+      {
+        accessHours: 72,
+        enabled: true,
+        excludedLatestCount: 1,
+        rechargeHours: 23,
+        seriesId: SERIES_ID,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `series-wait-free-TENANT001-${SERIES_ID}`
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001?wait_free_updated=1"
+    );
+  });
+
+  // An unchecked switch posts nothing, which is the rule turned off rather
+  // than a field left out.
+  it("reads a missing switch as the rule turned off", async () => {
+    mockUpdateSeriesWaitFreeSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        accessHours: 72,
+        enabled: false,
+        excludedLatestCount: 1,
+        rechargeHours: 23,
+      },
+    });
+
+    const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+    await updateSeriesWaitFreeSettingsAction(null, waitFreeFormData({}));
+
+    expect(mockUpdateSeriesWaitFreeSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "recharge_hours",
+      "0",
+      "rechargeHours",
+      "Enter the hours until the next ticket as a whole number from 1 to 8760.",
+    ],
+    [
+      "recharge_hours",
+      "8761",
+      "rechargeHours",
+      "Enter the hours until the next ticket as a whole number from 1 to 8760.",
+    ],
+    [
+      "access_hours",
+      "",
+      "accessHours",
+      "Enter the hours an episode stays open as a whole number from 1 to 8760.",
+    ],
+    [
+      "access_hours",
+      "1.5",
+      "accessHours",
+      "Enter the hours an episode stays open as a whole number from 1 to 8760.",
+    ],
+    [
+      "excluded_latest_count",
+      "-1",
+      "excludedLatestCount",
+      "Enter the number of newest episodes as a whole number, 0 or more.",
+    ],
+  ])(
+    "refuses %s=%j next to the field without calling the API",
+    async (name, value, field, message) => {
+      const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+      const result = await updateSeriesWaitFreeSettingsAction(
+        null,
+        waitFreeFormData({ [name]: value })
+      );
+
+      expect(result).toEqual({
+        fieldErrors: { [field]: message },
+        message: "Please check the information you entered.",
+        ok: false,
+      });
+      expect(mockUpdateSeriesWaitFreeSettings).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    }
+  );
+
+  it("keeps the form open with the API's wording when the save fails", async () => {
+    mockUpdateSeriesWaitFreeSettings.mockResolvedValueOnce({
+      message: "Could not save the free-if-you-wait settings.",
+      ok: false,
+    });
+
+    const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+    const result = await updateSeriesWaitFreeSettingsAction(
+      null,
+      waitFreeFormData({ enabled: "on" })
+    );
+
+    expect(result).toEqual({
+      message: "Could not save the free-if-you-wait settings.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

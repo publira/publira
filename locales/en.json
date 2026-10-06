@@ -269,6 +269,7 @@
         "tenant_admin_invite_canceled": "Admin invitation canceled",
         "series_eye_catch_aspect_image_uploaded": "Series eye-catch image uploaded",
         "series_free_windows_created": "Free reading periods added across a series",
+        "series_wait_free_settings_updated": "Free-if-you-wait settings updated",
         "episode_updated": "Episode updated",
         "episode_image_uploaded": "Episode body image uploaded",
         "episode_credits_replaced": "Episode authors updated",
@@ -1834,6 +1835,28 @@
         "web": "Web only",
         "app": "App only",
         "none": "Not shown anywhere"
+      },
+      "wait_free": {
+        "title": "Free if you wait",
+        "description": "Signed-in readers can open one paid episode of this series with a free ticket, and get the next ticket after a wait.",
+        "enabled": "Offer free tickets on this series",
+        "enabled_description": "Turning this off keeps the numbers below for the next time it is turned on. Episodes readers have already opened with a ticket stay open until their time is up.",
+        "recharge_hours": "Hours until the next ticket",
+        "recharge_hours_description": "How long after using a ticket a reader gets the next one, from 1 to {$max} hours. A change applies from each reader's next use; a reader already waiting keeps the time they were given.",
+        "access_hours": "Hours an episode stays open",
+        "access_hours_description": "How long an episode opened with a ticket stays readable, from 1 to {$max} hours.",
+        "excluded_latest_count": "Newest episodes a ticket cannot open",
+        "excluded_latest_count_description": "Counted back from the newest published episode in the series' order. Enter 0 to let a ticket open any paid episode.",
+        "submit": "Save free-if-you-wait settings",
+        "updated": "Free-if-you-wait settings saved.",
+        "load_error": "Could not show the free-if-you-wait settings",
+        "load_failed": "Could not load the free-if-you-wait settings. Please try again later.",
+        "save_failed": "Could not save the free-if-you-wait settings. Please try again later.",
+        "validation": {
+          "recharge_hours_invalid": "Enter the hours until the next ticket as a whole number from 1 to {$max}.",
+          "access_hours_invalid": "Enter the hours an episode stays open as a whole number from 1 to {$max}.",
+          "excluded_latest_count_invalid": "Enter the number of newest episodes as a whole number, 0 or more."
+        }
       }
     },
     "settings": {

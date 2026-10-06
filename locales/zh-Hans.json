@@ -269,6 +269,7 @@
         "tenant_admin_invite_canceled": "取消了管理员邀请",
         "series_eye_catch_aspect_image_uploaded": "上传了系列封面图",
         "series_free_windows_created": "为系列批量添加了免费阅读期",
+        "series_wait_free_settings_updated": "更新了等待即可免费设置",
         "episode_updated": "更新了章节",
         "episode_image_uploaded": "上传了章节正文图片",
         "episode_credits_replaced": "更新了章节作者",
@@ -1834,6 +1835,28 @@
         "web": "仅网页",
         "app": "仅应用",
         "none": "不在任何位置显示"
+      },
+      "wait_free": {
+        "title": "等待即可免费",
+        "description": "让已登录的读者用免费券逐集阅读本系列的付费剧集。使用一张免费券后，等待一段时间即可获得下一张。",
+        "enabled": "为本系列提供免费券",
+        "enabled_description": "关闭后，下方的数值仍会保留，下次开启时继续使用。读者已用免费券打开的剧集在到期前仍可阅读。",
+        "recharge_hours": "获得下一张免费券的时间",
+        "recharge_hours_description": "读者使用免费券后，到可以使用下一张为止的时间（1～{$max}小时）。更改从每位读者下次使用免费券时开始生效，已在等待的读者的等待时间不变。",
+        "access_hours": "剧集可阅读的时间",
+        "access_hours_description": "用免费券打开的剧集可阅读的时间（1～{$max}小时）。",
+        "excluded_latest_count": "免费券不可阅读的最新剧集数",
+        "excluded_latest_count_description": "按系列顺序，从已发布的最新一集往前数。输入0则所有付费剧集都可用免费券阅读。",
+        "submit": "保存等待即可免费设置",
+        "updated": "已保存等待即可免费设置。",
+        "load_error": "无法显示等待即可免费设置",
+        "load_failed": "无法加载等待即可免费设置。请稍后再试。",
+        "save_failed": "无法保存等待即可免费设置。请稍后再试。",
+        "validation": {
+          "recharge_hours_invalid": "获得下一张免费券的时间请输入1～{$max}之间的整数。",
+          "access_hours_invalid": "剧集可阅读的时间请输入1～{$max}之间的整数。",
+          "excluded_latest_count_invalid": "免费券不可阅读的最新剧集数请输入0或以上的整数。"
+        }
       }
     },
     "settings": {
