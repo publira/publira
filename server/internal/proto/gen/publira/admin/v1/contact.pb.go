@@ -240,8 +240,12 @@ type ContactMessageEntry struct {
 	AuthorName     string `protobuf:"bytes,5,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
 	Body           string `protobuf:"bytes,6,opt,name=body,proto3" json:"body,omitempty"`
 	CreatedAt      string `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The address a reader entry was mailed from, which need not be the
+	// message's reply_to_email: a reader may write back from another one, and
+	// the next answer still goes to reply_to_email. Empty on a staff entry.
+	FromEmail     string `protobuf:"bytes,8,opt,name=from_email,json=fromEmail,proto3" json:"from_email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ContactMessageEntry) Reset() {
@@ -319,6 +323,13 @@ func (x *ContactMessageEntry) GetBody() string {
 func (x *ContactMessageEntry) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *ContactMessageEntry) GetFromEmail() string {
+	if x != nil {
+		return x.FromEmail
 	}
 	return ""
 }
@@ -1014,7 +1025,7 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\x06status\x18\x0e \x01(\tR\x06status\x12?\n" +
 	"\aentries\x18\x0f \x03(\v2%.publira.admin.v1.ContactMessageEntryR\aentries\x12\x1f\n" +
 	"\ventry_count\x18\x10 \x01(\x05R\n" +
-	"entryCount\"\xe7\x01\n" +
+	"entryCount\"\x86\x02\n" +
 	"\x13ContactMessageEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tdirection\x18\x02 \x01(\tR\tdirection\x12$\n" +
@@ -1024,7 +1035,9 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"authorName\x12\x12\n" +
 	"\x04body\x18\x06 \x01(\tR\x04body\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\a \x01(\tR\tcreatedAt\"\x99\x01\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"from_email\x18\b \x01(\tR\tfromEmail\"\x99\x01\n" +
 	"\x1aListContactMessagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +

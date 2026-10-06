@@ -163,10 +163,15 @@ func TestContactMessageReplyEmailThreadsUnderTheEarlierEntries(t *testing.T) {
 	author := env.pg.SeedTenantAdmin(t, env.tenantID, "OUTBOXRPS02", "kei@aoto.example.test", "Kei Arata")
 	first := env.storeStaffAnswer(t, ctx, author, "Every episode marked free.")
 	// A reader entry that came in without a Message-ID has nothing to name.
-	env.storeEntry(t, ctx, dbmodels.CreateContactMessageEntryParams{Direction: "reader", Body: "And on the app?"})
+	env.storeEntry(t, ctx, dbmodels.CreateContactMessageEntryParams{
+		Direction: "reader",
+		Body:      "And on the app?",
+		FromEmail: sql.NullString{String: "reader@example.test", Valid: true},
+	})
 	reply := env.storeEntry(t, ctx, dbmodels.CreateContactMessageEntryParams{
 		Direction: "reader",
 		Body:      "Thank you.",
+		FromEmail: sql.NullString{String: "reader@example.test", Valid: true},
 		MessageID: sql.NullString{String: "reply-1@reader.example.test", Valid: true},
 	})
 	second := env.storeStaffAnswer(t, ctx, author, "The app shows the same episodes.")

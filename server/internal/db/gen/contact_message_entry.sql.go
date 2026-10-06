@@ -22,7 +22,8 @@ INSERT INTO contact_message_entries (
     direction,
     author_id,
     body,
-    message_id
+    message_id,
+    from_email
 ) VALUES (
     $1,
     $2,
@@ -30,9 +31,10 @@ INSERT INTO contact_message_entries (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
-RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at
+RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email
 `
 
 type CreateContactMessageEntryParams struct {
@@ -43,6 +45,7 @@ type CreateContactMessageEntryParams struct {
 	AuthorID         uuid.NullUUID  `json:"author_id"`
 	Body             string         `json:"body"`
 	MessageID        sql.NullString `json:"message_id"`
+	FromEmail        sql.NullString `json:"from_email"`
 }
 
 // The exchange that follows a contact message: the answers staff send and the
@@ -66,6 +69,7 @@ func (q *Queries) CreateContactMessageEntry(ctx context.Context, arg CreateConta
 		arg.AuthorID,
 		arg.Body,
 		arg.MessageID,
+		arg.FromEmail,
 	)
 	var i ContactMessageEntry
 	err := row.Scan(
@@ -77,12 +81,13 @@ func (q *Queries) CreateContactMessageEntry(ctx context.Context, arg CreateConta
 		&i.Body,
 		&i.MessageID,
 		&i.CreatedAt,
+		&i.FromEmail,
 	)
 	return i, err
 }
 
 const GetContactMessageEntryForTenant = `-- name: GetContactMessageEntryForTenant :one
-SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at,
+SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email,
     u.email AS author_email,
     u.status AS author_status
 FROM contact_message_entries e
@@ -106,6 +111,7 @@ type GetContactMessageEntryForTenantRow struct {
 	Body             string         `json:"body"`
 	MessageID        sql.NullString `json:"message_id"`
 	CreatedAt        time.Time      `json:"created_at"`
+	FromEmail        sql.NullString `json:"from_email"`
 	AuthorEmail      sql.NullString `json:"author_email"`
 	AuthorStatus     sql.NullString `json:"author_status"`
 }
@@ -124,6 +130,7 @@ func (q *Queries) GetContactMessageEntryForTenant(ctx context.Context, arg GetCo
 		&i.Body,
 		&i.MessageID,
 		&i.CreatedAt,
+		&i.FromEmail,
 		&i.AuthorEmail,
 		&i.AuthorStatus,
 	)
@@ -131,7 +138,7 @@ func (q *Queries) GetContactMessageEntryForTenant(ctx context.Context, arg GetCo
 }
 
 const ListContactMessageEntries = `-- name: ListContactMessageEntries :many
-SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at,
+SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email,
     u.public_id AS author_public_id,
     u.name AS author_name
 FROM contact_message_entries e
@@ -157,6 +164,7 @@ type ListContactMessageEntriesRow struct {
 	Body             string         `json:"body"`
 	MessageID        sql.NullString `json:"message_id"`
 	CreatedAt        time.Time      `json:"created_at"`
+	FromEmail        sql.NullString `json:"from_email"`
 	AuthorPublicID   sql.NullString `json:"author_public_id"`
 	AuthorName       sql.NullString `json:"author_name"`
 }
@@ -182,6 +190,7 @@ func (q *Queries) ListContactMessageEntries(ctx context.Context, arg ListContact
 			&i.Body,
 			&i.MessageID,
 			&i.CreatedAt,
+			&i.FromEmail,
 			&i.AuthorPublicID,
 			&i.AuthorName,
 		); err != nil {

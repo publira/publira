@@ -372,7 +372,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("notification read", "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", bellID, member.ID, first.ID)
 	contactMessageID := uuid.Must(uuid.NewV7())
 	seed("contact message", "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", contactMessageID, first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A.")
-	seed("contact message entry", "INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body) VALUES ($1, $2, $3, 'reader', $4)", uuid.Must(uuid.NewV7()), first.ID, contactMessageID, "A follow-up for Tenant A.")
+	seed("contact message entry", "INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body, from_email) VALUES ($1, $2, $3, 'reader', $4, $5)", uuid.Must(uuid.NewV7()), first.ID, contactMessageID, "A follow-up for Tenant A.", "reader@example.test")
 	seed("outbox event", "INSERT INTO outbox_events (id, tenant_id, event_type, payload, idempotency_key) VALUES ($1, $2, 'rls_probe', $3, 'rls:probe')", uuid.Must(uuid.NewV7()), first.ID, `{"tenant_id":"`+first.ID.String()+`"}`)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -75,6 +75,10 @@ message ContactMessageEntry {
   string author_name = 5;
   string body = 6;
   string created_at = 7;
+  // The address a reader entry was mailed from, which need not be the
+  // message's reply_to_email: a reader may write back from another one, and
+  // the next answer still goes to reply_to_email. Empty on a staff entry.
+  string from_email = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
