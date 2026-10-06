@@ -277,6 +277,7 @@ void main() {
     catalog.series = fixtureCatalog(50);
     await pumpApp(tester);
     await pumpUntilFound(tester, tileOf(21));
+    final readsBeforePull = catalog.seriesTokens.length;
 
     // A pull arms the indicator only once it passes a quarter of the viewport,
     // which is what this distance is measured against.
@@ -288,7 +289,7 @@ void main() {
     await tester.pump();
     await pumpUntilTrue(
       tester,
-      () => catalog.seriesTokens.length > 2,
+      () => catalog.seriesTokens.length > readsBeforePull,
       description: 'the pull to refresh to read the catalog again',
     );
     await pumpUntilFound(tester, tileOf(1));

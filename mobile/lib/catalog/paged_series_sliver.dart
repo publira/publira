@@ -3,6 +3,7 @@ import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
@@ -11,7 +12,7 @@ import 'package:publira/typography/autospaced_text.dart';
 const readAheadRows = 5;
 
 /// The series a [pager] has read, as rows of a scroll view, with the page
-/// under them at the bottom.
+/// under them at the bottom. A tablet's window lays them out in columns.
 ///
 /// The screen above it owns the first page's loading and failure, which are
 /// the whole screen; this is what stands once that page has arrived.
@@ -46,14 +47,16 @@ class PagedSeriesSliver extends StatelessWidget {
         ),
       );
     }
+    final columns = columnCount(context);
+    final rows = rowCount(series.length, columns);
     return SliverList.separated(
-      itemCount: series.length + (hasFooter ? 1 : 0),
+      itemCount: rows + (hasFooter ? 1 : 0),
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        if (index >= series.length - readAheadRows) {
+        if (index >= rows - readAheadRows) {
           pager.readMore();
         }
-        if (index == series.length) {
+        if (index == rows) {
           return PageFooter(
             sectionKey: '$sectionKey-more',
             message: pager.moreFailure == null
@@ -66,7 +69,12 @@ class PagedSeriesSliver extends StatelessWidget {
             onRetry: pager.retryMore,
           );
         }
-        return SeriesTile(series: series[index]);
+        return ColumnRow(
+          row: index,
+          columns: columns,
+          itemCount: series.length,
+          itemBuilder: (context, index) => SeriesTile(series: series[index]),
+        );
       },
     );
   }

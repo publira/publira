@@ -7,6 +7,7 @@ import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -148,15 +149,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ? const SignedOutNotice()
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: switch (password) {
-                  _ when _loadFailed => _loadError(messages),
-                  null => const Center(child: CircularProgressIndicator()),
-                  (exists: true, email: _) => _form(messages),
-                  (exists: false, :final email) => _setPassword(
-                    messages,
-                    email,
-                  ),
-                },
+                child: ReadableWidth(
+                  child: switch (password) {
+                    _ when _loadFailed => _loadError(messages),
+                    null => const Center(child: CircularProgressIndicator()),
+                    (exists: true, email: _) => _form(messages),
+                    (exists: false, :final email) => _setPassword(
+                      messages,
+                      email,
+                    ),
+                  },
+                ),
               ),
       ),
     );

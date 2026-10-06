@@ -7,6 +7,7 @@ import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -109,16 +110,18 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
             message: messages.libraryContinueEmpty,
           );
         }
+        final columns = columnCount(context);
+        final rows = rowCount(items.length, columns);
         return ListView.separated(
           key: const ValueKey('library-continue-list'),
           padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: items.length + (hasFooter ? 1 : 0),
+          itemCount: rows + (hasFooter ? 1 : 0),
           separatorBuilder: (context, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
-            if (index >= items.length - readAheadRows) {
+            if (index >= rows - readAheadRows) {
               _pager.readMore();
             }
-            if (index == items.length) {
+            if (index == rows) {
               return PageFooter(
                 sectionKey: 'library-continue-more',
                 message: _pager.moreFailure == null
@@ -131,7 +134,13 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
                 onRetry: _pager.retryMore,
               );
             }
-            return _ContinueReadingRow(item: items[index]);
+            return ColumnRow(
+              row: index,
+              columns: columns,
+              itemCount: items.length,
+              itemBuilder: (context, index) =>
+                  _ContinueReadingRow(item: items[index]),
+            );
           },
         );
       },

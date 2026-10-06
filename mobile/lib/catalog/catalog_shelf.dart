@@ -293,10 +293,6 @@ class _ShelfSkeleton extends StatelessWidget {
 
   final String sectionKey;
 
-  /// Enough to reach the edge of a phone, which is what tells the reader the
-  /// row scrolls before it holds anything.
-  static const _cardCount = 3;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -309,7 +305,7 @@ class _ShelfSkeleton extends StatelessWidget {
         // Nothing here is reachable, and the row under it is the one the
         // reader will scroll.
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: _cardCount,
+        itemCount: skeletonCardCount(context, cardWidth: _shelfCardWidth),
         separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) => SizedBox(
           width: _shelfCardWidth,
@@ -336,6 +332,12 @@ class _ShelfSkeleton extends StatelessWidget {
     );
   }
 }
+
+/// How many cards [cardWidth] wide, 12 pixels apart, a skeleton row holds:
+/// enough to reach the far edge of the window, which is what tells the reader
+/// the row scrolls before it holds anything, on a phone and a tablet alike.
+int skeletonCardCount(BuildContext context, {required double cardWidth}) =>
+    (MediaQuery.sizeOf(context).width / (cardWidth + 12)).ceil();
 
 /// One line of text in a skeleton, before the text has been read.
 class SkeletonLine extends StatelessWidget {

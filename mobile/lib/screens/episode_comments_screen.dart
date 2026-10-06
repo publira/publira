@@ -7,6 +7,7 @@ import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/comments/own_comments.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/episode_comment.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -266,61 +267,67 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
 
     final comments = CommentScope.maybeOf(context);
     final viewer = _viewer;
-    return ListView(
+    return ReadableScrollPadding(
       padding: const EdgeInsets.all(16),
-      children: [
-        if (section.mode == CommentMode.approvalRequired)
-          Padding(
-            key: const ValueKey('episode-comments-approval-notice'),
-            padding: const EdgeInsets.only(bottom: 16),
-            child: AutospacedText(
-              messages.commentsApprovalNotice,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+      builder: (context, padding) => ListView(
+        padding: padding,
+        children: [
+          if (section.mode == CommentMode.approvalRequired)
+            Padding(
+              key: const ValueKey('episode-comments-approval-notice'),
+              padding: const EdgeInsets.only(bottom: 16),
+              child: AutospacedText(
+                messages.commentsApprovalNotice,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        if (comments != null && viewer != null)
-          _CommentForm(
-            comments: comments,
-            episodeInternalId: section.episodeInternalId,
-            onPosted: _reload,
-          )
-        else
-          _SignInPrompt(seriesId: widget.seriesId, episodeId: widget.episodeId),
-        if (section.ownFailure != null)
-          Padding(
-            key: const ValueKey('episode-comments-own-error'),
-            padding: const EdgeInsets.only(top: 16),
-            child: _ErrorText(
-              _failureCopy(
-                messages,
-                section.ownFailure,
-                messages.commentsOwnFailed,
-              ),
-            ),
-          ),
-        const SizedBox(height: 24),
-        if (section.comments.isEmpty)
-          AutospacedText(
-            key: const ValueKey('episode-comments-empty'),
-            _token.isEmpty
-                ? messages.commentsEmpty
-                : messages.commentsPageEmpty,
-          )
-        else
-          for (final comment in section.comments)
-            _CommentTile(
-              key: ValueKey('comment-tile-${comment.id}'),
-              comment: comment,
+          if (comments != null && viewer != null)
+            _CommentForm(
               comments: comments,
-              viewer: viewer,
-              onWithdrawn: _reload,
+              episodeInternalId: section.episodeInternalId,
+              onPosted: _reload,
+            )
+          else
+            _SignInPrompt(
+              seriesId: widget.seriesId,
+              episodeId: widget.episodeId,
             ),
-        if (section.page.previousToken.isNotEmpty ||
-            section.page.nextToken.isNotEmpty)
-          _Pagination(page: section.page, onShowPage: _showPage),
-      ],
+          if (section.ownFailure != null)
+            Padding(
+              key: const ValueKey('episode-comments-own-error'),
+              padding: const EdgeInsets.only(top: 16),
+              child: _ErrorText(
+                _failureCopy(
+                  messages,
+                  section.ownFailure,
+                  messages.commentsOwnFailed,
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+          if (section.comments.isEmpty)
+            AutospacedText(
+              key: const ValueKey('episode-comments-empty'),
+              _token.isEmpty
+                  ? messages.commentsEmpty
+                  : messages.commentsPageEmpty,
+            )
+          else
+            for (final comment in section.comments)
+              _CommentTile(
+                key: ValueKey('comment-tile-${comment.id}'),
+                comment: comment,
+                comments: comments,
+                viewer: viewer,
+                onWithdrawn: _reload,
+              ),
+          if (section.page.previousToken.isNotEmpty ||
+              section.page.nextToken.isNotEmpty)
+            _Pagination(page: section.page, onShowPage: _showPage),
+        ],
+      ),
     );
   }
 }

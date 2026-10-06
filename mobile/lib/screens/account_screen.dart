@@ -8,6 +8,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -30,121 +31,130 @@ class AccountScreen extends StatelessWidget {
       appBar: AppBar(title: AutospacedText(messages.accountTitle)),
       body: SafeArea(
         child: session == null
-            ? ListView(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        AutospacedText(messages.accountSignedOut),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          key: const ValueKey('account-sign-in'),
-                          onPressed: () => context.pushInTab(AppRoutes.signIn),
-                          child: AutospacedText(messages.commonSignIn),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  const _PagesEntry(),
-                  const _ContactEntry(),
-                ],
-              )
-            : ListView(
-                key: const ValueKey('account-list'),
-                children: [
-                  ListTile(
-                    key: const ValueKey('account-name'),
-                    title: AutospacedText(messages.accountName),
-                    subtitle: AutospacedText(
-                      session.userName.isEmpty
-                          ? messages.accountNameUnset
-                          : session.userName,
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountName),
-                  ),
-                  const Divider(height: 1),
-                  const _PurchasesEntry(),
-                  ListTile(
-                    key: const ValueKey('account-reading-history'),
-                    title: AutospacedText(messages.readingHistoryTitle),
-                    subtitle: AutospacedText(
-                      messages.readingHistoryAccountDescription,
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountReadingHistory),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    key: const ValueKey('account-follow-updates'),
-                    title: AutospacedText(messages.followUpdatesTitle),
-                    subtitle: AutospacedText(
-                      messages.followUpdatesAccountDescription,
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountFollowUpdates),
-                  ),
-                  const Divider(height: 1),
-                  // Keyed by the reader, so another account signing in reads
-                  // its own date rather than showing the last one's.
-                  _BirthDateRow(key: ValueKey(session.userPublicId)),
-                  ListTile(
-                    key: const ValueKey('account-change-email'),
-                    title: AutospacedText(messages.accountChangeEmail),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountEmail),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    key: const ValueKey('account-change-password'),
-                    title: AutospacedText(messages.accountChangePassword),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountPassword),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    key: const ValueKey('account-linked-accounts'),
-                    title: AutospacedText(messages.accountLinkedAccounts),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountLinkedAccounts),
-                  ),
-                  const Divider(height: 1),
-                  const _NotificationSwitch(),
-                  // Keyed by the reader as well, under a name of its own so
-                  // it does not share a key with the birth date row.
-                  _EmailNotificationSwitch(
-                    key: ValueKey((
-                      'email-notifications',
-                      session.userPublicId,
-                    )),
-                  ),
-                  const _PagesEntry(),
-                  const _ContactEntry(),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: OutlinedButton(
-                      key: const ValueKey('account-sign-out'),
-                      // The unregister needs the session, so the device comes
-                      // off the delivery list before the session goes away.
-                      onPressed: () => unawaited(_signOut(context)),
-                      child: AutospacedText(messages.accountSignOut),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    key: const ValueKey('account-delete'),
-                    title: AutospacedText(
-                      messages.accountDelete,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+            ? ReadableScrollPadding(
+                builder: (context, padding) => ListView(
+                  padding: padding,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          AutospacedText(messages.accountSignedOut),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            key: const ValueKey('account-sign-in'),
+                            onPressed: () =>
+                                context.pushInTab(AppRoutes.signIn),
+                            child: AutospacedText(messages.commonSignIn),
+                          ),
+                        ],
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.accountDelete),
-                  ),
-                ],
+                    const Divider(height: 1),
+                    const _PagesEntry(),
+                    const _ContactEntry(),
+                  ],
+                ),
+              )
+            : ReadableScrollPadding(
+                builder: (context, padding) => ListView(
+                  key: const ValueKey('account-list'),
+                  padding: padding,
+                  children: [
+                    ListTile(
+                      key: const ValueKey('account-name'),
+                      title: AutospacedText(messages.accountName),
+                      subtitle: AutospacedText(
+                        session.userName.isEmpty
+                            ? messages.accountNameUnset
+                            : session.userName,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.accountName),
+                    ),
+                    const Divider(height: 1),
+                    const _PurchasesEntry(),
+                    ListTile(
+                      key: const ValueKey('account-reading-history'),
+                      title: AutospacedText(messages.readingHistoryTitle),
+                      subtitle: AutospacedText(
+                        messages.readingHistoryAccountDescription,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.push(AppRoutes.accountReadingHistory),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const ValueKey('account-follow-updates'),
+                      title: AutospacedText(messages.followUpdatesTitle),
+                      subtitle: AutospacedText(
+                        messages.followUpdatesAccountDescription,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.accountFollowUpdates),
+                    ),
+                    const Divider(height: 1),
+                    // Keyed by the reader, so another account signing in reads
+                    // its own date rather than showing the last one's.
+                    _BirthDateRow(key: ValueKey(session.userPublicId)),
+                    ListTile(
+                      key: const ValueKey('account-change-email'),
+                      title: AutospacedText(messages.accountChangeEmail),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.accountEmail),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const ValueKey('account-change-password'),
+                      title: AutospacedText(messages.accountChangePassword),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.accountPassword),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const ValueKey('account-linked-accounts'),
+                      title: AutospacedText(messages.accountLinkedAccounts),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.push(AppRoutes.accountLinkedAccounts),
+                    ),
+                    const Divider(height: 1),
+                    const _NotificationSwitch(),
+                    // Keyed by the reader as well, under a name of its own so
+                    // it does not share a key with the birth date row.
+                    _EmailNotificationSwitch(
+                      key: ValueKey((
+                        'email-notifications',
+                        session.userPublicId,
+                      )),
+                    ),
+                    const _PagesEntry(),
+                    const _ContactEntry(),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: OutlinedButton(
+                        key: const ValueKey('account-sign-out'),
+                        // The unregister needs the session, so the device comes
+                        // off the delivery list before the session goes away.
+                        onPressed: () => unawaited(_signOut(context)),
+                        child: AutospacedText(messages.accountSignOut),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const ValueKey('account-delete'),
+                      title: AutospacedText(
+                        messages.accountDelete,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.accountDelete),
+                    ),
+                  ],
+                ),
               ),
       ),
     );

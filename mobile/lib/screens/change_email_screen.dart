@@ -11,6 +11,7 @@ import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Asks to move the signed-in account to another address through
@@ -162,27 +163,29 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
             ? const SignedOutNotice()
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: FutureBuilder<_Account?>(
-                  future: _account,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(
-                        key: ValueKey('change-email-loading'),
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-                    final account = snapshot.data;
-                    if (snapshot.hasError || account == null) {
-                      return _loadFailed(messages);
-                    }
-                    if (_requested) {
-                      return AutospacedText(
-                        messages.changeEmailRequested,
-                        key: const ValueKey('change-email-requested'),
-                      );
-                    }
-                    return _form(messages, account);
-                  },
+                child: ReadableWidth(
+                  child: FutureBuilder<_Account?>(
+                    future: _account,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const Center(
+                          key: ValueKey('change-email-loading'),
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      final account = snapshot.data;
+                      if (snapshot.hasError || account == null) {
+                        return _loadFailed(messages);
+                      }
+                      if (_requested) {
+                        return AutospacedText(
+                          messages.changeEmailRequested,
+                          key: const ValueKey('change-email-requested'),
+                        );
+                      }
+                      return _form(messages, account);
+                    },
+                  ),
                 ),
               ),
       ),

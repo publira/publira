@@ -10,6 +10,7 @@ import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -219,16 +220,18 @@ class _FollowsListState extends State<FollowsList> {
         message: messages.followsEmpty,
       );
     }
+    final columns = columnCount(context);
+    final rows = rowCount(targets.length, columns);
     return ListView.separated(
       key: const ValueKey('follows-list'),
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: targets.length + (hasFooter ? 1 : 0),
+      itemCount: rows + (hasFooter ? 1 : 0),
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        if (index >= targets.length - _readAheadRows) {
+        if (index >= rows - _readAheadRows) {
           _readMore();
         }
-        if (index == targets.length) {
+        if (index == rows) {
           return _FollowsPageFooter(
             message: _moreFailure == null
                 ? null
@@ -241,7 +244,12 @@ class _FollowsListState extends State<FollowsList> {
             },
           );
         }
-        return _FollowRow(target: targets[index]);
+        return ColumnRow(
+          row: index,
+          columns: columns,
+          itemCount: targets.length,
+          itemBuilder: (context, index) => _FollowRow(target: targets[index]),
+        );
       },
     );
   }

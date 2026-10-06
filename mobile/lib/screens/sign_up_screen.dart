@@ -12,6 +12,7 @@ import 'package:publira/forms/password_input.dart';
 import 'package:publira/forms/sign_up_fields.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -192,9 +193,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: pendingEmail == null
-              ? _buildForm(messages)
-              : _SignUpPending(email: pendingEmail),
+          child: ReadableWidth(
+            child: pendingEmail == null
+                ? _buildForm(messages)
+                : _SignUpPending(email: pendingEmail),
+          ),
         ),
       ),
     );

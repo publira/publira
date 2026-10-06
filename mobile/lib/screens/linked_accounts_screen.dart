@@ -7,6 +7,7 @@ import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// The Apple and Google accounts linked to the signed-in reader, through
@@ -110,16 +111,19 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
       body: SafeArea(
         child: !signedIn
             ? const SignedOutNotice()
-            : ListView(
+            : ReadableScrollPadding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: AutospacedText(messages.linkedAccountsDescription),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._rows(messages),
-                ],
+                builder: (context, padding) => ListView(
+                  padding: padding,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: AutospacedText(messages.linkedAccountsDescription),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._rows(messages),
+                  ],
+                ),
               ),
       ),
     );

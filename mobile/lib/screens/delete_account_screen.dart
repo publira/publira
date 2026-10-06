@@ -11,6 +11,7 @@ import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
@@ -200,13 +201,15 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ? const SignedOutNotice()
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: switch (_confirmation) {
-                  _ when _loadFailed => _loadError(messages),
-                  null => const Center(child: CircularProgressIndicator()),
-                  AccountConfirmation(providers: null) => _form(messages),
-                  AccountConfirmation(:final providers?, :final linked) =>
-                    _providerForm(messages, providers, linked),
-                },
+                child: ReadableWidth(
+                  child: switch (_confirmation) {
+                    _ when _loadFailed => _loadError(messages),
+                    null => const Center(child: CircularProgressIndicator()),
+                    AccountConfirmation(providers: null) => _form(messages),
+                    AccountConfirmation(:final providers?, :final linked) =>
+                      _providerForm(messages, providers, linked),
+                  },
+                ),
               ),
       ),
     );

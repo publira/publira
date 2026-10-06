@@ -52,8 +52,13 @@ void main() {
 
   /// Scrolls the account screen until [row], which sits below the rows above
   /// it, is on screen.
-  Future<void> showRow(WidgetTester tester, Finder row) =>
-      tester.scrollUntilVisible(row, 100, scrollable: accountList);
+  ///
+  /// The scroll that brings the row fully into view is a jump the next frame
+  /// lays out, so the frame is pumped before anything taps where it stands.
+  Future<void> showRow(WidgetTester tester, Finder row) async {
+    await tester.scrollUntilVisible(row, 100, scrollable: accountList);
+    await tester.pump();
+  }
 
   bool switchValue(WidgetTester tester) =>
       tester.widget<SwitchListTile>(emailSwitch).value;

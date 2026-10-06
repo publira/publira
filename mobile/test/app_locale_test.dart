@@ -60,7 +60,10 @@ void main() {
       initialLocation: AppRoutes.catalog,
     );
     await tester.tap(
-      find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+      find.descendant(
+        of: find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+        matching: find.text(fixtureSeries.first.title),
+      ),
     );
     await pumpUntilFound(tester, find.text('エピソード一覧', skipOffstage: false));
 

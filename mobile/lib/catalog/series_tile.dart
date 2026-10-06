@@ -16,10 +16,28 @@ class SeriesTile extends StatelessWidget {
 
   final SeriesItem series;
 
+  /// The narrowest row with room for the label beside the title: the width
+  /// of the narrowest phone in common use. A phone's row is never narrower, so
+  /// it keeps the label at its end; a column of a tablet's list can be, and
+  /// moves the label under the lines about the series rather than squeezing
+  /// the title into a sliver beside it.
+  static const _labelBesideMinWidth = 360.0;
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => _tile(
+        context,
+        labelBeside: constraints.maxWidth >= _labelBesideMinWidth,
+      ),
+    );
+  }
+
+  Widget _tile(BuildContext context, {required bool labelBeside}) {
     final messages = AppMessages.of(context);
     final classification = _classification(messages, series);
+    final label = _label(context, beside: labelBeside);
+    final labelUnder = labelBeside ? null : label;
     return ListTile(
       key: ValueKey('series-tile-${series.id}'),
       // 42 is the widest a 3:4 box can be and still stand inside the 56 pixels
@@ -40,7 +58,8 @@ class SeriesTile extends StatelessWidget {
       subtitle:
           series.creators.isEmpty &&
               classification.isEmpty &&
-              series.description.isEmpty
+              series.description.isEmpty &&
+              labelUnder == null
           ? null
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,9 +85,10 @@ class SeriesTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ?labelUnder,
               ],
             ),
-      trailing: _label(context),
+      trailing: labelBeside ? label : null,
       onTap: () => context.pushInTab(AppRoutes.seriesDetailPath(series.id)),
     );
   }
@@ -76,7 +96,10 @@ class SeriesTile extends StatelessWidget {
   /// The label, as a way of its own out of the row to the label's other
   /// series. A copy saved before the label's id was kept names it and leads
   /// nowhere.
-  Widget? _label(BuildContext context) {
+  ///
+  /// Under the lines about the series, the button gives up its own inset so
+  /// its name starts where they do.
+  Widget? _label(BuildContext context, {required bool beside}) {
     if (series.labelName.isEmpty) {
       return null;
     }
@@ -85,6 +108,12 @@ class SeriesTile extends StatelessWidget {
     }
     return TextButton(
       key: ValueKey('series-tile-label-${series.id}'),
+      style: beside
+          ? null
+          : TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              alignment: AlignmentDirectional.centerStart,
+            ),
       onPressed: () =>
           context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
       child: AutospacedText(series.labelName),

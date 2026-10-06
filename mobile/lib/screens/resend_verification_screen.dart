@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -81,7 +82,9 @@ class _ResendVerificationScreenState extends State<ResendVerificationScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: _sent ? _buildSent(messages) : _buildForm(messages),
+          child: ReadableWidth(
+            child: _sent ? _buildSent(messages) : _buildForm(messages),
+          ),
         ),
       ),
     );

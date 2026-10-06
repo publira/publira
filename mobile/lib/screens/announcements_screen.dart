@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/announcement.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -356,57 +357,61 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final header = signedIn ? 1 : 0;
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: ListView.separated(
-        key: const ValueKey('announcements-list'),
-        physics: const AlwaysScrollableScrollPhysics(),
+      child: ReadableScrollPadding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: header + announcements.length + (hasFooter ? 1 : 0),
-        separatorBuilder: (context, index) =>
-            index < header ? const SizedBox.shrink() : const Divider(height: 1),
-        itemBuilder: (context, index) {
-          if (index < header) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: AutospacedText(
-                messages.announcementsUnreadShown(
-                  count: messages.formatInteger(unread),
+        builder: (context, padding) => ListView.separated(
+          key: const ValueKey('announcements-list'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: padding,
+          itemCount: header + announcements.length + (hasFooter ? 1 : 0),
+          separatorBuilder: (context, index) => index < header
+              ? const SizedBox.shrink()
+              : const Divider(height: 1),
+          itemBuilder: (context, index) {
+            if (index < header) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: AutospacedText(
+                  messages.announcementsUnreadShown(
+                    count: messages.formatInteger(unread),
+                  ),
+                  key: const ValueKey('announcements-unread-count'),
+                  style: Theme.of(context).textTheme.labelLarge,
                 ),
-                key: const ValueKey('announcements-unread-count'),
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
+              );
+            }
+            final row = index - header;
+            if (row >= announcements.length - _readAheadRows) {
+              _readMore();
+            }
+            if (row == announcements.length) {
+              final moreFailure = _moreFailure;
+              return PageFooter(
+                sectionKey: 'announcements-more',
+                message: moreFailure == null
+                    ? null
+                    : announcementFailureCopy(
+                        messages,
+                        moreFailure,
+                        messages.announcementsFailed,
+                      ),
+                onRetry: () {
+                  setState(() {
+                    _moreFailure = null;
+                  });
+                  _readMore();
+                },
+              );
+            }
+            final announcement = announcements[row];
+            return _AnnouncementRow(
+              announcement: announcement,
+              showReadState: signedIn,
+              onOpen: () => _open(announcement),
+              onMarkRead: () => unawaited(_markRead(announcement)),
             );
-          }
-          final row = index - header;
-          if (row >= announcements.length - _readAheadRows) {
-            _readMore();
-          }
-          if (row == announcements.length) {
-            final moreFailure = _moreFailure;
-            return PageFooter(
-              sectionKey: 'announcements-more',
-              message: moreFailure == null
-                  ? null
-                  : announcementFailureCopy(
-                      messages,
-                      moreFailure,
-                      messages.announcementsFailed,
-                    ),
-              onRetry: () {
-                setState(() {
-                  _moreFailure = null;
-                });
-                _readMore();
-              },
-            );
-          }
-          final announcement = announcements[row];
-          return _AnnouncementRow(
-            announcement: announcement,
-            showReadState: signedIn,
-            onOpen: () => _open(announcement),
-            onMarkRead: () => unawaited(_markRead(announcement)),
-          );
-        },
+          },
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
@@ -218,31 +219,34 @@ class _PurchasesListState extends State<_PurchasesList> {
     }
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: ListView.separated(
-        key: const ValueKey('purchases-list'),
-        physics: const AlwaysScrollableScrollPhysics(),
+      child: ReadableScrollPadding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: purchases.length + (hasFooter ? 1 : 0),
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          if (index >= purchases.length - _readAheadRows) {
-            _readMore();
-          }
-          if (index == purchases.length) {
-            return _PurchasesPageFooter(
-              message: _moreFailure == null
-                  ? null
-                  : _failureCopy(messages, _moreFailure!),
-              onRetry: () {
-                setState(() {
-                  _moreFailure = null;
-                });
-                _readMore();
-              },
-            );
-          }
-          return _PurchaseRow(purchase: purchases[index]);
-        },
+        builder: (context, padding) => ListView.separated(
+          key: const ValueKey('purchases-list'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: padding,
+          itemCount: purchases.length + (hasFooter ? 1 : 0),
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            if (index >= purchases.length - _readAheadRows) {
+              _readMore();
+            }
+            if (index == purchases.length) {
+              return _PurchasesPageFooter(
+                message: _moreFailure == null
+                    ? null
+                    : _failureCopy(messages, _moreFailure!),
+                onRetry: () {
+                  setState(() {
+                    _moreFailure = null;
+                  });
+                  _readMore();
+                },
+              );
+            }
+            return _PurchaseRow(purchase: purchases[index]);
+          },
+        ),
       ),
     );
   }

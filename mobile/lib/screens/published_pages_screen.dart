@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_failure.dart';
 import 'package:publira/pages/page_repository.dart';
@@ -105,20 +106,23 @@ class _PublishedPagesScreenState extends State<PublishedPagesScreen> {
         message: messages.pagesListEmpty,
       );
     }
-    return ListView.separated(
-      key: const ValueKey('pages-list'),
-      itemCount: pages.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final page = pages[index];
-        return ListTile(
-          key: ValueKey('pages-row-${page.slug}'),
-          title: AutospacedText(page.title),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () =>
-              context.pushInTab(AppRoutes.publishedPagePath(page.slug)),
-        );
-      },
+    return ReadableScrollPadding(
+      builder: (context, padding) => ListView.separated(
+        key: const ValueKey('pages-list'),
+        padding: padding,
+        itemCount: pages.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final page = pages[index];
+          return ListTile(
+            key: ValueKey('pages-row-${page.slug}'),
+            title: AutospacedText(page.title),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () =>
+                context.pushInTab(AppRoutes.publishedPagePath(page.slug)),
+          );
+        },
+      ),
     );
   }
 }

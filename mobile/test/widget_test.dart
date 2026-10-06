@@ -532,7 +532,12 @@ void main() {
     await pumpApp(tester);
 
     final first = fixtureSeries.first;
-    await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('series-tile-${first.id}')),
+        matching: find.text(first.title),
+      ),
+    );
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.text(first.title), findsWidgets);
@@ -547,7 +552,12 @@ void main() {
     await pumpApp(tester);
 
     final first = fixtureSeries.first;
-    await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('series-tile-${first.id}')),
+        matching: find.text(first.title),
+      ),
+    );
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     await tester.pageBack();

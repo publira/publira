@@ -10,6 +10,7 @@ import 'package:publira/catalog/label_tile.dart';
 import 'package:publira/catalog/paged_list.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
@@ -391,6 +392,8 @@ class _OverviewSection<T> extends StatelessWidget {
       builder: (context, child) {
         final items = pager.items;
         final failure = pager.failure;
+        final shown = items?.take(_overviewRows).toList() ?? const [];
+        final columns = columnCount(context);
         return Column(
           key: ValueKey('search-$name'),
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,7 +424,13 @@ class _OverviewSection<T> extends StatelessWidget {
                 child: AutospacedText(emptyMessage),
               )
             else ...[
-              for (final item in items.take(_overviewRows)) itemBuilder(item),
+              for (var row = 0; row < rowCount(shown.length, columns); row++)
+                ColumnRow(
+                  row: row,
+                  columns: columns,
+                  itemCount: shown.length,
+                  itemBuilder: (context, index) => itemBuilder(shown[index]),
+                ),
               if (items.length > _overviewRows || pager.nextToken.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),

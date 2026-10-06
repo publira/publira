@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/provider_sign_in_buttons.dart';
@@ -111,88 +112,90 @@ class _SignInScreenState extends State<SignInScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (failure != null) ...[
-                  AutospacedText(
-                    _failureCopy(messages, failure),
-                    key: const ValueKey('sign-in-error'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+          child: ReadableWidth(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (failure != null) ...[
+                    AutospacedText(
+                      _failureCopy(messages, failure),
+                      key: const ValueKey('sign-in-error'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
+                    const SizedBox(height: 16),
+                  ],
+                  TextFormField(
+                    key: const ValueKey('sign-in-email'),
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      label: AutospacedText(messages.authEmailLabel),
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.username],
+                    textInputAction: TextInputAction.next,
+                    errorBuilder: (context, error) => AutospacedText(error),
+                    validator: (value) =>
+                        validateAuthEmail(messages, value ?? ''),
                   ),
                   const SizedBox(height: 16),
-                ],
-                TextFormField(
-                  key: const ValueKey('sign-in-email'),
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    label: AutospacedText(messages.authEmailLabel),
-                    border: const OutlineInputBorder(),
+                  PasswordField(
+                    key: const ValueKey('sign-in-password'),
+                    controller: _passwordController,
+                    label: messages.authPasswordLabel,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
+                    validator: (value) => (value ?? '').isEmpty
+                        ? messages.authPasswordRequired
+                        : null,
+                    onFieldSubmitted: (_) => _submit(),
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  autofillHints: const [AutofillHints.username],
-                  textInputAction: TextInputAction.next,
-                  errorBuilder: (context, error) => AutospacedText(error),
-                  validator: (value) =>
-                      validateAuthEmail(messages, value ?? ''),
-                ),
-                const SizedBox(height: 16),
-                PasswordField(
-                  key: const ValueKey('sign-in-password'),
-                  controller: _passwordController,
-                  label: messages.authPasswordLabel,
-                  autofillHints: const [AutofillHints.password],
-                  textInputAction: TextInputAction.done,
-                  validator: (value) => (value ?? '').isEmpty
-                      ? messages.authPasswordRequired
-                      : null,
-                  onFieldSubmitted: (_) => _submit(),
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  key: const ValueKey('sign-in-submit'),
-                  onPressed: _submitting ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : AutospacedText(messages.commonSignIn),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  key: const ValueKey('sign-in-forgot-password'),
-                  onPressed: _openResetPassword,
-                  child: AutospacedText(messages.signInForgotPassword),
-                ),
-                // The address is already typed, so the reader is not asked
-                // for it again on the way to a replacement link.
-                if (failure == AuthFailureKind.emailNotVerified) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    key: const ValueKey('sign-in-submit'),
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : AutospacedText(messages.commonSignIn),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    key: const ValueKey('sign-in-forgot-password'),
+                    onPressed: _openResetPassword,
+                    child: AutospacedText(messages.signInForgotPassword),
+                  ),
+                  // The address is already typed, so the reader is not asked
+                  // for it again on the way to a replacement link.
+                  if (failure == AuthFailureKind.emailNotVerified) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      key: const ValueKey('sign-in-resend-verification'),
+                      onPressed: _openResendVerification,
+                      child: AutospacedText(messages.authResendVerification),
+                    ),
+                  ],
+                  ProviderSignInButtons(returnTo: widget.returnTo),
+                  const SizedBox(height: 24),
+                  AutospacedText(
+                    messages.signInNoAccount,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
                   OutlinedButton(
-                    key: const ValueKey('sign-in-resend-verification'),
-                    onPressed: _openResendVerification,
-                    child: AutospacedText(messages.authResendVerification),
+                    key: const ValueKey('sign-in-to-sign-up'),
+                    onPressed: () => context.pushInTab(AppRoutes.signUp),
+                    child: AutospacedText(messages.signInSignUp),
                   ),
                 ],
-                ProviderSignInButtons(returnTo: widget.returnTo),
-                const SizedBox(height: 24),
-                AutospacedText(
-                  messages.signInNoAccount,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  key: const ValueKey('sign-in-to-sign-up'),
-                  onPressed: () => context.pushInTab(AppRoutes.signUp),
-                  child: AutospacedText(messages.signInSignUp),
-                ),
-              ],
+              ),
             ),
           ),
         ),
