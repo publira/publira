@@ -2,6 +2,7 @@
 title: Getting started
 description: What Publira is, who runs it, and where to start reading.
 published: 2026-10-04
+updated: 2026-10-06
 ---
 
 Publira is a digital distribution platform for manga and novels that a publisher runs under its own brand. Publishers and editors register the works they receive from authors, and readers buy and read them on the web or in the mobile app. It is open source and built to run on ordinary infrastructure, so an install is not tied to one cloud provider.
@@ -24,3 +25,4 @@ An optional Platform Console lets the operator manage every tenant from a browse
 ## Where to go next
 
 - [Deployments](./2-deployments/index.md) covers what an install is made of and how to bring one into service.
+- [Mobile app](./5-mobile-app/index.md) covers building a tenant's own iOS and Android app and publishing it on the App Store and Google Play.
