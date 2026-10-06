@@ -167,7 +167,10 @@ export const PasswordInputToggle = ({ children }: PasswordInputToggleProps) => {
       aria-pressed={revealed}
       className={cn(
         buttonVariants({ size: "icon", variant: "ghost" }),
-        "absolute top-0.5 right-0.5 text-muted-foreground hover:text-foreground"
+        // A coarse pointer would grow the icon button past the box it sits
+        // in, so there it fills the box's height and the 44px the box keeps
+        // clear at its end instead.
+        "absolute top-0.5 right-0.5 text-muted-foreground hover:text-foreground pointer-coarse:top-0 pointer-coarse:right-0 pointer-coarse:h-full pointer-coarse:w-11"
       )}
       onClick={handleClick}
       onMouseDown={handleMouseDown}

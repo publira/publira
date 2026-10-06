@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const itemClassName =
-  "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground";
+  "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground pointer-coarse:py-3";
 
 /** A compact account menu for a public site's header. */
 export const SiteLayoutUserMenu = ({ children }: { children: ReactNode }) => (
@@ -19,7 +19,7 @@ export const SiteLayoutUserMenuTrigger = ({
 }) => (
   <Menu.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted"
+    className="inline-flex size-9 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11"
   >
     <UserIcon aria-hidden="true" className="size-4" />
   </Menu.Trigger>

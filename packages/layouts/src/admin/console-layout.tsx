@@ -35,7 +35,7 @@ export const ConsoleHeaderSkeleton = () => (
 );
 
 export const ConsoleHeaderUserSkeleton = () => (
-  <Skeleton className="size-9 rounded-control" />
+  <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
 );
 
 /** A 48px bar: what the console is showing on the left, its controls on the right. */
@@ -65,9 +65,14 @@ export const ConsoleHeaderActions = ({ children }: { children: ReactNode }) => (
   <div className="flex items-center gap-2">{children}</div>
 );
 
-/** Held to the viewport, so a navigation taller than the screen scrolls on its own. */
+/**
+ * Held to the viewport, so a navigation taller than the screen scrolls on its
+ * own. Drawn from `md`, the narrowest tablet held upright, so the drawer and
+ * its floating button are a phone's alone: a tablet has the width for the
+ * sidebar in either orientation, and the button would sit over its content.
+ */
 export const ConsoleSidebar = ({ children }: { children: ReactNode }) => (
-  <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-4 lg:flex">
+  <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-4 md:flex">
     {children}
   </aside>
 );
@@ -75,7 +80,7 @@ export const ConsoleSidebar = ({ children }: { children: ReactNode }) => (
 export const ConsoleSidebarBrand = ({ children }: { children: ReactNode }) => (
   <div className="flex min-w-0 items-center px-3">
     <Link
-      className="min-w-0 rounded-control focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="flex min-w-0 items-center rounded-control focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11"
       href="/"
     >
       {children}

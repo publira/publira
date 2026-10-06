@@ -24,6 +24,12 @@ const HOVER_FILL_INK = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-foreground)_85%,var(--color-muted-foreground))]"
 );
 
+/**
+ * Every size grows to 44px where the pointer is coarse, the smallest target a
+ * fingertip lands on reliably. Only the height moves: a label already makes a
+ * button wider than that, and the width a mouse sees stays the width the
+ * layout was drawn at.
+ */
 export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50",
   {
@@ -33,10 +39,10 @@ export const buttonVariants = cva(
     },
     variants: {
       size: {
-        icon: "size-9",
-        lg: "h-10 px-6",
-        md: "h-9 px-4",
-        sm: "h-8 px-3",
+        icon: "size-9 pointer-coarse:size-11",
+        lg: "h-10 px-6 pointer-coarse:h-11",
+        md: "h-9 px-4 pointer-coarse:h-11",
+        sm: "h-8 px-3 pointer-coarse:h-11",
       },
       variant: {
         default: cn("bg-primary text-primary-foreground", HOVER_FILL_PRIMARY),

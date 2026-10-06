@@ -43,6 +43,15 @@
 
   /* Forty full-width characters at the base size. */
   --max-width-measure-prose: 40rem;
+
+  /*
+   * The narrowest tablet held upright, the iPad mini at 744px, rather than
+   * Tailwind's 768px: at 768 the same product in portrait got the phone layout
+   * on the mini and the tablet layout on the iPad Air (820px). No phone is
+   * 744px wide on its short side, and `lg` (1024px) is already where the
+   * narrowest tablet held sideways begins.
+   */
+  --breakpoint-md: 46.5rem;
 }
 
 @theme {

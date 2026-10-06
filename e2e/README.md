@@ -114,8 +114,8 @@ Every project belongs to one of five groups, and CI runs each group as a job of 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
 | `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
-| `main` | `web-host`, `web-platform`, `catalog-search`, `platform-search-settings` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
-| `admin` | `web-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
+| `main` | `web-host`, `web-platform`, `catalog-search`, `platform-search-settings`, `tablet-host`, `tablet-platform` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
+| `admin` | `web-admin`, `tablet-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
 | `performance` | `viewer-performance` | A machine with nothing else running on it. |
 | `search` | `catalog-search`, `platform-search-settings` | The OpenSearch backend `task e2e:search` starts and saves. |
@@ -187,7 +187,7 @@ None of them is edited directly. Their vector originals are in the repository's 
 
 ## Screenshot baseline
 
-`tests/host.screenshots.spec.ts`, `admin.screenshots.spec.ts`, and `platform.screenshots.spec.ts` record what a screen looks like, so a change to it arrives for review as an image beside the image it replaces. Each screen is taken full-page at 390px, the width of a phone, and at 1280px, the width the two consoles are used at. The baselines are committed under `tests/__screenshots__/<project>/<screen>-<width>.png`; a run compares against them and fails with a diff image in `test-results/`.
+`tests/host.screenshots.spec.ts`, `admin.screenshots.spec.ts`, and `platform.screenshots.spec.ts` record what a screen looks like, so a change to it arrives for review as an image beside the image it replaces. Each screen is taken full-page at 390px, the width of a phone, at 834px, a tablet held upright, and at 1280px, the width the two consoles are used at. The baselines are committed under `tests/__screenshots__/<project>/<screen>-<width>.png`; a run compares against them and fails with a diff image in `test-results/`.
 
 Screens covered: the public site's catalog top page, ranking, series list, label list, creator list, series detail, label detail, creator detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's sign-in, dashboard, series list, series edit form, theme settings, and the public site preview behind that screen's tab; the operator console's sign-in, dashboard, and tenant list.
 
@@ -230,7 +230,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 ## Adding scenarios
 
 1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
-2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do, in the `exclusive` group. A new project joins the group whose stack it can share (see [Groups](#groups)); a group of its own also needs an entry in the `Test / E2E` matrix.
+2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that drives an app as a tablet does — across tablet widths, with a touch screen and a coarse pointer — is named `<app>.tablet.spec.ts` and runs in that app's `tablet-*` project, under an iPad descriptor; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do, in the `exclusive` group. A new project joins the group whose stack it can share (see [Groups](#groups)); a group of its own also needs an entry in the `Test / E2E` matrix.
 3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
 4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify edge routing in [`routing/`](./routing/README.md), not here.
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.

@@ -158,14 +158,42 @@ export const creditAuthorViaUi = async (
   }
 };
 
-/** Pick an option of a `Select` trigger by label. */
+/**
+ * Pick an option of a `Select` trigger by label.
+ *
+ * A press that lands before the trigger is hydrated, or on a trigger the page
+ * is about to render again — a filter form the navigation its own Apply
+ * started has not finished replacing — opens nothing. So the press is repeated
+ * until the trigger reports itself open, the way `revealViewerControls`
+ * repeats the tap that shows the viewer's controls; a trigger already open is
+ * not pressed again, since a second press would close it.
+ *
+ * The option is looked up inside the list this trigger names in
+ * `aria-controls`, which it carries only while open, so an option of the same
+ * name in another control on the page is never the one chosen.
+ */
 export const selectOption = async (
   page: Page,
   select: Locator,
   optionLabel: string
 ): Promise<void> => {
-  await select.click();
-  await page.getByRole("option", { exact: true, name: optionLabel }).click();
+  await expect(async () => {
+    if ((await select.getAttribute("aria-expanded")) !== "true") {
+      await select.click();
+    }
+    await expect(select).toHaveAttribute("aria-expanded", "true", {
+      timeout: 2000,
+    });
+  }).toPass();
+
+  const listId = await select.getAttribute("aria-controls");
+  if (!listId) {
+    throw new Error("the open select names no list in aria-controls");
+  }
+  await page
+    .locator(`[id="${listId}"]`)
+    .getByRole("option", { exact: true, name: optionLabel })
+    .click();
 };
 
 /**

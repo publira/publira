@@ -75,4 +75,20 @@ describe("Button", () => {
       ).toBe(false);
     }
   });
+
+  it("grows every size to a fingertip's 44px where the pointer is coarse", () => {
+    render(
+      <>
+        <Button size="sm">Small</Button>
+        <Button>Medium</Button>
+        <Button size="lg">Large</Button>
+        <Button aria-label="Icon" size="icon" />
+      </>
+    );
+
+    for (const name of ["Small", "Medium", "Large"]) {
+      expect(classesOf(name)).toContain("pointer-coarse:h-11");
+    }
+    expect(classesOf("Icon")).toContain("pointer-coarse:size-11");
+  });
 });

@@ -308,7 +308,9 @@ export const SortableItem = ({
  * The grip is the height of its own icon, which leaves it above the middle of
  * a row built around a taller control. Such a row gives it that control's
  * height through `className`, so the grip lines up with the field beside it
- * and stays put when a message grows the row underneath.
+ * and stays put when a message grows the row underneath. Where the pointer is
+ * coarse it is never smaller than 44px either way, so a finger can pick a row
+ * up by it.
  */
 export const SortableItemHandle = ({
   children,
@@ -328,7 +330,7 @@ export const SortableItemHandle = ({
     <button
       aria-roledescription={t("admin.common.sortable.role_description")}
       className={cn(
-        "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
         className
       )}
       disabled={disabled}

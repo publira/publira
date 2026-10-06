@@ -6,10 +6,16 @@ import { cn } from "@publira/utils";
  * from the first paint through to the loaded viewer.
  *
  * `svh` rather than `vh` keeps a mobile browser's collapsing address bar out of
- * the measurement, and the `rem` cap stops a tall desktop window from pushing
- * everything else off screen.
+ * the measurement. In a landscape window the `rem` cap stops a tall desktop
+ * screen from pushing everything else off it; in a portrait one there is no
+ * cap, because the reader shows one page there and that page is drawn at the
+ * height of the box. With the cap, a tablet held upright got a box about as
+ * wide as it is tall, too short for one page to fill and wide enough to be
+ * taken for a spread.
  */
-export const VIEWER_HEIGHT_CLASS = cn("h-[min(78svh,52rem)]");
+export const VIEWER_HEIGHT_CLASS = cn(
+  "h-[78svh] landscape:h-[min(78svh,52rem)]"
+);
 
 /**
  * The same box as a floor rather than a fixed height, for the gate that stands
@@ -17,4 +23,6 @@ export const VIEWER_HEIGHT_CLASS = cn("h-[min(78svh,52rem)]");
  * room for, and the page grows around it rather than scrolling a second time
  * inside the frame.
  */
-export const VIEWER_MIN_HEIGHT_CLASS = cn("min-h-[min(78svh,52rem)]");
+export const VIEWER_MIN_HEIGHT_CLASS = cn(
+  "min-h-[78svh] landscape:min-h-[min(78svh,52rem)]"
+);
