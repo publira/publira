@@ -4,7 +4,9 @@ description: Price an episode, take payment through Stripe or PAY.JP, choose whe
 published: 2026-10-06
 ---
 
-Selling an episode takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
+Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
+
+The tenant's app sells either through the same provider, or through the App Store's and Google Play's own payment, which needs no provider and is verified with the stores instead. [Selling in the app](#selling-in-the-app) covers that choice, and a tenant that sells only in its app through the stores can skip the provider sections.
 
 Everything here under **Integrations** › **Payments** is for a **Tenant admin**; an Editor or an Auditor does not see that screen. Pricing an episode is done by whoever creates it.
 
@@ -104,7 +106,7 @@ The provider's dashboard lists each delivery to the webhook with the status the 
 
 | Status | Cause | What to do |
 | --- | --- | --- |
-| 2xx | Delivered and applied | If the episode is still locked, the reader may have bought it on another account. |
+| 2xx | Accepted. Not every accepted notification opens an episode: Stripe sends `checkout.session.completed` for a konbini payment before the reader pays, and the episode opens only with the `checkout.session.async_payment_succeeded` that follows the payment | Check the event type and the payment's status in the dashboard. If the payment is complete and the episode is still locked, the reader may have bought it on another account. |
 | 400 | The signing secret or webhook token in the console does not match the provider's | Enter the value from the endpoint the provider is sending from. |
 | 404 | The path does not name a provider | Register the URL exactly as the console shows it. |
 | 503 | Payments are not **Ready**, or the URL names a provider other than the one chosen | Finish the setup above. The provider retries the delivery. |
@@ -130,6 +132,8 @@ The **In-app purchase** section decides how the tenant's app sells an episode it
 
 - **Web checkout** opens the site's checkout in the phone's browser, through the provider above, and brings the reader back to the episode once paid.
 - **In-app purchase** sells with the App Store's and Google Play's own payment sheet. The store charges the reader and keeps its commission, and the payment provider above is not involved.
+
+With **In-app purchase**, the app needs no payment provider from [Choosing a payment provider](#choosing-a-payment-provider): it buys through the store and the install verifies the purchase with the store. The site does, for now: on an episode sold **App only**, it shows the episode as sold in the app and links to the stores only while a payment provider is **Ready**, and otherwise tells readers it cannot take purchases ([#3777](https://github.com/publira/publira/issues/3777)).
 
 **In-app purchase** can be chosen once at least one store is **Ready**: turned on with **Use the App Store** or **Use Google Play**, with its key entered, and with its app named under **Integrations** › **App links**.
 
