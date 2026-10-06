@@ -3,6 +3,38 @@ import type { Page } from "@playwright/test";
 
 import { signInAsSeedAdmin } from "../src/admin";
 
+/**
+ * Every sidebar entry a tenant admin sees, in order. The entries reserved for
+ * an admin stream in after the rest, so a check that depends on where the
+ * entries sit waits for all of these first.
+ */
+const sidebarEntries = [
+  "Dashboard",
+  "Series",
+  "Labels",
+  "Authors",
+  "Author roles",
+  "Genres",
+  "Pages",
+  "Announcements",
+  "Readers",
+  // The pending-comment badge rides on this entry.
+  /^Comments/u,
+  "Contact messages",
+  "Access tickets",
+  "Read-through",
+  "Royalties",
+  "Email",
+  "Payments",
+  "Mobile push",
+  "App links",
+  "Sign-in",
+  "Members",
+  "Branding",
+  "Audit logs",
+  "Settings",
+];
+
 const sidebarLink = (page: Page, name: string) =>
   page.getByRole("navigation").getByRole("link", { exact: true, name });
 
@@ -51,32 +83,7 @@ test.describe("web-admin console navigation", () => {
       "Integrations",
       "Administration",
     ]);
-    await expect(navigation.getByRole("link")).toHaveText([
-      "Dashboard",
-      "Series",
-      "Labels",
-      "Authors",
-      "Author roles",
-      "Genres",
-      "Pages",
-      "Announcements",
-      "Readers",
-      // The pending-comment badge rides on this entry.
-      /^Comments/u,
-      "Contact messages",
-      "Access tickets",
-      "Read-through",
-      "Royalties",
-      "Email",
-      "Payments",
-      "Mobile push",
-      "App links",
-      "Sign-in",
-      "Members",
-      "Branding",
-      "Audit logs",
-      "Settings",
-    ]);
+    await expect(navigation.getByRole("link")).toHaveText(sidebarEntries);
   });
 
   test("a sidebar taller than the screen scrolls on its own", async ({
@@ -84,13 +91,31 @@ test.describe("web-admin console navigation", () => {
   }) => {
     await page.setViewportSize({ height: 600, width: 1280 });
     await signInAsSeedAdmin(page, "/integrations/payment");
+    // Both columns stream in. An admin's entries land above Settings, so the
+    // sidebar is scrolled to its end only once they are all there, and the
+    // page's skeleton fits the screen, so until the page is longer than the
+    // screen the window has nothing to scroll.
+    await expect(page.getByRole("navigation").getByRole("link")).toHaveText(
+      sidebarEntries
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollHeight > window.innerHeight
+        )
+      )
+      .toBe(true);
 
     const settings = sidebarLink(page, "Settings");
     await settings.scrollIntoViewIfNeeded();
     await expect(settings).toBeInViewport();
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
-    // A long page scrolls under the sidebar without taking it along.
+    // A long page scrolls under the sidebar without taking it along. The
+    // wheel goes to whatever is under the pointer, and signing in left the
+    // pointer over the sidebar: aim it at the main content, right of the
+    // 240px sidebar.
+    await page.mouse.move(760, 300);
     await page.mouse.wheel(0, 2000);
     await expect
       .poll(() => page.evaluate(() => window.scrollY))
