@@ -79,6 +79,26 @@ describe("AuditLogActionCell", () => {
     }
   );
 
+  it.each(getLocales())(
+    "names a change to a series' wait-for-free rule in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "series_wait_free_settings_updated",
+        "series",
+        "SERIES001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.series_wait_free_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage("admin.audit.targets.series", locale);
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / SERIES001`);
+    }
+  );
+
   it("falls back to the raw target type it has no name for", async () => {
     const cell = await renderActionCell(
       "en",

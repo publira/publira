@@ -4,6 +4,7 @@ export const auditActions = [
   "series_updated",
   "series_eye_catch_aspect_image_uploaded",
   "series_free_windows_created",
+  "series_wait_free_settings_updated",
   "episode_created",
   "episode_updated",
   "episode_image_uploaded",

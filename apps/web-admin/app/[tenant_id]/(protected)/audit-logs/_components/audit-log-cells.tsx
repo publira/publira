@@ -29,6 +29,11 @@ const catalogActionName = (action: string) => {
         <Message message="admin.audit.actions.series_free_windows_created" />
       );
     }
+    case "series_wait_free_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.series_wait_free_settings_updated" />
+      );
+    }
     case "episode_created": {
       return <Message message="admin.audit.actions.episode_created" />;
     }

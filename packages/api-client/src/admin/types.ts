@@ -33,7 +33,10 @@ export type {
   RoyaltyStatementLine,
   RoyaltyStatementTotals,
 } from "../gen/publira/admin/v1/royalty_pb.js";
-export type { AdminEpisodeFreeWindow } from "../gen/publira/admin/v1/series_pb.js";
+export type {
+  AdminEpisodeFreeWindow,
+  SeriesWaitFreeSettings,
+} from "../gen/publira/admin/v1/series_pb.js";
 export type {
   TenantAndroidAppAssociation,
   TenantAppleSignInSettings,

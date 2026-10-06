@@ -1,8 +1,9 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toInstantIsoString } from "@publira/utils";
-import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,6 +17,7 @@ import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
+  boundedIntFormSchema,
   checkboxOnFormSchema,
   creditShareBpsSchema,
   flagOneFormSchema,
@@ -45,6 +47,14 @@ import {
   SERIES_STATUS_VALUES,
 } from "#lib/series-classification";
 import { SERIES_COMMENT_MODES } from "#lib/series-comment-mode";
+import {
+  seriesWaitFreeSettingsCacheTag,
+  updateSeriesWaitFreeSettings,
+} from "#lib/series-wait-free";
+import {
+  MAX_WAIT_FREE_EXCLUDED_LATEST_COUNT,
+  MAX_WAIT_FREE_HOURS,
+} from "#lib/series-wait-free-shared";
 import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -589,4 +599,77 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
     message: t("admin.eye_catch.aspect.uploaded"),
     ok: true,
   };
+};
+
+const waitFreeSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const hoursOptions = { max: MAX_WAIT_FREE_HOURS, min: 1 };
+  const max = String(MAX_WAIT_FREE_HOURS);
+
+  return z.object({
+    accessHours: boundedIntFormSchema(
+      t("admin.series.wait_free.validation.access_hours_invalid", { max }),
+      hoursOptions
+    ),
+    enabled: checkboxOnFormSchema,
+    excludedLatestCount: boundedIntFormSchema(
+      t("admin.series.wait_free.validation.excluded_latest_count_invalid"),
+      { max: MAX_WAIT_FREE_EXCLUDED_LATEST_COUNT, min: 0 }
+    ),
+    rechargeHours: boundedIntFormSchema(
+      t("admin.series.wait_free.validation.recharge_hours_invalid", { max }),
+      hoursOptions
+    ),
+    seriesId: requiredRecordId(t("admin.series.validation.id_missing")),
+    seriesPublicId: requiredTrimmedString(
+      t("admin.series.validation.id_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.series.validation.tenant_missing")
+    ),
+  });
+};
+
+const waitFreeSettingsFormFields = {
+  accessHours: { kind: "value", name: "access_hours" },
+  enabled: { kind: "value", name: "enabled" },
+  excludedLatestCount: { kind: "value", name: "excluded_latest_count" },
+  rechargeHours: { kind: "value", name: "recharge_hours" },
+  seriesId: { kind: "value", name: "series_id" },
+  seriesPublicId: { kind: "value", name: "series_public_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+export const updateSeriesWaitFreeSettingsAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    waitFreeSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, waitFreeSettingsFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const { seriesId, seriesPublicId, tenantId, ...settings } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateSeriesWaitFreeSettings({ ...settings, seriesId, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(seriesWaitFreeSettingsCacheTag(tenantId, seriesId));
+
+  redirect(`/series/${encodeURIComponent(seriesPublicId)}?wait_free_updated=1`);
 };

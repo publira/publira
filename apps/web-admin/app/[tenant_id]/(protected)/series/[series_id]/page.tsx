@@ -41,6 +41,7 @@ import { listAllLabels } from "#lib/label";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getSeries } from "#lib/series";
+import { getSeriesWaitFreeSettings } from "#lib/series-wait-free";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
@@ -50,9 +51,11 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
 import { SeriesTabNav } from "../_components/series-tab-nav";
+import { SeriesWaitFreeForm } from "../_components/series-wait-free-form";
 import {
   updateSeriesAction,
   updateSeriesEyeCatchAction,
+  updateSeriesWaitFreeSettingsAction,
   uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
 
@@ -149,6 +152,46 @@ const SeriesLoadError = ({ message }: { message: string }) => (
   </SectionError>
 );
 
+const SeriesWaitFreeSection = async ({
+  seriesId,
+  seriesPublicId,
+  tenantId,
+}: {
+  seriesId: string;
+  seriesPublicId: string;
+  tenantId: string;
+}) => {
+  const result = await getSeriesWaitFreeSettings({ seriesId });
+  // A failed read has no rule to open the form on, and a save from defaults
+  // would write them over the one the series holds.
+  if (!result.ok) {
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.series.wait_free.load_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
+  const { settings } = result;
+  return (
+    <SeriesWaitFreeForm
+      action={updateSeriesWaitFreeSettingsAction}
+      initialSettings={settings}
+      key={`${seriesPublicId}:${String(settings.enabled)}:${settings.rechargeHours}:${settings.accessHours}:${settings.excludedLatestCount}`}
+      seriesId={seriesId}
+      seriesPublicId={seriesPublicId}
+      tenantId={tenantId}
+    />
+  );
+};
+
 const EditSeriesFormData = async ({
   params,
   searchParams,
@@ -237,45 +280,64 @@ const EditSeriesFormData = async ({
   }
 
   return (
-    <SeriesForm
-      action={updateSeriesAction}
-      canCreateLabel={canCreateLabel}
-      creatorRoles={creatorRolesResult.creatorRoles}
-      creatorRolesErrorMessage={
-        creatorRolesResult.ok ? undefined : creatorRolesResult.message
-      }
-      creators={creatorsResult.creators}
-      creatorsErrorMessage={
-        creatorsResult.ok ? undefined : creatorsResult.message
-      }
-      defaultReadingPeriodHours={result.series.readingPeriodHours}
-      genres={genresResult.genres}
-      genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
-      initialCommentMode={result.commentMode}
-      initialPurchaseAvailability={result.purchaseAvailability}
-      initialReadingLayout={result.readingLayout}
-      initialSeries={result.series}
-      key={result.series.publicId}
-      labels={labelsResult.labels}
-      labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
-      mode="update"
-      synopsisPlaceholder={t("admin.series.form.synopsis_placeholder")}
-      tagSuggestions={tagsResult.tagNames}
-      tagSuggestionsErrorMessage={
-        tagsResult.ok ? undefined : tagsResult.message
-      }
-      tenantCommentMode={
-        commentSettingsResult.ok ? commentSettingsResult.commentMode : undefined
-      }
-      tenantPurchaseAvailability={
-        purchaseSettingsResult.ok
-          ? purchaseSettingsResult.settings.purchaseAvailability
-          : undefined
-      }
-      tenantId={tenantId}
-      timeZone={timeZone}
-      titlePlaceholder={t("admin.series.form.title_placeholder")}
-    />
+    <div className="grid gap-6">
+      <SeriesForm
+        action={updateSeriesAction}
+        canCreateLabel={canCreateLabel}
+        creatorRoles={creatorRolesResult.creatorRoles}
+        creatorRolesErrorMessage={
+          creatorRolesResult.ok ? undefined : creatorRolesResult.message
+        }
+        creators={creatorsResult.creators}
+        creatorsErrorMessage={
+          creatorsResult.ok ? undefined : creatorsResult.message
+        }
+        defaultReadingPeriodHours={result.series.readingPeriodHours}
+        genres={genresResult.genres}
+        genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
+        initialCommentMode={result.commentMode}
+        initialPurchaseAvailability={result.purchaseAvailability}
+        initialReadingLayout={result.readingLayout}
+        initialSeries={result.series}
+        key={result.series.publicId}
+        labels={labelsResult.labels}
+        labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
+        mode="update"
+        synopsisPlaceholder={t("admin.series.form.synopsis_placeholder")}
+        tagSuggestions={tagsResult.tagNames}
+        tagSuggestionsErrorMessage={
+          tagsResult.ok ? undefined : tagsResult.message
+        }
+        tenantCommentMode={
+          commentSettingsResult.ok
+            ? commentSettingsResult.commentMode
+            : undefined
+        }
+        tenantPurchaseAvailability={
+          purchaseSettingsResult.ok
+            ? purchaseSettingsResult.settings.purchaseAvailability
+            : undefined
+        }
+        tenantId={tenantId}
+        timeZone={timeZone}
+        titlePlaceholder={t("admin.series.form.title_placeholder")}
+      />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.series.wait_free.load_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<Skeleton className="h-64" />}>
+          <SeriesWaitFreeSection
+            seriesId={result.series.id}
+            seriesPublicId={result.series.publicId}
+            tenantId={tenantId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
+    </div>
   );
 };
 
@@ -305,6 +367,10 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
     <AdminPageContent>
       <FlashToast message="admin.series.created" />
       <FlashToast keyName="updated" message="admin.series.updated" />
+      <FlashToast
+        keyName="wait_free_updated"
+        message="admin.series.wait_free.updated"
+      />
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />

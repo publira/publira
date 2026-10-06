@@ -269,6 +269,7 @@
         "tenant_admin_invite_canceled": "管理者招待の取り消し",
         "series_eye_catch_aspect_image_uploaded": "シリーズのアイキャッチ画像アップロード",
         "series_free_windows_created": "シリーズへの無料公開期間の一括追加",
+        "series_wait_free_settings_updated": "待てば無料の設定変更",
         "episode_updated": "エピソード更新",
         "episode_image_uploaded": "エピソード本文画像のアップロード",
         "episode_credits_replaced": "エピソードの著者更新",
@@ -1834,6 +1835,28 @@
         "web": "Webのみ",
         "app": "アプリのみ",
         "none": "表示先なし"
+      },
+      "wait_free": {
+        "title": "待てば無料",
+        "description": "ログインした読者が、このシリーズの有料エピソードを無料チケットで1話ずつ読めるようにします。チケットは使ってから一定時間待つと再び使えるようになります。",
+        "enabled": "このシリーズで無料チケットを配る",
+        "enabled_description": "オフにしても下の数値は保存され、次にオンにしたときにそのまま使われます。読者がすでにチケットで開いたエピソードは、期限まで読めます。",
+        "recharge_hours": "次のチケットまでの時間",
+        "recharge_hours_description": "チケットを使ってから次のチケットが使えるようになるまでの時間です（1〜{$max}時間）。変更は各読者が次にチケットを使ったときから反映され、すでに待っている読者の待ち時間は変わりません。",
+        "access_hours": "エピソードを読める時間",
+        "access_hours_description": "チケットで開いたエピソードを読める時間です（1〜{$max}時間）。",
+        "excluded_latest_count": "チケットで読めない最新話の数",
+        "excluded_latest_count_description": "シリーズの並び順で、公開済みの最新話から数えます。0にするとすべての有料エピソードをチケットで読めます。",
+        "submit": "待てば無料の設定を保存",
+        "updated": "待てば無料の設定を保存しました。",
+        "load_error": "待てば無料の設定を表示できませんでした",
+        "load_failed": "待てば無料の設定を読み込めませんでした。しばらくしてからもう一度お試しください。",
+        "save_failed": "待てば無料の設定を保存できませんでした。しばらくしてからもう一度お試しください。",
+        "validation": {
+          "recharge_hours_invalid": "次のチケットまでの時間は1〜{$max}の整数で入力してください。",
+          "access_hours_invalid": "エピソードを読める時間は1〜{$max}の整数で入力してください。",
+          "excluded_latest_count_invalid": "チケットで読めない最新話の数は0以上の整数で入力してください。"
+        }
       }
     },
     "settings": {
