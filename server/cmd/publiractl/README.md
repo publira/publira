@@ -140,24 +140,24 @@ go -C server run ./cmd/publiractl policy show
 | `policy set` | `UpdatePlatformPolicy` | Saves the values its flags give over the saved policy, or over the built-in defaults when none is saved, and keeps every other value. It refuses to run with no flag. Saving what is already saved changes nothing and files nothing |
 | `policy show` | `GetPlatformPolicy` | Prints the saved policy with its revision, or the built-in defaults, marked as such, when none is saved |
 
-`policy set` takes one flag per field of `PlatformPolicy`:
+`policy set` takes one flag per field of `PlatformPolicy`. A limit's default is given as its shorter window's value, then its daily one:
 
-| Flag | What it sets |
-| --- | --- |
-| `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing |
-| `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session |
-| `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify |
-| `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket |
-| `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address |
-| `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant |
-| `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below |
-| `--comment-report-per-minute`, `--comment-report-per-day` | Comments one reader may report |
-| `--episode-rating-per-minute`, `--episode-rating-per-day` | Presses of the episode rating one reader may make |
-| `--contact-message-per-account-per-hour`, `--contact-message-per-account-per-day` | Contact messages one signed-in reader may send |
-| `--contact-message-per-client-per-hour`, `--contact-message-per-client-per-day` | Contact messages one client may send across every account and tenant |
-| `--viewer-preferences-per-minute`, `--viewer-preferences-per-day` | Times one reader may save the viewer layout |
-| `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes |
-| `--disposable-email-domains-url` | The absolute http or https URL the list of disposable email domains is read from. An empty value leaves no list |
+| Flag | What it sets | Built-in default |
+| --- | --- | --- |
+| `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing | Off |
+| `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session | 5, 50 |
+| `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify | 10, 100 |
+| `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |
+| `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
+| `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant | 30, 150 |
+| `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below | 10, 100 |
+| `--comment-report-per-minute`, `--comment-report-per-day` | Comments one reader may report | 10, 50 |
+| `--episode-rating-per-minute`, `--episode-rating-per-day` | Presses of the episode rating one reader may make | 30, 300 |
+| `--contact-message-per-account-per-hour`, `--contact-message-per-account-per-day` | Contact messages one signed-in reader may send | 3, 10 |
+| `--contact-message-per-client-per-hour`, `--contact-message-per-client-per-day` | Contact messages one client may send across every account and tenant | 10, 30 |
+| `--viewer-preferences-per-minute`, `--viewer-preferences-per-day` | Times one reader may save the viewer layout | 30, 300 |
+| `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes | 10 |
+| `--disposable-email-domains-url` | The absolute http or https URL the list of disposable email domains is read from. An empty value leaves no list | Empty |
 
 Every limit is a whole number of at least 1, and its daily value is at least its per-minute or per-hour one. Running servers reread the policy within `platformpolicy.CacheTTL`, so a save reaches them without a restart. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
 
