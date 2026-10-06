@@ -5294,6 +5294,8 @@
         "description": "How the catalog index splits titles, names, and synopses into words. The default is built for Japanese on analysis-kuromoji and analysis-icu. For titles in another language, replace it with a definition built on that language's plugin, such as analysis-nori for Korean or analysis-smartcn for Chinese.",
         "current_default": "In use: the default definition.",
         "current_saved": "In use: a saved definition.",
+        "pending_default": "Saved: the default definition. It takes effect once the index for the saved settings is built; until then, the search answers from the current index.",
+        "pending_saved": "Saved: a definition of your own. It takes effect once the index for the saved settings is built; until then, the search answers from the current index.",
         "roles_intro": "A definition has to define these three names, which the catalog index refers to:",
         "role_written_form": "Analyzer for titles, names, and synopses as they're written.",
         "role_alternate_form": "Analyzer for another form a reader may type a query in, such as the kana reading in Japanese. For a language without one, define it the same way as written_form.",

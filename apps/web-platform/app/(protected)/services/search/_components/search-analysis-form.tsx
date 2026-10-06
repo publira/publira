@@ -45,7 +45,7 @@ const FORM_ID = "search-analysis-form";
 interface SearchAnalysisFormProps {
   settings: Pick<
     PlatformSearchSettings,
-    "analysis" | "defaultAnalysis" | "revision"
+    "analysis" | "buildState" | "defaultAnalysis" | "revision"
   >;
 }
 
@@ -72,16 +72,30 @@ export const SearchAnalysisForm = ({ settings }: SearchAnalysisFormProps) => (
       </PlatformSectionHeading>
     </PlatformSectionHeader>
 
+    {/* The saved definition is the one the search answers with only once
+        the settings are serving: while their index is built, or after its
+        build failed, the search answers from the previous index. */}
     <p className="text-sm text-foreground sm:max-w-3xl">
-      {settings.defaultAnalysis ? (
+      {settings.buildState === "serving" && settings.defaultAnalysis ? (
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="platform.search.analysis.current_default" />
         </Suspense>
-      ) : (
+      ) : null}
+      {settings.buildState === "serving" && !settings.defaultAnalysis ? (
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="platform.search.analysis.current_saved" />
         </Suspense>
-      )}
+      ) : null}
+      {settings.buildState !== "serving" && settings.defaultAnalysis ? (
+        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+          <Message message="platform.search.analysis.pending_default" />
+        </Suspense>
+      ) : null}
+      {settings.buildState !== "serving" && !settings.defaultAnalysis ? (
+        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+          <Message message="platform.search.analysis.pending_saved" />
+        </Suspense>
+      ) : null}
     </p>
 
     <div className="grid gap-2 sm:max-w-3xl">

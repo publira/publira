@@ -298,13 +298,18 @@ test.describe("web-platform search settings", () => {
       await expect(
         page.getByText(/^A new OpenSearch index is being built/u)
       ).toBeVisible();
-      await expect(page.getByText("In use: a saved definition.")).toBeVisible();
+      // The current index keeps answering, so the new definition is saved
+      // but not in use until the build is done.
+      await expect(
+        page.getByText(/^Saved: a definition of your own\./u)
+      ).toBeVisible();
       await expect(editor).toHaveValue(/"nori_tokenizer"/u);
 
       // The page asks again on its own while the build runs.
       await expect(
         page.getByText(/^A new OpenSearch index is being built/u)
       ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect(page.getByText("In use: a saved definition.")).toBeVisible();
       await expect(statusValue(page, "Answering from")).toHaveText(
         "OpenSearch"
       );
@@ -322,13 +327,16 @@ test.describe("web-platform search settings", () => {
         page.getByText(/^Text analysis saved\. A new index is being built/u)
       ).toBeVisible();
       await expect(
-        page.getByText("In use: the default definition.")
+        page.getByText(/^Saved: the default definition\./u)
       ).toBeVisible();
       await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
 
       await expect(
         page.getByText(/^A new OpenSearch index is being built/u)
       ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect(
+        page.getByText("In use: the default definition.")
+      ).toBeVisible();
       await expect.poll(writtenFormTokens).toContain("별을");
       await expectOpenSearchAnswering(true);
     });

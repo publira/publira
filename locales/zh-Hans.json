@@ -5294,6 +5294,8 @@
         "description": "目录索引将标题、名称和简介拆分为词语的方式。默认定义面向日语，使用analysis-kuromoji和analysis-icu。如果标题使用其他语言，请替换为使用该语言插件的定义，例如韩语使用analysis-nori，中文使用analysis-smartcn。",
         "current_default": "当前使用：默认定义",
         "current_saved": "当前使用：已保存的定义",
+        "pending_default": "已保存：默认定义。已保存设置的索引构建完成后生效，在此之前搜索仍使用当前索引。",
+        "pending_saved": "已保存：自定义定义。已保存设置的索引构建完成后生效，在此之前搜索仍使用当前索引。",
         "roles_intro": "定义必须包含目录索引引用的以下三个名称：",
         "role_written_form": "按书写形式分析标题、名称和简介的分析器。",
         "role_alternate_form": "分析读者可能输入搜索词的另一种形式（例如日语的假名读音）的分析器。对于没有这种形式的语言，请按与written_form相同的内容定义。",

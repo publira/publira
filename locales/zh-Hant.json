@@ -5294,6 +5294,8 @@
         "description": "目錄索引將標題、名稱與簡介拆分為詞語的方式。預設定義以日語為對象，使用analysis-kuromoji與analysis-icu。如果標題使用其他語言，請替換為使用該語言外掛程式的定義，例如韓語使用analysis-nori，中文使用analysis-smartcn。",
         "current_default": "目前使用：預設定義",
         "current_saved": "目前使用：已儲存的定義",
+        "pending_default": "已儲存：預設定義。已儲存設定的索引建立完成後生效，在此之前搜尋仍使用目前的索引。",
+        "pending_saved": "已儲存：自訂定義。已儲存設定的索引建立完成後生效，在此之前搜尋仍使用目前的索引。",
         "roles_intro": "定義必須包含目錄索引參照的以下三個名稱：",
         "role_written_form": "依書寫形式分析標題、名稱與簡介的分析器。",
         "role_alternate_form": "分析讀者可能輸入搜尋詞的另一種形式（例如日語的假名讀音）的分析器。對於沒有這種形式的語言，請以與written_form相同的內容定義。",

@@ -83,6 +83,7 @@ describe("SearchAnalysisForm", () => {
       <SearchAnalysisForm
         settings={{
           analysis: DEFINITION,
+          buildState: "serving",
           defaultAnalysis: true,
           revision: "3",
         }}
@@ -100,11 +101,37 @@ describe("SearchAnalysisForm", () => {
     ).toBeNull();
   });
 
+  // While the saved settings' index is built, or after its build failed, the
+  // search answers from the previous index, so the saved definition is not
+  // the one in use yet.
+  it.each([
+    ["building", true, /^Saved: the default definition\./u],
+    ["failed", false, /^Saved: a definition of your own\./u],
+  ] as const)(
+    "calls the definition saved rather than in use while the build is %s",
+    (buildState, defaultAnalysis, wording) => {
+      render(
+        <SearchAnalysisForm
+          settings={{
+            analysis: DEFINITION,
+            buildState,
+            defaultAnalysis,
+            revision: "4",
+          }}
+        />
+      );
+
+      expect(screen.getByText(wording)).toBeTruthy();
+      expect(screen.queryByText(/^In use:/u)).toBeNull();
+    }
+  );
+
   it("saves what the editor holds at the rendered revision", async () => {
     render(
       <SearchAnalysisForm
         settings={{
           analysis: DEFINITION,
+          buildState: "serving",
           defaultAnalysis: true,
           revision: "3",
         }}
@@ -127,6 +154,7 @@ describe("SearchAnalysisForm", () => {
       <SearchAnalysisForm
         settings={{
           analysis: DEFINITION,
+          buildState: "serving",
           defaultAnalysis: true,
           revision: "3",
         }}
@@ -158,6 +186,7 @@ describe("SearchAnalysisForm", () => {
       <SearchAnalysisForm
         settings={{
           analysis: NORI_DEFINITION,
+          buildState: "serving",
           defaultAnalysis: false,
           revision: "5",
         }}
@@ -196,6 +225,7 @@ describe("SearchAnalysisForm", () => {
       <SearchAnalysisForm
         settings={{
           analysis: DEFINITION,
+          buildState: "serving",
           defaultAnalysis: true,
           revision: "3",
         }}
@@ -207,6 +237,7 @@ describe("SearchAnalysisForm", () => {
       <SearchAnalysisForm
         settings={{
           analysis: '{\n  "stored": true\n}',
+          buildState: "building",
           defaultAnalysis: false,
           revision: "4",
         }}
