@@ -115,6 +115,7 @@ Implementation:
 - Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 - Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
 - Go, the module cache, and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
+- Saving that build cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/go-build-cache-save`](../actions/go-build-cache-save/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
@@ -172,7 +173,7 @@ Nightly full builds find cross-service drift that filters cannot catch. Host CI 
 
 `Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job that installs Ubuntu packages through the [`apt-install`](../actions/apt-install/action.yml) action watches that action too, and a job that sets up Go through the [`go-setup`](../actions/go-setup/action.yml) action watches that one. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job that installs Ubuntu packages through the [`apt-install`](../actions/apt-install/action.yml) action watches that action too, and a job that sets up Go through the [`go-setup`](../actions/go-setup/action.yml) action watches that one, along with [`go-build-cache-save`](../actions/go-build-cache-save/action.yml) where it saves a build cache. The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
 
 | Job | Watched paths |
 | --- | --- |

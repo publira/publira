@@ -163,6 +163,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
+              - '.github/actions/go-build-cache-save/**'
             test_ts:
               - *docs_excluded
               - 'apps/**'
@@ -352,6 +353,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
+              - '.github/actions/go-build-cache-save/**'
             docker_web:
               - *docs_excluded
               - 'apps/**'
@@ -617,7 +619,7 @@ jobs:
 
       - name: Cache / Save Go build
         if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: ./.github/actions/go-build-cache-save
         with:
           path: ${{ steps.go.outputs.build-cache-path }}
           key: ${{ steps.go.outputs.build-cache-key }}
@@ -1593,15 +1595,17 @@ jobs:
       # nothing else in Go and runs whenever server/ changes.
       - name: Cache / Save Go build
         if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: ./.github/actions/go-build-cache-save
         with:
           path: ${{ steps.go.outputs.build-cache-path }}
           key: ${{ steps.go.outputs.build-cache-key }}
 
   # Every push to main that changes server/ saves one more build cache entry
   # of each kind, and `restore-keys` only ever reads the newest; the rest are
-  # 160 MB (`build`) and 210 MB (`test`) each that would crowd the Gradle and
-  # Playwright entries out of the repository's 10 GB. A job of its own, so the
+  # 150 MB (`build`) and 200 MB (`test`) each that would crowd the Gradle and
+  # Playwright entries out of the repository's 10 GB. Keeping the newest by
+  # creation time keeps the newest commit's, because a run that is no longer
+  # main's tip does not save (`go-build-cache-save`). A job of its own, so the
   # jobs that run the tree's code never hold a token that can delete caches.
   prune-go-build-cache:
     name: Cache / Prune Go build

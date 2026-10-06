@@ -1,0 +1,40 @@
+name: Save the Go build cache
+description: Save the Go build cache that go-setup restored, unless a newer commit has reached main since this run started.
+
+inputs:
+  path:
+    description: The build cache directory, from go-setup's `build-cache-path`.
+    required: true
+  key:
+    description: The key to save it under, from go-setup's `build-cache-key`.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # `restore-keys` reads the entry created last, and `Cache / Prune Go build`
+    # keeps only that one, so creation order has to follow commit order. Two
+    # pushes to main run side by side, and the older commit's run can finish
+    # last; it would then leave its stale tree as the entry every later run
+    # restores. The run that is no longer main's tip leaves saving to the run
+    # of the commit that is. The repository is public, so the lookup needs no
+    # credentials.
+    - name: Cache / Check main tip
+      id: tip
+      shell: bash
+      run: |
+        set -euo pipefail
+        tip="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+        if [[ "${tip}" == "${GITHUB_SHA}" ]]; then
+          echo "current=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "main is at ${tip}, past ${GITHUB_SHA}; not saving the Go build cache"
+          echo "current=false" >> "${GITHUB_OUTPUT}"
+        fi
+
+    - name: Cache / Save Go build
+      if: steps.tip.outputs.current == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
