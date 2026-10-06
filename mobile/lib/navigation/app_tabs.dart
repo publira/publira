@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/autospaced_navigation_destination.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
-/// The destinations of the bottom navigation bar, in the order it shows them.
+/// The destinations of the tab navigation, in the order it shows them.
 ///
 /// Each is a branch of its own with its own navigation stack, rooted at
 /// [root]. The catalog's routes live under every root, so a series opened from
@@ -96,11 +98,12 @@ extension TabNavigation on BuildContext {
   }
 }
 
-/// Every tab, one of them on screen, above the bar that switches between
-/// them.
+/// Every tab, one of them on screen, beside the navigation that switches
+/// between them: a bar along the foot of a phone's window, and a rail down the
+/// leading edge of a tablet's.
 ///
-/// The bar is left out while the episode viewer is on top, where the page
-/// takes the whole screen; every other screen carries it, including the
+/// The navigation is left out while the episode viewer is on top, where the
+/// page takes the whole screen; every other screen carries it, including the
 /// comments opened from the viewer.
 class AppTabShell extends StatelessWidget {
   const AppTabShell({
@@ -126,35 +129,129 @@ class AppTabShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = navigationShell.currentIndex;
+    final showsRail = showsBar && isTabletWindow(context);
+    final leftToRight = Directionality.of(context) == TextDirection.ltr;
     return Scaffold(
-      body: IndexedStack(
-        index: current,
+      body: Row(
         children: [
-          for (final (index, child) in children.indexed)
-            Offstage(
-              offstage: index != current,
-              child: TickerMode(
-                enabled: index == current,
-                // A field focused on a tab left behind would keep the keyboard
-                // over the tab the reader switched to.
-                child: ExcludeFocus(
-                  excluding: index != current,
-                  child: AppTabScope(
-                    tab: AppTab.values[index],
-                    active: index == current,
-                    child: child,
-                  ),
-                ),
+          if (showsRail)
+            // The rail stands against the screen's edge, so it alone keeps
+            // clear of a notch or a rounded corner on that side.
+            SafeArea(
+              left: leftToRight,
+              right: !leftToRight,
+              child: _AppTabRail(selectedIndex: current, onSelected: _select),
+            ),
+          // Keyed so the tabs keep their state, their stacks and their scroll
+          // positions included, while the rail comes and goes beside them: a
+          // tablet turned past the breakpoint, or the viewer opened over a
+          // tab.
+          Expanded(
+            key: const ValueKey('tab-body'),
+            child: MediaQuery.removePadding(
+              context: context,
+              removeLeft: showsRail && leftToRight,
+              removeRight: showsRail && !leftToRight,
+              child: IndexedStack(
+                index: current,
+                children: [
+                  for (final (index, child) in children.indexed)
+                    Offstage(
+                      offstage: index != current,
+                      child: TickerMode(
+                        enabled: index == current,
+                        // A field focused on a tab left behind would keep the
+                        // keyboard over the tab the reader switched to.
+                        child: ExcludeFocus(
+                          excluding: index != current,
+                          child: AppTabScope(
+                            tab: AppTab.values[index],
+                            active: index == current,
+                            child: child,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
+          ),
         ],
       ),
-      bottomNavigationBar: showsBar
+      bottomNavigationBar: showsBar && !showsRail
           ? _AppTabBar(selectedIndex: current, onSelected: _select)
           : null,
     );
   }
 }
+
+/// What both forms of the navigation show for one tab.
+typedef _TabDestination = ({
+  AppTab tab,
+  Widget icon,
+  Widget? selectedIcon,
+  String label,
+  String? tooltipMessage,
+});
+
+/// The tabs as the navigation shows them, in [AppTab] order.
+List<_TabDestination> _destinations(BuildContext context) {
+  final messages = AppMessages.of(context);
+  final signedIn = AuthScope.of(context).isSignedIn;
+  final unread = signedIn
+      ? NotificationScope.maybeOf(context)?.unreadCount ?? 0
+      : 0;
+  Widget notificationsIcon(IconData icon) => Badge(
+    key: const ValueKey('tab-notifications-unread'),
+    isLabelVisible: unread > 0,
+    label: AutospacedText(unreadBadgeLabel(messages, unread)),
+    child: Icon(icon),
+  );
+  return [
+    (
+      tab: AppTab.home,
+      icon: const Icon(Icons.home_outlined),
+      selectedIcon: const Icon(Icons.home),
+      label: messages.navigationHome,
+      tooltipMessage: null,
+    ),
+    (
+      tab: AppTab.search,
+      icon: const Icon(Icons.search),
+      selectedIcon: null,
+      label: messages.navigationSearch,
+      tooltipMessage: null,
+    ),
+    (
+      tab: AppTab.library,
+      icon: const Icon(Icons.collections_bookmark_outlined),
+      selectedIcon: const Icon(Icons.collections_bookmark),
+      label: messages.navigationLibrary,
+      tooltipMessage: null,
+    ),
+    (
+      tab: AppTab.notifications,
+      icon: notificationsIcon(Icons.notifications_outlined),
+      selectedIcon: notificationsIcon(Icons.notifications),
+      label: messages.navigationNotifications,
+      tooltipMessage: unread > 0
+          ? messages.navigationNotificationsUnread(
+              count: messages.formatInteger(unread),
+            )
+          : null,
+    ),
+    (
+      tab: AppTab.account,
+      icon: Icon(signedIn ? Icons.person : Icons.person_outline),
+      selectedIcon: null,
+      label: messages.navigationAccount,
+      tooltipMessage: null,
+    ),
+  ];
+}
+
+/// The key a tab's destination is found by, the same in the bar and the rail.
+ValueKey<String> _destinationKey(AppTab tab) => ValueKey('tab-${tab.name}');
 
 class _AppTabBar extends StatelessWidget {
   const _AppTabBar({required this.selectedIndex, required this.onSelected});
@@ -164,75 +261,85 @@ class _AppTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    final signedIn = AuthScope.of(context).isSignedIn;
-    final unread = signedIn
-        ? NotificationScope.maybeOf(context)?.unreadCount ?? 0
-        : 0;
-    Widget notificationsIcon(IconData icon) => Badge(
-      key: const ValueKey('tab-notifications-unread'),
-      isLabelVisible: unread > 0,
-      label: AutospacedText(unreadBadgeLabel(messages, unread)),
-      child: Icon(icon),
-    );
     return NavigationBar(
       key: const ValueKey('tab-bar'),
       selectedIndex: selectedIndex,
       destinations: [
-        AutospacedNavigationDestination(
-          key: const ValueKey('tab-home'),
-          icon: const Icon(Icons.home_outlined),
-          selectedIcon: const Icon(Icons.home),
-          label: messages.navigationHome,
-          selected: selectedIndex == AppTab.home.index,
-          index: AppTab.home.index,
-          count: AppTab.values.length,
-          onTap: () => onSelected(AppTab.home.index),
-        ),
-        AutospacedNavigationDestination(
-          key: const ValueKey('tab-search'),
-          icon: const Icon(Icons.search),
-          label: messages.navigationSearch,
-          selected: selectedIndex == AppTab.search.index,
-          index: AppTab.search.index,
-          count: AppTab.values.length,
-          onTap: () => onSelected(AppTab.search.index),
-        ),
-        AutospacedNavigationDestination(
-          key: const ValueKey('tab-library'),
-          icon: const Icon(Icons.collections_bookmark_outlined),
-          selectedIcon: const Icon(Icons.collections_bookmark),
-          label: messages.navigationLibrary,
-          selected: selectedIndex == AppTab.library.index,
-          index: AppTab.library.index,
-          count: AppTab.values.length,
-          onTap: () => onSelected(AppTab.library.index),
-        ),
-        AutospacedNavigationDestination(
-          key: const ValueKey('tab-notifications'),
-          icon: notificationsIcon(Icons.notifications_outlined),
-          selectedIcon: notificationsIcon(Icons.notifications),
-          label: messages.navigationNotifications,
-          tooltipMessage: unread > 0
-              ? messages.navigationNotificationsUnread(
-                  count: messages.formatInteger(unread),
-                )
-              : null,
-          selected: selectedIndex == AppTab.notifications.index,
-          index: AppTab.notifications.index,
-          count: AppTab.values.length,
-          onTap: () => onSelected(AppTab.notifications.index),
-        ),
-        AutospacedNavigationDestination(
-          key: const ValueKey('tab-account'),
-          icon: Icon(signedIn ? Icons.person : Icons.person_outline),
-          label: messages.navigationAccount,
-          selected: selectedIndex == AppTab.account.index,
-          index: AppTab.account.index,
-          count: AppTab.values.length,
-          onTap: () => onSelected(AppTab.account.index),
-        ),
+        for (final destination in _destinations(context))
+          AutospacedNavigationDestination(
+            key: _destinationKey(destination.tab),
+            icon: destination.icon,
+            selectedIcon: destination.selectedIcon,
+            label: destination.label,
+            tooltipMessage: destination.tooltipMessage,
+            selected: selectedIndex == destination.tab.index,
+            index: destination.tab.index,
+            count: AppTab.values.length,
+            onTap: () => onSelected(destination.tab.index),
+          ),
       ],
+    );
+  }
+}
+
+/// The tabs down the side of a tablet's window, where a bar would leave five
+/// small targets along the foot of a large screen.
+class _AppTabRail extends StatelessWidget {
+  const _AppTabRail({required this.selectedIndex, required this.onSelected});
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigationRail(
+      key: const ValueKey('tab-bar'),
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onSelected,
+      labelType: NavigationRailLabelType.all,
+      // A phone on its side is past the breakpoint with little height to
+      // spare, and five destinations do not fit it under a large text scale.
+      // A taller window keeps the rail still, so the one vertical scroll view
+      // beside it is the screen's own.
+      scrollable: MediaQuery.sizeOf(context).height < compactWindowHeight,
+      destinations: [
+        for (final destination in _destinations(context))
+          NavigationRailDestination(
+            // On the icon, which is what a tap lands on; only one of the two
+            // is built at a time.
+            icon: _RailIcon(destination: destination, selected: false),
+            selectedIcon: _RailIcon(destination: destination, selected: true),
+            label: AutospacedText(destination.label),
+          ),
+      ],
+    );
+  }
+}
+
+/// The icon of one rail destination, found by the key the bar's destination
+/// carries, and with the bar's long-press tooltip where it says more than the
+/// label under it.
+class _RailIcon extends StatelessWidget {
+  const _RailIcon({required this.destination, required this.selected});
+
+  final _TabDestination destination;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = selected
+        ? destination.selectedIcon ?? destination.icon
+        : destination.icon;
+    final tooltipMessage = destination.tooltipMessage;
+    return KeyedSubtree(
+      key: _destinationKey(destination.tab),
+      child: tooltipMessage == null
+          ? icon
+          : AutospacedTooltip(
+              message: tooltipMessage,
+              excludeFromSemantics: true,
+              child: icon,
+            ),
     );
   }
 }

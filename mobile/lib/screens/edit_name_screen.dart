@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/name_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Renames the signed-in account through `AuthService/UpdateMe`.
@@ -87,51 +88,54 @@ class _EditNameScreenState extends State<EditNameScreen> {
             ? const SignedOutNotice()
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (failure != null) ...[
-                        AutospacedText(
-                          _failureCopy(messages, failure),
-                          key: const ValueKey('edit-name-error'),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
+                child: ReadableWidth(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (failure != null) ...[
+                          AutospacedText(
+                            _failureCopy(messages, failure),
+                            key: const ValueKey('edit-name-error'),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                           ),
+                          const SizedBox(height: 16),
+                        ],
+                        TextFormField(
+                          key: const ValueKey('edit-name-name'),
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            label: AutospacedText(messages.editNameLabel),
+                            border: const OutlineInputBorder(),
+                          ),
+                          autofillHints: const [AutofillHints.name],
+                          textInputAction: TextInputAction.done,
+                          errorBuilder: (context, error) =>
+                              AutospacedText(error),
+                          validator: (value) =>
+                              validateDisplayName(messages, value ?? ''),
+                          onFieldSubmitted: (_) => unawaited(_submit()),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
+                        FilledButton(
+                          key: const ValueKey('edit-name-submit'),
+                          onPressed: _submitting
+                              ? null
+                              : () => unawaited(_submit()),
+                          child: _submitting
+                              ? const SizedBox.square(
+                                  dimension: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : AutospacedText(messages.editNameSave),
+                        ),
                       ],
-                      TextFormField(
-                        key: const ValueKey('edit-name-name'),
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          label: AutospacedText(messages.editNameLabel),
-                          border: const OutlineInputBorder(),
-                        ),
-                        autofillHints: const [AutofillHints.name],
-                        textInputAction: TextInputAction.done,
-                        errorBuilder: (context, error) => AutospacedText(error),
-                        validator: (value) =>
-                            validateDisplayName(messages, value ?? ''),
-                        onFieldSubmitted: (_) => unawaited(_submit()),
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        key: const ValueKey('edit-name-submit'),
-                        onPressed: _submitting
-                            ? null
-                            : () => unawaited(_submit()),
-                        child: _submitting
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : AutospacedText(messages.editNameSave),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),

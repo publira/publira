@@ -16,6 +16,7 @@ import 'package:publira/catalog/genre_chip.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_classification.dart';
@@ -521,10 +522,6 @@ class _NameShelfSkeleton extends StatelessWidget {
   final double height;
   final BoxShape shape;
 
-  /// Enough to reach the edge of a phone, for the reason the cover-sized
-  /// skeleton has.
-  static const _cardCount = 4;
-
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.surfaceContainerHighest;
@@ -535,7 +532,7 @@ class _NameShelfSkeleton extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: _cardCount,
+        itemCount: skeletonCardCount(context, cardWidth: _nameCardWidth),
         separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) => SizedBox(
           width: _nameCardWidth,
@@ -600,7 +597,7 @@ class _GenresShelf extends StatelessWidget {
 class _GenreRowSkeleton extends StatelessWidget {
   const _GenreRowSkeleton();
 
-  static const _chipCount = 4;
+  static const _chipWidth = 96.0;
 
   @override
   Widget build(BuildContext context) {
@@ -612,11 +609,11 @@ class _GenreRowSkeleton extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: _chipCount,
+        itemCount: skeletonCardCount(context, cardWidth: _chipWidth),
         separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) => Center(
           child: Container(
-            width: 96,
+            width: _chipWidth,
             height: 32,
             decoration: BoxDecoration(
               color: colors.surfaceContainerHighest,
@@ -805,16 +802,18 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
         ),
       );
     }
+    final columns = columnCount(context);
+    final rows = rowCount(series.length, columns);
     return SliverPadding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       sliver: SliverList.separated(
-        itemCount: series.length + (hasFooter ? 1 : 0),
+        itemCount: rows + (hasFooter ? 1 : 0),
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
-          if (index >= series.length - _readAheadRows) {
+          if (index >= rows - _readAheadRows) {
             _readMore();
           }
-          if (index == series.length) {
+          if (index == rows) {
             return _CatalogPageFooter(
               message: _moreFailure == null
                   ? null
@@ -831,7 +830,12 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
               },
             );
           }
-          return SeriesTile(series: series[index]);
+          return ColumnRow(
+            row: index,
+            columns: columns,
+            itemCount: series.length,
+            itemBuilder: (context, index) => SeriesTile(series: series[index]),
+          );
         },
       ),
     );

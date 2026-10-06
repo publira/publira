@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -149,31 +150,34 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
         }
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView.separated(
-            key: const ValueKey('reading-history-list'),
-            physics: const AlwaysScrollableScrollPhysics(),
+          child: ReadableScrollPadding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: reads.length + (hasFooter ? 1 : 0),
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              if (index >= reads.length - readAheadRows) {
-                _pager.readMore();
-              }
-              if (index == reads.length) {
-                return PageFooter(
-                  sectionKey: 'reading-history-more',
-                  message: _pager.moreFailure == null
-                      ? null
-                      : catalogFailureCopy(
-                          messages,
-                          _pager.moreFailure,
-                          messages.readingHistoryFailed,
-                        ),
-                  onRetry: _pager.retryMore,
-                );
-              }
-              return _ReadingHistoryRow(read: reads[index]);
-            },
+            builder: (context, padding) => ListView.separated(
+              key: const ValueKey('reading-history-list'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: padding,
+              itemCount: reads.length + (hasFooter ? 1 : 0),
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                if (index >= reads.length - readAheadRows) {
+                  _pager.readMore();
+                }
+                if (index == reads.length) {
+                  return PageFooter(
+                    sectionKey: 'reading-history-more',
+                    message: _pager.moreFailure == null
+                        ? null
+                        : catalogFailureCopy(
+                            messages,
+                            _pager.moreFailure,
+                            messages.readingHistoryFailed,
+                          ),
+                    onRetry: _pager.retryMore,
+                  );
+                }
+                return _ReadingHistoryRow(read: reads[index]);
+              },
+            ),
           ),
         );
       },

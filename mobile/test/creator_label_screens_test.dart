@@ -91,7 +91,12 @@ void main() {
       await pumpApp(tester, location: AppRoutes.creatorDetailPath(creator.id));
       await pumpUntilRouteSettled(tester, tileOf(fixtureSeries.first.id));
 
-      await tester.tap(tileOf(fixtureSeries.first.id));
+      await tester.tap(
+        find.descendant(
+          of: tileOf(fixtureSeries.first.id),
+          matching: find.text(fixtureSeries.first.title),
+        ),
+      );
       await pumpUntilRouteSettled(tester, find.text('Episodes'));
 
       expect(

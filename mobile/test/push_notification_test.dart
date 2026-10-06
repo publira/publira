@@ -91,14 +91,20 @@ void main() {
 
   /// Scrolls the account screen until its notification switch, which sits
   /// below the rows above it, is on screen.
-  Future<void> showSwitch(WidgetTester tester) => tester.scrollUntilVisible(
-    find.byKey(const ValueKey('account-notifications')),
-    100,
-    scrollable: find.descendant(
-      of: find.byKey(const ValueKey('account-list')),
-      matching: find.byType(Scrollable),
-    ),
-  );
+  ///
+  /// The scroll that brings the row fully into view is a jump the next frame
+  /// lays out, so the frame is pumped before anything taps where it stands.
+  Future<void> showSwitch(WidgetTester tester) async {
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('account-notifications')),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('account-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pump();
+  }
 
   testWidgets('the account screen offers the notification switch', (
     tester,

@@ -93,7 +93,12 @@ void main() {
   ) async {
     await pumpApp(tester);
 
-    await tester.tap(find.byKey(ValueKey('series-tile-${withCover.id}')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('series-tile-${withCover.id}')),
+        matching: find.text(withCover.title),
+      ),
+    );
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     final request = _requestOf(

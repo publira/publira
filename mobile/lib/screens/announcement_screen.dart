@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/announcement.dart';
@@ -154,46 +155,49 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
       context,
       announcement.linkUrl,
     );
-    return ListView(
-      key: ValueKey('announcement-${announcement.id}'),
+    return ReadableScrollPadding(
       padding: const EdgeInsets.all(16),
-      children: [
-        AutospacedText(announcement.title, style: theme.textTheme.titleLarge),
-        if (createdAt != null) ...[
-          const SizedBox(height: 4),
-          AutospacedText(
-            messages.formatDateTime(createdAt),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+      builder: (context, padding) => ListView(
+        key: ValueKey('announcement-${announcement.id}'),
+        padding: padding,
+        children: [
+          AutospacedText(announcement.title, style: theme.textTheme.titleLarge),
+          if (createdAt != null) ...[
+            const SizedBox(height: 4),
+            AutospacedText(
+              messages.formatDateTime(createdAt),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        SelectableText.rich(
-          autospaceIn(
-            context,
-            TextSpan(text: announcement.body),
+          ],
+          const SizedBox(height: 16),
+          SelectableText.rich(
+            autospaceIn(
+              context,
+              TextSpan(text: announcement.body),
+              style: theme.textTheme.bodyLarge,
+            ),
             style: theme.textTheme.bodyLarge,
           ),
-          style: theme.textTheme.bodyLarge,
-        ),
-        if (destination != null) ...[
-          const SizedBox(height: 24),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton.icon(
-              key: const ValueKey('announcement-open-link'),
-              icon: Icon(
-                destination is ExternalDestination
-                    ? Icons.open_in_new
-                    : Icons.arrow_forward,
+          if (destination != null) ...[
+            const SizedBox(height: 24),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.icon(
+                key: const ValueKey('announcement-open-link'),
+                icon: Icon(
+                  destination is ExternalDestination
+                      ? Icons.open_in_new
+                      : Icons.arrow_forward,
+                ),
+                label: AutospacedText(messages.announcementsOpenLink),
+                onPressed: () => followTenantLink(context, destination),
               ),
-              label: AutospacedText(messages.announcementsOpenLink),
-              onPressed: () => followTenantLink(context, destination),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

@@ -224,12 +224,21 @@ void main() {
   });
 
   group('the library', () {
+    final recommendedTab = find.byKey(
+      const ValueKey('library-tab-recommended'),
+    );
+
+    /// Taps the recommended tab, the last of the row, after scrolling the row
+    /// to it the way a reader does when the row is wider than the screen.
+    Future<void> tapRecommendedTab(WidgetTester tester) async {
+      await tester.ensureVisible(recommendedTab);
+      await tester.pump();
+      await tester.tap(recommendedTab);
+    }
+
     Future<void> openRecommended(WidgetTester tester) async {
-      await pumpUntilRouteSettled(
-        tester,
-        find.byKey(const ValueKey('library-tab-recommended')),
-      );
-      await tester.tap(find.byKey(const ValueKey('library-tab-recommended')));
+      await pumpUntilRouteSettled(tester, recommendedTab);
+      await tapRecommendedTab(tester);
       // The tab view slides the list in.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
@@ -272,7 +281,9 @@ void main() {
       await pumpApp(tester, location: AppRoutes.library, session: fakeSession);
       await openRecommended(tester);
 
-      await tester.tap(tileOf(series));
+      await tester.tap(
+        find.descendant(of: tileOf(series), matching: find.text(series.title)),
+      );
       await pumpUntilRouteSettled(tester, find.text(series.title));
 
       expect(
@@ -286,7 +297,7 @@ void main() {
         CatalogFailureKind.unexpected,
       );
       await pumpApp(tester, location: AppRoutes.library, session: fakeSession);
-      await tester.tap(find.byKey(const ValueKey('library-tab-recommended')));
+      await tapRecommendedTab(tester);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       await pumpUntilFound(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -205,69 +206,72 @@ class _SavedEpisodes extends StatelessWidget {
     }
     final now = DateTime.now();
 
-    return ListView(
-      key: const ValueKey('downloads-list'),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: AutospacedText(
-                      key: const ValueKey('downloads-usage'),
-                      messages.downloadsUsage(
-                        used: messages.formatByteSize(storage.bytes),
-                        limit: messages.formatByteSize(storage.byteLimit),
-                      ),
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                  ),
-                  if (storage.bytes > 0 || storage.episodes.isNotEmpty)
-                    TextButton(
-                      key: const ValueKey('downloads-clear'),
-                      onPressed: onClear,
-                      child: AutospacedText(messages.downloadsClear),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: storage.byteLimit <= 0
-                    ? 0
-                    : (storage.bytes / storage.byteLimit).clamp(0, 1),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        if (bySeries.isEmpty)
+    return ReadableScrollPadding(
+      builder: (context, padding) => ListView(
+        key: const ValueKey('downloads-list'),
+        padding: padding,
+        children: [
           Padding(
-            key: const ValueKey('downloads-empty'),
-            padding: const EdgeInsets.all(24),
-            child: AutospacedText(
-              messages.downloadsEmpty,
-              textAlign: TextAlign.center,
-            ),
-          )
-        else
-          for (final episodes in bySeries.values) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: AutospacedText(
-                key: ValueKey(
-                  'downloads-series-${episodes.first.episode.detail.seriesId}',
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: AutospacedText(
+                        key: const ValueKey('downloads-usage'),
+                        messages.downloadsUsage(
+                          used: messages.formatByteSize(storage.bytes),
+                          limit: messages.formatByteSize(storage.byteLimit),
+                        ),
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                    if (storage.bytes > 0 || storage.episodes.isNotEmpty)
+                      TextButton(
+                        key: const ValueKey('downloads-clear'),
+                        onPressed: onClear,
+                        child: AutospacedText(messages.downloadsClear),
+                      ),
+                  ],
                 ),
-                episodes.first.episode.detail.seriesTitle,
-                style: theme.textTheme.titleMedium,
-              ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: storage.byteLimit <= 0
+                      ? 0
+                      : (storage.bytes / storage.byteLimit).clamp(0, 1),
+                ),
+              ],
             ),
-            for (final stored in episodes)
-              _DownloadTile(stored: stored, now: now, onDelete: onDelete),
-          ],
-      ],
+          ),
+          const Divider(height: 1),
+          if (bySeries.isEmpty)
+            Padding(
+              key: const ValueKey('downloads-empty'),
+              padding: const EdgeInsets.all(24),
+              child: AutospacedText(
+                messages.downloadsEmpty,
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            for (final episodes in bySeries.values) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: AutospacedText(
+                  key: ValueKey(
+                    'downloads-series-${episodes.first.episode.detail.seriesId}',
+                  ),
+                  episodes.first.episode.detail.seriesTitle,
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              for (final stored in episodes)
+                _DownloadTile(stored: stored, now: now, onDelete: onDelete),
+            ],
+        ],
+      ),
     );
   }
 }

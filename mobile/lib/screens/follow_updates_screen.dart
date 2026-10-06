@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -149,31 +150,34 @@ class _FollowUpdatesListState extends State<_FollowUpdatesList> {
         }
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView.separated(
-            key: const ValueKey('follow-updates-list'),
-            physics: const AlwaysScrollableScrollPhysics(),
+          child: ReadableScrollPadding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: updates.length + (hasFooter ? 1 : 0),
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              if (index >= updates.length - readAheadRows) {
-                _pager.readMore();
-              }
-              if (index == updates.length) {
-                return PageFooter(
-                  sectionKey: 'follow-updates-more',
-                  message: _pager.moreFailure == null
-                      ? null
-                      : catalogFailureCopy(
-                          messages,
-                          _pager.moreFailure,
-                          messages.followUpdatesFailed,
-                        ),
-                  onRetry: _pager.retryMore,
-                );
-              }
-              return _FollowUpdateRow(update: updates[index]);
-            },
+            builder: (context, padding) => ListView.separated(
+              key: const ValueKey('follow-updates-list'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: padding,
+              itemCount: updates.length + (hasFooter ? 1 : 0),
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                if (index >= updates.length - readAheadRows) {
+                  _pager.readMore();
+                }
+                if (index == updates.length) {
+                  return PageFooter(
+                    sectionKey: 'follow-updates-more',
+                    message: _pager.moreFailure == null
+                        ? null
+                        : catalogFailureCopy(
+                            messages,
+                            _pager.moreFailure,
+                            messages.followUpdatesFailed,
+                          ),
+                    onRetry: _pager.retryMore,
+                  );
+                }
+                return _FollowUpdateRow(update: updates[index]);
+              },
+            ),
           ),
         );
       },

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/pages/page_failure.dart';
@@ -123,46 +124,49 @@ class _PublishedPageScreenState extends State<PublishedPageScreen> {
     final fallbackLanguage = page.fallbackLanguage(
       Localizations.localeOf(context),
     );
-    return ListView(
-      key: ValueKey('page-${page.slug}'),
+    return ReadableScrollPadding(
       padding: const EdgeInsets.all(16),
-      children: [
-        if (fallbackLanguage != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: AutospacedText(
-              messages.pagesFallbackNotice(language: fallbackLanguage),
-              key: const ValueKey('page-fallback-notice'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      builder: (context, padding) => ListView(
+        key: ValueKey('page-${page.slug}'),
+        padding: padding,
+        children: [
+          if (fallbackLanguage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: AutospacedText(
+                messages.pagesFallbackNotice(language: fallbackLanguage),
+                key: const ValueKey('page-fallback-notice'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        if (page.contentMarkdown.trim().isEmpty)
-          AutospacedText(
-            messages.pagesBodyEmpty,
-            key: const ValueKey('page-body-empty'),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          if (page.contentMarkdown.trim().isEmpty)
+            AutospacedText(
+              messages.pagesBodyEmpty,
+              key: const ValueKey('page-body-empty'),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            AutospacedMarkdownBody(
+              key: const ValueKey('page-body'),
+              data: page.contentMarkdown,
+              styleSheet: _styleSheet(theme),
+              onTapLink: (text, href, title) {
+                if (href == null) {
+                  return;
+                }
+                final destination = tenantLinkDestinationFrom(context, href);
+                if (destination != null) {
+                  followTenantLink(context, destination);
+                }
+              },
+              imageBuilder: (uri, title, alt) => _PageImage(uri: uri, alt: alt),
             ),
-          )
-        else
-          AutospacedMarkdownBody(
-            key: const ValueKey('page-body'),
-            data: page.contentMarkdown,
-            styleSheet: _styleSheet(theme),
-            onTapLink: (text, href, title) {
-              if (href == null) {
-                return;
-              }
-              final destination = tenantLinkDestinationFrom(context, href);
-              if (destination != null) {
-                followTenantLink(context, destination);
-              }
-            },
-            imageBuilder: (uri, title, alt) => _PageImage(uri: uri, alt: alt),
-          ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/inbox_notification.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/notifications/notification_copy.dart';
@@ -346,42 +347,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ],
             )
-          : ListView.separated(
-              key: const ValueKey('notifications-list'),
-              physics: const AlwaysScrollableScrollPhysics(),
+          : ReadableScrollPadding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: notifications.length + (hasFooter ? 1 : 0),
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                if (index >= notifications.length - _readAheadRows) {
-                  _readMore();
-                }
-                if (index == notifications.length) {
-                  final moreFailure = _moreFailure;
-                  return PageFooter(
-                    sectionKey: 'notifications-more',
-                    message: moreFailure == null
-                        ? null
-                        : _failureCopy(
-                            messages,
-                            moreFailure,
-                            messages.notificationsFailed,
-                          ),
-                    onRetry: () {
-                      setState(() {
-                        _moreFailure = null;
-                      });
-                      _readMore();
-                    },
+              builder: (context, padding) => ListView.separated(
+                key: const ValueKey('notifications-list'),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: padding,
+                itemCount: notifications.length + (hasFooter ? 1 : 0),
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  if (index >= notifications.length - _readAheadRows) {
+                    _readMore();
+                  }
+                  if (index == notifications.length) {
+                    final moreFailure = _moreFailure;
+                    return PageFooter(
+                      sectionKey: 'notifications-more',
+                      message: moreFailure == null
+                          ? null
+                          : _failureCopy(
+                              messages,
+                              moreFailure,
+                              messages.notificationsFailed,
+                            ),
+                      onRetry: () {
+                        setState(() {
+                          _moreFailure = null;
+                        });
+                        _readMore();
+                      },
+                    );
+                  }
+                  final notification = notifications[index];
+                  return _NotificationRow(
+                    notification: notification,
+                    onOpen: () => _open(notification),
+                    onMarkRead: () => unawaited(_markRead(notification)),
                   );
-                }
-                final notification = notifications[index];
-                return _NotificationRow(
-                  notification: notification,
-                  onOpen: () => _open(notification),
-                  onMarkRead: () => unawaited(_markRead(notification)),
-                );
-              },
+                },
+              ),
             ),
     );
   }
