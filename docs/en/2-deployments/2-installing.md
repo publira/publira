@@ -153,4 +153,4 @@ Open it and create its first operator on the setup screen. That operator is sepa
 
 The full list of variables each process reads is in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md), and the optional ones in the READMEs of [`publira server` and `publira worker`](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md), [`web-host`](https://github.com/publira/publira/blob/main/apps/web-host/README.md), [`web-admin`](https://github.com/publira/publira/blob/main/apps/web-admin/README.md), and [`web-platform`](https://github.com/publira/publira/blob/main/apps/web-platform/README.md). Every `publiractl` command is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md).
 
-On every later release, run `db migrate` and then `db roles` with that release's `publiractl` image before its processes start.
+On every later release, [Upgrading](./5-upgrading.md) brings the install forward: the migrations and the roles first, with that release's `publiractl` image, and then its processes.

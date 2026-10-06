@@ -13,5 +13,6 @@ These pages are for the operator who deploys Publira. They describe what an inst
 - [Installing](./2-installing.md): bringing an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 - [Docker Compose](./3-docker-compose.md): running a whole install on one host with the Compose file in the repository.
 - [Reverse proxy](./4-reverse-proxy.md): putting a proxy with TLS in front of an install, and what to change on it when a tenant is added.
+- [Upgrading](./5-upgrading.md): bringing a running install to a new release, and what to do when a migration fails.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
