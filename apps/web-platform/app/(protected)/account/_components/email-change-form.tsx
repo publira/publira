@@ -9,6 +9,11 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -84,13 +89,19 @@ export const EmailChangeForm = () => (
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <Input
-            autoComplete="current-password"
-            name="current_password"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="current-password"
+              name="current_password"
+              placeholder="••••••••"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <Message message="platform.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
           <FieldDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="platform.settings.email_change_password_help" />

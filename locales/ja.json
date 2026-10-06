@@ -653,6 +653,7 @@
         "unset": "権限未設定"
       },
       "cancel": "キャンセル",
+      "show_password": "パスワードを表示",
       "sortable": {
         "instructions": "行を持ち上げるにはSpaceキーまたはEnterキーを押します。矢印キーで移動し、もう一度SpaceキーまたはEnterキーを押すと新しい位置に置きます。Escapeキーで取り消します。",
         "role_description": "ドラッグ可能",
@@ -3136,6 +3137,7 @@
       "read": "既読",
       "retry": "再試行",
       "series_count": "公開中シリーズ{$count}件",
+      "show_password": "パスワードを表示",
       "site_fallback": "サイト",
       "sold_in_app": "アプリで販売",
       "unread": "未読",
@@ -4690,6 +4692,7 @@
       "saved": "保存しました。",
       "saving": "保存中...",
       "select_placeholder": "選択してください",
+      "show_password": "パスワードを表示",
       "status": "状態",
       "submit": "保存",
       "suspend": "停止する",

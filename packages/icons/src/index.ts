@@ -14,6 +14,8 @@ export { CommentIcon } from "./comment-icon";
 export { CopyIcon } from "./copy-icon";
 export { CreditCardIcon } from "./credit-card-icon";
 export { DashboardIcon } from "./dashboard-icon";
+export { EyeIcon } from "./eye-icon";
+export { EyeOffIcon } from "./eye-off-icon";
 export { FileTextIcon } from "./file-text-icon";
 export { FoldHorizontalIcon } from "./fold-horizontal-icon";
 export { GripVerticalIcon } from "./grip-vertical-icon";

@@ -12,7 +12,11 @@ import {
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -126,13 +130,19 @@ const ConfirmPasswordPageContent = async ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="password"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="password"
+                placeholder="••••••••"
+                required
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="admin.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 
@@ -143,13 +153,19 @@ const ConfirmPasswordPageContent = async ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="confirm_password"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="confirm_password"
+                placeholder="••••••••"
+                required
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="admin.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 

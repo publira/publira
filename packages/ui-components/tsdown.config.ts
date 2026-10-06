@@ -22,6 +22,7 @@ export default defineConfig({
     "src/input/index.ts",
     "src/locale-switcher/index.ts",
     "src/offline-notice/index.ts",
+    "src/password-input/index.ts",
     "src/popover/index.ts",
     "src/qr-code/index.ts",
     "src/radio-group/index.ts",

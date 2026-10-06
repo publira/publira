@@ -653,6 +653,7 @@
         "unset": "역할 없음"
       },
       "cancel": "취소",
+      "show_password": "비밀번호 표시",
       "sortable": {
         "instructions": "행을 들어 올리려면 Space 키 또는 Enter 키를 누르세요. 화살표 키로 이동한 뒤 Space 키 또는 Enter 키를 다시 누르면 새 위치에 놓이고, Escape 키를 누르면 취소됩니다.",
         "role_description": "드래그 가능",
@@ -3136,6 +3137,7 @@
       "read": "읽음",
       "retry": "다시 시도",
       "series_count": "공개 중인 시리즈 {$count}건",
+      "show_password": "비밀번호 표시",
       "site_fallback": "사이트",
       "sold_in_app": "앱에서 판매",
       "unread": "읽지 않음",
@@ -4690,6 +4692,7 @@
       "saved": "저장했습니다.",
       "saving": "저장 중...",
       "select_placeholder": "선택해 주세요",
+      "show_password": "비밀번호 표시",
       "status": "상태",
       "submit": "보내기",
       "suspend": "정지",

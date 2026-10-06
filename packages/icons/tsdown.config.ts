@@ -20,6 +20,8 @@ export default defineConfig({
     "src/copy-icon.tsx",
     "src/credit-card-icon.tsx",
     "src/dashboard-icon.tsx",
+    "src/eye-icon.tsx",
+    "src/eye-off-icon.tsx",
     "src/file-text-icon.tsx",
     "src/fold-horizontal-icon.tsx",
     "src/grip-vertical-icon.tsx",

@@ -1,4 +1,9 @@
 import type { Locale } from "@publira/i18n";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { cache, Suspense } from "react";
@@ -113,15 +118,21 @@ const PasswordEmailChangeForm = ({ tenantId }: { tenantId: string }) => (
           <Message message="host.settings.current_password_label" />
         </Suspense>
       </label>
-      <input
-        autoComplete="current-password"
-        className={fieldClassName}
-        id="currentPassword"
-        name="currentPassword"
-        placeholder="********"
-        required
-        type="password"
-      />
+      <PasswordInput>
+        <PasswordInputControl
+          autoComplete="current-password"
+          className={fieldClassName}
+          id="currentPassword"
+          name="currentPassword"
+          placeholder="********"
+          required
+        />
+        <PasswordInputToggle>
+          <Suspense fallback={null}>
+            <Message message="host.common.show_password" />
+          </Suspense>
+        </PasswordInputToggle>
+      </PasswordInput>
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
           <Message message="host.settings.password_required_help" />
@@ -303,15 +314,21 @@ const PasswordChangeSection = async () => {
               <Message message="host.settings.current_password_label" />
             </Suspense>
           </label>
-          <input
-            autoComplete="current-password"
-            className={fieldClassName}
-            id="passwordChangeCurrent"
-            name="currentPassword"
-            placeholder="********"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="current-password"
+              className={fieldClassName}
+              id="passwordChangeCurrent"
+              name="currentPassword"
+              placeholder="********"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <Message message="host.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
         </div>
 
         <div className="space-y-2">
@@ -320,15 +337,21 @@ const PasswordChangeSection = async () => {
               <Message message="host.settings.password_new_label" />
             </Suspense>
           </label>
-          <input
-            autoComplete="new-password"
-            className={fieldClassName}
-            id="passwordChangeNew"
-            name="newPassword"
-            placeholder="********"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="new-password"
+              className={fieldClassName}
+              id="passwordChangeNew"
+              name="newPassword"
+              placeholder="********"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <Message message="host.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
         </div>
 
         <div className="space-y-2">
@@ -340,15 +363,21 @@ const PasswordChangeSection = async () => {
               <Message message="host.settings.password_confirm_label" />
             </Suspense>
           </label>
-          <input
-            autoComplete="new-password"
-            className={fieldClassName}
-            id="passwordChangeConfirm"
-            name="confirmPassword"
-            placeholder="********"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="new-password"
+              className={fieldClassName}
+              id="passwordChangeConfirm"
+              name="confirmPassword"
+              placeholder="********"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <Message message="host.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
         </div>
 
         <div className="flex justify-end">

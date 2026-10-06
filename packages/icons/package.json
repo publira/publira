@@ -75,6 +75,14 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./eye-icon": {
+      "types": "./dist/eye-icon.d.mts",
+      "default": "./dist/eye-icon.mjs"
+    },
+    "./eye-off-icon": {
+      "types": "./dist/eye-off-icon.d.mts",
+      "default": "./dist/eye-off-icon.mjs"
+    },
     "./file-text-icon": {
       "types": "./dist/file-text-icon.d.mts",
       "default": "./dist/file-text-icon.mjs"

@@ -7,6 +7,11 @@ import {
 } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -84,12 +89,18 @@ export const SignupForm = () => (
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="password"
-              placeholder="••••••••"
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="password"
+                placeholder="••••••••"
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="host.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 
@@ -100,12 +111,18 @@ export const SignupForm = () => (
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Input
-              autoComplete="new-password"
-              name="confirmPassword"
-              placeholder="••••••••"
-              type="password"
-            />
+            <PasswordInput>
+              <PasswordInputControl
+                autoComplete="new-password"
+                name="confirmPassword"
+                placeholder="••••••••"
+              />
+              <PasswordInputToggle>
+                <Suspense fallback={null}>
+                  <Message message="host.common.show_password" />
+                </Suspense>
+              </PasswordInputToggle>
+            </PasswordInput>
           </FieldContent>
         </Field>
 

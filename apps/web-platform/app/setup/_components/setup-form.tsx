@@ -10,6 +10,11 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "@publira/ui-components/password-input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -74,13 +79,19 @@ export const SetupForm = async () => {
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <Input
-            autoComplete="new-password"
-            name="password"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="new-password"
+              name="password"
+              placeholder="••••••••"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <SetupMessage message="platform.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
         </FieldContent>
       </Field>
 
@@ -91,13 +102,19 @@ export const SetupForm = async () => {
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <Input
-            autoComplete="new-password"
-            name="confirmPassword"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
+          <PasswordInput>
+            <PasswordInputControl
+              autoComplete="new-password"
+              name="confirmPassword"
+              placeholder="••••••••"
+              required
+            />
+            <PasswordInputToggle>
+              <Suspense fallback={null}>
+                <SetupMessage message="platform.common.show_password" />
+              </Suspense>
+            </PasswordInputToggle>
+          </PasswordInput>
         </FieldContent>
       </Field>
 

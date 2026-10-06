@@ -653,6 +653,7 @@
         "unset": "No role"
       },
       "cancel": "Cancel",
+      "show_password": "Show password",
       "sortable": {
         "instructions": "To pick up a row, press Space or Enter. Move it with the arrow keys, then press Space or Enter again to drop it in its new place, or Escape to cancel.",
         "role_description": "draggable",
@@ -3136,6 +3137,7 @@
       "read": "Read",
       "retry": "Try again",
       "series_count": "{$count} published series",
+      "show_password": "Show password",
       "site_fallback": "Site",
       "sold_in_app": "Sold in the app",
       "unread": "Unread",
@@ -4690,6 +4692,7 @@
       "saved": "Saved.",
       "saving": "Saving...",
       "select_placeholder": "Select",
+      "show_password": "Show password",
       "status": "Status",
       "submit": "Save",
       "suspend": "Suspend",

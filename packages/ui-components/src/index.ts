@@ -102,6 +102,15 @@ export {
 } from "./locale-switcher";
 export type { LocaleSwitcherProps } from "./locale-switcher";
 export {
+  PasswordInput,
+  PasswordInputControl,
+  PasswordInputToggle,
+} from "./password-input";
+export type {
+  PasswordInputControlProps,
+  PasswordInputToggleProps,
+} from "./password-input";
+export {
   Popover,
   PopoverContent,
   PopoverTitle,

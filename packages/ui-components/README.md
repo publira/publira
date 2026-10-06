@@ -24,6 +24,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - the form field parts
 - [Fieldset](./src/fieldset) - a group of fields closed as one
 - [Input](./src/input) - a text input
+- [PasswordInput / PasswordInputControl / PasswordInputToggle](./src/password-input) - a password input whose value can be shown and masked again
 - [Textarea](./src/textarea) - a multi-line text input
 - [Select](./src/select) - a select box
 - [Combobox / MultiCombobox](./src/combobox) - searchable single and multiple selection
