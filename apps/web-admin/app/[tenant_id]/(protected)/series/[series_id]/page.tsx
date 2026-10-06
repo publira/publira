@@ -51,13 +51,13 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
 import { SeriesTabNav } from "../_components/series-tab-nav";
-import { SeriesWaitFreeForm } from "../_components/series-wait-free-form";
 import {
   updateSeriesAction,
   updateSeriesEyeCatchAction,
   updateSeriesWaitFreeSettingsAction,
   uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
+import { SeriesWaitFreeForm } from "./_components/series-wait-free-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
