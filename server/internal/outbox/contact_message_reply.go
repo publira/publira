@@ -206,7 +206,7 @@ func contactMessageReplyEmailRequest(
 			"body":                 entry.Body,
 			"original_body":        message.Body,
 			"original_received_at": message.CreatedAt.UTC().Format(time.RFC3339Nano),
-			"original_subject":     strings.TrimSpace(message.Subject.String),
+			"original_subject":     contactMessageSubjectLine(message.Subject.String),
 			"tenant_name":          tenantName,
 		},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),

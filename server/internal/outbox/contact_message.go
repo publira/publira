@@ -155,11 +155,20 @@ func contactMessageStaffEmailRequest(
 			"received_at":    message.CreatedAt.UTC().Format(time.RFC3339Nano),
 			"reply_to_email": message.ReplyToEmail,
 			"sender_name":    strings.TrimSpace(message.SenderName.String),
-			"subject":        strings.TrimSpace(message.Subject.String),
+			"subject":        contactMessageSubjectLine(message.Subject.String),
 			"tenant_name":    tenantName,
 		},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 	}
+}
+
+// contactMessageSubjectLine is a reader's subject as one line. The contact
+// form trims a subject but keeps what is inside it, so a stored one may hold a
+// line break: a mail header cannot carry it, and the template refuses it, so a
+// mail quoting it as it is would be retried until it died. Every run of
+// whitespace becomes one space instead, which is how the subject reads anyway.
+func contactMessageSubjectLine(subject string) string {
+	return strings.Join(strings.Fields(subject), " ")
 }
 
 func logContactMessage(ctx context.Context, cfg EmailHandlerConfig, event dbmodels.OutboxEvent, message string) {

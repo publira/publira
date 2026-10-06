@@ -124,6 +124,31 @@ func TestContactMessageReplyEmailAnswersTheReaderFromTheTenant(t *testing.T) {
 	}
 }
 
+// The contact form keeps whatever a reader put inside their subject, and a
+// line break cannot travel in a mail header: the answer's subject is the
+// reader's on one line, so it is sent rather than refused on every attempt.
+func TestContactMessageReplyEmailPutsAMultiLineSubjectOnOneLine(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	env := newContactMessageEnv(t, ctx, "OUTBOXRP007", "aoto.example.test", dbmodels.CreateContactMessageParams{
+		PublicID:     "CONTACTRPL07",
+		ReplyToEmail: "reader@example.test",
+		Subject:      sql.NullString{String: "Wrong date\r\nof  birth", Valid: true},
+		Body:         "The date of birth on my account is wrong.",
+	})
+	author := env.pg.SeedTenantAdmin(t, env.tenantID, "OUTBOXRPS07", "kei@aoto.example.test", "Kei Arata")
+	entry := env.storeStaffAnswer(t, ctx, author, "We have corrected it.")
+
+	mailer := &recordingMailer{}
+	if err := env.replyHandler(mailer)(ctx, env.replyEvent(t, entry.ID)); err != nil {
+		t.Fatalf("contact message reply email handler: %v", err)
+	}
+	if got := mailer.sent[0].email.Subject; got != "Re: Wrong date of birth" {
+		t.Errorf("subject = %q, want the reader's on one line", got)
+	}
+}
+
 // A later answer names the entries before it, so the reader's mail client
 // shows the exchange as one thread.
 func TestContactMessageReplyEmailThreadsUnderTheEarlierEntries(t *testing.T) {

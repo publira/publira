@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 )
@@ -282,5 +283,32 @@ func TestDBContactMessageAnswerOutlivesItsAuthorsAccount(t *testing.T) {
 	}
 	if author := seen.Entries[0]; author.AuthorUserId != "" || author.AuthorPublicId != "" || author.AuthorName != "" {
 		t.Errorf("author = (%q, %q, %q), want none once the account is gone", author.AuthorUserId, author.AuthorPublicId, author.AuthorName)
+	}
+}
+
+// An answer goes to an address a reader typed into the public form, so the
+// mail behind it is bounded like every other form that mails such an address,
+// and an answer over the allowance stores nothing at all.
+func TestDBReplyToContactMessageStopsAtTheMailLimit(t *testing.T) {
+	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
+	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL7", "aoto7.example.test", "Aoto Press", "CONTACTRPLA7", "kei@aoto7.example.test")
+	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM7", sql.NullString{})
+
+	// A message that does not exist sends nothing, so it spends nothing either.
+	if _, err := env.replyToContactMessage(tenant, uuid.Must(uuid.NewV7()).String(), "An answer."); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("ReplyToContactMessage for no message = %v, want not_found", err)
+	}
+	if _, err := env.replyToContactMessage(tenant, messageID, "The first answer."); err != nil {
+		t.Fatalf("the first ReplyToContactMessage: %v", err)
+	}
+	if _, err := env.replyToContactMessage(tenant, messageID, "A second answer."); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the second ReplyToContactMessage = %v, want resource_exhausted", err)
+	}
+
+	if got := env.countRows(t, `SELECT count(*) FROM contact_message_entries WHERE contact_message_id = $1`, messageID); got != 1 {
+		t.Errorf("stored entries = %d, want the one the allowance paid for", got)
+	}
+	if events := env.storedReplyEmailEvents(t, tenant); len(events) != 1 {
+		t.Errorf("queued reply mails = %d, want the one the allowance paid for", len(events))
 	}
 }

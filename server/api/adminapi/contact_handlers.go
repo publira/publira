@@ -669,6 +669,19 @@ func (s *adminServer) ReplyToContactMessage(
 		return nil, err
 	}
 
+	// The answer goes to an address a reader typed, which the request proved
+	// nothing about, so it spends the mail guard's allowances like every other
+	// form that mails such an address. The message is read first because it is
+	// what names the address, and because a message that does not exist sends
+	// nothing and should cost nothing.
+	answered, err := s.loadContactMessageByID(ctx, tenant.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), answered.ReplyToEmail); err != nil {
+		return nil, err
+	}
+
 	if err := s.storeContactMessageReply(ctx, tenant, messageID, sessionCtx.User.ID, body); err != nil {
 		return nil, err
 	}
