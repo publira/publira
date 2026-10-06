@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Field, FieldContent, FieldLabel } from "../field/field";
 import {
@@ -10,7 +10,10 @@ import {
   PasswordInputToggle,
 } from "./password-input";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const renderPasswordInput = () =>
   render(
@@ -67,14 +70,24 @@ describe("PasswordInput", () => {
     expect(getToggle().textContent).toBe("Show password");
   });
 
-  it("keeps the typed value, the caret, and the autocomplete hint", async () => {
+  // Chromium moves the caret to the start of the box after the click has been
+  // handled, so the selection is put back on the next frame.
+  it("keeps the typed value, the caret, and the autocomplete hint", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => {
+      frames.push(frame);
+      return frames.length;
+    });
     renderPasswordInput();
     const input = getInput();
     fireEvent.change(input, { target: { value: "correct horse" } });
     input.setSelectionRange(3, 7);
 
     fireEvent.click(getToggle());
-    await new Promise(requestAnimationFrame);
+    input.setSelectionRange(0, 0);
+    for (const frame of frames) {
+      frame(0);
+    }
 
     expect(getInput()).toBe(input);
     expect(input.value).toBe("correct horse");
