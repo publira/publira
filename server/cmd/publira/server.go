@@ -17,12 +17,14 @@ import (
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -76,12 +78,6 @@ func runServer() int {
 		logger.Error("failed to load config", "error", err)
 		return 1
 	}
-	newSearchBackend, err := searchBackendFromEnv()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
-	}
-
 	idTokens, err := signin.VerifierConfigFromEnv()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
@@ -141,7 +137,20 @@ func runServer() int {
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, newSearchBackend(pools.public), idTokens)
+	// The search engine is read from the platform's settings on the platform
+	// pool too, so the storefront's role holds neither the engine's password
+	// nor a way to read it. The searches themselves run on the public pool when
+	// the engine is SQL.
+	searcher := platformsearch.Searcher{
+		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
+			Queries: dbmodels.New(pools.platform),
+			Secrets: encryptor,
+			Logger:  logger,
+		}),
+		SQL: sqlbackend.New(dbmodels.New(pools.public)),
+	}
+
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, searcher, idTokens)
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		return 1

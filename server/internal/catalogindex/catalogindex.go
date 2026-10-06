@@ -94,6 +94,21 @@ type Writer interface {
 	PutAll(ctx context.Context, docs []opensearchbackend.Document) error
 }
 
+// Writers writes every document into each of its writers in turn, and fails
+// with the first that fails. A write is versioned, so writing the same
+// documents again after a failure leaves each writer as one write would.
+type Writers []Writer
+
+// PutAll implements Writer.
+func (w Writers) PutAll(ctx context.Context, docs []opensearchbackend.Document) error {
+	for _, writer := range w {
+		if err := writer.PutAll(ctx, docs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Syncer rewrites the document of one row from the row, for the outbox
 // handler. It reads on the worker's pool, whose role sees every tenant.
 type Syncer struct {

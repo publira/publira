@@ -53,7 +53,7 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 - `PUBLIRA_PUBLIC_API_GRPC_ADDR` (optional, `:8100` when unset. The internal listener)
 - `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery uses the first two)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens, which the image routes verify as well. The process fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
-- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, and FCM secrets)
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, search engine, and FCM secrets)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional. The ambient credential for an object store saved without an access key. The store itself comes from the platform's settings; see [Image storage configuration](../../README.md#image-storage-configuration))
 - `PUBLIRA_REDIS_URL` (optional. Where the image conversion cache and the counters behind the reader write limits, the step-up password limit, and the mail limits are kept. Unset / `disabled` / `off` / `false` keeps the cache in memory and limits each instance on its own, which is looser than a shared limit by the number of instances. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`)
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
@@ -61,13 +61,14 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
 - `PUBLIRA_WEB_SERVICE_TOKEN` (optional, the bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. Unset, the admin and platform APIs accept operator sessions alone. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
-- `PUBLIRA_SEARCH_BACKEND` (optional, `sql` when unset. The engine behind the catalog search RPCs. `sql` is a substring match in PostgreSQL and needs nothing else; any other value stops the process at startup)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
 The tenant-admin MFA requirement, the reader write limits, the step-up password limit, the mail limits, and the disposable email domain list are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService` or `publiractl policy`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
 
 The object store is read from the platform's settings: uploads resolve it on the platform pool, and image delivery on the admin pool, whose login is granted `platform_storage_config` and nothing else of the platform's; see [Image storage configuration](../../README.md#image-storage-configuration). Both read the row again every 30 seconds, so a saved change reaches a running process without a restart, and the process starts before an operator has saved one: an upload until then is refused and an image answers `503`.
+
+The catalog search engine is read from the platform's settings on the platform pool as well, so the storefront's login is never given its password, and reread every 30 seconds: the search RPCs answer from the engine the row says the search is serving from, which trails a saved engine until the worker has built its index; see [Catalog search](../../README.md#catalog-search).
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
@@ -184,7 +185,7 @@ They connect as `publira_ticker` rather than on the pool above. The worker's own
 
 ### Maintenance jobs
 
-The rebuild, purge, and royalty close work runs here as well, on the same River client:
+The rebuild, purge, royalty close, and search index work runs here as well, on the same River client:
 
 | Kind | What it does |
 | --- | --- |
@@ -199,6 +200,7 @@ The rebuild, purge, and royalty close work runs here as well, on the same River 
 | `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
 | `maintenance.close_royalty_statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `maintenance.sync_google_play_voided_purchases` | Takes back the purchases Google Play refunded |
+| `maintenance.build_search_index` | Builds the catalog index on the saved search engine, when the search does not answer from it yet, and moves the search onto it |
 
 Each kind is a thin wrapper around `internal/maintenance`, which is the same implementation [`publiractl job`](../publiractl/README.md) invokes for an explicit operator run — a backfill of a named date, a recovery after an incident, a dry-run purge. A pass only the schedule could reach would be a second copy of the maintenance, free to diverge from the one an operator recovers with.
 
@@ -231,7 +233,9 @@ A purge needs no record of what it missed: one pass deletes everything past its 
 
 `maintenance.sync_google_play_voided_purchases` runs when the client starts and then once an hour, which is at most how long a refunded Play purchase keeps opening its episode. Each pass reads the 30 days Google Play's Voided Purchases API keeps, for every tenant whose Google Play store is enabled and names its app, and writes what it finds idempotently, so it needs no record of what it missed as long as the worker is back within those 30 days. Because every pass rereads the same window, it is unique over a run completed in its current interval, as a purge is.
 
-They run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, because these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
+`maintenance.build_search_index` runs when the client starts and then every 30 seconds, the interval every process rereads the search settings on, so an engine saved through the Platform Console or `publiractl search set` is built within that much of the save. A pass with nothing due reads one row and ends; one that has a build due fills a new index from the database and moves the search onto it, and one whose build fails records the failure on the row and leaves the next pass to try again. It runs on a queue of its own (`search_index`, one worker), so a saved engine does not wait behind an hour of daily rebuilds and a long build does not hold them back, and it takes a lock `publiractl search reindex` takes too, so two builds never fill the same alias at once.
+
+The rest run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, because these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
 
 They connect as `publira_content_stats`, the role the batch subcommands have always used for this work, on a third pool. What the work may reach is decided by the role, and hosting three kinds of job in one process is not a reason for any of them to borrow another's privileges.
 
@@ -284,10 +288,9 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional, the ambient credential `maintenance.purge_orphan_images` signs with when the platform's object store is saved without an access key)
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the HTML part of the emails above. Unset, the mail goes out as text alone; see [What a mail is made of](#what-a-mail-is-made-of))
 - `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, where `next_cache_revalidation` sends cache tags: `POST /api/v1/revalidate` on each `web-*` app whose URL is set, as `publira server` does. A worker without the token retries every such event until an operator restarts it with one, because the drop is owed whoever wrote it)
-- `PUBLIRA_SEARCH_BACKEND`, `PUBLIRA_OPENSEARCH_URL`, `PUBLIRA_OPENSEARCH_USERNAME`, `PUBLIRA_OPENSEARCH_PASSWORD`, `PUBLIRA_OPENSEARCH_INDEX` (optional, the same values as `publira server`: with `opensearch` the worker connects at startup and writes the documents `catalog_index_sync` names; see [Catalog search](../../README.md#catalog-search))
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme the links in the reader and tenant console mail are built on, joined to the tenant's `domain` or `admin_domain`. `https` when unset. A value that is neither `http` nor `https` leaves the mail pending until the worker is restarted with a valid one)
-- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password, the object store's access key, the Web Push VAPID private key, and each tenant's FCM service account key. Set the same values as the platform API. Push takes no variable of its own: mobile push is sent with each tenant's stored FCM credentials, see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging), and Web Push with the platform's stored VAPID key pair once an operator has saved a subject, see [Web Push](../../README.md#web-push))
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password, the object store's access key, the search engine's password, the Web Push VAPID private key, and each tenant's FCM service account key. Set the same values as the platform API. Push takes no variable of its own: mobile push is sent with each tenant's stored FCM credentials, see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging), and Web Push with the platform's stored VAPID key pair once an operator has saved a subject, see [Web Push](../../README.md#web-push))
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)
 

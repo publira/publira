@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -11,34 +12,56 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func searchCommand(t *testing.T, args ...string) (int, string, string) {
+func searchCommand(t *testing.T, stdin string, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
-	code := runGroup(&searchGroup, args, pipedConsole("", &stderr), &stdout)
+	code := runGroup(&searchGroup, args, pipedConsole(stdin, &stderr), &stdout)
 	return code, stdout.String(), stderr.String()
 }
 
-// The SQL backend keeps no index, so there is nothing to build and the command
-// says so rather than connecting anywhere.
-func TestSearchReindexRefusesTheSQLBackend(t *testing.T) {
-	t.Setenv("PUBLIRA_SEARCH_BACKEND", "sql")
-	code, _, stderr := searchCommand(t, "reindex")
+func mustSearchCommand(t *testing.T, stdin string, args ...string) string {
+	t.Helper()
+	code, stdout, stderr := searchCommand(t, stdin, args...)
+	if code != 0 {
+		t.Fatalf("search %s: exit code = %d\n%s", strings.Join(args, " "), code, stderr)
+	}
+	return stdout
+}
+
+// An engine the command does not know is refused before anything is written,
+// and the refusal names every engine it does know.
+func TestSearchSetRefusesAnUnknownEngine(t *testing.T) {
+	code, _, stderr := searchCommand(t, "", "set", "--engine", "solr")
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1; stderr:\n%s", code, stderr)
 	}
-	if !strings.Contains(stderr, "PUBLIRA_SEARCH_BACKEND") {
-		t.Fatalf("stderr = %q, want the variable named", stderr)
+	if !strings.Contains(stderr, "--engine") || !strings.Contains(stderr, "sql, opensearch") {
+		t.Fatalf("stderr = %q, want the flag and every engine named", stderr)
 	}
 }
 
-func TestSearchReindexBuildsTheIndexAndRewritesOneTenant(t *testing.T) {
+// The SQL engine keeps no index, so there is nothing to build and the command
+// says so rather than connecting anywhere.
+func TestSearchReindexRefusesTheSQLEngine(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", pg.ContentStatsURL)
+
+	code, _, stderr := searchCommand(t, "", "reindex")
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "runs on sql") {
+		t.Fatalf("stderr = %q, want the sql engine named", stderr)
+	}
+}
+
+func TestSearchSetSavesTheEngineAndReindexMovesTheSearchOntoIt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	search := testutil.StartOpenSearch(t)
 	alias := "catalog-publiractl-" + uuid.NewString()
-	t.Setenv("PUBLIRA_SEARCH_BACKEND", "opensearch")
-	t.Setenv("PUBLIRA_OPENSEARCH_URL", search.URL)
-	t.Setenv("PUBLIRA_OPENSEARCH_INDEX", alias)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
 	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", pg.ContentStatsURL)
 	t.Cleanup(func() {
 		req, err := http.NewRequest(http.MethodDelete, search.URL+"/"+alias+"-*", nil)
@@ -53,19 +76,69 @@ func TestSearchReindexBuildsTheIndexAndRewritesOneTenant(t *testing.T) {
 	pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SEARCHCTL002", Title: "Seed Garden", Published: true})
 	pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SEARCHCTL003", Title: "Seed Draft"})
 
-	code, stdout, stderr := searchCommand(t, "reindex")
-	if code != 0 {
-		t.Fatalf("reindex: exit code = %d\n%s", code, stderr)
+	if got := mustSearchCommand(t, "", "show"); got != "No search engine is saved; the catalog search runs on sql\n" {
+		t.Fatalf("show before a save = %q", got)
 	}
-	if !strings.HasPrefix(stdout, "Rebuilt the catalog index; "+alias+" now names "+alias+"-") {
-		t.Fatalf("reindex stdout = %q, want the index the alias names", stdout)
+	saved := mustSearchCommand(t, "", "set", "--engine", "opensearch", "--url", search.URL, "--index", alias)
+	if !strings.HasPrefix(saved, "Saved the search engine opensearch, revision 1. The worker builds the index "+alias) {
+		t.Fatalf("set = %q, want the build announced", saved)
+	}
+	show := mustSearchCommand(t, "", "show")
+	for _, want := range []string{"Searching on:", "sql (revision 0)", "due; the worker builds the index of revision 1"} {
+		if !strings.Contains(show, want) {
+			t.Fatalf("show = %q, want it to contain %q", show, want)
+		}
 	}
 
-	code, stdout, stderr = searchCommand(t, "reindex", "--tenant", "search-ctl.example.com")
-	if code != 0 {
-		t.Fatalf("reindex --tenant: exit code = %d\n%s", code, stderr)
+	test := mustSearchCommand(t, "", "test")
+	for _, want := range []string{"OpenSearch", "analysis-kuromoji", "analysis-icu", "installed"} {
+		if !strings.Contains(test, want) {
+			t.Fatalf("test = %q, want it to contain %q", test, want)
+		}
 	}
+
+	stdout := mustSearchCommand(t, "", "reindex")
+	if !strings.HasPrefix(stdout, "Rebuilt the catalog index; "+alias+" now names "+alias+"-") || !strings.HasSuffix(stdout, "The search answers from it.\n") {
+		t.Fatalf("reindex stdout = %q, want the index the alias names and the search on it", stdout)
+	}
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "none due") || !strings.Contains(show, "opensearch at "+search.URL) {
+		t.Fatalf("show after the reindex = %q, want the search on opensearch", show)
+	}
+
+	stdout = mustSearchCommand(t, "", "reindex", "--tenant", "search-ctl.example.com")
 	if want := "Rewrote the catalog documents of tenant SEARCHCTL001: 1 written, 1 deleted.\n"; stdout != want {
 		t.Fatalf("reindex --tenant stdout = %q, want %q", stdout, want)
+	}
+
+	if got := mustSearchCommand(t, "", "set", "--engine", "sql"); got != "Saved the search engine sql, revision 2. The search answers from it.\n" {
+		t.Fatalf("set sql = %q", got)
+	}
+}
+
+// A password is never taken on the command line, is stored encrypted, and is
+// refused without the username it belongs to.
+func TestSearchSetStoresThePasswordEncrypted(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	settings := []string{"set", "--engine", "opensearch", "--url", "https://search.example.com"}
+
+	code, _, stderr := searchCommand(t, "secret\n", append(settings, "--password-stdin")...)
+	if code != 1 || !strings.Contains(stderr, "--username") {
+		t.Fatalf("set with a password and no username: exit code = %d, stderr = %q, want --username refused", code, stderr)
+	}
+
+	mustSearchCommand(t, testSecretValue+"\n", append(settings, "--username", "publira", "--password-stdin")...)
+	var encrypted string
+	if err := pg.DB.QueryRowContext(context.Background(), "SELECT password_encrypted FROM platform_search_config").Scan(&encrypted); err != nil {
+		t.Fatalf("read platform_search_config: %v", err)
+	}
+	if encrypted == "" || strings.Contains(encrypted, testSecretValue) {
+		t.Fatalf("password_encrypted = %q, want it sealed", encrypted)
+	}
+	show := mustSearchCommand(t, "", "show")
+	if strings.Contains(show, testSecretValue) || !strings.Contains(show, "Password:") || !strings.Contains(show, "saved") {
+		t.Fatalf("show = %q, want the password reported as saved and never printed", show)
 	}
 }

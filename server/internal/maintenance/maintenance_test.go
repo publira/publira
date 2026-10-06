@@ -72,5 +72,6 @@ func everyJob() map[string]func(context.Context, Deps) error {
 		"purge-mfa-challenges":     MfaChallengePurge{}.Run,
 		"purge-withdrawn-comments": WithdrawnCommentPurge{}.Run,
 		"purge-orphan-images":      OrphanImagePurge{}.Run,
+		"build-search-index":       SearchIndexBuild{}.Run,
 	}
 }

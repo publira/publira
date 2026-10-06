@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+import "publira/platform/v1/email.proto";
+
+// The engine the public catalog searches find their hits through. Either way
+// the storefront reads what it shows from the database.
+enum PlatformSearchEngine {
+  PLATFORM_SEARCH_ENGINE_UNSPECIFIED = 0;
+  // A substring match in PostgreSQL, ordered by title or name. It needs
+  // nothing beside the database and is what an install searches with until
+  // another engine is saved.
+  PLATFORM_SEARCH_ENGINE_SQL = 1;
+  // OpenSearch with the analysis-kuromoji and analysis-icu plugins, ranked by
+  // relevance, matching a title written in kanji from a query typed in kana.
+  PLATFORM_SEARCH_ENGINE_OPENSEARCH = 2;
+}
+
+// Where a saved configuration stands against the one the search answers from.
+enum PlatformSearchBuildState {
+  PLATFORM_SEARCH_BUILD_STATE_UNSPECIFIED = 0;
+  // The search answers from the saved configuration.
+  PLATFORM_SEARCH_BUILD_STATE_SERVING = 1;
+  // The worker is building the index the saved configuration names, and the
+  // search answers from the serving one until it is built.
+  PLATFORM_SEARCH_BUILD_STATE_BUILDING = 2;
+  // The build failed. The search still answers from the serving
+  // configuration, and the worker tries again on its next pass.
+  PLATFORM_SEARCH_BUILD_STATE_FAILED = 3;
+}
+
+// The configuration the search answers from, which trails the saved one while
+// the index a save names is built.
+message PlatformSearchServing {
+  PlatformSearchEngine engine = 1;
+  string url = 2;
+  string index = 3;
+  // The saved revision this configuration was saved at. Zero is the SQL
+  // engine of an install whose search has never answered from anything else.
+  int64 revision = 4;
+  // When the search moved onto it, RFC 3339 in UTC; empty at revision zero.
+  string since = 5;
+}
+
+// The last build of the saved configuration that failed.
+message PlatformSearchBuildFailure {
+  // What went wrong, as the engine or the build reported it.
+  string error = 1;
+  // RFC 3339 in UTC.
+  string failed_at = 2;
+}
+
+message PlatformSearchSettings {
+  PlatformSearchEngine engine = 1;
+  // The engine's http:// or https:// URL. Empty on the SQL engine.
+  string url = 2;
+  // The alias of the index holding every tenant's series, creators, and
+  // labels. Empty on the SQL engine.
+  string index = 3;
+  // The HTTP basic auth user, empty when the engine is reached without one.
+  string username = 4;
+  // Whether a password is stored. The password itself is never returned.
+  bool has_password = 5;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Zero says
+  // no configuration is saved at all, which is the SQL engine a fresh install
+  // searches with; every other field is empty alongside it.
+  int64 revision = 6;
+  PlatformSearchServing serving = 7;
+  PlatformSearchBuildState build_state = 8;
+  // Set alongside PLATFORM_SEARCH_BUILD_STATE_FAILED and only then.
+  PlatformSearchBuildFailure build_failure = 9;
+}
+
+message GetPlatformSearchSettingsRequest {}
+
+message GetPlatformSearchSettingsResponse {
+  PlatformSearchSettings settings = 1;
+}
+
+// A save takes effect at once when it needs no index built: the SQL engine,
+// or the engine, URL, and index the search already answers from with other
+// credentials. Any other target is built by the worker from the database
+// first, and the search moves onto it once the build has completed.
+message UpdatePlatformSearchSettingsRequest {
+  // Required. A value the server does not know is refused, naming the ones it
+  // accepts.
+  PlatformSearchEngine engine = 1;
+  // Required on every engine but SQL, and refused on SQL. http:// or https://,
+  // without userinfo.
+  string url = 2;
+  // On every engine but SQL, the alias; empty takes "publira-catalog". Give
+  // each environment sharing a cluster an alias of its own. Refused on SQL.
+  string index = 3;
+  // Sent together with password_update_mode: a username and its password are
+  // one credential, so a save leaves both or states both. Credentials need an
+  // https:// URL, over which they do not cross the network in cleartext.
+  string username = 4;
+  SecretUpdateMode password_update_mode = 5;
+  string password = 6;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformSearchSettings.revision. Zero states that no
+  // configuration is expected to exist yet. The write is refused with
+  // FAILED_PRECONDITION when the stored row moved on.
+  int64 expected_revision = 7;
+}
+
+message UpdatePlatformSearchSettingsResponse {
+  PlatformSearchSettings settings = 1;
+}
+
+message TestPlatformSearchConnectionRequest {
+  // Every engine but SQL, which connects to nothing beside the database.
+  PlatformSearchEngine engine = 1;
+  string url = 2;
+  string username = 3;
+  // SECRET_UPDATE_MODE_UNCHANGED tests with the stored password, so an
+  // operator can test a saved configuration without handling its credential
+  // again.
+  SecretUpdateMode password_update_mode = 4;
+  string password = 5;
+}
+
+// What the engine answered. The RPC itself succeeds whichever way the test
+// went; it fails only when the request states a configuration that cannot be
+// tested at all.
+message TestPlatformSearchConnectionResponse {
+  // Whether the engine answered, is the engine the request names, and has both
+  // analysis plugins the catalog index is built from.
+  bool succeeded = 1;
+  // A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
+  // never carries the engine's own message.
+  string reason = 2;
+  // The product and version the engine reported, empty when it did not answer.
+  string product = 3;
+  string version = 4;
+  // Whether every node has the plugin installed. Both are false when the
+  // engine did not answer.
+  bool analysis_kuromoji_installed = 5;
+  bool analysis_icu_installed = 6;
+}
+
+service PlatformSearchSettingsService {
+  rpc GetPlatformSearchSettings(GetPlatformSearchSettingsRequest) returns (GetPlatformSearchSettingsResponse) {}
+  rpc UpdatePlatformSearchSettings(UpdatePlatformSearchSettingsRequest) returns (UpdatePlatformSearchSettingsResponse) {}
+  rpc TestPlatformSearchConnection(TestPlatformSearchConnectionRequest) returns (TestPlatformSearchConnectionResponse) {}
+}

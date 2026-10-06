@@ -51,6 +51,33 @@ var _ catalogsearch.Backend = (*Backend)(nil)
 // than on the first search, so a process configured for it does not start
 // without it.
 func New(ctx context.Context, cfg Config) (*Backend, error) {
+	client, err := newClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := client.Info(ctx, nil); err != nil {
+		return nil, fmt.Errorf("opensearchbackend: OpenSearch at %s does not answer: %w", cfg.URL, err)
+	}
+	backend := &Backend{client: client, index: cfg.Index}
+	if err := backend.EnsureIndex(ctx); err != nil {
+		return nil, err
+	}
+	return backend, nil
+}
+
+// Open is a backend over an index that has already been created, such as one
+// a build has filled. It sends nothing until it is used, so an engine that has
+// stopped answering fails each search on its own timeout rather than the
+// caller that opens it.
+func Open(cfg Config) (*Backend, error) {
+	client, err := newClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &Backend{client: client, index: cfg.Index}, nil
+}
+
+func newClient(cfg Config) (*opensearchapi.Client, error) {
 	client, err := opensearchapi.NewClient(opensearchapi.Config{
 		Client: opensearch.Config{
 			Addresses: []string{cfg.URL},
@@ -67,14 +94,12 @@ func New(ctx context.Context, cfg Config) (*Backend, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opensearchbackend: %w", err)
 	}
-	if _, err := client.Info(ctx, nil); err != nil {
-		return nil, fmt.Errorf("opensearchbackend: OpenSearch at %s does not answer: %w", cfg.URL, err)
-	}
-	backend := &Backend{client: client, index: cfg.Index}
-	if err := backend.EnsureIndex(ctx); err != nil {
-		return nil, err
-	}
-	return backend, nil
+	return client, nil
+}
+
+// Index is the alias the backend searches and writes through.
+func (b *Backend) Index() string {
+	return b.index
 }
 
 // queryKey is the identity of a search for both the token and the query the

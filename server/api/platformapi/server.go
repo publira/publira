@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
+	"github.com/publira/publira/server/internal/platformsearch"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage/s3"
@@ -42,6 +43,9 @@ type platformServer struct {
 	// storageTester exercises an object store configuration against the store
 	// it addresses.
 	storageTester storagesettings.Tester
+	// searchProbe asks a search engine what it is. Nil is the production one,
+	// which connects to the engine each test names.
+	searchProbe platformsearch.Prober
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
 }
@@ -214,6 +218,12 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(storagePath, storageHandler)
+	searchPath, searchHandler := publirasplatformv1connect.NewPlatformSearchSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(authInterceptor),
+	)
+	mux.Handle(searchPath, searchHandler)
 	webPushPath, webPushHandler := publirasplatformv1connect.NewPlatformWebPushSettingsServiceHandler(
 		server,
 		traced,

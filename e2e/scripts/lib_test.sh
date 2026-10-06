@@ -42,8 +42,7 @@ stack_env() {
     -u PUBLIRA_E2E_EDGE_PORT \
     -u PUBLIRA_E2E_OPENSEARCH_PORT \
     -u PUBLIRA_E2E_SEARCH_BACKEND \
-    -u PUBLIRA_SEARCH_BACKEND \
-    -u PUBLIRA_OPENSEARCH_URL \
+    -u PUBLIRA_E2E_OPENSEARCH_URL \
     -u COMPOSE_PROFILES \
     -u PUBLIRA_E2E_LOCK_HELD \
     "$@"
@@ -130,21 +129,22 @@ else
   pass "PUBLIRA_E2E_OPENSEARCH_PORT override isolates RUN_DIR"
 fi
 
-# The search backend a run selects, and what it hands the servers and compose.
+# The search engine a run selects, the URL it saves for it, and what it hands
+# compose.
 search_env() {
-  stack_env "$@" bash -c 'source "$1"; printf "%s|%s|%s" "$PUBLIRA_SEARCH_BACKEND" "${PUBLIRA_OPENSEARCH_URL-}" "$COMPOSE_PROFILES"' bash "${LIB}"
+  stack_env "$@" bash -c 'source "$1"; printf "%s|%s|%s" "$PUBLIRA_E2E_SEARCH_BACKEND" "${PUBLIRA_E2E_OPENSEARCH_URL-}" "$COMPOSE_PROFILES"' bash "${LIB}"
 }
 
-default_search="$(search_env PUBLIRA_SEARCH_BACKEND=opensearch PUBLIRA_OPENSEARCH_URL=http://opensearch:9200 COMPOSE_PROFILES=search)"
+default_search="$(search_env PUBLIRA_E2E_OPENSEARCH_URL=http://opensearch:9200 COMPOSE_PROFILES=search)"
 if [[ "${default_search}" == "sql||" ]]; then
-  pass "a run defaults to the SQL backend and ignores an inherited engine"
+  pass "a run defaults to the SQL engine and ignores an inherited engine"
 else
   fail "default search environment is ${default_search}, want sql||"
 fi
 
-opensearch_search="$(search_env PUBLIRA_E2E_SEARCH_BACKEND=opensearch PUBLIRA_E2E_OPENSEARCH_PORT=9211)"
+opensearch_search="$(search_env PUBLIRA_E2E_SEARCH_BACKEND=opensearch PUBLIRA_E2E_OPENSEARCH_PORT=9211 PUBLIRA_E2E_OPENSEARCH_URL=http://opensearch:9200)"
 if [[ "${opensearch_search}" == "opensearch|http://127.0.0.1:9211|search" ]]; then
-  pass "PUBLIRA_E2E_SEARCH_BACKEND=opensearch points the servers at this run's engine"
+  pass "PUBLIRA_E2E_SEARCH_BACKEND=opensearch saves this run's engine"
 else
   fail "opensearch search environment is ${opensearch_search}, want opensearch|http://127.0.0.1:9211|search"
 fi

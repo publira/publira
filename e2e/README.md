@@ -147,14 +147,14 @@ A spec that changes state the whole console reads gets an isolated project for t
 
 ## Catalog search on OpenSearch
 
-The stack searches the catalog on PostgreSQL. `PUBLIRA_E2E_SEARCH_BACKEND` selects the backend a run puts the server, the worker, and `publiractl` on, and `scripts/lib.sh` derives everything else from it, never from an inherited `PUBLIRA_SEARCH_BACKEND`:
+The stack searches the catalog on PostgreSQL. `PUBLIRA_E2E_SEARCH_BACKEND` selects the engine a run saves as the platform's, and `scripts/lib.sh` derives everything else from it, never from an inherited URL:
 
-| `PUBLIRA_E2E_SEARCH_BACKEND` | Backend | Engine |
+| `PUBLIRA_E2E_SEARCH_BACKEND` | Saved engine | Engine |
 | --- | --- | --- |
-| `sql` (default) | `PUBLIRA_SEARCH_BACKEND=sql` | Not started |
-| `opensearch` | `PUBLIRA_SEARCH_BACKEND=opensearch`, `PUBLIRA_OPENSEARCH_URL=http://127.0.0.1:<PUBLIRA_E2E_OPENSEARCH_PORT>` | The `opensearch` service, through `COMPOSE_PROFILES=search`, on `PUBLIRA_E2E_OPENSEARCH_PORT` (default `9201`) |
+| `sql` (default) | None: an install with no search settings searches on `sql` | Not started |
+| `opensearch` | `opensearch` at `PUBLIRA_E2E_OPENSEARCH_URL`, `http://127.0.0.1:<PUBLIRA_E2E_OPENSEARCH_PORT>` | The `opensearch` service, through `COMPOSE_PROFILES=search`, on `PUBLIRA_E2E_OPENSEARCH_PORT` (default `9201`) |
 
-On `opensearch`, `task e2e:db` ends with `publiractl search reindex`, since the seed writes straight to Postgres and queues none of the events that keep the index in step; everything a spec writes through a console reaches the index through the worker. The engine is the image [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds, with no volume.
+On `opensearch`, `task e2e:db` ends with `publiractl search set` and `publiractl search reindex`, so the index holds the seed and the search answers from it before any server starts: the seed writes straight to Postgres and queues none of the events that keep the index in step. Everything a spec writes through a console reaches the index through the worker. The engine is the image [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) builds, with no volume.
 
 `task e2e:search` sets `PUBLIRA_E2E_SEARCH_BACKEND=opensearch` and runs the `catalog-search` project with `--no-deps`. That project is `tests/catalog.search.spec.ts` alone, and an ordinary `task e2e` runs it too, on SQL, in the `main` group: the publish and unpublish case holds on both backends, and the cases only the engine answers — a reading typed in kana, a word with a wrong character — are registered on OpenSearch alone.
 

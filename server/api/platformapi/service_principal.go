@@ -13,7 +13,7 @@ import (
 // ones whose answer is the same for every operator, so it can be cached for
 // all of them. Every platform role reads all of these alike. Nothing that
 // writes, answers per operator, or carries a stored secret belongs here; the
-// email and storage settings answer only whether their secret is set.
+// email, storage, and search settings answer only whether their secret is set.
 // GetPlatformWebPushSettings stays off because reading it generates and stores
 // the VAPID key pair when none exists, and the notifications stay off because
 // they belong to the operator reading them.
@@ -27,6 +27,7 @@ var serviceProcedures = map[string]struct{}{
 	publirasplatformv1connect.PlatformSettingsServiceGetPlatformSettingsProcedure:               {},
 	publirasplatformv1connect.PlatformEmailSettingsServiceGetPlatformEmailSettingsProcedure:     {},
 	publirasplatformv1connect.PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure: {},
+	publirasplatformv1connect.PlatformSearchSettingsServiceGetPlatformSearchSettingsProcedure:   {},
 	publirasplatformv1connect.PlatformDashboardServiceGetDashboardSummaryProcedure:              {},
 	publirasplatformv1connect.PlatformOperatorServiceListOperatorsProcedure:                     {},
 	publirasplatformv1connect.PlatformOperatorServiceGetOperatorProcedure:                       {},

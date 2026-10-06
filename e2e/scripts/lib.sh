@@ -81,23 +81,21 @@ export PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL="${PUBLIRA_E2E_SIGN_IN_PROVIDER_BAS
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
 
-# The catalog search backend the server, the worker, and publiractl run with:
-# `sql` unless the run selects `opensearch` (`task e2e:search` does). Always
-# set from PUBLIRA_E2E_SEARCH_BACKEND, never inherited: a shell that exported a
-# dev stack's PUBLIRA_SEARCH_BACKEND and PUBLIRA_OPENSEARCH_URL would otherwise
-# point this stack at an engine it neither started nor seeded. The engine is in
-# the compose file's `search` profile, so the backend is also what starts it.
+# The catalog search engine the run saves for the stack: `sql` unless the run
+# selects `opensearch` (`task e2e:search` does). The engine is a platform
+# setting, so db-setup.sh saves it with `publiractl search set` and no process
+# is handed it in its environment. PUBLIRA_E2E_OPENSEARCH_URL is always derived
+# from the port, never inherited, so a run cannot be pointed at an engine it
+# neither started nor seeded. The engine is in the compose file's `search`
+# profile, so the selection is also what starts it.
 export PUBLIRA_E2E_SEARCH_BACKEND="${PUBLIRA_E2E_SEARCH_BACKEND:-sql}"
 case "${PUBLIRA_E2E_SEARCH_BACKEND}" in
   sql)
-    export PUBLIRA_SEARCH_BACKEND=sql
-    unset PUBLIRA_OPENSEARCH_URL PUBLIRA_OPENSEARCH_USERNAME PUBLIRA_OPENSEARCH_PASSWORD PUBLIRA_OPENSEARCH_INDEX
+    unset PUBLIRA_E2E_OPENSEARCH_URL
     export COMPOSE_PROFILES=""
     ;;
   opensearch)
-    export PUBLIRA_SEARCH_BACKEND=opensearch
-    export PUBLIRA_OPENSEARCH_URL="http://127.0.0.1:${PUBLIRA_E2E_OPENSEARCH_PORT}"
-    unset PUBLIRA_OPENSEARCH_USERNAME PUBLIRA_OPENSEARCH_PASSWORD PUBLIRA_OPENSEARCH_INDEX
+    export PUBLIRA_E2E_OPENSEARCH_URL="http://127.0.0.1:${PUBLIRA_E2E_OPENSEARCH_PORT}"
     export COMPOSE_PROFILES=search
     ;;
   *)
@@ -332,7 +330,7 @@ e2e_find_foreign_port_publisher() {
     "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}"
   )
   # The engine's port is this run's only when the run starts the engine.
-  if [[ "${PUBLIRA_SEARCH_BACKEND}" == "opensearch" ]]; then
+  if [[ "${PUBLIRA_E2E_SEARCH_BACKEND}" == "opensearch" ]]; then
     ports+=("${PUBLIRA_E2E_OPENSEARCH_PORT}")
   fi
   for port in "${ports[@]}"; do

@@ -257,6 +257,28 @@ GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stat
 -- keys the database never holds, and neither role may write the row.
 GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
 
+-- The catalog search engine is read by the worker, which writes every
+-- catalog_index_sync event into the index the search answers from and into the
+-- one being built, and by the maintenance role, which builds that index and
+-- then moves the search onto it. The password is stored encrypted under keys
+-- the database never holds. Only the build may move the serving configuration
+-- or record a failure, and neither role may write what an operator saved.
+-- publira server reads the row on its platform pool, so the storefront's role
+-- is not given it.
+GRANT SELECT ON platform_search_config TO publira_outbox, publira_content_stats;
+GRANT UPDATE (
+    serving_revision,
+    serving_engine,
+    serving_url,
+    serving_index_alias,
+    serving_username,
+    serving_password_encrypted,
+    serving_since,
+    build_failed_revision,
+    build_error,
+    build_failed_at
+) ON platform_search_config TO publira_content_stats;
+
 -- tenant_fcm_config holds a sealed service account key. The tenant console
 -- writes it under RLS and the worker reads it to send mobile push; no reader's
 -- request and no maintenance job has any use for it.

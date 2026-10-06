@@ -29,6 +29,7 @@ import (
 
 	"github.com/publira/publira/server/internal/maintenance"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -51,6 +52,8 @@ const (
 	ServiceNameCloseRoyaltyStatements = "publira-close-royalty-statements"
 
 	ServiceNameSyncGooglePlayVoidedPurchases = "publira-sync-google-play-voided-purchases"
+
+	ServiceNameBuildSearchIndex = "publira-build-search-index"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -63,6 +66,13 @@ const QueueName = "maintenance"
 // request the platform is serving, and a purge that ran beside a rebuild would
 // only take the rows out from under it.
 const queueMaxWorkers = 1
+
+// SearchIndexQueueName is the queue the search index build runs on. Saving a
+// search engine is waiting on it, so it is kept off the maintenance queue,
+// where it would wait behind an hour of daily rebuilds, and a build that fills
+// a large catalog does not hold those back either. One worker, because two
+// builds would fill and swap the same alias.
+const SearchIndexQueueName = "search_index"
 
 const (
 	kindProjectEpisodeReads    = "maintenance.project_episode_reads"
@@ -79,6 +89,8 @@ const (
 	kindCloseRoyaltyStatements = "maintenance.close_royalty_statements"
 
 	kindSyncGooglePlayVoidedPurchases = "maintenance.sync_google_play_voided_purchases"
+
+	kindBuildSearchIndex = "maintenance.build_search_index"
 )
 
 const (
@@ -106,6 +118,11 @@ const (
 	// read, which is at most how long a refunded Play purchase keeps opening
 	// its episode.
 	googlePlayVoidedPurchaseInterval = time.Hour
+
+	// searchIndexBuildInterval is how often a saved search engine is looked
+	// at for an index to build, the interval every process rereads the
+	// settings on.
+	searchIndexBuildInterval = platformsearch.RefreshInterval
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
@@ -136,6 +153,7 @@ func ServiceNames() []string {
 		ServiceNamePurgeOrphanImages,
 		ServiceNameCloseRoyaltyStatements,
 		ServiceNameSyncGooglePlayVoidedPurchases,
+		ServiceNameBuildSearchIndex,
 	}
 }
 
@@ -148,7 +166,8 @@ type Config struct {
 	// cancelled with storage.ErrNotConfigured.
 	Storage storage.ReclaimerSource
 	// Secrets and GooglePlay are what the voided purchase sync reads each
-	// tenant's Google Play refunds with.
+	// tenant's Google Play refunds with. Secrets also decrypts the password
+	// the search index build connects to the engine with.
 	Secrets    paymentsettings.SecretManager
 	GooglePlay maintenance.VoidedPurchaseLister
 	Logger     *slog.Logger
@@ -178,6 +197,8 @@ type Jobs struct {
 	royaltyStatements maintenance.RoyaltyStatementClose
 
 	googlePlayVoidedPurchases maintenance.GooglePlayVoidedPurchaseSync
+
+	searchIndex maintenance.SearchIndexBuild
 }
 
 // New reads every job's tunables and holds them with the pool they run on.
@@ -260,6 +281,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &syncGooglePlayVoidedPurchasesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register sync-google-play-voided-purchases worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &buildSearchIndexWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register build-search-index worker: %w", err)
+	}
 	return nil
 }
 
@@ -285,6 +309,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{orphanImagePurgeInterval, PurgeOrphanImagesArgs{}},
 		{royaltyCloseInterval, CloseRoyaltyStatementsArgs{}},
 		{googlePlayVoidedPurchaseInterval, SyncGooglePlayVoidedPurchasesArgs{}},
+		{searchIndexBuildInterval, BuildSearchIndexArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {
@@ -298,9 +323,12 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 	return periodic
 }
 
-// Queues is the queue they are enqueued on, for the client that runs them.
+// Queues is the queues they are enqueued on, for the client that runs them.
 func (j *Jobs) Queues() map[string]river.QueueConfig {
-	return map[string]river.QueueConfig{QueueName: {MaxWorkers: queueMaxWorkers}}
+	return map[string]river.QueueConfig{
+		QueueName:            {MaxWorkers: queueMaxWorkers},
+		SearchIndexQueueName: {MaxWorkers: 1},
+	}
 }
 
 // Settings reports what the jobs were built with, for the startup log of the

@@ -53,6 +53,7 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(httpClient, url)
 	email := publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(httpClient, url)
 	storage := publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(httpClient, url)
+	search := publirasplatformv1connect.NewPlatformSearchSettingsServiceClient(httpClient, url)
 	dashboard := publirasplatformv1connect.NewPlatformDashboardServiceClient(httpClient, url)
 	operators := publirasplatformv1connect.NewPlatformOperatorServiceClient(httpClient, url)
 	users := publirasplatformv1connect.NewPlatformUserServiceClient(httpClient, url)
@@ -95,6 +96,10 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 		},
 		publirasplatformv1connect.PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure: func(ctx context.Context) error {
 			_, err := storage.GetPlatformStorageSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformStorageSettingsRequest{}))
+			return err
+		},
+		publirasplatformv1connect.PlatformSearchSettingsServiceGetPlatformSearchSettingsProcedure: func(ctx context.Context) error {
+			_, err := search.GetPlatformSearchSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformSearchSettingsRequest{}))
 			return err
 		},
 		publirasplatformv1connect.PlatformDashboardServiceGetDashboardSummaryProcedure: func(ctx context.Context) error {

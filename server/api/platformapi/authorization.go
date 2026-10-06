@@ -23,6 +23,8 @@ var platformWriteProcedures = map[string]struct{}{
 	publirasplatformv1connect.PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure:        {},
 	publirasplatformv1connect.PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure: {},
 	publirasplatformv1connect.PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure: {},
+	publirasplatformv1connect.PlatformSearchSettingsServiceUpdatePlatformSearchSettingsProcedure:   {},
+	publirasplatformv1connect.PlatformSearchSettingsServiceTestPlatformSearchConnectionProcedure:   {},
 	publirasplatformv1connect.PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure:  {},
 	publirasplatformv1connect.PlatformTenantServiceCreateTenantProcedure:                           {},
 	publirasplatformv1connect.PlatformTenantServiceUpdateTenantProcedure:                           {},
