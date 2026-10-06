@@ -252,7 +252,7 @@ func TestOnlyTheBuildMovesTheServingSearchEngine(t *testing.T) {
 
 	contentStats := pg.OpenContentStatsDB(t)
 	if _, err := contentStats.ExecContext(ctx,
-		`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_since = now()`,
+		`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_analysis = analysis, serving_since = now()`,
 	); err != nil {
 		t.Fatalf("move the serving configuration as the maintenance role: %v", err)
 	}
@@ -263,5 +263,6 @@ func TestOnlyTheBuildMovesTheServingSearchEngine(t *testing.T) {
 	}
 	assertRefused(t, ctx, contentStats, "publira_content_stats", `UPDATE platform_search_config SET url = 'http://elsewhere:9200'`)
 	assertRefused(t, ctx, contentStats, "publira_content_stats", `UPDATE platform_search_config SET revision = revision + 1`)
+	assertRefused(t, ctx, contentStats, "publira_content_stats", `UPDATE platform_search_config SET analysis = '{}'`)
 	assertRefused(t, ctx, pg.OpenOutboxDB(t), outboxDBRole, `UPDATE platform_search_config SET serving_engine = 'sql'`)
 }

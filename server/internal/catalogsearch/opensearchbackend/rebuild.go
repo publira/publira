@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
@@ -26,13 +27,16 @@ type Rebuild struct {
 	concrete bool
 }
 
-// rebuildIndexTime names a rebuilt index after the second it was started in.
-const rebuildIndexTime = "20060102150405"
+// rebuildIndexTime names a rebuilt index after the millisecond it was started
+// in, digits alone. A second would let a rebuild that follows another closely,
+// such as the build of a saved analysis and a reindex run right after it, ask
+// for the name the first one took.
+const rebuildIndexTime = "20060102150405.000"
 
 // StartRebuild creates an empty index beside the one the alias names, with the
-// definition this build carries.
+// mapping this build carries and the analysis the backend was configured with.
 func (b *Backend) StartRebuild(ctx context.Context) (*Rebuild, error) {
-	rebuild := &Rebuild{backend: b, index: b.index + "-" + time.Now().UTC().Format(rebuildIndexTime)}
+	rebuild := &Rebuild{backend: b, index: b.index + "-" + strings.Replace(time.Now().UTC().Format(rebuildIndexTime), ".", "", 1)}
 	previous, err := b.aliasIndices(ctx)
 	if err != nil {
 		return nil, err
@@ -45,7 +49,11 @@ func (b *Backend) StartRebuild(ctx context.Context) (*Rebuild, error) {
 		rebuild.concrete = concrete
 	}
 	rebuild.previous = previous
-	if err := b.createIndex(ctx, rebuild.index, indexDefinition); err != nil {
+	body, err := indexDefinition(b.analysis, "")
+	if err != nil {
+		return nil, err
+	}
+	if err := b.createIndex(ctx, rebuild.index, body); err != nil {
 		return nil, err
 	}
 	return rebuild, nil

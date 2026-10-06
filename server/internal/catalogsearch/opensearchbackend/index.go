@@ -3,7 +3,6 @@ package opensearchbackend
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +14,8 @@ import (
 	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 )
 
-// indexDefinition is the settings and mappings of the catalog index. Every
+// The catalog index is the mapping in mappings.json with the analysis the
+// platform saved, the default one where it saved none (analysis.go). Every
 // tenant shares the one index, and tenant_id is both the filter every search
 // carries and the routing key every request is sent with, so a tenant's
 // documents sit on one shard and a search reads only that shard.
@@ -24,24 +24,11 @@ import (
 // can fill a new index under a name of its own and move the alias onto it in
 // one step.
 //
-// The title and the name are analyzed twice. ja_text keeps the written form:
-// the kuromoji tokenizer in search mode splits a compound into its parts as
-// well, icu_normalizer (NFKC with case folding) and cjk_width make full-width
-// Latin and half-width kana the same token as their usual forms, and
-// kuromoji_baseform lets an inflected verb match its dictionary form.
-//
-// ja_reading is what a query typed in kana meets a title written in kanji
-// through, and it is also how an entered reading is analyzed. It replaces each
-// token with its reading in katakana, turns the hiragana of a token the
-// dictionary has no reading for into katakana, and indexes the result as
-// overlapping pairs of characters. The pairs are taken across each two
-// neighbouring tokens as well, because the dictionary splits a run of kana
-// where it pleases: 「ぎんがてつどう」 comes out as ギン/ガ/テツ/ドウ where
-// 「銀河鉄道」 comes out as ギンガ/テツドウ, and only the pairs of the joined
-// reading are the same for both.
-//
-// The keyword sub-fields are the exact match and the sort key of a ranked
-// search, normalized the way the text is so neither depends on case or width.
+// The title and the name are analyzed twice: as they are written, and in the
+// alternate form a query may be typed in, which the reading an administrator
+// entered is analyzed in as well. The keyword sub-fields are the exact match
+// and the sort key of a ranked search, normalized by the exact-match
+// normalizer.
 //
 // A series also carries what the published series list narrows and sorts by.
 // title.sort is the title as it is written, which an explicit title order
@@ -57,9 +44,6 @@ import (
 // dynamic template under an otherwise strict mapping, so the index names no
 // surface of its own: a surface the catalog gains is a key the first document
 // on it adds.
-//
-//go:embed index.json
-var indexDefinition []byte
 
 // Kind is the type of a catalog document.
 type Kind string
@@ -155,10 +139,11 @@ func documentID(kind Kind, id uuid.UUID) string {
 // fixed name is what keeps two processes starting at once from creating two.
 const initialIndexSuffix = "-initial"
 
-// EnsureIndex creates the catalog index behind its alias unless the alias, or
-// an index of that name, already exists. What exists is left as it is,
-// mappings included: changing them is a rebuild, not something a starting
-// process does on its own.
+// EnsureIndex creates the catalog index behind its alias, with the analysis
+// the backend was configured with, unless the alias, or an index of that name,
+// already exists. What exists is left as it is, its analysis and mappings
+// included: changing them is a rebuild, not something a starting process does
+// on its own.
 func (b *Backend) EnsureIndex(ctx context.Context) error {
 	exists, err := b.nameExists(ctx, b.index)
 	if err != nil {
@@ -167,7 +152,7 @@ func (b *Backend) EnsureIndex(ctx context.Context) error {
 	if exists {
 		return nil
 	}
-	body, err := definitionWithAlias(b.index)
+	body, err := indexDefinition(b.analysis, b.index)
 	if err != nil {
 		return err
 	}
@@ -187,23 +172,6 @@ func (b *Backend) nameExists(ctx context.Context, name string) (bool, error) {
 		return false, fmt.Errorf("opensearchbackend: look up %q: %w", name, err)
 	}
 	return true, nil
-}
-
-func definitionWithAlias(alias string) ([]byte, error) {
-	var definition map[string]json.RawMessage
-	if err := json.Unmarshal(indexDefinition, &definition); err != nil {
-		return nil, fmt.Errorf("opensearchbackend: decode index definition: %w", err)
-	}
-	aliases, err := json.Marshal(map[string]any{alias: map[string]any{}})
-	if err != nil {
-		return nil, fmt.Errorf("opensearchbackend: encode alias: %w", err)
-	}
-	definition["aliases"] = aliases
-	body, err := json.Marshal(definition)
-	if err != nil {
-		return nil, fmt.Errorf("opensearchbackend: encode index definition: %w", err)
-	}
-	return body, nil
 }
 
 func (b *Backend) createIndex(ctx context.Context, name string, body []byte) error {

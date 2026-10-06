@@ -1,8 +1,9 @@
 // Package opensearchbackend is the catalog search backend for a tenant with a
 // catalog the SQL backend's substring match no longer serves: OpenSearch or
-// Elasticsearch with the analysis-kuromoji and analysis-icu plugins, which
-// ranks its hits, tolerates a typo in Latin text, and matches a title by its
-// reading.
+// Elasticsearch, which ranks its hits, tolerates a typo in Latin text, and
+// matches a title by an alternate form such as its reading. The text analysis
+// is the platform's to replace; the default one is built for Japanese on the
+// analysis-kuromoji and analysis-icu plugins.
 //
 // Everything it sends is common to both engines — the index definition, the
 // queries, the bulk writes, the alias swaps — so it never asks which one
@@ -47,6 +48,8 @@ const searchTimeout = 10 * time.Second
 type Backend struct {
 	client *opensearchapi.Client
 	index  string
+	// analysis is what an index the backend creates is built with.
+	analysis string
 }
 
 var _ catalogsearch.Backend = (*Backend)(nil)
@@ -63,7 +66,7 @@ func New(ctx context.Context, cfg Config) (*Backend, error) {
 	if _, err := client.Info(ctx, nil); err != nil {
 		return nil, fmt.Errorf("opensearchbackend: the search engine at %s does not answer: %w", cfg.URL, err)
 	}
-	backend := &Backend{client: client, index: cfg.Index}
+	backend := &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis}
 	if err := backend.EnsureIndex(ctx); err != nil {
 		return nil, err
 	}
@@ -79,7 +82,7 @@ func Open(cfg Config) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Backend{client: client, index: cfg.Index}, nil
+	return &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis}, nil
 }
 
 func newClient(cfg Config) (*opensearchapi.Client, error) {
@@ -114,15 +117,19 @@ func queryKey(query string) string {
 	return strings.ToLower(query)
 }
 
-// japanese reports whether a query has kanji or kana in it, which decides
-// how it is matched. A Japanese query is matched by reading as well, so kana
-// finds a title written in kanji. It is never matched fuzzily: one edit turns
-// a Japanese word into another word rather than into a typo of it, and a kanji
-// or kana token is often one character, which one edit matches against every
-// other single character.
-func japanese(query string) bool {
+// wholeWordScript reports whether a query has a character of a script in
+// which one edit turns a word into another word rather than into a typo of
+// it — Han, Hiragana, Katakana, or Hangul — which decides how it is matched.
+// Such a query is never matched fuzzily: a token of these scripts is often a
+// character or two, and one edit matches it against every other token of that
+// length, a Hangul syllable as much as a kanji. It is matched in the alternate
+// form as well, which is what these scripts are typed in another way for: a
+// title written in kanji is found from its reading in kana. A definition with
+// no alternate form for its language analyzes it as the written form again,
+// where the clause finds what the written form does and nothing more.
+func wholeWordScript(query string) bool {
 	for _, r := range query {
-		if unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana) {
+		if unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul) {
 			return true
 		}
 	}
@@ -428,7 +435,7 @@ type searchBody struct {
 // which do not score, and the text clauses as should, of which at least one
 // has to match. Every text clause needs all of the query's terms.
 func queryFor(search kindSearch, req catalogsearch.Request, query string, filters []any) map[string]any {
-	ja := japanese(query)
+	wholeWords := wholeWordScript(query)
 	match := func(field string, boost float64, fuzzy bool) map[string]any {
 		clause := map[string]any{"query": query, "operator": "and", "boost": boost}
 		if fuzzy {
@@ -443,9 +450,9 @@ func queryFor(search kindSearch, req catalogsearch.Request, query string, filter
 		map[string]any{"term": map[string]any{search.sortField: map[string]any{"value": query, "boost": 10}}},
 	}
 	for _, f := range search.fields {
-		should = append(should, match(f.name, f.boost, !ja))
+		should = append(should, match(f.name, f.boost, !wholeWords))
 	}
-	if ja {
+	if wholeWords {
 		should = append(should, match(search.readingField, 2, false), match("reading", 2, false))
 	}
 

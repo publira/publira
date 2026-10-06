@@ -38,7 +38,7 @@ type Result struct {
 }
 
 // Succeeded reports whether the engine answered as the one the settings name,
-// with both plugins.
+// with both plugins the default analysis needs where that is the one saved.
 func (r Result) Succeeded() bool {
 	return r.Reason == ""
 }
@@ -79,7 +79,9 @@ func (t Tester) Test(ctx context.Context, q Querier, actor auditlog.PlatformActo
 	if err != nil {
 		return Result{}, err
 	}
-	return t.run(ctx, actor, settings, password), nil
+	// A save from the same form keeps the saved analysis, so that is the one
+	// the engine is tested for.
+	return t.run(ctx, actor, settings, password, saved.Analysis.String == ""), nil
 }
 
 // TestSaved runs the connection test against the saved settings.
@@ -99,7 +101,7 @@ func (t Tester) TestSaved(ctx context.Context, q Querier, actor auditlog.Platfor
 	if err != nil {
 		return Result{}, err
 	}
-	return t.run(ctx, actor, stored.Settings, password), nil
+	return t.run(ctx, actor, stored.Settings, password, stored.Analysis == ""), nil
 }
 
 // password is the password a test sends: the one stated, the saved one, or
@@ -141,7 +143,10 @@ func (t Tester) password(username string, mode secretupdate.Mode, password, save
 	return decrypted, nil
 }
 
-func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings Settings, password string) Result {
+// run tests settings. defaultAnalysis says the index is built with the default
+// analysis, whose plugins the engine then has to have; another one names its
+// own, which the engine was asked about when it was saved.
+func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings Settings, password string, defaultAnalysis bool) Result {
 	probe := t.Probe
 	if probe == nil {
 		probe = opensearchbackend.ProbeEngine
@@ -149,7 +154,7 @@ func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings 
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	found, err := probe(connectCtx, opensearchbackend.Config{URL: settings.URL, Username: settings.Username, Password: password})
 	cancel()
-	result := evaluate(settings.Engine, found, err)
+	result := evaluate(settings.Engine, found, err, defaultAnalysis)
 
 	entry := auditlog.PlatformEntry{
 		Action:     "platform_search_connection_tested",
@@ -170,7 +175,7 @@ var products = map[Engine]string{
 	EngineElasticsearch: opensearchbackend.ProductElasticsearch,
 }
 
-func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {
+func evaluate(engine Engine, probe opensearchbackend.Probe, err error, defaultAnalysis bool) Result {
 	switch {
 	case errors.Is(err, opensearchbackend.ErrUnauthorized):
 		return Result{Reason: ReasonUnauthorized}
@@ -188,7 +193,7 @@ func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {
 	switch {
 	case probe.Product != products[engine]:
 		result.Reason = ReasonWrongProduct
-	case !result.KuromojiPresent || !result.ICUPresent:
+	case defaultAnalysis && (!result.KuromojiPresent || !result.ICUPresent):
 		result.Reason = ReasonMissingPlugin
 	}
 	return result

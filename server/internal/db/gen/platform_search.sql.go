@@ -11,7 +11,7 @@ import (
 )
 
 const GetPlatformSearchConfig = `-- name: GetPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
 FROM platform_search_config
 WHERE singleton = TRUE
 `
@@ -41,6 +41,8 @@ func (q *Queries) GetPlatformSearchConfig(ctx context.Context) (PlatformSearchCo
 		&i.BuildFailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.ServingAnalysis,
 	)
 	return i, err
 }
@@ -53,12 +55,14 @@ INSERT INTO platform_search_config (
         index_alias,
         username,
         password_encrypted,
+        analysis,
         serving_revision,
         serving_engine,
         serving_url,
         serving_index_alias,
         serving_username,
         serving_password_encrypted,
+        serving_analysis,
         serving_since,
         updated_at
     )
@@ -69,16 +73,18 @@ VALUES (
         $3,
         $4,
         $5,
-        CASE WHEN $6::boolean THEN 1 ELSE 0 END,
-        CASE WHEN $6::boolean THEN $1 ELSE 'sql' END,
-        CASE WHEN $6::boolean THEN $2 END,
-        CASE WHEN $6::boolean THEN $3 END,
-        CASE WHEN $6::boolean THEN $4 END,
-        CASE WHEN $6::boolean THEN $5 END,
-        CASE WHEN $6::boolean THEN NOW() END,
+        $6,
+        CASE WHEN $7::boolean THEN 1 ELSE 0 END,
+        CASE WHEN $7::boolean THEN $1 ELSE 'sql' END,
+        CASE WHEN $7::boolean THEN $2 END,
+        CASE WHEN $7::boolean THEN $3 END,
+        CASE WHEN $7::boolean THEN $4 END,
+        CASE WHEN $7::boolean THEN $5 END,
+        CASE WHEN $7::boolean THEN $6 END,
+        CASE WHEN $7::boolean THEN NOW() END,
         NOW()
     )
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
 `
 
 type InsertPlatformSearchConfigParams struct {
@@ -87,6 +93,7 @@ type InsertPlatformSearchConfigParams struct {
 	IndexAlias        sql.NullString `json:"index_alias"`
 	Username          sql.NullString `json:"username"`
 	PasswordEncrypted sql.NullString `json:"password_encrypted"`
+	Analysis          sql.NullString `json:"analysis"`
 	Serve             bool           `json:"serve"`
 }
 
@@ -103,6 +110,7 @@ func (q *Queries) InsertPlatformSearchConfig(ctx context.Context, arg InsertPlat
 		arg.IndexAlias,
 		arg.Username,
 		arg.PasswordEncrypted,
+		arg.Analysis,
 		arg.Serve,
 	)
 	var i PlatformSearchConfig
@@ -126,12 +134,14 @@ func (q *Queries) InsertPlatformSearchConfig(ctx context.Context, arg InsertPlat
 		&i.BuildFailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.ServingAnalysis,
 	)
 	return i, err
 }
 
 const LockPlatformSearchConfig = `-- name: LockPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
 FROM platform_search_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -162,6 +172,8 @@ func (q *Queries) LockPlatformSearchConfig(ctx context.Context) (PlatformSearchC
 		&i.BuildFailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.ServingAnalysis,
 	)
 	return i, err
 }
@@ -198,13 +210,14 @@ SET serving_revision = revision,
     serving_index_alias = index_alias,
     serving_username = username,
     serving_password_encrypted = password_encrypted,
+    serving_analysis = analysis,
     serving_since = NOW(),
     build_failed_revision = NULL,
     build_error = NULL,
     build_failed_at = NULL
 WHERE singleton = TRUE
     AND revision = $1
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
 `
 
 // Moves the search onto the saved configuration once the index it names has
@@ -233,6 +246,8 @@ func (q *Queries) ServePlatformSearchConfig(ctx context.Context, revision int64)
 		&i.BuildFailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.ServingAnalysis,
 	)
 	return i, err
 }
@@ -244,20 +259,22 @@ SET engine = $1,
     index_alias = $3,
     username = $4,
     password_encrypted = $5,
+    analysis = $6,
     revision = revision + 1,
-    serving_revision = CASE WHEN $6::boolean THEN revision + 1 ELSE serving_revision END,
-    serving_engine = CASE WHEN $6::boolean THEN $1 ELSE serving_engine END,
-    serving_url = CASE WHEN $6::boolean THEN $2 ELSE serving_url END,
-    serving_index_alias = CASE WHEN $6::boolean THEN $3 ELSE serving_index_alias END,
-    serving_username = CASE WHEN $6::boolean THEN $4 ELSE serving_username END,
-    serving_password_encrypted = CASE WHEN $6::boolean THEN $5 ELSE serving_password_encrypted END,
-    serving_since = CASE WHEN $6::boolean THEN NOW() ELSE serving_since END,
+    serving_revision = CASE WHEN $7::boolean THEN revision + 1 ELSE serving_revision END,
+    serving_engine = CASE WHEN $7::boolean THEN $1 ELSE serving_engine END,
+    serving_url = CASE WHEN $7::boolean THEN $2 ELSE serving_url END,
+    serving_index_alias = CASE WHEN $7::boolean THEN $3 ELSE serving_index_alias END,
+    serving_username = CASE WHEN $7::boolean THEN $4 ELSE serving_username END,
+    serving_password_encrypted = CASE WHEN $7::boolean THEN $5 ELSE serving_password_encrypted END,
+    serving_analysis = CASE WHEN $7::boolean THEN $6 ELSE serving_analysis END,
+    serving_since = CASE WHEN $7::boolean THEN NOW() ELSE serving_since END,
     build_failed_revision = NULL,
     build_error = NULL,
     build_failed_at = NULL,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
 `
 
 type UpdatePlatformSearchConfigParams struct {
@@ -266,6 +283,7 @@ type UpdatePlatformSearchConfigParams struct {
 	IndexAlias        sql.NullString `json:"index_alias"`
 	Username          sql.NullString `json:"username"`
 	PasswordEncrypted sql.NullString `json:"password_encrypted"`
+	Analysis          sql.NullString `json:"analysis"`
 	Serve             bool           `json:"serve"`
 }
 
@@ -282,6 +300,7 @@ func (q *Queries) UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlat
 		arg.IndexAlias,
 		arg.Username,
 		arg.PasswordEncrypted,
+		arg.Analysis,
 		arg.Serve,
 	)
 	var i PlatformSearchConfig
@@ -305,6 +324,8 @@ func (q *Queries) UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlat
 		&i.BuildFailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.ServingAnalysis,
 	)
 	return i, err
 }

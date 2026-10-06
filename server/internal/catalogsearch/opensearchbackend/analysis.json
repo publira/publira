@@ -1,0 +1,60 @@
+{
+  "tokenizer": {
+    "ja_search": {
+      "type": "kuromoji_tokenizer",
+      "mode": "search"
+    },
+    "ja_normal": {
+      "type": "kuromoji_tokenizer",
+      "mode": "normal"
+    }
+  },
+  "filter": {
+    "ja_katakana_reading": {
+      "type": "kuromoji_readingform",
+      "use_romaji": false
+    },
+    "hiragana_to_katakana": {
+      "type": "icu_transform",
+      "id": "Hiragana-Katakana"
+    },
+    "reading_pairs": {
+      "type": "shingle",
+      "min_shingle_size": 2,
+      "max_shingle_size": 2,
+      "output_unigrams": true,
+      "token_separator": ""
+    },
+    "reading_bigrams": {
+      "type": "ngram",
+      "min_gram": 2,
+      "max_gram": 2
+    }
+  },
+  "analyzer": {
+    "written_form": {
+      "type": "custom",
+      "char_filter": ["icu_normalizer"],
+      "tokenizer": "ja_search",
+      "filter": ["cjk_width", "kuromoji_baseform"]
+    },
+    "alternate_form": {
+      "type": "custom",
+      "char_filter": ["icu_normalizer"],
+      "tokenizer": "ja_normal",
+      "filter": [
+        "cjk_width",
+        "ja_katakana_reading",
+        "hiragana_to_katakana",
+        "reading_pairs",
+        "reading_bigrams"
+      ]
+    }
+  },
+  "normalizer": {
+    "exact_match": {
+      "type": "custom",
+      "filter": ["cjk_width", "icu_normalizer"]
+    }
+  }
+}

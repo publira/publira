@@ -16,7 +16,8 @@ const (
 	ProductElasticsearch = "Elasticsearch"
 )
 
-// The analysis plugins every node needs for the catalog index's analyzers.
+// The analysis plugins every node needs for the default analysis of the
+// catalog index.
 const (
 	PluginAnalysisKuromoji = "analysis-kuromoji"
 	PluginAnalysisICU      = "analysis-icu"

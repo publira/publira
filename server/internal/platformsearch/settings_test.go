@@ -121,10 +121,11 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 		Plugins: []string{opensearchbackend.PluginAnalysisICU, opensearchbackend.PluginAnalysisKuromoji},
 	}
 	for _, test := range []struct {
-		name  string
-		probe opensearchbackend.Probe
-		err   error
-		want  string
+		name   string
+		probe  opensearchbackend.Probe
+		err    error
+		custom bool
+		want   string
 	}{
 		{name: "both plugins", probe: complete},
 		{name: "no answer", err: fmt.Errorf("%w: dial", opensearchbackend.ErrUnreachable), want: ReasonUnreachable},
@@ -133,9 +134,13 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 		{name: "not a search engine", err: fmt.Errorf("%w: 404", opensearchbackend.ErrUnexpectedAnswer), want: ReasonNotAnEngine},
 		{name: "another product", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5", Plugins: complete.Plugins}, want: ReasonWrongProduct},
 		{name: "no ICU", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0", Plugins: []string{opensearchbackend.PluginAnalysisKuromoji}}, want: ReasonMissingPlugin},
+		// A saved analysis of its own needs whatever plugins it names, which
+		// the engine was asked about on the save.
+		{name: "no plugins for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}, custom: true},
+		{name: "another product for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5"}, custom: true, want: ReasonWrongProduct},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := evaluate(EngineOpenSearch, test.probe, test.err); got.Reason != test.want {
+			if got := evaluate(EngineOpenSearch, test.probe, test.err, !test.custom); got.Reason != test.want {
 				t.Fatalf("evaluate = %+v, want reason %q", got, test.want)
 			}
 		})

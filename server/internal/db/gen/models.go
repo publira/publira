@@ -600,6 +600,8 @@ type PlatformSearchConfig struct {
 	BuildFailedAt            sql.NullTime   `json:"build_failed_at"`
 	CreatedAt                time.Time      `json:"created_at"`
 	UpdatedAt                time.Time      `json:"updated_at"`
+	Analysis                 sql.NullString `json:"analysis"`
+	ServingAnalysis          sql.NullString `json:"serving_analysis"`
 }
 
 type PlatformSmtpConfig struct {

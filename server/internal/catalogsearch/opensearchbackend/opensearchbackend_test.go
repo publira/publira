@@ -157,7 +157,7 @@ func TestSearchAfterIDIncludesTheBoundary(t *testing.T) {
 	}
 }
 
-func TestJapaneseIsAnyKanjiOrKana(t *testing.T) {
+func TestWholeWordScriptIsAnyHanKanaOrHangul(t *testing.T) {
 	t.Parallel()
 
 	for query, want := range map[string]bool{
@@ -167,9 +167,62 @@ func TestJapaneseIsAnyKanjiOrKana(t *testing.T) {
 		"はなし":        true,
 		"シード":        true,
 		"seed 物語":    true,
+		"바다":         true,
+		"seed 바다":    true,
 	} {
-		if got := japanese(query); got != want {
-			t.Errorf("japanese(%q) = %v, want %v", query, got, want)
+		if got := wholeWordScript(query); got != want {
+			t.Errorf("wholeWordScript(%q) = %v, want %v", query, got, want)
+		}
+	}
+}
+
+// fuzzyAndReadingClauses lists the fields a query matches fuzzily, and the
+// alternate-form fields it matches at all.
+func fuzzyAndReadingClauses(t *testing.T, query map[string]any) (fuzzy, reading []string) {
+	t.Helper()
+	encoded, err := json.Marshal(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Bool struct {
+			Should []map[string]map[string]map[string]any `json:"should"`
+		} `json:"bool"`
+	}
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	for _, clause := range decoded.Bool.Should {
+		for field, spec := range clause["match"] {
+			if _, ok := spec["fuzziness"]; ok {
+				fuzzy = append(fuzzy, field)
+			}
+			if field == "reading" || strings.HasSuffix(field, ".reading") {
+				reading = append(reading, field)
+			}
+		}
+	}
+	return fuzzy, reading
+}
+
+func TestAHangulQueryIsNeverMatchedFuzzily(t *testing.T) {
+	t.Parallel()
+
+	for query, want := range map[string]struct {
+		fuzzy   bool
+		reading bool
+	}{
+		"seed":    {fuzzy: true},
+		"바다":      {reading: true},
+		"seed 바다": {reading: true},
+		"ぎんが":     {reading: true},
+	} {
+		fuzzy, reading := fuzzyAndReadingClauses(t, queryFor(seriesSearch, catalogsearch.Request{Surface: testSurface}, query, nil))
+		if got := len(fuzzy) > 0; got != want.fuzzy {
+			t.Errorf("query %q matches %v fuzzily, want fuzzy = %v", query, fuzzy, want.fuzzy)
+		}
+		if got := len(reading) > 0; got != want.reading {
+			t.Errorf("query %q matches the alternate form on %v, want it matched = %v", query, reading, want.reading)
 		}
 	}
 }

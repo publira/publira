@@ -52,7 +52,9 @@ func platformSearchSettingsToProto(stored platformsearch.Stored) *publirasplatfo
 			Index:    stored.Serving.Index,
 			Revision: stored.Serving.Revision,
 		},
-		BuildState: searchBuildStateProto[stored.State],
+		BuildState:      searchBuildStateProto[stored.State],
+		Analysis:        stored.EffectiveAnalysis(),
+		DefaultAnalysis: stored.Engine.HasIndex() && stored.Analysis == "",
 	}
 	if !stored.Serving.Since.IsZero() {
 		settings.Serving.Since = stored.Serving.Since.UTC().Format(time.RFC3339)
@@ -78,6 +80,11 @@ func (s *platformServer) searchSettingsError(ctx context.Context, err error) err
 	}
 	if errors.Is(err, platformsearch.ErrConflict) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	// The engine's own error stays in the log: it can name the URL.
+	if errors.Is(err, platformsearch.ErrAnalysisUnchecked) {
+		s.logger.WarnContext(ctx, "the search engine could not check the analysis", "error", err)
+		return connect.NewError(connect.CodeUnavailable, platformsearch.ErrAnalysisUnchecked)
 	}
 	return s.internalDBError(ctx, "failed to access platform search config", err)
 }
@@ -116,6 +123,8 @@ func (s *platformServer) UpdatePlatformSearchSettings(
 		},
 		SecretMode:       secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
 		Password:         req.Msg.GetPassword(),
+		AnalysisMode:     platformsearch.AnalysisMode(req.Msg.GetAnalysisUpdateMode()),
+		Analysis:         req.Msg.GetAnalysis(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if err := params.Validate(); err != nil {

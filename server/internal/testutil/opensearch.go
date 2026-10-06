@@ -14,10 +14,11 @@ import (
 const defaultOpenSearchImage = "opensearchproject/opensearch:3.9.0"
 
 // openSearchEntrypoint installs the two analysis plugins the catalog index's
-// analyzers are built from before the image's own entrypoint starts the node.
-// The published image ships neither, and a plugin can only be installed while
-// the node is stopped.
-const openSearchEntrypoint = "bin/opensearch-plugin install --batch analysis-kuromoji analysis-icu" +
+// default analysis is built from, and the Korean and Chinese ones the tests of
+// a replaced analysis are, before the image's own entrypoint starts the node.
+// The published image ships none of them, and a plugin can only be installed
+// while the node is stopped.
+const openSearchEntrypoint = "bin/opensearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn" +
 	" && exec ./opensearch-docker-entrypoint.sh opensearch"
 
 type OpenSearchEnv struct {
@@ -32,9 +33,10 @@ var (
 )
 
 // StartOpenSearch starts or returns a shared single-node OpenSearch container
-// with analysis-kuromoji and analysis-icu installed and the security plugin
-// off, so it answers plain HTTP without credentials. Tests share the node and
-// stay apart by each using an index of its own.
+// with analysis-kuromoji, analysis-icu, analysis-nori, and analysis-smartcn
+// installed and the security plugin off, so it answers plain HTTP without
+// credentials. Tests share the node and stay apart by each using an index of
+// its own.
 // Skips when -short is set or Docker is unavailable.
 func StartOpenSearch(t *testing.T) *OpenSearchEnv {
 	t.Helper()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -40,7 +41,10 @@ var searchFlags = map[string]string{
 	platformsearch.FieldURL:      "--url",
 	platformsearch.FieldIndex:    "--index",
 	platformsearch.FieldUsername: "--username",
+	platformsearch.FieldAnalysis: "--analysis-file",
 }
+
+var errAnalysisFlags = errors.New("--analysis-file and --default-analysis cannot both be given")
 
 // searchError names the flag behind what platformsearch refused.
 func searchError(err error, flags map[string]string) error {
@@ -65,6 +69,8 @@ func setupSearchSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.URL, "url", "", "the engine's http:// or https:// URL, on every engine but sql")
 	f.StringVar(&settings.Index, "index", "", "the alias of the index holding the catalog (default \""+opensearchbackend.DefaultIndex+"\")")
 	f.StringVar(&settings.Username, "username", "", "the HTTP basic auth user, over https:// only; left out, the engine is reached without credentials")
+	analysisFile := f.String("analysis-file", "", "a JSON file holding the settings.analysis of the catalog index, defining the analyzers written_form and alternate_form and the normalizer exact_match; left out, the saved one is kept")
+	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, built for Japanese")
 	password := f.KeepableSecret("password", "search engine password")
 	named := func(err error) error {
 		return password.refusal(err, platformsearch.FieldPassword, func(err error) error { return searchError(err, searchFlags) })
@@ -72,6 +78,18 @@ func setupSearchSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	return func(ctx context.Context, env *commandEnv) error {
 		settings.Engine = platformsearch.Engine(engine)
 		params := platformsearch.SaveParams{Settings: settings, SecretMode: secretupdate.Clear}
+		switch {
+		case *analysisFile != "" && *defaultAnalysis:
+			return errAnalysisFlags
+		case *analysisFile != "":
+			raw, err := os.ReadFile(*analysisFile)
+			if err != nil {
+				return fmt.Errorf("read --analysis-file: %w", err)
+			}
+			params.AnalysisMode, params.Analysis = platformsearch.AnalysisReplace, string(raw)
+		case *defaultAnalysis:
+			params.AnalysisMode = platformsearch.AnalysisDefault
+		}
 		if err := params.Validate(); err != nil {
 			return named(err)
 		}
@@ -156,11 +174,14 @@ func setupSearchShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 			fmt.Fprintf(&b, "Username:\t%s\n", orElse(stored.Username, "none"))
 			fmt.Fprintf(&b, "Password:\t%s\n", password)
 		}
+		if stored.Engine.HasIndex() {
+			fmt.Fprintf(&b, "Analysis:\t%s\n", analysisName(stored.Analysis))
+		}
 		fmt.Fprintf(&b, "Revision:\t%d\n", stored.Revision)
 		fmt.Fprintf(&b, "Updated:\t%s\n", formatTime(row.UpdatedAt))
 		serving := string(stored.Serving.Engine)
 		if stored.Serving.Engine.HasIndex() {
-			serving += " at " + stored.Serving.URL + ", index " + stored.Serving.Index
+			serving += " at " + stored.Serving.URL + ", index " + stored.Serving.Index + ", " + analysisName(stored.Serving.Analysis) + " analysis"
 		}
 		fmt.Fprintf(&b, "Searching on:\t%s (revision %d)\n", serving, stored.Serving.Revision)
 		switch stored.State {
@@ -173,6 +194,14 @@ func setupSearchShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		}
 		return printTable(env.stdout, b.String())
 	}
+}
+
+// analysisName says which analysis an index is built with.
+func analysisName(analysis string) string {
+	if analysis == "" {
+		return "default"
+	}
+	return "saved"
 }
 
 // optionalSecrets is the secret manager when the keys are set, and nil when
