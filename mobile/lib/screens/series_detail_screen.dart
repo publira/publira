@@ -644,9 +644,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               ],
               const SizedBox(height: 8),
               AutospacedText(
-                messages.seriesEpisodeCount(
-                  count: messages.formatInteger(series.episodeCount),
-                ),
+                messages.seriesEpisodeCount(count: series.episodeCount),
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: theme.colorScheme.primary,
                 ),
@@ -1009,15 +1007,10 @@ class _SeriesRating extends StatelessWidget {
       if (series.ratingCount > 0)
         AutospacedText(
           key: const ValueKey('series-rating'),
-          series.ratingCount == 1
-              ? messages.seriesRatingSingle(
-                  average: series.ratingAverage.toStringAsFixed(1),
-                  count: messages.formatInteger(series.ratingCount),
-                )
-              : messages.seriesRating(
-                  average: series.ratingAverage.toStringAsFixed(1),
-                  count: messages.formatInteger(series.ratingCount),
-                ),
+          messages.seriesRating(
+            average: series.ratingAverage.toStringAsFixed(1),
+            count: series.ratingCount,
+          ),
           style: style,
         ),
       if (ownRating case final rating?)

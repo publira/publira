@@ -248,9 +248,7 @@ export const TenantCommunityLimitsForm = ({
                 <Message
                   message="admin.settings.policy.community.platform_window"
                   values={{
-                    minutes: String(
-                      platformDefaults.duplicateCommentWindowMinutes
-                    ),
+                    minutes: platformDefaults.duplicateCommentWindowMinutes,
                   }}
                 />
               </Suspense>

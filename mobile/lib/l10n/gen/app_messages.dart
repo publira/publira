@@ -1377,7 +1377,7 @@ final class AppMessages {
   }
 
   /// `mobile.downloads.partial`
-  String downloadsPartial({required String saved, required String total}) {
+  String downloadsPartial({required num saved, required num total}) {
     return _format('mobile.downloads.partial', {
       'saved': saved,
       'total': total,
@@ -2306,7 +2306,7 @@ final class AppMessages {
   }
 
   /// `mobile.series.episode_count`
-  String seriesEpisodeCount({required String count}) {
+  String seriesEpisodeCount({required num count}) {
     return _format('mobile.series.episode_count', {'count': count});
   }
 
@@ -2341,7 +2341,7 @@ final class AppMessages {
   }
 
   /// `mobile.series.rating`
-  String seriesRating({required String average, required String count}) {
+  String seriesRating({required String average, required num count}) {
     return _format('mobile.series.rating', {
       'average': average,
       'count': count,
@@ -2361,14 +2361,6 @@ final class AppMessages {
   /// `mobile.series.rating_own_failed`
   String get seriesRatingOwnFailed {
     return _format('mobile.series.rating_own_failed');
-  }
-
-  /// `mobile.series.rating_single`
-  String seriesRatingSingle({required String average, required String count}) {
-    return _format('mobile.series.rating_single', {
-      'average': average,
-      'count': count,
-    });
   }
 
   /// `mobile.series.read_from_first`
@@ -2852,13 +2844,8 @@ final class AppMessages {
   }
 
   /// `mobile.viewer.reaction.count`
-  String viewerReactionCount({required String count}) {
+  String viewerReactionCount({required num count}) {
     return _format('mobile.viewer.reaction.count', {'count': count});
-  }
-
-  /// `mobile.viewer.reaction.count_single`
-  String viewerReactionCountSingle({required String count}) {
-    return _format('mobile.viewer.reaction.count_single', {'count': count});
   }
 
   /// `mobile.viewer.reaction.failed`
@@ -3209,7 +3196,7 @@ const _jaSources = <String, String>{
       'この端末にはまだ何も保存されていません。シリーズのページからエピソードを保存すると、ここに表示されます。',
   'mobile.downloads.expired': '{\$date}にオフラインで読める期間が終わりました。オンラインで開くと再び読めます。',
   'mobile.downloads.partial':
-      '一部のみ保存済み（{\$total}ページ中{\$saved}ページ）。オフラインで最後まで読むには、シリーズのページから保存してください。',
+      '一部のみ保存済み（{\$total :integer}ページ中{\$saved :integer}ページ）。オフラインで最後まで読むには、シリーズのページから保存してください。',
   'mobile.downloads.readable_until': '{\$date}までオフラインで読めます',
   'mobile.downloads.saved_at': '{\$date}に保存 · {\$size}',
   'mobile.downloads.title': 'ダウンロード',
@@ -3404,7 +3391,7 @@ const _jaSources = <String, String>{
   'mobile.series.age_rating_r18': 'R18',
   'mobile.series.continue_reading': '続きを読む',
   'mobile.series.creators_heading': '著者',
-  'mobile.series.episode_count': '{\$count}話',
+  'mobile.series.episode_count': '{\$count :integer}話',
   'mobile.series.episode_finished': '読了',
   'mobile.series.episodes_empty': '公開中のエピソードはありません',
   'mobile.series.episodes_heading': 'エピソード一覧',
@@ -3412,11 +3399,10 @@ const _jaSources = <String, String>{
   'mobile.series.not_found': 'シリーズが見つかりません ({\$id})',
   'mobile.series.offline_not_saved':
       'オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。',
-  'mobile.series.rating': '評価: {\$average}・{\$count}人',
+  'mobile.series.rating': '評価: {\$average}・{\$count :integer}人',
   'mobile.series.rating_explanation': 'エピソードにリアクションすると、シリーズの評価に反映されます。',
   'mobile.series.rating_own': 'あなたの評価: {\$average}',
   'mobile.series.rating_own_failed': 'あなたの評価を表示できませんでした',
-  'mobile.series.rating_single': '評価: {\$average}・{\$count}人',
   'mobile.series.read_from_first': '第1話から読む',
   'mobile.series.related_heading': 'こちらもおすすめ',
   'mobile.series.save_offline': 'オフライン用に保存',
@@ -3521,8 +3507,7 @@ const _jaSources = <String, String>{
   'mobile.viewer.previous_episode': '前のエピソード',
   'mobile.viewer.previous_page': '前のページ',
   'mobile.viewer.progress': '読み進み',
-  'mobile.viewer.reaction.count': '{\$count}人がリアクションしました',
-  'mobile.viewer.reaction.count_single': '{\$count}人がリアクションしました',
+  'mobile.viewer.reaction.count': '{\$count :integer}人がリアクションしました',
   'mobile.viewer.reaction.failed': 'リアクションを記録できませんでした。もう一度お試しください。',
   'mobile.viewer.reaction.press': 'リアクションする',
   'mobile.viewer.reaction.reader_credited':
@@ -3881,7 +3866,7 @@ const _enSources = <String, String>{
   'mobile.downloads.expired':
       'Offline reading ended {\$date}. Open it online to read it again.',
   'mobile.downloads.partial':
-      'Partly saved: {\$saved} of {\$total} pages. Save it from its series page to read it all offline.',
+      '.input {\$saved :integer}\n.input {\$total :integer}\n.match \$total\none {{Partly saved: {\$saved} of {\$total} page. Save it from its series page to read it all offline.}}\n* {{Partly saved: {\$saved} of {\$total} pages. Save it from its series page to read it all offline.}}',
   'mobile.downloads.readable_until': 'Readable offline until {\$date}',
   'mobile.downloads.saved_at': 'Saved {\$date} · {\$size}',
   'mobile.downloads.title': 'Downloads',
@@ -4110,7 +4095,8 @@ const _enSources = <String, String>{
   'mobile.series.age_rating_r18': 'R18',
   'mobile.series.continue_reading': 'Continue reading',
   'mobile.series.creators_heading': 'Authors',
-  'mobile.series.episode_count': '{\$count} episodes',
+  'mobile.series.episode_count':
+      '.input {\$count :integer}\n.match \$count\none {{{\$count} episode}}\n* {{{\$count} episodes}}',
   'mobile.series.episode_finished': 'Finished',
   'mobile.series.episodes_empty': 'No episodes have been published yet.',
   'mobile.series.episodes_heading': 'Episodes',
@@ -4118,11 +4104,11 @@ const _enSources = <String, String>{
   'mobile.series.not_found': 'Series not found ({\$id})',
   'mobile.series.offline_not_saved':
       'You are offline, and this device holds nothing saved for this series.',
-  'mobile.series.rating': 'Rating: {\$average} · {\$count} readers',
+  'mobile.series.rating':
+      '.input {\$count :integer}\n.match \$count\none {{Rating: {\$average} · {\$count} reader}}\n* {{Rating: {\$average} · {\$count} readers}}',
   'mobile.series.rating_explanation': 'React to episodes to rate this series.',
   'mobile.series.rating_own': 'Your rating: {\$average}',
   'mobile.series.rating_own_failed': 'Could not show your rating',
-  'mobile.series.rating_single': 'Rating: {\$average} · {\$count} reader',
   'mobile.series.read_from_first': 'Read from episode 1',
   'mobile.series.related_heading': 'You may also like',
   'mobile.series.save_offline': 'Save for offline',
@@ -4241,8 +4227,8 @@ const _enSources = <String, String>{
   'mobile.viewer.previous_episode': 'Previous episode',
   'mobile.viewer.previous_page': 'Previous page',
   'mobile.viewer.progress': 'Reading progress',
-  'mobile.viewer.reaction.count': '{\$count} readers reacted',
-  'mobile.viewer.reaction.count_single': '{\$count} reader reacted',
+  'mobile.viewer.reaction.count':
+      '.input {\$count :integer}\n.match \$count\none {{{\$count} reader reacted}}\n* {{{\$count} readers reacted}}',
   'mobile.viewer.reaction.failed': 'Could not record the reaction. Try again.',
   'mobile.viewer.reaction.press': 'React',
   'mobile.viewer.reaction.reader_credited':
@@ -4539,7 +4525,7 @@ const _koSources = <String, String>{
   'mobile.downloads.expired':
       '{\$date}에 오프라인 읽기 기간이 끝났습니다. 온라인에서 열면 다시 읽을 수 있습니다.',
   'mobile.downloads.partial':
-      '일부만 저장됨({\$total}페이지 중 {\$saved}페이지). 오프라인으로 끝까지 읽으려면 시리즈 페이지에서 저장하세요.',
+      '일부만 저장됨({\$total :integer}페이지 중 {\$saved :integer}페이지). 오프라인으로 끝까지 읽으려면 시리즈 페이지에서 저장하세요.',
   'mobile.downloads.readable_until': '{\$date}까지 오프라인으로 읽을 수 있음',
   'mobile.downloads.saved_at': '{\$date}에 저장 · {\$size}',
   'mobile.downloads.title': '다운로드',
@@ -4742,18 +4728,17 @@ const _koSources = <String, String>{
   'mobile.series.age_rating_r18': 'R18',
   'mobile.series.continue_reading': '이어 읽기',
   'mobile.series.creators_heading': '작가',
-  'mobile.series.episode_count': '{\$count}화',
+  'mobile.series.episode_count': '{\$count :integer}화',
   'mobile.series.episode_finished': '완독',
   'mobile.series.episodes_empty': '아직 공개된 에피소드가 없습니다',
   'mobile.series.episodes_heading': '에피소드',
   'mobile.series.load_failed': '시리즈를 표시할 수 없습니다',
   'mobile.series.not_found': '시리즈를 찾을 수 없습니다 ({\$id})',
   'mobile.series.offline_not_saved': '오프라인 상태이며, 이 기기에 저장된 이 시리즈의 데이터가 없습니다.',
-  'mobile.series.rating': '평점: {\$average} · {\$count}명',
+  'mobile.series.rating': '평점: {\$average} · {\$count :integer}명',
   'mobile.series.rating_explanation': '에피소드에 반응하면 시리즈 평점에 반영됩니다.',
   'mobile.series.rating_own': '내 평점: {\$average}',
   'mobile.series.rating_own_failed': '내 평점을 표시하지 못했습니다',
-  'mobile.series.rating_single': '평점: {\$average} · {\$count}명',
   'mobile.series.read_from_first': '1화부터 읽기',
   'mobile.series.related_heading': '이런 작품은 어떠세요',
   'mobile.series.save_offline': '오프라인용으로 저장',
@@ -4860,8 +4845,7 @@ const _koSources = <String, String>{
   'mobile.viewer.previous_episode': '이전 에피소드',
   'mobile.viewer.previous_page': '이전 페이지',
   'mobile.viewer.progress': '읽은 분량',
-  'mobile.viewer.reaction.count': '{\$count}명이 반응했습니다',
-  'mobile.viewer.reaction.count_single': '{\$count}명이 반응했습니다',
+  'mobile.viewer.reaction.count': '{\$count :integer}명이 반응했습니다',
   'mobile.viewer.reaction.failed': '반응을 기록하지 못했습니다. 다시 시도해 주세요.',
   'mobile.viewer.reaction.press': '반응하기',
   'mobile.viewer.reaction.reader_credited': '작가로 등록된 에피소드에는 반응할 수 없습니다.',
@@ -5136,7 +5120,8 @@ const _zhHansSources = <String, String>{
   'mobile.downloads.deleted': '已从此设备删除“{\$title}”。',
   'mobile.downloads.empty': '此设备上尚未保存任何内容。在系列页面保存剧集后，它会显示在这里。',
   'mobile.downloads.expired': '离线阅读已于{\$date}结束。联网打开即可再次阅读。',
-  'mobile.downloads.partial': '仅保存了部分（{\$total}页中的{\$saved}页）。要离线读完，请在系列页面保存。',
+  'mobile.downloads.partial':
+      '仅保存了部分（{\$total :integer}页中的{\$saved :integer}页）。要离线读完，请在系列页面保存。',
   'mobile.downloads.readable_until': '可离线阅读至{\$date}',
   'mobile.downloads.saved_at': '{\$date}保存 · {\$size}',
   'mobile.downloads.title': '下载',
@@ -5321,18 +5306,17 @@ const _zhHansSources = <String, String>{
   'mobile.series.age_rating_r18': 'R18',
   'mobile.series.continue_reading': '继续阅读',
   'mobile.series.creators_heading': '作者',
-  'mobile.series.episode_count': '{\$count}章',
+  'mobile.series.episode_count': '{\$count :integer}章',
   'mobile.series.episode_finished': '已读完',
   'mobile.series.episodes_empty': '还没有发布任何章节。',
   'mobile.series.episodes_heading': '章节',
   'mobile.series.load_failed': '无法显示该系列。',
   'mobile.series.not_found': '找不到系列（{\$id}）',
   'mobile.series.offline_not_saved': '您当前处于离线状态，且此设备上没有保存该系列的内容。',
-  'mobile.series.rating': '评分：{\$average} · {\$count}位读者',
+  'mobile.series.rating': '评分：{\$average} · {\$count :integer}位读者',
   'mobile.series.rating_explanation': '对章节作出回应即可为本系列评分。',
   'mobile.series.rating_own': '你的评分：{\$average}',
   'mobile.series.rating_own_failed': '无法显示你的评分',
-  'mobile.series.rating_single': '评分：{\$average} · {\$count}位读者',
   'mobile.series.read_from_first': '从第1章开始阅读',
   'mobile.series.related_heading': '你可能也喜欢',
   'mobile.series.save_offline': '保存以供离线阅读',
@@ -5427,8 +5411,7 @@ const _zhHansSources = <String, String>{
   'mobile.viewer.previous_episode': '上一章',
   'mobile.viewer.previous_page': '上一页',
   'mobile.viewer.progress': '阅读进度',
-  'mobile.viewer.reaction.count': '{\$count}位读者已反馈',
-  'mobile.viewer.reaction.count_single': '{\$count}位读者已反馈',
+  'mobile.viewer.reaction.count': '{\$count :integer}位读者已反馈',
   'mobile.viewer.reaction.failed': '无法记录反馈。请重试。',
   'mobile.viewer.reaction.press': '反馈',
   'mobile.viewer.reaction.reader_credited': '您无法对自己作为作者的章节进行反馈。',
@@ -5702,7 +5685,8 @@ const _zhHantSources = <String, String>{
   'mobile.downloads.deleted': '已從此裝置刪除「{\$title}」。',
   'mobile.downloads.empty': '此裝置上尚未儲存任何內容。在系列頁面儲存集數後，它會顯示在這裡。',
   'mobile.downloads.expired': '離線閱讀已於{\$date}結束。連線開啟即可再次閱讀。',
-  'mobile.downloads.partial': '僅儲存了部分（{\$total}頁中的{\$saved}頁）。要離線讀完，請在系列頁面儲存。',
+  'mobile.downloads.partial':
+      '僅儲存了部分（{\$total :integer}頁中的{\$saved :integer}頁）。要離線讀完，請在系列頁面儲存。',
   'mobile.downloads.readable_until': '可離線閱讀至{\$date}',
   'mobile.downloads.saved_at': '{\$date}儲存 · {\$size}',
   'mobile.downloads.title': '下載',
@@ -5887,18 +5871,17 @@ const _zhHantSources = <String, String>{
   'mobile.series.age_rating_r18': 'R18',
   'mobile.series.continue_reading': '繼續閱讀',
   'mobile.series.creators_heading': '作者',
-  'mobile.series.episode_count': '{\$count}章',
+  'mobile.series.episode_count': '{\$count :integer}章',
   'mobile.series.episode_finished': '已讀完',
   'mobile.series.episodes_empty': '尚未發布任何章節。',
   'mobile.series.episodes_heading': '章節',
   'mobile.series.load_failed': '無法顯示該系列。',
   'mobile.series.not_found': '找不到系列（{\$id}）',
   'mobile.series.offline_not_saved': '您目前處於離線狀態，且此裝置上沒有儲存該系列的內容。',
-  'mobile.series.rating': '評分：{\$average} · {\$count}位讀者',
+  'mobile.series.rating': '評分：{\$average} · {\$count :integer}位讀者',
   'mobile.series.rating_explanation': '對章節作出回應即可為本系列評分。',
   'mobile.series.rating_own': '你的評分：{\$average}',
   'mobile.series.rating_own_failed': '無法顯示你的評分',
-  'mobile.series.rating_single': '評分：{\$average} · {\$count}位讀者',
   'mobile.series.read_from_first': '從第1章開始閱讀',
   'mobile.series.related_heading': '你可能也喜歡',
   'mobile.series.save_offline': '儲存以供離線閱讀',
@@ -5993,8 +5976,7 @@ const _zhHantSources = <String, String>{
   'mobile.viewer.previous_episode': '上一章',
   'mobile.viewer.previous_page': '上一頁',
   'mobile.viewer.progress': '閱讀進度',
-  'mobile.viewer.reaction.count': '{\$count}位讀者已回應',
-  'mobile.viewer.reaction.count_single': '{\$count}位讀者已回應',
+  'mobile.viewer.reaction.count': '{\$count :integer}位讀者已回應',
   'mobile.viewer.reaction.failed': '無法記錄回應。請再試一次。',
   'mobile.viewer.reaction.press': '回應',
   'mobile.viewer.reaction.reader_credited': '您無法回應自己作為作者的章節。',

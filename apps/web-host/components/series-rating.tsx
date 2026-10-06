@@ -52,7 +52,7 @@ export const SeriesRating = ({
               message="host.series.rating.public"
               values={{
                 average: formatAverage(average, locale),
-                count: count.toLocaleString(toIntlLocale(locale)),
+                count,
               }}
             />
           </Suspense>

@@ -104,8 +104,8 @@ const daysUntilPurge = (
 /**
  * What a withdrawn comment says about the clock it is on.
  *
- * Three keys rather than one interpolated count, because "1 days left" is
- * wrong in English and the message syntax here carries no plural selection.
+ * A deadline already passed, or one that could not be read, is a sentence of
+ * its own rather than a count of days.
  */
 const PurgeNotice = ({
   comment,
@@ -121,12 +121,6 @@ const PurgeNotice = ({
   if (days === null || days <= 0) {
     return <Message message="admin.comments.purge_due_now" values={{ at }} />;
   }
-  if (days === 1) {
-    return (
-      <Message message="admin.comments.purge_due_one_day" values={{ at }} />
-    );
-  }
-
   return (
     <Message message="admin.comments.purge_due_days" values={{ at, days }} />
   );

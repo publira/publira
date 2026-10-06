@@ -68,7 +68,7 @@ export const EpisodeCreditsRangeResult = ({
         <section className="grid gap-2">
           <h3 className="text-sm font-medium text-foreground">
             {t("admin.series.episodes.credits.result_changed", {
-              count: String(result.changedEpisodeIds.length),
+              count: result.changedEpisodeIds.length,
             })}
           </h3>
           <ul className="grid gap-1 text-sm text-foreground">
@@ -83,7 +83,7 @@ export const EpisodeCreditsRangeResult = ({
         <section className="grid gap-2">
           <h3 className="text-sm font-medium text-foreground">
             {t("admin.series.episodes.credits.result_unchanged", {
-              count: String(result.unchangedEpisodes.length),
+              count: result.unchangedEpisodes.length,
             })}
           </h3>
           <ul className="grid gap-1 text-sm text-foreground">

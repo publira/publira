@@ -122,7 +122,7 @@ const creditSelectionPreview = (input: {
   ) {
     return "";
   }
-  const count = String(input.selectedCount);
+  const count = input.selectedCount;
   if (input.operation === "replace") {
     return input.t("admin.series.episodes.credits.preview_replace", {
       count,

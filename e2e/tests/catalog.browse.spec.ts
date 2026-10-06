@@ -52,7 +52,7 @@ test.describe("web-host catalog browsing", () => {
       freeSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
     await expect(
-      freeSeries.getByText(/^\d+ free episodes$/u).first()
+      freeSeries.getByText(/^\d+ free episodes?$/u).first()
     ).toBeVisible();
 
     const updatedSeries = page.getByRole("region", {
