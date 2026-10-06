@@ -15,8 +15,8 @@ The host name picks a web app:
 | Host | Process |
 | --- | --- |
 | A tenant's console host: `admin.<domain>`, or the one it was given with `--admin-domain` | `web-admin` |
-| A `platform.` host, such as `platform.example.com`, when you run the Platform Console | `web-platform` |
-| Every other host, each tenant's domain among them | `web-host` |
+| The Platform Console's host, such as `platform.example.com`, when you run it | `web-platform` |
+| A tenant's domain | `web-host` |
 
 Two path prefixes then go to the edge listener of `publira server`, on every host:
 
@@ -46,7 +46,7 @@ Each sample keeps the backend addresses apart from the routing, and the committe
 
 The internal listener of `publira server`, port `8100`, is for the web apps alone. The proxy never forwards to it, so keep it off any network the proxy is reachable from.
 
-The host rules in the samples are examples too. They pick a console by a pattern on its name, `admin.` and `platform.`, which Publira itself does not use: a tenant's console is on whichever host it was given. Replace the patterns with the host names your install actually serves, every tenant's console host for `web-admin` and the Platform Console's host for `web-platform`, and leave the tenant sites to the rule that catches every other host.
+The host rules in the samples are examples too. They pick an app by a pattern on the host name, `admin.` and `platform.`, and send every other host to `web-host`, none of which Publira itself relies on: a tenant's site and console are on whichever hosts it was given. Replace them with the host names your install actually serves: every tenant's domain for `web-host`, every tenant's console host for `web-admin`, and the Platform Console's host for `web-platform`.
 
 An install that does not run the Platform Console leaves out its upstream and its host rule: the `web-platform` router and service in Traefik, the platform `server` block and its upstream in nginx, and the `@platform` matcher and its `handle` block in Caddy.
 
@@ -60,7 +60,7 @@ Every sample listens on plain HTTP until you give it a TLS listener. The changes
 
 - Each tenant's domain, such as `comics.example.com`.
 - Each tenant's console host, such as `admin.comics.example.com`.
-- The `platform.` host, if you run the Platform Console.
+- The Platform Console's host, if you run it.
 
 A wildcard certificate for `*.comics.example.com` covers the console host but not `comics.example.com` itself, and a tenant on a domain of its own needs names of its own: no one certificate covers every tenant.
 
@@ -180,7 +180,7 @@ A tenant made with `publiractl tenant create` or in the Platform Console is serv
 
 1. **DNS.** Point the tenant's domain and its console host at the proxy.
 2. **Certificates.** Add both names: to the site addresses in Caddy, to the certificate or the per-host directories in nginx, or to the `domains` list or the certificate files in Traefik.
-3. **Routing.** Add its console host to the hosts your configuration sends to `web-admin`. Its domain needs no rule of its own: every host not named elsewhere reaches the tenant site.
+3. **Routing.** Add its domain to the hosts your configuration sends to `web-host`, and its console host to those it sends to `web-admin`.
 
 Load each change as you make it. Traefik picks up `dynamic/` on its own; nginx reloads with `nginx -s reload`, and Caddy with `caddy reload --config /etc/caddy/Caddyfile`. Neither reload drops a connection in progress.
 
