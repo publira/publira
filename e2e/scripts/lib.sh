@@ -59,6 +59,13 @@ export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 # E2E uploads in the dev stack's RustFS (and is unreachable once it is down).
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
+# The stack traces nothing, as on CI, which never sets PUBLIRA_TRACING_ENABLED.
+# The devcontainer sets it for `task dev`, and an inherited value would send
+# this stack's spans to the dev stack's Jaeger and change what the apps log:
+# with tracing on, Next.js logs "Unexpected root span type
+# 'ResolveMetadata.generateMetadata'" on a cold render (vercel/next.js#91831),
+# a line web-host's server log check refuses like any other it did not expect.
+unset PUBLIRA_TRACING_ENABLED
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
