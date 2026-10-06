@@ -176,9 +176,7 @@ comics.example.com, admin.comics.example.com {
 }
 ```
 
-Any other terminator works too, as long as it keeps the `Host` header: nginx, for one, replaces it unless told `proxy_set_header Host $host;`.
-
-The proxy in this file trusts no forwarded header it receives, so it replaces the reader's address that the terminator passes on with the address the request reached the proxy from, which is the same for every request. Every request then appears to come from that one address: it is the address the audit log records, and the allowances Publira keeps per visitor, such as how much sign-up and password reset mail one visitor may cause, are shared by every reader.
+Any other terminator that does the same works too.
 
 ### 6. Sign in
 
