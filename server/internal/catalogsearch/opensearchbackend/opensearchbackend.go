@@ -1,7 +1,12 @@
 // Package opensearchbackend is the catalog search backend for a tenant with a
-// catalog the SQL backend's substring match no longer serves: OpenSearch with
-// the analysis-kuromoji and analysis-icu plugins, which ranks its hits,
-// tolerates a typo in Latin text, and matches a title by its reading.
+// catalog the SQL backend's substring match no longer serves: OpenSearch or
+// Elasticsearch with the analysis-kuromoji and analysis-icu plugins, which
+// ranks its hits, tolerates a typo in Latin text, and matches a title by its
+// reading.
+//
+// Everything it sends is common to both engines — the index definition, the
+// queries, the bulk writes, the alias swaps — so it never asks which one
+// answers; its integration tests run against both.
 //
 // It answers searches and keeps documents; what writes those documents when
 // the catalog changes is not here.
@@ -38,7 +43,7 @@ const inclusiveKey = "inclusive"
 // a busy node, and its caller sets its own deadline.
 const searchTimeout = 10 * time.Second
 
-// Backend searches one index of an OpenSearch cluster.
+// Backend searches one index of an OpenSearch or Elasticsearch cluster.
 type Backend struct {
 	client *opensearchapi.Client
 	index  string
@@ -56,7 +61,7 @@ func New(ctx context.Context, cfg Config) (*Backend, error) {
 		return nil, err
 	}
 	if _, err := client.Info(ctx, nil); err != nil {
-		return nil, fmt.Errorf("opensearchbackend: OpenSearch at %s does not answer: %w", cfg.URL, err)
+		return nil, fmt.Errorf("opensearchbackend: the search engine at %s does not answer: %w", cfg.URL, err)
 	}
 	backend := &Backend{client: client, index: cfg.Index}
 	if err := backend.EnsureIndex(ctx); err != nil {

@@ -1,11 +1,12 @@
-// Package catalogindex keeps the OpenSearch catalog index in step with the
-// catalog. A write to a series, a creator, or a label, or to an episode or a
-// free window of a series, queues a catalog_index_sync outbox event in its own
-// transaction (Queue), and so does a ticker job whose boundary changes what a
-// series is narrowed or sorted by: a free window opening or closing, and a
-// scheduled episode being published. The worker rewrites the named row's
-// document from the row (Syncer), and publiractl rebuilds the whole index, or
-// one tenant's documents, from the database (Rebuild, SyncTenant).
+// Package catalogindex keeps the catalog index of an OpenSearch or
+// Elasticsearch engine in step with the catalog. A write to a series, a
+// creator, or a label, or to an episode or a free window of a series, queues a
+// catalog_index_sync outbox event in its own transaction (Queue), and so does a
+// ticker job whose boundary changes what a series is narrowed or sorted by: a
+// free window opening or closing, and a scheduled episode being published. The
+// worker rewrites the named row's document from the row (Syncer), and the
+// search index build and publiractl rebuild the whole index, or one tenant's
+// documents, from the database (Rebuild, SyncTenant).
 //
 // Every document is written with the instant its row was read at as its
 // version, and the engine refuses a write below the version a document holds.

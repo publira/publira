@@ -31,8 +31,8 @@ func TestValidateRefusesSettingsNoProcessCouldSearchWith(t *testing.T) {
 		wantField string
 		wantText  string
 	}{
-		{name: "an unknown engine", settings: Settings{Engine: "solr"}, wantField: FieldEngine, wantText: `"solr" names no search engine; the ones available are sql, opensearch`},
-		{name: "no engine", settings: Settings{}, wantField: FieldEngine, wantText: "the ones available are sql, opensearch"},
+		{name: "an unknown engine", settings: Settings{Engine: "solr"}, wantField: FieldEngine, wantText: `"solr" names no search engine; the ones available are sql, opensearch, elasticsearch`},
+		{name: "no engine", settings: Settings{}, wantField: FieldEngine, wantText: "the ones available are sql, opensearch, elasticsearch"},
 		{name: "a URL on sql", settings: Settings{Engine: EngineSQL, URL: "http://search:9200"}, wantField: FieldURL},
 		{name: "an index on sql", settings: Settings{Engine: EngineSQL, Index: "catalog"}, wantField: FieldIndex},
 		{name: "a username on sql", settings: Settings{Engine: EngineSQL, Username: "publira"}, wantField: FieldUsername},

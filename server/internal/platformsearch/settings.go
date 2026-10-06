@@ -24,10 +24,16 @@ const (
 	// EngineOpenSearch is an OpenSearch node with the analysis-kuromoji and
 	// analysis-icu plugins.
 	EngineOpenSearch Engine = "opensearch"
+	// EngineElasticsearch is an Elasticsearch node with the same two plugins,
+	// which the OpenSearch backend searches and writes unchanged: the index
+	// definition, the queries, the bulk writes, and the alias swaps are common
+	// to both engines. The value is a promise that the backend is tested
+	// against Elasticsearch as well.
+	EngineElasticsearch Engine = "elasticsearch"
 )
 
 // Engines lists every engine a save accepts, in the order an error names them.
-var Engines = []Engine{EngineSQL, EngineOpenSearch}
+var Engines = []Engine{EngineSQL, EngineOpenSearch, EngineElasticsearch}
 
 // Known reports whether e is one of [Engines].
 func (e Engine) Known() bool {

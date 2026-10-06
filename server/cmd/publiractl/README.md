@@ -207,7 +207,7 @@ go -C server run ./cmd/publiractl search reindex --tenant comics.example.com
 | --- | --- | --- |
 | `search set` | `UpdatePlatformSearchSettings` | Replaces every saved setting with the flags given. On `sql`, or on the engine, URL, and index the search already answers from with other credentials, the search moves onto it at once; on any other engine the worker builds the index first, and the search keeps answering from where it is until the build has completed. Saving what is already saved changes nothing and files nothing |
 | `search show` | `GetPlatformSearchSettings` | Prints the saved engine, whether a password is saved but never the password, the engine the search answers from, and the build that is due or that failed, with its error |
-| `search test` | `TestPlatformSearchConnection` | Asks the saved engine what it is and which plugins every node has, prints the product, the version, and whether `analysis-kuromoji` and `analysis-icu` are installed, and exits `1` when the engine does not answer, is another product, or lacks either plugin. On `sql` it exits `1`, as there is nothing to connect to |
+| `search test` | `TestPlatformSearchConnection` | Asks the saved engine what it is and which plugins every node has, prints the product, the version, and whether `analysis-kuromoji` and `analysis-icu` are installed, and exits `1` when the engine does not answer, is another product than `--engine` named — an Elasticsearch node saved as `opensearch`, say — or lacks either plugin. On `sql` it exits `1`, as there is nothing to connect to |
 | `search reindex` |  | Builds a new index on the saved engine beside the one the alias names, fills it with every tenant's published series, creators, and labels, moves the alias onto it in one step, deleting the index it named before, and moves the search onto the saved engine. Searches answer from where they were until the move. Each tenant is then written again on the new index, which picks up what changed while it was being filled. It is for what the worker's build does not do: apply an index definition that changed, or recover after the index was lost. On `sql` it exits `1`, as there is no index to build |
 | `search reindex --tenant` |  | Rewrites one tenant's documents in the index the search answers from, by public ID or domain, writing what is published and a tombstone no search finds for the rest. It creates no index, so it cannot apply a changed definition |
 
@@ -215,7 +215,7 @@ go -C server run ./cmd/publiractl search reindex --tenant comics.example.com
 
 | Flag | What it sets |
 | --- | --- |
-| `--engine` | `sql` or `opensearch`. Required; any other value is refused, naming the ones accepted |
+| `--engine` | `sql`, `opensearch`, or `elasticsearch`. Required; any other value is refused, naming the ones accepted |
 | `--url` | The engine's `http://` or `https://` URL, without userinfo. Required on every engine but `sql`, and refused on `sql` |
 | `--index` | The alias of the index holding every tenant's catalog, `publira-catalog` when left out. Give each environment sharing a cluster an alias of its own |
 | `--username` | The HTTP basic auth user. It needs an `https://` URL, over which the credential does not cross the network in cleartext. Left out, the engine is reached without credentials and a saved password is removed |
