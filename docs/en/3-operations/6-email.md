@@ -18,7 +18,11 @@ Every `publiractl` command here is shown bare; run it the way [The Platform Cons
 
 Each mail is written in the tenant's default language, or for an operator in the platform's.
 
-The worker queues every mail and retries one the SMTP server did not take, so a server that is down delays mail rather than losing it. An install with no worker running sends none at all.
+The worker queues every mail and retries one it could not send, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, it gives the mail up for good, and nothing sends it again. An outage of the SMTP server longer than that, or of `email-renderer` once it is on, therefore loses the mail queued during it rather than delaying it. `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts; since the wait keeps doubling, up to an hour between attempts, a few more attempts cover a much longer outage.
+
+Each mail given up on is logged by the worker as `outbox event dead`, and counted in the `publira.outbox.events.dead` metric when the worker exports OpenTelemetry metrics, so alert on either. The install cannot send such a mail again: a reader asks for a new password reset or confirmation mail, and an administrator invitation is resent, as [A tenant's staff](./3-tenant-staff.md) describes.
+
+An install with no worker running sends no mail at all.
 
 ## Which SMTP account sends it
 
@@ -86,7 +90,7 @@ There is nothing for an operator to set for this, and neither the Platform Conso
 
 Without `email-renderer`, every mail is plain text. With it, every mail carries an HTML version beside the same text, and the reader's mail app shows whichever it prefers. Turning it on is a matter of running it and pointing `publira worker` at it with `PUBLIRA_EMAIL_RENDERER_URL`, as [HTML mail with email-renderer](../2-deployments/2-installing.md#html-mail-with-email-renderer) describes.
 
-Once it is on, the renderer is part of sending mail: while it is down, the worker holds each mail and retries it rather than sending it as text alone. To go back to plain text, remove the variable and restart the worker.
+Once it is on, the renderer is part of sending mail: while it is down, the worker retries each mail rather than sending it as text alone, within the same attempts as an SMTP outage, so a renderer down for longer than that loses mail too. To go back to plain text, remove the variable and restart the worker.
 
 ## Where the links in a mail lead
 
