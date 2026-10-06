@@ -158,14 +158,31 @@ export const creditAuthorViaUi = async (
   }
 };
 
-/** Pick an option of a `Select` trigger by label. */
+/**
+ * Pick an option of a `Select` trigger by label.
+ *
+ * A press that lands before the trigger is hydrated, or on a trigger the page
+ * is about to render again — a filter form the navigation its own Apply
+ * started has not finished replacing — opens nothing, and the option is then
+ * waited for until the test times out. So the press is repeated until the list
+ * is out, the way `revealViewerControls` repeats the tap that shows the
+ * viewer's controls. A list that is already out is not pressed again, since a
+ * second press would close it.
+ */
 export const selectOption = async (
   page: Page,
   select: Locator,
   optionLabel: string
 ): Promise<void> => {
-  await select.click();
-  await page.getByRole("option", { exact: true, name: optionLabel }).click();
+  const option = page.getByRole("option", { exact: true, name: optionLabel });
+
+  await expect(async () => {
+    if (!(await option.isVisible())) {
+      await select.click();
+    }
+    await expect(option).toBeVisible({ timeout: 2000 });
+  }).toPass();
+  await option.click();
 };
 
 /**
