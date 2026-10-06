@@ -1,0 +1,32 @@
+{
+  "object": "email",
+  "id": "4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+  "to": ["contact+7Hn3QzW9kPfa@reply.example.com"],
+  "from": "alex.reader@example.net",
+  "created_at": "2026-10-05T10:12:31.126Z",
+  "subject": "Re: About my purchase",
+  "html": "<div dir=\"ltr\">Thanks, the episode opens now.<div><br></div><div>Alex</div></div><br><div class=\"gmail_quote\"><div dir=\"ltr\" class=\"gmail_attr\">On Mon, Oct 5, 2026 at 6:30 PM Example Comics &lt;contact+7Hn3QzW9kPfa@reply.example.com&gt; wrote:<br></div><blockquote class=\"gmail_quote\">We have restored your purchase. Please open the episode again.</blockquote></div>",
+  "html_format": "data_uri",
+  "text": "Thanks, the episode opens now.\n\nAlex\n\nOn Mon, Oct 5, 2026 at 6:30 PM Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>\nwrote:\n\n> We have restored your purchase. Please open the episode again.\n>\n",
+  "headers": {
+    "from": "Alex Reader <alex.reader@example.net>",
+    "to": "Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>",
+    "subject": "Re: About my purchase",
+    "message-id": "<CAJ4k2m1+9xQ@mail.example.net>",
+    "in-reply-to": "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+    "references": "<9b1e7c2a-5f3d-4e8b-a6c1-2d4f8e0b3a77@shop.example.com> <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+    "return-path": "alex.reader@example.net",
+    "mime-version": "1.0"
+  },
+  "bcc": [],
+  "cc": [],
+  "reply_to": [],
+  "received_for": ["contact+7Hn3QzW9kPfa@reply.example.com"],
+  "authentication": { "spf": "pass", "dkim": "pass", "dmarc": "pass" },
+  "message_id": "<CAJ4k2m1+9xQ@mail.example.net>",
+  "raw": {
+    "download_url": "https://example.resend.com/receiving/raw/4ef9a417-02e9-4d39-ad75-9611e0fcc33c?Signature=redacted",
+    "expires_at": "2026-10-05T11:12:31.126Z"
+  },
+  "attachments": []
+}

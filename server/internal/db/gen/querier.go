@@ -185,9 +185,11 @@ type Querier interface {
 	// replies readers mail back.
 	//
 	// Expected plans:
-	//   CreateContactMessageEntry
+	//   CreateContactMessageEntry, CreateReaderContactMessageEntry
 	//     -> contact_message_entries_pkey and
 	//        contact_message_entries_tenant_message_id_key for the uniqueness checks
+	//   ListContactMessageEntriesByMessageIDs
+	//     -> contact_message_entries_tenant_message_id_key
 	//   ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
 	//     -> idx_contact_message_entries_tenant_message_created_at
 	//   GetContactMessageEntryForTenant
@@ -271,6 +273,12 @@ type Querier interface {
 	// the ordinary case; this also keeps an exceptional concurrent pair from
 	// producing two entitlements.
 	CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error)
+	// A reply the reader mailed back, as the inbound webhook stores it. A provider
+	// delivers a mail again whenever it is not sure the first delivery landed, so
+	// a Message-ID already stored is a redelivery: nothing is written and no row
+	// comes back. A mail that came in without one cannot be told from a new one
+	// and is stored each time.
+	CreateReaderContactMessageEntry(ctx context.Context, arg CreateReaderContactMessageEntryParams) (ContactMessageEntry, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	// role_id is cast to a plain uuid rather than left nullable like the column:
 	// the column admits NULL for the credits that predate roles, and a credit
@@ -448,6 +456,7 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
+	GetEnabledTenantInboundEmailConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantInboundEmailConfig, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
@@ -782,6 +791,12 @@ type Querier interface {
 	// sign-in disabled.
 	GetTenantGoogleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantGoogleSignInConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
+	// A tenant's inbound email settings. Only internal/inboundemail calls these:
+	// the rows carry ciphertext.
+	//
+	// Expected plans:
+	//   every query -> tenant_inbound_email_config_pkey
+	GetTenantInboundEmailConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantInboundEmailConfig, error)
 	// The pages a tenant names as its terms of service and its privacy policy. A
 	// page is published when any translation of it is, as the storefront serves it
 	// then, and is read in the translation published_page_translation_for picks for
@@ -1146,6 +1161,10 @@ type Querier interface {
 	// first so it reads in the order it was written. The author is joined for the
 	// name the console prints beside a staff entry.
 	ListContactMessageEntries(ctx context.Context, arg ListContactMessageEntriesParams) ([]ListContactMessageEntriesRow, error)
+	// The entries a mail's In-Reply-To and References name, which is how a reply
+	// sent to an address other than the per-message one still finds its message.
+	// The caller decides which of them the mail answers.
+	ListContactMessageEntriesByMessageIDs(ctx context.Context, arg ListContactMessageEntriesByMessageIDsParams) ([]ListContactMessageEntriesByMessageIDsRow, error)
 	// The Message-IDs of the entries written before one entry of the same
 	// message, oldest first: the last is what the entry's mail is In-Reply-To, and
 	// all of them are its References. An entry that came in without one has
@@ -2632,6 +2651,7 @@ type Querier interface {
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
 	UpsertTenantGoogleSignInConfig(ctx context.Context, arg UpsertTenantGoogleSignInConfigParams) (TenantGoogleSignInConfig, error)
+	UpsertTenantInboundEmailConfig(ctx context.Context, arg UpsertTenantInboundEmailConfigParams) (TenantInboundEmailConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 	// written together because the console offers them as one card.
 	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)

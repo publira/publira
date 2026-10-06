@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const CreateContactMessageEntry = `-- name: CreateContactMessageEntry :one
@@ -53,9 +54,11 @@ type CreateContactMessageEntryParams struct {
 //
 // Expected plans:
 //
-//	CreateContactMessageEntry
+//	CreateContactMessageEntry, CreateReaderContactMessageEntry
 //	  -> contact_message_entries_pkey and
 //	     contact_message_entries_tenant_message_id_key for the uniqueness checks
+//	ListContactMessageEntriesByMessageIDs
+//	  -> contact_message_entries_tenant_message_id_key
 //	ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
 //	  -> idx_contact_message_entries_tenant_message_created_at
 //	GetContactMessageEntryForTenant
@@ -67,6 +70,66 @@ func (q *Queries) CreateContactMessageEntry(ctx context.Context, arg CreateConta
 		arg.ContactMessageID,
 		arg.Direction,
 		arg.AuthorID,
+		arg.Body,
+		arg.MessageID,
+		arg.FromEmail,
+	)
+	var i ContactMessageEntry
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.ContactMessageID,
+		&i.Direction,
+		&i.AuthorID,
+		&i.Body,
+		&i.MessageID,
+		&i.CreatedAt,
+		&i.FromEmail,
+	)
+	return i, err
+}
+
+const CreateReaderContactMessageEntry = `-- name: CreateReaderContactMessageEntry :one
+INSERT INTO contact_message_entries (
+    id,
+    tenant_id,
+    contact_message_id,
+    direction,
+    body,
+    message_id,
+    from_email
+) VALUES (
+    $1,
+    $2,
+    $3,
+    'reader',
+    $4,
+    $5,
+    $6
+)
+ON CONFLICT (tenant_id, message_id) DO NOTHING
+RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email
+`
+
+type CreateReaderContactMessageEntryParams struct {
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	ContactMessageID uuid.UUID      `json:"contact_message_id"`
+	Body             string         `json:"body"`
+	MessageID        sql.NullString `json:"message_id"`
+	FromEmail        sql.NullString `json:"from_email"`
+}
+
+// A reply the reader mailed back, as the inbound webhook stores it. A provider
+// delivers a mail again whenever it is not sure the first delivery landed, so
+// a Message-ID already stored is a redelivery: nothing is written and no row
+// comes back. A mail that came in without one cannot be told from a new one
+// and is stored each time.
+func (q *Queries) CreateReaderContactMessageEntry(ctx context.Context, arg CreateReaderContactMessageEntryParams) (ContactMessageEntry, error) {
+	row := q.db.QueryRowContext(ctx, CreateReaderContactMessageEntry,
+		arg.ID,
+		arg.TenantID,
+		arg.ContactMessageID,
 		arg.Body,
 		arg.MessageID,
 		arg.FromEmail,
@@ -194,6 +257,50 @@ func (q *Queries) ListContactMessageEntries(ctx context.Context, arg ListContact
 			&i.AuthorPublicID,
 			&i.AuthorName,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListContactMessageEntriesByMessageIDs = `-- name: ListContactMessageEntriesByMessageIDs :many
+SELECT e.message_id::text AS message_id,
+    e.contact_message_id
+FROM contact_message_entries e
+WHERE e.tenant_id = $1
+    AND e.message_id = ANY($2::text[])
+`
+
+type ListContactMessageEntriesByMessageIDsParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	MessageIds []string  `json:"message_ids"`
+}
+
+type ListContactMessageEntriesByMessageIDsRow struct {
+	MessageID        string    `json:"message_id"`
+	ContactMessageID uuid.UUID `json:"contact_message_id"`
+}
+
+// The entries a mail's In-Reply-To and References name, which is how a reply
+// sent to an address other than the per-message one still finds its message.
+// The caller decides which of them the mail answers.
+func (q *Queries) ListContactMessageEntriesByMessageIDs(ctx context.Context, arg ListContactMessageEntriesByMessageIDsParams) ([]ListContactMessageEntriesByMessageIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListContactMessageEntriesByMessageIDs, arg.TenantID, pq.Array(arg.MessageIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListContactMessageEntriesByMessageIDsRow
+	for rows.Next() {
+		var i ListContactMessageEntriesByMessageIDsRow
+		if err := rows.Scan(&i.MessageID, &i.ContactMessageID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

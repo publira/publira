@@ -2,9 +2,11 @@
 -- replies readers mail back.
 --
 -- Expected plans:
---   CreateContactMessageEntry
+--   CreateContactMessageEntry, CreateReaderContactMessageEntry
 --     -> contact_message_entries_pkey and
 --        contact_message_entries_tenant_message_id_key for the uniqueness checks
+--   ListContactMessageEntriesByMessageIDs
+--     -> contact_message_entries_tenant_message_id_key
 --   ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
 --     -> idx_contact_message_entries_tenant_message_created_at
 --   GetContactMessageEntryForTenant
@@ -31,6 +33,42 @@ INSERT INTO contact_message_entries (
     sqlc.narg('from_email')
 )
 RETURNING *;
+
+-- name: CreateReaderContactMessageEntry :one
+-- A reply the reader mailed back, as the inbound webhook stores it. A provider
+-- delivers a mail again whenever it is not sure the first delivery landed, so
+-- a Message-ID already stored is a redelivery: nothing is written and no row
+-- comes back. A mail that came in without one cannot be told from a new one
+-- and is stored each time.
+INSERT INTO contact_message_entries (
+    id,
+    tenant_id,
+    contact_message_id,
+    direction,
+    body,
+    message_id,
+    from_email
+) VALUES (
+    sqlc.arg('id'),
+    sqlc.arg('tenant_id'),
+    sqlc.arg('contact_message_id'),
+    'reader',
+    sqlc.arg('body'),
+    sqlc.narg('message_id'),
+    sqlc.arg('from_email')
+)
+ON CONFLICT (tenant_id, message_id) DO NOTHING
+RETURNING *;
+
+-- name: ListContactMessageEntriesByMessageIDs :many
+-- The entries a mail's In-Reply-To and References name, which is how a reply
+-- sent to an address other than the per-message one still finds its message.
+-- The caller decides which of them the mail answers.
+SELECT e.message_id::text AS message_id,
+    e.contact_message_id
+FROM contact_message_entries e
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.message_id = ANY(sqlc.arg('message_ids')::text[]);
 
 -- name: ListContactMessageEntries :many
 -- One message's exchange as the console shows it under the message, oldest

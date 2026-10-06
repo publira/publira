@@ -157,6 +157,29 @@ internal/paymentprovider/
 
 The settings store, the admin RPCs, the console form, the webhook route, and the proxy routes are generic over the declaration, so nothing else changes.
 
+## Contact message replies by email
+
+Staff answer a contact message from the console, and the `contact_message_reply_email` outbox handler mails the answer to the reader through the tenant's SMTP settings. Where the reader's reply goes depends on whether the tenant receives inbound email:
+
+- **Not configured.** The answer's `Reply-To` is the answering staff member's account address, so the reply lands in that person's mailbox and Publira never sees it.
+- **Configured and ready.** The answer's `Reply-To` is the message's own address on the tenant's inbound domain, `contact+<message public id>@<inbound domain>`. The provider receives the reply there and posts it to `POST /api/v1/webhook/email/<provider>` on `web-host`, which forwards the raw body and every header to `ContactService.ProcessInboundEmailWebhook`. The API server matches the mail to its message by that address first and by the Message-IDs its `In-Reply-To` and `References` name second, stores it under the message as a reader entry without the quoted answer, puts the message back among the waiting ones, and queues the `contact_message_staff_email` notice for it.
+
+An inbound provider is a package under `internal/inboundprovider` that implements `inboundprovider.Provider`, and `providers.Registry()` lists the ones a tenant may choose from. Tenant administrators choose one from `ListInboundEmailProviders` and store it, the inbound domain, and the credential fields it declares through `AdminInboundEmailSettingsService`; the fields are stored encrypted in `tenant_inbound_email_config` and shown back masked. The settings are ready once they are enabled with a domain and every required field.
+
+The tenant points the inbound domain's MX records at the provider. A domain of its own, such as `reply.<tenant domain>`, keeps the tenant's other mail where it is.
+
+### SendGrid Inbound Parse
+
+`internal/inboundprovider/sendgrid` reads both forms Inbound Parse posts, the parsed one and the raw MIME one. Inbound Parse signs nothing, so its one field is a webhook token (`webhook_token`, secret and required) that the tenant chooses and puts in the destination URL as the basic auth password. In SendGrid, add the inbound domain under **Settings → Inbound Parse** with the destination URL `https://inbound:<token>@<tenant-domain>/api/v1/webhook/email/sendgrid`.
+
+### Resend
+
+`internal/inboundprovider/resend` verifies the Svix signature of an `email.received` event and reads the mail's text and headers from Resend's receiving API, since the event carries only metadata. Its fields are the API key (`api_key`) and the webhook signing secret (`webhook_secret`), both secret and required. In Resend, add the inbound domain for receiving, and register `https://<tenant-domain>/api/v1/webhook/email/resend` as a webhook for `email.received`.
+
+### Adding an inbound provider
+
+The layout follows `internal/paymentprovider`: implement `inboundprovider.Provider` in `internal/inboundprovider/<id>`, register it in `providers.Registry()`, and add a fixture implementing `inboundprovidertest.Fixture` in `<id>/<id>test` to the map in `providers/providerstest`. `TestEveryRegisteredProviderReadsItsWebhook` in `providers` runs `RunParse` against the fixture, and `TestDBEveryRegisteredInboundProviderStoresAReply` in `api/publicapi` delivers its requests through `ProcessInboundEmailWebhook` to PostgreSQL; both fail, naming the provider, while it has no fixture.
+
 ## Image storage configuration
 
 The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService` or `publiractl storage set`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (uploads on the platform pool, image reads on the admin pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.

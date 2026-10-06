@@ -36,6 +36,9 @@ const (
 	// ContactServiceSubmitContactMessageProcedure is the fully-qualified name of the ContactService's
 	// SubmitContactMessage RPC.
 	ContactServiceSubmitContactMessageProcedure = "/publira.v1.ContactService/SubmitContactMessage"
+	// ContactServiceProcessInboundEmailWebhookProcedure is the fully-qualified name of the
+	// ContactService's ProcessInboundEmailWebhook RPC.
+	ContactServiceProcessInboundEmailWebhookProcedure = "/publira.v1.ContactService/ProcessInboundEmailWebhook"
 )
 
 // ContactServiceClient is a client for the publira.v1.ContactService service.
@@ -50,6 +53,30 @@ type ContactServiceClient interface {
 	// resource_exhausted once the sender has spent the allowance held by their
 	// account or the one held by their client.
 	SubmitContactMessage(context.Context, *connect.Request[v1.SubmitContactMessageRequest]) (*connect.Response[v1.SubmitContactMessageResponse], error)
+	// Stores a reader's emailed reply under the contact message it answers, puts
+	// the message back among the waiting ones, and queues the mail that tells
+	// staff a reply arrived.
+	//
+	// The message is the one whose per-message address
+	// (`contact+<message id>@<inbound domain>`) the mail was sent to, or else
+	// the one an entry named in its In-Reply-To or References belongs to. A mail
+	// that matches no message, a tenant whose inbound email is not ready or uses
+	// another provider, a request the provider sends about something that is not
+	// a received mail, and a mail whose Message-ID is already stored are all
+	// answered with success and store nothing, so the provider does not deliver
+	// them again.
+	//
+	// A request of more than 33 MiB is resource_exhausted, refused while it is
+	// read and before anything else is checked. A payload over 32 MiB inside
+	// that bound is acknowledged and dropped, as the provider would only deliver
+	// it again.
+	//
+	// An unregistered provider is not_found. A request whose signature or token
+	// does not verify is unauthenticated, and one that verifies but cannot be
+	// read is invalid_argument; neither stores anything. unavailable when the
+	// provider's API, which some providers have the mail's content read from,
+	// cannot be reached.
+	ProcessInboundEmailWebhook(context.Context, *connect.Request[v1.ProcessInboundEmailWebhookRequest]) (*connect.Response[v1.ProcessInboundEmailWebhookResponse], error)
 }
 
 // NewContactServiceClient constructs a client for the publira.v1.ContactService service. By
@@ -69,17 +96,29 @@ func NewContactServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(contactServiceMethods.ByName("SubmitContactMessage")),
 			connect.WithClientOptions(opts...),
 		),
+		processInboundEmailWebhook: connect.NewClient[v1.ProcessInboundEmailWebhookRequest, v1.ProcessInboundEmailWebhookResponse](
+			httpClient,
+			baseURL+ContactServiceProcessInboundEmailWebhookProcedure,
+			connect.WithSchema(contactServiceMethods.ByName("ProcessInboundEmailWebhook")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // contactServiceClient implements ContactServiceClient.
 type contactServiceClient struct {
-	submitContactMessage *connect.Client[v1.SubmitContactMessageRequest, v1.SubmitContactMessageResponse]
+	submitContactMessage       *connect.Client[v1.SubmitContactMessageRequest, v1.SubmitContactMessageResponse]
+	processInboundEmailWebhook *connect.Client[v1.ProcessInboundEmailWebhookRequest, v1.ProcessInboundEmailWebhookResponse]
 }
 
 // SubmitContactMessage calls publira.v1.ContactService.SubmitContactMessage.
 func (c *contactServiceClient) SubmitContactMessage(ctx context.Context, req *connect.Request[v1.SubmitContactMessageRequest]) (*connect.Response[v1.SubmitContactMessageResponse], error) {
 	return c.submitContactMessage.CallUnary(ctx, req)
+}
+
+// ProcessInboundEmailWebhook calls publira.v1.ContactService.ProcessInboundEmailWebhook.
+func (c *contactServiceClient) ProcessInboundEmailWebhook(ctx context.Context, req *connect.Request[v1.ProcessInboundEmailWebhookRequest]) (*connect.Response[v1.ProcessInboundEmailWebhookResponse], error) {
+	return c.processInboundEmailWebhook.CallUnary(ctx, req)
 }
 
 // ContactServiceHandler is an implementation of the publira.v1.ContactService service.
@@ -94,6 +133,30 @@ type ContactServiceHandler interface {
 	// resource_exhausted once the sender has spent the allowance held by their
 	// account or the one held by their client.
 	SubmitContactMessage(context.Context, *connect.Request[v1.SubmitContactMessageRequest]) (*connect.Response[v1.SubmitContactMessageResponse], error)
+	// Stores a reader's emailed reply under the contact message it answers, puts
+	// the message back among the waiting ones, and queues the mail that tells
+	// staff a reply arrived.
+	//
+	// The message is the one whose per-message address
+	// (`contact+<message id>@<inbound domain>`) the mail was sent to, or else
+	// the one an entry named in its In-Reply-To or References belongs to. A mail
+	// that matches no message, a tenant whose inbound email is not ready or uses
+	// another provider, a request the provider sends about something that is not
+	// a received mail, and a mail whose Message-ID is already stored are all
+	// answered with success and store nothing, so the provider does not deliver
+	// them again.
+	//
+	// A request of more than 33 MiB is resource_exhausted, refused while it is
+	// read and before anything else is checked. A payload over 32 MiB inside
+	// that bound is acknowledged and dropped, as the provider would only deliver
+	// it again.
+	//
+	// An unregistered provider is not_found. A request whose signature or token
+	// does not verify is unauthenticated, and one that verifies but cannot be
+	// read is invalid_argument; neither stores anything. unavailable when the
+	// provider's API, which some providers have the mail's content read from,
+	// cannot be reached.
+	ProcessInboundEmailWebhook(context.Context, *connect.Request[v1.ProcessInboundEmailWebhookRequest]) (*connect.Response[v1.ProcessInboundEmailWebhookResponse], error)
 }
 
 // NewContactServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -109,10 +172,18 @@ func NewContactServiceHandler(svc ContactServiceHandler, opts ...connect.Handler
 		connect.WithSchema(contactServiceMethods.ByName("SubmitContactMessage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	contactServiceProcessInboundEmailWebhookHandler := connect.NewUnaryHandler(
+		ContactServiceProcessInboundEmailWebhookProcedure,
+		svc.ProcessInboundEmailWebhook,
+		connect.WithSchema(contactServiceMethods.ByName("ProcessInboundEmailWebhook")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.ContactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ContactServiceSubmitContactMessageProcedure:
 			contactServiceSubmitContactMessageHandler.ServeHTTP(w, r)
+		case ContactServiceProcessInboundEmailWebhookProcedure:
+			contactServiceProcessInboundEmailWebhookHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -124,4 +195,8 @@ type UnimplementedContactServiceHandler struct{}
 
 func (UnimplementedContactServiceHandler) SubmitContactMessage(context.Context, *connect.Request[v1.SubmitContactMessageRequest]) (*connect.Response[v1.SubmitContactMessageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.ContactService.SubmitContactMessage is not implemented"))
+}
+
+func (UnimplementedContactServiceHandler) ProcessInboundEmailWebhook(context.Context, *connect.Request[v1.ProcessInboundEmailWebhookRequest]) (*connect.Response[v1.ProcessInboundEmailWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.ContactService.ProcessInboundEmailWebhook is not implemented"))
 }

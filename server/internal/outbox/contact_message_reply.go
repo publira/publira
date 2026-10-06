@@ -14,6 +14,8 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/inboundemail"
+	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -133,8 +135,12 @@ func NewContactMessageReplyEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("list earlier contact message entries: %w", err)
 		}
+		inbound, err := inboundemail.New(queries, nil, inboundproviders.Registry(), nil, cfg.Logger).GetPublic(ctx, tenantID)
+		if err != nil {
+			return fmt.Errorf("load tenant inbound email settings: %w", err)
+		}
 		headers := mailHeaders{
-			ReplyTo:   contactMessageReplyTo(entry),
+			ReplyTo:   contactMessageReplyTo(entry, message.PublicID, inbound),
 			MessageID: entry.MessageID.String,
 		}
 		if len(earlier) > 0 {
@@ -151,15 +157,21 @@ func NewContactMessageReplyEmailHandler(cfg EmailHandlerConfig) Handler {
 	}
 }
 
-// contactMessageReplyTo is where the reader's reply to an answer goes: the
-// account address of the member of staff who wrote it, so the exchange carries
-// on with the person who answered. An author whose account was deleted or can
-// no longer sign in names nobody, and the mail falls back on the Reply-To of
-// the tenant's SMTP settings, as every other mail of the tenant does.
+// contactMessageReplyTo is where the reader's reply to an answer goes.
 //
-// A tenant that receives inbound mail will answer a per-message address here
-// instead, which is what lets the reply be stored under the message.
-func contactMessageReplyTo(entry dbmodels.GetContactMessageEntryForTenantRow) string {
+// On a tenant whose inbound email is ready it is the message's own address on
+// the inbound domain, which is what lets the reply be stored under the
+// message whatever headers the reader's mail client keeps.
+//
+// Otherwise it is the account address of the member of staff who wrote the
+// answer, so the exchange carries on with the person who answered. An author
+// whose account was deleted or can no longer sign in names nobody, and the
+// mail falls back on the Reply-To of the tenant's SMTP settings, as every
+// other mail of the tenant does.
+func contactMessageReplyTo(entry dbmodels.GetContactMessageEntryForTenantRow, messagePublicID string, inbound inboundemail.PublicConfig) string {
+	if inbound.Ready {
+		return inbound.ReplyAddress(messagePublicID)
+	}
 	if !entry.AuthorEmail.Valid || entry.AuthorStatus.String != "active" {
 		return ""
 	}

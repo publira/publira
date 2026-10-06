@@ -1,0 +1,85 @@
+--xYzZY
+Content-Disposition: form-data; name="headers"
+
+Received: by mx0047p1mdw1.sendgrid.net with SMTP id 6WCVv7KAWn Mon, 05 Oct 2026 10:12:31 +0000 (UTC)
+Received: from mail-qk1-f169.example.net (mail-qk1-f169.example.net [209.85.222.169]) by mx0047p1mdw1.sendgrid.net (Postfix) with ESMTPS id 4C2C4A0B for <contact+7Hn3QzW9kPfa@reply.example.com>; Mon, 05 Oct 2026 10:12:31 +0000 (UTC)
+MIME-Version: 1.0
+References: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+In-Reply-To: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+From: Alex Reader <alex.reader@example.net>
+Date: Mon, 5 Oct 2026 19:12:18 +0900
+Message-ID: <CAJ4k2m1+9xQ@mail.example.net>
+Subject: Re: About my purchase
+To: Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>
+Content-Type: multipart/alternative; boundary="000000000000c1e2f3059a8b7c6d"
+
+--xYzZY
+Content-Disposition: form-data; name="dkim"
+
+{@example.net : pass}
+--xYzZY
+Content-Disposition: form-data; name="content-ids"
+
+{}
+--xYzZY
+Content-Disposition: form-data; name="to"
+
+Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>
+--xYzZY
+Content-Disposition: form-data; name="html"
+
+<div dir="ltr">Thanks, the episode opens now.<div><br></div><div>Alex</div></div><br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On Mon, Oct 5, 2026 at 6:30 PM Example Comics &lt;<a href="mailto:contact+7Hn3QzW9kPfa@reply.example.com">contact+7Hn3QzW9kPfa@reply.example.com</a>&gt; wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">We have restored your purchase. Please open the episode again.</blockquote></div>
+--xYzZY
+Content-Disposition: form-data; name="from"
+
+Alex Reader <alex.reader@example.net>
+--xYzZY
+Content-Disposition: form-data; name="text"
+
+Thanks, the episode opens now.
+
+Alex
+
+On Mon, Oct 5, 2026 at 6:30 PM Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>
+wrote:
+
+> We have restored your purchase. Please open the episode again.
+>
+> On 2026-10-05 09:00, you wrote:
+> > I bought episode 3 but it is still locked.
+>
+
+--xYzZY
+Content-Disposition: form-data; name="sender_ip"
+
+209.85.222.169
+--xYzZY
+Content-Disposition: form-data; name="spam_report"
+
+Spam detection software, running on the system "mx0047p1mdw1.sendgrid.net",
+has NOT identified this incoming email as spam.
+--xYzZY
+Content-Disposition: form-data; name="envelope"
+
+{"to":["contact+7Hn3QzW9kPfa@reply.example.com"],"from":"alex.reader@example.net"}
+--xYzZY
+Content-Disposition: form-data; name="attachments"
+
+0
+--xYzZY
+Content-Disposition: form-data; name="subject"
+
+Re: About my purchase
+--xYzZY
+Content-Disposition: form-data; name="spam_score"
+
+0.1
+--xYzZY
+Content-Disposition: form-data; name="charsets"
+
+{"to":"UTF-8","html":"UTF-8","subject":"UTF-8","from":"UTF-8","text":"UTF-8"}
+--xYzZY
+Content-Disposition: form-data; name="SPF"
+
+pass
+--xYzZY--

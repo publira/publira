@@ -1047,6 +1047,17 @@ type TenantImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type TenantInboundEmailConfig struct {
+	TenantID             uuid.UUID       `json:"tenant_id"`
+	Provider             string          `json:"provider"`
+	Enabled              bool            `json:"enabled"`
+	Domain               sql.NullString  `json:"domain"`
+	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
+	CredentialHints      json.RawMessage `json:"credential_hints"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+}
+
 type TenantPaymentConfig struct {
 	TenantID             uuid.UUID       `json:"tenant_id"`
 	Provider             string          `json:"provider"`

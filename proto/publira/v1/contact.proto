@@ -29,6 +29,20 @@ message SubmitContactMessageRequest {
 // reader who is never answered through Publira has nothing to name it in.
 message SubmitContactMessageResponse {}
 
+// `web-host` forwards an inbound email provider's raw request body and headers
+// to this RPC. Verifying the request and reading the mail out of it stay on
+// the API server, with the credentials the provider declares.
+message ProcessInboundEmailWebhookRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The id of the provider the request came from, such as `sendgrid`.
+  string provider = 2;
+  bytes payload = 3;
+  // The request headers, keyed by name. Names are matched case-insensitively.
+  map<string, string> headers = 4;
+}
+
+message ProcessInboundEmailWebhookResponse {}
+
 service ContactService {
   // Stores one message for the tenant's staff and queues the mail that tells
   // them it arrived.
@@ -40,4 +54,29 @@ service ContactService {
   // resource_exhausted once the sender has spent the allowance held by their
   // account or the one held by their client.
   rpc SubmitContactMessage(SubmitContactMessageRequest) returns (SubmitContactMessageResponse) {}
+
+  // Stores a reader's emailed reply under the contact message it answers, puts
+  // the message back among the waiting ones, and queues the mail that tells
+  // staff a reply arrived.
+  //
+  // The message is the one whose per-message address
+  // (`contact+<message id>@<inbound domain>`) the mail was sent to, or else
+  // the one an entry named in its In-Reply-To or References belongs to. A mail
+  // that matches no message, a tenant whose inbound email is not ready or uses
+  // another provider, a request the provider sends about something that is not
+  // a received mail, and a mail whose Message-ID is already stored are all
+  // answered with success and store nothing, so the provider does not deliver
+  // them again.
+  //
+  // A request of more than 33 MiB is resource_exhausted, refused while it is
+  // read and before anything else is checked. A payload over 32 MiB inside
+  // that bound is acknowledged and dropped, as the provider would only deliver
+  // it again.
+  //
+  // An unregistered provider is not_found. A request whose signature or token
+  // does not verify is unauthenticated, and one that verifies but cannot be
+  // read is invalid_argument; neither stores anything. unavailable when the
+  // provider's API, which some providers have the mail's content read from,
+  // cannot be reached.
+  rpc ProcessInboundEmailWebhook(ProcessInboundEmailWebhookRequest) returns (ProcessInboundEmailWebhookResponse) {}
 }
