@@ -183,11 +183,46 @@ const isJsonObject = (value: string): boolean => {
   }
 };
 
+const WHITESPACE_RE = /\s/u;
+
+/**
+ * `json` with the whitespace between its tokens taken out, which is the
+ * layout the editor adds to a definition the server answers compacted. A
+ * definition the server accepted therefore fits its size limit again
+ * whatever the editor's indentation added. Only valid JSON is passed in:
+ * outside one, taking a space out could join two values into one.
+ */
+const compactJson = (json: string): string => {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+
+  for (const char of json) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      out += char;
+    } else if (char === '"') {
+      inString = true;
+      out += char;
+    } else if (!WHITESPACE_RE.test(char)) {
+      out += char;
+    }
+  }
+  return out;
+};
+
 /**
  * The text analysis form: save the definition the editor holds, or go back to
  * the default, which ignores the editor. What the definition has to define,
  * and whether the engine builds an index from it, is the server's to check;
- * this catches only what needs no engine to tell.
+ * this catches only what needs no engine to tell. A definition to save is
+ * sent compacted, and its size is measured that way.
  */
 export const searchAnalysisFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -203,9 +238,9 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
       }),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
     })
-    .superRefine((value, ctx) => {
+    .transform((value, ctx) => {
       if (value.intent !== "replace") {
-        return;
+        return value;
       }
       if (!value.analysis) {
         ctx.addIssue({
@@ -213,21 +248,27 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
           message: t("platform.search.analysis.required"),
           path: ["analysis"],
         });
-      } else if (
-        new TextEncoder().encode(value.analysis).length >
-        SEARCH_ANALYSIS_MAX_BYTES
+        return z.NEVER;
+      }
+      if (!isJsonObject(value.analysis)) {
+        ctx.addIssue({
+          code: "custom",
+          message: t("platform.search.analysis.not_object"),
+          path: ["analysis"],
+        });
+        return z.NEVER;
+      }
+      const analysis = compactJson(value.analysis);
+      if (
+        new TextEncoder().encode(analysis).length > SEARCH_ANALYSIS_MAX_BYTES
       ) {
         ctx.addIssue({
           code: "custom",
           message: t("platform.search.analysis.too_large"),
           path: ["analysis"],
         });
-      } else if (!isJsonObject(value.analysis)) {
-        ctx.addIssue({
-          code: "custom",
-          message: t("platform.search.analysis.not_object"),
-          path: ["analysis"],
-        });
+        return z.NEVER;
       }
+      return { ...value, analysis };
     });
 };

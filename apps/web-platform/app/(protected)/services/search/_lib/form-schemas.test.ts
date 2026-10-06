@@ -192,16 +192,38 @@ const analysisIssues = async (fields: Record<string, string>) => {
 };
 
 describe("searchAnalysisFormSchema", () => {
-  it("takes a JSON object to save, with the revision it was edited at", async () => {
+  it("takes a JSON object to save, compacted, with the revision it was edited at", async () => {
     await expect(
       parseAnalysis({
-        analysis: '  {"analyzer": {}}\n',
+        analysis: '  {\n  "analyzer": {\n    "a b": "x \\" y"\n  }\n}\n',
         intent: "replace",
       })
     ).resolves.toMatchObject({
-      data: { analysis: '{"analyzer": {}}', intent: "replace", revision: 3n },
+      data: {
+        analysis: '{"analyzer":{"a b":"x \\" y"}}',
+        intent: "replace",
+        revision: 3n,
+      },
       success: true,
     });
+  });
+
+  // The editor indents what the server answers compacted, so a definition the
+  // server accepted near its limit is measured without that indentation.
+  it("measures a definition without the editor's indentation", async () => {
+    const filler = "x".repeat(64 * 1024 - 64);
+    const indented = JSON.stringify(
+      { analyzer: { written_form: { filler } } },
+      null,
+      40
+    );
+
+    expect(new TextEncoder().encode(indented).length).toBeGreaterThan(
+      64 * 1024
+    );
+    await expect(
+      parseAnalysis({ analysis: indented, intent: "replace" })
+    ).resolves.toMatchObject({ success: true });
   });
 
   // Whether the roles are there, and whether the engine builds an index from
