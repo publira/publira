@@ -220,6 +220,13 @@ else
   fail "PUBLIRA_E2E_RUSTFS_PORT=9004 produced PUBLIRA_S3_ENDPOINT=${port_s3_endpoint}"
 fi
 
+tracing_enabled="$(stack_env PUBLIRA_TRACING_ENABLED=true bash -c 'source "$1"; printf %s "${PUBLIRA_TRACING_ENABLED-unset}"' bash "${LIB}")"
+if [[ "${tracing_enabled}" == "unset" ]]; then
+  pass "ambient PUBLIRA_TRACING_ENABLED does not reach the stack's processes"
+else
+  fail "ambient PUBLIRA_TRACING_ENABLED leaked through as ${tracing_enabled}"
+fi
+
 # App teardown. Dedicated temp RUN_DIRs so this never overwrites a live
 # stack's pid files (run.sh invokes us before locking).
 pid_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-pids.XXXXXX")"
