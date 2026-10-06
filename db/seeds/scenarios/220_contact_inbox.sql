@@ -10,7 +10,12 @@
 -- public_id values are hard-coded in e2e/src/scenarios/contact-inbox.ts.
 --   CtctMSGAAAA1 a signed-in reader's message, still waiting
 --   CtctMSGAAAA2 a guest's message with no subject, still waiting
---   CtctMSGAAAA3 a guest's message staff have dealt with
+--   CtctMSGAAAA3 a guest's message staff have dealt with, with the answer the
+--                seed admin sent and the reply the guest mailed back from
+--                another address
+--
+-- Deleting the messages takes their entries with them (ON DELETE CASCADE), so
+-- an answer the suite sends is cleared the same way.
 
 DELETE FROM contact_messages
 WHERE public_id IN ('CtctMSGAAAA1', 'CtctMSGAAAA2', 'CtctMSGAAAA3')
@@ -82,3 +87,48 @@ SELECT
 FROM contact_message_seed cms
 JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 LEFT JOIN users u ON u.tenant_id = t.id AND u.email = cms.sender_email;
+
+INSERT INTO contact_message_entries (
+    id,
+    tenant_id,
+    contact_message_id,
+    direction,
+    author_id,
+    body,
+    message_id,
+    from_email,
+    created_at
+)
+SELECT
+    cme.id,
+    t.id,
+    '018f0f30-0006-7000-8000-000000000003'::uuid,
+    cme.direction,
+    u.id,
+    cme.body,
+    cme.message_id,
+    cme.from_email,
+    cme.created_at
+FROM (
+    VALUES
+        (
+            '018f0f30-0007-7000-8000-000000000001'::uuid,
+            'staff',
+            'admin@example.com',
+            'Thank you for reading it. The next chapter is out on Friday.',
+            'contact-inbox-answer-1@seed.example.com',
+            NULL,
+            '2026-06-01T04:00:00Z'::timestamptz
+        ),
+        (
+            '018f0f30-0007-7000-8000-000000000002'::uuid,
+            'reader',
+            NULL,
+            'I will be waiting for it.',
+            'contact-inbox-reply-1@reader.example.com',
+            'contact-inbox-answered.home@example.com',
+            '2026-06-01T04:30:00Z'::timestamptz
+        )
+) AS cme (id, direction, author_email, body, message_id, from_email, created_at)
+JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
+LEFT JOIN users u ON u.tenant_id = t.id AND u.email = cme.author_email;

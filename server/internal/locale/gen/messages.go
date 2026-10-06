@@ -832,11 +832,11 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "內文",
 	},
 	"email.staff_contact_message_notice.footnote": {
-		"ja":      "返信は、ご自身のメールソフトから上記の返信先アドレス宛に送ってください。管理画面から返信することはできません。",
-		"en":      "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console.",
-		"ko":      "답장은 위의 회신 주소로 사용 중인 메일 프로그램에서 직접 보내 주세요. 관리 콘솔에서는 답장할 수 없습니다.",
-		"zh-Hans": "请从您自己的邮件客户端向上述回复地址回信。管理控制台无法直接回复。",
-		"zh-Hant": "請從您自己的郵件軟體向上述回覆地址回信。管理主控台無法直接回覆。",
+		"ja":      "管理画面のこのお問い合わせのページから回答するか、ご自身のメールソフトから上記の返信先アドレス宛に送ってください。",
+		"en":      "Answer the reader from this message's page in the console, or from your own mail client at the reply-to address above.",
+		"ko":      "관리 콘솔의 이 문의 페이지에서 답변하거나, 사용 중인 메일 프로그램에서 위의 회신 주소로 직접 보내 주세요.",
+		"zh-Hans": "请在管理控制台中该咨询的页面上答复，或从您自己的邮件客户端向上述回复地址回信。",
+		"zh-Hant": "請在管理主控台中此諮詢的頁面上答覆，或從您自己的郵件軟體向上述回覆地址回信。",
 	},
 	"email.staff_contact_message_notice.heading": {
 		"ja":      "お問い合わせが届きました",

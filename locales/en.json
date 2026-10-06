@@ -145,7 +145,7 @@
     },
     "staff_contact_message_notice": {
       "body_heading": "Message",
-      "footnote": "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console.",
+      "footnote": "Answer the reader from this message's page in the console, or from your own mail client at the reply-to address above.",
       "heading": "New contact message",
       "intro": "A reader sent {$tenant_name} a message through the contact form.",
       "preview": "A reader sent {$tenant_name} a message.",
