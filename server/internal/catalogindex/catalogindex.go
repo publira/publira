@@ -111,13 +111,12 @@ func (w Writers) PutAll(ctx context.Context, docs []opensearchbackend.Document) 
 }
 
 // Syncer rewrites the document of one row from the row, for the outbox
-// handler. It reads on the worker's pool, whose role sees every tenant.
+// handler's indexer. It reads on the worker's pool, whose role sees every
+// tenant.
 type Syncer struct {
 	db    *sql.DB
 	index Writer
 }
-
-var _ outbox.CatalogIndexer = (*Syncer)(nil)
 
 func NewSyncer(db *sql.DB, index Writer) *Syncer {
 	return &Syncer{db: db, index: index}

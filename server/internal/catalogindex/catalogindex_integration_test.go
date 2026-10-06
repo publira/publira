@@ -86,6 +86,27 @@ func (i index) assertHits(t *testing.T, search searchFunc, tenantID uuid.UUID, q
 	}
 }
 
+// syncHandler is the handler the worker registers, writing through a Syncer
+// into the test's index. No cache sits in front of these searches, so it
+// records no drop.
+func syncHandler(t *testing.T, pg *testutil.PostgresEnv, idx index) outbox.Handler {
+	t.Helper()
+	return outbox.NewCatalogIndexSyncHandler(syncerIndexer{catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend)}, nil)
+}
+
+// syncerIndexer reports every write as one into the index the search answers
+// from, which in these tests it is.
+type syncerIndexer struct {
+	syncer *catalogindex.Syncer
+}
+
+func (s syncerIndexer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) (bool, error) {
+	if err := s.syncer.Sync(ctx, tenantID, kind, id); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // drain runs the catalog_index_sync events still pending through the handler
 // the worker registers, and marks them done the way the worker does.
 func drain(t *testing.T, pg *testutil.PostgresEnv, handler outbox.Handler) {
@@ -131,7 +152,7 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 		pg.Reset(t)
 		idx := newIndex(t, engine)
 		ctx := context.Background()
-		handler := outbox.NewCatalogIndexSyncHandler(catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend))
+		handler := syncHandler(t, pg, idx)
 
 		tenant := pg.SeedTenant(t, "INDEXSYNC001", "index-sync.example.com", "Index Sync Tenant")
 		label := pg.SeedLabel(t, tenant.ID, testutil.LabelSeed{Name: "Harbor Books"})

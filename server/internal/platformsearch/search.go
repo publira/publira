@@ -8,6 +8,7 @@ import (
 
 	"github.com/publira/publira/server/internal/catalogindex"
 	"github.com/publira/publira/server/internal/catalogsearch"
+	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	"github.com/publira/publira/server/internal/outbox"
 )
 
@@ -74,15 +75,37 @@ type Indexer struct {
 
 var _ outbox.CatalogIndexer = Indexer{}
 
-// Sync implements outbox.CatalogIndexer.
-func (i Indexer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) error {
+// Sync implements outbox.CatalogIndexer. It reports a write to the index the
+// search answers from only once a search can find it, so the cache drop the
+// handler sends next cannot be answered from the index as it was.
+func (i Indexer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) (bool, error) {
 	targets, err := i.Resolver.Targets(ctx)
-	if err != nil || len(targets) == 0 {
-		return err
+	if err != nil {
+		return false, err
 	}
-	writers := make(catalogindex.Writers, len(targets))
-	for n, target := range targets {
-		writers[n] = target
+	var writers catalogindex.Writers
+	if targets.Serving != nil {
+		writers = append(writers, searchable{targets.Serving})
 	}
-	return catalogindex.NewSyncer(i.DB, writers).Sync(ctx, tenantID, kind, id)
+	if targets.Building != nil {
+		writers = append(writers, targets.Building)
+	}
+	if len(writers) == 0 {
+		return false, nil
+	}
+	if err := catalogindex.NewSyncer(i.DB, writers).Sync(ctx, tenantID, kind, id); err != nil {
+		return false, err
+	}
+	return targets.Serving != nil, nil
+}
+
+// searchable writes into the index the search answers from and returns once a
+// search can find what it wrote.
+type searchable struct {
+	backend *opensearchbackend.Backend
+}
+
+// PutAll implements catalogindex.Writer.
+func (s searchable) PutAll(ctx context.Context, docs []opensearchbackend.Document) error {
+	return s.backend.PutAllSearchable(ctx, docs)
 }

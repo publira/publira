@@ -251,8 +251,10 @@ func TestAFailedBuildLeavesTheSearchWhereItWas(t *testing.T) {
 		DB:       e.pg.OpenOutboxDB(t),
 		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{Queries: dbmodels.New(e.pg.OpenOutboxDB(t)), Interval: -1}),
 	}
-	if err := indexer.Sync(context.Background(), e.tenantID, string(opensearchbackend.KindSeries), uuid.New()); err != nil {
-		t.Fatalf("Sync after a failed build: %v, want the event done", err)
+	// Nothing was written where the search answers from, so the storefront's
+	// cached searches are not owed a drop.
+	if searched, err := indexer.Sync(context.Background(), e.tenantID, string(opensearchbackend.KindSeries), uuid.New()); err != nil || searched {
+		t.Fatalf("Sync after a failed build = (%v, %v), want the event done with nothing searched written", searched, err)
 	}
 
 	// Saving again clears the failure, since nothing is building that
@@ -264,7 +266,10 @@ func TestAFailedBuildLeavesTheSearchWhereItWas(t *testing.T) {
 
 // While a build is due the worker writes every catalog change into the index
 // the search answers from and into the one being built, so neither misses a
-// write that commits while the other is in use.
+// write that commits while the other is in use. The write the search answers
+// from is reported, and can be found by the time it is: the drop of the
+// storefront's cached searches follows it, and a search that drop lets through
+// must not be answered from the index as it was.
 func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 	e := newEnv(t)
 	first, second := e.alias(t), e.alias(t)
@@ -280,14 +285,19 @@ func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 		DB:       outbox,
 		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{Queries: dbmodels.New(outbox), Secrets: e.secrets, Interval: -1}),
 	}
-	if err := indexer.Sync(context.Background(), e.tenantID, string(opensearchbackend.KindSeries), series.ID); err != nil {
-		t.Fatalf("Sync: %v", err)
+	searched, err := indexer.Sync(context.Background(), e.tenantID, string(opensearchbackend.KindSeries), series.ID)
+	if err != nil || !searched {
+		t.Fatalf("Sync = (%v, %v), want a write the search answers from", searched, err)
 	}
 
 	client := e.client(t)
 	for _, alias := range []string{first, second} {
-		if _, err := client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{alias}}); err != nil {
-			t.Fatalf("refresh %s: %v", alias, err)
+		// The index being built is not searched yet, so nothing waited for
+		// it to show the write.
+		if alias == second {
+			if _, err := client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{alias}}); err != nil {
+				t.Fatalf("refresh %s: %v", alias, err)
+			}
 		}
 		backend, err := opensearchbackend.New(context.Background(), opensearchbackend.Config{URL: e.engine.URL, Index: alias})
 		if err != nil {

@@ -79,7 +79,7 @@ func (r *Rebuild) Index() string {
 // PutAll writes docs into the index being filled, the way Backend.PutAll
 // writes them into the live one.
 func (r *Rebuild) PutAll(ctx context.Context, docs []Document) error {
-	return r.backend.write(ctx, r.index, docs)
+	return r.backend.write(ctx, r.index, docs, "")
 }
 
 type aliasAction struct {

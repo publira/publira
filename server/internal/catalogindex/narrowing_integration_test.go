@@ -15,7 +15,6 @@ import (
 	"github.com/publira/publira/server/internal/catalogsearch"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
-	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/publishedseries"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/testutil"
@@ -46,7 +45,7 @@ func TestASeriesDocumentCarriesWhatTheListNarrowsAndSortsBy(t *testing.T) {
 		pg.Reset(t)
 		idx := newIndex(t, engine)
 		ctx := context.Background()
-		handler := outbox.NewCatalogIndexSyncHandler(catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend))
+		handler := syncHandler(t, pg, idx)
 		now := time.Now()
 
 		tenant := pg.SeedTenant(t, "INDEXFACTS01", "index-facts.example.com", "Index Facts Tenant")
@@ -122,7 +121,7 @@ func TestTheTickerJobsCarryClockBoundariesIntoTheIndex(t *testing.T) {
 		pg.Reset(t)
 		idx := newIndex(t, engine)
 		ctx := context.Background()
-		handler := outbox.NewCatalogIndexSyncHandler(catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend))
+		handler := syncHandler(t, pg, idx)
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 		tickerDB := pg.OpenTickerDB(t)
 		now := time.Now()
