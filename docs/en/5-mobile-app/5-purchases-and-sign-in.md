@@ -33,7 +33,7 @@ In **Play Console**:
 - Set up a payments profile, so the account can sell.
 - Upload an App Bundle to a testing track before creating products. Play Console can refuse products for an app that has not yet uploaded a build that uses Google Play's billing, which every Publira build does.
 - Create the listed products as one-time products.
-- Create a service account in Google Cloud with the Google Play Android Developer API enabled, and enter its **Service account key (JSON)** under the **Google Play** section of **In-app purchase**. Then invite the **Service account** the console shows under **Users and permissions** in Play Console, so it may read the app's orders.
+- Create a service account in Google Cloud with the Google Play Android Developer API enabled, and enter its **Service account key (JSON)** under the **Google Play** section of **In-app purchase**. Then invite the **Service account** the console shows under **Users and permissions** in Play Console, with two of the app's permissions: **View financial data, orders, and cancellation survey responses**, which the install verifies each purchase and reads refunds with, and **Manage orders and subscriptions**, which it consumes each purchase with. A purchase the install cannot verify does not open the episode the reader paid for, and one it cannot consume is refunded by Google after three days.
 
 Turn on **Use the App Store** and **Use Google Play**, choose **In-app purchase** as how the app sells episodes, and choose **Save the in-app purchase settings**. The console allows that choice only once a store is ready: turned on, with its key, and with its app named under **App links**.
 
@@ -67,6 +67,6 @@ A change to the client therefore takes a new build as well as a change in the co
 
 Sign in with Apple on Android signs in through Apple's web flow, under the tenant's **Services ID**. Register the **Android app callback URL** the console shows under the Return URLs of that Services ID, beside the site's own callback URL.
 
-Google sign-in on Android uses the **Web client ID** the site signs in with. In the same Google Cloud project, also create an OAuth client of type Android, with the manifest's `android.applicationId` and the SHA-1 fingerprint of the app signing key, which Play Console shows beside the SHA-256 one on the app's **App signing** page. Google uses it to recognise the app; nothing in Publira names it.
+Google sign-in on Android uses the **Web client ID** the site signs in with. In the same Google Cloud project, also create an OAuth client of type Android, with the manifest's `android.applicationId` and the SHA-1 fingerprint of the app signing key, which Play Console shows beside the SHA-256 one on the app's **App signing** page. Google uses it to recognise the app; nothing in Publira names it. Google matches the client against the exact certificate the installed app is signed with, so the release APK installed for testing, which the upload key signs, needs a second Android client with the upload key's SHA-1, the `SHA1:` line of the `keytool -list -v` command on the [App links](./4-app-links.md#android) page. Without it, test Google sign-in with a build installed from a Play testing track.
 
 Next: [Submitting to the stores](./6-store-submission.md).
