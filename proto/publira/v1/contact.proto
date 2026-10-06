@@ -68,6 +68,11 @@ service ContactService {
   // answered with success and store nothing, so the provider does not deliver
   // them again.
   //
+  // A request of more than 33 MiB is resource_exhausted, refused while it is
+  // read and before anything else is checked. A payload over 32 MiB inside
+  // that bound is acknowledged and dropped, as the provider would only deliver
+  // it again.
+  //
   // An unregistered provider is not_found. A request whose signature or token
   // does not verify is unauthenticated, and one that verifies but cannot be
   // read is invalid_argument; neither stores anything. unavailable when the

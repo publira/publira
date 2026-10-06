@@ -381,3 +381,26 @@ func (h *inboundHarness) assertNothingStored(t *testing.T, seeded inboundTenant)
 		t.Error("the message was reopened")
 	}
 }
+
+// The service is reached without a session, so a request larger than it
+// reads is refused while it is read, before it is decoded into memory or the
+// handler runs. A payload past what the webhook takes but inside that bound
+// is acknowledged and dropped, since the provider would only deliver it again.
+func TestDBInboundEmailWebhookBoundsWhatItReads(t *testing.T) {
+	harness := newInboundHarness(t)
+	fixture, ok := providerstest.Fixture(t, "sendgrid")
+	if !ok {
+		t.Fatal("sendgrid has no contract fixture")
+	}
+	seeded := harness.newTenant(t, fixture, true)
+	_, headers := fixture.Received(t, fixture.Credentials(), inboundprovidertest.Mail{From: "reader@example.net", To: "contact+" + seeded.messagePublicID + "@" + inboundTestDomain, Text: "Hello"})
+
+	err := harness.deliver(t, seeded.tenant, "sendgrid", make([]byte, maxContactServiceRequestBytes+1), headers)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a request past the read limit: error = %v, want resource_exhausted", err)
+	}
+	if err := harness.deliver(t, seeded.tenant, "sendgrid", make([]byte, maxInboundEmailWebhookPayload+1), headers); err != nil {
+		t.Fatalf("a payload past the webhook's own limit: %v, want it acknowledged", err)
+	}
+	harness.assertNothingStored(t, seeded)
+}

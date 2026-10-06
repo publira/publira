@@ -22,9 +22,16 @@ import (
 )
 
 const (
-	// maxInboundEmailWebhookPayload bounds one request. SendGrid posts a mail
-	// with its attachments, and accepts mail of up to 30 MB.
+	// maxInboundEmailWebhookPayload bounds the payload of one request.
+	// SendGrid posts a mail with its attachments, and accepts mail of up to
+	// 30 MB.
 	maxInboundEmailWebhookPayload = 32 << 20
+	// maxContactServiceRequestBytes is the most ContactService reads of one
+	// request, set on its handler as connect.WithReadMaxBytes so a larger one
+	// is refused while it is read rather than after it has been decoded into
+	// memory: the service is reached without a session. It leaves room for
+	// the headers and the tenant beside the largest payload the webhook takes.
+	maxContactServiceRequestBytes = maxInboundEmailWebhookPayload + 1<<20
 	// maxInboundEmailMessageIDLength is the longest Message-ID an entry
 	// keeps, the length contact_message_entries_message_id_check allows.
 	maxInboundEmailMessageIDLength = 998

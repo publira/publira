@@ -265,7 +265,12 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(contentViewPath, contentViewHandler)
 	commentPath, commentHandler := publirav1connect.NewCommentServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(commentPath, commentHandler)
-	contactPath, contactHandler := publirav1connect.NewContactServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
+	contactPath, contactHandler := publirav1connect.NewContactServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(tenantScoped),
+		connect.WithReadMaxBytes(maxContactServiceRequestBytes),
+	)
 	mux.Handle(contactPath, contactHandler)
 	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(pagesPath, pagesHandler)
