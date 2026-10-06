@@ -221,6 +221,95 @@ describe("SearchSettingsForm", () => {
     ).toBeTruthy();
   });
 
+  it.each([
+    [
+      "the URL",
+      () => {
+        fireEvent.change(screen.getByRole("textbox", { name: /^URL/u }), {
+          target: { value: "https://search-2.example.com" },
+        });
+      },
+    ],
+    [
+      "the engine",
+      () => {
+        fireEvent.click(screen.getByRole("radio", { name: "Elasticsearch" }));
+      },
+    ],
+    [
+      "the credential",
+      () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Replace credentials" })
+        );
+      },
+    ],
+    [
+      "the authentication",
+      () => {
+        fireEvent.click(
+          screen.getByRole("radio", { name: "No authentication" })
+        );
+      },
+    ],
+  ])(
+    "drops a connection test result once %s it was run with changes",
+    async (_value, change) => {
+      actions.testPlatformSearchConnectionAction.mockResolvedValue({
+        message:
+          "The connection works, and the engine has both plugins the catalog index needs.",
+        ok: true,
+        result: {
+          failure: "",
+          icuInstalled: true,
+          kuromojiInstalled: true,
+          product: "OpenSearch",
+          succeeded: true,
+          version: "3.2.0",
+        },
+      });
+      await renderForm(storedSettings);
+
+      fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+      await screen.findByRole("list", { name: "Connection test results" });
+
+      change();
+
+      expect(
+        screen.queryByRole("list", { name: "Connection test results" })
+      ).toBeNull();
+      expect(screen.queryByText(/^The connection works/u)).toBeNull();
+    }
+  );
+
+  it("keeps a connection test result while only the index alias changes", async () => {
+    actions.testPlatformSearchConnectionAction.mockResolvedValue({
+      message:
+        "The connection works, and the engine has both plugins the catalog index needs.",
+      ok: true,
+      result: {
+        failure: "",
+        icuInstalled: true,
+        kuromojiInstalled: true,
+        product: "OpenSearch",
+        succeeded: true,
+        version: "3.2.0",
+      },
+    });
+    await renderForm(storedSettings);
+
+    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    await screen.findByRole("list", { name: "Connection test results" });
+
+    fireEvent.change(screen.getByRole("textbox", { name: /^Index alias/u }), {
+      target: { value: "publira-catalog-2" },
+    });
+
+    expect(
+      screen.getByRole("list", { name: "Connection test results" })
+    ).toBeTruthy();
+  });
+
   // A save refreshes the page with the settings it wrote, which reach the
   // mounted form as new defaults.
   it("shows the saved settings without changing a mounted field's default", async () => {

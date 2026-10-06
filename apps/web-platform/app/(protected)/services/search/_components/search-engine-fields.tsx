@@ -68,10 +68,18 @@ export const SearchEngineFields = ({
   testAction,
 }: SearchEngineFieldsProps) => {
   const [engine, setEngine] = useState(() => settings.engine);
+  // Moves with every edit to a value the connection test sends, and remounts
+  // the test with it: a result describes the values it was run with, so one
+  // left beside other values would vouch for an engine nobody tested.
+  const [testedValues, setTestedValues] = useState(0);
 
+  const handleTestedValueChange = useCallback(() => {
+    setTestedValues((version) => version + 1);
+  }, []);
   const handleEngineChange = useCallback((value: unknown) => {
     if (isSearchEngine(value)) {
       setEngine(value);
+      setTestedValues((version) => version + 1);
     }
   }, []);
 
@@ -102,6 +110,7 @@ export const SearchEngineFields = ({
                 defaultValue={settings.url}
                 disabled={disabled}
                 name="url"
+                onChange={handleTestedValueChange}
                 placeholder="https://search.example.com:9200"
                 required
                 spellCheck={false}
@@ -133,9 +142,17 @@ export const SearchEngineFields = ({
             </FieldDescription>
           </Field>
 
-          <SearchCredentialFields disabled={disabled} settings={settings} />
+          <SearchCredentialFields
+            disabled={disabled}
+            onCredentialChange={handleTestedValueChange}
+            settings={settings}
+          />
 
-          <SearchConnectionTest action={testAction} disabled={disabled} />
+          <SearchConnectionTest
+            action={testAction}
+            disabled={disabled}
+            key={testedValues}
+          />
         </>
       )}
     </>

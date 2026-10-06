@@ -44,6 +44,8 @@ const isCredentialMode = (value: unknown): value is SearchCredentialMode =>
 
 interface SearchCredentialFieldsProps {
   disabled: boolean;
+  /** Called on every edit to the credential the connection test sends. */
+  onCredentialChange: () => void;
   settings: Pick<PlatformSearchSettings, "hasPassword" | "username">;
 }
 
@@ -58,6 +60,7 @@ interface SearchCredentialFieldsProps {
  */
 export const SearchCredentialFields = ({
   disabled,
+  onCredentialChange,
   settings,
 }: SearchCredentialFieldsProps) => {
   const hasStoredCredential = Boolean(
@@ -66,17 +69,23 @@ export const SearchCredentialFields = ({
   const [mode, setMode] = useState(() => searchCredentialMode(settings));
   const [isReplacing, setIsReplacing] = useState(!hasStoredCredential);
 
-  const handleModeChange = useCallback((value: unknown) => {
-    if (isCredentialMode(value)) {
-      setMode(value);
-    }
-  }, []);
+  const handleModeChange = useCallback(
+    (value: unknown) => {
+      if (isCredentialMode(value)) {
+        setMode(value);
+        onCredentialChange();
+      }
+    },
+    [onCredentialChange]
+  );
   const handleStartReplace = useCallback(() => {
     setIsReplacing(true);
-  }, []);
+    onCredentialChange();
+  }, [onCredentialChange]);
   const handleKeepStored = useCallback(() => {
     setIsReplacing(false);
-  }, []);
+    onCredentialChange();
+  }, [onCredentialChange]);
 
   const keepsStoredCredential = hasStoredCredential && !isReplacing;
 
@@ -106,6 +115,7 @@ export const SearchCredentialFields = ({
                 disabled={disabled}
                 key={keepsStoredCredential ? "stored" : "editable"}
                 name="username"
+                onChange={onCredentialChange}
                 readOnly={keepsStoredCredential}
                 required
                 spellCheck={false}
@@ -139,6 +149,7 @@ export const SearchCredentialFields = ({
                     autoComplete="new-password"
                     disabled={disabled}
                     name="password"
+                    onChange={onCredentialChange}
                     required
                     spellCheck={false}
                     type="password"
