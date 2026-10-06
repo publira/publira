@@ -135,6 +135,10 @@ The checkout button on a paid episode sends the reader to the URL `StartEpisodeC
 
 `POST /api/v1/webhook/payment/<provider>` receives every payment provider's notifications and forwards the raw body and the request headers to `ProcessPaymentWebhook` with the provider id; signatures are verified only on the API server. `POST /api/v1/webhook/stripe` is a deprecated alias of `/api/v1/webhook/payment/stripe`, kept for the endpoints tenants registered before, and will be removed in a later release. `POST /api/v1/webhook/payment/app-store` receives App Store Server Notifications V2 and forwards the raw body to `ProcessAppStoreNotification`.
 
+### Inbound email
+
+`POST /api/v1/webhook/email/<provider>` receives a reader's emailed reply from the tenant's inbound email provider (`sendgrid` or `resend`) and forwards the raw body and the request headers to `ContactService.ProcessInboundEmailWebhook` with the provider id; the token and the signature are verified only on the API server. How the reply is matched to its contact message is in the [server README](../../server/README.md).
+
 ### Sign in with Apple and Google
 
 `/login` and `/signup` offer a button for each provider `GetTenant` answers a client ID for, and `/settings/security` lists the providers linked to the account. A button sends the reader to the provider's authorization endpoint, which posts its answer to `POST /api/v1/auth/apple/callback` or `POST /api/v1/auth/google/callback` on the tenant's public domain; that is the redirect URI a tenant registers with Apple's Services ID and Google's web client. A first sign-in on a tenant that asks for consent to its terms continues on `/signup/continue`. An account without a password confirms its deletion on `/settings` and an email change on `/settings/security` with a fresh sign-in through the same callback, and `/settings/security` points it to `/reset-password` to set a first password. The flow is in `lib/social-sign-in.ts`.

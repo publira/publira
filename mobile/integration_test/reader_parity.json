@@ -635,6 +635,14 @@
       "exception": "The payment provider's servers call it; no reader reaches it. A purchase made from the app lands here too."
     },
     {
+      "name": "The inbound email providers' webhooks",
+      "web": {
+        "routes": ["api/v1/webhook/email/[provider]"],
+        "rpcs": ["ProcessInboundEmailWebhook"]
+      },
+      "exception": "The inbound email provider's servers call it with a reader's emailed reply; no reader reaches it."
+    },
+    {
       "name": "The files that hand the tenant's links to its app",
       "web": { "rpcs": ["GetTenantMobileAppAssociation"] },
       "exception": "The operating system reads them to open the app; the app is the other end of them rather than a reader of them."

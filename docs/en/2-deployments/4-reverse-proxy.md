@@ -20,7 +20,7 @@ The host name picks a web app:
 
 Two path prefixes then go to the edge listener of `publira server`, on every host:
 
-- `/api`, the public API the browser and the mobile app call, except `/api/v1`. That one stays with the web app the host picked, which answers its own endpoints there, the payment webhooks among them.
+- `/api`, the public API the browser and the mobile app call, except `/api/v1`. That one stays with the web app the host picked, which answers its own endpoints there, the payment and inbound email webhooks among them.
 - `/images`, every image a page shows.
 
 The proxy passes the path on as it arrived, and the `Host` header as the browser sent it. Publira picks the tenant from the host name, and its routes carry the `/api` and `/images` prefixes, so a proxy that rewrites either reaches no tenant at all.
@@ -210,14 +210,18 @@ To record the reader's own address:
 
 Trust the hop's own addresses only. A trusted range that also reaches readers lets any of them name an address of their choosing.
 
-## Payment webhooks
+## Webhooks
 
-Payment providers report payments to a URL on the tenant's site, under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**. Endpoints registered with Stripe before that layout, at `/api/v1/webhook/stripe`, still reach the install, though that path is deprecated.
+Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
+
+- **Payment providers** report payments under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**. Endpoints registered with Stripe before that layout, at `/api/v1/webhook/stripe`, still reach the install, though that path is deprecated.
+- **Inbound email providers** post a reader's emailed reply to a contact message under `/api/v1/webhook/email/`: `/api/v1/webhook/email/sendgrid` for SendGrid Inbound Parse, `/api/v1/webhook/email/resend` for Resend.
 
 The routing above already sends every one of them to `web-host`, so no rule names a webhook path. What the proxy has to allow:
 
-- **The provider reaches the path from the internet.** An IP allowlist, a sign-in prompt, or a bot challenge in front of the tenant's site has to let these requests through, or payments are taken and never recorded.
+- **The provider reaches the path from the internet.** An IP allowlist, a sign-in prompt, or a bot challenge in front of the tenant's site has to let these requests through, or payments are taken and never recorded, and replies never reach the console.
 - **The body arrives as the provider sent it.** Each notification is signed over its exact bytes, so a rule on this path that rewrites request bodies makes Publira refuse it.
+- **A body of up to 33 MiB.** SendGrid posts a reply with its attachments, up to its own 30 MB limit for a mail. Traefik and Caddy set no limit unless you add one; nginx refuses anything over 1 MB by default, and its sample raises that to `33m` under `/api/v1/`. A smaller limit turns a reply with a large attachment into a failed delivery the provider retries for days and then drops.
 
 ## Next steps
 

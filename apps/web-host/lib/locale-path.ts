@@ -51,7 +51,7 @@ export const isLocaleExemptTopLevelSegment = (segment: string): boolean =>
 /**
  * Whether `pathname` is served outside the locale tree — `/theme.css`,
  * `/.well-known/assetlinks.json`, `/api/v1/revalidate`,
- * `/api/v1/webhook/payment/stripe`.
+ * `/api/v1/webhook/payment/stripe`, `/api/v1/webhook/email/sendgrid`.
  */
 export const isLocaleExemptPathname = (pathname: string): boolean => {
   const [first] = splitSegments(pathname);

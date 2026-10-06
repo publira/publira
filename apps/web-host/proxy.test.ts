@@ -390,6 +390,8 @@ describe("web-host proxy locale routing", () => {
     "/api/v1/webhook/payment/pay_jp",
     "/api/v1/webhook/payment/app-store",
     "/api/v1/webhook/stripe",
+    "/api/v1/webhook/email/sendgrid",
+    "/api/v1/webhook/email/resend",
   ])(
     "rewrites the webhook %s to the tenant without a locale",
     async (pathname) => {
