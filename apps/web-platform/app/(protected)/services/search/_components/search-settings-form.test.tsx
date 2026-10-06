@@ -43,8 +43,10 @@ const actions = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => actions);
 
 const storedSettings: PlatformSearchSettings = {
+  analysis: "{}",
   buildFailure: null,
   buildState: "serving",
+  defaultAnalysis: true,
   engine: "opensearch",
   hasPassword: true,
   index: "publira-catalog",

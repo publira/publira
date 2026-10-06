@@ -5232,14 +5232,16 @@
         "since": "启用时间",
         "building": "正在为已保存的设置构建{$engine}索引。准备就绪前，搜索仍使用{$serving}。此页面每隔几秒会重新检查状态。",
         "failed": "无法构建{$engine}索引，因此搜索仍在使用{$serving}。系统每30秒重试一次构建。请修复引擎，或更改下方的设置。",
-        "failed_at": "最近一次失败时间：{$time}"
+        "failed_at": "最近一次失败时间：{$time}",
+        "rebuilding": "正在使用已保存的文本分析构建新的{$engine}索引。准备就绪前，搜索仍使用当前索引。此页面每隔几秒会重新检查状态。",
+        "rebuild_failed": "无法构建新的{$engine}索引，因此搜索仍在使用当前索引。系统每30秒重试一次构建。请修复引擎，或更改下方的设置。"
       },
       "form": {
         "engine_legend": "引擎",
         "engine_required": "请选择搜索引擎。",
         "engine_sql_description": "内置。在数据库中查找标题或名称部分匹配的结果，无需其他任何组件。",
-        "engine_opensearch_description": "按相关度排序，并可通过假名读音找到汉字标题。每个节点都需要安装analysis-kuromoji和analysis-icu插件。",
-        "engine_elasticsearch_description": "在安装了相同两个插件的Elasticsearch上执行与OpenSearch相同的搜索。",
+        "engine_opensearch_description": "按相关度排序，使用默认文本分析时可通过假名读音找到汉字标题。默认文本分析需要每个节点都安装analysis-kuromoji和analysis-icu插件。",
+        "engine_elasticsearch_description": "在安装了相同插件的Elasticsearch上执行与OpenSearch相同的搜索。",
         "url": "URL",
         "url_help": "引擎的地址，例如https://search.example.com:9200。请勿在其中包含用户名或密码。",
         "url_required": "请输入引擎的URL。",
@@ -5267,10 +5269,11 @@
       },
       "test": {
         "title": "连接测试",
-        "description": "询问上方URL处的引擎是什么，以及是否具备目录索引所需的插件。不会保存任何设置。",
+        "description": "询问上方URL处的引擎是什么，以及是否具备默认文本分析所需的插件。不会保存任何设置。",
         "submit": "测试连接",
         "pending": "测试中...",
         "succeeded": "连接成功，且引擎具备目录索引所需的两个插件。",
+        "succeeded_saved_analysis": "连接成功。引擎缺少默认文本分析所需的插件，但已保存的文本分析不使用这些插件。",
         "failed": "无法运行连接测试。请稍后重试。",
         "results": "连接测试结果",
         "engine": "引擎：{$product} {$version}",
@@ -5285,6 +5288,34 @@
           "plugin_missing": "引擎缺少目录索引所需的analysis-kuromoji或analysis-icu。",
           "unknown": "测试因Publira无法识别的原因失败。"
         }
+      },
+      "analysis": {
+        "title": "文本分析",
+        "description": "目录索引将标题、名称和简介拆分为词语的方式。默认定义面向日语，使用analysis-kuromoji和analysis-icu。如果标题使用其他语言，请替换为使用该语言插件的定义，例如韩语使用analysis-nori，中文使用analysis-smartcn。",
+        "current_default": "当前使用：默认定义",
+        "current_saved": "当前使用：已保存的定义",
+        "pending_default": "已保存：默认定义。已保存设置的索引构建完成后生效，在此之前搜索仍使用当前索引。",
+        "pending_saved": "已保存：自定义定义。已保存设置的索引构建完成后生效，在此之前搜索仍使用当前索引。",
+        "roles_intro": "定义必须包含目录索引引用的以下三个名称：",
+        "role_written_form": "按书写形式分析标题、名称和简介的分析器。",
+        "role_alternate_form": "分析读者可能输入搜索词的另一种形式（例如日语的假名读音）的分析器。对于没有这种形式的语言，请按与written_form相同的内容定义。",
+        "role_exact_match": "用于标题或名称完全匹配的规范化器。完全匹配排在任何部分匹配之前。",
+        "definition": "定义（settings.analysis，JSON）",
+        "definition_help": "保存前会请引擎用此定义创建一个空索引，引擎拒绝的定义不会被保存。已保存的定义会在后台构建为新索引，准备就绪前搜索仍使用当前索引。",
+        "save": "保存文本分析",
+        "saving": "正在检查并保存...",
+        "reset": "恢复默认",
+        "reset_title": "要将文本分析恢复为默认吗？",
+        "reset_description": "已保存的定义将被丢弃，目录索引将使用面向日语的默认定义重新构建。新索引准备就绪前，搜索仍使用当前索引。",
+        "reset_confirm": "恢复并重新构建",
+        "saved": "已保存文本分析。",
+        "saved_building": "已保存文本分析。正在使用此定义构建新索引，准备就绪后搜索将切换到新索引。",
+        "refused": "定义未保存。请修改后重新保存。",
+        "required": "请输入定义，或恢复默认。",
+        "too_large": "定义超过了64 KiB。",
+        "not_object": "请将定义输入为以 \\{ 开头、以 \\} 结尾的一个JSON对象。",
+        "intent_invalid": "请选择保存定义还是恢复默认。",
+        "sql_engine": "PostgreSQL没有索引，因此没有可保存的文本分析。请先保存OpenSearch或Elasticsearch。"
       }
     },
     "webpush": {

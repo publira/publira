@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type {
@@ -38,8 +39,17 @@ import type {
 
 export type { PlatformSearchSettings } from "./search-settings-shared";
 
+/**
+ * What a save does to the text analysis: saves `definition`, or goes back to
+ * the default. A save that states none keeps the saved one.
+ */
+export type PlatformSearchAnalysisInput =
+  | { definition: string; mode: "replace" }
+  | { mode: "default" };
+
 /** What a save states: the values the form holds. */
 export interface PlatformSearchInput {
+  analysis?: PlatformSearchAnalysisInput;
   engine: PlatformSearchEngine;
   index: string;
   password: string;
@@ -54,7 +64,15 @@ export type GetPlatformSearchSettingsResult =
 
 export type UpdatePlatformSearchSettingsResult =
   | { ok: true; settings: PlatformSearchSettings }
-  | { message: string; ok: false };
+  | {
+      /**
+       * The engine's or the server's reason for refusing the text analysis,
+       * set when the refusal names that field.
+       */
+      fieldErrors?: { analysis?: string };
+      message: string;
+      ok: false;
+    };
 
 /** What the engine answered to a connection test, worded for the screen. */
 export interface PlatformSearchTestResult {
@@ -103,6 +121,100 @@ const toEngine = (value: number | undefined): PlatformSearchEngine => {
 export const toEngineNumber = (engine: PlatformSearchEngine): number =>
   engineNumbers[engine];
 
+/** The generated enum numbers `PlatformSearchAnalysisUpdateMode`. */
+const analysisModeNumbers = {
+  default: 3,
+  replace: 2,
+} as const satisfies Record<PlatformSearchAnalysisInput["mode"], number>;
+
+/** The update request's analysis fields; none keeps the saved definition. */
+const toAnalysisRequest = (analysis?: PlatformSearchAnalysisInput) => {
+  if (!analysis) {
+    return {};
+  }
+  return {
+    analysis: analysis.mode === "replace" ? analysis.definition : "",
+    analysisUpdateMode: analysisModeNumbers[analysis.mode],
+  };
+};
+
+const WHITESPACE_RE = /\s/u;
+
+/**
+ * `json` laid out two spaces to a level, for the definition to be read and
+ * edited. The server answers it compacted. Only the whitespace between tokens
+ * changes, so every number keeps the spelling it was saved with, which a
+ * round trip through `JSON.parse` would not promise for a large integer.
+ */
+const indentJson = (json: string): string => {
+  let out = "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  const newline = () => `\n${"  ".repeat(depth)}`;
+
+  for (const [index, char] of [...json].entries()) {
+    if (inString) {
+      out += char;
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    switch (char) {
+      case '"': {
+        inString = true;
+        out += char;
+        break;
+      }
+      case "{":
+      case "[": {
+        const close = char === "{" ? "}" : "]";
+        // An empty object or array stays on one line.
+        if (
+          json
+            .slice(index + 1)
+            .trimStart()
+            .startsWith(close)
+        ) {
+          out += char;
+        } else {
+          depth += 1;
+          out += char + newline();
+        }
+        break;
+      }
+      case "}":
+      case "]": {
+        if (out.endsWith("{") || out.endsWith("[")) {
+          out += char;
+        } else {
+          depth -= 1;
+          out += newline() + char;
+        }
+        break;
+      }
+      case ",": {
+        out += char + newline();
+        break;
+      }
+      case ":": {
+        out += ": ";
+        break;
+      }
+      default: {
+        if (!WHITESPACE_RE.test(char)) {
+          out += char;
+        }
+      }
+    }
+  }
+  return out;
+};
 /** The generated enum numbers `PlatformSearchBuildState`. */
 const toBuildState = (value: number | undefined): PlatformSearchBuildState => {
   switch (value) {
@@ -125,7 +237,9 @@ type RawPlatformSearchServing = Pick<
 
 type RawPlatformSearchSettings = Pick<
   RawPlatformSearchSettingsMessage,
+  | "analysis"
   | "buildState"
+  | "defaultAnalysis"
   | "engine"
   | "hasPassword"
   | "index"
@@ -159,9 +273,11 @@ export const toPlatformSearchSettings = (
 ): PlatformSearchSettings => {
   const buildState = toBuildState(settings?.buildState);
   return {
+    analysis: indentJson(settings?.analysis ?? ""),
     buildFailure:
       buildState === "failed" ? toBuildFailure(settings?.buildFailure) : null,
     buildState,
+    defaultAnalysis: settings?.defaultAnalysis ?? false,
     engine: toEngine(settings?.engine),
     hasPassword: settings?.hasPassword ?? false,
     index: settings?.index ?? "",
@@ -257,21 +373,33 @@ const toTestResult = async (
  * The server's validation text names the field it refused and nothing else —
  * never a credential, and never the URL, which may carry one — so it passes
  * through as the actionable detail. Other categories take the shared copy.
+ *
+ * A refused text analysis is that detail too: the engine's own reason for not
+ * building an index from the definition, which is what the operator edits the
+ * definition by, so it is also handed back as the analysis field's error.
  */
 const writeFailure = async (
   error: unknown,
   locale: Locale,
   fallbackKey: PlatformMessageKey
-): Promise<{ message: string; ok: false }> => {
+): Promise<{
+  fieldErrors?: { analysis?: string };
+  message: string;
+  ok: false;
+}> => {
   rethrowUnauthenticatedRpcError(error);
   rethrowUnclassifiedRpcError(error);
   const t = await getMessagesFor(locale);
   const fallback = t(fallbackKey);
+  const detail = rpcErrorRawMessage(error)?.trim();
   return {
+    ...(detail && rpcErrorHasFieldViolation(error, "analysis")
+      ? { fieldErrors: { analysis: detail } }
+      : {}),
     message: rpcErrorMessage(error, fallback, {
       locale,
       overrides: {
-        "invalid-argument": rpcErrorRawMessage(error)?.trim() || fallback,
+        "invalid-argument": detail || fallback,
         precondition: t("platform.search.save_conflict"),
       },
     }),
@@ -333,7 +461,8 @@ export const getPlatformSearchSettings =
 /**
  * Save the search settings. `expectedRevision` is the revision the screen was
  * rendered at, so a save based on values another operator has since replaced
- * is refused instead of rolling their change back.
+ * is refused instead of rolling their change back. The text analysis is kept
+ * unless `input.analysis` states it.
  */
 export const updatePlatformSearchSettings = async (
   input: PlatformSearchInput,
@@ -350,6 +479,7 @@ export const updatePlatformSearchSettings = async (
     const response =
       await apiClient.searchSettings.updatePlatformSearchSettings(
         {
+          ...toAnalysisRequest(input.analysis),
           engine: toEngineNumber(input.engine),
           expectedRevision,
           index: input.index,

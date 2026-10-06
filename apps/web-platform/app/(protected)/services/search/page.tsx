@@ -20,6 +20,7 @@ import {
   toPlatformSearchSettings,
 } from "#lib/search-settings";
 
+import { SearchAnalysisForm } from "./_components/search-analysis-form";
 import { SearchSettingsForm } from "./_components/search-settings-form";
 import { SearchStatus } from "./_components/search-status";
 
@@ -68,6 +69,10 @@ const SearchSettingsSections = async () => {
         timeZone={timeZone}
       />
       <SearchSettingsForm settings={result.settings} />
+      {/* The SQL engine keeps no index, so it has no analysis to edit. */}
+      {result.settings.engine === "sql" ? null : (
+        <SearchAnalysisForm settings={result.settings} />
+      )}
     </>
   );
 };
