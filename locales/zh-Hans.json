@@ -4499,6 +4499,8 @@
         "platform_email_settings_updated": "更新了SMTP设置",
         "platform_policy_updated": "更新了平台策略",
         "platform_retention_defaults_updated": "更新了保留期限默认值",
+        "platform_search_connection_tested": "测试了搜索连接",
+        "platform_search_settings_updated": "更新了搜索设置",
         "platform_settings_updated": "更新了平台设置",
         "platform_smtp_test_email_sent": "发送了SMTP测试邮件",
         "platform_storage_connection_tested": "测试了存储连接",
@@ -4541,6 +4543,7 @@
         "platform_config": "平台设置",
         "platform_policy": "平台策略",
         "platform_retention": "保留期限默认值",
+        "search_config": "搜索设置",
         "smtp_config": "SMTP设置",
         "storage_config": "存储设置",
         "tenant_admin_invitation": "发给{$email}的管理员邀请",
@@ -4743,6 +4746,7 @@
       "platform": "平台",
       "policies": "策略",
       "retention_label": "保留期限",
+      "search_label": "搜索",
       "security_label": "安全",
       "services": "外部服务",
       "storage_label": "存储",
@@ -5195,6 +5199,82 @@
         "steps": "连接测试步骤"
       }
     },
+    "search": {
+      "page_title": "作品搜索",
+      "heading": "作品搜索",
+      "page_description": "管理店面搜索用来查找作品、作者和品牌的引擎。",
+      "load_failed": "无法加载搜索设置。请重新加载页面后重试。",
+      "title": "搜索引擎",
+      "description": "所有租户的店面都通过此引擎进行搜索。保存其他引擎后，会在后台根据数据库构建其索引，准备就绪后无需重启即切换搜索。",
+      "save": "保存搜索设置",
+      "saved": "已保存搜索设置。",
+      "saved_building": "已保存搜索设置。正在构建索引，准备就绪后搜索将切换到新引擎。",
+      "save_failed": "无法保存搜索设置。请稍后重试。",
+      "save_conflict": "其他运营人员已更改搜索设置，因此未保存。请重新加载页面后重试。",
+      "status": {
+        "title": "搜索状态",
+        "description": "店面搜索当前使用的引擎。",
+        "answering": "当前引擎",
+        "url": "URL",
+        "index": "索引别名",
+        "since": "启用时间",
+        "building": "正在为已保存的设置构建{$engine}索引。准备就绪前，搜索仍使用{$serving}。此页面每隔几秒会重新检查状态。",
+        "failed": "无法构建{$engine}索引，因此搜索仍在使用{$serving}。系统每30秒重试一次构建。请修复引擎，或更改下方的设置。",
+        "failed_at": "最近一次失败时间：{$time}"
+      },
+      "form": {
+        "engine_legend": "引擎",
+        "engine_required": "请选择搜索引擎。",
+        "engine_sql_description": "内置。在数据库中查找标题或名称部分匹配的结果，无需其他任何组件。",
+        "engine_opensearch_description": "按相关度排序，并可通过假名读音找到汉字标题。每个节点都需要安装analysis-kuromoji和analysis-icu插件。",
+        "engine_elasticsearch_description": "在安装了相同两个插件的Elasticsearch上执行与OpenSearch相同的搜索。",
+        "url": "URL",
+        "url_help": "引擎的地址，例如https://search.example.com:9200。请勿在其中包含用户名或密码。",
+        "url_required": "请输入引擎的URL。",
+        "url_invalid": "请输入以http://或https://开头、且不含用户名或密码的URL。",
+        "index": "索引别名（可选）",
+        "index_help": "用于访问目录索引的名称。留空则使用publira-catalog。多个环境共用一个集群时，请为每个环境指定不同的别名。",
+        "index_invalid": "索引别名只能使用小写字母、数字、连字符、下划线和点，且不能以连字符、下划线或加号开头。",
+        "username_required": "请输入用户名。",
+        "password_required": "请输入密码。",
+        "credentials_need_https": "用户名和密码只能发送到https://的URL。"
+      },
+      "credentials": {
+        "legend": "身份验证",
+        "none": "无身份验证",
+        "none_description": "用于无需登录即可响应的引擎，例如位于专用网络中的引擎。",
+        "basic": "用户名和密码",
+        "basic_description": "通过https://的URL使用HTTP基本身份验证登录。密码会加密保存，且不会再次显示。",
+        "username": "用户名",
+        "password": "密码",
+        "password_stored": "已保存（隐藏）",
+        "password_stored_help": "保存其他更改时，已保存的密码会保持不变。要以其他账户登录，请同时替换用户名和密码。",
+        "password_help": "请输入此用户名的密码。",
+        "replace": "替换凭证",
+        "keep": "保留已保存的凭证"
+      },
+      "test": {
+        "title": "连接测试",
+        "description": "询问上方URL处的引擎是什么，以及是否具备目录索引所需的插件。不会保存任何设置。",
+        "submit": "测试连接",
+        "pending": "测试中...",
+        "succeeded": "连接成功，且引擎具备目录索引所需的两个插件。",
+        "failed": "无法运行连接测试。请稍后重试。",
+        "results": "连接测试结果",
+        "engine": "引擎：{$product} {$version}",
+        "installed": "已安装",
+        "missing": "未安装",
+        "missing_plugins": "引擎缺少目录索引所需的插件：{$plugins}。请在每个节点上安装后再次测试。",
+        "reasons": {
+          "unreachable": "连接失败：无法连接到引擎。请检查URL，以及此服务器能否连接到该引擎。",
+          "unauthorized": "身份验证失败：引擎拒绝了用户名和密码。",
+          "not_a_search_engine": "此URL有响应，但不是搜索引擎。请确认URL指向的是引擎本身，而不是代理或网页。",
+          "wrong_product": "此URL处的引擎与上方选择的引擎不同。请选择引擎所报告的产品，或检查URL。",
+          "plugin_missing": "引擎缺少目录索引所需的analysis-kuromoji或analysis-icu。",
+          "unknown": "测试因Publira无法识别的原因失败。"
+        }
+      }
+    },
     "webpush": {
       "page_title": "浏览器通知",
       "heading": "浏览器通知",
@@ -5255,6 +5335,13 @@
         "name": "图片存储",
         "configured": "上传的图片保存在{$bucket}存储桶中。",
         "unconfigured": "尚未保存存储设置，因此无法上传或显示图片。"
+      },
+      "search": {
+        "name": "作品搜索",
+        "defaults": "店面在数据库中搜索。仅当需要按相关度排序的搜索结果时，才需设置OpenSearch或Elasticsearch。",
+        "configured": "店面使用{$engine}进行搜索。",
+        "building": "正在构建{$engine}索引。准备就绪前，店面使用{$serving}进行搜索。",
+        "failed": "无法构建{$engine}索引，因此店面仍使用{$serving}进行搜索。"
       },
       "webpush": {
         "name": "浏览器通知",

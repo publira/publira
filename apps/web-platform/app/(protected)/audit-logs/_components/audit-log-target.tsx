@@ -32,6 +32,9 @@ const settingsTargetName = (targetType: string) => {
     case "platform_retention": {
       return <Message message="platform.audit.targets.platform_retention" />;
     }
+    case "search_config": {
+      return <Message message="platform.audit.targets.search_config" />;
+    }
     case "smtp_config": {
       return <Message message="platform.audit.targets.smtp_config" />;
     }

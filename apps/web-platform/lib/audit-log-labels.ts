@@ -44,6 +44,14 @@ export const getAuditActionOptions = async (
       value: "platform_retention_defaults_updated",
     },
     {
+      label: t("platform.audit.actions.platform_search_connection_tested"),
+      value: "platform_search_connection_tested",
+    },
+    {
+      label: t("platform.audit.actions.platform_search_settings_updated"),
+      value: "platform_search_settings_updated",
+    },
+    {
       label: t("platform.audit.actions.platform_settings_updated"),
       value: "platform_settings_updated",
     },

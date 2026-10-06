@@ -9,6 +9,7 @@ import {
   MailIcon,
   PlusIcon,
   ScrollTextIcon,
+  SearchIcon,
   SettingsIcon,
   ShieldUserIcon,
   UsersIcon,
@@ -43,6 +44,7 @@ const hrefs = [
   "/general",
   "/services/email",
   "/services/storage",
+  "/services/search",
   "/services/webpush",
   "/policies/security",
   "/policies/community",
@@ -151,6 +153,18 @@ export const PlatformNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.nav.storage_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/services/search">
+          <ConsoleSidebarNavigationItemIcon>
+            <SearchIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+                <Message message="platform.nav.search_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>

@@ -51,6 +51,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import { searchTestFailureMessage } from "#lib/search-settings";
 import { storageTestFailureMessage } from "#lib/storage-settings";
 
 import { AuditActionName } from "./_components/audit-action-name";
@@ -221,6 +222,9 @@ const auditLogReason = async (
 ): Promise<string> => {
   if (log.action === "platform_smtp_test_email_sent") {
     return smtpTestFailureMessage(log.reason, locale) ?? log.reason;
+  }
+  if (log.action === "platform_search_connection_tested") {
+    return (await searchTestFailureMessage(log.reason, locale)) ?? log.reason;
   }
   if (log.action === "platform_storage_connection_tested") {
     return (await storageTestFailureMessage(log.reason, locale)) ?? log.reason;

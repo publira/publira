@@ -287,6 +287,10 @@ jobs:
               - 'e2e/Taskfile.yaml'
               - 'e2e/playwright.config.ts'
               - 'e2e/tests/catalog.search.spec.ts'
+              - 'e2e/tests/platform.search-settings.spec.ts'
+              # The Platform Console screen the settings spec drives.
+              - 'apps/web-platform/app/(protected)/services/search/**'
+              - 'apps/web-platform/lib/search-settings*.ts'
               # What the spec reads: its helpers and fixtures, and the seed
               # its OpenSearch-only cases search for, which the ordinary run
               # never asserts on because it registers those cases on
@@ -1383,8 +1387,8 @@ jobs:
 
       - name: Build + Readiness + Playwright
         # The same lifecycle as Test / E2E, with the engine in the compose
-        # stack and the server and the worker on it, running
-        # catalog.search.spec.ts alone.
+        # stack and the server and the worker on it, running the catalog
+        # search and search settings specs alone.
         run: task e2e:search
         env:
           CI: true

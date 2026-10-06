@@ -4,6 +4,7 @@ import {
   emailConfigurationState,
   getRequiredConfigurationState,
   policyConfigurationState,
+  searchConfigurationState,
   storageConfigurationState,
   webPushConfigurationState,
 } from "./configuration-status";
@@ -148,5 +149,31 @@ describe("getRequiredConfigurationState", () => {
     });
 
     await expect(getRequiredConfigurationState()).resolves.toBe("unknown");
+  });
+});
+
+describe("searchConfigurationState", () => {
+  it("is the built-in default on the SQL engine", () => {
+    expect(
+      searchConfigurationState({ buildState: "serving", engine: "sql" })
+    ).toBe("defaults");
+  });
+
+  it("is configured once another engine is saved, built or not", () => {
+    expect(
+      searchConfigurationState({ buildState: "serving", engine: "opensearch" })
+    ).toBe("configured");
+    expect(
+      searchConfigurationState({
+        buildState: "building",
+        engine: "elasticsearch",
+      })
+    ).toBe("configured");
+  });
+
+  it("needs setup once the saved engine's build has failed", () => {
+    expect(
+      searchConfigurationState({ buildState: "failed", engine: "opensearch" })
+    ).toBe("needs_setup");
   });
 });

@@ -1,0 +1,101 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { MessageProps } from "#components/message";
+import { getMessagesFor } from "#lib/messages";
+import type { PlatformMessageAccessor } from "#lib/messages";
+import type { PlatformSearchSettings } from "#lib/search-settings-shared";
+
+import { SearchStatus } from "./search-status";
+
+const state = vi.hoisted(() => ({
+  t: undefined as PlatformMessageAccessor | undefined,
+}));
+
+// `<Message>` is an async Server Component that only the Next.js compiler can
+// render. The catalog is the real one, resolved ahead so the tree renders
+// without suspending.
+vi.mock("#components/message", () => ({
+  Message: ({ message, values }: MessageProps) => state.t?.(message, values),
+}));
+
+// The refresh needs the App Router; what matters here is whether the status
+// mounts it.
+vi.mock("./search-build-refresh", () => ({
+  SearchBuildRefresh: () => <span data-testid="build-refresh" />,
+}));
+
+const settings: PlatformSearchSettings = {
+  buildFailure: null,
+  buildState: "serving",
+  engine: "opensearch",
+  hasPassword: false,
+  index: "publira-catalog",
+  revision: "4",
+  serving: {
+    engine: "sql",
+    index: "",
+    revision: "2",
+    since: "2026-10-01T00:00:00Z",
+    url: "",
+  },
+  url: "https://search.example.com",
+  username: "",
+};
+
+const renderStatus = (overrides: Partial<PlatformSearchSettings>) =>
+  render(
+    <SearchStatus
+      locale="en"
+      settings={{ ...settings, ...overrides }}
+      timeZone="UTC"
+    />
+  );
+
+beforeEach(async () => {
+  state.t = await getMessagesFor("en");
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("SearchStatus", () => {
+  it("asks again while the worker builds the saved engine's index", () => {
+    renderStatus({ buildState: "building" });
+
+    expect(
+      screen.getByText(/The OpenSearch index is being built/u)
+    ).toBeTruthy();
+    expect(screen.getByTestId("build-refresh")).toBeTruthy();
+  });
+
+  // The worker retries a failed build on every pass, so an engine repaired
+  // after the failure is picked up without saving again.
+  it("keeps asking after a build failed, with the error it recorded", () => {
+    renderStatus({
+      buildFailure: {
+        error: "connection refused",
+        failedAt: "2026-10-02T03:04:05Z",
+      },
+      buildState: "failed",
+    });
+
+    expect(
+      screen.getByText(/The OpenSearch index couldn't be built/u)
+    ).toBeTruthy();
+    expect(screen.getByText("connection refused")).toBeTruthy();
+    expect(screen.getByTestId("build-refresh")).toBeTruthy();
+  });
+
+  it("stops asking once the saved settings answer", () => {
+    renderStatus({
+      buildState: "serving",
+      serving: { ...settings.serving, engine: "opensearch" },
+    });
+
+    expect(screen.queryByTestId("build-refresh")).toBeNull();
+  });
+});

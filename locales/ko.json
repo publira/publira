@@ -4499,6 +4499,8 @@
         "platform_email_settings_updated": "SMTP 설정 변경",
         "platform_policy_updated": "플랫폼 정책 변경",
         "platform_retention_defaults_updated": "보존 기간 기본값 변경",
+        "platform_search_connection_tested": "검색 연결 테스트",
+        "platform_search_settings_updated": "검색 설정 업데이트",
         "platform_settings_updated": "플랫폼 설정 변경",
         "platform_smtp_test_email_sent": "SMTP 테스트 메일 발송",
         "platform_storage_connection_tested": "스토리지 연결 테스트",
@@ -4541,6 +4543,7 @@
         "platform_config": "플랫폼 설정",
         "platform_policy": "플랫폼 정책",
         "platform_retention": "보존 기간 기본값",
+        "search_config": "검색 설정",
         "smtp_config": "SMTP 설정",
         "storage_config": "스토리지 설정",
         "tenant_admin_invitation": "{$email}에게 보낸 관리자 초대",
@@ -4743,6 +4746,7 @@
       "platform": "플랫폼",
       "policies": "정책",
       "retention_label": "보존 기간",
+      "search_label": "검색",
       "security_label": "보안",
       "services": "외부 서비스",
       "storage_label": "스토리지",
@@ -5195,6 +5199,82 @@
         "steps": "연결 테스트 단계"
       }
     },
+    "search": {
+      "page_title": "작품 검색",
+      "heading": "작품 검색",
+      "page_description": "스토어프런트 검색이 작품, 작가, 레이블을 찾는 엔진을 관리합니다.",
+      "load_failed": "검색 설정을 불러오지 못했습니다. 화면을 새로고침한 뒤 다시 시도하세요.",
+      "title": "검색 엔진",
+      "description": "모든 테넌트의 스토어프런트는 이 엔진으로 검색합니다. 다른 엔진을 저장하면 해당 인덱스가 데이터베이스에서 백그라운드로 구축되고, 준비되는 대로 재시작 없이 검색이 전환됩니다.",
+      "save": "검색 설정 저장",
+      "saved": "검색 설정을 저장했습니다.",
+      "saved_building": "검색 설정을 저장했습니다. 지금 인덱스를 구축하고 있으며, 준비되는 대로 검색이 새 엔진으로 전환됩니다.",
+      "save_failed": "검색 설정을 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "save_conflict": "다른 운영자가 검색 설정을 변경하여 저장되지 않았습니다. 화면을 새로고침한 뒤 다시 시도하세요.",
+      "status": {
+        "title": "검색 상태",
+        "description": "스토어프런트 검색이 지금 사용하고 있는 엔진입니다.",
+        "answering": "사용 중인 엔진",
+        "url": "URL",
+        "index": "인덱스 별칭",
+        "since": "사용 시작",
+        "building": "저장한 설정의 {$engine} 인덱스를 구축하고 있습니다. 준비될 때까지 검색은 계속 {$serving}을(를) 사용합니다. 이 페이지는 몇 초마다 상태를 다시 확인합니다.",
+        "failed": "{$engine} 인덱스를 구축하지 못해 검색은 계속 {$serving}을(를) 사용하고 있습니다. 구축은 30초마다 다시 시도됩니다. 엔진을 수정하거나 아래 설정을 변경하세요.",
+        "failed_at": "마지막 실패 시각: {$time}"
+      },
+      "form": {
+        "engine_legend": "엔진",
+        "engine_required": "검색 엔진을 선택하세요.",
+        "engine_sql_description": "기본 제공. 데이터베이스에서 제목이나 이름의 일부가 일치하는 항목을 찾으며, 다른 것은 필요하지 않습니다.",
+        "engine_opensearch_description": "관련도순으로 정렬하고, 가나로 입력한 읽기로 한자 제목도 찾습니다. 모든 노드에 analysis-kuromoji와 analysis-icu 플러그인이 필요합니다.",
+        "engine_elasticsearch_description": "OpenSearch와 같은 검색을, 같은 두 플러그인을 설치한 Elasticsearch에서 수행합니다.",
+        "url": "URL",
+        "url_help": "엔진의 주소입니다(예: https://search.example.com:9200). 사용자 이름이나 비밀번호는 넣지 마세요.",
+        "url_required": "엔진의 URL을 입력하세요.",
+        "url_invalid": "http:// 또는 https://로 시작하고 사용자 이름이나 비밀번호가 없는 URL을 입력하세요.",
+        "index": "인덱스 별칭(선택)",
+        "index_help": "카탈로그 인덱스를 가리키는 이름입니다. 비워 두면 publira-catalog를 사용합니다. 하나의 클러스터를 여러 환경이 함께 쓰는 경우 환경마다 다른 별칭을 지정하세요.",
+        "index_invalid": "인덱스 별칭에는 영문 소문자, 숫자, 하이픈, 밑줄, 마침표를 사용하며 하이픈, 밑줄, 더하기 기호로 시작할 수 없습니다.",
+        "username_required": "사용자 이름을 입력하세요.",
+        "password_required": "비밀번호를 입력하세요.",
+        "credentials_need_https": "사용자 이름과 비밀번호는 https:// URL로만 보낼 수 있습니다."
+      },
+      "credentials": {
+        "legend": "인증",
+        "none": "인증 없음",
+        "none_description": "사설 네트워크 안처럼 로그인 없이 응답하는 엔진에 사용합니다.",
+        "basic": "사용자 이름과 비밀번호",
+        "basic_description": "https:// URL에 HTTP 기본 인증으로 로그인합니다. 비밀번호는 암호화되어 저장되며 다시 표시되지 않습니다.",
+        "username": "사용자 이름",
+        "password": "비밀번호",
+        "password_stored": "저장됨(숨김)",
+        "password_stored_help": "다른 항목을 변경해 저장해도 저장된 비밀번호는 그대로 유지됩니다. 다른 계정으로 로그인하려면 사용자 이름과 비밀번호를 함께 교체하세요.",
+        "password_help": "이 사용자 이름의 비밀번호를 입력하세요.",
+        "replace": "인증 정보 교체",
+        "keep": "저장된 인증 정보 유지"
+      },
+      "test": {
+        "title": "연결 테스트",
+        "description": "위 URL의 엔진에 어떤 엔진인지, 카탈로그 인덱스에 필요한 플러그인이 있는지 확인합니다. 설정은 저장되지 않습니다.",
+        "submit": "연결 테스트 실행",
+        "pending": "테스트 중...",
+        "succeeded": "연결되었습니다. 엔진에 카탈로그 인덱스에 필요한 두 플러그인이 모두 있습니다.",
+        "failed": "연결 테스트를 실행하지 못했습니다. 잠시 후 다시 시도하세요.",
+        "results": "연결 테스트 결과",
+        "engine": "엔진: {$product} {$version}",
+        "installed": "설치됨",
+        "missing": "설치 안 됨",
+        "missing_plugins": "카탈로그 인덱스에 필요한 플러그인이 엔진에 없습니다: {$plugins}. 모든 노드에 설치한 뒤 다시 테스트하세요.",
+        "reasons": {
+          "unreachable": "연결 실패: 엔진에 연결하지 못했습니다. URL과 이 서버에서 연결할 수 있는지 확인하세요.",
+          "unauthorized": "인증 실패: 엔진이 사용자 이름과 비밀번호를 거부했습니다.",
+          "not_a_search_engine": "이 URL에서 응답이 있었지만 검색 엔진이 아니었습니다. URL이 프록시나 웹 페이지가 아니라 엔진 자체를 가리키는지 확인하세요.",
+          "wrong_product": "이 URL의 엔진은 위에서 선택한 엔진과 다릅니다. 엔진이 보고한 제품을 선택하거나 URL을 확인하세요.",
+          "plugin_missing": "카탈로그 인덱스에 필요한 analysis-kuromoji 또는 analysis-icu가 엔진에 없습니다.",
+          "unknown": "Publira가 알 수 없는 이유로 테스트에 실패했습니다."
+        }
+      }
+    },
     "webpush": {
       "page_title": "브라우저 알림",
       "heading": "브라우저 알림",
@@ -5255,6 +5335,13 @@
         "name": "이미지 스토리지",
         "configured": "업로드된 이미지는 {$bucket} 버킷에 저장됩니다.",
         "unconfigured": "스토리지가 저장되지 않아 이미지를 업로드하거나 표시할 수 없습니다."
+      },
+      "search": {
+        "name": "작품 검색",
+        "defaults": "스토어프런트는 데이터베이스에서 검색합니다. 관련도순 검색 결과가 필요한 경우에만 OpenSearch나 Elasticsearch를 설정하세요.",
+        "configured": "스토어프런트는 {$engine}(으)로 검색합니다.",
+        "building": "{$engine} 인덱스를 구축하고 있습니다. 준비될 때까지 스토어프런트는 {$serving}(으)로 검색합니다.",
+        "failed": "{$engine} 인덱스를 구축하지 못해 스토어프런트는 계속 {$serving}(으)로 검색하고 있습니다."
       },
       "webpush": {
         "name": "브라우저 알림",

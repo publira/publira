@@ -42,17 +42,19 @@ tasks:
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
   search:
-    desc: Full lifecycle on the OpenSearch search backend, running the catalog search spec alone
+    desc: Full lifecycle on the OpenSearch search backend, running the catalog search and search settings specs alone
     deps:
       - task: prepare
     env:
       # lib.sh turns this into the server's backend and the compose profile
       # that starts the engine.
       PUBLIRA_E2E_SEARCH_BACKEND: opensearch
+      # The two search projects alone, without the screenshot projects the
+      # catalog search suite waits on in a full run, and with the settings
+      # suite still after it.
+      PUBLIRA_E2E_GROUP: search
     cmds:
-      # --no-deps: the project waits on the screenshot projects in a full run,
-      # and this one photographs nothing.
-      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh --project=catalog-search --no-deps {{.CLI_ARGS}}
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
   prepare:
     desc: Build server binaries, web-host, web-admin, web-platform, email-renderer, and install Playwright Chromium
