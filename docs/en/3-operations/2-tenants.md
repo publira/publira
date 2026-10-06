@@ -17,7 +17,7 @@ Decide these first, since the tenant is served on its host names from the moment
 - **Its default language**, which its site and console start in. Nothing picks one for it. Its administrators can change it later from the tenant console.
 - **Its first administrator**, and how they get access: an invitation mailed to them, or an account you create with a password. [A tenant's staff](./3-tenant-staff.md) compares the two.
 
-Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. No two tenants may share a domain, and no two may share a console host. Nor may one tenant's domain be another's console host, the `admin.<domain>` a console is given by default included: Publira accepts that pair, but the proxy sends each host name to one app, so one of the two is never reached.
+Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. No two tenants may share a domain, and no two may share a console host. Nor may one tenant's domain be another's console host, the `admin.<domain>` a console is given by default included: Publira accepts that pair ([#3758](https://github.com/publira/publira/issues/3758)), but the proxy sends each host name to one app, so one of the two is never reached.
 
 Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-reverse-proxy.md#adding-a-tenant) gives: DNS, certificates, and the proxy's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
 
