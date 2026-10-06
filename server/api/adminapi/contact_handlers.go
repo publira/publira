@@ -144,6 +144,7 @@ func contactMessageEntryToProto(row dbmodels.ListContactMessageEntriesRow) *publ
 		Direction: row.Direction,
 		Body:      row.Body,
 		CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339),
+		FromEmail: row.FromEmail.String,
 	}
 	if row.AuthorID.Valid {
 		entry.AuthorUserId = row.AuthorID.UUID.String()

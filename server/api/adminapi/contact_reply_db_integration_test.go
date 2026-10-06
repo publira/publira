@@ -207,6 +207,59 @@ func TestDBContactMessageAnsweredByOneMemberOfStaffShowsToAColleague(t *testing.
 	}
 }
 
+// A reader's reply reads under the answer it followed, naming the address it
+// was mailed from rather than the message's reply-to address, and a staff entry
+// names no address of its own.
+func TestDBContactMessageReaderEntryNamesTheAddressItCameFrom(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL7", "aoto7.example.test", "Aoto Press", "CONTACTRPLA7", "kei@aoto7.example.test")
+	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM7", sql.NullString{})
+
+	if _, err := env.replyToContactMessage(tenant, messageID, "Every episode marked free."); err != nil {
+		t.Fatalf("ReplyToContactMessage: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(t.Context(),
+		`INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body, from_email) VALUES ($1, $2, $3, 'reader', $4, $5)`,
+		uuid.Must(uuid.NewV7()), tenant.Tenant.ID, messageID, "And on the app?", "reader.work@example.test",
+	); err != nil {
+		t.Fatalf("seed reader entry: %v", err)
+	}
+
+	seen := env.getContactMessage(t, tenant, "CONTACTRPLM7")
+	if len(seen.Entries) != 2 {
+		t.Fatalf("entries = %+v, want the answer and the reply", seen.Entries)
+	}
+	answer, reply := seen.Entries[0], seen.Entries[1]
+	if answer.Direction != contactMessageEntryDirectionStaff || answer.FromEmail != "" {
+		t.Errorf("first entry = %+v, want the staff answer with no address", answer)
+	}
+	if reply.Direction != "reader" || reply.Body != "And on the app?" || reply.FromEmail != "reader.work@example.test" {
+		t.Errorf("second entry = %+v, want the reader's reply from the address it came from", reply)
+	}
+	if reply.AuthorUserId != "" || reply.AuthorPublicId != "" || reply.AuthorName != "" {
+		t.Errorf("reader entry names author %q / %q / %q, want nobody", reply.AuthorUserId, reply.AuthorPublicId, reply.AuthorName)
+	}
+
+	// The address is what tells staff where a reply came from, so a reader
+	// entry cannot be stored without one, and a staff entry cannot claim one.
+	for _, row := range []struct {
+		direction string
+		fromEmail sql.NullString
+		messageID sql.NullString
+	}{
+		{direction: "reader"},
+		{direction: "reader", fromEmail: sql.NullString{Valid: true}},
+		{direction: "staff", fromEmail: sql.NullString{String: "kei@aoto7.example.test", Valid: true}, messageID: sql.NullString{String: "answer-7@aoto7.example.test", Valid: true}},
+	} {
+		if _, err := env.PG.DB.ExecContext(t.Context(),
+			`INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body, from_email, message_id) VALUES ($1, $2, $3, $4, 'A reply.', $5, $6)`,
+			uuid.Must(uuid.NewV7()), tenant.Tenant.ID, messageID, row.direction, row.fromEmail, row.messageID,
+		); err == nil || !strings.Contains(err.Error(), "contact_message_entries_from_email_check") {
+			t.Errorf("%s entry with from_email %+v: err = %v, want the from_email check", row.direction, row.fromEmail, err)
+		}
+	}
+}
+
 func TestDBReplyToContactMessageRefusesAnAnswerItCannotStore(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL3", "aoto3.example.test", "Aoto Press", "CONTACTRPLA3", "kei@aoto3.example.test")

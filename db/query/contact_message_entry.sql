@@ -18,7 +18,8 @@ INSERT INTO contact_message_entries (
     direction,
     author_id,
     body,
-    message_id
+    message_id,
+    from_email
 ) VALUES (
     sqlc.arg('id'),
     sqlc.arg('tenant_id'),
@@ -26,7 +27,8 @@ INSERT INTO contact_message_entries (
     sqlc.arg('direction'),
     sqlc.narg('author_id'),
     sqlc.arg('body'),
-    sqlc.narg('message_id')
+    sqlc.narg('message_id'),
+    sqlc.narg('from_email')
 )
 RETURNING *;
 
