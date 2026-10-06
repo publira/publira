@@ -448,7 +448,15 @@
     {
       "name": "Reading an episode free with a wait-for-free ticket",
       "web": { "rpcs": ["GetMyTicketState", "UseTicket"] },
-      "exception": "Not in the app yet: #1811."
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["GetMyTicketState", "UseTicket"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a member opens a paid episode with their wait-for-free ticket",
+        "a member whose ticket is recharging is counted down to it"
+      ]
     },
     {
       "name": "Signing in and up with Apple or Google",
