@@ -148,31 +148,37 @@ class AppTabShell extends StatelessWidget {
           // tab.
           Expanded(
             key: const ValueKey('tab-body'),
-            child: MediaQuery.removePadding(
-              context: context,
-              removeLeft: showsRail && leftToRight,
-              removeRight: showsRail && !leftToRight,
-              child: IndexedStack(
-                index: current,
-                children: [
-                  for (final (index, child) in children.indexed)
-                    Offstage(
-                      offstage: index != current,
-                      child: TickerMode(
-                        enabled: index == current,
-                        // A field focused on a tab left behind would keep the
-                        // keyboard over the tab the reader switched to.
-                        child: ExcludeFocus(
-                          excluding: index != current,
-                          child: AppTabScope(
-                            tab: AppTab.values[index],
-                            active: index == current,
-                            child: child,
+            // Read below the Scaffold, which has already taken the keyboard
+            // and the bar out of what the tabs are told; the context above it
+            // would hand both back, and every screen would make room for the
+            // keyboard a second time.
+            child: Builder(
+              builder: (context) => MediaQuery.removePadding(
+                context: context,
+                removeLeft: showsRail && leftToRight,
+                removeRight: showsRail && !leftToRight,
+                child: IndexedStack(
+                  index: current,
+                  children: [
+                    for (final (index, child) in children.indexed)
+                      Offstage(
+                        offstage: index != current,
+                        child: TickerMode(
+                          enabled: index == current,
+                          // A field focused on a tab left behind would keep the
+                          // keyboard over the tab the reader switched to.
+                          child: ExcludeFocus(
+                            excluding: index != current,
+                            child: AppTabScope(
+                              tab: AppTab.values[index],
+                              active: index == current,
+                              child: child,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

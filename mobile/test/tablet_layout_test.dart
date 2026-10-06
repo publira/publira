@@ -355,6 +355,38 @@ void main() {
     });
   });
 
+  for (final (name, size) in [
+    ('a phone', phonePortrait),
+    ('a tablet', tabletPortrait),
+  ]) {
+    testWidgets('$name makes room for the keyboard once', (tester) async {
+      await pumpApp(
+        tester,
+        size: size,
+        initialLocation: AppRoutes.signIn,
+        session: null,
+      );
+      final email = find.byKey(const ValueKey('sign-in-email'));
+      await pumpUntilRouteSettled(tester, email);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pump();
+
+      // The shell's Scaffold has already shrunk the tabs above the keyboard,
+      // so the screen's own Scaffold is told of no keyboard left to avoid
+      // rather than shrinking its body by the keyboard a second time.
+      final body = find.byKey(const ValueKey('tab-body'));
+      final screen = find
+          .ancestor(of: email, matching: find.byType(Scaffold))
+          .first;
+      expect(
+        tester.getRect(body).bottom,
+        tester.view.physicalSize.height - 300,
+      );
+      expect(MediaQuery.viewInsetsOf(tester.element(screen)).bottom, 0);
+    });
+  }
+
   testWidgets(
     'a window crossing the breakpoint keeps every tab where it was left',
     (tester) async {
