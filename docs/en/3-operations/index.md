@@ -18,5 +18,6 @@ Most of this work can be done from either the `publiractl` command line or the P
 - [Email](./6-email.md): the platform's SMTP account and a tenant's own, the mail the install sends, HTML mail, and where the links in a mail lead.
 - [Search](./7-search.md): the storefront search engine, moving from the database to OpenSearch or Elasticsearch, text analysis, and rebuilding the index.
 - [Web Push](./8-web-push.md): turning on browser notifications, and the key pair they are signed with.
+- [Platform defaults and policies](./9-platform-policies.md): the defaults, security and community limits, and retention periods every tenant inherits, and which of them a tenant can change.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

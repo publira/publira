@@ -20,6 +20,7 @@ Both write through the same code, so a tenant created from one is the same as a 
 | A tenant's members and administrator invitations | Yes | Yes |
 | Creating a console account with a password, sending no mail | Yes | No |
 | Platform operators | No | Yes |
+| The platform's defaults, policies, and retention periods | Yes | Yes |
 | The readers of every tenant | No | Yes |
 | Reading the audit log | No | Yes |
 | Running the maintenance jobs | Yes | No |
