@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -216,33 +217,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          TextFormField(
+          PasswordField(
             key: const ValueKey('change-password-current'),
             controller: _currentController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.changePasswordCurrentLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.changePasswordCurrentLabel,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.next,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => (value ?? '').trim().isEmpty
                 ? messages.authPasswordRequired
                 : null,
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          PasswordField(
             key: const ValueKey('change-password-new'),
             controller: _newController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.changePasswordNewLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.changePasswordNewLabel,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.next,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) {
               final password = value ?? '';
               final invalid = validateNewPassword(messages, password);
@@ -258,17 +249,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             },
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          PasswordField(
             key: const ValueKey('change-password-confirm'),
             controller: _confirmController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.changePasswordNewConfirmLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.changePasswordNewConfirmLabel,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.done,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validatePasswordConfirmation(
               messages,
               value ?? '',

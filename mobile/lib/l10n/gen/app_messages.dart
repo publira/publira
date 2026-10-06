@@ -473,6 +473,11 @@ final class AppMessages {
     return _format('mobile.auth.password_confirm_required');
   }
 
+  /// `mobile.auth.password_hide`
+  String get authPasswordHide {
+    return _format('mobile.auth.password_hide');
+  }
+
   /// `mobile.auth.password_label`
   String get authPasswordLabel {
     return _format('mobile.auth.password_label');
@@ -486,6 +491,11 @@ final class AppMessages {
   /// `mobile.auth.password_required`
   String get authPasswordRequired {
     return _format('mobile.auth.password_required');
+  }
+
+  /// `mobile.auth.password_show`
+  String get authPasswordShow {
+    return _format('mobile.auth.password_show');
   }
 
   /// `mobile.auth.password_too_long`
@@ -3003,9 +3013,11 @@ const _jaSources = <String, String>{
   'mobile.auth.name_required': '表示名を入力してください。',
   'mobile.auth.name_too_long': '表示名は100文字以内で入力してください。',
   'mobile.auth.password_confirm_required': 'パスワード確認を入力してください。',
+  'mobile.auth.password_hide': 'パスワードを隠す',
   'mobile.auth.password_label': 'パスワード',
   'mobile.auth.password_mismatch': 'パスワード確認が一致しません。同じパスワードを入力してください。',
   'mobile.auth.password_required': 'パスワードを入力してください',
+  'mobile.auth.password_show': 'パスワードを表示',
   'mobile.auth.password_too_long': 'パスワードは1024文字以内で入力してください。',
   'mobile.auth.resend_failed': '確認メールを送信できませんでした。再試行してください。',
   'mobile.auth.resend_verification': '確認メールを再送する',
@@ -3632,10 +3644,12 @@ const _enSources = <String, String>{
   'mobile.auth.name_too_long':
       'Use 100 characters or fewer for the display name.',
   'mobile.auth.password_confirm_required': 'Confirm your password.',
+  'mobile.auth.password_hide': 'Hide password',
   'mobile.auth.password_label': 'Password',
   'mobile.auth.password_mismatch':
       'The passwords do not match. Enter the same password in both fields.',
   'mobile.auth.password_required': 'Enter your password.',
+  'mobile.auth.password_show': 'Show password',
   'mobile.auth.password_too_long':
       'Use 1024 characters or fewer for the password.',
   'mobile.auth.resend_failed':
@@ -4328,9 +4342,11 @@ const _koSources = <String, String>{
   'mobile.auth.name_required': '표시 이름을 입력해 주세요.',
   'mobile.auth.name_too_long': '표시 이름은 100자 이내로 입력해 주세요.',
   'mobile.auth.password_confirm_required': '비밀번호 확인을 입력해 주세요.',
+  'mobile.auth.password_hide': '비밀번호 숨기기',
   'mobile.auth.password_label': '비밀번호',
   'mobile.auth.password_mismatch': '비밀번호가 일치하지 않습니다.',
   'mobile.auth.password_required': '비밀번호를 입력해 주세요.',
+  'mobile.auth.password_show': '비밀번호 표시',
   'mobile.auth.password_too_long': '비밀번호는 1024자 이내로 입력해 주세요.',
   'mobile.auth.resend_failed': '확인 메일을 보내지 못했습니다. 다시 시도해 주세요.',
   'mobile.auth.resend_verification': '확인 메일 다시 보내기',
@@ -4936,9 +4952,11 @@ const _zhHansSources = <String, String>{
   'mobile.auth.name_required': '请输入显示名称。',
   'mobile.auth.name_too_long': '显示名称请控制在100个字符以内。',
   'mobile.auth.password_confirm_required': '请再次输入密码进行确认。',
+  'mobile.auth.password_hide': '隐藏密码',
   'mobile.auth.password_label': '密码',
   'mobile.auth.password_mismatch': '两次输入的密码不一致。',
   'mobile.auth.password_required': '请输入密码。',
+  'mobile.auth.password_show': '显示密码',
   'mobile.auth.password_too_long': '密码请控制在1024个字符以内。',
   'mobile.auth.resend_failed': '无法发送确认邮件。请重试。',
   'mobile.auth.resend_verification': '重新发送确认邮件',
@@ -5498,9 +5516,11 @@ const _zhHantSources = <String, String>{
   'mobile.auth.name_required': '請輸入顯示名稱。',
   'mobile.auth.name_too_long': '顯示名稱請控制在100個字元以內。',
   'mobile.auth.password_confirm_required': '請再次輸入密碼以確認。',
+  'mobile.auth.password_hide': '隱藏密碼',
   'mobile.auth.password_label': '密碼',
   'mobile.auth.password_mismatch': '兩次輸入的密碼不一致。',
   'mobile.auth.password_required': '請輸入密碼。',
+  'mobile.auth.password_show': '顯示密碼',
   'mobile.auth.password_too_long': '密碼請控制在1024個字元以內。',
   'mobile.auth.resend_failed': '無法寄送確認郵件。請重試。',
   'mobile.auth.resend_verification': '重新寄送確認郵件',

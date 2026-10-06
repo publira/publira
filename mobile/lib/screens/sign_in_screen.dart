@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/email_input.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -141,17 +142,12 @@ class _SignInScreenState extends State<SignInScreen> {
                       validateAuthEmail(messages, value ?? ''),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                PasswordField(
                   key: const ValueKey('sign-in-password'),
                   controller: _passwordController,
-                  decoration: InputDecoration(
-                    label: AutospacedText(messages.authPasswordLabel),
-                    border: const OutlineInputBorder(),
-                  ),
-                  obscureText: true,
+                  label: messages.authPasswordLabel,
                   autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.done,
-                  errorBuilder: (context, error) => AutospacedText(error),
                   validator: (value) => (value ?? '').isEmpty
                       ? messages.authPasswordRequired
                       : null,

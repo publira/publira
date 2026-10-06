@@ -10,6 +10,7 @@ import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/name_input.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/forms/sign_up_fields.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -249,31 +250,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
             validator: (value) => validateAuthEmail(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          PasswordField(
             key: const ValueKey('sign-up-password'),
             controller: _passwordController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.authPasswordLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.authPasswordLabel,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.next,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateNewPassword(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          PasswordField(
             key: const ValueKey('sign-up-password-confirm'),
             controller: _confirmController,
-            decoration: InputDecoration(
-              label: AutospacedText(messages.signUpPasswordConfirmLabel),
-              border: const OutlineInputBorder(),
-            ),
-            obscureText: true,
+            label: messages.signUpPasswordConfirmLabel,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.done,
-            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validatePasswordConfirmation(
               messages,
               value ?? '',

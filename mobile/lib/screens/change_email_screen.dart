@@ -9,6 +9,7 @@ import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/email_input.dart';
+import 'package:publira/forms/password_field.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
@@ -283,17 +284,12 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     String currentEmail,
   ) {
     return [
-      TextFormField(
+      PasswordField(
         key: const ValueKey('change-email-password'),
         controller: _passwordController,
-        decoration: InputDecoration(
-          label: AutospacedText(messages.changeEmailPasswordLabel),
-          border: const OutlineInputBorder(),
-        ),
-        obscureText: true,
+        label: messages.changeEmailPasswordLabel,
         autofillHints: const [AutofillHints.password],
         textInputAction: TextInputAction.done,
-        errorBuilder: (context, error) => AutospacedText(error),
         validator: (value) =>
             (value ?? '').trim().isEmpty ? messages.authPasswordRequired : null,
         onFieldSubmitted: (_) => unawaited(_submit(currentEmail)),
