@@ -2,6 +2,7 @@
 title: Deployments
 description: How a Publira install is put together and brought into service.
 published: 2026-10-04
+updated: 2026-10-06
 ---
 
 These pages are for the operator who deploys Publira. They describe what an install runs and what it depends on; how those parts are hosted — a Compose file, a Kubernetes cluster, a set of systemd units — is your choice.
