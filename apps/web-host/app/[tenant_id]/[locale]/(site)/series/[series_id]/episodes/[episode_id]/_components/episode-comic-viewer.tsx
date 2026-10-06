@@ -92,6 +92,29 @@ const isFullscreenAvailable = () => document.fullscreenEnabled;
 /** Neither is knowable while rendering on the server. */
 const isFalseOnServer = () => false;
 
+const PORTRAIT_QUERY = "(orientation: portrait)";
+
+const subscribeToOrientation = (onStoreChange: () => void) => {
+  const query = window.matchMedia(PORTRAIT_QUERY);
+  query.addEventListener("change", onStoreChange);
+
+  return () => {
+    query.removeEventListener("change", onStoreChange);
+  };
+};
+
+const isPortraitWindow = () => window.matchMedia(PORTRAIT_QUERY).matches;
+
+/**
+ * The narrowest viewport that shows two pages side by side, which is the
+ * library's own default. A window taller than it is wide shows one page at any
+ * width: a tablet held upright is wide enough for two, but each would be
+ * drawn at half the width of the screen with the height below them left empty.
+ * `orientation` counts a square window as landscape, so a square one keeps
+ * the spread.
+ */
+const DOUBLE_PAGE_THRESHOLD = 768;
+
 /**
  * The shape of the end page's sheet when the last page carries no stored
  * dimensions: the B-series proportion print comics are made in.
@@ -112,24 +135,39 @@ const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
 
 /**
  * The rail the reader turns pages on: three viewports wide, holding the
- * spread before this one, the one on screen, and the one after it.
+ * spread before this one, the one on screen, and the one after it. It shows a
+ * spread only in a window at least as wide as it is tall, as
+ * {@link DOUBLE_PAGE_THRESHOLD} explains.
  *
  * `children` is the template every visible page is drawn from.
  */
-const ViewerRail = ({ children }: { children: ReactNode }) => (
-  <Viewport className="group relative flex size-full min-h-0 min-w-0 flex-1 touch-pan-y items-stretch overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing">
-    <ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset,0px)))] items-stretch data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset,0px)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset,0px))]">
-      <ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 items-stretch data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
-        {/* The two pages of a spread meet at the centre line as they do on a
+const ViewerRail = ({ children }: { children: ReactNode }) => {
+  const isPortrait = useSyncExternalStore(
+    subscribeToOrientation,
+    isPortraitWindow,
+    isFalseOnServer
+  );
+
+  return (
+    <Viewport
+      className="group relative flex size-full min-h-0 min-w-0 flex-1 touch-pan-y items-stretch overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
+      doublePageThreshold={
+        isPortrait ? Number.POSITIVE_INFINITY : DOUBLE_PAGE_THRESHOLD
+      }
+    >
+      <ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset,0px)))] items-stretch data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset,0px)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset,0px))]">
+        <ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 items-stretch data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
+          {/* The two pages of a spread meet at the centre line as they do on a
             printed sheet, so each hugs the edge of its half that faces the
             gutter. */}
-        <ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2 data-[view-mode=double]:data-[page-layout=spread]:max-w-full data-[view-mode=double]:data-[page-layout=spread]:basis-full">
-          {children}
-        </ViewportPageSlot>
-      </ViewportPageSet>
-    </ViewportTrack>
-  </Viewport>
-);
+          <ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2 data-[view-mode=double]:data-[page-layout=spread]:max-w-full data-[view-mode=double]:data-[page-layout=spread]:basis-full">
+            {children}
+          </ViewportPageSlot>
+        </ViewportPageSet>
+      </ViewportTrack>
+    </Viewport>
+  );
+};
 
 /**
  * The page template the viewport renders for every managed page. It keeps the

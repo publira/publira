@@ -113,4 +113,26 @@ test.describe("web-host comic viewer on a tablet", () => {
       )
     );
   });
+
+  test("shows one page held upright and a spread held sideways", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(VIEWER_EPISODE_PATH));
+    await expect(
+      page.locator('canvas[data-page-status="loaded"]').first()
+    ).toBeVisible();
+    const currentSlot = page
+      .locator('.pcv-viewport [data-rail-slot="current"] [data-view-mode]')
+      .first();
+
+    // The project holds the tablet upright: wide enough for two pages, and
+    // taller than it is wide.
+    await expect(currentSlot).toHaveAttribute("data-view-mode", "single");
+
+    await page.setViewportSize({ height: 810, width: 1080 });
+    await expect(currentSlot).toHaveAttribute("data-view-mode", "double");
+
+    await page.setViewportSize({ height: 1080, width: 810 });
+    await expect(currentSlot).toHaveAttribute("data-view-mode", "single");
+  });
 });
