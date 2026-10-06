@@ -163,26 +163,37 @@ export const creditAuthorViaUi = async (
  *
  * A press that lands before the trigger is hydrated, or on a trigger the page
  * is about to render again — a filter form the navigation its own Apply
- * started has not finished replacing — opens nothing, and the option is then
- * waited for until the test times out. So the press is repeated until the list
- * is out, the way `revealViewerControls` repeats the tap that shows the
- * viewer's controls. A list that is already out is not pressed again, since a
- * second press would close it.
+ * started has not finished replacing — opens nothing. So the press is repeated
+ * until the trigger reports itself open, the way `revealViewerControls`
+ * repeats the tap that shows the viewer's controls; a trigger already open is
+ * not pressed again, since a second press would close it.
+ *
+ * The option is looked up inside the list this trigger names in
+ * `aria-controls`, which it carries only while open, so an option of the same
+ * name in another control on the page is never the one chosen.
  */
 export const selectOption = async (
   page: Page,
   select: Locator,
   optionLabel: string
 ): Promise<void> => {
-  const option = page.getByRole("option", { exact: true, name: optionLabel });
-
   await expect(async () => {
-    if (!(await option.isVisible())) {
+    if ((await select.getAttribute("aria-expanded")) !== "true") {
       await select.click();
     }
-    await expect(option).toBeVisible({ timeout: 2000 });
+    await expect(select).toHaveAttribute("aria-expanded", "true", {
+      timeout: 2000,
+    });
   }).toPass();
-  await option.click();
+
+  const listId = await select.getAttribute("aria-controls");
+  if (!listId) {
+    throw new Error("the open select names no list in aria-controls");
+  }
+  await page
+    .locator(`[id="${listId}"]`)
+    .getByRole("option", { exact: true, name: optionLabel })
+    .click();
 };
 
 /**
