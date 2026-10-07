@@ -160,6 +160,69 @@ func TestSendTenantSmtpTestEmailRefusesWhenOverrideDisabled(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// The connection test goes out under the sender name real mail would carry: the
+// one in the form, or the tenant's name when the form leaves it empty.
+func TestSendTenantSmtpTestEmailNamesTheSender(t *testing.T) {
+	cases := []struct {
+		name     string
+		fromName string
+		want     string
+	}{
+		{name: "empty sender name", fromName: "", want: "Tenant"},
+		{name: "filled-in sender name", fromName: "Weekly Comics", want: "Weekly Comics"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("sqlmock.New: %v", err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			tester := &adminSMTPTesterStub{}
+			handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), tester)
+			if err != nil {
+				t.Fatalf("new admin handler: %v", err)
+			}
+			ts := httptest.NewServer(handler)
+			t.Cleanup(ts.Close)
+
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantSMTPConfigByTenantID)).
+				WithArgs(tenantID).
+				WillReturnError(sql.ErrNoRows)
+			expectAdminAuditLogInsert(mock)
+
+			client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
+			req := connect.NewRequest(&publiraadminv1.SendTenantSmtpTestEmailRequest{
+				Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				RecipientType:       publiraadminv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
+				SmtpOverrideEnabled: true,
+				Host:                "smtp.tenant.example",
+				Port:                587,
+				Username:            "tenant-mailer",
+				Password:            "smtp-password",
+				PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
+				Encryption:          "starttls",
+				FromName:            tc.fromName,
+				FromAddress:         "tenant-mail@example.com",
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			if _, err := client.SendTenantSmtpTestEmail(context.Background(), req); err != nil {
+				t.Fatalf("SendTenantSmtpTestEmail: %v", err)
+			}
+			if tester.settings.FromName != tc.want {
+				t.Fatalf("test message sender name = %q, want %q", tester.settings.FromName, tc.want)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 // A tenant's own settings still name a username: the tenant row cannot store
 // an override without one.
 func TestUpdateTenantEmailSettingsOverrideRequiresAUsername(t *testing.T) {

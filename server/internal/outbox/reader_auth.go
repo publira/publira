@@ -565,7 +565,7 @@ func resolveTenantDelivery(
 	if err != nil {
 		return tenantDelivery{}, Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
 	}
-	settings, err := resolveSMTPSettings(ctx, queries, tenantID, encryptor)
+	settings, err := resolveSMTPSettings(ctx, queries, tenant, encryptor)
 	if err != nil {
 		return tenantDelivery{}, fmt.Errorf("resolve smtp settings: %w", err)
 	}

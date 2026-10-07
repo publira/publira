@@ -35,7 +35,7 @@ Have these from whoever runs the publisher's mail:
    - **Username** and **Password**.
    - **Encryption**: **TLS**, **STARTTLS**, or **None**. **TLS** and **STARTTLS** both require TLS 1.2 or later, and **STARTTLS** fails rather than sending in the clear when the server does not offer it. Choose **None** only for a server that is reached over a private network.
    - **Sender email address**: the address the mail comes from, such as `noreply@comics.example.com`.
-   - **Sender name (optional)**: the name readers see beside that address, usually the site's name. Fill it in: although the screen says the tenant name is used when it is empty, mail is then sent from the bare address, with no name at all ([#3792](https://github.com/publira/publira/issues/3792)).
+   - **Sender name (optional)**: the name readers see beside that address, usually the site's name. Left empty, the tenant's name is used, both for the tenant's mail and for the connection test.
    - **Reply-to address (optional)**: where a reader's reply goes, such as a support address. Left empty, replies go to the sender address. A reply to a contact message keeps its own reply-to address instead.
 3. Choose **Test the connection**, then **Run the test**. The test sends a message through the values in the form, without saving them, to your own address, or to another one if you clear **Send it to myself**. A failed test says which step failed where it can tell: connecting, TLS or STARTTLS, signing in, the server refusing the recipient, or the server taking too long to answer.
 4. Choose **Save**. The next mail the tenant sends goes through the new server.
