@@ -30,9 +30,9 @@ Every one of them first needs `publira worker` to be running and ready: an insta
 
 ### Where a job's failures are recorded
 
-The worker logs every failure, and the log line names the job. The publication, free reading period, day rollover, and pinned announcement jobs record nothing else: each logs what it could not finish and leaves it for its next run, a minute later.
+The worker logs every failure, and the log line names the job. Every run of a scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work, so that table shows whether a job ran at all, and when.
 
-Every other scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work. A pass that failed keeps every attempt's error in that row's `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's superuser:
+What the row says about a failure depends on the job. The publication, free reading period, day rollover, and pinned announcement jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's superuser:
 
 ```sql
 SELECT kind, state, attempt, finalized_at, errors
@@ -58,7 +58,9 @@ Three jobs exist only to keep the web apps' cached pages on the right side of a 
 - **The tenant day rollover.** At each tenant's own midnight, in the tenant's time zone, it marks stale the storefront's weekly schedule, the one page whose answer is the tenant's calendar day.
 - **Pinned announcements.** Once an announcement's **Stop showing at** time passes, it takes the announcement off the banner and marks the banner stale.
 
-Each runs every minute. None of them drops a cache itself: each records the drop as an entry in the outbox, which the worker then sends to the web apps, so a page that stays stale is usually an outbox problem — most often a worker started without `PUBLIRA_REVALIDATE_TOKEN`, which cannot send any drop at all.
+Each runs every minute. None of them drops a cache itself: each records the drop as an entry in the outbox, which the worker then sends to the web apps, so a page that stays stale while the worker has `PUBLIRA_REVALIDATE_TOKEN` is an outbox problem, described [below](#the-outbox-mail-push-and-cache-revalidation).
+
+A worker started without `PUBLIRA_REVALIDATE_TOKEN` has cache revalidation turned off. These jobs then record no drop at all, yet still count each boundary as passed and take each banner down, so the outbox has nothing to retry, and restarting the worker with the token does not bring those drops back. The pages they would have dropped keep what they cached until the next change to the same thing drops them, or their cache runs out. Set the token on `publira server` and `publira worker` before the first boundary you need on time, as [Installing](../2-deployments/2-installing.md#generate-the-secrets) describes.
 
 These jobs have no `publiractl job` command, and need none: each acts on every time that has passed whenever it runs, including the first run after the worker starts.
 
@@ -109,7 +111,7 @@ An entry that fails is tried again, waiting twice as long after each failure: on
 
 - **Mail** fails while the SMTP server, or `email-renderer` once it is on, refuses or cannot be reached, as [Email](./6-email.md#the-mail-the-install-sends) describes.
 - **A push notification** to a phone is skipped rather than failed while the tenant has no Firebase credentials saved, so it is not retried once they are. Browser notifications are sent only once Web Push is turned on, as [Web Push](./8-web-push.md) describes.
-- **A cache revalidation** fails while a web app is down, or on every attempt when the worker runs without `PUBLIRA_REVALIDATE_TOKEN`.
+- **A cache revalidation** fails while a web app is down. A worker without `PUBLIRA_REVALIDATE_TOKEN` fails every drop `publira server` recorded, on every attempt; the drops of its own jobs it does not record at all, as [Free reading periods](#free-reading-periods-and-other-cached-pages) describes.
 
 `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling, up to an hour between attempts, so a few more attempts let an entry outlast a much longer outage.
 
