@@ -39,7 +39,7 @@ A price is what a reader pays when nothing else opens the episode. Two other thi
 - **Free reading periods**, set on an episode, open it to everyone, signed in or not, between two dates. The price applies again when the period ends. A reader who bought the episode earlier keeps their purchase, and its reading period keeps running through the free period.
 - **Free if you wait**, set on a series, gives each signed-in reader a free ticket that opens one paid episode of the series for **Hours an episode stays open**, and a new ticket **Hours until the next ticket** after they use one. **Newest episodes a ticket cannot open** keeps the latest episodes for buyers. A ticket cannot be used on an episode in a free reading period, or on one the reader already has.
 
-An access ticket, issued by staff under **Access tickets**, opens an episode the same way, without payment. An Author credited on an episode reads it free and is not offered a purchase.
+An [access ticket](./2-readers.md#access-tickets), issued by staff under **Access tickets**, opens an episode the same way, without payment. An Author credited on an episode reads it free and is not offered a purchase.
 
 ## Choosing a payment provider
 

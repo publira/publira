@@ -30,6 +30,7 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 ## In this section
 
 - [Publishing works](./1-catalog/index.md): taking an empty catalog to a first episode readers can open, and the series, episodes, labels, Authors, Author roles, and genres it is made of.
+- [Readers, comments, and contact messages](./2-readers.md): suspending and deleting readers' accounts, working the comment approval and report queues, answering contact messages, and opening a paid episode to a reader with an access ticket.
 - [Setting up the tenant](./3-setup/index.md): taking a new tenant to a site with the publisher's look, legal pages, and staff, through its settings, branding, pages, announcements, members, mail server, audit log, and your own account.
 - [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
 - [Reports and royalties](./5-reports-and-royalties.md): what the Dashboard and Read-through count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
