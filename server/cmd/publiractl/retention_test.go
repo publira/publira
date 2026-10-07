@@ -98,7 +98,11 @@ func TestRetentionSetNamesTheFlagOfARefusedPeriod(t *testing.T) {
 	pg := startPlatformDB(t)
 
 	for _, field := range retentionFlags {
-		for _, days := range []int{0, retention.MaxDays + 1} {
+		refused := []int{0, retention.MaxDays + 1}
+		if field.field == "content_event_days" {
+			refused = append(refused, retention.MinContentEventDays-1)
+		}
+		for _, days := range refused {
 			code, stdout, stderr := retentionCommand(t, "set", "--"+field.flag, strconv.Itoa(days))
 			if code != 1 {
 				t.Fatalf("--%s %d: exit code = %d, want 1\n%s", field.flag, days, code, stderr)

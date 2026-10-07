@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -26,14 +27,14 @@ func TestRunDeletesOnlyExpiredEvents(t *testing.T) {
 	viewer := pg.SeedEndUser(t, tenant.ID, "PURGEVIEWER1", "viewer@purge.example.com", "Purge Viewer")
 	otherViewer := pg.SeedEndUser(t, otherTenant.ID, "PURGEVIEWER2", "viewer@other-purge.example.com", "Other Purge Viewer")
 
-	// The first tenant overrides the period down to ten days; the other
-	// follows a forty-day default.
+	// The first tenant overrides the period down to thirty days; the other
+	// follows a sixty-day default.
 	table := retention.NewTable(
-		retention.Periods{WithdrawnCommentDays: 180, ContentEventDays: 40, DailyRankingSnapshotDays: 90, WeeklyRankingSnapshotDays: 400},
-		map[uuid.UUID]retention.Overrides{tenant.ID: {ContentEventDays: new(10)}},
+		retention.Periods{WithdrawnCommentDays: 180, ContentEventDays: 60, DailyRankingSnapshotDays: 90, WeeklyRankingSnapshotDays: 400},
+		map[uuid.UUID]retention.Overrides{tenant.ID: {ContentEventDays: new(30)}},
 	)
-	cutoff := now.AddDate(0, 0, -10)
-	otherCutoff := now.AddDate(0, 0, -40)
+	cutoff := now.AddDate(0, 0, -30)
+	otherCutoff := now.AddDate(0, 0, -60)
 
 	// Three expired rows across two tenants, plus three rows that must
 	// survive: one exactly at the cutoff (the period is exclusive), one after
@@ -96,6 +97,47 @@ func TestRunDeletesOnlyExpiredEvents(t *testing.T) {
 	}
 	if want := (Result{TenantCount: 2, ChunkCount: 2}); again != want {
 		t.Fatalf("second result = %+v, want %+v", again, want)
+	}
+}
+
+// A period saved before the bound was enforced is shorter than the jobs that
+// read the events need. The purge deletes by the bound instead, so it never
+// takes an event younger than that.
+func TestRunKeepsEventsYoungerThanTheBoundWhateverIsSaved(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+
+	now := time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "PURGEFLOOR01", "purge-floor.example.com", "Purge Floor Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "PURGEFLOORS1"})
+	viewer := pg.SeedEndUser(t, tenant.ID, "PURGEFLOORV1", "viewer@purge-floor.example.com", "Purge Floor Viewer")
+	if _, err := pg.DB.ExecContext(ctx, "INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, 2)", tenant.ID); err != nil {
+		t.Fatalf("save a period below the bound: %v", err)
+	}
+
+	bound := now.AddDate(0, 0, -retention.MinContentEventDays)
+	expired := insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, debounceBucket: 1, eventType: "series_view", occurredAt: bound.Add(-time.Second)})
+	retained := []uuid.UUID{
+		insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, debounceBucket: 2, eventType: "series_view", occurredAt: bound}),
+		insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, debounceBucket: 3, eventType: "series_view", occurredAt: now.AddDate(0, 0, -3)}),
+	}
+
+	db := pg.OpenContentStatsDB(t)
+	table, err := retention.LoadTable(ctx, dbmodels.New(db))
+	if err != nil {
+		t.Fatalf("LoadTable: %v", err)
+	}
+	if _, err := New(db).Run(ctx, Options{Now: now, Retention: table}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if eventExists(t, pg.DB, expired) {
+		t.Fatalf("the event older than the bound survived the purge")
+	}
+	for _, id := range retained {
+		if !eventExists(t, pg.DB, id) {
+			t.Fatalf("event %s, younger than the bound, was purged", id)
+		}
 	}
 }
 

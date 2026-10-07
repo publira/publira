@@ -493,11 +493,14 @@ enum AgeVerification {
 }
 
 // How long each kind of record that expires is kept before a purge batch
-// deletes it, in whole days. Each value is from 1 to 36500.
+// deletes it, in whole days. Each value is from 1 to 36500, except
+// content_event_days.
 message RetentionPeriods {
   // A comment its author withdrew, counted from the withdrawal.
   int32 withdrawn_comment_days = 1;
-  // A raw engagement event, counted from when it occurred.
+  // A raw engagement event, counted from when it occurred. From 28 to 36500:
+  // the recommendations are built from the last 28 days of events, and each
+  // day's statistics from its events once the day has ended.
   int32 content_event_days = 2;
   // A daily ranking snapshot, counted from the end of its period. The newest
   // period is kept whatever its age.

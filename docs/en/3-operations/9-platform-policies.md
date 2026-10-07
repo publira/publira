@@ -121,7 +121,7 @@ Some records outlive their period by design:
 
 Choosing a period:
 
-- **Content events** feed two things after they are recorded: each day's statistics, built once the day ends, and the recommendations, which are built from the last 28 days. The statistics outlive the events, so a short period does not shrink a tenant's reports, but a period under 28 days leaves the recommendations working from fewer days, and a period of a day or two can delete a day's events before its statistics are built. Publira does not yet refuse such a period ([#3766](https://github.com/publira/publira/issues/3766)), so keep it at 28 days or more.
+- **Content events** feed two things after they are recorded: each day's statistics, built once the day ends, and the recommendations, which are built from the last 28 days. The statistics outlive the events, so a short period does not shrink a tenant's reports. A period under 28 days would leave the recommendations working from fewer days, and could delete a day's events before its statistics are built, so it is refused, for the platform's default and for a tenant's own period alike. A shorter period saved before Publira refused one is kept as 28 days.
 - **Ranking snapshots** are kept for comparison over time; only the newest is ever shown to readers. A shorter period only shortens how far back that comparison reaches.
 - **Withdrawn comments** should cover how long your tenants take to settle a report or a dispute about a comment. The tenant console shows staff when each withdrawn comment is due to be deleted.
 
@@ -140,7 +140,7 @@ A tenant's administrators change some of these for their own tenant from **Setti
 | **General**: default language and time zone | Nothing here; each tenant has its own language and time zone from the moment it is created, and changes them from **Settings** in its console |
 | **Security**: every value | Nothing. The one related choice a tenant makes is whether to refuse disposable email domains, and the list it refuses with is the platform's |
 | **Community**: every value | Make any of them stricter: lower limits, or a longer duplicate comment window. A value looser than the platform's is refused |
-| **Retention**: every period | Set any of them longer or shorter than the platform's default, from 1 to 36500 days |
+| **Retention**: every period | Set any of them longer or shorter than the platform's default, from 1 to 36500 days, and from 28 days for **Content events** |
 
 On that page each group starts with **Use the platform default** ticked, and shows the platform's value beside it. Clearing the box lets an administrator enter the tenant's own values, which **Save the community limits** or **Save the retention periods** keeps; ticking it again and saving returns the group to the platform's. A tenant on the platform default follows every later change you make to it.
 

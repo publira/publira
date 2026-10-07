@@ -101,6 +101,10 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: -1, ContentEventDays: 30, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
 			"defaults.withdrawn_comment_days",
 		},
+		"content events below the bound": {
+			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: 30, ContentEventDays: retention.MinContentEventDays - 1, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
+			"defaults.content_event_days",
+		},
 		"a period past the cap": {
 			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: 30, ContentEventDays: retention.MaxDays + 1, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
 			"defaults.content_event_days",

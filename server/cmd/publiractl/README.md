@@ -182,7 +182,7 @@ go -C server run ./cmd/publiractl retention show
 | `retention set` | `UpdatePlatformRetentionDefaults` | Saves the periods its flags give over the saved defaults, or over the built-in ones when none are saved, and keeps every other period. It refuses to run with no flag. Saving what is already saved changes nothing and files nothing |
 | `retention show` | `GetPlatformRetentionDefaults` | Prints the saved defaults with their revision, or the built-in ones, marked as such, when none are saved |
 
-`retention set` takes one flag per field of `RetentionPeriods`, each a whole number of days from 1 to 36500: `--withdrawn-comment-days`, `--content-event-days`, `--daily-ranking-snapshot-days`, and `--weekly-ranking-snapshot-days`. Each purge reads the defaults when its run starts, so a save applies from the next run. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
+`retention set` takes one flag per field of `RetentionPeriods`, each a whole number of days in the range [Retention periods](#retention-periods) gives it: `--withdrawn-comment-days`, `--content-event-days`, `--daily-ranking-snapshot-days`, and `--weekly-ranking-snapshot-days`. Each purge reads the defaults when its run starts, so a save applies from the next run. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
 
 `retention set` files `platform_retention_defaults_updated` in `platform_audit_logs` under the `system` actor. A refused period names its flag on stderr and exits `1` with nothing written.
 
@@ -523,7 +523,7 @@ Each entry of `items`:
 | Daily ranking snapshots  | 90 days          |
 | Weekly ranking snapshots | 400 days         |
 
-Every period is from 1 to 36500 days. The jobs' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
+Every period is from 1 to 36500 days, except content events, which are from 28: `build-recommend-features` summarises the last 28 days of them, and `aggregate-content-stats` rebuilds a day from its events after the day has ended, including the days it catches up after downtime. `UpdatePlatformRetentionDefaults`, `UpdateTenantRetentionSettings`, and `retention set` refuse a shorter content-event period, naming `content_event_days`. One saved before the bound existed applies as 28 days, in the effective periods the admin API reports and in the cutoff `purge-content-events` deletes below, while the saved value is reported as it is. The jobs' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
 
 ## purge-content-events
 
@@ -544,7 +544,7 @@ Environment variables:
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
-A tenant's cutoff is the run's UTC timestamp minus its content-event retention period (see [Retention periods](#retention-periods)), compared exclusively (`occurred_at < cutoff`). One tenant's failure does not stop the others. The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, rows deleted, chunk count, and elapsed time.
+A tenant's cutoff is the run's UTC timestamp minus its content-event retention period, and never less than 28 days (see [Retention periods](#retention-periods)), compared exclusively (`occurred_at < cutoff`). One tenant's failure does not stop the others. The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, rows deleted, chunk count, and elapsed time.
 
 ## purge-ranking-snapshots
 

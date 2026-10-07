@@ -10,10 +10,16 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/fielderr"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/retention"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
+
+// fieldRetentionOverrides is the UpdateTenantRetentionSettingsRequest field a
+// refused period is named inside.
+const fieldRetentionOverrides = "overrides"
 
 // errTenantRetentionConflict is what a save based on a revision the stored row
 // has moved past reports.
@@ -171,7 +177,7 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 	}
 	overrides := retentionOverridesFromProto(req.Msg.GetOverrides())
 	if err := overrides.Validate(); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, rpcerrors.FromFieldError(fielderr.Within(fieldRetentionOverrides, err))
 	}
 	if req.Msg.ExpectedRevision < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))

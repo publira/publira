@@ -1074,8 +1074,8 @@ export const UpdateTenantSignInSettingsResponseSchema: GenMessage<UpdateTenantSi
 
 /**
  * A tenant's own retention periods, in whole days. An absent field follows the
- * platform default; a present one is from 1 to 36500, and may be longer or
- * shorter than that default.
+ * platform default; a present one is in the range RetentionPeriods states for
+ * its field, and may be longer or shorter than that default.
  *
  * @generated from message publira.admin.v1.TenantRetentionOverrides
  */

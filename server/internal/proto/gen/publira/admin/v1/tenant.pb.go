@@ -2318,8 +2318,8 @@ func (x *UpdateTenantSignInSettingsResponse) GetSettings() *TenantSignInSettings
 }
 
 // A tenant's own retention periods, in whole days. An absent field follows the
-// platform default; a present one is from 1 to 36500, and may be longer or
-// shorter than that default.
+// platform default; a present one is in the range RetentionPeriods states for
+// its field, and may be longer or shorter than that default.
 type TenantRetentionOverrides struct {
 	state                     protoimpl.MessageState `protogen:"open.v1"`
 	WithdrawnCommentDays      *int32                 `protobuf:"varint,1,opt,name=withdrawn_comment_days,json=withdrawnCommentDays,proto3,oneof" json:"withdrawn_comment_days,omitempty"`

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -305,7 +306,7 @@ func TestContentStatsCatchUpPassesOverDaysPastRetention(t *testing.T) {
 	tenant := pg.SeedTenant(t, "CATCHUPRETN1", "retention.catchup.example.com", "Retention Catch-up Tenant")
 	setTenantTimeZone(t, pg.DB, tenant.ID, "UTC")
 	if _, err := pg.DB.ExecContext(ctx,
-		"INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, 2)", tenant.ID,
+		"INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, $2)", tenant.ID, retention.MinContentEventDays,
 	); err != nil {
 		t.Fatalf("set tenant retention: %v", err)
 	}
@@ -314,11 +315,12 @@ func TestContentStatsCatchUpPassesOverDaysPastRetention(t *testing.T) {
 
 	now := time.Now()
 	yesterday := utcDate(now).AddDate(0, 0, -1)
-	stoppedOn := yesterday.AddDate(0, 0, -4)
+	stoppedOn := yesterday.AddDate(0, 0, -retention.MinContentEventDays-2)
 	seedProgress(t, pg.DB, tenant.ID, now, stoppedOn)
-	// Two days of retention keep only yesterday whole: the cutoff falls inside
-	// the day before it. The older events are left in place, standing in for
-	// what the purge would have left of those days.
+	// The shortest period keeps whole only the days after the one its cutoff
+	// falls inside. The older events are left in place, standing in for what
+	// the purge would have left of those days.
+	firstKept := utcDate(now).AddDate(0, 0, 1-retention.MinContentEventDays)
 	for day := stoppedOn.AddDate(0, 0, 1); !day.After(yesterday); day = day.AddDate(0, 0, 1) {
 		insertView(t, pg.DB, tenant.ID, series.ID, episode.ID, day.Add(12*time.Hour))
 	}
@@ -328,8 +330,11 @@ func TestContentStatsCatchUpPassesOverDaysPastRetention(t *testing.T) {
 		t.Fatalf("CatchUp: %v", err)
 	}
 
-	if got := countRows(t, pg.DB, "SELECT count(DISTINCT stat_date) FROM content_daily_stats WHERE tenant_id = $1", tenant.ID); got != 1 {
-		t.Fatalf("rebuilt %d days, want only yesterday", got)
+	if got, want := countRows(t, pg.DB, "SELECT count(DISTINCT stat_date) FROM content_daily_stats WHERE tenant_id = $1", tenant.ID), retention.MinContentEventDays-1; got != want {
+		t.Fatalf("rebuilt %d days, want the %d still retained", got, want)
+	}
+	if got := countRows(t, pg.DB, "SELECT count(*) FROM content_daily_stats WHERE tenant_id = $1 AND stat_date < $2", tenant.ID, firstKept); got != 0 {
+		t.Fatalf("rebuilt %d rows of days before %s, which are past retention", got, firstKept.Format(time.DateOnly))
 	}
 	if got := countRows(t, pg.DB, "SELECT count(*) FROM content_daily_stats WHERE tenant_id = $1 AND stat_date = $2", tenant.ID, yesterday); got == 0 {
 		t.Fatal("yesterday was not rebuilt")

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -122,14 +123,29 @@ func TestDBTenantRetentionSettings(t *testing.T) {
 		t.Fatalf("save against a missing row error = %v, want failed_precondition", err)
 	}
 
-	for name, overrides := range map[string]*publiraadminv1.TenantRetentionOverrides{
-		"missing overrides": nil,
-		"zero days":         {WithdrawnCommentDays: new(int32(0))},
-		"negative days":     {ContentEventDays: new(int32(-1))},
-		"too many days":     {WeeklyRankingSnapshotDays: new(int32(retention.MaxDays + 1))},
+	if _, err := updateRetention(env, tenant, nil, 1); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("missing overrides error = %v, want invalid_argument", err)
+	}
+	// A refused period is named as the request carries it.
+	for name, tc := range map[string]struct {
+		overrides *publiraadminv1.TenantRetentionOverrides
+		field     string
+	}{
+		"zero days":     {&publiraadminv1.TenantRetentionOverrides{WithdrawnCommentDays: new(int32(0))}, "overrides.withdrawn_comment_days"},
+		"negative days": {&publiraadminv1.TenantRetentionOverrides{ContentEventDays: new(int32(-1))}, "overrides.content_event_days"},
+		"content events below the bound": {
+			&publiraadminv1.TenantRetentionOverrides{ContentEventDays: new(int32(retention.MinContentEventDays - 1))},
+			"overrides.content_event_days",
+		},
+		"too many days": {&publiraadminv1.TenantRetentionOverrides{WeeklyRankingSnapshotDays: new(int32(retention.MaxDays + 1))}, "overrides.weekly_ranking_snapshot_days"},
 	} {
-		if _, err := updateRetention(env, tenant, overrides, 1); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		_, err := updateRetention(env, tenant, tc.overrides, 1)
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeInvalidArgument {
 			t.Fatalf("%s error = %v, want invalid_argument", name, err)
+		}
+		if got := violatedField(t, connectErr); got != tc.field {
+			t.Fatalf("%s names %q, want %q", name, got, tc.field)
 		}
 	}
 	if _, err := updateRetention(env, tenant, &publiraadminv1.TenantRetentionOverrides{}, -1); connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -153,6 +169,27 @@ func TestDBTenantRetentionSettings(t *testing.T) {
 	}
 }
 
+// A content-event period saved before the bound was enforced is reported as it
+// was saved, so the console can show what has to be raised, while the
+// effective period, the one the purge deletes by, is the bound.
+func TestDBTenantRetentionSavedBelowTheBoundAppliesAsTheBound(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "RETTENANT003", "low-retention.example.com", "Low Retention Tenant", "RETADMIN0003", "admin@low-retention.example.com")
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, 2)", tenant.Tenant.ID,
+	); err != nil {
+		t.Fatalf("save a period below the bound: %v", err)
+	}
+
+	got := getRetention(t, env, tenant)
+	if got.Overrides.GetContentEventDays() != 2 {
+		t.Fatalf("overrides = %+v, want the saved 2 days", got.Overrides)
+	}
+	if got.Effective.GetContentEventDays() != retention.MinContentEventDays {
+		t.Fatalf("effective content event days = %d, want %d", got.Effective.GetContentEventDays(), retention.MinContentEventDays)
+	}
+}
+
 // The console's withdrawal deadline and each purge batch must resolve the same
 // period for a tenant, whether the tenant overrides it or follows the platform
 // default. This drives the API through its own role and the purges through the
@@ -166,7 +203,7 @@ func TestDBRetentionDeadlineAndPurgeCutoffsAgree(t *testing.T) {
 	savePlatformRetentionDefaults(t, env, retention.Periods{WithdrawnCommentDays: 40, ContentEventDays: 30, DailyRankingSnapshotDays: 20, WeeklyRankingSnapshotDays: 100})
 	if _, err := updateRetention(env, overridden.admin, &publiraadminv1.TenantRetentionOverrides{
 		WithdrawnCommentDays:      new(int32(7)),
-		ContentEventDays:          new(int32(5)),
+		ContentEventDays:          new(int32(35)),
 		DailyRankingSnapshotDays:  new(int32(3)),
 		WeeklyRankingSnapshotDays: new(int32(14)),
 	}, 0); err != nil {
