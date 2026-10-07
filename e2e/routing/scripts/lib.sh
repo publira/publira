@@ -85,12 +85,50 @@ PUBLIRA_ROUTING_LOCK_FILE="${PUBLIRA_ROUTING_DIR}/.run/locks/${COMPOSE_PROJECT_N
 PUBLIRA_ROUTING_READY_TIMEOUT_SEC="${PUBLIRA_ROUTING_READY_TIMEOUT_SEC:-60}"
 PUBLIRA_ROUTING_READY_INTERVAL_SEC="${PUBLIRA_ROUTING_READY_INTERVAL_SEC:-1}"
 
+# The pass that puts a trusted hop in front of the edge, which run-one.sh
+# makes last by exporting PUBLIRA_ROUTING_TRUSTED_HOP=1. The proxy starts from
+# a copy of its sample in PUBLIRA_ROUTING_PROXY_DIR whose commented
+# trusted-proxy setting enable_trusted_hop has turned on, trusting the hop's
+# address alone. The subnet is one Docker does not hand out on its own, so the
+# hop network does not collide with the other networks on the daemon; two runs
+# at once need a subnet each.
+export PUBLIRA_ROUTING_TRUSTED_HOP="${PUBLIRA_ROUTING_TRUSTED_HOP:-0}"
+export PUBLIRA_ROUTING_HOP_SUBNET="${PUBLIRA_ROUTING_HOP_SUBNET:-198.18.0.0/24}"
+export PUBLIRA_ROUTING_HOP_ADDRESS="${PUBLIRA_ROUTING_HOP_ADDRESS:-198.18.0.10}"
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" ]]; then
+  export PUBLIRA_ROUTING_PROXY_DIR="${RUN_DIR}/trusted-hop/${PUBLIRA_ROUTING_PROXY}"
+else
+  # Every other pass mounts the sample from infra/proxy as it stands.
+  unset PUBLIRA_ROUTING_PROXY_DIR
+fi
+
+# The client address the hop names in X-Forwarded-For, and the documentation
+# range each sample's commented setting trusts until an operator fills in
+# their hop's addresses.
+PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS="198.51.100.7"
+PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE="192.0.2.0/24"
+
 # The compose files for this proxy. Traefik is the Dev Container's own edge,
 # so its run overlays the very files the Dev Container starts and proves that
 # wiring; nginx and Caddy have no environment of their own and get the echo
-# backends plus a proxy container.
-case "${PUBLIRA_ROUTING_PROXY}" in
-  traefik)
+# backends plus a proxy container. The trusted-hop pass gives every proxy the
+# second shape, Traefik from its sample's traefik.yaml, plus the hop.
+case "${PUBLIRA_ROUTING_TRUSTED_HOP}:${PUBLIRA_ROUTING_PROXY}" in
+  1:traefik)
+    PUBLIRA_ROUTING_COMPOSE_FILES=(
+      "${PUBLIRA_ROUTING_DIR}/compose.echo.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.traefik-sample.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.hop.yaml"
+    )
+    ;;
+  1:*)
+    PUBLIRA_ROUTING_COMPOSE_FILES=(
+      "${PUBLIRA_ROUTING_DIR}/compose.echo.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.${PUBLIRA_ROUTING_PROXY}.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.hop.yaml"
+    )
+    ;;
+  0:traefik)
     # The Dev Container file is an overlay: on its own it leaves the dependency
     # services with nothing but `ports: !reset []`, which is not a valid project.
     PUBLIRA_ROUTING_COMPOSE_FILES=(
@@ -107,8 +145,8 @@ case "${PUBLIRA_ROUTING_PROXY}" in
     ;;
 esac
 
-# Ports one run publishes. Only Traefik answers an API.
-if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+# Ports one run publishes. Only the Dev Container's Traefik answers an API.
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" && "${PUBLIRA_ROUTING_TRUSTED_HOP}" != "1" ]]; then
   PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}" "${PUBLIRA_ROUTING_TRAEFIK_API_PORT}")
 else
   PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}")
@@ -403,6 +441,105 @@ assert_forwarded_headers() {
   routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"
 }
 
+# A request the hop sends to the edge on behalf of a client, naming that
+# client's address in X-Forwarded-For and the scheme it used in
+# X-Forwarded-Proto, the way a TLS terminator that sets the headers does.
+# Prints the status code on the first line and the body after it, like
+# http_probe.
+hop_probe() {
+  local host="$1" path="$2"
+  # shellcheck disable=SC2016 # JavaScript, run inside the hop container
+  compose exec -T hop node -e '
+    const [host, path, forwardedFor] = process.argv.slice(1);
+    const request = require("node:http").get(
+      { host: "proxy", port: 80, path, headers: { Host: host, "X-Forwarded-For": forwardedFor, "X-Forwarded-Proto": "https" } },
+      (res) => {
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => { console.log(res.statusCode); console.log(body); });
+      }
+    );
+    request.setTimeout(5000, () => request.destroy(new Error("timed out")));
+    request.on("error", (error) => { console.log("000"); console.log(error.message); });
+  ' "${host}" "${path}" "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" 2> /dev/null || true
+}
+
+# A request through the trusted hop: the backend has to read the client
+# address the hop named, which is the first address in X-Forwarded-For, and
+# the scheme it named, which the edge's own plain HTTP would otherwise replace.
+# nginx and Caddy forward that address alone; Traefik keeps the hop's header
+# and appends the hop's own address after it, which leaves the first one as it
+# is.
+assert_hop_client_address() {
+  local name="$1" host="$2" path="$3" want_backend="$4"
+  local out code body actual_backend value first
+
+  out="$(hop_probe "${host}" "${path}")"
+  code="$(printf '%s' "${out}" | sed -n '1p')"
+  body="$(printf '%s' "${out}" | tail -n +2)"
+
+  if [[ "${code}" != "200" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 200) host=${host} GET ${path} through the hop body=${body}"
+  fi
+
+  actual_backend="$(json_string_field "${body}" backend)"
+  if [[ "${actual_backend}" != "${want_backend}" ]]; then
+    routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') host=${host} GET ${path} through the hop body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" x-forwarded-for)"
+  first="${value%%,*}"
+  first="${first// /}"
+  if [[ "${first}" != "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" ]]; then
+    routing_fail "${name}: X-Forwarded-For '${value}' does not start with the address the trusted hop named (${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}) host=${host} GET ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" x-forwarded-proto)"
+  if [[ "${value}" != "https" ]]; then
+    routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'https', the scheme the trusted hop named) host=${host} GET ${path} body=${body}"
+  fi
+
+  routing_log "ok: ${name} → ${want_backend} with the client address and scheme the hop named"
+}
+
+# Writes the sample under test to PUBLIRA_ROUTING_PROXY_DIR with its commented
+# trusted-proxy setting uncommented as it is written, and the hop's address in
+# place of the documentation range. Fails when the sample no longer carries
+# the setting in that shape, rather than starting a proxy that trusts nothing
+# and blaming the proxy for it.
+enable_trusted_hop() {
+  local sample="${REPO_ROOT}/infra/proxy/${PUBLIRA_ROUTING_PROXY}"
+  local dir="${PUBLIRA_ROUTING_PROXY_DIR}" file uncomment
+
+  case "${PUBLIRA_ROUTING_PROXY}" in
+    traefik)
+      file=traefik.yaml
+      uncomment='/^    # forwardedHeaders:$/,/^    #     - / s/^    # /    /'
+      ;;
+    nginx)
+      file=default.conf.template
+      uncomment='s/^# \(set_real_ip_from\|real_ip_header\|real_ip_recursive\) /\1 /; s/^    # \(192\.0\.2\.0\/24 1;\)$/    \1/'
+      ;;
+    caddy)
+      file=Caddyfile
+      uncomment='/^\t# servers {$/,/^\t# }$/ s/^\t# /\t/'
+      ;;
+  esac
+
+  rm -rf "${dir}"
+  mkdir -p "$(dirname "${dir}")"
+  cp -R "${sample}" "${dir}"
+  sed -e "${uncomment}" \
+    -e "s|${PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE}|${PUBLIRA_ROUTING_HOP_ADDRESS}/32|g" \
+    "${sample}/${file}" > "${dir}/${file}"
+
+  if ! grep -Eq "^[^#]*${PUBLIRA_ROUTING_HOP_ADDRESS}/32" "${dir}/${file}"; then
+    routing_fail "infra/proxy/${PUBLIRA_ROUTING_PROXY}/${file} no longer carries the commented trusted-proxy setting naming ${PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE}"
+  fi
+  routing_log "enabled the trusted-proxy setting of ${file} for ${PUBLIRA_ROUTING_HOP_ADDRESS}/32"
+}
+
 # A POST carrying a body of `bytes` bytes and the given `Header: value` lines:
 # the backend has to receive all of the body and every header as it was sent.
 # A webhook provider signs or authenticates its request with those headers, and
@@ -477,7 +614,7 @@ collect_diagnostics() {
 
   compose ps > "${LOG_DIR}/compose-ps.log" 2>&1 || true
   compose logs --no-color --tail 200 > "${LOG_DIR}/compose.log" 2>&1 || true
-  if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+  if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" && "${PUBLIRA_ROUTING_TRUSTED_HOP}" != "1" ]]; then
     curl -fsS --max-time 3 \
       "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/routers" \
       > "${LOG_DIR}/traefik-routers.json" 2>&1 || true

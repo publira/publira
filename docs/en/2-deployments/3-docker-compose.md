@@ -2,6 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file in the repository, from filling in its .env to the first sign-in to the tenant console.
 published: 2026-10-06
+updated: 2026-10-07
 ---
 
 The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the four processes, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -93,7 +94,7 @@ Every value above is required. While one of them is empty, every `docker compose
 error while interpolating services.postgres.environment.POSTGRES_PASSWORD: required variable PUBLIRA_POSTGRES_PASSWORD is missing a value
 ```
 
-The rest of the file may stay empty: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, and the variables of the optional processes, which the next section fills in when you turn one on.
+The rest of the file may stay empty: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, `PUBLIRA_EDGE_TRUSTED_PROXIES`, which [Put TLS in front](#5-put-tls-in-front) fills in, and the variables of the optional processes, which the next section fills in when you turn one on.
 
 A variable exported in the shell you run `docker compose` from takes precedence over the same variable in `.env`. If a value you wrote in `.env` seems to be ignored, look for a `PUBLIRA_*` variable in your shell's environment.
 
@@ -186,6 +187,14 @@ comics.example.com, admin.comics.example.com {
 	reverse_proxy 127.0.0.1:8080
 }
 ```
+
+Unless you tell it otherwise, the proxy records every request with the address the terminator connects from, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the terminator set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, which Caddy does by default, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the address it reaches the proxy from. A terminator on the host forwarding to `127.0.0.1` reaches it from the gateway of the install's Docker network, which this prints once the install is running:
+
+```bash
+docker network inspect publira-deploy_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
+```
+
+Then run `docker compose up -d proxy` to recreate the proxy with it. Several addresses are separated by commas. The network keeps its gateway until it is removed, which `docker compose down` does, so check the value again after one. [A hop in front of the proxy](./4-reverse-proxy.md#a-hop-in-front-of-the-proxy) explains what trusting the terminator means.
 
 Any other terminator that does the same works too. When you add a tenant later, [Adding a tenant](./4-reverse-proxy.md#adding-a-tenant) lists what the terminator and the proxy need for its host names.
 

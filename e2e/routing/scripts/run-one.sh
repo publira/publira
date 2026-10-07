@@ -2,7 +2,8 @@
 # Edge routing check for one proxy.
 #
 #   up → wait for the edge to serve → probe hosts / /api / /images
-#   → up again with no platform hosts → wait → probe what that leaves → down
+#   → up again with no platform hosts → wait → probe what that leaves
+#   → up again behind a trusted hop → wait → probe the client address → down
 #
 # Always tears down (success, failure, or interrupt) and collects Compose
 # output — and, for Traefik, its API — into e2e/routing/.run/<proxy>/logs when
@@ -62,5 +63,19 @@ export PUBLIRA_ROUTING_PLATFORM_HOSTS=""
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-without-platform.sh"
+
+# Each sample carries a trusted-proxy setting, commented out, for an install
+# with a load balancer or a TLS terminator in front of the edge. Enabled as it
+# is written, it has to let that hop name the client address and nobody else.
+# This pass starts other compose files, so the stack before it is torn down
+# with its own, and lib.sh is sourced again for the teardown and the
+# diagnostics to address the new ones.
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/down.sh"
+export PUBLIRA_ROUTING_TRUSTED_HOP=1
+# shellcheck source=lib.sh
+source "${PUBLIRA_ROUTING_SCRIPTS_DIR}/lib.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-trusted-hop.sh"
 
 routing_log "=== routing check succeeded ==="
