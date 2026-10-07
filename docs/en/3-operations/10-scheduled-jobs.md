@@ -117,7 +117,7 @@ An entry that fails is tried again, waiting twice as long after each failure: on
 
 ### Seeing what was given up
 
-The worker logs each entry it gives up on as `outbox event dead`, and counts it in the `publira.outbox.events.dead` metric when it exports OpenTelemetry metrics; alert on either. The entries themselves stay in the `outbox_events` table, with the last error:
+The worker logs each entry it gives up on as `outbox event dead`, and counts it in the `publira.outbox.events.dead` metric once its metrics are turned on, as [Monitoring](./11-monitoring.md#the-outbox) describes; alert on either. The entries themselves stay in the `outbox_events` table, with the last error:
 
 ```sql
 SELECT event_type, tenant_id, attempts, last_error, updated_at
