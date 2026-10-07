@@ -19,6 +19,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dbroles"
+	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 	"github.com/publira/publira/server/internal/tickerjobs"
@@ -128,9 +129,10 @@ func TestDBRolesLeavesRiversTablesToTheWorkerOnceItHasStarted(t *testing.T) {
 	db := openSuperuser(t, superuser)
 	outboxDB := openRole(t, superuser, "publira_outbox", passwords["publira_outbox"])
 	tickerDB := openRole(t, superuser, "publira_ticker", passwords["publira_ticker"])
+	contentStatsDB := openRole(t, superuser, "publira_content_stats", passwords["publira_content_stats"])
 
-	stop := startWorker(t, outboxDB, tickerDB)
-	waitForRiverJob(t, db, 0)
+	stop := startWorker(t, outboxDB, tickerDB, contentStatsDB)
+	waitForRiverJob(t, db, "ticker.", 0)
 	stop()
 
 	if code, output := testutil.RunMain(t, env, "db", "roles"); code != 0 {
@@ -163,8 +165,9 @@ func TestDBRolesLeavesRiversTablesToTheWorkerOnceItHasStarted(t *testing.T) {
 		t.FailNow()
 	}
 
-	// The worker that owns them still drains the outbox and runs its periodic
-	// jobs, through River's leader election, on the tables the revoke left it.
+	// The worker that owns them still drains the outbox and runs its ticker and
+	// maintenance jobs, through River's leader election, on the tables the
+	// revoke left it.
 	var lastJob int64
 	if err := db.QueryRowContext(t.Context(), "SELECT coalesce(max(id), 0) FROM river_job").Scan(&lastJob); err != nil {
 		t.Fatalf("read the last river_job id: %v", err)
@@ -180,9 +183,10 @@ func TestDBRolesLeavesRiversTablesToTheWorkerOnceItHasStarted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert an outbox event: %v", err)
 	}
-	stop = startWorker(t, outboxDB, tickerDB)
+	stop = startWorker(t, outboxDB, tickerDB, contentStatsDB)
 	defer stop()
-	waitForRiverJob(t, db, lastJob)
+	waitForRiverJob(t, db, "ticker.", lastJob)
+	waitForRiverJob(t, db, "maintenance.", lastJob)
 	waitFor(t, "the outbox event to be drained", func() bool {
 		got, err := queries.GetOutboxEvent(t.Context(), event.ID)
 		if err != nil {
@@ -193,9 +197,9 @@ func TestDBRolesLeavesRiversTablesToTheWorkerOnceItHasStarted(t *testing.T) {
 }
 
 // startWorker boots the worker the way `publira worker` does, on the worker's
-// own login, which creates River's schema the first time, with the ticker jobs
-// on theirs. It returns the function that stops it.
-func startWorker(t *testing.T, outboxDB, tickerDB *sql.DB) func() {
+// own login, which creates River's schema the first time, with the ticker and
+// maintenance jobs on theirs. It returns the function that stops it.
+func startWorker(t *testing.T, outboxDB, tickerDB, contentStatsDB *sql.DB) func() {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	jobs, err := tickerjobs.New(tickerjobs.Config{
@@ -208,11 +212,15 @@ func startWorker(t *testing.T, outboxDB, tickerDB *sql.DB) func() {
 	if err != nil {
 		t.Fatalf("build the ticker jobs: %v", err)
 	}
+	maintenance, err := maintenancejobs.New(maintenancejobs.Config{DB: contentStatsDB, Logger: logger})
+	if err != nil {
+		t.Fatalf("build the maintenance jobs: %v", err)
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	t.Cleanup(cancel)
 	worker, err := outbox.Start(ctx, outboxDB, outbox.Config{
 		Logger:            logger,
-		Periodic:          []outbox.PeriodicRegistrar{jobs},
+		Periodic:          []outbox.PeriodicRegistrar{jobs, maintenance},
 		DrainInterval:     50 * time.Millisecond,
 		FetchCooldown:     10 * time.Millisecond,
 		FetchPollInterval: 20 * time.Millisecond,
@@ -236,14 +244,15 @@ func startWorker(t *testing.T, outboxDB, tickerDB *sql.DB) func() {
 	return stop
 }
 
-// waitForRiverJob waits for a periodic job enqueued after the row after has
-// completed, which takes River's leader election and its queue both.
-func waitForRiverJob(t *testing.T, db *sql.DB, after int64) {
+// waitForRiverJob waits for a periodic job whose kind starts with prefix,
+// enqueued after the row after, to complete, which takes River's leader
+// election and its queue both.
+func waitForRiverJob(t *testing.T, db *sql.DB, prefix string, after int64) {
 	t.Helper()
-	waitFor(t, "a completed periodic job in river_job", func() bool {
+	waitFor(t, "a completed "+prefix+"* job in river_job", func() bool {
 		var n int
 		if err := db.QueryRowContext(t.Context(),
-			"SELECT count(*) FROM river_job WHERE id > $1 AND kind LIKE 'ticker.%' AND state = 'completed'", after,
+			"SELECT count(*) FROM river_job WHERE id > $1 AND starts_with(kind, $2) AND state = 'completed'", after, prefix,
 		).Scan(&n); err != nil {
 			t.Fatalf("read river_job: %v", err)
 		}
