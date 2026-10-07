@@ -454,6 +454,12 @@ func (s *adminServer) GetTenantConfig(
 	return connect.NewResponse(response), nil
 }
 
+// tenantSiteCopyRevalidateTags names the tenant read that carries the
+// copyright notice, the site tagline, and the site description.
+func tenantSiteCopyRevalidateTags(tenantID string) []string {
+	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
+}
+
 func (s *adminServer) UpdateTenantConfig(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest],
@@ -472,26 +478,33 @@ func (s *adminServer) UpdateTenantConfig(
 	siteDescription := sql.NullString{String: req.Msg.SiteDescription, Valid: strings.TrimSpace(req.Msg.SiteDescription) != ""}
 	siteTagline := sql.NullString{String: req.Msg.SiteTagline, Valid: strings.TrimSpace(req.Msg.SiteTagline) != ""}
 
-	config, err := s.queriesFor(ctx).UpdateTenantConfig(ctx, dbmodels.UpdateTenantConfigParams{
-		TenantID:        tenant.ID,
-		CopyrightText:   copyrightText,
-		SiteDescription: siteDescription,
-		SiteTagline:     siteTagline,
-	})
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, s.internalDBError(ctx, "failed to update tenant config", err, "tenant_id", tenant.ID.String())
-		}
-
-		config, err = s.queriesFor(ctx).CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{
+	var config dbmodels.TenantConfig
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		row, err := s.queriesFor(txCtx).UpdateTenantConfig(txCtx, dbmodels.UpdateTenantConfigParams{
 			TenantID:        tenant.ID,
 			CopyrightText:   copyrightText,
 			SiteDescription: siteDescription,
 			SiteTagline:     siteTagline,
 		})
 		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to create tenant config", err, "tenant_id", tenant.ID.String())
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, s.internalDBError(ctx, "failed to update tenant config", err, "tenant_id", tenant.ID.String())
+			}
+
+			row, err = s.queriesFor(txCtx).CreateTenantConfig(txCtx, dbmodels.CreateTenantConfigParams{
+				TenantID:        tenant.ID,
+				CopyrightText:   copyrightText,
+				SiteDescription: siteDescription,
+				SiteTagline:     siteTagline,
+			})
+			if err != nil {
+				return nil, s.internalDBError(ctx, "failed to create tenant config", err, "tenant_id", tenant.ID.String())
+			}
 		}
+		config = row
+		return tenantSiteCopyRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	response := &publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse{}
