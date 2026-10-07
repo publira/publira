@@ -62,6 +62,7 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 - `PUBLIRA_WEB_SERVICE_TOKEN` (optional, the bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. Unset, the admin and platform APIs accept operator sessions alone. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
+- `PUBLIRA_METRICS_ENABLED` (optional, disabled by default. Enables OpenTelemetry metrics, the audit log's among them; see [Metrics](../../README.md#metrics-opentelemetry))
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
 The tenant-admin MFA requirement, the reader write limits, the step-up password limit, the mail limits, and the disposable email domain list are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService` or `publiractl policy`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
@@ -292,6 +293,7 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme the links in the reader and tenant console mail are built on, joined to the tenant's `domain` or `admin_domain`. `https` when unset. A value that is neither `http` nor `https` leaves the mail pending until the worker is restarted with a valid one)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password, the object store's access key, the search engine's password, the Web Push VAPID private key, and each tenant's FCM service account key. Set the same values as the platform API. Push takes no variable of its own: mobile push is sent with each tenant's stored FCM credentials, see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging), and Web Push with the platform's stored VAPID key pair once an operator has saved a subject, see [Web Push](../../README.md#web-push))
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
+- `PUBLIRA_METRICS_ENABLED` (optional, disabled by default. Enables the OpenTelemetry metrics below)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
@@ -302,15 +304,16 @@ River's schema (`river_job` and the rest) is applied with `rivermigrate` at star
 
 OpenTelemetry reports `service.name` as `publira-worker` for the process, and a name of its own for the span each job's run hangs off: `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for a periodic run, and `publira-<subcommand>` for a maintenance run — `publira-aggregate-content-stats` and the rest. They are the names those jobs report when `publiractl job` runs them by hand, so a trace UI filtering on one keeps finding the same work.
 
-The structured logs (slog) of the Outbox drain carry `event_id` / `event_type` / `idempotency_key` / `attempts`. Those of a maintenance run carry `job_kind` / `job_id` / `attempt`, and its span carries `river.job.id` / `river.job.attempt` and an error status when the pass fails, so a failure found in either leads to its `river_job` row: the `errors` column there holds every failed attempt's error, naming the tenant and the day it stopped on. The OpenTelemetry counters are:
+The structured logs (slog) of the Outbox drain carry `event_id` / `event_type` / `idempotency_key` / `attempts`. Those of a maintenance run carry `job_kind` / `job_id` / `attempt`, and its span carries `river.job.id` / `river.job.attempt` and an error status when the pass fails, so a failure found in either leads to its `river_job` row: the `errors` column there holds every failed attempt's error, naming the tenant and the day it stopped on. The OpenTelemetry instruments, each carrying `outbox.event_type`, are:
 
-- `publira.outbox.events.claimed`
-- `publira.outbox.events.done`
-- `publira.outbox.events.retry`
-- `publira.outbox.events.dead`
+- `publira.outbox.events.claimed` (counter: rows claimed from `pending`)
+- `publira.outbox.events.done` (counter)
+- `publira.outbox.events.retry` (counter: rows returned to `pending` after a failure)
+- `publira.outbox.events.resumed` (counter: rows returned to `pending` by a handler that made progress and has more to do)
+- `publira.outbox.events.dead` (counter)
 - `publira.outbox.handler.duration` (histogram, seconds)
 
-They are no-ops when there is no MeterProvider.
+They are exported once `PUBLIRA_METRICS_ENABLED` is set; the exporter variables are in [server/README.md](../../README.md#metrics-opentelemetry).
 
 ### Processing flow
 

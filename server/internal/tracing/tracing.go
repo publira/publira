@@ -175,7 +175,7 @@ func Setup(ctx context.Context, serviceNames ...string) (func(context.Context) e
 	providers := make(map[string]trace.TracerProvider, len(serviceNames))
 	shutdowns := make([]func(context.Context) error, 0, len(serviceNames))
 	for _, serviceName := range serviceNames {
-		res, resErr := newResource(ctx, serviceName)
+		res, resErr := NewResource(ctx, serviceName)
 		if resErr != nil {
 			// Nothing is installed yet, so the exporter it was going to feed
 			// has no other way back.
@@ -196,11 +196,7 @@ func Setup(ctx context.Context, serviceNames ...string) (func(context.Context) e
 		shutdowns = append(shutdowns, provider.Shutdown)
 	}
 
-	// The default error handler writes to the standard logger, which
-	// bypasses the structured logging the servers set up.
-	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		slog.Warn("opentelemetry error", "error", err)
-	}))
+	InstallErrorHandler()
 	otel.SetTracerProvider(providers[serviceNames[0]])
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
@@ -218,7 +214,21 @@ func Setup(ctx context.Context, serviceNames ...string) (func(context.Context) e
 	}, nil
 }
 
-func newResource(ctx context.Context, serviceName string) (*resource.Resource, error) {
+// InstallErrorHandler sends the errors the OpenTelemetry SDK reports — an
+// export the collector refused, a batch dropped on a full queue — to the
+// structured log. The default handler writes to the standard logger, which
+// bypasses the structured logging the servers set up.
+func InstallErrorHandler() {
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		slog.Warn("opentelemetry error", "error", err)
+	}))
+}
+
+// NewResource describes the process a signal comes from: serviceName, the
+// build's version, and the deployment tier, with OTEL_SERVICE_NAME and
+// OTEL_RESOURCE_ATTRIBUTES taking precedence. Traces and metrics share it,
+// so a dashboard can follow a metric to the traces of the same service.
+func NewResource(ctx context.Context, serviceName string) (*resource.Resource, error) {
 	return resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),

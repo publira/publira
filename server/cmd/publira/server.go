@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/metrics"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/redisurl"
@@ -64,6 +65,12 @@ func runServer() int {
 	if err != nil {
 		// Telemetry is not worth refusing to serve traffic over.
 		logger.Error("failed to initialize tracing", "error", err)
+	}
+	// Metrics describe the process rather than one of its namespaces, so
+	// they report under the process default alone.
+	shutdownMetrics, err := metrics.Setup(context.Background(), publicapi.ServiceName)
+	if err != nil {
+		logger.Error("failed to initialize metrics", "error", err)
 	}
 
 	cfg, err := config.New()
@@ -194,7 +201,7 @@ func runServer() int {
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(edgeAddr, edgeHandler(publicAPI, imageHandler, pools)),
 		httpserver.New(internalAddr, internalHandler(publicAPI, adminAPI, platformAPI, pools)),
-	}, adminRecorder.Shutdown, platformRecorder.Shutdown, shutdownTracing, func(context.Context) error {
+	}, adminRecorder.Shutdown, platformRecorder.Shutdown, shutdownTracing, shutdownMetrics, func(context.Context) error {
 		return errors.Join(imageHandler.Close(), pools.close())
 	}); err != nil {
 		logger.Error("server failed", "error", err)
