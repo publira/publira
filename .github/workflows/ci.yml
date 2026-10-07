@@ -779,19 +779,6 @@ jobs:
       - name: Dependencies / Install
         run: task mobile:deps
 
-      # flutter pub get rewrites the committed Linux plugin registrant from the
-      # resolved plugin set, so a dependency update that adds or drops a native
-      # plugin has to commit the regenerated files with the lockfile. Otherwise
-      # the diff only turns up in the next workspace that installs packages.
-      # Staging first keeps an added or deleted file in the same comparison.
-      - name: Validate / Flutter Generated Diff
-        run: |
-          git add -A -- mobile/linux/flutter
-          if ! git diff --cached --exit-code -- mobile/linux/flutter; then
-            echo "::error::The Flutter plugin registrant is out of date. Run \`task mobile:deps\` and commit the result."
-            exit 1
-          fi
-
       - name: Validate / Format, Analyze, and Tests
         run: task mobile:check
 

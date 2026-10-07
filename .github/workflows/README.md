@@ -132,7 +132,7 @@ Implementation:
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
-| `Test / Mobile` | `task mobile:deps`, a diff of the Flutter plugin registrant it regenerates under `mobile/linux/flutter/` against the committed one, then `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile Android` | A production APK from `mobile/config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E Build` | `task server:build` once, uploaded as `mobile-e2e-build` for `Test / Mobile E2E (live)`. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
 | `Test / Mobile E2E (<group>)` | `task mobile:test-integration` on an Android emulator of its own: `device` runs every group the app answers on the device and saves the Gradle cache every Android job restores, and `live`, after `Test / Mobile E2E Build`, runs the live group against the public API, the worker, and the seed, on a stack of only the containers it reads. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
@@ -265,7 +265,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |
-   | `Test / Mobile` | `task mobile:deps` / `git status mobile/linux/flutter`, then `task mobile:check` |
+   | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile Android` | `task mobile:build -- mobile/config/app.example.yaml apk` with an upload key in `PUBLIRA_ANDROID_KEYSTORE` and the variables beside it |
    | `Test / Mobile E2E Build` | `task server:build` |
    | `Test / Mobile E2E (device)` | `PUBLIRA_LIVE_API=false task mobile:test-integration`, with an emulator booted and no stack |
