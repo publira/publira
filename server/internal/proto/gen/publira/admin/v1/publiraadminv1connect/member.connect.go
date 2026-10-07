@@ -36,6 +36,9 @@ const (
 	// AdminTenantMemberServiceListTenantMembersProcedure is the fully-qualified name of the
 	// AdminTenantMemberService's ListTenantMembers RPC.
 	AdminTenantMemberServiceListTenantMembersProcedure = "/publira.admin.v1.AdminTenantMemberService/ListTenantMembers"
+	// AdminTenantMemberServiceAddTenantMemberProcedure is the fully-qualified name of the
+	// AdminTenantMemberService's AddTenantMember RPC.
+	AdminTenantMemberServiceAddTenantMemberProcedure = "/publira.admin.v1.AdminTenantMemberService/AddTenantMember"
 	// AdminTenantMemberServiceUpdateTenantMemberRoleProcedure is the fully-qualified name of the
 	// AdminTenantMemberService's UpdateTenantMemberRole RPC.
 	AdminTenantMemberServiceUpdateTenantMemberRoleProcedure = "/publira.admin.v1.AdminTenantMemberService/UpdateTenantMemberRole"
@@ -61,6 +64,8 @@ const (
 type AdminTenantMemberServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
+	// Minimum role: tenant_admin.
+	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
 	// Minimum role: tenant_admin.
@@ -90,6 +95,12 @@ func NewAdminTenantMemberServiceClient(httpClient connect.HTTPClient, baseURL st
 			httpClient,
 			baseURL+AdminTenantMemberServiceListTenantMembersProcedure,
 			connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantMembers")),
+			connect.WithClientOptions(opts...),
+		),
+		addTenantMember: connect.NewClient[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse](
+			httpClient,
+			baseURL+AdminTenantMemberServiceAddTenantMemberProcedure,
+			connect.WithSchema(adminTenantMemberServiceMethods.ByName("AddTenantMember")),
 			connect.WithClientOptions(opts...),
 		),
 		updateTenantMemberRole: connect.NewClient[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse](
@@ -134,6 +145,7 @@ func NewAdminTenantMemberServiceClient(httpClient connect.HTTPClient, baseURL st
 // adminTenantMemberServiceClient implements AdminTenantMemberServiceClient.
 type adminTenantMemberServiceClient struct {
 	listTenantMembers           *connect.Client[v1.ListTenantMembersRequest, v1.ListTenantMembersResponse]
+	addTenantMember             *connect.Client[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse]
 	updateTenantMemberRole      *connect.Client[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse]
 	removeTenantMember          *connect.Client[v1.RemoveTenantMemberRequest, v1.RemoveTenantMemberResponse]
 	listTenantAdminInvitations  *connect.Client[v1.ListTenantAdminInvitationsRequest, v1.ListTenantAdminInvitationsResponse]
@@ -145,6 +157,11 @@ type adminTenantMemberServiceClient struct {
 // ListTenantMembers calls publira.admin.v1.AdminTenantMemberService.ListTenantMembers.
 func (c *adminTenantMemberServiceClient) ListTenantMembers(ctx context.Context, req *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
 	return c.listTenantMembers.CallUnary(ctx, req)
+}
+
+// AddTenantMember calls publira.admin.v1.AdminTenantMemberService.AddTenantMember.
+func (c *adminTenantMemberServiceClient) AddTenantMember(ctx context.Context, req *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
+	return c.addTenantMember.CallUnary(ctx, req)
 }
 
 // UpdateTenantMemberRole calls publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole.
@@ -187,6 +204,8 @@ type AdminTenantMemberServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
 	// Minimum role: tenant_admin.
+	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
+	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
 	// Minimum role: tenant_admin.
 	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
@@ -211,6 +230,12 @@ func NewAdminTenantMemberServiceHandler(svc AdminTenantMemberServiceHandler, opt
 		AdminTenantMemberServiceListTenantMembersProcedure,
 		svc.ListTenantMembers,
 		connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantMembers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminTenantMemberServiceAddTenantMemberHandler := connect.NewUnaryHandler(
+		AdminTenantMemberServiceAddTenantMemberProcedure,
+		svc.AddTenantMember,
+		connect.WithSchema(adminTenantMemberServiceMethods.ByName("AddTenantMember")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminTenantMemberServiceUpdateTenantMemberRoleHandler := connect.NewUnaryHandler(
@@ -253,6 +278,8 @@ func NewAdminTenantMemberServiceHandler(svc AdminTenantMemberServiceHandler, opt
 		switch r.URL.Path {
 		case AdminTenantMemberServiceListTenantMembersProcedure:
 			adminTenantMemberServiceListTenantMembersHandler.ServeHTTP(w, r)
+		case AdminTenantMemberServiceAddTenantMemberProcedure:
+			adminTenantMemberServiceAddTenantMemberHandler.ServeHTTP(w, r)
 		case AdminTenantMemberServiceUpdateTenantMemberRoleProcedure:
 			adminTenantMemberServiceUpdateTenantMemberRoleHandler.ServeHTTP(w, r)
 		case AdminTenantMemberServiceRemoveTenantMemberProcedure:
@@ -276,6 +303,10 @@ type UnimplementedAdminTenantMemberServiceHandler struct{}
 
 func (UnimplementedAdminTenantMemberServiceHandler) ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.ListTenantMembers is not implemented"))
+}
+
+func (UnimplementedAdminTenantMemberServiceHandler) AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.AddTenantMember is not implemented"))
 }
 
 func (UnimplementedAdminTenantMemberServiceHandler) UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error) {

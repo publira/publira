@@ -68,6 +68,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		Status:        adminInvitationStatus(invitation, time.Now()),
 		ExpiresAt:     invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AccountExists: userErr == nil,
+		Role:          invitation.Role,
 	}), nil
 }
 
@@ -120,6 +121,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	})
 	accountCreated := false
 	userID := user.ID
+	role := invitation.Role
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		name := strings.TrimSpace(req.Msg.Name)
@@ -132,7 +134,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 			Email:    invitation.Email,
 			Name:     name,
 			Password: password,
-			Role:     auth.RoleTenantAdmin,
+			Role:     role,
 		})
 		if err != nil {
 			// Only a sign-up with the same address can still take it here; a
@@ -152,8 +154,16 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 				return nil, s.internalDBError(ctx, "failed to activate invitation user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 			}
 		}
-		if err := tenantmembers.ReplaceRole(ctx, txq, tenant.ID, user.ID, auth.RoleTenantAdmin); err != nil {
-			return nil, s.internalDBError(ctx, "failed to grant invitation tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		// The account may have been given a role since it was invited, and
+		// accepting never lowers it: an invitation as an Editor taking the role
+		// from an administrator could leave the tenant with none.
+		held, err := txq.ListTenantUserRoles(ctx, user.ID)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to list invitation user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		}
+		role = auth.ResolveTenantRole(append(held, invitation.Role))
+		if err := tenantmembers.ReplaceRole(ctx, txq, tenant.ID, user.ID, role); err != nil {
+			return nil, s.internalDBError(ctx, "failed to grant invitation role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 	}
 
@@ -170,11 +180,12 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: userID,
-		ActorRole:   auth.RoleTenantAdmin,
+		ActorRole:   role,
 		Action:      "tenant_admin_invite_accepted",
 		TargetType:  "tenant_admin_invitation",
 		TargetID:    invitation.Email,
 		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      roleGrantedReason(role),
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 

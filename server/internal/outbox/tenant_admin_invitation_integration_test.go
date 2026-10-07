@@ -64,7 +64,7 @@ func TestWorkerRetriesTenantAdminInvitationEmail(t *testing.T) {
 	token := "invite-token"
 	invitation, err := queries.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 		ID: uuid.Must(uuid.NewV7()), TenantID: tenant.ID, Email: "admin@example.com",
-		TokenHash: auth.HashToken(token), ExpiresAt: time.Now().Add(time.Hour),
+		TokenHash: auth.HashToken(token), ExpiresAt: time.Now().Add(time.Hour), Role: auth.RoleTenantAdmin,
 	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
@@ -193,6 +193,12 @@ func seedPlatformSMTPConfig(t *testing.T, pg *testutil.PostgresEnv, encryptor em
 // invitation itself and the outbox event carrying its token.
 func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil.Tenant, idempotencyKey string) dbmodels.OutboxEvent {
 	t.Helper()
+	return seedInvitationEventAs(t, pg, tenant, idempotencyKey, auth.RoleTenantAdmin)
+}
+
+// seedInvitationEventAs is [seedInvitationEvent] for an invitation granting role.
+func seedInvitationEventAs(t *testing.T, pg *testutil.PostgresEnv, tenant testutil.Tenant, idempotencyKey, role string) dbmodels.OutboxEvent {
+	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -201,7 +207,7 @@ func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil
 	token := "invite-token"
 	invitation, err := queries.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 		ID: uuid.Must(uuid.NewV7()), TenantID: tenant.ID, Email: "admin@example.com",
-		TokenHash: auth.HashToken(token), ExpiresAt: time.Now().Add(time.Hour),
+		TokenHash: auth.HashToken(token), ExpiresAt: time.Now().Add(time.Hour), Role: role,
 	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
@@ -219,6 +225,28 @@ func seedInvitationEvent(t *testing.T, pg *testutil.PostgresEnv, tenant testutil
 		t.Fatalf("InsertOutboxEvent: %v", err)
 	}
 	return event
+}
+
+// The mail is told the role the invitation grants, for its copy to name.
+func TestTenantAdminInvitationEmailCarriesTheRoleItGrants(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "OUTBOXINV010", "outbox-role.example.com", "Outbox Role Tenant")
+	setTenantDefaultLocale(t, pg, tenant.ID, "en")
+	encryptor := newInvitationEncryptor(t)
+	seedPlatformSMTPConfig(t, pg, encryptor)
+	event := seedInvitationEventAs(t, pg, tenant, "tenant-admin-invitation-role", auth.RoleTenantEditor)
+
+	renderer := &recordingInvitationRenderer{}
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: &recordingInvitationMailer{}, Renderer: renderer,
+	})
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 || renderer.requests[0].Data["role"] != auth.RoleTenantEditor {
+		t.Fatalf("render requests = %+v, want one naming %s", renderer.requests, auth.RoleTenantEditor)
+	}
 }
 
 // setTenantDefaultLocale writes a value the API would refuse, which is the only

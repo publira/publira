@@ -53,7 +53,15 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 		ExpiresAt:  invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AcceptedAt: acceptedAt,
 		CanceledAt: canceledAt,
+		Role:       invitation.Role,
 	}
+}
+
+// roleGrantedReason is the reason an audit entry that grants a console role
+// records, naming the role the way [auditlog.TenantEntry.Reason] keeps the
+// detail of a successful change.
+func roleGrantedReason(role string) string {
+	return "role=" + role
 }
 
 // tenantMembersError maps what tenantmembers refuses to this API's codes;
@@ -66,12 +74,15 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 	case errors.Is(err, tenantmembers.ErrLastAdmin):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonLastTenantAdmin)
 	case errors.Is(err, tenantmembers.ErrUserPublicIDRequired),
+		errors.Is(err, tenantmembers.ErrUserOrEmailRequired),
 		errors.Is(err, tenantmembers.ErrInvalidRole),
 		errors.Is(err, tenantmembers.ErrEmailRequired),
 		errors.Is(err, tenantmembers.ErrInvalidEmail):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, tenantmembers.ErrMemberNotFound), errors.Is(err, tenantmembers.ErrInvitationNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, tenantmembers.ErrAlreadyMember), errors.Is(err, tenantmembers.ErrRoleAlreadyHeld):
+		return connect.NewError(connect.CodeAlreadyExists, err)
 	case errors.Is(err, tenantmembers.ErrInvitationAccepted):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
@@ -81,7 +92,7 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 	}
 }
 
-func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID string) {
+func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID, reason string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: session.User.ID,
@@ -90,6 +101,7 @@ func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.
 		TargetType:  targetType,
 		TargetID:    targetID,
 		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      reason,
 		ClientIP:    auditlog.ClientIPFromHeader(header),
 	})
 }
@@ -196,9 +208,51 @@ func (s *adminServer) UpdateTenantMemberRole(
 		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_role_updated", "user", member.PublicID)
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_role_updated", "user", member.PublicID, roleGrantedReason(member.Role))
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantMemberRoleResponse{Member: tenantMemberToProto(member)}), nil
+}
+
+func (s *adminServer) AddTenantMember(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AddTenantMemberRequest],
+) (*connect.Response[publiraadminv1.AddTenantMemberResponse], error) {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	// The console names the user by address alone, so an empty one is the
+	// address missing rather than tenantmembers' user-or-address refusal.
+	if strings.TrimSpace(req.Msg.Email) == "" {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, tenantmembers.ErrEmailRequired, tenantmembers.FieldEmail)
+	}
+	params := tenantmembers.AddParams{TenantID: tenant.ID, Email: req.Msg.Email, Role: req.Msg.Role}
+	if err := params.Validate(); err != nil {
+		return nil, s.tenantMembersError(ctx, "invalid add tenant member request", err, "tenant_id", tenant.ID.String())
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin add tenant member transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	member, err := tenantmembers.Add(ctx, tx, params)
+	if err != nil {
+		return nil, s.tenantMembersError(ctx, "failed to add tenant member", err, "tenant_id", tenant.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit add tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
+	}
+
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_added", "user", member.PublicID, roleGrantedReason(member.Role))
+
+	return connect.NewResponse(&publiraadminv1.AddTenantMemberResponse{Member: tenantMemberToProto(member)}), nil
 }
 
 func (s *adminServer) RemoveTenantMember(
@@ -237,7 +291,7 @@ func (s *adminServer) RemoveTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit remove tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_removed", "user", member.PublicID)
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_removed", "user", member.PublicID, "")
 
 	return connect.NewResponse(&publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}), nil
 }
@@ -328,6 +382,7 @@ func (s *adminServer) CreateTenantAdminInvitation(
 	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{
 		TenantID:  tenant.ID,
 		Email:     req.Msg.Email,
+		Role:      req.Msg.Role,
 		AllowMail: s.allowInvitationMail(ctx, req, tenant),
 	})
 	if err != nil {
@@ -337,7 +392,7 @@ func (s *adminServer) CreateTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit tenant admin invitation transaction", err, "tenant_id", tenant.ID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email)
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email, roleGrantedReason(invited.Role))
 
 	if invited.RoleGrantedImmediately {
 		return connect.NewResponse(&publiraadminv1.CreateTenantAdminInvitationResponse{RoleGrantedImmediately: true}), nil
@@ -382,7 +437,7 @@ func (s *adminServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email)
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email, roleGrantedReason(updated.Role))
 
 	return connect.NewResponse(&publiraadminv1.ResendTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
@@ -411,7 +466,7 @@ func (s *adminServer) CancelTenantAdminInvitation(
 		return nil, s.tenantMembersError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email)
+	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email, "")
 
 	return connect.NewResponse(&publiraadminv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),

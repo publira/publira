@@ -197,6 +197,9 @@ message AdminAuthServiceGetTenantAdminInvitationStateResponse {
   string status = 2;
   string expires_at = 3;
   bool account_exists = 4;
+  // The role accepting the invitation grants:
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 5;
 }
 
 message AdminAuthServiceAcceptTenantAdminInvitationRequest {

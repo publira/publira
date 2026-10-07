@@ -2606,6 +2606,8 @@ type Querier interface {
 	// passed, so it marks that drop done here; an instant still ahead is left for
 	// the apply-series-publications batch to drop once it passes.
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
+	// A resend passes the role the invitation already grants; inviting the same
+	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)

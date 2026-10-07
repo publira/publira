@@ -1185,14 +1185,17 @@ func (x *RemoveTenantMemberResponse) GetUserId() string {
 }
 
 type TenantAdminInvitation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	ExpiresAt     string                 `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	AcceptedAt    string                 `protobuf:"bytes,6,opt,name=accepted_at,json=acceptedAt,proto3" json:"accepted_at,omitempty"`
-	CanceledAt    string                 `protobuf:"bytes,7,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email      string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Status     string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt  string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt  string                 `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	AcceptedAt string                 `protobuf:"bytes,6,opt,name=accepted_at,json=acceptedAt,proto3" json:"accepted_at,omitempty"`
+	CanceledAt string                 `protobuf:"bytes,7,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	// The role accepting the invitation grants:
+	// tenant_admin | tenant_editor | tenant_auditor
+	Role          string `protobuf:"bytes,8,opt,name=role,proto3" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1272,6 +1275,13 @@ func (x *TenantAdminInvitation) GetAcceptedAt() string {
 func (x *TenantAdminInvitation) GetCanceledAt() string {
 	if x != nil {
 		return x.CanceledAt
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetRole() string {
+	if x != nil {
+		return x.Role
 	}
 	return ""
 }
@@ -1890,7 +1900,7 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\auser_id\x18\x04 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x10tenant_public_idR\x0euser_public_id\"[\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
 	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xd5\x01\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xe9\x01\n" +
 	"\x15TenantAdminInvitation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x16\n" +
@@ -1902,7 +1912,8 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\vaccepted_at\x18\x06 \x01(\tR\n" +
 	"acceptedAt\x12\x1f\n" +
 	"\vcanceled_at\x18\a \x01(\tR\n" +
-	"canceledAt\"\x92\x01\n" +
+	"canceledAt\x12\x12\n" +
+	"\x04role\x18\b \x01(\tR\x04role\"\x92\x01\n" +
 	"!ListTenantAdminInvitationsRequest\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +

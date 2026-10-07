@@ -170,6 +170,9 @@ message TenantAdminInvitation {
   string expires_at = 5;
   string accepted_at = 6;
   string canceled_at = 7;
+  // The role accepting the invitation grants:
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

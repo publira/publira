@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
@@ -187,7 +188,7 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	// users yet: every initial administrator is invited.
 	created := Created{Tenant: tenant, Invitations: make([]dbmodels.TenantAdminInvitation, 0, len(c.initialAdminEmails))}
 	for _, email := range c.initialAdminEmails {
-		invitation, err := tenantmembers.IssueInvitation(ctx, q, tenant.ID, email)
+		invitation, err := tenantmembers.IssueInvitation(ctx, q, tenant.ID, email, auth.RoleTenantAdmin)
 		if err != nil {
 			return Created{}, fmt.Errorf("invite tenant admin: %w", err)
 		}

@@ -19,7 +19,7 @@ SET canceled_at = COALESCE(canceled_at, NOW()),
     updated_at = NOW()
 WHERE tenant_id = $1
     AND id = $2
-RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 `
 
 type CancelTenantAdminInvitationParams struct {
@@ -40,6 +40,7 @@ func (q *Queries) CancelTenantAdminInvitation(ctx context.Context, arg CancelTen
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -50,10 +51,11 @@ INSERT INTO tenant_admin_invitations (
         tenant_id,
         email,
         token_hash,
-        expires_at
+        expires_at,
+        role
     )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 `
 
 type CreateTenantAdminInvitationParams struct {
@@ -62,6 +64,7 @@ type CreateTenantAdminInvitationParams struct {
 	Email     string    `json:"email"`
 	TokenHash string    `json:"token_hash"`
 	ExpiresAt time.Time `json:"expires_at"`
+	Role      string    `json:"role"`
 }
 
 func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error) {
@@ -71,6 +74,7 @@ func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTen
 		arg.Email,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.Role,
 	)
 	var i TenantAdminInvitation
 	err := row.Scan(
@@ -83,12 +87,13 @@ func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTen
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const GetTenantAdminInvitationByHashForTenant = `-- name: GetTenantAdminInvitationByHashForTenant :one
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND token_hash = $2
@@ -113,12 +118,13 @@ func (q *Queries) GetTenantAdminInvitationByHashForTenant(ctx context.Context, a
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const GetTenantAdminInvitationByIDForTenant = `-- name: GetTenantAdminInvitationByIDForTenant :one
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND id = $2
@@ -143,12 +149,13 @@ func (q *Queries) GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const GetTenantAdminInvitationByTenantAndEmail = `-- name: GetTenantAdminInvitationByTenantAndEmail :one
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND email = $2
@@ -173,12 +180,13 @@ func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, 
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const ListTenantAdminInvitationsAsc = `-- name: ListTenantAdminInvitationsAsc :many
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND (
@@ -233,6 +241,7 @@ func (q *Queries) ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTen
 			&i.CanceledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +257,7 @@ func (q *Queries) ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTen
 }
 
 const ListTenantAdminInvitationsDesc = `-- name: ListTenantAdminInvitationsDesc :many
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND (
@@ -307,6 +316,7 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 			&i.CanceledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -322,7 +332,7 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 }
 
 const LockTenantAdminInvitationByHashForTenant = `-- name: LockTenantAdminInvitationByHashForTenant :one
-SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
     AND token_hash = $2
@@ -348,6 +358,7 @@ func (q *Queries) LockTenantAdminInvitationByHashForTenant(ctx context.Context, 
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -358,7 +369,7 @@ SET accepted_at = COALESCE(accepted_at, NOW()),
     updated_at = NOW()
 WHERE tenant_id = $1
     AND id = $2
-RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 `
 
 type MarkTenantAdminInvitationAcceptedParams struct {
@@ -379,6 +390,7 @@ func (q *Queries) MarkTenantAdminInvitationAccepted(ctx context.Context, arg Mar
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -387,11 +399,12 @@ const UpdateTenantAdminInvitationForResend = `-- name: UpdateTenantAdminInvitati
 UPDATE tenant_admin_invitations
 SET token_hash = $3,
     expires_at = $4,
+    role = $5,
     canceled_at = NULL,
     updated_at = NOW()
 WHERE tenant_id = $1
     AND email = $2
-RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at, role
 `
 
 type UpdateTenantAdminInvitationForResendParams struct {
@@ -399,14 +412,18 @@ type UpdateTenantAdminInvitationForResendParams struct {
 	Email     string    `json:"email"`
 	TokenHash string    `json:"token_hash"`
 	ExpiresAt time.Time `json:"expires_at"`
+	Role      string    `json:"role"`
 }
 
+// A resend passes the role the invitation already grants; inviting the same
+// address again passes the role that invitation asks for.
 func (q *Queries) UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error) {
 	row := q.db.QueryRowContext(ctx, UpdateTenantAdminInvitationForResend,
 		arg.TenantID,
 		arg.Email,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.Role,
 	)
 	var i TenantAdminInvitation
 	err := row.Scan(
@@ -419,6 +436,7 @@ func (q *Queries) UpdateTenantAdminInvitationForResend(ctx context.Context, arg 
 		&i.CanceledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }

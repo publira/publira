@@ -4,9 +4,10 @@ INSERT INTO tenant_admin_invitations (
         tenant_id,
         email,
         token_hash,
-        expires_at
+        expires_at,
+        role
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetTenantAdminInvitationByTenantAndEmail :one
@@ -38,10 +39,13 @@ WHERE tenant_id = $1
 LIMIT 1
 FOR UPDATE;
 
+-- A resend passes the role the invitation already grants; inviting the same
+-- address again passes the role that invitation asks for.
 -- name: UpdateTenantAdminInvitationForResend :one
 UPDATE tenant_admin_invitations
 SET token_hash = $3,
     expires_at = $4,
+    role = $5,
     canceled_at = NULL,
     updated_at = NOW()
 WHERE tenant_id = $1

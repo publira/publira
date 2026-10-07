@@ -208,7 +208,7 @@ func tenantAdminInvitationRequest(ctx context.Context, queries *dbmodels.Queries
 	return emailrenderer.Request{
 		Template: "tenant_admin_invitation",
 		Locale:   tenantLocale,
-		Data:     map[string]any{"expires_at": invitation.ExpiresAt.UTC().Format(time.RFC3339Nano), "invite_url": inviteURL, "tenant_name": tenantName},
+		Data:     map[string]any{"expires_at": invitation.ExpiresAt.UTC().Format(time.RFC3339Nano), "invite_url": inviteURL, "role": invitation.Role, "tenant_name": tenantName},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 	}, nil
 }

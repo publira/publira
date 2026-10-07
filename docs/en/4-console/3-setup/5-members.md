@@ -33,7 +33,7 @@ An invitation is mailed by the platform's mail server unless the tenant sends th
 
 ## Adding an Editor or an Auditor
 
-The console cannot yet give an Editor or an Auditor role to someone who holds no role ([#3794](https://github.com/publira/publira/issues/3794), [#3795](https://github.com/publira/publira/issues/3795)). Until it can, choose one of these:
+The console cannot yet give an Editor or an Auditor role to someone who holds no role ([#3795](https://github.com/publira/publira/issues/3795)). Until it can, choose one of these:
 
 - **Ask the operator.** The Platform Console and `publiractl` can give any role to an account that already exists on the site, so the person signs up on the site first and the operator then gives the account its role, as [Adding an existing user](../../3-operations/3-tenant-staff.md#adding-an-existing-user) describes. The account never holds more than the role it needs.
 - **Invite, then change the role.** Invite the person as a Tenant admin, and once they hold the role, change it as described below. For as long as they are a Tenant admin, they can do everything a Tenant admin can, so do this only for someone you would trust with it, and change the role as soon as they appear in **Members**.
@@ -56,4 +56,4 @@ If the last Tenant admin leaves the publisher or loses access to their account a
 
 ## What is recorded
 
-Every invitation, resend, cancellation, acceptance, role change, and removal is recorded in the [audit log](./7-audit-log.md), with the Tenant admin who made it.
+Every invitation, resend, cancellation, acceptance, role change, and removal is recorded in the [audit log](./7-audit-log.md), with the Tenant admin who made it. An invitation, its resend and acceptance, and a role change also record the role they grant.

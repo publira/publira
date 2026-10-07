@@ -1715,6 +1715,9 @@ type AdminAuthServiceGetTenantAdminInvitationStateResponse struct {
 	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	ExpiresAt     string                 `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	AccountExists bool                   `protobuf:"varint,4,opt,name=account_exists,json=accountExists,proto3" json:"account_exists,omitempty"`
+	// The role accepting the invitation grants:
+	// tenant_admin | tenant_editor | tenant_auditor
+	Role          string `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1775,6 +1778,13 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) GetAccountExists
 		return x.AccountExists
 	}
 	return false
+}
+
+func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
 }
 
 type AdminAuthServiceAcceptTenantAdminInvitationRequest struct {
@@ -2349,13 +2359,14 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\x85\x01\n" +
 	"4AdminAuthServiceGetTenantAdminInvitationStateRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\xab\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\xbf\x01\n" +
 	"5AdminAuthServiceGetTenantAdminInvitationStateResponse\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x03 \x01(\tR\texpiresAt\x12%\n" +
-	"\x0eaccount_exists\x18\x04 \x01(\bR\raccountExists\"\xb3\x01\n" +
+	"\x0eaccount_exists\x18\x04 \x01(\bR\raccountExists\x12\x12\n" +
+	"\x04role\x18\x05 \x01(\tR\x04role\"\xb3\x01\n" +
 	"2AdminAuthServiceAcceptTenantAdminInvitationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12\x12\n" +

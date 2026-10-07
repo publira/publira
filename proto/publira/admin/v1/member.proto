@@ -69,7 +69,7 @@ message RemoveTenantMemberResponse {
   string user_id = 2;
 }
 
-// An invitation to become a tenant_admin of the calling tenant.
+// An invitation to hold a console role in the calling tenant.
 message TenantAdminInvitation {
   string id = 1;
   string email = 2;
@@ -83,6 +83,9 @@ message TenantAdminInvitation {
   string accepted_at = 6;
   // RFC3339; empty unless canceled.
   string canceled_at = 7;
+  // The role accepting the invitation grants:
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -102,17 +105,38 @@ message ListTenantAdminInvitationsResponse {
   string next_token = 3;
 }
 
+// An address that already belongs to a user of the tenant is given the role at
+// once. For tenant_admin any role the user held is replaced; any other role is
+// refused with ALREADY_EXISTS when the user already holds one, since changing
+// it is UpdateTenantMemberRole's. Inviting an address that has a pending
+// invitation sends it again, granting the role this request names.
 message CreateTenantAdminInvitationRequest {
   publira.types.v1.TenantContext tenant = 1;
   string email = 2;
+  // tenant_admin | tenant_editor | tenant_auditor. Empty is tenant_admin.
+  string role = 3;
 }
 
 message CreateTenantAdminInvitationResponse {
   // Unset when role_granted_immediately is true.
   TenantAdminInvitation invitation = 1;
-  // True when the address already belongs to a user of the tenant, who is made
-  // a tenant_admin on the spot instead of being mailed an invitation.
+  // True when the address already belongs to a user of the tenant, who is given
+  // the role on the spot instead of being mailed an invitation.
   bool role_granted_immediately = 2;
+}
+
+// Gives a user the tenant already has a console role. An address with no
+// account in the tenant is refused with NOT_FOUND, and one whose user already
+// holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
+message AddTenantMemberRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 3;
+}
+
+message AddTenantMemberResponse {
+  TenantMember member = 1;
 }
 
 message ResendTenantAdminInvitationRequest {
@@ -133,11 +157,13 @@ message CancelTenantAdminInvitationResponse {
   TenantAdminInvitation invitation = 1;
 }
 
-// The calling tenant's console members and administrator invitations. Every
-// RPC requires a tenant_admin session.
+// The calling tenant's console members and their invitations. Every RPC
+// requires a tenant_admin session.
 service AdminTenantMemberService {
   // Minimum role: tenant_admin.
   rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  // Minimum role: tenant_admin.
+  rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
   // Minimum role: tenant_admin.

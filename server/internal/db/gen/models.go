@@ -917,6 +917,7 @@ type TenantAdminInvitation struct {
 	CanceledAt sql.NullTime `json:"canceled_at"`
 	CreatedAt  time.Time    `json:"created_at"`
 	UpdatedAt  time.Time    `json:"updated_at"`
+	Role       string       `json:"role"`
 }
 
 type TenantAppStoreConfig struct {

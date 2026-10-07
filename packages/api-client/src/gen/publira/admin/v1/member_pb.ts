@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/member.proto.
  */
 export const file_publira_admin_v1_member: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL21lbWJlci5wcm90bxIQcHVibGlyYS5hZG1pbi52MSKGAQoMVGVuYW50TWVtYmVyEhYKDnVzZXJfcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCRIPCgd1c2VyX2lkGAcgASgJImkKGExpc3RUZW5hbnRNZW1iZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkieAoZTGlzdFRlbmFudE1lbWJlcnNSZXNwb25zZRIvCgdtZW1iZXJzGAEgAygLMh4ucHVibGlyYS5hZG1pbi52MS5UZW5hbnRNZW1iZXISFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKFAQodVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHJvbGUYAyABKAkSDwoHdXNlcl9pZBgEIAEoCUoECAIQA1IOdXNlcl9wdWJsaWNfaWQiUAoeVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlc3BvbnNlEi4KBm1lbWJlchgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50TWVtYmVyInMKGVJlbW92ZVRlbmFudE1lbWJlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3VzZXJfaWQYAyABKAlKBAgCEANSDnVzZXJfcHVibGljX2lkIkUKGlJlbW92ZVRlbmFudE1lbWJlclJlc3BvbnNlEhYKDnVzZXJfcHVibGljX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkilAEKFVRlbmFudEFkbWluSW52aXRhdGlvbhIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRISCgpleHBpcmVzX2F0GAUgASgJEhMKC2FjY2VwdGVkX2F0GAYgASgJEhMKC2NhbmNlbGVkX2F0GAcgASgJInIKIUxpc3RUZW5hbnRBZG1pbkludml0YXRpb25zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkijgEKIkxpc3RUZW5hbnRBZG1pbkludml0YXRpb25zUmVzcG9uc2USPAoLaW52aXRhdGlvbnMYASADKAsyJy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudEFkbWluSW52aXRhdGlvbhIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJImQKIkNyZWF0ZVRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJIoQBCiNDcmVhdGVUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZRI7CgppbnZpdGF0aW9uGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRBZG1pbkludml0YXRpb24SIAoYcm9sZV9ncmFudGVkX2ltbWVkaWF0ZWx5GAIgASgIImwKIlJlc2VuZFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhUKDWludml0YXRpb25faWQYAiABKAkiYgojUmVzZW5kVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2USOwoKaW52aXRhdGlvbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uImwKIkNhbmNlbFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhUKDWludml0YXRpb25faWQYAiABKAkiYgojQ2FuY2VsVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2USOwoKaW52aXRhdGlvbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uMrUHChhBZG1pblRlbmFudE1lbWJlclNlcnZpY2USbgoRTGlzdFRlbmFudE1lbWJlcnMSKi5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRNZW1iZXJzUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudE1lbWJlcnNSZXNwb25zZSIAEn0KFlVwZGF0ZVRlbmFudE1lbWJlclJvbGUSLy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudE1lbWJlclJvbGVSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRNZW1iZXJSb2xlUmVzcG9uc2UiABJxChJSZW1vdmVUZW5hbnRNZW1iZXISKy5wdWJsaXJhLmFkbWluLnYxLlJlbW92ZVRlbmFudE1lbWJlclJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLlJlbW92ZVRlbmFudE1lbWJlclJlc3BvbnNlIgASiQEKGkxpc3RUZW5hbnRBZG1pbkludml0YXRpb25zEjMucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50QWRtaW5JbnZpdGF0aW9uc1JlcXVlc3QaNC5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRBZG1pbkludml0YXRpb25zUmVzcG9uc2UiABKMAQobQ3JlYXRlVGVuYW50QWRtaW5JbnZpdGF0aW9uEjQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVUZW5hbnRBZG1pbkludml0YXRpb25SZXF1ZXN0GjUucHVibGlyYS5hZG1pbi52MS5DcmVhdGVUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZSIAEowBChtSZXNlbmRUZW5hbnRBZG1pbkludml0YXRpb24SNC5wdWJsaXJhLmFkbWluLnYxLlJlc2VuZFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlJlc2VuZFRlbmFudEFkbWluSW52aXRhdGlvblJlc3BvbnNlIgASjAEKG0NhbmNlbFRlbmFudEFkbWluSW52aXRhdGlvbhI0LnB1YmxpcmEuYWRtaW4udjEuQ2FuY2VsVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuQ2FuY2VsVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL21lbWJlci5wcm90bxIQcHVibGlyYS5hZG1pbi52MSKGAQoMVGVuYW50TWVtYmVyEhYKDnVzZXJfcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCRIPCgd1c2VyX2lkGAcgASgJImkKGExpc3RUZW5hbnRNZW1iZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkieAoZTGlzdFRlbmFudE1lbWJlcnNSZXNwb25zZRIvCgdtZW1iZXJzGAEgAygLMh4ucHVibGlyYS5hZG1pbi52MS5UZW5hbnRNZW1iZXISFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKFAQodVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHJvbGUYAyABKAkSDwoHdXNlcl9pZBgEIAEoCUoECAIQA1IOdXNlcl9wdWJsaWNfaWQiUAoeVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlc3BvbnNlEi4KBm1lbWJlchgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50TWVtYmVyInMKGVJlbW92ZVRlbmFudE1lbWJlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3VzZXJfaWQYAyABKAlKBAgCEANSDnVzZXJfcHVibGljX2lkIkUKGlJlbW92ZVRlbmFudE1lbWJlclJlc3BvbnNlEhYKDnVzZXJfcHVibGljX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiogEKFVRlbmFudEFkbWluSW52aXRhdGlvbhIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRISCgpleHBpcmVzX2F0GAUgASgJEhMKC2FjY2VwdGVkX2F0GAYgASgJEhMKC2NhbmNlbGVkX2F0GAcgASgJEgwKBHJvbGUYCCABKAkicgohTGlzdFRlbmFudEFkbWluSW52aXRhdGlvbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKOAQoiTGlzdFRlbmFudEFkbWluSW52aXRhdGlvbnNSZXNwb25zZRI8CgtpbnZpdGF0aW9ucxgBIAMoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkicgoiQ3JlYXRlVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFZW1haWwYAiABKAkSDAoEcm9sZRgDIAEoCSKEAQojQ3JlYXRlVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2USOwoKaW52aXRhdGlvbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uEiAKGHJvbGVfZ3JhbnRlZF9pbW1lZGlhdGVseRgCIAEoCCJmChZBZGRUZW5hbnRNZW1iZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIMCgRyb2xlGAMgASgJIkkKF0FkZFRlbmFudE1lbWJlclJlc3BvbnNlEi4KBm1lbWJlchgBIAEoCzIeLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50TWVtYmVyImwKIlJlc2VuZFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhUKDWludml0YXRpb25faWQYAiABKAkiYgojUmVzZW5kVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2USOwoKaW52aXRhdGlvbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uImwKIkNhbmNlbFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhUKDWludml0YXRpb25faWQYAiABKAkiYgojQ2FuY2VsVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2USOwoKaW52aXRhdGlvbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50QWRtaW5JbnZpdGF0aW9uMp8IChhBZG1pblRlbmFudE1lbWJlclNlcnZpY2USbgoRTGlzdFRlbmFudE1lbWJlcnMSKi5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRNZW1iZXJzUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudE1lbWJlcnNSZXNwb25zZSIAEmgKD0FkZFRlbmFudE1lbWJlchIoLnB1YmxpcmEuYWRtaW4udjEuQWRkVGVuYW50TWVtYmVyUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuQWRkVGVuYW50TWVtYmVyUmVzcG9uc2UiABJ9ChZVcGRhdGVUZW5hbnRNZW1iZXJSb2xlEi8ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRNZW1iZXJSb2xlUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlc3BvbnNlIgAScQoSUmVtb3ZlVGVuYW50TWVtYmVyEisucHVibGlyYS5hZG1pbi52MS5SZW1vdmVUZW5hbnRNZW1iZXJSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5SZW1vdmVUZW5hbnRNZW1iZXJSZXNwb25zZSIAEokBChpMaXN0VGVuYW50QWRtaW5JbnZpdGF0aW9ucxIzLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudEFkbWluSW52aXRhdGlvbnNSZXF1ZXN0GjQucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50QWRtaW5JbnZpdGF0aW9uc1Jlc3BvbnNlIgASjAEKG0NyZWF0ZVRlbmFudEFkbWluSW52aXRhdGlvbhI0LnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlVGVuYW50QWRtaW5JbnZpdGF0aW9uUmVzcG9uc2UiABKMAQobUmVzZW5kVGVuYW50QWRtaW5JbnZpdGF0aW9uEjQucHVibGlyYS5hZG1pbi52MS5SZXNlbmRUZW5hbnRBZG1pbkludml0YXRpb25SZXF1ZXN0GjUucHVibGlyYS5hZG1pbi52MS5SZXNlbmRUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZSIAEowBChtDYW5jZWxUZW5hbnRBZG1pbkludml0YXRpb24SNC5wdWJsaXJhLmFkbWluLnYxLkNhbmNlbFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLkNhbmNlbFRlbmFudEFkbWluSW52aXRhdGlvblJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * A user holding a console role in the calling tenant.
@@ -231,7 +231,7 @@ export const RemoveTenantMemberResponseSchema: GenMessage<RemoveTenantMemberResp
   messageDesc(file_publira_admin_v1_member, 6);
 
 /**
- * An invitation to become a tenant_admin of the calling tenant.
+ * An invitation to hold a console role in the calling tenant.
  *
  * @generated from message publira.admin.v1.TenantAdminInvitation
  */
@@ -280,6 +280,14 @@ export type TenantAdminInvitation = Message<"publira.admin.v1.TenantAdminInvitat
    * @generated from field: string canceled_at = 7;
    */
   canceledAt: string;
+
+  /**
+   * The role accepting the invitation grants:
+   * tenant_admin | tenant_editor | tenant_auditor
+   *
+   * @generated from field: string role = 8;
+   */
+  role: string;
 };
 
 /**
@@ -354,6 +362,12 @@ export const ListTenantAdminInvitationsResponseSchema: GenMessage<ListTenantAdmi
   messageDesc(file_publira_admin_v1_member, 9);
 
 /**
+ * An address that already belongs to a user of the tenant is given the role at
+ * once. For tenant_admin any role the user held is replaced; any other role is
+ * refused with ALREADY_EXISTS when the user already holds one, since changing
+ * it is UpdateTenantMemberRole's. Inviting an address that has a pending
+ * invitation sends it again, granting the role this request names.
+ *
  * @generated from message publira.admin.v1.CreateTenantAdminInvitationRequest
  */
 export type CreateTenantAdminInvitationRequest = Message<"publira.admin.v1.CreateTenantAdminInvitationRequest"> & {
@@ -366,6 +380,13 @@ export type CreateTenantAdminInvitationRequest = Message<"publira.admin.v1.Creat
    * @generated from field: string email = 2;
    */
   email: string;
+
+  /**
+   * tenant_admin | tenant_editor | tenant_auditor. Empty is tenant_admin.
+   *
+   * @generated from field: string role = 3;
+   */
+  role: string;
 };
 
 /**
@@ -387,8 +408,8 @@ export type CreateTenantAdminInvitationResponse = Message<"publira.admin.v1.Crea
   invitation?: TenantAdminInvitation | undefined;
 
   /**
-   * True when the address already belongs to a user of the tenant, who is made
-   * a tenant_admin on the spot instead of being mailed an invitation.
+   * True when the address already belongs to a user of the tenant, who is given
+   * the role on the spot instead of being mailed an invitation.
    *
    * @generated from field: bool role_granted_immediately = 2;
    */
@@ -401,6 +422,56 @@ export type CreateTenantAdminInvitationResponse = Message<"publira.admin.v1.Crea
  */
 export const CreateTenantAdminInvitationResponseSchema: GenMessage<CreateTenantAdminInvitationResponse> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_member, 11);
+
+/**
+ * Gives a user the tenant already has a console role. An address with no
+ * account in the tenant is refused with NOT_FOUND, and one whose user already
+ * holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
+ *
+ * @generated from message publira.admin.v1.AddTenantMemberRequest
+ */
+export type AddTenantMemberRequest = Message<"publira.admin.v1.AddTenantMemberRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * tenant_admin | tenant_editor | tenant_auditor
+   *
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AddTenantMemberRequest.
+ * Use `create(AddTenantMemberRequestSchema)` to create a new message.
+ */
+export const AddTenantMemberRequestSchema: GenMessage<AddTenantMemberRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_member, 12);
+
+/**
+ * @generated from message publira.admin.v1.AddTenantMemberResponse
+ */
+export type AddTenantMemberResponse = Message<"publira.admin.v1.AddTenantMemberResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.TenantMember member = 1;
+   */
+  member?: TenantMember | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.AddTenantMemberResponse.
+ * Use `create(AddTenantMemberResponseSchema)` to create a new message.
+ */
+export const AddTenantMemberResponseSchema: GenMessage<AddTenantMemberResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_member, 13);
 
 /**
  * @generated from message publira.admin.v1.ResendTenantAdminInvitationRequest
@@ -422,7 +493,7 @@ export type ResendTenantAdminInvitationRequest = Message<"publira.admin.v1.Resen
  * Use `create(ResendTenantAdminInvitationRequestSchema)` to create a new message.
  */
 export const ResendTenantAdminInvitationRequestSchema: GenMessage<ResendTenantAdminInvitationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_member, 12);
+  messageDesc(file_publira_admin_v1_member, 14);
 
 /**
  * @generated from message publira.admin.v1.ResendTenantAdminInvitationResponse
@@ -439,7 +510,7 @@ export type ResendTenantAdminInvitationResponse = Message<"publira.admin.v1.Rese
  * Use `create(ResendTenantAdminInvitationResponseSchema)` to create a new message.
  */
 export const ResendTenantAdminInvitationResponseSchema: GenMessage<ResendTenantAdminInvitationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_member, 13);
+  messageDesc(file_publira_admin_v1_member, 15);
 
 /**
  * @generated from message publira.admin.v1.CancelTenantAdminInvitationRequest
@@ -461,7 +532,7 @@ export type CancelTenantAdminInvitationRequest = Message<"publira.admin.v1.Cance
  * Use `create(CancelTenantAdminInvitationRequestSchema)` to create a new message.
  */
 export const CancelTenantAdminInvitationRequestSchema: GenMessage<CancelTenantAdminInvitationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_member, 14);
+  messageDesc(file_publira_admin_v1_member, 16);
 
 /**
  * @generated from message publira.admin.v1.CancelTenantAdminInvitationResponse
@@ -478,11 +549,11 @@ export type CancelTenantAdminInvitationResponse = Message<"publira.admin.v1.Canc
  * Use `create(CancelTenantAdminInvitationResponseSchema)` to create a new message.
  */
 export const CancelTenantAdminInvitationResponseSchema: GenMessage<CancelTenantAdminInvitationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_member, 15);
+  messageDesc(file_publira_admin_v1_member, 17);
 
 /**
- * The calling tenant's console members and administrator invitations. Every
- * RPC requires a tenant_admin session.
+ * The calling tenant's console members and their invitations. Every RPC
+ * requires a tenant_admin session.
  *
  * @generated from service publira.admin.v1.AdminTenantMemberService
  */
@@ -496,6 +567,16 @@ export const AdminTenantMemberService: GenService<{
     methodKind: "unary";
     input: typeof ListTenantMembersRequestSchema;
     output: typeof ListTenantMembersResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminTenantMemberService.AddTenantMember
+   */
+  addTenantMember: {
+    methodKind: "unary";
+    input: typeof AddTenantMemberRequestSchema;
+    output: typeof AddTenantMemberResponseSchema;
   },
   /**
    * Minimum role: tenant_admin.
