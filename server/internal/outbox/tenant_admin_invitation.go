@@ -96,7 +96,7 @@ func NewTenantAdminInvitationHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
 		}
 
-		settings, err := resolveSMTPSettings(ctx, queries, tenantID, cfg.Encryptor)
+		settings, err := resolveSMTPSettings(ctx, queries, tenant, cfg.Encryptor)
 		if err != nil {
 			return fmt.Errorf("resolve smtp settings: %w", err)
 		}
@@ -126,8 +126,8 @@ func decodeTenantAdminInvitationPayload(event dbmodels.OutboxEvent) (TenantAdmin
 	return payload, nil
 }
 
-func resolveSMTPSettings(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, encryptor emailsettings.SecretManager) (emailsettings.SMTPSettings, error) {
-	tenantConfig, err := queries.GetTenantSMTPConfigByTenantID(ctx, tenantID)
+func resolveSMTPSettings(ctx context.Context, queries *dbmodels.Queries, tenant dbmodels.Tenant, encryptor emailsettings.SecretManager) (emailsettings.SMTPSettings, error) {
+	tenantConfig, err := queries.GetTenantSMTPConfigByTenantID(ctx, tenant.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return emailsettings.SMTPSettings{}, err
 	}
@@ -136,7 +136,7 @@ func resolveSMTPSettings(ctx context.Context, queries *dbmodels.Queries, tenantI
 		if err != nil {
 			return emailsettings.SMTPSettings{}, err
 		}
-		settings := tenantSMTPSettings(tenantConfig, password)
+		settings := emailsettings.WithTenantFromName(tenantSMTPSettings(tenantConfig, password), tenant.Name)
 		if err := emailsettings.Validate(settings, true); err != nil {
 			return emailsettings.SMTPSettings{}, err
 		}

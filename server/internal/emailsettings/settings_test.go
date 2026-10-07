@@ -92,3 +92,23 @@ func TestAnAbsentPasswordResolvesToAnEmptyOne(t *testing.T) {
 		t.Fatalf("ResolvePasswordForTest(clear) = %q, %v; want an empty password", password, err)
 	}
 }
+
+func TestWithTenantFromNameFillsOnlyAnEmptySenderName(t *testing.T) {
+	cases := []struct {
+		name     string
+		fromName string
+		want     string
+	}{
+		{name: "empty", fromName: "", want: "Weekly Comics"},
+		{name: "blank", fromName: "   ", want: "Weekly Comics"},
+		{name: "saved", fromName: "Editorial Desk", want: "Editorial Desk"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := WithTenantFromName(SMTPSettings{FromName: tc.fromName}, " Weekly Comics ")
+			if got.FromName != tc.want {
+				t.Fatalf("FromName = %q, want %q", got.FromName, tc.want)
+			}
+		})
+	}
+}

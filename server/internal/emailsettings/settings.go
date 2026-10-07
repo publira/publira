@@ -63,6 +63,16 @@ func Normalize(settings SMTPSettings) SMTPSettings {
 	return settings
 }
 
+// WithTenantFromName names a tenant's own sender after the tenant when its
+// settings leave the name empty, which is what the console promises beside the
+// field. The platform's sender is not a tenant's and keeps no name.
+func WithTenantFromName(settings SMTPSettings, tenantName string) SMTPSettings {
+	if strings.TrimSpace(settings.FromName) == "" {
+		settings.FromName = strings.TrimSpace(tenantName)
+	}
+	return settings
+}
+
 // Validate refuses settings that cannot send with a [*fielderr.Invalid] naming
 // the field at fault. An empty username is a relay that takes no credentials,
 // so requirePassword asks for a password only beside a username.

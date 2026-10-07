@@ -398,3 +398,72 @@ func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testin
 		t.Fatalf("messages the relay took = %d, want 1", got)
 	}
 }
+
+// A tenant sending through its own SMTP account is named in From by the sender
+// name it saved, and by its own name when it saved none, as the console says
+// beside the field.
+func TestTenantAdminInvitationEmailNamesTheTenantsOwnSender(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	cases := []struct {
+		name     string
+		publicID string
+		fromName sql.NullString
+		wantFrom string
+	}{
+		{
+			name:     "empty sender name",
+			publicID: "OUTBOXINV008",
+			wantFrom: `From: "Outbox Sender Tenant" <tenant-mail@example.com>`,
+		},
+		{
+			name:     "saved sender name",
+			publicID: "OUTBOXINV009",
+			fromName: sql.NullString{String: "Weekly Comics", Valid: true},
+			wantFrom: `From: "Weekly Comics" <tenant-mail@example.com>`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			tenant := pg.SeedTenant(t, tc.publicID, strings.ToLower(tc.publicID)+".example.com", "Outbox Sender Tenant")
+			server := testutil.StartSMTPServer(t)
+			encryptor := newInvitationEncryptor(t)
+			password, err := encryptor.EncryptString("smtp-password")
+			if err != nil {
+				t.Fatalf("EncryptString: %v", err)
+			}
+			if _, err := dbmodels.New(pg.DB).UpsertTenantSMTPConfig(ctx, dbmodels.UpsertTenantSMTPConfigParams{
+				TenantID:            tenant.ID,
+				SmtpOverrideEnabled: true,
+				Host:                sql.NullString{String: server.Host, Valid: true},
+				Port:                sql.NullInt32{Int32: server.Port, Valid: true},
+				Username:            sql.NullString{String: "tenant-mailer", Valid: true},
+				PasswordEncrypted:   sql.NullString{String: password, Valid: true},
+				Encryption:          sql.NullString{String: "none", Valid: true},
+				FromName:            tc.fromName,
+				FromAddress:         sql.NullString{String: "tenant-mail@example.com", Valid: true},
+			}); err != nil {
+				t.Fatalf("UpsertTenantSMTPConfig: %v", err)
+			}
+			event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-sender-"+tc.publicID)
+
+			handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+			})
+			if err := handler(ctx, event); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			messages := server.Messages()
+			if len(messages) != 1 {
+				t.Fatalf("messages the server took = %d, want 1", len(messages))
+			}
+			if !strings.Contains(messages[0], tc.wantFrom+"\r\n") {
+				t.Fatalf("message headers do not carry %q:\n%s", tc.wantFrom, messages[0])
+			}
+		})
+	}
+}

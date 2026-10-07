@@ -261,7 +261,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	settings, err := s.resolveTenantSMTPSettingsForTest(ctx, tenant.ID, req.Msg)
+	settings, err := s.resolveTenantSMTPSettingsForTest(ctx, tenant, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -319,8 +319,9 @@ func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uui
 // whose settings the platform console owns and tests through
 // SendPlatformSmtpTestEmail. Reading them here would mean the admin database
 // role could read the platform SMTP credentials, and that role serves every
-// tenant console request.
-func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tenantID uuid.UUID, req *publiraadminv1.SendTenantSmtpTestEmailRequest) (emailsettings.SMTPSettings, error) {
+// tenant console request. An empty sender name is filled in the way the
+// outbox fills it, so the test message arrives under the name real mail does.
+func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tenant dbmodels.Tenant, req *publiraadminv1.SendTenantSmtpTestEmailRequest) (emailsettings.SMTPSettings, error) {
 	if !req.SmtpOverrideEnabled {
 		return emailsettings.SMTPSettings{}, connect.NewError(
 			connect.CodeFailedPrecondition,
@@ -328,7 +329,7 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 		)
 	}
 
-	existing, found, err := s.loadTenantSMTPConfigByID(ctx, tenantID)
+	existing, found, err := s.loadTenantSMTPConfigByID(ctx, tenant.ID)
 	if err != nil {
 		return emailsettings.SMTPSettings{}, err
 	}
@@ -340,7 +341,7 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 	if err != nil {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	settings := tenantEmailSettingsFromTestRequest(req, password)
+	settings := emailsettings.WithTenantFromName(tenantEmailSettingsFromTestRequest(req, password), tenant.Name)
 	if err := emailsettings.RequireUsername(settings); err != nil {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}

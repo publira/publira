@@ -148,7 +148,7 @@ func NewContactMessageReplyEmailHandler(cfg EmailHandlerConfig) Handler {
 			headers.References = earlier
 		}
 
-		settings, err := resolveSMTPSettings(ctx, queries, tenantID, cfg.Encryptor)
+		settings, err := resolveSMTPSettings(ctx, queries, tenant, cfg.Encryptor)
 		if err != nil {
 			return fmt.Errorf("resolve smtp settings: %w", err)
 		}
