@@ -95,10 +95,10 @@ When a load balancer, a CDN, or a TLS terminator connects to the edge, that hop 
 | Proxy | Setting | Where |
 | --- | --- | --- |
 | Traefik | `forwardedHeaders.trustedIPs` on the entry point | `traefik/traefik.yaml` |
-| nginx | `set_real_ip_from`, `real_ip_header X-Forwarded-For`, `real_ip_recursive on` | `nginx/default.conf.template` |
+| nginx | `set_real_ip_from`, `real_ip_header X-Forwarded-For`, `real_ip_recursive on`, and the same addresses in the `geo` block | `nginx/default.conf.template` |
 | Caddy | `trusted_proxies static` and `trusted_proxies_strict` under `servers` | The Caddyfile's global options |
 
-With it left alone, a sample behaves as above. With the hop's addresses in it, a request from the hop reaches the backends with the client address the hop named first in `X-Forwarded-For`, and a request from anywhere else is treated as it is without the setting. nginx and Caddy take the rightmost address in the hop's header that is not a trusted one and still set `X-Forwarded-For` to that address alone, through `$remote_addr` and `{client_ip}`. Traefik has no way to replace the header: it keeps the hop's `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and appends the hop's address to the first. The hop therefore sets those headers rather than appending to the caller's, which is what each sample does as the first hop.
+With it left alone, a sample behaves as above. With the hop's addresses in it, a request from the hop reaches the backends with the client address the hop named first in `X-Forwarded-For`, and with the `X-Forwarded-Proto` the hop named, since a TLS terminator in front reaches the edge over plain HTTP. A request from anywhere else is treated as it is without the setting. nginx and Caddy take the rightmost address in the hop's header that is not a trusted one and still set `X-Forwarded-For` to that address alone, through `$remote_addr` and `{client_ip}`, and keep setting `X-Forwarded-Host` themselves. Traefik has no way to replace the header: it keeps the hop's `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and appends the hop's address to the first. The hop therefore sets those headers rather than appending to the caller's, which is what each sample does as the first hop.
 
 ## What an operator supplies
 

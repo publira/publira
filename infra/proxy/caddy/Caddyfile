@@ -38,6 +38,8 @@
 	# them carries: with `trusted_proxies_strict`, the rightmost address in it
 	# that is not one of them. {client_ip} below becomes that address, and is
 	# the peer address for requests from anywhere else, as it is without this.
+	# X-Forwarded-Proto from them is passed on as well, since a TLS terminator
+	# reaches this edge over plain HTTP.
 	#
 	# servers {
 	# 	trusted_proxies static 192.0.2.0/24
@@ -46,10 +48,11 @@
 }
 
 # Applied to every proxied request. Caddy forwards the original Host header
-# untouched, so only the rest is set here.
+# untouched, so only the rest is set here. X-Forwarded-Proto is left to
+# reverse_proxy, which replaces it with this edge's scheme unless the request
+# came from a proxy the global options trust, whose value it keeps.
 (publira_forwarded) {
 	header_up X-Forwarded-Host {http.request.hostport}
-	header_up X-Forwarded-Proto {http.request.scheme}
 	# The client address, replacing whatever arrived: this is the trust
 	# boundary, and the client IP an access token and an audit log entry
 	# record is the first address in this header. It is the peer address, or

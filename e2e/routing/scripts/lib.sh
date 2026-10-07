@@ -442,7 +442,8 @@ assert_forwarded_headers() {
 }
 
 # A request the hop sends to the edge on behalf of a client, naming that
-# client's address in X-Forwarded-For the way a hop that sets the header does.
+# client's address in X-Forwarded-For and the scheme it used in
+# X-Forwarded-Proto, the way a TLS terminator that sets the headers does.
 # Prints the status code on the first line and the body after it, like
 # http_probe.
 hop_probe() {
@@ -451,7 +452,7 @@ hop_probe() {
   compose exec -T hop node -e '
     const [host, path, forwardedFor] = process.argv.slice(1);
     const request = require("node:http").get(
-      { host: "proxy", port: 80, path, headers: { Host: host, "X-Forwarded-For": forwardedFor } },
+      { host: "proxy", port: 80, path, headers: { Host: host, "X-Forwarded-For": forwardedFor, "X-Forwarded-Proto": "https" } },
       (res) => {
         let body = "";
         res.setEncoding("utf8");
@@ -465,9 +466,11 @@ hop_probe() {
 }
 
 # A request through the trusted hop: the backend has to read the client
-# address the hop named, which is the first address in X-Forwarded-For. nginx
-# and Caddy forward that address alone; Traefik keeps the hop's header and
-# appends the hop's own address after it, which leaves the first one as it is.
+# address the hop named, which is the first address in X-Forwarded-For, and
+# the scheme it named, which the edge's own plain HTTP would otherwise replace.
+# nginx and Caddy forward that address alone; Traefik keeps the hop's header
+# and appends the hop's own address after it, which leaves the first one as it
+# is.
 assert_hop_client_address() {
   local name="$1" host="$2" path="$3" want_backend="$4"
   local out code body actual_backend value first
@@ -492,7 +495,12 @@ assert_hop_client_address() {
     routing_fail "${name}: X-Forwarded-For '${value}' does not start with the address the trusted hop named (${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}) host=${host} GET ${path} body=${body}"
   fi
 
-  routing_log "ok: ${name} → ${want_backend} with the client address the hop named"
+  value="$(json_string_field "${body}" x-forwarded-proto)"
+  if [[ "${value}" != "https" ]]; then
+    routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'https', the scheme the trusted hop named) host=${host} GET ${path} body=${body}"
+  fi
+
+  routing_log "ok: ${name} → ${want_backend} with the client address and scheme the hop named"
 }
 
 # Writes the sample under test to PUBLIRA_ROUTING_PROXY_DIR with its commented
@@ -511,7 +519,7 @@ enable_trusted_hop() {
       ;;
     nginx)
       file=default.conf.template
-      uncomment='s/^# \(set_real_ip_from\|real_ip_header\|real_ip_recursive\) /\1 /'
+      uncomment='s/^# \(set_real_ip_from\|real_ip_header\|real_ip_recursive\) /\1 /; s/^    # \(192\.0\.2\.0\/24 1;\)$/    \1/'
       ;;
     caddy)
       file=Caddyfile
@@ -523,7 +531,7 @@ enable_trusted_hop() {
   mkdir -p "$(dirname "${dir}")"
   cp -R "${sample}" "${dir}"
   sed -e "${uncomment}" \
-    -e "s|${PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE}|${PUBLIRA_ROUTING_HOP_ADDRESS}/32|" \
+    -e "s|${PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE}|${PUBLIRA_ROUTING_HOP_ADDRESS}/32|g" \
     "${sample}/${file}" > "${dir}/${file}"
 
   if ! grep -Eq "^[^#]*${PUBLIRA_ROUTING_HOP_ADDRESS}/32" "${dir}/${file}"; then
