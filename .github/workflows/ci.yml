@@ -882,7 +882,7 @@ jobs:
 
       - name: Upload / Mobile E2E artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-e2e-artifacts-device
           path: |
@@ -928,7 +928,7 @@ jobs:
         run: tar -czf "${RUNNER_TEMP}/mobile-e2e-build.tgz" server/bin
 
       - name: Upload / Server
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-e2e-build
           path: ${{ runner.temp }}/mobile-e2e-build.tgz
@@ -1023,7 +1023,7 @@ jobs:
 
       - name: Upload / Mobile E2E artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-e2e-artifacts-live
           path: |
@@ -1122,7 +1122,7 @@ jobs:
             packages/*/dist
 
       - name: Upload / E2E build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-build
           path: ${{ runner.temp }}/e2e-build.tgz
@@ -1253,7 +1253,7 @@ jobs:
 
       - name: Upload / E2E artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-artifacts-${{ matrix.id }}
           path: |
@@ -1266,7 +1266,7 @@ jobs:
       # that passed cannot tell whether another one failed.
       - name: Upload / E2E blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-blob-${{ matrix.id }}
           path: e2e/blob-report/
@@ -1301,7 +1301,7 @@ jobs:
         run: pnpm --dir e2e exec playwright merge-reports --reporter html blob-reports
 
       - name: Upload / E2E report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report
           path: e2e/playwright-report/
@@ -1395,7 +1395,7 @@ jobs:
 
       - name: Upload / E2E artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-search-artifacts
           path: |
@@ -1481,7 +1481,7 @@ jobs:
 
       - name: Upload / Bootstrap artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bootstrap-artifacts
           path: e2e/bootstrap/.run/logs/
@@ -1514,7 +1514,7 @@ jobs:
 
       - name: Upload / Routing artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: routing-artifacts
           path: e2e/routing/.run/
