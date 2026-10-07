@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"database/sql"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
@@ -112,6 +113,111 @@ func TestAdminRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAddress(t 
 	}
 	if !resp.Msg.Requested {
 		t.Fatal("requested = false, want true")
+	}
+	assertExpectations(t, mock)
+}
+
+func newUpdateTenantConfigRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest] {
+	req := connect.NewRequest(&publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		CopyrightText:   "© Tenant",
+		SiteDescription: "A tenant that exists only in a test",
+		SiteTagline:     "Read on",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
+
+func tenantSiteCopyRow(tenantID uuid.UUID, now time.Time) *sqlmock.Rows {
+	return sqlmock.NewRows(tenantConfigColumns()).
+		AddRow(tenantID, "© Tenant", "A tenant that exists only in a test", now, now, "Read on", "disabled", int32(3), "single", "none", "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout")
+}
+
+// The public site reads the site copy through the cached tenant site entry, so
+// the save records that entry's drop in its own transaction.
+func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
+		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
+		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
+	resp, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken))
+	if err != nil {
+		t.Fatalf("UpdateTenantConfig: %v", err)
+	}
+	if resp.Msg.CopyrightText != "© Tenant" || resp.Msg.SiteTagline != "Read on" {
+		t.Fatalf("tenant config = %+v, want the values just written", resp.Msg)
+	}
+	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
+	assertExpectations(t, mock)
+}
+
+// A tenant saving its site copy for the first time has no config row yet; the
+// row the save creates owes the same drop as an update would.
+func TestUpdateTenantConfigRecordsItsInvalidationWhenItCreatesTheRow(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
+		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
+		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantConfig)).
+		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
+		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
+	if _, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken)); err != nil {
+		t.Fatalf("UpdateTenantConfig: %v", err)
+	}
+	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
+	assertExpectations(t, mock)
+}
+
+// A save whose cache drop cannot be recorded is rolled back rather than
+// committed with nothing owing the drop.
+func TestUpdateTenantConfigRollsBackWhenItsInvalidationCannotBeRecorded(t *testing.T) {
+	newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
+		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
+		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WillReturnError(sql.ErrConnDone)
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdateTenantConfig code = %v, want internal", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }

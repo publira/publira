@@ -18,7 +18,7 @@ Three pieces of copy, each of which may be left empty:
 - **Site tagline**: a short line shown on the sign-in, sign-up, and password screens.
 - **Site description**: shown in the site's footer, and given to search engines and link previews as the site's description.
 
-**Save the settings** saves all three. The site can take up to fifteen minutes to show a change here ([#3793](https://github.com/publira/publira/issues/3793)), unlike the other cards, which reach it moments after they are saved.
+**Save the settings** saves all three.
 
 ### Time zone
 
