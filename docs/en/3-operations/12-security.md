@@ -102,7 +102,7 @@ A stored value moves to the primary key when the same value is saved again. Savi
 | The search engine's password | `publiractl search set` with the saved settings and the password, or **Search** in the Platform Console |
 | A tenant's mail, payment provider, App Store, Google Play, Firebase, Sign in with Apple, and inbound mail credentials | Only from the tenant console: that tenant's administrators enter each one again |
 | A member of staff's two-step verification secret | Only by its owner, turning two-step verification off and setting it up again |
-| A reader's Sign in with Apple link | When that reader next signs in with Apple |
+| The token a reader's Sign in with Apple link holds | Never by signing in again: a link keeps the token it was first given. Only a reader who removes the link and links Apple again gets one sealed with the new key |
 | The Web Push private key | Never: nothing saves the key pair again |
 
 Run the query again to see what is left.
@@ -111,7 +111,7 @@ Run the query again to see what is left.
 
 Remove `k1` from the list only when the query shows no value sealed with it. A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either. Putting the key back in the list, and restarting, undoes all of it.
 
-Since the last three rows of the table above are out of an operator's hands, an install that has ever saved a Web Push key pair, or that has staff using two-step verification, keeps its old key in the list for now ([#3833](https://github.com/publira/publira/issues/3833)). Rotating is still worth doing: every value saved from then on is sealed with a key that never coexisted with the old backups.
+Since the last three rows of the table above are out of an operator's hands, an install that has ever saved a Web Push key pair, has staff using two-step verification, or has readers who signed in with Apple keeps its old key in the list for now ([#3833](https://github.com/publira/publira/issues/3833)). Rotating is still worth doing: every value saved from then on is sealed with a key that never coexisted with the old backups.
 
 When a key has leaked, sealing again is not enough. Whoever holds the old key and any database backup taken before the rotation can open every value in that backup, so replace the credentials themselves where they were issued — a new SMTP password, a new access key for the bucket, new payment provider keys — and save the new ones.
 
