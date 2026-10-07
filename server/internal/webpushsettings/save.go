@@ -151,6 +151,14 @@ func SaveSubject(
 
 // recordSiteRevalidations records a drop of every tenant's site cache entry on
 // q, for the outbox worker to send after [siteRevalidationDelay].
+//
+// A tenant created after the list is read gets no drop, and serializing tenant
+// creation with this save would not give it one: a site first asked for within
+// [CacheTTL] of the commit is answered without a key by an API process that has
+// not reread it, whether its tenant was created before the commit or after.
+// Covering that would take a drop recorded with every tenant ever created, for
+// a window of seconds an install passes through once, and a site caught in it
+// recovers when its entry expires.
 func recordSiteRevalidations(ctx context.Context, q *dbmodels.Queries) error {
 	tenantIDs, err := q.ListWebPushTenantIDs(ctx)
 	if err != nil {
