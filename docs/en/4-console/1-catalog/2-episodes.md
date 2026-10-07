@@ -16,7 +16,7 @@ Episodes are listed, and numbered on the site, in the series' order. A new episo
 
 The site numbers each episode by its position, **Episode** followed by the number, counting the episodes readers cannot see yet. Keep drafts and scheduled episodes at the end of the order, so that the published ones are numbered without gaps.
 
-A new order reaches the site within about 15 minutes ([#3823](https://github.com/publira/publira/issues/3823)).
+A new order reaches the site as soon as it is saved.
 
 ## Creating an episode
 
@@ -44,7 +44,7 @@ Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each im
 
 **Registered page images** shows the pages in order. Drag a page by its handle, or focus the handle and use the arrow keys, to move it. A page cannot be removed or replaced once it is added ([#3831](https://github.com/publira/publira/issues/3831)), so check a batch before adding it.
 
-Pages added to an episode that is already published reach readers within about 15 minutes ([#3823](https://github.com/publira/publira/issues/3823)). A published episode with no pages shows readers that its pages have not been published yet.
+Pages added to an episode that is already published, and a new order of its pages, reach readers as soon as they are saved. A published episode with no pages shows readers that its pages have not been published yet.
 
 ## Page layout
 
@@ -123,7 +123,7 @@ The episode is published by `publira worker`, which looks for episodes whose tim
 - Is announced to every reader following the episode, its series, or an Author credited on it, with a notification on the site and a push notification in the app.
 - Is sent to the search index.
 
-So an episode scheduled for 12:00 is readable by about 12:01. A few lists on the site, such as the series list ordered by **Recently updated**, can show it up to about 15 minutes later ([#3823](https://github.com/publira/publira/issues/3823)).
+So an episode scheduled for 12:00 is readable by about 12:01, and the site's lists, such as the series list ordered by **Recently updated**, show it from the same moment.
 
 An episode that is still **Scheduled** well after its time means the worker is not running, or is failing to publish it. A Tenant admin then gets a notification titled "An episode could not be published". This is for the operator to fix, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#scheduled-publication) describes, and the episode goes out on its own once it is.
 
