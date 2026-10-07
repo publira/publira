@@ -38,6 +38,6 @@ Only a Tenant admin changes the settings these pages describe. Editors and Audit
 - [Pages](./3-pages.md): the site's own pages, their versions and translations, and the terms of service and privacy policy readers agree to.
 - [Announcements](./4-announcements.md): announcing something to every reader, and the banner shown above every page of the site.
 - [Members](./5-members.md): inviting staff, changing their roles, and removing them.
-- [Email](./6-email.md): sending the tenant's mail through its own SMTP server.
+- [Email](./6-email.md): sending the tenant's mail through its own SMTP server, and receiving readers' replies to contact messages in the console.
 - [Audit log](./7-audit-log.md): what the console records about what its staff did.
 - [Your account](./8-your-account.md): changing your email address, and two-step verification.

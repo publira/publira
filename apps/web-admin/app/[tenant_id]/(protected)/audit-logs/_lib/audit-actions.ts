@@ -69,6 +69,7 @@ export const auditActions = [
   "tenant_admin_invite_accepted",
   "tenant_email_settings_updated",
   "tenant_smtp_test_email_sent",
+  "tenant_inbound_email_settings_updated",
   "tenant_payment_settings_updated",
   "tenant_fcm_credentials_saved",
   "tenant_fcm_credentials_deleted",
