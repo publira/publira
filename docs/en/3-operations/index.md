@@ -19,5 +19,6 @@ Most of this work can be done from either the `publiractl` command line or the P
 - [Search](./7-search.md): the storefront search engine, moving from the database to OpenSearch or Elasticsearch, text analysis, and rebuilding the index.
 - [Web Push](./8-web-push.md): turning on browser notifications, and the key pair they are signed with.
 - [Platform defaults and policies](./9-platform-policies.md): the defaults, security and community limits, and retention periods every tenant inherits, and which of them a tenant can change.
+- [Scheduled and maintenance jobs](./10-scheduled-jobs.md): what `publira worker` runs on its own, how it catches up after downtime and retries outgoing mail, push, and cache revalidation, and running a job by hand with `publiractl job`.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
