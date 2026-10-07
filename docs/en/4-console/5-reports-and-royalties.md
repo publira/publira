@@ -39,14 +39,14 @@ The screen updates as soon as a member of the staff saves a series or an episode
 | Figure | What it counts |
 | --- | --- |
 | **Completions** | Members finishing an episode. Each member counts once for each episode, on the day they first finished it, however often they read it again |
-| **Member views** | Times signed-in members opened an episode. A member who opens the same episode again within half an hour counts once, and one who comes back later counts again |
+| **Member views** | Times signed-in members opened an episode. A member's opens of one episode count once in each half hour of the clock, from :00 to :29 and from :30 to :59, so opening it again in the same half hour adds nothing, while opening it at 10:29 and again at 10:30 counts twice |
 | **Read-through rate** | **Completions** divided by **Member views**, shown as `—` when there are no views |
 
 Only signed-in members count. A reader who is not signed in cannot be recorded as finishing an episode, so their views are left out as well. How a member came to read the episode makes no difference: an episode bought, opened with a ticket, or free counts the same, and a purchase alone counts nothing.
 
 **Episodes** lists each episode read in the period, the most completions first, twenty to a page. The totals at the top cover the whole period, whichever page is shown.
 
-The figures are counted once a day is over. `publira worker` counts each day after midnight in the tenant's time zone, on its next hourly pass, and catches up on days it missed while it was stopped, so a read made today appears tomorrow. An install without `publira worker` running, as [Overview](../2-deployments/1-overview.md) describes, shows no read-through at all.
+The figures are counted once a day is over. `publira worker` counts each day after midnight in the tenant's time zone, on its next hourly pass, so a read made today appears tomorrow. While the worker is stopped, no new day is counted: the screen keeps showing the days counted before, and empties as they leave the 28-day window. When the worker starts again, it catches up on the days it missed. [Overview](../2-deployments/1-overview.md) describes keeping `publira worker` running.
 
 ## Royalties
 
