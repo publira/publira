@@ -102,6 +102,29 @@ describe("AuditLogActionCell", () => {
     }
   );
 
+  it.each(getLocales())(
+    "names a change to the inbound email settings in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_inbound_email_settings_updated",
+        "inbound_email_config",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_inbound_email_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.inbound_email_config",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
   it("falls back to the raw target type it has no name for", async () => {
     const cell = await renderActionCell(
       "en",

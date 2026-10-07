@@ -35,6 +35,15 @@ const FAILED_MESSAGE =
 const WRONG_PASSWORD_MESSAGE = "That password is not correct.";
 const SMTP_SAVED_MESSAGE = "The email settings were saved.";
 const SEED_FROM_NAME = "Operator Settings Tenant Mail";
+const INBOUND_SAVED_MESSAGE = "The inbound email settings were saved.";
+const INBOUND_UNSET_MESSAGE =
+  "Readers' replies go to the address of the staff member who answered. Choose a provider and turn inbound email on to receive them in the console instead.";
+const INBOUND_READY_MESSAGE =
+  "Readers' replies come back to the console under the message they answer.";
+const INBOUND_DISABLED_MESSAGE =
+  "The settings are stored, but inbound email is off. Readers' replies go to the address of the staff member who answered.";
+const INBOUND_DOMAIN = "reply.aset.example";
+const INBOUND_WEBHOOK_TOKEN = "e2e-inbound-webhook-token";
 
 const signIn = (page: Page, nextPath: string): Promise<void> =>
   signInAsAdmin(
@@ -70,6 +79,41 @@ const smtpOverrideEnabled = (): boolean =>
       WHERE public_id = '${ADMIN_OPERATOR_SETTINGS_TENANT.publicId}'
     );
   `) === "t";
+
+const inboundEmailSettings = (): string =>
+  querySql(`
+    SELECT COALESCE((
+      SELECT provider || '|' || enabled::text || '|' || COALESCE(domain, '')
+      FROM tenant_inbound_email_config
+      WHERE tenant_id = (
+        SELECT id FROM tenants
+        WHERE public_id = '${ADMIN_OPERATOR_SETTINGS_TENANT.publicId}'
+      )
+    ), 'none');
+  `);
+
+/**
+ * Drop this tenant's inbound email settings, so every run starts from the
+ * section's default: off, with nothing stored.
+ */
+const clearInboundEmailSettings = (): void => {
+  runSql(`
+    DELETE FROM tenant_inbound_email_config
+    WHERE tenant_id = (
+      SELECT id FROM tenants
+      WHERE public_id = '${ADMIN_OPERATOR_SETTINGS_TENANT.publicId}'
+    );
+  `);
+};
+
+/**
+ * The section of the email screen whose heading is `name`: the nearest
+ * `<section>` around it, since the page's own content sits in one too.
+ */
+const emailSection = (page: Page, name: string) =>
+  page
+    .getByRole("heading", { exact: true, level: 2, name })
+    .locator("xpath=ancestor::section[1]");
 
 const emailChangeTokenCount = (): string =>
   querySql(`
@@ -135,12 +179,14 @@ const confirmationLinkFor = async (recipient: string): Promise<string> => {
  *
  * `/settings/account` is the email-address change, not a display-name or
  * password form — those controls are not on the console. `/integrations/email`
- * is the tenant SMTP override. Tokens are stored as hashes, so every confirmation
- * below opens a link this suite read out of Mailpit.
+ * is the tenant SMTP override and the inbound email settings. Tokens are
+ * stored as hashes, so every confirmation below opens a link this suite read
+ * out of Mailpit.
  *
  * The suite owns the account and the tenant it rewrites —
  * `130_admin_operator_settings.sql` — and re-applies that scenario afterwards
- * to put the original address and SMTP row back. `mode: "serial"` keeps the
+ * to put the original address and SMTP row back, and deletes the inbound
+ * email row it saves. `mode: "serial"` keeps the
  * confirmation of a request in the same order as the request, and keeps the
  * SMTP save after the mail-sending tests so an enabled override cannot reroute
  * them.
@@ -150,6 +196,7 @@ test.describe("web-admin operator settings", () => {
 
   test.beforeAll(async () => {
     applyScenarioSql(ADMIN_OPERATOR_SETTINGS_SCENARIO);
+    clearInboundEmailSettings();
     pointTenantSmtpAtMailpit();
     await Promise.all([
       clearMessagesTo(ADMIN_OPERATOR_SETTINGS_ADMIN.email),
@@ -160,6 +207,7 @@ test.describe("web-admin operator settings", () => {
 
   test.afterAll(() => {
     applyScenarioSql(ADMIN_OPERATOR_SETTINGS_SCENARIO);
+    clearInboundEmailSettings();
   });
 
   for (const settingsPath of SETTINGS_PATHS) {
@@ -322,21 +370,22 @@ test.describe("web-admin operator settings", () => {
       page.getByRole("heading", { exact: true, level: 1, name: "Email" })
     ).toBeVisible();
 
-    const fromName = page.getByLabel("Sender name (optional)");
+    const smtp = emailSection(page, "Outgoing email");
+    const fromName = smtp.getByLabel("Sender name (optional)");
     await expect(fromName).toHaveValue(SEED_FROM_NAME);
     await expect(fromName).toBeDisabled();
     expect(smtpOverrideEnabled()).toBe(false);
 
-    await page
+    await smtp
       .getByRole("checkbox", {
         name: "Use this tenant's own SMTP server",
       })
       .check();
     await expect(fromName).toBeEnabled();
     await fillField(fromName, ADMIN_OPERATOR_SETTINGS_FROM_NAME);
-    await page.getByRole("button", { name: "Save" }).click();
+    await smtp.getByRole("button", { exact: true, name: "Save" }).click();
 
-    await expect(page.getByRole("status")).toContainText(SMTP_SAVED_MESSAGE);
+    await expect(smtp.getByRole("status")).toContainText(SMTP_SAVED_MESSAGE);
     expect(smtpFromName()).toBe(ADMIN_OPERATOR_SETTINGS_FROM_NAME);
     expect(smtpOverrideEnabled()).toBe(true);
 
@@ -349,5 +398,77 @@ test.describe("web-admin operator settings", () => {
         name: "Use this tenant's own SMTP server",
       })
     ).toBeChecked();
+  });
+
+  test("the email settings screen sets up SendGrid for readers' replies from its own copy, then turns it off", async ({
+    page,
+  }) => {
+    await signInAsAdmin(
+      page,
+      {
+        email: ADMIN_OPERATOR_SETTINGS_NEW_EMAIL,
+        password: ADMIN_OPERATOR_SETTINGS_ADMIN.password,
+      },
+      "/integrations/email",
+      WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL
+    );
+
+    const inbound = emailSection(page, "Inbound email");
+    await expect(inbound.getByText("Not set")).toBeVisible();
+    await expect(inbound.getByText(INBOUND_UNSET_MESSAGE)).toBeVisible();
+    expect(inboundEmailSettings()).toBe("none");
+
+    // Resend is offered beside SendGrid, with its own fields and URL.
+    const provider = inbound.getByRole("combobox", {
+      name: "Inbound email provider",
+    });
+    await provider.click();
+    await page.getByRole("option", { name: "Resend" }).click();
+    await expect(inbound.getByLabel(/^API key/u)).toBeVisible();
+    await expect(inbound.getByLabel(/^Webhook signing secret/u)).toBeVisible();
+    await expect(
+      inbound.getByText(
+        /^https?:\/\/aset\.localhost(?::\d+)?\/api\/v1\/webhook\/email\/resend$/u
+      )
+    ).toBeVisible();
+
+    await provider.click();
+    await page.getByRole("option", { name: "SendGrid" }).click();
+    await expect(
+      inbound.getByText(
+        "In your DNS, point the domain's MX record at mx.sendgrid.net with priority 10."
+      )
+    ).toBeVisible();
+    await expect(
+      inbound.getByText(
+        /^https?:\/\/inbound:<token>@aset\.localhost(?::\d+)?\/api\/v1\/webhook\/email\/sendgrid$/u
+      )
+    ).toBeVisible();
+
+    await inbound
+      .getByRole("checkbox", { name: "Receive replies in the console" })
+      .click();
+    await fillField(inbound.getByLabel(/^Inbound domain/u), INBOUND_DOMAIN);
+    await fillField(
+      inbound.getByLabel(/^Webhook token/u),
+      INBOUND_WEBHOOK_TOKEN
+    );
+    await inbound.getByRole("button", { exact: true, name: "Save" }).click();
+
+    await expect(inbound.getByText(INBOUND_SAVED_MESSAGE)).toBeVisible();
+    await expect(inbound.getByText(INBOUND_READY_MESSAGE)).toBeVisible();
+    await expect(
+      inbound.getByText(`contact+*@${INBOUND_DOMAIN}`)
+    ).toBeVisible();
+    await expect(inbound.getByText(INBOUND_WEBHOOK_TOKEN)).toHaveCount(0);
+    expect(inboundEmailSettings()).toBe(`sendgrid|true|${INBOUND_DOMAIN}`);
+
+    await inbound
+      .getByRole("checkbox", { name: "Receive replies in the console" })
+      .click();
+    await inbound.getByRole("button", { exact: true, name: "Save" }).click();
+
+    await expect(inbound.getByText(INBOUND_DISABLED_MESSAGE)).toBeVisible();
+    expect(inboundEmailSettings()).toBe(`sendgrid|false|${INBOUND_DOMAIN}`);
   });
 });

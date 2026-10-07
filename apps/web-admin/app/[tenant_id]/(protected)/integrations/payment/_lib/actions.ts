@@ -10,13 +10,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
-  SECRET_UPDATE_MODE_CLEAR,
-  SECRET_UPDATE_MODE_REPLACE,
-  SECRET_UPDATE_MODE_UNCHANGED,
-} from "#lib/email-settings-shared";
-import {
   checkboxOnFormSchema,
-  flagOneFormSchema,
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -26,7 +20,7 @@ import {
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
-import type { PaymentCredentialFieldUpdate } from "#lib/payment-settings";
+import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
 import {
   hasSecretKey,
   secretKeyFormInput,
@@ -45,7 +39,6 @@ import {
 } from "#lib/tenant-purchase-settings";
 
 import type {
-  TenantPaymentSettingsFieldErrors,
   TenantPaymentSettingsFormState,
   TenantPurchaseSettingsFormState,
   TenantStorePaymentSettingsFormState,
@@ -66,44 +59,6 @@ const tenantPaymentSettingsSchema = async (locale: Locale) => {
     ),
     tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
   });
-};
-
-/**
- * What the form did with a stored credential: kept it, replaced it, or
- * removed it. A replace with nothing entered leaves the stored value as it is.
- */
-const CREDENTIAL_MODES = ["keep", "replace", "clear"] as const;
-
-const credentialSchema = z.object({
-  configured: flagOneFormSchema,
-  mode: z.enum(CREDENTIAL_MODES),
-  value: optionalSecretSchema.transform((value) => value.trim()),
-});
-
-type CredentialInput = z.output<typeof credentialSchema>;
-
-const credentialFormInput = (formData: FormData, name: string) =>
-  toFormDataInput(formData, {
-    configured: { kind: "value", name: `credential_${name}_configured` },
-    mode: { kind: "value", name: `credential_${name}_mode` },
-    value: { kind: "value", name: `credential_${name}` },
-  });
-
-const credentialUpdateMode = (credential: CredentialInput): number => {
-  if (credential.mode === "clear") {
-    return SECRET_UPDATE_MODE_CLEAR;
-  }
-  return credential.mode === "replace" && credential.value !== ""
-    ? SECRET_UPDATE_MODE_REPLACE
-    : SECRET_UPDATE_MODE_UNCHANGED;
-};
-
-const isCredentialStored = (credential: CredentialInput): boolean => {
-  const mode = credentialUpdateMode(credential);
-  return (
-    mode === SECRET_UPDATE_MODE_REPLACE ||
-    (mode === SECRET_UPDATE_MODE_UNCHANGED && credential.configured)
-  );
 };
 
 export const updateTenantPaymentSettingsAction = async (
@@ -138,39 +93,27 @@ export const updateTenantPaymentSettingsAction = async (
     return { message: declared.message, ok: false };
   }
 
-  const fields: PaymentCredentialFieldUpdate[] = [];
-  const fieldErrors: TenantPaymentSettingsFieldErrors = {};
-  for (const field of declared.provider.fields) {
-    const credential = credentialSchema.safeParse(
-      credentialFormInput(formData, field.name)
-    );
-    if (!credential.success) {
-      return { message: t("errors.validation"), ok: false };
+  const credentials = toProviderCredentialUpdates(
+    formData,
+    declared.provider.fields,
+    {
+      enabled: parsed.data.enabled,
+      requiredMessage: t("admin.settings.payment.validation.field_required"),
     }
-    if (
-      parsed.data.enabled &&
-      field.required &&
-      !isCredentialStored(credential.data)
-    ) {
-      fieldErrors[`credential_${field.name}`] = t(
-        "admin.settings.payment.validation.field_required"
-      );
-    }
-    fields.push({
-      mode: credentialUpdateMode(credential.data),
-      name: field.name,
-      value: credential.data.value,
-    });
-  }
-  if (Object.keys(fieldErrors).length > 0) {
-    return { fieldErrors, message: t("errors.validation"), ok: false };
+  );
+  if (!credentials.ok) {
+    return {
+      fieldErrors: credentials.fieldErrors,
+      message: t("errors.validation"),
+      ok: false,
+    };
   }
 
   const result = await withAdminSessionReauth(() =>
     updateTenantPaymentSettings(
       {
         enabled: parsed.data.enabled,
-        fields,
+        fields: credentials.fields,
         provider: declared.provider.id,
         tenantId: parsed.data.tenantId,
       },

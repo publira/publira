@@ -1,28 +1,39 @@
 "use client";
 
+/**
+ * The controls of a settings form whose provider is chosen from the ones the
+ * server registers and whose credential fields that provider declares: the
+ * payment provider and the inbound email provider. The form posts `provider`,
+ * `enabled`, and for each field `credential_<name>`, `credential_<name>_mode`,
+ * and `credential_<name>_configured`, which `#lib/provider-credential-form`
+ * reads back.
+ */
+
 import { useActionFormSettled } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import { FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import type { InputProps } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-interface PaymentProviderChoiceContextValue {
+interface ProviderChoiceContextValue {
   credentialsProvider: string;
   provider: string;
   setProvider: (provider: string) => void;
 }
 
-const PaymentProviderChoiceContext =
-  createContext<PaymentProviderChoiceContextValue | null>(null);
+const ProviderChoiceContext = createContext<ProviderChoiceContextValue | null>(
+  null
+);
 
-const usePaymentProviderChoice = () => {
-  const context = use(PaymentProviderChoiceContext);
+const useProviderChoice = () => {
+  const context = use(ProviderChoiceContext);
   if (!context) {
     throw new Error(
-      "PaymentProviderChoice slots must be rendered inside PaymentProviderChoice."
+      "ProviderChoice slots must be rendered inside ProviderChoice."
     );
   }
   return context;
@@ -33,7 +44,7 @@ const usePaymentProviderChoice = () => {
  * webhook URL are shown. Seeded once per mount; the form keys it by the saved
  * settings.
  */
-export const PaymentProviderChoice = ({
+export const ProviderChoice = ({
   children,
   credentialsProvider,
   initialProvider,
@@ -50,19 +61,17 @@ export const PaymentProviderChoice = ({
   );
 
   return (
-    <PaymentProviderChoiceContext value={context}>
-      {children}
-    </PaymentProviderChoiceContext>
+    <ProviderChoiceContext value={context}>{children}</ProviderChoiceContext>
   );
 };
 
 /** The select, posted as `provider`. Each option is the provider's own name. */
-export const PaymentProviderSelect = ({
+export const ProviderSelect = ({
   providers,
 }: {
   providers: readonly { displayName: string; id: string }[];
 }) => {
-  const { provider, setProvider } = usePaymentProviderChoice();
+  const { provider, setProvider } = useProviderChoice();
 
   return (
     <>
@@ -81,55 +90,50 @@ export const PaymentProviderSelect = ({
 };
 
 /** Renders its children while `provider` is the one chosen. */
-export const PaymentProviderPanel = ({
+export const ProviderPanel = ({
   children,
   provider,
 }: {
   children: ReactNode;
   provider: string;
-}) => (usePaymentProviderChoice().provider === provider ? children : null);
+}) => (useProviderChoice().provider === provider ? children : null);
 
 /**
  * Renders its children while the chosen provider is not the one whose
  * credentials are stored, which a save would clear.
  */
-export const PaymentProviderChangeNotice = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const { credentialsProvider, provider } = usePaymentProviderChoice();
+export const ProviderChangeNotice = ({ children }: { children: ReactNode }) => {
+  const { credentialsProvider, provider } = useProviderChoice();
 
   return credentialsProvider !== "" && provider !== credentialsProvider
     ? children
     : null;
 };
 
-interface PaymentEnabledContextValue {
+interface ProviderEnabledContextValue {
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
 }
 
-const PaymentEnabledContext = createContext<PaymentEnabledContextValue | null>(
-  null
-);
+const ProviderEnabledContext =
+  createContext<ProviderEnabledContextValue | null>(null);
 
-const usePaymentEnabled = () => {
-  const context = use(PaymentEnabledContext);
+const useProviderEnabled = () => {
+  const context = use(ProviderEnabledContext);
   if (!context) {
     throw new Error(
-      "PaymentEnabled slots must be rendered inside PaymentEnabled."
+      "ProviderEnabled slots must be rendered inside ProviderEnabled."
     );
   }
   return context;
 };
 
 /**
- * Whether the tenant takes payments, which decides whether an unstored
+ * Whether the provider is turned on, which decides whether an unstored
  * required credential has to be entered. Seeded once per mount; the form keys
  * it by the saved settings.
  */
-export const PaymentEnabled = ({
+export const ProviderEnabled = ({
   children,
   initialEnabled,
 }: {
@@ -140,17 +144,17 @@ export const PaymentEnabled = ({
   const context = useMemo(() => ({ enabled, setEnabled }), [enabled]);
 
   return (
-    <PaymentEnabledContext value={context}>{children}</PaymentEnabledContext>
+    <ProviderEnabledContext value={context}>{children}</ProviderEnabledContext>
   );
 };
 
 /** The checkbox the form posts as `enabled`, with `children` beside it. */
-export const PaymentEnabledCheckbox = ({
+export const ProviderEnabledCheckbox = ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const { enabled, setEnabled } = usePaymentEnabled();
+  const { enabled, setEnabled } = useProviderEnabled();
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -160,31 +164,45 @@ export const PaymentEnabledCheckbox = ({
   );
 };
 
-type PaymentCredentialMode = "clear" | "keep" | "replace";
+/** A setting's label, marked required while the provider is on. */
+export const ProviderEnabledRequiredLabel = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <FieldLabel required={useProviderEnabled().enabled}>{children}</FieldLabel>
+);
 
-interface PaymentCredentialContextValue {
+/** A setting the provider needs once it is on, required from then. */
+export const ProviderEnabledRequiredInput = (
+  props: Omit<InputProps, "required">
+) => <Input {...props} required={useProviderEnabled().enabled} />;
+
+type ProviderCredentialMode = "clear" | "keep" | "replace";
+
+interface ProviderCredentialContextValue {
   configured: boolean;
   hint: string;
-  mode: PaymentCredentialMode;
+  mode: ProviderCredentialMode;
   name: string;
   required: boolean;
-  setMode: (mode: PaymentCredentialMode) => void;
+  setMode: (mode: ProviderCredentialMode) => void;
 }
 
-const PaymentCredentialContext =
-  createContext<PaymentCredentialContextValue | null>(null);
+const ProviderCredentialContext =
+  createContext<ProviderCredentialContextValue | null>(null);
 
-const usePaymentCredential = () => {
-  const context = use(PaymentCredentialContext);
+const useProviderCredential = () => {
+  const context = use(ProviderCredentialContext);
   if (!context) {
     throw new Error(
-      "PaymentCredential slots must be rendered inside PaymentCredential."
+      "ProviderCredential slots must be rendered inside ProviderCredential."
     );
   }
   return context;
 };
 
-const initialMode = (configured: boolean): PaymentCredentialMode =>
+const initialMode = (configured: boolean): ProviderCredentialMode =>
   configured ? "keep" : "replace";
 
 /**
@@ -192,7 +210,7 @@ const initialMode = (configured: boolean): PaymentCredentialMode =>
  * `credential_<name>_mode` so the Action can tell "left as it is" from
  * "removed", and a successful save puts a secret back behind its hint.
  */
-export const PaymentCredential = ({
+export const ProviderCredential = ({
   children,
   configured,
   disabled,
@@ -206,10 +224,10 @@ export const PaymentCredential = ({
   hint: string;
   /** The field's name as the provider declares it. */
   name: string;
-  /** Whether the provider needs the field before it takes payments. */
+  /** Whether the provider needs the field before it is turned on. */
   required: boolean;
 }) => {
-  const { enabled } = usePaymentEnabled();
+  const { enabled } = useProviderEnabled();
   const [mode, setMode] = useState(() => initialMode(configured));
   const required = declaredRequired && !disabled && enabled && !configured;
   const context = useMemo(
@@ -224,7 +242,7 @@ export const PaymentCredential = ({
   });
 
   return (
-    <PaymentCredentialContext value={context}>
+    <ProviderCredentialContext value={context}>
       <input name={`credential_${name}_mode`} type="hidden" value={mode} />
       <input
         name={`credential_${name}_configured`}
@@ -232,39 +250,39 @@ export const PaymentCredential = ({
         value={configured ? "1" : "0"}
       />
       {children}
-    </PaymentCredentialContext>
+    </ProviderCredentialContext>
   );
 };
 
-/** The field's label, required while payments are on and none is stored. */
-export const PaymentCredentialLabel = ({
+/** The field's label, required while the provider is on and none is stored. */
+export const ProviderCredentialLabel = ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const { required } = usePaymentCredential();
+  const { required } = useProviderCredential();
 
   return <FieldLabel required={required}>{children}</FieldLabel>;
 };
 
 /** Renders its children while the credential is in `mode`. */
-export const PaymentCredentialWhile = ({
+export const ProviderCredentialWhile = ({
   children,
   mode,
 }: {
   children: ReactNode;
-  mode: PaymentCredentialMode;
-}) => (usePaymentCredential().mode === mode ? children : null);
+  mode: ProviderCredentialMode;
+}) => (useProviderCredential().mode === mode ? children : null);
 
 /** Switches the credential to `mode`; `children` is the control's wording. */
-export const PaymentCredentialModeButton = ({
+export const ProviderCredentialModeButton = ({
   children,
   mode,
 }: {
   children: ReactNode;
-  mode: PaymentCredentialMode;
+  mode: ProviderCredentialMode;
 }) => {
-  const { setMode } = usePaymentCredential();
+  const { setMode } = useProviderCredential();
 
   return (
     <Button
@@ -280,15 +298,15 @@ export const PaymentCredentialModeButton = ({
 };
 
 /** The stored secret's masked hint, which is all a secret is ever shown as. */
-export const PaymentCredentialHint = () => {
-  const { hint } = usePaymentCredential();
+export const ProviderCredentialHint = () => {
+  const { hint } = useProviderCredential();
 
   return <Input disabled readOnly type="text" value={hint} />;
 };
 
 /** The box for a new secret, posted as `credential_<name>`. */
-export const PaymentCredentialSecretInput = () => {
-  const { name, required } = usePaymentCredential();
+export const ProviderCredentialSecretInput = () => {
+  const { name, required } = useProviderCredential();
 
   return (
     <Input
@@ -304,8 +322,8 @@ export const PaymentCredentialSecretInput = () => {
  * A credential that is not secret, shown as stored and edited in place.
  * Emptying a stored one removes it, and leaving it as stored keeps it.
  */
-export const PaymentCredentialTextInput = () => {
-  const { configured, hint, name, required, setMode } = usePaymentCredential();
+export const ProviderCredentialTextInput = () => {
+  const { configured, hint, name, required, setMode } = useProviderCredential();
 
   return (
     <Input

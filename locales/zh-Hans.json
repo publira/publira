@@ -223,6 +223,7 @@
         "episode_free_window": "免费阅读期",
         "fcm_config": "Firebase Cloud Messaging",
         "genre": "题材",
+        "inbound_email_config": "收件设置",
         "label": "品牌",
         "page": "页面",
         "page_version": "页面版本",
@@ -329,6 +330,7 @@
         "tenant_admin_invite_accepted": "接受了管理员邀请",
         "tenant_email_settings_updated": "更新了邮件设置",
         "tenant_smtp_test_email_sent": "测试了SMTP连接",
+        "tenant_inbound_email_settings_updated": "更新了收件设置",
         "tenant_payment_settings_updated": "更新了支付设置",
         "tenant_fcm_credentials_saved": "保存了Firebase凭据",
         "tenant_fcm_credentials_deleted": "删除了Firebase凭据",
@@ -2274,6 +2276,7 @@
         "delete_failed": "无法删除标志。请稍后再试。"
       },
       "email": {
+        "title": "发件",
         "description": "未设置或未启用时，邮件将由平台自身的发件人发送。",
         "override": "使用该租户自己的SMTP服务器",
         "override_checkbox": "启用覆盖设置",
@@ -2302,6 +2305,66 @@
         "close": "关闭",
         "saved": "邮件设置已保存。",
         "failed": "请求失败。请稍后再试。"
+      },
+      "inbound_email": {
+        "title": "收件",
+        "description": "通过SendGrid或Resend，将读者对咨询答复的回信接收到控制台。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
+        "section_error": "无法显示收件设置",
+        "provider": "收件服务商",
+        "provider_description": "读者的回信将通过此处选择的服务商接收，凭据在下方填写。",
+        "provider_change_warning": "以其他服务商保存时，为{$provider}保存的凭据将被删除。",
+        "enabled": "在控制台接收回信",
+        "enabled_checkbox": "启用",
+        "enabled_description": "关闭时，答复的回复地址为答复的工作人员的邮箱地址，读者的回信会发送到该工作人员的邮箱。",
+        "domain": "收件域名",
+        "domain_description": "读者回信发送到的域名。使用reply.example.com这样的专用域名，主域名目前收到的邮件将保持不变。",
+        "domain_sendgrid_description": "请在DNS中将该域名的MX记录指向mx.sendgrid.net，优先级为10。",
+        "domain_resend_description": "请在Resend的Domains中添加该域名并开启接收，然后将Resend显示的MX记录添加到DNS。",
+        "fields": {
+          "sendgrid": {
+            "webhook_token": "Webhook令牌"
+          },
+          "resend": {
+            "api_key": "API密钥",
+            "webhook_secret": "Webhook签名密钥"
+          }
+        },
+        "field_sources": {
+          "sendgrid": {
+            "webhook_token": "由您自行决定的足够长的随机字符串。SendGrid每次都会将它作为下方webhook URL中的密码发回，不带此值的邮件将被拒绝。"
+          },
+          "resend": {
+            "api_key": "在Resend控制台的API Keys中创建的、具有Full access权限的API密钥。回信内容将使用此密钥从Resend读取。",
+            "webhook_secret": "在Resend中登记下方URL后，该webhook显示的签名密钥（whsec_…）。"
+          }
+        },
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "请在{$provider}中将此URL登记为接收邮件的发送地址。",
+        "webhook_url_sendgrid_description": "请在SendGrid的Settings → Inbound Parse中添加收件域名，并将此URL指定为Destination URL，同时把<token>替换为上方保存的webhook令牌。",
+        "webhook_url_resend_description": "请在Resend的Webhooks中将此URL添加为email.received事件的发送地址，然后在上方保存其显示的签名密钥。",
+        "reply_address": "回复地址",
+        "reply_address_description": "答复会请读者回信到此格式的地址，其中*为咨询的ID。收件域名上的所有地址都必须能送达服务商。",
+        "copy_webhook_url": "复制webhook URL",
+        "copy_reply_address": "复制回复地址",
+        "saved": "收件设置已保存。",
+        "load_failed": "无法加载收件设置。请稍后再试。",
+        "save_failed": "无法保存收件设置。请稍后再试。",
+        "status": {
+          "disabled": "已停用",
+          "disabled_description": "设置已保存，但收件处于关闭状态。读者的回信会发送到答复的工作人员的邮箱地址。",
+          "incomplete": "未完成",
+          "incomplete_description": "收件已开启，但缺少收件域名或必需的凭据，因此读者的回信仍会发送到答复的工作人员的邮箱地址。",
+          "ready": "就绪",
+          "ready_description": "读者的回信会回到控制台，显示在所回复的咨询下。",
+          "unset": "未设置",
+          "unset_description": "读者的回信会发送到答复的工作人员的邮箱地址。选择服务商并开启收件后，即可在控制台接收。"
+        },
+        "validation": {
+          "domain_invalid": "请输入域名，例如reply.example.com。",
+          "domain_required": "要开启收件，请输入收件域名。",
+          "field_required": "要开启收件，请输入此值。",
+          "provider_invalid": "请选择收件服务商。"
+        }
       },
       "email_change": {
         "title": "变更邮箱地址",
@@ -2339,6 +2402,14 @@
         "disable_done": "两步验证已关闭。",
         "load_failed": "无法读取两步验证的状态。"
       },
+      "credentials": {
+        "secret_change": "变更",
+        "secret_change_cancel": "取消变更",
+        "secret_remove": "删除",
+        "secret_removed": "保存后将被删除。",
+        "secret_remove_cancel": "取消删除",
+        "secret_description": "您输入的值不会再次显示。已保存的值除首尾字符外都会以掩码显示。"
+      },
       "payment": {
         "title": "支付设置",
         "description": "选择该租户的支付服务商，并登记、替换或停用其凭据。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
@@ -2364,12 +2435,6 @@
             "webhook_token": "PAY.JP管理后台账户设置中显示的Webhook令牌（whook_…）。"
           }
         },
-        "secret_change": "变更",
-        "secret_change_cancel": "取消变更",
-        "secret_remove": "删除",
-        "secret_removed": "保存后将被删除。",
-        "secret_remove_cancel": "取消删除",
-        "secret_description": "您输入的值不会再次显示。已保存的值除首尾字符外都会以掩码显示。",
         "public_description": "该值会在结账时交给读者的浏览器，因此按保存的原样显示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "请在{$provider}中将此URL登记为支付通知的接收地址。",
@@ -2727,7 +2792,7 @@
     },
     "integrations": {
       "email_title": "邮件",
-      "email_description": "管理该租户发送邮件的方式。",
+      "email_description": "管理该租户发送邮件以及接收读者回信的方式。",
       "email_error": "无法显示邮件设置",
       "payment_title": "支付",
       "payment_description": "管理此租户向读者收费的方式：网页结账使用所选的支付服务商，应用内购买使用App Store和Google Play。",

@@ -15,7 +15,7 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
+import { Identifier, IdentifierValue } from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -35,6 +35,8 @@ import {
   ProviderCredentialTextInput,
   ProviderEnabled,
   ProviderEnabledCheckbox,
+  ProviderEnabledRequiredInput,
+  ProviderEnabledRequiredLabel,
   ProviderPanel,
   ProviderSelect,
 } from "#components/provider-credentials";
@@ -42,64 +44,81 @@ import {
   ProviderSecretControls,
   ProviderSecretDescription,
 } from "#components/provider-secret-controls";
-import { paymentSettingsStatus } from "#lib/payment-settings-shared";
+import {
+  inboundEmailSettingsStatus,
+  inboundEmailWebhookUrl,
+  inboundReplyAddressPattern,
+} from "#lib/inbound-email-settings-shared";
 import type {
-  PaymentCredentialField,
-  PaymentProvider,
-  PaymentSettingsStatus,
-  TenantPaymentSettings,
-} from "#lib/payment-settings-shared";
+  InboundEmailProvider,
+  InboundEmailSettingsStatus,
+  TenantInboundEmailSettings,
+} from "#lib/inbound-email-settings-shared";
 
-import { updateTenantPaymentSettingsAction } from "../_lib/actions";
+import { updateTenantInboundEmailSettingsAction } from "../_lib/actions";
+import {
+  InboundEmailReplyAddressCopy,
+  InboundEmailWebhookUrlCopy,
+} from "./inbound-email-copy";
 
-const statusTone: Record<PaymentSettingsStatus, BadgeTone> = {
+const statusTone: Record<InboundEmailSettingsStatus, BadgeTone> = {
   disabled: "muted",
   incomplete: "warning",
   ready: "success",
   unset: "muted",
 };
 
-const PaymentStatusLabel = ({ status }: { status: PaymentSettingsStatus }) => {
+const InboundEmailStatusLabel = ({
+  status,
+}: {
+  status: InboundEmailSettingsStatus;
+}) => {
   switch (status) {
     case "disabled": {
-      return <Message message="admin.settings.payment.status.disabled" />;
+      return <Message message="admin.settings.inbound_email.status.disabled" />;
     }
     case "incomplete": {
-      return <Message message="admin.settings.payment.status.incomplete" />;
+      return (
+        <Message message="admin.settings.inbound_email.status.incomplete" />
+      );
     }
     case "ready": {
-      return <Message message="admin.settings.payment.status.ready" />;
+      return <Message message="admin.settings.inbound_email.status.ready" />;
     }
     default: {
-      return <Message message="admin.settings.payment.status.unset" />;
+      return <Message message="admin.settings.inbound_email.status.unset" />;
     }
   }
 };
 
-const PaymentStatusDescription = ({
+/**
+ * Where readers' replies go in each state. Every state but ready says they go
+ * to the staff member who answered, which is the default the section changes.
+ */
+const InboundEmailStatusDescription = ({
   status,
 }: {
-  status: PaymentSettingsStatus;
+  status: InboundEmailSettingsStatus;
 }) => {
   switch (status) {
     case "disabled": {
       return (
-        <Message message="admin.settings.payment.status.disabled_description" />
+        <Message message="admin.settings.inbound_email.status.disabled_description" />
       );
     }
     case "incomplete": {
       return (
-        <Message message="admin.settings.payment.status.incomplete_description" />
+        <Message message="admin.settings.inbound_email.status.incomplete_description" />
       );
     }
     case "ready": {
       return (
-        <Message message="admin.settings.payment.status.ready_description" />
+        <Message message="admin.settings.inbound_email.status.ready_description" />
       );
     }
     default: {
       return (
-        <Message message="admin.settings.payment.status.unset_description" />
+        <Message message="admin.settings.inbound_email.status.unset_description" />
       );
     }
   }
@@ -109,7 +128,7 @@ const PaymentStatusDescription = ({
  * A credential's name in the console's own catalogs. A field no catalog names
  * yet shows the name the provider declares it under.
  */
-const PaymentCredentialName = ({
+const InboundEmailCredentialName = ({
   field,
   provider,
 }: {
@@ -117,24 +136,19 @@ const PaymentCredentialName = ({
   provider: string;
 }) => {
   switch (`${provider}.${field}`) {
-    case "stripe.secret_key": {
+    case "sendgrid.webhook_token": {
       return (
-        <Message message="admin.settings.payment.fields.stripe.secret_key" />
+        <Message message="admin.settings.inbound_email.fields.sendgrid.webhook_token" />
       );
     }
-    case "stripe.webhook_secret": {
+    case "resend.api_key": {
       return (
-        <Message message="admin.settings.payment.fields.stripe.webhook_secret" />
+        <Message message="admin.settings.inbound_email.fields.resend.api_key" />
       );
     }
-    case "payjp.secret_key": {
+    case "resend.webhook_secret": {
       return (
-        <Message message="admin.settings.payment.fields.payjp.secret_key" />
-      );
-    }
-    case "payjp.webhook_token": {
-      return (
-        <Message message="admin.settings.payment.fields.payjp.webhook_token" />
+        <Message message="admin.settings.inbound_email.fields.resend.webhook_secret" />
       );
     }
     default: {
@@ -143,8 +157,8 @@ const PaymentCredentialName = ({
   }
 };
 
-/** Where in the provider's own dashboard a credential is found. */
-const PaymentCredentialSource = ({
+/** Where a credential comes from: the provider's dashboard, or the tenant. */
+const InboundEmailCredentialSource = ({
   field,
   provider,
 }: {
@@ -152,20 +166,29 @@ const PaymentCredentialSource = ({
   provider: string;
 }) => {
   switch (`${provider}.${field}`) {
-    case "payjp.secret_key": {
+    case "sendgrid.webhook_token": {
       return (
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.field_sources.payjp.secret_key" />
+            <Message message="admin.settings.inbound_email.field_sources.sendgrid.webhook_token" />
           </Suspense>
         </FieldDescription>
       );
     }
-    case "payjp.webhook_token": {
+    case "resend.api_key": {
       return (
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.field_sources.payjp.webhook_token" />
+            <Message message="admin.settings.inbound_email.field_sources.resend.api_key" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "resend.webhook_secret": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.resend.webhook_secret" />
           </Suspense>
         </FieldDescription>
       );
@@ -176,23 +199,23 @@ const PaymentCredentialSource = ({
   }
 };
 
-/** What a provider's webhook URL block adds for that provider alone. */
-const PaymentWebhookNote = ({ provider }: { provider: string }) => {
+/** Where the inbound domain's MX records point, for the provider. */
+const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
   switch (provider) {
-    case "stripe": {
+    case "sendgrid": {
       return (
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.webhook_url_legacy_description" />
+            <Message message="admin.settings.inbound_email.domain_sendgrid_description" />
           </Suspense>
         </FieldDescription>
       );
     }
-    case "payjp": {
+    case "resend": {
       return (
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.webhook_url_payjp_description" />
+            <Message message="admin.settings.inbound_email.domain_resend_description" />
           </Suspense>
         </FieldDescription>
       );
@@ -203,45 +226,53 @@ const PaymentWebhookNote = ({ provider }: { provider: string }) => {
   }
 };
 
-const PaymentCredentialDescription = ({
-  field,
+/** How the provider is told to post received mail to the webhook URL. */
+const InboundEmailWebhookNote = ({
+  provider,
 }: {
-  field: PaymentCredentialField;
+  provider: InboundEmailProvider;
 }) => {
-  if (field.secret) {
-    return <ProviderSecretDescription />;
+  switch (provider.id) {
+    case "sendgrid": {
+      return (
+        <Message message="admin.settings.inbound_email.webhook_url_sendgrid_description" />
+      );
+    }
+    case "resend": {
+      return (
+        <Message message="admin.settings.inbound_email.webhook_url_resend_description" />
+      );
+    }
+    default: {
+      return (
+        <Message
+          message="admin.settings.inbound_email.webhook_url_description"
+          values={{ provider: provider.displayName }}
+        />
+      );
+    }
   }
-  if (field.public) {
-    return (
-      <FieldDescription>
-        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-          <Message message="admin.settings.payment.public_description" />
-        </Suspense>
-      </FieldDescription>
-    );
-  }
-  return null;
 };
 
-interface TenantPaymentSettingsFormProps {
+interface TenantInboundEmailSettingsFormProps {
   canEdit: boolean;
-  initialSettings: TenantPaymentSettings;
+  initialSettings: TenantInboundEmailSettings;
   loadErrorMessage?: string;
-  providers: PaymentProvider[];
+  providers: InboundEmailProvider[];
   tenantId: string;
   /** The storefront origin, when the tenant's domain is known. */
   webhookOrigin?: string;
 }
 
-export const TenantPaymentSettingsForm = ({
+export const TenantInboundEmailSettingsForm = ({
   canEdit,
   initialSettings: settings,
   loadErrorMessage,
   providers,
   tenantId,
   webhookOrigin,
-}: TenantPaymentSettingsFormProps) => {
-  const status = paymentSettingsStatus(settings);
+}: TenantInboundEmailSettingsFormProps) => {
+  const status = inboundEmailSettingsStatus(settings);
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
   const initialProvider =
     providers.find((provider) => provider.id === settings.provider)?.id ??
@@ -257,25 +288,28 @@ export const TenantPaymentSettingsForm = ({
     provider === settings.provider
       ? settings.fields.find((state) => state.name === field)
       : undefined;
+  const replyAddress = settings.domain
+    ? inboundReplyAddressPattern(settings.domain)
+    : undefined;
 
   return (
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <Message message="admin.settings.payment.title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+              <Message message="admin.settings.inbound_email.title" />
             </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="admin.settings.payment.description" />
+              <Message message="admin.settings.inbound_email.description" />
             </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
       <ActionForm
-        action={updateTenantPaymentSettingsAction}
+        action={updateTenantInboundEmailSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
@@ -284,12 +318,12 @@ export const TenantPaymentSettingsForm = ({
           <div className="flex flex-wrap items-center gap-3">
             <StatusChip status={statusTone[status]}>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <PaymentStatusLabel status={status} />
+                <InboundEmailStatusLabel status={status} />
               </Suspense>
             </StatusChip>
             <p className="text-sm text-muted-foreground">
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <PaymentStatusDescription status={status} />
+                <InboundEmailStatusDescription status={status} />
               </Suspense>
             </p>
           </div>
@@ -303,6 +337,7 @@ export const TenantPaymentSettingsForm = ({
           key={[
             settings.provider,
             settings.enabled,
+            settings.domain,
             settings.ready,
             ...settings.fields.map(
               (field) => `${field.name}=${field.configured}:${field.hint}`
@@ -316,21 +351,21 @@ export const TenantPaymentSettingsForm = ({
             <Field>
               <FieldLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <Message message="admin.settings.payment.provider" />
+                  <Message message="admin.settings.inbound_email.provider" />
                 </Suspense>
               </FieldLabel>
               <FieldContent>
                 <ProviderSelect providers={providers} />
                 <FieldDescription>
                   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                    <Message message="admin.settings.payment.provider_description" />
+                    <Message message="admin.settings.inbound_email.provider_description" />
                   </Suspense>
                 </FieldDescription>
                 <ProviderChangeNotice>
                   <FormMessage variant="warning">
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message
-                        message="admin.settings.payment.provider_change_warning"
+                        message="admin.settings.inbound_email.provider_change_warning"
                         values={{ provider: credentialsProviderName }}
                       />
                     </Suspense>
@@ -343,21 +378,50 @@ export const TenantPaymentSettingsForm = ({
               <Field>
                 <FieldLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                    <Message message="admin.settings.payment.enabled" />
+                    <Message message="admin.settings.inbound_email.enabled" />
                   </Suspense>
                 </FieldLabel>
                 <FieldContent>
                   <ProviderEnabledCheckbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                      <Message message="admin.settings.payment.enabled_checkbox" />
+                      <Message message="admin.settings.inbound_email.enabled_checkbox" />
                     </Suspense>
                   </ProviderEnabledCheckbox>
                   <FieldDescription>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                      <Message message="admin.settings.payment.enabled_description" />
+                      <Message message="admin.settings.inbound_email.enabled_description" />
                     </Suspense>
                   </FieldDescription>
                 </FieldContent>
+              </Field>
+
+              <Field>
+                <ProviderEnabledRequiredLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="admin.settings.inbound_email.domain" />
+                  </Suspense>
+                </ProviderEnabledRequiredLabel>
+                <FieldContent>
+                  <ProviderEnabledRequiredInput
+                    autoComplete="off"
+                    defaultValue={settings.domain}
+                    name="domain"
+                    placeholder="reply.example.com"
+                    spellCheck={false}
+                    type="text"
+                  />
+                  <ActionFormFieldError name="domain" />
+                </FieldContent>
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.settings.inbound_email.domain_description" />
+                  </Suspense>
+                </FieldDescription>
+                {providers.map((provider) => (
+                  <ProviderPanel key={provider.id} provider={provider.id}>
+                    <InboundEmailDomainNote provider={provider.id} />
+                  </ProviderPanel>
+                ))}
               </Field>
 
               {providers.map((provider) => (
@@ -378,7 +442,7 @@ export const TenantPaymentSettingsForm = ({
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-32" />}
                             >
-                              <PaymentCredentialName
+                              <InboundEmailCredentialName
                                 field={field.name}
                                 provider={provider.id}
                               />
@@ -397,11 +461,11 @@ export const TenantPaymentSettingsForm = ({
                               name={`credential_${field.name}`}
                             />
                           </FieldContent>
-                          <PaymentCredentialSource
+                          <InboundEmailCredentialSource
                             field={field.name}
                             provider={provider.id}
                           />
-                          <PaymentCredentialDescription field={field} />
+                          {field.secret ? <ProviderSecretDescription /> : null}
                         </Field>
                       </ProviderCredential>
                     );
@@ -410,40 +474,64 @@ export const TenantPaymentSettingsForm = ({
               ))}
             </ProviderEnabled>
 
+            {/* The URL is shown before the settings are ready: Resend's
+                signing secret, one of the fields that makes them ready, only
+                exists once the URL is registered there. */}
             {webhookOrigin
-              ? providers.map((provider) => (
-                  <ProviderPanel key={provider.id} provider={provider.id}>
-                    <Field>
-                      <FieldLabel>
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-24" />}
-                        >
-                          <Message message="admin.settings.payment.webhook_url" />
-                        </Suspense>
-                      </FieldLabel>
-                      <FieldContent>
-                        <Input
-                          disabled
-                          readOnly
-                          type="text"
-                          value={`${webhookOrigin}${provider.webhookPath}`}
-                        />
-                        <FieldDescription>
+              ? providers.map((provider) => {
+                  const webhookUrl = inboundEmailWebhookUrl(
+                    webhookOrigin,
+                    provider
+                  );
+                  return (
+                    <ProviderPanel key={provider.id} provider={provider.id}>
+                      <Field>
+                        <FieldLabel>
                           <Suspense
-                            fallback={<SkeletonLine className="h-4 w-3/4" />}
+                            fallback={<SkeletonLine className="h-4 w-24" />}
                           >
-                            <Message
-                              message="admin.settings.payment.webhook_url_description"
-                              values={{ provider: provider.displayName }}
-                            />
+                            <Message message="admin.settings.inbound_email.webhook_url" />
                           </Suspense>
-                        </FieldDescription>
-                        <PaymentWebhookNote provider={provider.id} />
-                      </FieldContent>
-                    </Field>
-                  </ProviderPanel>
-                ))
+                        </FieldLabel>
+                        <FieldContent>
+                          <Identifier>
+                            <IdentifierValue>{webhookUrl}</IdentifierValue>
+                            <InboundEmailWebhookUrlCopy value={webhookUrl} />
+                          </Identifier>
+                          <FieldDescription>
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-3/4" />}
+                            >
+                              <InboundEmailWebhookNote provider={provider} />
+                            </Suspense>
+                          </FieldDescription>
+                        </FieldContent>
+                      </Field>
+                    </ProviderPanel>
+                  );
+                })
               : null}
+
+            {replyAddress ? (
+              <Field>
+                <FieldLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="admin.settings.inbound_email.reply_address" />
+                  </Suspense>
+                </FieldLabel>
+                <FieldContent>
+                  <Identifier>
+                    <IdentifierValue>{replyAddress}</IdentifierValue>
+                    <InboundEmailReplyAddressCopy value={replyAddress} />
+                  </Identifier>
+                  <FieldDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                      <Message message="admin.settings.inbound_email.reply_address_description" />
+                    </Suspense>
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            ) : null}
           </ProviderChoice>
         </ActionFormFieldset>
 

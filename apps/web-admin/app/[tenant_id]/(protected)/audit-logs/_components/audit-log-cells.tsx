@@ -303,6 +303,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_smtp_test_email_sent" />
       );
     }
+    case "tenant_inbound_email_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_inbound_email_settings_updated" />
+      );
+    }
     case "tenant_payment_settings_updated": {
       return (
         <Message message="admin.audit.actions.tenant_payment_settings_updated" />
@@ -429,6 +434,9 @@ const tenantTargetName = (targetType: string) => {
   switch (targetType) {
     case "fcm_config": {
       return <Message message="admin.audit.targets.fcm_config" />;
+    }
+    case "inbound_email_config": {
+      return <Message message="admin.audit.targets.inbound_email_config" />;
     }
     case "payment_config": {
       return <Message message="admin.audit.targets.payment_config" />;
