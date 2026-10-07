@@ -243,7 +243,7 @@ func findMember(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID, raw
 		return Member{}, err
 	}
 	if lock {
-		if err := tenantlock.Take(ctx, tx, "tenant-admins:"+tenantID.String()); err != nil {
+		if err := lockAdmins(ctx, tx, tenantID); err != nil {
 			return Member{}, err
 		}
 	}
@@ -272,7 +272,7 @@ func findMember(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID, raw
 // administrators suspending each other at once cannot both see the other one
 // left. An account that holds no tenant_admin role is never refused.
 func KeepAnAdminBeside(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID) error {
-	if err := tenantlock.Take(ctx, tx, "tenant-admins:"+tenantID.String()); err != nil {
+	if err := lockAdmins(ctx, tx, tenantID); err != nil {
 		return err
 	}
 	roles, err := dbmodels.New(tx).ListTenantUserRoles(ctx, userID)
@@ -280,6 +280,33 @@ func KeepAnAdminBeside(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UU
 		return fmt.Errorf("list tenant user roles: %w", err)
 	}
 	return refuseLastAdmin(ctx, tx, tenantID, Member{UserID: userID, Role: auth.ResolveTenantRole(roles)})
+}
+
+// lockAdmins takes the tenant's administrator lock for the rest of tx. Every
+// change that reads a member's role and then replaces it takes it first, so a
+// promotion committed in between cannot be overwritten by a role read before it.
+func lockAdmins(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID) error {
+	return tenantlock.Take(ctx, tx, "tenant-admins:"+tenantID.String())
+}
+
+// GrantAtLeast leaves userID holding the stronger of role and the console role
+// it holds now, inside tx and under the tenant's administrator lock, and
+// answers the role it holds afterwards. It never lowers a role, so it can never
+// take the tenant's last tenant_admin away.
+func GrantAtLeast(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID, role string) (string, error) {
+	if err := lockAdmins(ctx, tx, tenantID); err != nil {
+		return "", err
+	}
+	q := dbmodels.New(tx)
+	held, err := q.ListTenantUserRoles(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("list tenant user roles: %w", err)
+	}
+	granted := auth.ResolveTenantRole(append(held, role))
+	if err := ReplaceRole(ctx, q, tenantID, userID, granted); err != nil {
+		return "", err
+	}
+	return granted, nil
 }
 
 func refuseLastAdmin(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, member Member) error {

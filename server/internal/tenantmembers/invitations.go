@@ -147,7 +147,8 @@ func (p InviteParams) normalize() (email, role string, err error) {
 // A user granted tenant_admin on the spot loses any role they held, which can
 // only be a weaker one. Any other role is refused with [ErrAlreadyMember] when
 // the user already holds one: replacing it could demote an administrator,
-// which is [UpdateRole]'s to do, behind its check for the last one.
+// which is [UpdateRole]'s to do, behind its check for the last one. Both read
+// the role under the tenant's administrator lock, as [UpdateRole] does.
 func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	email, role, err := p.normalize()
 	if err != nil {
@@ -161,6 +162,9 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	})
 	switch {
 	case err == nil:
+		if err := lockAdmins(ctx, tx, p.TenantID); err != nil {
+			return Invited{}, err
+		}
 		if role != auth.RoleTenantAdmin {
 			roles, err := q.ListTenantUserRoles(ctx, user.ID)
 			if err != nil {

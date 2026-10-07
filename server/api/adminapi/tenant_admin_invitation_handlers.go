@@ -157,14 +157,11 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		// The account may have been given a role since it was invited, and
 		// accepting never lowers it: an invitation as an Editor taking the role
 		// from an administrator could leave the tenant with none.
-		held, err := txq.ListTenantUserRoles(ctx, user.ID)
+		granted, err := tenantmembers.GrantAtLeast(ctx, tx, tenant.ID, user.ID, invitation.Role)
 		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to list invitation user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-		}
-		role = auth.ResolveTenantRole(append(held, invitation.Role))
-		if err := tenantmembers.ReplaceRole(ctx, txq, tenant.ID, user.ID, role); err != nil {
 			return nil, s.internalDBError(ctx, "failed to grant invitation role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
+		role = granted
 	}
 
 	if _, err := txq.MarkTenantAdminInvitationAccepted(ctx, dbmodels.MarkTenantAdminInvitationAcceptedParams{
