@@ -52,7 +52,7 @@ Whether confirming is enough, or the reader must also be signed in with a date o
 
 ### Comments
 
-**Comments** decides how readers' comments on the series' episodes are published: **Do not accept comments**, **Publish straight away**, or **Publish after approval**. It starts on **Follow the tenant setting**, which follows **How comments are published** under **Settings**, including after that changes, as [Settings](../3-setup/1-settings.md#reader-comments) describes.
+**Comments** decides how readers' comments on the series' episodes are published: **Do not accept comments**, **Publish straight away**, or **Publish after approval**. It starts on **Follow the tenant setting**, which follows **How comments are published** under **Settings**, including after that changes, as [Settings](../3-setup/1-settings.md#reader-comments) describes. Approving and moderating the comments is covered in [Comments](../2-readers.md#comments).
 
 A choice made here applies to the series whatever the tenant setting is, so a series set to **Publish straight away** takes comments even while the tenant does not accept them.
 

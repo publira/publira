@@ -47,9 +47,9 @@ The operator chose it when creating the tenant. **Save the default language** ch
 | --- | --- |
 | **Do not accept comments** | Episode pages show no comment section, and no comment can be posted. A new tenant starts here |
 | **Publish straight away** | A comment is readable by everyone from the moment it is posted |
-| **Publish after approval** | Only its commenter sees a comment until a moderator approves it under **Comments** |
+| **Publish after approval** | Only its commenter sees a comment until a moderator approves it under **Comments**, as [Working the approval queue](../2-readers.md#working-the-approval-queue) describes |
 
-**Reports that remove a comment** is how many different readers must report a comment before it is hidden without waiting for staff. A hidden comment waits in the report queue under **Comments**, its commenter still sees it, and staff can put it back. It starts at `3`; `0` leaves every removal to your moderators.
+**Reports that remove a comment** is how many different readers must report a comment before it is hidden without waiting for staff. A hidden comment waits in the [report queue](../2-readers.md#reported-comments) under **Comments**, its commenter still sees it, and staff can put it back. It starts at `3`; `0` leaves every removal to your moderators.
 
 A series can set its own **Comments** choice on its form, which then applies to that series instead of this one. A series left on **Follow the tenant setting** follows any later change here. Choose **Save the comment settings** to save.
 
