@@ -16,7 +16,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 
 | Template | Mail | `data` |
 | --- | --- | --- |
-| `tenant_admin_invitation` | tenant admin invitation | `tenant_name`, `invite_url`, `expires_at` |
+| `tenant_admin_invitation` | invitation to hold a console role | `tenant_name`, `invite_url`, `role`, `expires_at` |
 | `reader_email_verification` | sign-up address verification | `tenant_name`, `verify_url`, `expires_at` |
 | `reader_email_change_confirmation` | address change, to the current and to the new address | `tenant_name`, `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `reader_email_changed_notice` | to the previous address once the change completes | `tenant_name`, `previous_email`, `new_email` |
@@ -35,6 +35,8 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 Template IDs and variable names are snake_case. The copy lives under `email.*` in the repo-root `locales/*.json`, and rendering takes the catalog, the locale, and the time zone as arguments — the package embeds no copy of its own and reads no environment. `timeZone` is an IANA name, and every `expires_at` (RFC3339) is displayed in that zone.
 
 `tenant_name` is who the mail is from. `EmailLayout` shows it as the sender above the card and repeats it in the footer: a reader signed up on the tenant's site and never met the platform, so a mail a tenant owns is branded with the tenant throughout. The platform console's mails take no `tenant_name` because they belong to no tenant, and are the only ones that say Publira.
+
+`role` is the console role the invitation grants — `tenant_admin`, `tenant_editor`, or `tenant_auditor` — and the copy names it.
 
 `recipient_kind` is `current_email` or `new_email` — both sides of an address change confirm, and the sender says which side it is addressing.
 
@@ -57,6 +59,7 @@ const result = await renderEmail({
   messages: await loadEmailMessages(locale),
   data: {
     invite_url: "https://admin.example.com/accept-invite?token=…",
+    role: "tenant_editor",
     tenant_name: "Aoto Press",
     expires_at: "2030-01-15T12:00:00Z",
   },
