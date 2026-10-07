@@ -170,11 +170,34 @@ const requestInboundEmailProviders = async (
   return (response.providers ?? []).map(toInboundEmailProvider);
 };
 
+/**
+ * What a cached read hands its exported caller: the result, and whether its
+ * failure is one no screen copy describes. A `"use cache"` scope must not
+ * throw — the fill would fail the whole request — and an error that crosses
+ * its boundary loses its `Code`, so the scope classifies the failure and the
+ * caller, outside it, throws the unexpected ones.
+ */
+type CachedRead<TResult> = TResult & { unexpected?: boolean };
+
+/** The result of a cached read, thrown when its failure was unexpected. */
+const settleCachedRead = <
+  TResult extends { ok: true } | { ok: false; message: string },
+>({
+  unexpected,
+  ...result
+}: CachedRead<TResult>): TResult => {
+  const settled = result as TResult;
+  if (unexpected && !settled.ok) {
+    throw new Error(settled.message);
+  }
+  return settled;
+};
+
 const getTenantInboundEmailSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantInboundEmailSettingsResult> => {
+): Promise<CachedRead<TenantInboundEmailSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -202,7 +225,6 @@ const getTenantInboundEmailSettingsForSession = async (
       settings: toTenantInboundEmailSettings(response.settings),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: parseErrorMessage(
@@ -212,6 +234,7 @@ const getTenantInboundEmailSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -220,17 +243,19 @@ export const getTenantInboundEmailSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantInboundEmailSettingsResult> =>
-  getTenantInboundEmailSettingsForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantInboundEmailSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 const listInboundEmailProvidersForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<InboundEmailProvidersResult> => {
+): Promise<CachedRead<InboundEmailProvidersResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -255,7 +280,6 @@ const listInboundEmailProvidersForSession = async (
       ),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: parseErrorMessage(
@@ -265,6 +289,7 @@ const listInboundEmailProvidersForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -274,7 +299,13 @@ export const listInboundEmailProviders = async (
   tenantId: string,
   locale: Locale
 ): Promise<InboundEmailProvidersResult> =>
-  listInboundEmailProvidersForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await listInboundEmailProvidersForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 /**
  * The declaration of the provider a save names, read afresh so the Action

@@ -168,17 +168,45 @@ describe("inbound-email-settings", () => {
     });
   });
 
-  it("does not swallow an error it cannot classify", async () => {
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
     mockGetTenantInboundEmailSettingsApi.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
+    );
+    mockListInboundEmailProvidersApi.mockRejectedValueOnce(
+      new TypeError("not an RPC error")
+    );
+
+    const { getTenantInboundEmailSettings, listInboundEmailProviders } =
+      await import("./inbound-email-settings");
+
+    await expect(
+      getTenantInboundEmailSettings("TENANT001", "en")
+    ).rejects.toThrow(Error);
+    await expect(listInboundEmailProviders("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledTimes(2);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("reports an unreachable API as a message rather than throwing", async () => {
+    mockGetTenantInboundEmailSettingsApi.mockRejectedValueOnce(
+      new ConnectError("connection refused", Code.Unavailable)
     );
 
     const { getTenantInboundEmailSettings } =
       await import("./inbound-email-settings");
 
-    await expect(
-      getTenantInboundEmailSettings("TENANT001", "en")
-    ).rejects.toThrow(/boom/u);
+    const result = await getTenantInboundEmailSettings("TENANT001", "en");
+
+    expect(result.ok).toBe(false);
+    expect(result).not.toHaveProperty("unexpected");
   });
 
   it("lists the registered providers with the fields each declares", async () => {
