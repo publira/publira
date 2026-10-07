@@ -19,6 +19,13 @@ message ListPublishedLabelsRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Keep only the labels with at least one series published on the calling
+  // surface — the labels SearchPublishedLabels answers — for a list that
+  // features labels rather than one that keeps every label's URL reachable.
+  // False lists every label, as the RPC states. A token names the filter it
+  // was built under, so sending it with the other value is invalid_argument
+  // and changing the filter restarts at page 1.
+  bool has_published_series = 6;
 }
 
 message ListPublishedLabelsResponse {
@@ -352,8 +359,9 @@ message GetPublishedCreatorDetailResponse {
 // are currently published on the calling surface. Labels have no unpublished
 // state of their own; a label with zero published series is still returned
 // by GetPublishedLabelDetail and ListPublishedLabels, so a shareable detail
-// URL stays valid after its last series is taken down. SearchPublishedLabels
-// answers only labels whose count is above zero.
+// URL stays valid after its last series is taken down. SearchPublishedLabels,
+// and ListPublishedLabels with has_published_series, answer only labels whose
+// count is above zero.
 message PublishedLabel {
   string public_id = 1;
   string name = 2;

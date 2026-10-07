@@ -20,6 +20,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publishedseries"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -619,10 +620,18 @@ func toLabelPage[T any](rows []T, convert func(T) labelPageRow) []labelPageRow {
 	return page
 }
 
+// labelListKey names the label list a cursor points into. The order is fixed,
+// so the only thing that tells two lists apart is the filter, and a list with
+// it off keeps the plain token every label list has always carried.
+func labelListKey(hasPublishedSeries bool) pagination.ListKey {
+	return pagination.NewListKey("created_at_desc").Flag("has_published_series", hasPublishedSeries)
+}
+
 func (s *apiServer) labelPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	hasPublishedSeries bool,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -630,12 +639,13 @@ func (s *apiServer) labelPage(
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
 		rows, err := queries.ListPublishedLabelsAsc(ctx, dbmodels.ListPublishedLabelsAscParams{
-			TenantID:        tenantID,
-			Surface:         surface,
-			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-			CursorInclusive: keys.Inclusive,
-			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-			Limit:           limit,
+			TenantID:           tenantID,
+			Surface:            surface,
+			HasPublishedSeries: hasPublishedSeries,
+			CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive:    keys.Inclusive,
+			CursorCreatedAt:    sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:              limit,
 		})
 		if err != nil {
 			return nil, err
@@ -645,12 +655,13 @@ func (s *apiServer) labelPage(
 	}
 
 	rows, err := queries.ListPublishedLabelsDesc(ctx, dbmodels.ListPublishedLabelsDescParams{
-		TenantID:        tenantID,
-		Surface:         surface,
-		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-		CursorInclusive: keys.Inclusive,
-		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-		Limit:           limit,
+		TenantID:           tenantID,
+		Surface:            surface,
+		HasPublishedSeries: hasPublishedSeries,
+		CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive:    keys.Inclusive,
+		CursorCreatedAt:    sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:              limit,
 	})
 	if err != nil {
 		return nil, err
@@ -677,15 +688,17 @@ func (s *apiServer) ListPublishedLabels(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	hasPublishedSeries := req.Msg.HasPublishedSeries
+	listKey := labelListKey(hasPublishedSeries)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
-	rows, err := s.labelPage(ctx, tenant.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.labelPage(ctx, tenant.ID, surface, hasPublishedSeries, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published labels", err, "tenant_id", tenant.ID.String())
 	}
@@ -705,11 +718,11 @@ func (s *apiServer) ListPublishedLabels(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -717,9 +730,9 @@ func (s *apiServer) ListPublishedLabels(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
