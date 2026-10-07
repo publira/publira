@@ -11,6 +11,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/recommendfeatures"
 )
 
 // The built-in defaults are what the purge batches kept before the periods
@@ -118,6 +119,40 @@ func TestContentEventCutoff(t *testing.T) {
 	now := time.Date(2026, time.September, 19, 13, 0, 0, 0, time.UTC)
 	if got, want := (Periods{ContentEventDays: 30}).ContentEventCutoff(now), now.AddDate(0, 0, -30); !got.Equal(want) {
 		t.Fatalf("ContentEventCutoff = %s, want %s", got, want)
+	}
+}
+
+// build-recommend-features reads a window of whole calendar days in the
+// tenant's time zone, ending on the tenant's yesterday. Whenever the purge
+// runs, at the shortest period it keeps the window's first instant, in a zone
+// whose days cross daylight saving changes as well as in UTC. One day fewer
+// does not.
+func TestTheShortestContentEventPeriodKeepsTheRecommendationWindow(t *testing.T) {
+	shortest := Periods{ContentEventDays: MinContentEventDays}
+	oneDayShort := Periods{ContentEventDays: MinContentEventDays - 1}
+	oneDayShortLoses := false
+	for _, zone := range []string{"UTC", "Asia/Tokyo", "America/New_York", "Australia/Lord_Howe"} {
+		location, err := time.LoadLocation(zone)
+		if err != nil {
+			t.Fatalf("load %s: %v", zone, err)
+		}
+		for now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC); now.Year() == 2026; now = now.Add(30 * time.Minute) {
+			// The window's first instant as insertUserFeaturesSQL bounds it:
+			// midnight in the tenant's zone, DefaultWindowDays - 1 days before
+			// the tenant's yesterday.
+			local := now.In(location)
+			first := time.Date(local.Year(), local.Month(), local.Day()-1-(recommendfeatures.DefaultWindowDays-1), 0, 0, 0, 0, location)
+			if first.Before(shortest.ContentEventCutoff(now)) {
+				t.Fatalf("%s: a purge at %s deletes below %s, past the window's first instant %s",
+					zone, now, shortest.ContentEventCutoff(now), first)
+			}
+			if first.Before(oneDayShort.ContentEventCutoff(now)) {
+				oneDayShortLoses = true
+			}
+		}
+	}
+	if !oneDayShortLoses {
+		t.Fatal("a period one day shorter kept the window at every instant, so the bound is longer than it has to be")
 	}
 }
 

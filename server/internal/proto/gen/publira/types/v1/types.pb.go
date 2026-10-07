@@ -2548,9 +2548,10 @@ type RetentionPeriods struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A comment its author withdrew, counted from the withdrawal.
 	WithdrawnCommentDays int32 `protobuf:"varint,1,opt,name=withdrawn_comment_days,json=withdrawnCommentDays,proto3" json:"withdrawn_comment_days,omitempty"`
-	// A raw engagement event, counted from when it occurred. From 28 to 36500:
-	// the recommendations are built from the last 28 days of events, and each
-	// day's statistics from its events once the day has ended.
+	// A raw engagement event, counted from when it occurred. From 30 to 36500:
+	// the recommendations are built from the last 28 calendar days of events
+	// in the tenant's time zone, and each day's statistics from its events once
+	// the day has ended.
 	ContentEventDays int32 `protobuf:"varint,2,opt,name=content_event_days,json=contentEventDays,proto3" json:"content_event_days,omitempty"`
 	// A daily ranking snapshot, counted from the end of its period. The newest
 	// period is kept whatever its age.

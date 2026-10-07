@@ -35,13 +35,20 @@ const (
 
 	// MinContentEventDays is the shortest content-event period. Two jobs read
 	// content_events after the purge has had its turn: build-recommend-features
-	// summarises a trailing window of this many days, and
+	// summarises a trailing window of recommendfeatures.DefaultWindowDays, and
 	// aggregate-content-stats rebuilds a day only once it has ended, catching up
 	// the days it missed after downtime. A shorter period would build the
 	// recommendations from fewer days than they say, and could delete a day's
 	// events before that day is aggregated, losing them from the statistics
 	// for good.
-	MinContentEventDays = recommendfeatures.DefaultWindowDays
+	//
+	// The window is counted in the tenant's calendar days and ends on its
+	// yesterday, so its first instant is a day older than the window and the
+	// purge, which subtracts whole days from the instant it runs, would take
+	// the start of that day: one day covers it. A calendar day that crosses a
+	// daylight saving change runs past 24 hours, and the second day covers
+	// that.
+	MinContentEventDays = recommendfeatures.DefaultWindowDays + 2
 )
 
 // Periods are retention periods in whole days.

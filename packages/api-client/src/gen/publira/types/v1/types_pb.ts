@@ -1175,9 +1175,10 @@ export type RetentionPeriods = Message<"publira.types.v1.RetentionPeriods"> & {
   withdrawnCommentDays: number;
 
   /**
-   * A raw engagement event, counted from when it occurred. From 28 to 36500:
-   * the recommendations are built from the last 28 days of events, and each
-   * day's statistics from its events once the day has ended.
+   * A raw engagement event, counted from when it occurred. From 30 to 36500:
+   * the recommendations are built from the last 28 calendar days of events
+   * in the tenant's time zone, and each day's statistics from its events once
+   * the day has ended.
    *
    * @generated from field: int32 content_event_days = 2;
    */

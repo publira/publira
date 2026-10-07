@@ -523,7 +523,7 @@ Each entry of `items`:
 | Daily ranking snapshots  | 90 days          |
 | Weekly ranking snapshots | 400 days         |
 
-Every period is from 1 to 36500 days, except content events, which are from 28: `build-recommend-features` summarises the last 28 days of them, and `aggregate-content-stats` rebuilds a day from its events after the day has ended, including the days it catches up after downtime. `UpdatePlatformRetentionDefaults`, `UpdateTenantRetentionSettings`, and `retention set` refuse a shorter content-event period, naming `content_event_days`. One saved before the bound existed applies as 28 days, in the effective periods the admin API reports and in the cutoff `purge-content-events` deletes below, while the saved value is reported as it is. The jobs' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
+Every period is from 1 to 36500 days, except content events, which are from 30 (`retention.MinContentEventDays`), so that the events `build-recommend-features` summarises over its 28-day window, and those `aggregate-content-stats` rebuilds a day from after it has ended, are still there when each job reads them. `UpdatePlatformRetentionDefaults`, `UpdateTenantRetentionSettings`, and `retention set` refuse a shorter content-event period, naming `content_event_days`. One saved before the bound existed applies as 30 days, in the effective periods the admin API reports and in the cutoff `purge-content-events` deletes below, while the saved value is reported as it is. The jobs' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
 
 ## purge-content-events
 
@@ -544,7 +544,7 @@ Environment variables:
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
-A tenant's cutoff is the run's UTC timestamp minus its content-event retention period, and never less than 28 days (see [Retention periods](#retention-periods)), compared exclusively (`occurred_at < cutoff`). One tenant's failure does not stop the others. The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, rows deleted, chunk count, and elapsed time.
+A tenant's cutoff is the run's UTC timestamp minus its content-event retention period, and never less than 30 days (see [Retention periods](#retention-periods)), compared exclusively (`occurred_at < cutoff`). One tenant's failure does not stop the others. The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, rows deleted, chunk count, and elapsed time.
 
 ## purge-ranking-snapshots
 
