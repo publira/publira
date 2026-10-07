@@ -157,14 +157,14 @@ The answer is saved under **Answers and replies**, the message becomes **Handled
 - with the reader's message quoted under the answer;
 - in the tenant's default language, whatever language the reader wrote in.
 
-The console does not show whether the mail was delivered. If the mail settings are wrong, the answer stays saved and the message **Handled** while the mail is never sent, so test the settings on **Email** before answering readers. Answers to one address are limited in number per hour and per day, like all mail the console sends.
+The console does not show whether the mail was delivered. If the mail settings are wrong, the answer stays saved and the message **Handled** while the mail is never sent, so when the tenant sends through its own server, check it with **Test the connection** under **Outgoing email** before answering readers. Answers to one address are limited in number per hour and per day, like all mail the console sends.
 
 ### When the reader writes back
 
-Where a reader's reply goes depends on whether the tenant receives inbound email, which the console has no screen for yet ([#2891](https://github.com/publira/publira/issues/2891)):
+Where a reader's reply goes depends on whether the **Inbound email** section of **Integrations** › **Email** is **Ready**, which [Readers' replies to contact messages](./3-setup/6-email.md#readers-replies-to-contact-messages) walks through setting up:
 
-- **Without inbound email**, the answer's reply address is your own account's email address. The reader's reply arrives in your own mailbox. It is not recorded in the console, and the message stays **Handled**: answer from your mail, or from the console again.
-- **With inbound email**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the staff are mailed as for a new message.
+- **Until it is Ready**, the answer's reply address is your own account's email address. The reader's reply arrives in your own mailbox. It is not recorded in the console, and the message stays **Handled**: answer from your mail, or from the console again.
+- **Once it is Ready**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the staff are mailed as for a new message.
 
 The hint under **Answer** always describes the first case ([#3802](https://github.com/publira/publira/issues/3802)).
 
