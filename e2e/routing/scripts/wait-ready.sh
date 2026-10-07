@@ -5,11 +5,17 @@
 # entrypoint middleware that has not loaded yet is the difference between one
 # readable message and a wall of failing probes. nginx and Caddy have the
 # whole configuration before they accept a connection, so for them readiness
-# is the first request a listed site host answers.
+# is the first request a listed site host answers. So it is for Traefik in the
+# trusted-hop pass, which starts from traefik.yaml and publishes no API.
 set -euo pipefail
 
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+traefik_api=0
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" && "${PUBLIRA_ROUTING_TRUSTED_HOP}" != "1" ]]; then
+  traefik_api=1
+fi
 
 # All of `${names[@]}` present in the newline-separated `${advertised}`, each
 # suffixed with the file provider namespace Traefik appends.
@@ -30,7 +36,7 @@ traefik_ready() {
     all_advertised "${middlewares}" "${PUBLIRA_ROUTING_MIDDLEWARES[@]}"
 }
 
-if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+if [[ "${traefik_api}" == "1" ]]; then
   routing_log "waiting for Traefik routers + middlewares (timeout ${PUBLIRA_ROUTING_READY_TIMEOUT_SEC}s)"
 else
   routing_log "waiting for the ${PUBLIRA_ROUTING_PROXY} edge to answer (timeout ${PUBLIRA_ROUTING_READY_TIMEOUT_SEC}s)"
@@ -38,7 +44,7 @@ fi
 
 deadline=$((SECONDS + PUBLIRA_ROUTING_READY_TIMEOUT_SEC))
 while ((SECONDS < deadline)); do
-  if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+  if [[ "${traefik_api}" == "1" ]]; then
     if traefik_ready; then
       routing_log "ok: ${#PUBLIRA_ROUTING_ROUTERS[@]} routers + ${#PUBLIRA_ROUTING_MIDDLEWARES[@]} middlewares advertised"
       exit 0
@@ -50,7 +56,7 @@ while ((SECONDS < deadline)); do
   sleep "${PUBLIRA_ROUTING_READY_INTERVAL_SEC}"
 done
 
-if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+if [[ "${traefik_api}" == "1" ]]; then
   routing_err "advertised routers:"
   traefik_router_names >&2 || true
   routing_err "advertised middlewares:"

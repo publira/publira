@@ -2,6 +2,7 @@
 title: Reverse proxy
 description: Put a reverse proxy with TLS in front of an install, and change it when a tenant is added.
 published: 2026-10-06
+updated: 2026-10-07
 ---
 
 Every request a browser or the mobile app sends to an install reaches it through one reverse proxy. The proxy picks the process that answers from the host name and the path, terminates TLS, and is where the headers a caller could forge stop. This page takes one of the sample configurations in the repository to a proxy that serves a tenant's site and its console over HTTPS, and says what to change when a tenant is added.
@@ -64,7 +65,7 @@ Each sample reads them in its own way:
 
 An install that does not run the Platform Console leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and can leave the `web-platform` address out of its backend addresses. No routing block is removed for it: every sample is valid with an empty list.
 
-The [Docker Compose](./3-docker-compose.md) install already runs the Traefik sample, on plain HTTP behind a TLS terminator on the host. On that install, the certificates in the next section belong to the terminator, and the rest of this page applies to the Traefik files in your checkout.
+The [Docker Compose](./3-docker-compose.md) install already runs the Traefik sample, on plain HTTP behind a TLS terminator on the host. On that install, the certificates in the next section belong to the terminator, the hop in front of the proxy is that terminator, set in `.env` as [below](#a-hop-in-front-of-the-proxy), and the rest of this page applies to the Traefik routing in your checkout.
 
 ## Terminate TLS
 
@@ -205,11 +206,14 @@ When a load balancer, a CDN, or a TLS terminator connects to the proxy, as the o
 
 To record the reader's own address:
 
-- **The hop sets `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself**, to the address that connected to it, the host the browser asked for, and the scheme it used, rather than passing on or appending to the caller's. Trusting the hop trusts all three, and Publira finds the tenant from `X-Forwarded-Host`, so a hop that set only `X-Forwarded-For` would let a caller pick the tenant. Caddy sets all three by default when it trusts no proxy in front of itself.
-- **The proxy trusts that hop's addresses, and no others**, and takes the client address from the hop's header:
-  - Traefik: `forwardedHeaders.trustedIPs` on the entry point the hop connects to.
-  - nginx: `set_real_ip_from` with the hop's addresses and `real_ip_header X-Forwarded-For`, in a file of its own in the same directory. The sample's `X-Forwarded-For $remote_addr` then carries the reader's address.
-  - Caddy: `trusted_proxies static` with the hop's addresses, under the `servers` global option, and `{client_ip}` in place of `{http.request.remote.host}` on the sample's `X-Forwarded-For` line.
+- **The hop sets `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself**, to the address that connected to it, the host the browser asked for, and the scheme it used, rather than passing on or appending to the caller's. Traefik trusts all three from the hop, and Publira finds the tenant from `X-Forwarded-Host`, so behind Traefik a hop that set only `X-Forwarded-For` would let a caller pick the tenant. Caddy sets all three by default when it trusts no proxy in front of itself.
+- **The proxy trusts that hop's addresses, and no others**, and takes the client address from the hop's header. Each sample carries the setting commented out, naming the documentation range `192.0.2.0/24`: uncomment it, and replace the range with the hop's addresses.
+  - Traefik: `forwardedHeaders.trustedIPs` on the `web` entry point in `traefik.yaml`, or on the entry point the hop connects to.
+  - nginx: `set_real_ip_from`, with `real_ip_header` and `real_ip_recursive` below it, near the top of `default.conf.template`. One `set_real_ip_from` line per address or range.
+  - Caddy: the `servers` block in the Caddyfile's global options, with `trusted_proxies static` followed by the addresses, separated by spaces.
+  - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [Put TLS in front](./3-docker-compose.md#5-put-tls-in-front) describes.
+
+nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone, and keep setting `X-Forwarded-Host` and `X-Forwarded-Proto` themselves. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so the address the hop named stays first only when the hop set the header rather than appending to the caller's. A request from any other address is treated as it is without the setting.
 
 Trust the hop's own addresses only. A trusted range that also reaches readers lets any of them name an address of their choosing.
 

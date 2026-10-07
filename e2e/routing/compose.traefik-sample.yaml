@@ -1,0 +1,25 @@
+# Traefik from the sample's own static configuration, traefik.yaml, in front of
+# the echo backends from compose.echo.yaml.
+#
+# The other passes run the Dev Container's edge, which passes its static
+# settings as flags rather than mounting traefik.yaml. The trusted-hop pass
+# needs the file, because the trusted-proxy setting is what it exercises, and
+# Traefik reads either a file or flags, never both. PUBLIRA_ROUTING_PROXY_DIR is
+# a copy of infra/proxy/traefik with that setting enabled, which scripts/lib.sh
+# writes; its dynamic/services.yaml already names `app`.
+
+services:
+  proxy:
+    image: traefik:v3.7.14@sha256:e849695bc5c317da0cec22bfee4794fd9e15871fe554f864d31b625983e883ff
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_ROUTING_SITE_HOSTS:?}
+      PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_ROUTING_ADMIN_HOSTS:?}
+      PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_ROUTING_PLATFORM_HOSTS?}
+    ports:
+      - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
+    volumes:
+      - ${PUBLIRA_ROUTING_PROXY_DIR:?}/traefik.yaml:/etc/traefik/traefik.yaml:ro
+      - ${PUBLIRA_ROUTING_PROXY_DIR:?}/dynamic:/etc/traefik/dynamic:ro

@@ -30,6 +30,19 @@
 	# Caddy obtains certificates on its own; `tls <email>` or `tls <cert>
 	# <key>` chooses another source.
 	auto_https off
+
+	# A load balancer, a CDN, or a TLS terminator in front of this edge is the
+	# peer of every request, so without this every request is recorded with
+	# that hop's address. Listing the hop's own addresses, and no others, makes
+	# Caddy take the client address from the X-Forwarded-For a request from
+	# them carries: with `trusted_proxies_strict`, the rightmost address in it
+	# that is not one of them. {client_ip} below becomes that address, and is
+	# the peer address for requests from anywhere else, as it is without this.
+	#
+	# servers {
+	# 	trusted_proxies static 192.0.2.0/24
+	# 	trusted_proxies_strict
+	# }
 }
 
 # Applied to every proxied request. Caddy forwards the original Host header
@@ -37,10 +50,11 @@
 (publira_forwarded) {
 	header_up X-Forwarded-Host {http.request.hostport}
 	header_up X-Forwarded-Proto {http.request.scheme}
-	# The peer address, replacing whatever arrived: this is the trust
+	# The client address, replacing whatever arrived: this is the trust
 	# boundary, and the client IP an access token and an audit log entry
-	# record is the first address in this header.
-	header_up X-Forwarded-For {http.request.remote.host}
+	# record is the first address in this header. It is the peer address, or
+	# the one a hop the global options trust named.
+	header_up X-Forwarded-For {client_ip}
 	# W3C Trace Context ends here, so each backend opens a fresh root span
 	# instead of adopting a trace the caller chose.
 	header_up -traceparent

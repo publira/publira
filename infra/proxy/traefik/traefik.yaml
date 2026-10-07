@@ -14,9 +14,21 @@ entryPoints:
         # inbound W3C Trace Context. `@file` is the provider namespace; the
         # middleware itself is defined in dynamic/routes.yaml.
         - strip-trace-context@file
+    # A load balancer, a CDN, or a TLS terminator in front of this entry
+    # point is the peer of every request, so without this every request is
+    # recorded with that hop's address. Listing the hop's own addresses, and
+    # no others, makes Traefik keep the X-Forwarded-* headers a request from
+    # them carries and append the hop's address to X-Forwarded-For, so the
+    # client address the hop named stays first, where a backend reads it. The
+    # hop has to set those headers rather than append to the caller's.
+    # Requests from anywhere else lose theirs, as they do without this.
+    #
+    # forwardedHeaders:
+    #   trustedIPs:
+    #     - 192.0.2.0/24
 
   # TLS termination is a deployment decision — which certificate source, which
-  # listen address, which real-IP header — so only the shape is here.
+  # listen address — so only the shape is here.
   #
   # websecure:
   #   address: ":443"

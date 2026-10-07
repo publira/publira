@@ -88,14 +88,27 @@ The edge **adds** what a backend reads back:
 
 Each of them is **set**, never appended to. The client is outside the trust boundary, so an inbound `X-Forwarded-For` would otherwise leave a forged address in front of the real one, and the client IP a backend records is the first address in that header.
 
+### A trusted hop in front
+
+When a load balancer, a CDN, or a TLS terminator connects to the edge, that hop is the peer of every request, and every request reaches the backends with its address. Each sample carries a setting, commented out, that trusts the hop's own addresses and no others:
+
+| Proxy | Setting | Where |
+| --- | --- | --- |
+| Traefik | `forwardedHeaders.trustedIPs` on the entry point | `traefik/traefik.yaml` |
+| nginx | `set_real_ip_from`, `real_ip_header X-Forwarded-For`, `real_ip_recursive on` | `nginx/default.conf.template` |
+| Caddy | `trusted_proxies static` and `trusted_proxies_strict` under `servers` | The Caddyfile's global options |
+
+With it left alone, a sample behaves as above. With the hop's addresses in it, a request from the hop reaches the backends with the client address the hop named first in `X-Forwarded-For`, and a request from anywhere else is treated as it is without the setting. nginx and Caddy take the rightmost address in the hop's header that is not a trusted one and still set `X-Forwarded-For` to that address alone, through `$remote_addr` and `{client_ip}`. Traefik has no way to replace the header: it keeps the hop's `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and appends the hop's address to the first. The hop therefore sets those headers rather than appending to the caller's, which is what each sample does as the first hop.
+
 ## What an operator supplies
 
-Three things are deployment decisions, and each proxy's files mark them.
+Four things are deployment decisions, and each proxy's files mark them.
 
 - **Hosts.** The three `PUBLIRA_EDGE_*_HOSTS` variables above, read from the proxy's environment: by the Traefik file provider when it renders `routes.yaml`, by the official nginx image when it renders `default.conf.template` at startup, and by Caddy when it parses the Caddyfile. Each proxy reads them once, so a changed list takes effect when the proxy restarts. None of them has a default: the Dev Container, the edge in front of a host-side `task dev`, and each `dev-env` profile list the development seed's tenant and the Platform Console, and the E2E stack every tenant its seeds and scenarios create.
 - **Backend addresses.** They are the half of the configuration that changes per environment, so every proxy here keeps them apart from the routing: Traefik in `traefik/dynamic/services.yaml`, nginx in `nginx/upstreams.conf`, Caddy in the `PUBLIRA_UPSTREAM_*` environment variables. The addresses committed here name the Dev Container's `app` container.
-- **TLS.** Which certificate source, which listen addresses, and which real-IP header apply depend on where the edge runs. Each configuration listens on plain HTTP and carries a commented placeholder where the TLS listener goes.
+- **TLS.** Which certificate source and which listen addresses apply depend on where the edge runs. Each configuration listens on plain HTTP and carries a commented placeholder where the TLS listener goes.
+- **Trusted hops.** The addresses of a load balancer, a CDN, or a TLS terminator in front of the edge, in the setting [above](#a-trusted-hop-in-front). Each sample carries it commented out, naming the documentation range `192.0.2.0/24` in place of the hop's addresses. The Compose install in [`infra/deploy/`](../deploy/README.md) passes Traefik's from `PUBLIRA_EDGE_TRUSTED_PROXIES`.
 
 ## Verification
 
-`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. It then enables each sample's trusted-hop setting as it is written and probes it through a hop and from outside its range. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

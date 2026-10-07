@@ -1,0 +1,30 @@
+# Overlay for the pass that puts a trusted hop in front of the edge, on top of
+# compose.echo.yaml and the compose file of the proxy under test.
+#
+# The hop is a container of its own on a network of its own, at an address
+# fixed before the proxy starts, because the proxy is told to trust that one
+# address and no other. Probes sent from the host reach the proxy from
+# somewhere else, the gateway of one of its networks, so the same run has a
+# client outside the trusted range as well. scripts/lib.sh exports the subnet
+# and the address.
+
+networks:
+  hop:
+    ipam:
+      config:
+        - subnet: ${PUBLIRA_ROUTING_HOP_SUBNET:?}
+
+services:
+  proxy:
+    networks:
+      - default
+      - hop
+
+  hop:
+    # The echo server's image: the hop sends its requests with Node.js.
+    image: node:24.21.0-alpine3.24@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+    init: true
+    command: ["node", "-e", "setInterval(() => {}, 1 << 30)"]
+    networks:
+      hop:
+        ipv4_address: ${PUBLIRA_ROUTING_HOP_ADDRESS:?}

@@ -23,10 +23,15 @@ if [[ ! -f "${PUBLIRA_ROUTING_ECHO}" ]]; then
   routing_fail "echo server missing: ${PUBLIRA_ROUTING_ECHO}"
 fi
 
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" ]]; then
+  enable_trusted_hop
+fi
+
 # The Traefik run is the Dev Container's own edge, so it starts that service by
-# name; nginx and Caddy come from a compose file of their own whose only other
-# service is the echo `app`.
-if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+# name; nginx and Caddy, and every proxy in the trusted-hop pass, come from
+# compose files of their own whose only other services are the echo `app` and
+# the hop.
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" && "${PUBLIRA_ROUTING_TRUSTED_HOP}" != "1" ]]; then
   routing_log "starting traefik + echo app from .devcontainer/compose.yaml"
   # --wait is on `app` (healthcheck). Traefik has no healthcheck; its routers
   # are polled separately once the file provider has read them.

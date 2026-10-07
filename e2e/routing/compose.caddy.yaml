@@ -4,6 +4,9 @@
 # `app`, so this run exercises the committed file as it stands. The hosts have
 # no default, and are the ones scripts/lib.sh lists for every proxy.
 #
+# PUBLIRA_ROUTING_PROXY_DIR replaces the directory in the trusted-hop pass, with a
+# copy whose trusted-proxy setting scripts/lib.sh has enabled.
+#
 # Relative paths resolve against this directory, which is the project
 # directory: compose.echo.yaml is passed first and lives here too.
 
@@ -20,4 +23,4 @@ services:
     ports:
       - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
     volumes:
-      - ../../infra/proxy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${PUBLIRA_ROUTING_PROXY_DIR:-../../infra/proxy/caddy}/Caddyfile:/etc/caddy/Caddyfile:ro
