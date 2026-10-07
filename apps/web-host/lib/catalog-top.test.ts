@@ -724,6 +724,26 @@ describe("catalog-top section loaders", () => {
     });
   });
 
+  it("getCatalogTopFeaturedLabels asks only for labels with a published series", async () => {
+    mockListPublishedLabels.mockResolvedValue({
+      ok: true,
+      value: { labels: [], nextToken: "", previousToken: "" },
+    });
+
+    await getCatalogTopFeaturedLabels("TENANT_001", {
+      locale: "en",
+      maxLabels: 6,
+    });
+
+    // A label created before any of its series is public stays on the label
+    // list, but the top page must not feature it with "0 published series".
+    expect(mockListPublishedLabels).toHaveBeenCalledWith("TENANT_001", {
+      hasPublishedSeries: true,
+      limit: 6,
+      locale: "en",
+    });
+  });
+
   /**
    * The reads below never throw, so a failure has to travel as a value —
    * a section that could not be built must not look like an empty one.

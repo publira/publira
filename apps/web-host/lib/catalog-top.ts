@@ -565,6 +565,13 @@ export const getCatalogTopUpdatedSeries = async (
   return { ok: true, value: updatedSeries };
 };
 
+/**
+ * The labels the top page features: the newest ones with a series a reader can
+ * open. The label list keeps a label with none so its address keeps answering,
+ * but featuring one would send the reader to a label with nothing in it, so the
+ * server narrows the page rather than this dropping rows from it — a page of
+ * six filtered here would come up short while later labels qualify.
+ */
 export const getCatalogTopFeaturedLabels = async (
   tenantId: string,
   { locale, maxLabels = 6 }: CatalogTopDataOptions
@@ -572,6 +579,7 @@ export const getCatalogTopFeaturedLabels = async (
   "use cache";
 
   const labels = await listPublishedLabels(tenantId, {
+    hasPublishedSeries: true,
     limit: maxLabels,
     locale,
   });
