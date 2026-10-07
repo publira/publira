@@ -404,7 +404,7 @@ The asynchronous audit logs of the tenant and the platform console namespaces re
 | `publira.auditlog.persist.failures` | counter | Failed persistence attempts (retries included) |
 | `publira.auditlog.entries.dropped` | counter | Events dropped before being persisted |
 
-Persistence retries, final drops, queue overflows, and shutdown drain deadlines are written to the structured log too. A continuously growing `queue.depth`, `persist.failures`, and `entries.dropped` are candidates for alerting. The meters are exported once an OTel MeterProvider is configured.
+Persistence retries, final drops, queue overflows, and shutdown drain deadlines are written to the structured log too. A continuously growing `queue.depth`, `persist.failures`, and `entries.dropped` are candidates for alerting. The meters are exported once metrics are turned on; see [Metrics (OpenTelemetry)](#metrics-opentelemetry).
 
 ### Resource attributes
 
@@ -467,6 +467,37 @@ PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-server
 ```
 
 The Dev Container bundles Jaeger (its UI is at `http://localhost:16686`). For the details, see [../README.md](../README.md#distributed-tracing-jaeger).
+
+## Metrics (OpenTelemetry)
+
+`publira server` and `publira worker` export OpenTelemetry metrics. **They are disabled by default**: unless `PUBLIRA_METRICS_ENABLED` is set, no MeterProvider is installed, every instrument records into OpenTelemetry's no-op one, and nothing is exported. The flag is separate from `PUBLIRA_TRACING_ENABLED` because a backend that accepts traces does not necessarily accept metrics — the Dev Container's Jaeger does not.
+
+Each process reports under one `service.name`, its default: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`. The other resource attributes are those of its traces ([Resource attributes](#resource-attributes)). `publiractl job` exports none: it exits after one pass.
+
+What is recorded:
+
+| Instruments | Process | Where they are described |
+| --- | --- | --- |
+| `publira.outbox.*` | `publira worker` | [`cmd/publira/README.md`](cmd/publira/README.md#logs-and-metrics) |
+| `publira.auditlog.*` | `publira server` | [Operational monitoring for the asynchronous audit log](#operational-monitoring-for-the-asynchronous-audit-log) |
+| `http.server.*` (the image routes) and `http.client.*` (revalidation, email-renderer) | both | `otelhttp`'s semantic conventions |
+| `db.client.operation.duration` (every database call, by `database/sql` method) | both | `XSAM/otelsql` |
+
+Connect RPCs record no metrics (`otelconnect.WithoutMetrics`); their latency is on their spans.
+
+| Variable | Purpose |
+| --- | --- |
+| `PUBLIRA_METRICS_ENABLED` | Enables metrics (`true` / `1`, and so on). Unset or uninterpretable values mean disabled |
+| `OTEL_METRICS_EXPORTER` | `otlp` (default) / `prometheus` / `console` / `none` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Where `otlp` pushes to. `OTEL_EXPORTER_OTLP_PROTOCOL` / `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL` pick `http/protobuf` or `grpc` |
+| `OTEL_METRIC_EXPORT_INTERVAL` | Milliseconds between pushes. Default `60000` |
+| `OTEL_EXPORTER_PROMETHEUS_HOST` / `OTEL_EXPORTER_PROMETHEUS_PORT` | Where `prometheus` serves `/metrics`. Default `localhost:9464`, which nothing outside the container can reach: set the host to `0.0.0.0` to scrape it |
+
+Every variable but the first is read by the OpenTelemetry SDK itself. A process that shuts down exports what it recorded since the last push before it exits.
+
+```bash
+PUBLIRA_METRICS_ENABLED=true OTEL_METRICS_EXPORTER=console task server:dev-worker
+```
 
 ## Secret encryption configuration (AES-GCM)
 

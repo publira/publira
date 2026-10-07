@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/maintenancejobs"
+	"github.com/publira/publira/server/internal/metrics"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
@@ -58,6 +59,10 @@ func runWorker() int {
 	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
 	if err != nil {
 		logger.Error("failed to initialize tracing", "error", err)
+	}
+	shutdownMetrics, err := metrics.Setup(context.Background(), workerServiceName)
+	if err != nil {
+		logger.Error("failed to initialize metrics", "error", err)
 	}
 
 	cfg, err := config.New()
@@ -245,7 +250,7 @@ func runWorker() int {
 		httpserver.New(addr, mux),
 	}, func(ctx context.Context) error {
 		return worker.Stop(ctx)
-	}, shutdownTracing, func(context.Context) error {
+	}, shutdownTracing, shutdownMetrics, func(context.Context) error {
 		return errors.Join(db.Close(), tickerDB.Close(), contentStatsDB.Close())
 	}); err != nil {
 		logger.Error("worker failed", "error", err)
