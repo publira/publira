@@ -112,3 +112,37 @@ BEGIN
     END LOOP;
 END
 $$;
+
+-- River's tables and sequences are the worker's alone. A database the worker
+-- has never started on has none of them yet when this directory runs, and the
+-- worker then creates them as publira_outbox, which the superuser's default
+-- privileges do not reach. Every later run — each upgrade, and the one after a
+-- restore — finds them in place, though, and 000_rls_bypass_role.sql's
+-- `GRANT ... ON ALL TABLES` and `ON ALL SEQUENCES` hand them to every app role
+-- along with the rest of the schema: the storefront and both consoles could
+-- then enqueue, rewrite, or delete the worker's jobs for every tenant.
+--
+-- So the grants are taken back from whatever publira_outbox owns. Ownership,
+-- not the lists above, is the test: after the transfer it covers every object
+-- River created, a table a later River release adds included, and nothing of
+-- this repository's, since publira_outbox creates nothing else.
+DO $$
+DECLARE
+    statement text;
+BEGIN
+    FOR statement IN
+        SELECT format(
+            'REVOKE ALL ON %s public.%I FROM publira_public, publira_admin, publira_platform, publira_content_stats, publira_ticker',
+            CASE WHEN c.relkind = 'S' THEN 'SEQUENCE' ELSE 'TABLE' END,
+            c.relname
+        )
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind IN ('r', 'p', 'S')
+          AND c.relowner = 'publira_outbox'::regrole
+    LOOP
+        EXECUTE statement;
+    END LOOP;
+END
+$$;

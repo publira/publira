@@ -113,7 +113,7 @@ docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publir
   --content-stats-password-file /run/secrets/publira-content-stats-db-password
 ```
 
-It is the command [Create the roles](./2-installing.md#2-create-the-roles) runs at install, and it does the same here: it creates the six roles and grants them what the release defines, gives `publira_outbox` the job queue's tables, and sets every password. With the passwords the install ran with, the processes' connection URLs keep working; with new ones, update the URLs.
+It is the command [Create the roles](./2-installing.md#2-create-the-roles) runs at install, and it does the same here: it creates the six roles and grants them what the release defines, gives `publira_outbox` the job queue's tables and keeps every other role away from them, and sets every password. With the passwords the install ran with, the processes' connection URLs keep working; with new ones, update the URLs.
 
 ### 3. Restore the bucket
 
