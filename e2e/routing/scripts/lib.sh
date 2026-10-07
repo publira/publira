@@ -43,6 +43,18 @@ export PUBLIRA_ROUTING_EDGE_PORT="${PUBLIRA_ROUTING_EDGE_PORT:-13080}"
 # Traefik alone: the insecure API readiness reads routers and middlewares from.
 export PUBLIRA_ROUTING_TRAEFIK_API_PORT="${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-18080}"
 
+# The hosts the proxy under test is given, one list per app, as the
+# PUBLIRA_EDGE_*_HOSTS variables every sample reads. Most of the names follow no
+# convention on purpose: a listed host reaches its app whatever it is called,
+# so `admin.reader.example.org` is a tenant site here and `studio.example.com`
+# a console. The run of spaces in the first list is there to be split. The
+# `localhost` names are the ones the Dev Container lists, which the rest of the
+# probes use. run-one.sh empties the platform list for its second pass, the
+# install that runs no web-platform, so an empty value is kept as it is.
+export PUBLIRA_ROUTING_SITE_HOSTS="localhost  reader.example.org admin.reader.example.org"
+export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.example.com"
+export PUBLIRA_ROUTING_PLATFORM_HOSTS="${PUBLIRA_ROUTING_PLATFORM_HOSTS-platform.localhost operators.example.net}"
+
 # Logs for one stack run. Concurrent stacks that override ports or
 # PUBLIRA_ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
 # the other run. When PUBLIRA_ROUTING_RUN_DIR is unset and any of those knobs leave
@@ -102,14 +114,17 @@ else
   PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}")
 fi
 
-# Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml.
+# Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml. A
+# list with no hosts leaves its router out.
 PUBLIRA_ROUTING_ROUTERS=(
   web-host
   web-admin
-  web-platform
   api
   images
 )
+if [[ -n "${PUBLIRA_ROUTING_PLATFORM_HOSTS// /}" ]]; then
+  PUBLIRA_ROUTING_ROUTERS+=(web-platform)
+fi
 
 # Middleware names from the same file. `strip-trace-context` is attached to
 # the `web` entrypoint in the static configuration, so every router on that
@@ -281,6 +296,27 @@ assert_route() {
   routing_log "ok: ${name} → ${want_backend}${want_path}"
 }
 
+# A host in no list: the edge has to answer it with its own 404, whatever the
+# path, rather than hand it to any backend.
+assert_unrouted() {
+  local name="$1" method="$2" host="$3" path="$4"
+  local out code body actual_backend
+
+  out="$(http_probe "${method}" "${host}" "${path}")"
+  code="$(printf '%s' "${out}" | sed -n '1p')"
+  body="$(printf '%s' "${out}" | tail -n +2)"
+
+  actual_backend="$(json_string_field "${body}" backend)"
+  if [[ -n "${actual_backend}" ]]; then
+    routing_fail "${name}: reached backend '${actual_backend}' (want none) host=${host} ${method} ${path} body=${body}"
+  fi
+  if [[ "${code}" != "404" ]]; then
+    routing_fail "${name}: HTTP ${code} (want 404 from the edge) host=${host} ${method} ${path} body=${body}"
+  fi
+
+  routing_log "ok: ${name} → answered by the edge"
+}
+
 # The same route with a forged W3C Trace Context on the request: the edge must
 # drop all three headers before the backend sees them, and leave the routing
 # and the path alone.
@@ -424,7 +460,7 @@ assert_webhook_delivered() {
   routing_log "ok: ${name} → ${want_backend}${path} with ${bytes} bytes and its headers intact"
 }
 
-# The edge answers and the catch-all reaches web-host. Readiness for the
+# The edge answers and a listed site host reaches web-host. Readiness for the
 # proxies that publish no API of their own.
 edge_serves_web_host() {
   local out code body

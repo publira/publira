@@ -125,7 +125,9 @@ Route the two host names to the processes:
 - The tenant's domain to `web-host`.
 - `/api` and `/images` on either host to the edge listener of `publira server`, except `/api/v1`, which belongs to the web app the host picked.
 
-Terminate TLS for both host names at the proxy. The repository ships sample configurations for Traefik, nginx, and Caddy, and [Reverse proxy](./4-reverse-proxy.md) takes one of them to HTTPS for these host names.
+The proxy routes only the host names you list, and answers any other with a 404 of its own. The repository ships sample configurations for Traefik, nginx, and Caddy, which read the lists from environment variables: the tenant's domain goes in `PUBLIRA_EDGE_SITE_HOSTS`, and its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`.
+
+Terminate TLS for both host names at the proxy. [Reverse proxy](./4-reverse-proxy.md) takes one of the samples to HTTPS for these host names.
 
 ### 6. Sign in
 
@@ -145,7 +147,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 
 - Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
-- Point a `platform.` host name at the reverse proxy and route it to `web-platform`.
+- Choose a host name for it, such as `platform.example.com`, point it at the reverse proxy, and route it to `web-platform`: in the samples, by listing it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
 
 Open it and create its first operator on the setup screen. That operator is separate from the tenant administrator `publiractl setup` created: the Platform Console has accounts of its own, and the screen is offered until the first one exists. The language chosen on that screen becomes the platform's default locale, replacing the one `publiractl setup` saved; every other setting stays, and `publiractl` keeps working beside the console.
 

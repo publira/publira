@@ -23,6 +23,12 @@ services:
       - "--entrypoints.web.http.middlewares=strip-trace-context@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
+    # The hosts routes.yaml serves: the development seed's tenant site and
+    # console, which every profile seeds, and the Platform Console.
+    environment:
+      PUBLIRA_EDGE_SITE_HOSTS: localhost
+      PUBLIRA_EDGE_ADMIN_HOSTS: admin.localhost
+      PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
     volumes:
       # The order matters: a file mount can only land on a path that already
       # exists inside a read-only directory mount, and services.yaml is

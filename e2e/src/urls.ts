@@ -5,7 +5,9 @@ import { randomUUID } from "node:crypto";
  *
  * Every tenant host is reached on the edge, and each is stored with that port
  * (`tenantHost`): the development seed's `localhost:<edge>` and
- * `admin.localhost:<edge>`, and every scenario tenant the same way.
+ * `admin.localhost:<edge>`, and every scenario tenant the same way. The edge
+ * routes only the hosts `e2e/compose.yaml` lists, so a host made up during a
+ * run is reached on the app's own port instead.
  */
 
 const envUrl = (name: string, fallback: string): string => {
@@ -76,7 +78,9 @@ export const MAILPIT_BASE_URL = envUrl(
  *
  * `WEB_HOST_BASE_URL` is a Host header the browser resolves; this is the
  * address a Node-side request can actually connect to, and it is what
- * `src/revalidate.ts` posts cache tags to.
+ * `src/revalidate.ts` posts cache tags to. A browser opens it only under a
+ * host made up during the run, which no list of the edge's names, so the
+ * edge would answer it with a 404 of its own.
  */
 export const WEB_HOST_INTERNAL_URL = envUrl(
   "PUBLIRA_WEB_HOST_INTERNAL_URL",
@@ -106,6 +110,15 @@ const withHostname = (baseUrl: string, hostname: string): string => {
 export const WEB_ADMIN_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "admin.localhost")
+);
+
+/**
+ * web-admin on loopback, the way the Go servers reach it, for the same use as
+ * {@link WEB_HOST_INTERNAL_URL}: a console host made up during the run.
+ */
+export const WEB_ADMIN_INTERNAL_URL = envUrl(
+  "PUBLIRA_WEB_ADMIN_INTERNAL_URL",
+  WEB_ADMIN_BASE_URL
 );
 
 /** Platform console (web-platform). */
@@ -444,9 +457,12 @@ export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
 /**
  * A Host that has never been resolved before, so tenant resolution has to reach
  * the public API instead of answering from web-host's in-process LRU.
+ *
+ * A name made up per call is on no list of the edge's, so the browser reaches
+ * web-host on its own port.
  */
 export const uncachedTenantBaseUrl = (): string =>
-  withHostname(WEB_HOST_BASE_URL, `outage-${randomUUID()}.localhost`);
+  withHostname(WEB_HOST_INTERNAL_URL, `outage-${randomUUID()}.localhost`);
 
 /**
  * Public site of the wait-for-free tenant from the scenario seed

@@ -10,8 +10,8 @@ The images are built from [`infra/docker/`](../docker/README.md), and the revers
 
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
-| `web-host` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-host` | The public tenant site | The reverse proxy, on every host that is not a console host |
-| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one. The proxy examples route `admin\d*.` hosts, so a deployment whose tenants use another console host routes that host to `web-admin` as well |
+| `web-host` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-host` | The public tenant site | The reverse proxy, on each tenant's domain |
+| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
 | `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
@@ -21,7 +21,7 @@ Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's p
 
 | Service | Used by | What it holds |
 | --- | --- | --- |
-| A reverse proxy | Browsers and the mobile app | The routing in [`infra/proxy/README.md`](../proxy/README.md), from one of the sample configurations there adapted to the install's hosts |
+| A reverse proxy | Browsers and the mobile app | The routing in [`infra/proxy/README.md`](../proxy/README.md), from one of the sample configurations there, given the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
 | Valkey, or any Redis-protocol server | `publira server`, `web-host`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
@@ -36,7 +36,7 @@ The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `
 | Process | Image | What it adds | What else it needs |
 | --- | --- | --- | --- |
 | `email-renderer` | [`infra/docker/node`](../docker/node/Dockerfile) with `APP_NAME=email-renderer` | An HTML part in every mail. Without it the worker sends the same mail as `text/plain` | `PUBLIRA_EMAIL_RENDERER_URL` on the worker |
-| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | The `platform.` host rule and its upstream on the reverse proxy, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
+| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | Its host in `PUBLIRA_EDGE_PLATFORM_HOSTS` and its upstream on the reverse proxy, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
 
 ## Environment variables
 
@@ -108,7 +108,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
+5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with the tenant's domain in `PUBLIRA_EDGE_SITE_HOSTS`, its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`, and TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 
@@ -122,7 +122,7 @@ On every later release, run `db migrate` and then `db roles` with that release's
 | [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
 | [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
 
-The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-host`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
+The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-host`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 

@@ -5,7 +5,7 @@
 # entrypoint middleware that has not loaded yet is the difference between one
 # readable message and a wall of failing probes. nginx and Caddy have the
 # whole configuration before they accept a connection, so for them readiness
-# is the first request the catch-all answers.
+# is the first request a listed site host answers.
 set -euo pipefail
 
 # shellcheck source=lib.sh
