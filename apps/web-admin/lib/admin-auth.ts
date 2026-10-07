@@ -77,6 +77,8 @@ export interface TenantAdminInvitationState {
   accountExists: boolean;
   email: string;
   expiresAt: string;
+  /** The console role accepting the invitation grants. */
+  role: string;
   status: string;
 }
 
@@ -376,6 +378,7 @@ export const getTenantAdminInvitationState = async (
       accountExists: response.accountExists,
       email: response.email,
       expiresAt: response.expiresAt,
+      role: response.role,
       status: response.status,
     };
   } catch (error) {

@@ -106,3 +106,10 @@ export const quotedTextField = (name: string, max: number) =>
     .trim()
     .min(1, { error: `${name} is required` })
     .refine(...withinCharacters(name, max));
+
+/**
+ * The console role an invitation grants, which the copy names: an invitee is
+ * told what they are being asked to become before they accept.
+ */
+export const tenantRoleField = () =>
+  z.enum(["tenant_admin", "tenant_editor", "tenant_auditor"]);

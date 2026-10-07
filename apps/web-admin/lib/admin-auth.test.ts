@@ -393,8 +393,9 @@ describe("tenant admin invitation", () => {
   it("reads the state of an invitation", async () => {
     mockGetTenantAdminInvitationState.mockResolvedValueOnce({
       accountExists: true,
-      email: "admin@example.com",
+      email: "editor@example.com",
       expiresAt: "2026-03-31T00:00:00Z",
+      role: "tenant_editor",
       status: "pending",
     });
 
@@ -402,8 +403,9 @@ describe("tenant admin invitation", () => {
       getTenantAdminInvitationState("tenant_001", "token_001")
     ).resolves.toEqual({
       accountExists: true,
-      email: "admin@example.com",
+      email: "editor@example.com",
       expiresAt: "2026-03-31T00:00:00Z",
+      role: "tenant_editor",
       status: "pending",
     });
   });

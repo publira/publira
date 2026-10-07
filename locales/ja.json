@@ -164,14 +164,14 @@
     },
     "tenant_admin_invitation": {
       "action": "招待を承諾する",
-      "body": "{$tenant_name}のテナント管理者として招待されています。以下のボタンから招待を承諾してください。",
+      "body": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}の編集担当として招待されています。以下のボタンから招待を承諾してください。}}\ntenant_auditor {{{$tenant_name}の監査担当として招待されています。以下のボタンから招待を承諾してください。}}\n* {{{$tenant_name}のテナント管理者として招待されています。以下のボタンから招待を承諾してください。}}",
       "expires": "このリンクの有効期限は{$expires_at}です。",
       "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
-      "heading": "管理者への招待",
+      "heading": ".input {$role :string}\n.match $role\ntenant_editor {{編集担当への招待}}\ntenant_auditor {{監査担当への招待}}\n* {{管理者への招待}}",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
       "intro": "{$tenant_name}の管理画面へ招待されました。",
       "preview": "{$tenant_name}の管理画面へ招待されました。",
-      "subject": "{$tenant_name}管理者招待"
+      "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}編集担当への招待}}\ntenant_auditor {{{$tenant_name}監査担当への招待}}\n* {{{$tenant_name}管理者招待}}"
     }
   },
   "errors": {
@@ -270,6 +270,7 @@
         "creator_account_unlinked": "著者の読者アカウント紐付け解除",
         "label_created": "レーベル作成",
         "label_updated": "レーベル更新",
+        "tenant_member_added": "メンバー追加",
         "tenant_member_role_updated": "メンバーのロール変更",
         "tenant_member_removed": "メンバー削除",
         "tenant_admin_invited": "テナント管理者の招待",
@@ -522,7 +523,7 @@
         "account_exists": "既存アカウントとして承諾します。承諾後はこのメールアドレスでログインできます。",
         "accepted": "この招待はすでに承諾済みです。",
         "canceled": "この招待は取り消されています。",
-        "email_invited": "{$email}をテナント管理者として招待しています。",
+        "email_invited": ".input {$role :string}\n.match $role\ntenant_editor {{{$email}を編集担当として招待しています。}}\ntenant_auditor {{{$email}を監査担当として招待しています。}}\n* {{{$email}をテナント管理者として招待しています。}}",
         "expired": "この招待は期限切れです。管理者に新しい招待を依頼してください。",
         "expired_action": "招待リンクの有効期限が切れています。管理者に新しい招待を依頼してください。",
         "invalid_token": "招待トークンが見つかりません。",
@@ -532,7 +533,7 @@
         "password_confirm_label": "パスワード（確認）",
         "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
         "submit": "招待を承諾する",
-        "title": "管理者招待の承諾",
+        "title": "招待の承諾",
         "description": "招待を承諾すると、このテナントの管理画面にアクセスできます。"
       },
       "confirm_email": {

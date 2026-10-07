@@ -190,14 +190,18 @@ func quotePlainText(text string) string {
 	return strings.Join(lines, "\n")
 }
 
+// tenantAdminInvitationCopy names the role the invitation grants in the
+// subject, the heading, and the body, so an invitee can tell from the mail
+// alone what they are being asked to become.
 func tenantAdminInvitationCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	inviteURL := c.value("invite_url")
-	c.setSubject("email.tenant_admin_invitation.subject", map[string]any{"tenant_name": brand})
+	role := c.value("role")
+	c.setSubject("email.tenant_admin_invitation.subject", map[string]any{"role": role, "tenant_name": brand})
 	c.from(brand)
-	c.line("email.tenant_admin_invitation.heading", nil)
+	c.line("email.tenant_admin_invitation.heading", map[string]any{"role": role})
 	c.line("email.tenant_admin_invitation.intro", map[string]any{"tenant_name": brand})
-	c.line("email.tenant_admin_invitation.body", map[string]any{"tenant_name": brand})
+	c.line("email.tenant_admin_invitation.body", map[string]any{"role": role, "tenant_name": brand})
 	c.linkLine("email.tenant_admin_invitation.action", nil, inviteURL)
 	c.line("email.tenant_admin_invitation.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.tenant_admin_invitation.ignore", nil)

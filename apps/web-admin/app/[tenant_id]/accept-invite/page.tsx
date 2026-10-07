@@ -119,7 +119,7 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
         <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
           <Message
             message="admin.auth.accept_invite.email_invited"
-            values={{ email: invitation.email }}
+            values={{ email: invitation.email, role: invitation.role }}
           />
         </Suspense>
       </AuthScreenNote>

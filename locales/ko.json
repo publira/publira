@@ -164,14 +164,14 @@
     },
     "tenant_admin_invitation": {
       "action": "초대 수락하기",
-      "body": "{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.",
+      "body": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}의 편집 담당으로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}\ntenant_auditor {{{$tenant_name}의 감사 담당으로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}\n* {{{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.}}",
       "expires": "이 링크는 {$expires_at}에 만료됩니다.",
       "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
-      "heading": "관리자 초대",
+      "heading": ".input {$role :string}\n.match $role\ntenant_editor {{편집 담당 초대}}\ntenant_auditor {{감사 담당 초대}}\n* {{관리자 초대}}",
       "ignore": "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다.",
       "intro": "{$tenant_name}의 관리자 콘솔에 초대되었습니다.",
       "preview": "{$tenant_name}의 관리자 콘솔에 초대되었습니다.",
-      "subject": "{$tenant_name} 관리자 초대"
+      "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name} 편집 담당 초대}}\ntenant_auditor {{{$tenant_name} 감사 담당 초대}}\n* {{{$tenant_name} 관리자 초대}}"
     }
   },
   "errors": {
@@ -270,6 +270,7 @@
         "creator_account_unlinked": "작가의 독자 계정 연결 해제",
         "label_created": "레이블 생성",
         "label_updated": "레이블 변경",
+        "tenant_member_added": "멤버 추가",
         "tenant_member_role_updated": "멤버 역할 변경",
         "tenant_member_removed": "멤버 삭제",
         "tenant_admin_invited": "테넌트 관리자 초대",
@@ -522,7 +523,7 @@
         "account_exists": "기존 계정으로 수락합니다. 수락한 뒤에는 이 이메일 주소로 로그인할 수 있습니다.",
         "accepted": "이 초대는 이미 수락되었습니다.",
         "canceled": "이 초대는 취소되었습니다.",
-        "email_invited": "{$email}을(를) 테넌트 관리자로 초대했습니다.",
+        "email_invited": ".input {$role :string}\n.match $role\ntenant_editor {{{$email}을(를) 편집 담당으로 초대했습니다.}}\ntenant_auditor {{{$email}을(를) 감사 담당으로 초대했습니다.}}\n* {{{$email}을(를) 테넌트 관리자로 초대했습니다.}}",
         "expired": "이 초대는 만료되었습니다.",
         "expired_action": "이 초대 링크는 만료되었습니다.",
         "invalid_token": "초대 토큰을 찾을 수 없습니다.",
@@ -532,7 +533,7 @@
         "password_confirm_label": "비밀번호(확인)",
         "password_mismatch": "비밀번호가 일치하지 않습니다.",
         "submit": "초대 수락하기",
-        "title": "관리자 초대 수락",
+        "title": "초대 수락",
         "description": "초대를 수락하면 이 테넌트의 관리자 콘솔에 접근할 수 있습니다."
       },
       "confirm_email": {
