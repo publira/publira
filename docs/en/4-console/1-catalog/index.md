@@ -14,13 +14,13 @@ Everything a reader can open on the site is an episode of a series, and a series
 | **Author roles** | What an Author is credited as, such as **Original Author** or **Artist** |
 | **Genres** | The categories readers browse the catalog by |
 
-A Tenant admin and an Editor can create and change everything on these screens. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
+A Tenant admin and an Editor can create and change everything on these screens, except that only a Tenant admin sees and changes the **Reader accounts** linked to an Author. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
 
 ## From an empty catalog to a first episode
 
 The order below is the one the console needs: a series cannot be saved without a label, an Author is credited from a list of Authors that already exist, and an episode belongs to a series. The series stays hidden while its first episode is prepared, and both reach readers in the last step.
 
-1. **Create a label.** Under **Labels**, choose **Create label**, enter a **Label name**, and choose **Create label**. A publisher with one imprint creates one label for every series. See [Labels](./3-labels.md).
+1. **Create a label.** Under **Labels**, choose **Create label**, enter a **Label name**, and choose **Create label**. A publisher with a single imprint creates this one label and files every later series under it too, rather than a label per series. See [Labels](./3-labels.md).
 2. **Create the Authors.** Under **Authors**, choose **Create author** for each person to be credited, with their **Name** and, if you have them, a **Profile** and an **Author icon image**. See [Authors and Author roles](./4-authors.md).
 3. **Check the Author roles.** A new tenant has four, **Original Author**, **Artist**, **Writer**, and **Supervisor**, in English. Rename them under **Author roles** if the site is in another language, since readers see them beside each name.
 4. **Create the genres** the site will be browsed by under **Genres**, if it has any. A series can be saved without one and given its genres later. See [Genres](./5-genres.md).
