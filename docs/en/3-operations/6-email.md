@@ -80,7 +80,7 @@ The worker reads the settings for every mail it sends, so a save applies to the 
 
 ## A tenant's own SMTP account
 
-A tenant's administrators set its own account from the tenant console, under **Integrations** › **Email**. They turn on **Use this tenant's own SMTP server** with **Enable the override**, and enter the same values as the platform's, with a **Sender name (optional)** as well. **Test the connection** sends a test message through what the form holds, and **Save** saves it. Only a tenant administrator can change it.
+A tenant's administrators set its own account from the tenant console, under **Integrations** › **Email**. They turn on **Use this tenant's own SMTP server** with **Enable the override**, and enter the same values as the platform's, with a **Sender name (optional)** as well. **Test the connection** sends a test message through what the form holds, and **Save** saves it. Only a tenant administrator can change it, and [Email](../4-console/3-setup/6-email.md) walks them through it.
 
 From the next mail on, every mail of that tenant goes through its account, invitations to new administrators included. Turning the override off sends them through the platform's account again.
 

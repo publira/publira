@@ -4,7 +4,7 @@ description: Give a tenant's staff access to its console, choose their roles, an
 published: 2026-10-06
 ---
 
-A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, and the operator is needed again only when something goes wrong.
+A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/5-members.md) describes, and the operator is needed again only when something goes wrong.
 
 The `publiractl` commands here are run as on [The Platform Console and publiractl](./1-platform-console.md#choosing-between-them), and every one of them names its tenant with `--tenant`, by domain or by public ID. Their full list of flags is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#tenant).
 

@@ -133,7 +133,7 @@ publiractl retention set --content-event-days 120
 
 ## What a tenant can change
 
-A tenant's administrators change some of these for their own tenant from **Settings** → **Limits and retention** in the tenant console. Editors and auditors see that page without being able to save it.
+A tenant's administrators change some of these for their own tenant from **Settings** → **Limits and retention** in the tenant console, as [Settings](../4-console/3-setup/1-settings.md#limits-and-retention) describes for them. Editors and auditors see that page without being able to save it.
 
 | Group | What a tenant can do |
 | --- | --- |
