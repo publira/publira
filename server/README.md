@@ -176,9 +176,25 @@ The tenant points the inbound domain's MX records at the provider. A domain of i
 
 `internal/inboundprovider/resend` verifies the Svix signature of an `email.received` event and reads the mail's text and headers from Resend's receiving API, since the event carries only metadata. Its fields are the API key (`api_key`) and the webhook signing secret (`webhook_secret`), both secret and required. In Resend, add the inbound domain for receiving, and register `https://<tenant-domain>/api/v1/webhook/email/resend` as a webhook for `email.received`.
 
+The **Email** page under **Integrations** in `web-admin` is where a tenant administrator does this: it shows the webhook URL to register on the tenant's domain and, once a domain is saved, the reply address pattern `contact+*@<inbound domain>`.
+
+### Receiving replies on a development machine
+
+Neither provider has a CLI that forwards to `localhost` the way the Stripe and PAY.JP CLIs do: both deliver from the internet, so the edge needs a public HTTPS URL in front of it. Open a tunnel to `localhost:3080` that rewrites the `Host` header to the seed tenant's domain, which is what `web-host` resolves the tenant from:
+
+```bash
+cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
+# or
+ngrok http 3080 --host-header=localhost:3080
+```
+
+The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX record Resend shows for it.
+
 ### Adding an inbound provider
 
 The layout follows `internal/paymentprovider`: implement `inboundprovider.Provider` in `internal/inboundprovider/<id>`, register it in `providers.Registry()`, and add a fixture implementing `inboundprovidertest.Fixture` in `<id>/<id>test` to the map in `providers/providerstest`. `TestEveryRegisteredProviderReadsItsWebhook` in `providers` runs `RunParse` against the fixture, and `TestDBEveryRegisteredInboundProviderStoresAReply` in `api/publicapi` delivers its requests through `ProcessInboundEmailWebhook` to PostgreSQL; both fail, naming the provider, while it has no fixture.
+
+The **Email** page lists the provider under its `DisplayName` and labels each field with `admin.settings.inbound_email.fields.<id>.<field>`, a key every catalog in `locales/` carries and `InboundEmailCredentialName` in `apps/web-admin/app/[tenant_id]/(protected)/integrations/email/_components/tenant-inbound-email-settings-form.tsx` renders; a field with no key shows the name it is declared under. Document its setup in a section beside [SendGrid Inbound Parse](#sendgrid-inbound-parse), including how to reach it from a development machine.
 
 ## Image storage configuration
 
