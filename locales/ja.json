@@ -2274,6 +2274,7 @@
         "delete_failed": "ロゴの削除に失敗しました。時間をおいて再試行してください。"
       },
       "email": {
+        "title": "送信メール",
         "description": "未設定または無効時はプラットフォームで設定された送信元で送信されます。",
         "override": "テナントSMTP上書きを有効にする",
         "override_checkbox": "上書きを有効化",
@@ -2302,6 +2303,66 @@
         "close": "閉じる",
         "saved": "メール設定を保存しました。",
         "failed": "処理に失敗しました。時間をおいて再試行してください。"
+      },
+      "inbound_email": {
+        "title": "受信メール",
+        "description": "お問い合わせへの回答に読者が返信したメールを、SendGridまたはResend経由でコンソールに取り込みます。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
+        "section_error": "受信メールの設定を表示できませんでした",
+        "provider": "受信メールのプロバイダ",
+        "provider_description": "読者からの返信は、ここで選んだプロバイダで受信します。認証情報は下の欄で登録します。",
+        "provider_change_warning": "別のプロバイダで保存すると、{$provider}の保存済みの認証情報は削除されます。",
+        "enabled": "返信をコンソールで受け取る",
+        "enabled_checkbox": "有効化",
+        "enabled_description": "OFFの場合、回答の返信先は回答したスタッフのメールアドレスになり、読者からの返信はその人のメールボックスに届きます。",
+        "domain": "受信ドメイン",
+        "domain_description": "読者からの返信の宛先になるドメインです。reply.example.comのような専用のドメインにすると、メインのドメインで受け取っているメールはそのまま変わりません。",
+        "domain_sendgrid_description": "DNSで、このドメインのMXレコードを優先度10でmx.sendgrid.netに向けてください。",
+        "domain_resend_description": "ResendのDomainsでこのドメインを追加して受信を有効にし、Resendに表示されるMXレコードをDNSに追加してください。",
+        "fields": {
+          "sendgrid": {
+            "webhook_token": "Webhookトークン"
+          },
+          "resend": {
+            "api_key": "APIキー",
+            "webhook_secret": "Webhook署名シークレット"
+          }
+        },
+        "field_sources": {
+          "sendgrid": {
+            "webhook_token": "ご自身で決める十分に長いランダムな文字列です。SendGridは下のWebhook URLのパスワードとして毎回これを送り返し、これを含まないメールは拒否されます。"
+          },
+          "resend": {
+            "api_key": "Resend管理画面のAPI Keysで作成した、Full accessのAPIキーです。返信の内容はこのキーでResendから読み取ります。",
+            "webhook_secret": "下のURLをResendに登録すると、そのWebhookに表示される署名シークレット（whsec_…）です。"
+          }
+        },
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "{$provider}に、受信したメールの送信先としてこのURLを登録してください。",
+        "webhook_url_sendgrid_description": "SendGridのSettings → Inbound Parseで受信ドメインを追加し、このURLをDestination URLに指定してください。<token>の部分は上で保存したWebhookトークンに置き換えます。",
+        "webhook_url_resend_description": "ResendのWebhooksでこのURLをemail.receivedイベントの送信先として追加し、表示される署名シークレットを上の欄に保存してください。",
+        "reply_address": "返信先アドレス",
+        "reply_address_description": "回答では、読者にこの形式のアドレスへの返信を求めます。*の部分はお問い合わせのIDです。受信ドメインのすべてのアドレスがプロバイダに届くようにしてください。",
+        "copy_webhook_url": "Webhook URLをコピー",
+        "copy_reply_address": "返信先アドレスをコピー",
+        "saved": "受信メールの設定を保存しました。",
+        "load_failed": "受信メールの設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "受信メールの設定の保存に失敗しました。時間をおいて再試行してください。",
+        "status": {
+          "disabled": "無効",
+          "disabled_description": "設定は保存されていますが、受信メールは無効です。読者からの返信は回答したスタッフのメールアドレスに届きます。",
+          "incomplete": "設定不足",
+          "incomplete_description": "有効ですが受信ドメインか必須の認証情報が揃っていないため、読者からの返信は引き続き回答したスタッフのメールアドレスに届きます。",
+          "ready": "利用可能",
+          "ready_description": "読者からの返信は、返信先のお問い合わせの下にコンソールで表示されます。",
+          "unset": "未設定",
+          "unset_description": "読者からの返信は回答したスタッフのメールアドレスに届きます。プロバイダを選んで受信メールを有効にすると、コンソールで受け取れます。"
+        },
+        "validation": {
+          "domain_invalid": "reply.example.comのようなドメイン名を入力してください。",
+          "domain_required": "受信メールを有効にするには、受信ドメインを入力してください。",
+          "field_required": "受信メールを有効にするには、この値を入力してください。",
+          "provider_invalid": "受信メールのプロバイダを選んでください。"
+        }
       },
       "email_change": {
         "title": "メールアドレス変更",
@@ -2339,6 +2400,14 @@
         "disable_done": "2段階認証を無効にしました。",
         "load_failed": "2段階認証の状態を取得できませんでした。時間をおいて再試行してください。"
       },
+      "credentials": {
+        "secret_change": "変更する",
+        "secret_change_cancel": "変更を取り消す",
+        "secret_remove": "削除する",
+        "secret_removed": "保存すると削除されます。",
+        "secret_remove_cancel": "削除を取り消す",
+        "secret_description": "入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。"
+      },
       "payment": {
         "title": "決済設定",
         "description": "このテナントの決済プロバイダを選び、その認証情報を登録・更新・無効化します。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
@@ -2364,12 +2433,6 @@
             "webhook_token": "PAY.JP管理画面のアカウント設定に表示されるWebhookトークン（whook_…）です。"
           }
         },
-        "secret_change": "変更する",
-        "secret_change_cancel": "変更を取り消す",
-        "secret_remove": "削除する",
-        "secret_removed": "保存すると削除されます。",
-        "secret_remove_cancel": "削除を取り消す",
-        "secret_description": "入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。",
         "public_description": "この値は決済時に読者のブラウザへ渡されるため、保存した値をそのまま表示します。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "{$provider}に、決済の通知の送信先としてこのURLを登録してください。",
@@ -2727,7 +2790,7 @@
     },
     "integrations": {
       "email_title": "メール情報",
-      "email_description": "テナントごとのメール送信設定を管理します。",
+      "email_description": "テナントのメール送信と、読者からの返信の受信を管理します。",
       "email_error": "メール設定を表示できませんでした",
       "payment_title": "決済",
       "payment_description": "このテナントが読者に請求する方法を管理します。Webの決済は選んだ決済プロバイダ、アプリ内課金はApp StoreとGoogle Playです。",

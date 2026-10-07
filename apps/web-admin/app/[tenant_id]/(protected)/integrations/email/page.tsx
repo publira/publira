@@ -24,12 +24,19 @@ import {
 } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
+import {
+  emptyTenantInboundEmailSettings,
+  getTenantInboundEmailSettings,
+  listInboundEmailProviders,
+} from "#lib/inbound-email-settings";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { storefrontOrigin } from "#lib/storefront-url";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 
 import { TenantEmailSettingsForm } from "./_components/tenant-email-settings-form";
+import { TenantInboundEmailSettingsForm } from "./_components/tenant-inbound-email-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -111,6 +118,65 @@ const SettingsEmailForm = async () => {
   );
 };
 
+const SettingsInboundEmailFormSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-32" />
+    <div className="grid gap-3">
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </div>
+  </div>
+);
+
+const SettingsInboundEmailForm = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [settingsResult, providersResult, currentUserResult, tenantResult] =
+    await Promise.all([
+      getTenantInboundEmailSettings(tenantId, locale),
+      listInboundEmailProviders(tenantId, locale),
+      getAdminCurrentUser(tenantId),
+      getTenantForSession(tenantId),
+    ]);
+
+  await redirectToLoginIfSessionRejected(
+    settingsResult,
+    providersResult,
+    currentUserResult,
+    tenantResult
+  );
+
+  let loadErrorMessage: string | undefined;
+  if (!settingsResult.ok) {
+    loadErrorMessage = settingsResult.message;
+  } else if (!providersResult.ok) {
+    loadErrorMessage = providersResult.message;
+  }
+
+  return (
+    <TenantInboundEmailSettingsForm
+      canEdit={isTenantAdminRole(
+        currentUserResult.ok ? currentUserResult.user.role : undefined
+      )}
+      initialSettings={
+        settingsResult.ok
+          ? settingsResult.settings
+          : emptyTenantInboundEmailSettings
+      }
+      loadErrorMessage={loadErrorMessage}
+      providers={providersResult.ok ? providersResult.providers : []}
+      tenantId={tenantId}
+      webhookOrigin={
+        tenantResult.ok
+          ? storefrontOrigin(tenantResult.tenant.domain)
+          : undefined
+      }
+    />
+  );
+};
+
 const IntegrationsEmailPage = () => (
   <AdminPage>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
@@ -130,17 +196,30 @@ const IntegrationsEmailPage = () => (
           </AdminPageHeading>
         </AdminPageHeader>
         <AdminPageContent>
-          <SectionErrorBoundary
-            title={
-              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <Message message="admin.integrations.email_error" />
+          <div className="grid gap-6">
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.integrations.email_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsEmailFormSkeleton />}>
+                <SettingsEmailForm />
               </Suspense>
-            }
-          >
-            <Suspense fallback={<SettingsEmailFormSkeleton />}>
-              <SettingsEmailForm />
-            </Suspense>
-          </SectionErrorBoundary>
+            </SectionErrorBoundary>
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.settings.inbound_email.section_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<SettingsInboundEmailFormSkeleton />}>
+                <SettingsInboundEmailForm />
+              </Suspense>
+            </SectionErrorBoundary>
+          </div>
         </AdminPageContent>
       </TenantAdminRoute>
     </Suspense>

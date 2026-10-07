@@ -2274,6 +2274,7 @@
         "delete_failed": "無法刪除標誌。請稍後再試。"
       },
       "email": {
+        "title": "寄件",
         "description": "未設定或未啟用時，郵件會由平台自己的寄件人寄出。",
         "override": "使用該租戶自己的SMTP伺服器",
         "override_checkbox": "啟用覆寫設定",
@@ -2302,6 +2303,66 @@
         "close": "關閉",
         "saved": "郵件設定已儲存。",
         "failed": "請求失敗。請稍後再試。"
+      },
+      "inbound_email": {
+        "title": "收件",
+        "description": "透過SendGrid或Resend，將讀者對諮詢答覆的回信接收到主控台。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
+        "section_error": "無法顯示收件設定",
+        "provider": "收件服務商",
+        "provider_description": "讀者的回信將透過此處選擇的服務商接收，憑證在下方填寫。",
+        "provider_change_warning": "以其他服務商儲存時，為{$provider}儲存的憑證將被刪除。",
+        "enabled": "在主控台接收回信",
+        "enabled_checkbox": "啟用",
+        "enabled_description": "關閉時，答覆的回覆地址為答覆的工作人員的電子郵件地址，讀者的回信會寄到該工作人員的信箱。",
+        "domain": "收件網域",
+        "domain_description": "讀者回信寄送的網域。使用reply.example.com這類專用網域，主網域目前收到的郵件將維持不變。",
+        "domain_sendgrid_description": "請在DNS中將該網域的MX記錄指向mx.sendgrid.net，優先順序為10。",
+        "domain_resend_description": "請在Resend的Domains中新增該網域並開啟接收，然後將Resend顯示的MX記錄新增到DNS。",
+        "fields": {
+          "sendgrid": {
+            "webhook_token": "Webhook權杖"
+          },
+          "resend": {
+            "api_key": "API金鑰",
+            "webhook_secret": "Webhook簽章密鑰"
+          }
+        },
+        "field_sources": {
+          "sendgrid": {
+            "webhook_token": "由您自行決定的足夠長的隨機字串。SendGrid每次都會將它作為下方webhook URL中的密碼傳回，不含此值的郵件將被拒絕。"
+          },
+          "resend": {
+            "api_key": "在Resend管理後台的API Keys中建立、具有Full access權限的API金鑰。回信內容會使用此金鑰從Resend讀取。",
+            "webhook_secret": "在Resend中設定下方URL後，該webhook顯示的簽章密鑰（whsec_…）。"
+          }
+        },
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "請在{$provider}中將此URL設定為接收郵件的傳送位址。",
+        "webhook_url_sendgrid_description": "請在SendGrid的Settings → Inbound Parse中新增收件網域，並將此URL指定為Destination URL，同時把<token>替換為上方儲存的webhook權杖。",
+        "webhook_url_resend_description": "請在Resend的Webhooks中將此URL新增為email.received事件的傳送位址，然後在上方儲存其顯示的簽章密鑰。",
+        "reply_address": "回覆地址",
+        "reply_address_description": "答覆會請讀者回信到此格式的地址，其中*為諮詢的ID。收件網域上的所有地址都必須能送達服務商。",
+        "copy_webhook_url": "複製webhook URL",
+        "copy_reply_address": "複製回覆地址",
+        "saved": "收件設定已儲存。",
+        "load_failed": "無法載入收件設定。請稍後再試。",
+        "save_failed": "無法儲存收件設定。請稍後再試。",
+        "status": {
+          "disabled": "已停用",
+          "disabled_description": "設定已儲存，但收件處於關閉狀態。讀者的回信會寄到答覆的工作人員的電子郵件地址。",
+          "incomplete": "未完成",
+          "incomplete_description": "收件已開啟，但缺少收件網域或必要的憑證，因此讀者的回信仍會寄到答覆的工作人員的電子郵件地址。",
+          "ready": "就緒",
+          "ready_description": "讀者的回信會回到主控台，顯示在所回覆的諮詢下。",
+          "unset": "未設定",
+          "unset_description": "讀者的回信會寄到答覆的工作人員的電子郵件地址。選擇服務商並開啟收件後，即可在主控台接收。"
+        },
+        "validation": {
+          "domain_invalid": "請輸入網域名稱，例如reply.example.com。",
+          "domain_required": "若要開啟收件，請輸入收件網域。",
+          "field_required": "若要開啟收件，請輸入此值。",
+          "provider_invalid": "請選擇收件服務商。"
+        }
       },
       "email_change": {
         "title": "變更電子郵件地址",
@@ -2339,6 +2400,14 @@
         "disable_done": "兩步驟驗證已關閉。",
         "load_failed": "無法讀取兩步驟驗證的狀態。"
       },
+      "credentials": {
+        "secret_change": "變更",
+        "secret_change_cancel": "取消變更",
+        "secret_remove": "刪除",
+        "secret_removed": "儲存後將被刪除。",
+        "secret_remove_cancel": "取消刪除",
+        "secret_description": "您輸入的值不會再次顯示。已儲存的值除首尾字元外都會以遮罩顯示。"
+      },
       "payment": {
         "title": "付款設定",
         "description": "選擇該租戶的付款服務商，並設定、更換或停用其憑證。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
@@ -2364,12 +2433,6 @@
             "webhook_token": "PAY.JP管理後台帳戶設定中顯示的Webhook權杖（whook_…）。"
           }
         },
-        "secret_change": "變更",
-        "secret_change_cancel": "取消變更",
-        "secret_remove": "刪除",
-        "secret_removed": "儲存後將被刪除。",
-        "secret_remove_cancel": "取消刪除",
-        "secret_description": "您輸入的值不會再次顯示。已儲存的值除首尾字元外都會以遮罩顯示。",
         "public_description": "此值會在結帳時交給讀者的瀏覽器，因此依儲存的原樣顯示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "請在{$provider}中將此URL設定為付款通知的接收位址。",
@@ -2727,7 +2790,7 @@
     },
     "integrations": {
       "email_title": "郵件",
-      "email_description": "管理該租戶寄送郵件的方式。",
+      "email_description": "管理該租戶寄送郵件以及接收讀者回信的方式。",
       "email_error": "無法顯示郵件設定",
       "payment_title": "付款",
       "payment_description": "管理此租戶向讀者收費的方式：網頁結帳使用所選的付款服務商，應用程式內購買使用App Store與Google Play。",

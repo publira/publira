@@ -18,6 +18,10 @@ export type { TenantEmailSettings } from "../gen/publira/admin/v1/email_pb.js";
 export type { EpisodeReadThrough } from "../gen/publira/admin/v1/engagement_pb.js";
 export type { TenantFcmSettings } from "../gen/publira/admin/v1/fcm_pb.js";
 export type {
+  InboundEmailProvider,
+  TenantInboundEmailSettings,
+} from "../gen/publira/admin/v1/inbound_email_pb.js";
+export type {
   TenantAdminInvitation,
   TenantMember,
 } from "../gen/publira/admin/v1/member_pb.js";

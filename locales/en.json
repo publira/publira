@@ -2274,6 +2274,7 @@
         "delete_failed": "Could not delete the logo. Please try again later."
       },
       "email": {
+        "title": "Outgoing email",
         "description": "Left unset or disabled, mail is sent from the platform's own sender.",
         "override": "Use this tenant's own SMTP server",
         "override_checkbox": "Enable the override",
@@ -2302,6 +2303,66 @@
         "close": "Close",
         "saved": "The email settings were saved.",
         "failed": "The request failed. Please try again later."
+      },
+      "inbound_email": {
+        "title": "Inbound email",
+        "description": "Receive readers' replies to your answers to contact messages back in the console, through SendGrid or Resend. A secret is write-only: coming back, you see its state and a mask, never the value.",
+        "section_error": "Could not display the inbound email settings",
+        "provider": "Inbound email provider",
+        "provider_description": "Readers' replies are received through the provider chosen here, with the credentials entered below.",
+        "provider_change_warning": "Saving with a different provider deletes the credentials stored for {$provider}.",
+        "enabled": "Receive replies in the console",
+        "enabled_checkbox": "Enable",
+        "enabled_description": "Left off, each answer names the address of the staff member who answered as its reply-to address, so readers' replies go to that person's mailbox.",
+        "domain": "Inbound domain",
+        "domain_description": "The domain readers' replies are sent to. Give it one of its own, such as reply.example.com, so the mail your main domain already receives stays where it is.",
+        "domain_sendgrid_description": "In your DNS, point the domain's MX record at mx.sendgrid.net with priority 10.",
+        "domain_resend_description": "In Resend, add the domain under Domains and turn on receiving for it, then add the MX record Resend shows to your DNS.",
+        "fields": {
+          "sendgrid": {
+            "webhook_token": "Webhook token"
+          },
+          "resend": {
+            "api_key": "API key",
+            "webhook_secret": "Webhook signing secret"
+          }
+        },
+        "field_sources": {
+          "sendgrid": {
+            "webhook_token": "A long random string you choose yourself. SendGrid sends it back with every message as the password in the webhook URL below, and a message that does not carry it is refused."
+          },
+          "resend": {
+            "api_key": "An API key with Full access, created under API Keys in the Resend dashboard. The replies are read from Resend with it.",
+            "webhook_secret": "The signing secret (whsec_…) Resend shows for the webhook once the URL below is registered there."
+          }
+        },
+        "webhook_url": "Webhook URL",
+        "webhook_url_description": "Register this URL with {$provider} as where it posts received mail.",
+        "webhook_url_sendgrid_description": "In SendGrid, add the inbound domain under Settings → Inbound Parse with this URL as the destination URL, putting the webhook token stored above in place of <token>.",
+        "webhook_url_resend_description": "In Resend, add this URL under Webhooks for the email.received event, then store the signing secret it shows above.",
+        "reply_address": "Reply address",
+        "reply_address_description": "Each answer asks the reader to reply to an address of this form, where * is the message's ID. Every address on the inbound domain has to reach the provider.",
+        "copy_webhook_url": "Copy the webhook URL",
+        "copy_reply_address": "Copy the reply address",
+        "saved": "The inbound email settings were saved.",
+        "load_failed": "Could not load the inbound email settings. Please try again later.",
+        "save_failed": "Could not save the inbound email settings. Please try again later.",
+        "status": {
+          "disabled": "Disabled",
+          "disabled_description": "The settings are stored, but inbound email is off. Readers' replies go to the address of the staff member who answered.",
+          "incomplete": "Incomplete",
+          "incomplete_description": "Inbound email is on, but the domain or a required credential is missing, so readers' replies still go to the address of the staff member who answered.",
+          "ready": "Ready",
+          "ready_description": "Readers' replies come back to the console under the message they answer.",
+          "unset": "Not set",
+          "unset_description": "Readers' replies go to the address of the staff member who answered. Choose a provider and turn inbound email on to receive them in the console instead."
+        },
+        "validation": {
+          "domain_invalid": "Enter a domain name such as reply.example.com.",
+          "domain_required": "Enter the inbound domain to turn inbound email on.",
+          "field_required": "Enter this value to turn inbound email on.",
+          "provider_invalid": "Choose an inbound email provider."
+        }
       },
       "email_change": {
         "title": "Change the email address",
@@ -2339,6 +2400,14 @@
         "disable_done": "Two-step verification has been turned off.",
         "load_failed": "Could not read the two-step verification status. Please try again later."
       },
+      "credentials": {
+        "secret_change": "Change",
+        "secret_change_cancel": "Cancel the change",
+        "secret_remove": "Remove",
+        "secret_removed": "Removed when you save.",
+        "secret_remove_cancel": "Keep it",
+        "secret_description": "A value you enter is never shown again. A stored value appears masked apart from its first and last characters."
+      },
       "payment": {
         "title": "Payment settings",
         "description": "Choose this tenant's payment provider and register, replace, or disable its credentials. A secret is write-only: coming back, you see its state and a mask, never the value.",
@@ -2364,12 +2433,6 @@
             "webhook_token": "The webhook token (whook_…) shown in the account settings of the PAY.JP dashboard."
           }
         },
-        "secret_change": "Change",
-        "secret_change_cancel": "Cancel the change",
-        "secret_remove": "Remove",
-        "secret_removed": "Removed when you save.",
-        "secret_remove_cancel": "Keep it",
-        "secret_description": "A value you enter is never shown again. A stored value appears masked apart from its first and last characters.",
         "public_description": "This value is handed to the reader's browser at checkout, so it is shown as stored.",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "Register this URL with {$provider} as where it sends payment notifications.",
@@ -2727,7 +2790,7 @@
     },
     "integrations": {
       "email_title": "Email",
-      "email_description": "Manage how this tenant sends email.",
+      "email_description": "Manage how this tenant sends email and receives readers' replies.",
       "email_error": "Could not display the email settings",
       "payment_title": "Payments",
       "payment_description": "Manage how this tenant charges readers: the payment provider it chooses for the web checkout, and the App Store and Google Play for in-app purchase.",
