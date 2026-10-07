@@ -8,14 +8,24 @@ import { tenantAdminInvitationDataSchema } from "./tenant-admin-invitation";
 const invitationData = {
   expires_at: "2030-01-15T12:00:00Z",
   invite_url: "https://admin.example.com/accept-invite?token=abc",
+  role: "tenant_admin",
   tenant_name: "Aoto Press",
 };
 
 describe("tenantAdminInvitationDataSchema", () => {
-  it("accepts the three variables the design calls for", () => {
+  it("accepts the four variables the design calls for", () => {
     expect(tenantAdminInvitationDataSchema.parse(invitationData)).toEqual(
       invitationData
     );
+  });
+
+  it("rejects a role that is not a console role", () => {
+    const parsed = tenantAdminInvitationDataSchema.safeParse({
+      ...invitationData,
+      role: "tenant_owner",
+    });
+
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects a date and time without a zone", () => {
@@ -75,6 +85,31 @@ describe("TenantAdminInvitationEmail", () => {
     expect(result.html).toContain(expires);
     expect(result.html).toContain("心当たりがない場合");
   });
+
+  it.each([
+    ["tenant_admin", "Admin invitation", "invited as a tenant admin of"],
+    ["tenant_editor", "Editor invitation", "invited as an editor of"],
+    ["tenant_auditor", "Auditor invitation", "invited as an auditor of"],
+  ])(
+    "a %s invitation names the role it grants",
+    async (role, heading, body) => {
+      const result = await renderEmail({
+        data: { ...invitationData, role },
+        locale: "en",
+        messages: await loadEmailMessages("en"),
+        template: "tenant_admin_invitation",
+        timeZone: "UTC",
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+
+      expect(result.html).toContain(heading);
+      expect(result.html).toContain(body);
+    }
+  );
 
   it("expires_at is shown in the given timeZone", async () => {
     const timeZone = "America/Los_Angeles";

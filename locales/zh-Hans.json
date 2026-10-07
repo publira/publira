@@ -164,14 +164,14 @@
     },
     "tenant_admin_invitation": {
       "action": "接受邀请",
-      "body": "您被邀请成为{$tenant_name}的租户管理员。请打开下方按钮接受邀请。",
+      "body": ".input {$role :string}\n.match $role\ntenant_editor {{您被邀请成为{$tenant_name}的编辑。请打开下方按钮接受邀请。}}\ntenant_auditor {{您被邀请成为{$tenant_name}的审计员。请打开下方按钮接受邀请。}}\n* {{您被邀请成为{$tenant_name}的租户管理员。请打开下方按钮接受邀请。}}",
       "expires": "此链接将于{$expires_at}失效。",
       "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
-      "heading": "管理员邀请",
+      "heading": ".input {$role :string}\n.match $role\ntenant_editor {{编辑邀请}}\ntenant_auditor {{审计员邀请}}\n* {{管理员邀请}}",
       "ignore": "如果您并未预期收到这封邮件，可以忽略它。",
       "intro": "您被邀请加入{$tenant_name}的管理控制台。",
       "preview": "您被邀请加入{$tenant_name}的管理控制台。",
-      "subject": "{$tenant_name}管理员邀请"
+      "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}编辑邀请}}\ntenant_auditor {{{$tenant_name}审计员邀请}}\n* {{{$tenant_name}管理员邀请}}"
     }
   },
   "errors": {
@@ -270,6 +270,7 @@
         "creator_account_unlinked": "解除了作者的读者账号关联",
         "label_created": "创建了品牌",
         "label_updated": "更新了品牌",
+        "tenant_member_added": "添加了成员",
         "tenant_member_role_updated": "变更了成员角色",
         "tenant_member_removed": "移除了成员",
         "tenant_admin_invited": "邀请了租户管理员",
@@ -522,7 +523,7 @@
         "account_exists": "以已有账户接受邀请。接受后即可使用该邮箱地址登录。",
         "accepted": "此邀请已被接受。",
         "canceled": "此邀请已被取消。",
-        "email_invited": "{$email}已被邀请成为租户管理员。",
+        "email_invited": ".input {$role :string}\n.match $role\ntenant_editor {{{$email}已被邀请成为编辑。}}\ntenant_auditor {{{$email}已被邀请成为审计员。}}\n* {{{$email}已被邀请成为租户管理员。}}",
         "expired": "此邀请已失效。",
         "expired_action": "此邀请链接已失效。",
         "invalid_token": "找不到该邀请令牌。",
@@ -532,7 +533,7 @@
         "password_confirm_label": "密码（确认）",
         "password_mismatch": "两次输入的密码不一致。",
         "submit": "接受邀请",
-        "title": "接受管理员邀请",
+        "title": "接受邀请",
         "description": "接受邀请以访问该租户的管理控制台。"
       },
       "confirm_email": {

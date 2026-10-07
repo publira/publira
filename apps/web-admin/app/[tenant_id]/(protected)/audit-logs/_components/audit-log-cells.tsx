@@ -258,6 +258,9 @@ const readerActionName = (action: string) => {
         <Message message="admin.audit.actions.royalty_statement_exported" />
       );
     }
+    case "tenant_member_added": {
+      return <Message message="admin.audit.actions.tenant_member_added" />;
+    }
     case "tenant_member_role_updated": {
       return (
         <Message message="admin.audit.actions.tenant_member_role_updated" />

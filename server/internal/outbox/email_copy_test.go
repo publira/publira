@@ -21,13 +21,40 @@ var emailCopyCases = []struct {
 	request  emailrenderer.Request
 }{
 	{
-		name:     "tenant_admin_invitation",
+		name:     "tenant_admin_invitation as a tenant_admin",
 		subjects: map[string]string{"en": "Aoto Press admin invitation", "ja": "Aoto Press管理者招待"},
 		request: emailrenderer.Request{
 			Template: "tenant_admin_invitation",
 			Data: map[string]any{
 				"expires_at":  copyExpiresAt,
 				"invite_url":  "https://admin.example.test/accept-invite?token=invite",
+				"role":        "tenant_admin",
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "tenant_admin_invitation as a tenant_editor",
+		subjects: map[string]string{"en": "Aoto Press editor invitation", "ja": "Aoto Press編集担当への招待"},
+		request: emailrenderer.Request{
+			Template: "tenant_admin_invitation",
+			Data: map[string]any{
+				"expires_at":  copyExpiresAt,
+				"invite_url":  "https://admin.example.test/accept-invite?token=invite",
+				"role":        "tenant_editor",
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "tenant_admin_invitation as a tenant_auditor",
+		subjects: map[string]string{"en": "Aoto Press auditor invitation", "ja": "Aoto Press監査担当への招待"},
+		request: emailrenderer.Request{
+			Template: "tenant_admin_invitation",
+			Data: map[string]any{
+				"expires_at":  copyExpiresAt,
+				"invite_url":  "https://admin.example.test/accept-invite?token=invite",
+				"role":        "tenant_auditor",
 				"tenant_name": "Aoto Press",
 			},
 		},

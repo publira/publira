@@ -164,14 +164,14 @@
     },
     "tenant_admin_invitation": {
       "action": "Accept invitation",
-      "body": "You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.",
+      "body": ".input {$role :string}\n.match $role\ntenant_editor {{You are invited as an editor of {$tenant_name}. Open the button below to accept the invitation.}}\ntenant_auditor {{You are invited as an auditor of {$tenant_name}. Open the button below to accept the invitation.}}\n* {{You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.}}",
       "expires": "This link expires at {$expires_at}.",
       "fallback_link": "If the button does not work, paste this URL into your browser.",
-      "heading": "Admin invitation",
+      "heading": ".input {$role :string}\n.match $role\ntenant_editor {{Editor invitation}}\ntenant_auditor {{Auditor invitation}}\n* {{Admin invitation}}",
       "ignore": "If you were not expecting this email, you can ignore it.",
       "intro": "You have been invited to the admin console of {$tenant_name}.",
       "preview": "You have been invited to the admin console of {$tenant_name}.",
-      "subject": "{$tenant_name} admin invitation"
+      "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name} editor invitation}}\ntenant_auditor {{{$tenant_name} auditor invitation}}\n* {{{$tenant_name} admin invitation}}"
     }
   },
   "errors": {
@@ -270,6 +270,7 @@
         "creator_account_unlinked": "Reader account unlinked from author",
         "label_created": "Label created",
         "label_updated": "Label updated",
+        "tenant_member_added": "Member added",
         "tenant_member_role_updated": "Member role changed",
         "tenant_member_removed": "Member removed",
         "tenant_admin_invited": "Tenant admin invited",
@@ -522,7 +523,7 @@
         "account_exists": "Accept as an existing account. You can sign in with this email address after accepting.",
         "accepted": "This invitation has already been accepted.",
         "canceled": "This invitation has been canceled.",
-        "email_invited": "{$email} has been invited as a tenant administrator.",
+        "email_invited": ".input {$role :string}\n.match $role\ntenant_editor {{{$email} has been invited as an editor.}}\ntenant_auditor {{{$email} has been invited as an auditor.}}\n* {{{$email} has been invited as a tenant administrator.}}",
         "expired": "This invitation has expired. Ask an administrator to send a new one.",
         "expired_action": "This invitation link has expired. Ask an administrator to send a new one.",
         "invalid_token": "The invitation token was not found.",
@@ -532,7 +533,7 @@
         "password_confirm_label": "Password (confirm)",
         "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
         "submit": "Accept invitation",
-        "title": "Accept administrator invitation",
+        "title": "Accept invitation",
         "description": "Accept the invitation to access this tenant's admin console."
       },
       "confirm_email": {

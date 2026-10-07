@@ -14,11 +14,17 @@ import {
   EmailIntro,
   EmailMeta,
 } from "../text";
-import { displayNameField, httpUrlField, instantField } from "./fields";
+import {
+  displayNameField,
+  httpUrlField,
+  instantField,
+  tenantRoleField,
+} from "./fields";
 
 export const tenantAdminInvitationDataSchema = z.object({
   expires_at: instantField("expires_at"),
   invite_url: httpUrlField("invite_url"),
+  role: tenantRoleField(),
   tenant_name: displayNameField("tenant_name"),
 });
 
@@ -54,7 +60,9 @@ export const TenantAdminInvitationEmail = ({
     preview={tenantAdminInvitationPreview(data, messages)}
   >
     <EmailHeading>
-      {emailMessage(messages, "email.tenant_admin_invitation.heading")}
+      {emailMessage(messages, "email.tenant_admin_invitation.heading", {
+        role: data.role,
+      })}
     </EmailHeading>
     <EmailIntro>
       {emailMessage(messages, "email.tenant_admin_invitation.intro", {
@@ -63,6 +71,7 @@ export const TenantAdminInvitationEmail = ({
     </EmailIntro>
     <EmailBody>
       {emailMessage(messages, "email.tenant_admin_invitation.body", {
+        role: data.role,
         tenant_name: data.tenant_name,
       })}
     </EmailBody>
