@@ -25,11 +25,31 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/recommendfeatures"
 )
 
-// MaxDays bounds every period. It keeps the cutoff a date PostgreSQL can hold;
-// the same bound is a CHECK constraint on both tables.
-const MaxDays = 36500
+const (
+	// MaxDays bounds every period. It keeps the cutoff a date PostgreSQL can
+	// hold; the same bound is a CHECK constraint on both tables.
+	MaxDays = 36500
+
+	// MinContentEventDays is the shortest content-event period. Two jobs read
+	// content_events after the purge has had its turn: build-recommend-features
+	// summarises a trailing window of recommendfeatures.DefaultWindowDays, and
+	// aggregate-content-stats rebuilds a day only once it has ended, catching up
+	// the days it missed after downtime. A shorter period would build the
+	// recommendations from fewer days than they say, and could delete a day's
+	// events before that day is aggregated, losing them from the statistics
+	// for good.
+	//
+	// The window is counted in the tenant's calendar days and ends on its
+	// yesterday, so its first instant is a day older than the window and the
+	// purge, which subtracts whole days from the instant it runs, would take
+	// the start of that day: one day covers it. A calendar day that crosses a
+	// daylight saving change runs past 24 hours, and the second day covers
+	// that.
+	MinContentEventDays = recommendfeatures.DefaultWindowDays + 2
+)
 
 // Periods are retention periods in whole days.
 type Periods struct {
@@ -55,30 +75,32 @@ func Builtin() Periods {
 	}
 }
 
-// Validate reports the first period outside 1 to MaxDays. A period of zero or
-// less puts the cutoff at or after now and deletes every row of its kind.
+// Validate reports the first period outside its range: 1 to MaxDays, and
+// MinContentEventDays to MaxDays for content events. A period of zero or less
+// puts the cutoff at or after now and deletes every row of its kind.
 func (p Periods) Validate() error {
 	for _, period := range []struct {
-		name string
-		days int
+		name  string
+		days  int
+		least int
 	}{
-		{"withdrawn_comment_days", p.WithdrawnCommentDays},
-		{"content_event_days", p.ContentEventDays},
-		{"daily_ranking_snapshot_days", p.DailyRankingSnapshotDays},
-		{"weekly_ranking_snapshot_days", p.WeeklyRankingSnapshotDays},
+		{"withdrawn_comment_days", p.WithdrawnCommentDays, 1},
+		{"content_event_days", p.ContentEventDays, MinContentEventDays},
+		{"daily_ranking_snapshot_days", p.DailyRankingSnapshotDays, 1},
+		{"weekly_ranking_snapshot_days", p.WeeklyRankingSnapshotDays, 1},
 	} {
-		if err := validateDays(period.name, period.days); err != nil {
+		if err := validateDays(period.name, period.days, period.least); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// validateDays refuses a period as a [*fielderr.Invalid] naming its field in
-// the RetentionPeriods message.
-func validateDays(name string, days int) error {
-	if days < 1 || days > MaxDays {
-		return &fielderr.Invalid{Field: name, Err: fmt.Errorf("%s must be from 1 to %d, got %d", name, MaxDays, days)}
+// validateDays refuses a period outside least to MaxDays as a
+// [*fielderr.Invalid] naming its field in the RetentionPeriods message.
+func validateDays(name string, days, least int) error {
+	if days < least || days > MaxDays {
+		return &fielderr.Invalid{Field: name, Err: fmt.Errorf("%s must be from %d to %d, got %d", name, least, MaxDays, days)}
 	}
 	return nil
 }
@@ -128,22 +150,24 @@ type Overrides struct {
 	WeeklyRankingSnapshotDays *int
 }
 
-// Validate reports the first override outside 1 to MaxDays. An override may
-// be longer or shorter than the platform default.
+// Validate reports the first override outside the range Periods.Validate
+// holds the defaults to. An override may be longer or shorter than the
+// platform default.
 func (o Overrides) Validate() error {
 	for _, period := range []struct {
-		name string
-		days *int
+		name  string
+		days  *int
+		least int
 	}{
-		{"withdrawn_comment_days", o.WithdrawnCommentDays},
-		{"content_event_days", o.ContentEventDays},
-		{"daily_ranking_snapshot_days", o.DailyRankingSnapshotDays},
-		{"weekly_ranking_snapshot_days", o.WeeklyRankingSnapshotDays},
+		{"withdrawn_comment_days", o.WithdrawnCommentDays, 1},
+		{"content_event_days", o.ContentEventDays, MinContentEventDays},
+		{"daily_ranking_snapshot_days", o.DailyRankingSnapshotDays, 1},
+		{"weekly_ranking_snapshot_days", o.WeeklyRankingSnapshotDays, 1},
 	} {
 		if period.days == nil {
 			continue
 		}
-		if err := validateDays(period.name, *period.days); err != nil {
+		if err := validateDays(period.name, *period.days, period.least); err != nil {
 			return err
 		}
 	}
@@ -279,9 +303,14 @@ type Settings struct {
 	Revision int64
 }
 
-// Effective is the periods that apply to the tenant.
+// Effective is the periods that apply to the tenant. A content-event period
+// saved before MinContentEventDays was enforced may still be shorter; it
+// applies as MinContentEventDays, so the purge never takes events the jobs
+// that read them still need, and the console reports what is kept.
 func (s Settings) Effective() Periods {
-	return s.Overrides.Apply(s.Defaults)
+	effective := s.Overrides.Apply(s.Defaults)
+	effective.ContentEventDays = max(effective.ContentEventDays, MinContentEventDays)
+	return effective
 }
 
 // TenantQuerier reads what one tenant's periods resolve from.

@@ -11,6 +11,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/recommendfeatures"
 )
 
 // The built-in defaults are what the purge batches kept before the periods
@@ -27,10 +28,11 @@ func TestBuiltinMatchesThePreviousDefaults(t *testing.T) {
 
 func TestPeriodsValidate(t *testing.T) {
 	for name, mutate := range map[string]func(*Periods){
-		"zero withdrawn comment days":       func(p *Periods) { p.WithdrawnCommentDays = 0 },
-		"negative content event days":       func(p *Periods) { p.ContentEventDays = -1 },
-		"zero daily ranking snapshot days":  func(p *Periods) { p.DailyRankingSnapshotDays = 0 },
-		"too many weekly ranking snapshots": func(p *Periods) { p.WeeklyRankingSnapshotDays = MaxDays + 1 },
+		"zero withdrawn comment days":        func(p *Periods) { p.WithdrawnCommentDays = 0 },
+		"negative content event days":        func(p *Periods) { p.ContentEventDays = -1 },
+		"content event days below the bound": func(p *Periods) { p.ContentEventDays = MinContentEventDays - 1 },
+		"zero daily ranking snapshot days":   func(p *Periods) { p.DailyRankingSnapshotDays = 0 },
+		"too many weekly ranking snapshots":  func(p *Periods) { p.WeeklyRankingSnapshotDays = MaxDays + 1 },
 	} {
 		t.Run(name, func(t *testing.T) {
 			periods := Builtin()
@@ -41,9 +43,13 @@ func TestPeriodsValidate(t *testing.T) {
 		})
 	}
 
-	bounds := Periods{WithdrawnCommentDays: 1, ContentEventDays: MaxDays, DailyRankingSnapshotDays: 1, WeeklyRankingSnapshotDays: MaxDays}
-	if err := bounds.Validate(); err != nil {
-		t.Fatalf("Validate(%+v) = %v, want nil", bounds, err)
+	for _, bounds := range []Periods{
+		{WithdrawnCommentDays: 1, ContentEventDays: MaxDays, DailyRankingSnapshotDays: 1, WeeklyRankingSnapshotDays: MaxDays},
+		{WithdrawnCommentDays: MaxDays, ContentEventDays: MinContentEventDays, DailyRankingSnapshotDays: MaxDays, WeeklyRankingSnapshotDays: 1},
+	} {
+		if err := bounds.Validate(); err != nil {
+			t.Fatalf("Validate(%+v) = %v, want nil", bounds, err)
+		}
 	}
 }
 
@@ -52,12 +58,13 @@ func TestOverridesValidate(t *testing.T) {
 		t.Fatalf("empty overrides Validate() = %v, want nil", err)
 	}
 	// An override may be shorter or longer than the platform default.
-	if err := (Overrides{WithdrawnCommentDays: new(1), WeeklyRankingSnapshotDays: new(MaxDays)}).Validate(); err != nil {
+	if err := (Overrides{WithdrawnCommentDays: new(1), ContentEventDays: new(MinContentEventDays), WeeklyRankingSnapshotDays: new(MaxDays)}).Validate(); err != nil {
 		t.Fatalf("Validate() = %v, want nil", err)
 	}
 	for _, overrides := range []Overrides{
 		{WithdrawnCommentDays: new(0)},
 		{ContentEventDays: new(-5)},
+		{ContentEventDays: new(MinContentEventDays - 1)},
 		{DailyRankingSnapshotDays: new(MaxDays + 1)},
 	} {
 		if err := overrides.Validate(); err == nil {
@@ -112,6 +119,40 @@ func TestContentEventCutoff(t *testing.T) {
 	now := time.Date(2026, time.September, 19, 13, 0, 0, 0, time.UTC)
 	if got, want := (Periods{ContentEventDays: 30}).ContentEventCutoff(now), now.AddDate(0, 0, -30); !got.Equal(want) {
 		t.Fatalf("ContentEventCutoff = %s, want %s", got, want)
+	}
+}
+
+// build-recommend-features reads a window of whole calendar days in the
+// tenant's time zone, ending on the tenant's yesterday. Whenever the purge
+// runs, at the shortest period it keeps the window's first instant, in a zone
+// whose days cross daylight saving changes as well as in UTC. One day fewer
+// does not.
+func TestTheShortestContentEventPeriodKeepsTheRecommendationWindow(t *testing.T) {
+	shortest := Periods{ContentEventDays: MinContentEventDays}
+	oneDayShort := Periods{ContentEventDays: MinContentEventDays - 1}
+	oneDayShortLoses := false
+	for _, zone := range []string{"UTC", "Asia/Tokyo", "America/New_York", "Australia/Lord_Howe"} {
+		location, err := time.LoadLocation(zone)
+		if err != nil {
+			t.Fatalf("load %s: %v", zone, err)
+		}
+		for now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC); now.Year() == 2026; now = now.Add(30 * time.Minute) {
+			// The window's first instant as insertUserFeaturesSQL bounds it:
+			// midnight in the tenant's zone, DefaultWindowDays - 1 days before
+			// the tenant's yesterday.
+			local := now.In(location)
+			first := time.Date(local.Year(), local.Month(), local.Day()-1-(recommendfeatures.DefaultWindowDays-1), 0, 0, 0, 0, location)
+			if first.Before(shortest.ContentEventCutoff(now)) {
+				t.Fatalf("%s: a purge at %s deletes below %s, past the window's first instant %s",
+					zone, now, shortest.ContentEventCutoff(now), first)
+			}
+			if first.Before(oneDayShort.ContentEventCutoff(now)) {
+				oneDayShortLoses = true
+			}
+		}
+	}
+	if !oneDayShortLoses {
+		t.Fatal("a period one day shorter kept the window at every instant, so the bound is longer than it has to be")
 	}
 }
 
@@ -192,7 +233,7 @@ func TestReadTenantAndTableResolveTheSamePeriods(t *testing.T) {
 		tenants: []dbmodels.TenantRetentionSetting{{
 			TenantID:             overridden,
 			WithdrawnCommentDays: sql.NullInt32{Int32: 400, Valid: true},
-			ContentEventDays:     sql.NullInt32{Int32: 7, Valid: true},
+			ContentEventDays:     sql.NullInt32{Int32: 35, Valid: true},
 			Revision:             2,
 		}},
 	}
@@ -206,7 +247,7 @@ func TestReadTenantAndTableResolveTheSamePeriods(t *testing.T) {
 	}
 
 	for tenantID, want := range map[uuid.UUID]Periods{
-		overridden: {WithdrawnCommentDays: 400, ContentEventDays: 7, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 365},
+		overridden: {WithdrawnCommentDays: 400, ContentEventDays: 35, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 365},
 		plain:      {WithdrawnCommentDays: 60, ContentEventDays: 45, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 365},
 	} {
 		settings, err := ReadTenant(ctx, q, tenantID)
@@ -219,6 +260,50 @@ func TestReadTenantAndTableResolveTheSamePeriods(t *testing.T) {
 		if got := table.For(tenantID); got != want {
 			t.Fatalf("Table.For(%s) = %+v, want %+v", tenantID, got, want)
 		}
+	}
+}
+
+// A content-event period saved before the bound was enforced, as the platform
+// default or as a tenant's override, applies as the bound: to what the admin
+// API reports and to the cutoff the purge deletes below alike.
+func TestASavedContentEventPeriodBelowTheBoundAppliesAsTheBound(t *testing.T) {
+	overridden := uuid.Must(uuid.NewV7())
+	plain := uuid.Must(uuid.NewV7())
+	q := fakeQuerier{
+		platform: &dbmodels.PlatformRetentionConfig{WithdrawnCommentDays: 60, ContentEventDays: 1, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 365, Revision: 1},
+		tenants: []dbmodels.TenantRetentionSetting{{
+			TenantID:         overridden,
+			ContentEventDays: sql.NullInt32{Int32: 2, Valid: true},
+			Revision:         1,
+		}},
+	}
+	ctx := context.Background()
+	table, err := LoadTable(ctx, q)
+	if err != nil {
+		t.Fatalf("LoadTable: %v", err)
+	}
+	now := time.Date(2026, time.September, 19, 13, 0, 0, 0, time.UTC)
+	want := now.AddDate(0, 0, -MinContentEventDays)
+	for _, tenantID := range []uuid.UUID{overridden, plain} {
+		settings, err := ReadTenant(ctx, q, tenantID)
+		if err != nil {
+			t.Fatalf("ReadTenant: %v", err)
+		}
+		if got := settings.Effective().ContentEventDays; got != MinContentEventDays {
+			t.Fatalf("ReadTenant(%s).Effective().ContentEventDays = %d, want %d", tenantID, got, MinContentEventDays)
+		}
+		if got := table.For(tenantID).ContentEventCutoff(now); !got.Equal(want) {
+			t.Fatalf("Table.For(%s).ContentEventCutoff = %s, want %s", tenantID, got, want)
+		}
+	}
+	// The saved values themselves are reported as they are, so the console can
+	// show what has to be raised.
+	settings, err := ReadTenant(ctx, q, overridden)
+	if err != nil {
+		t.Fatalf("ReadTenant: %v", err)
+	}
+	if settings.Defaults.ContentEventDays != 1 || *settings.Overrides.ContentEventDays != 2 {
+		t.Fatalf("ReadTenant saved values = %+v / %+v, want the stored 1 and 2", settings.Defaults, settings.Overrides)
 	}
 }
 
@@ -257,6 +342,7 @@ func TestZeroTableResolvesToBuiltin(t *testing.T) {
 func TestSaveDefaultsParamsValidateNamesTheRequestField(t *testing.T) {
 	for want, adjust := range map[string]func(*SaveDefaultsParams){
 		"defaults.withdrawn_comment_days":       func(p *SaveDefaultsParams) { p.Defaults.WithdrawnCommentDays = 0 },
+		"defaults.content_event_days":           func(p *SaveDefaultsParams) { p.Defaults.ContentEventDays = MinContentEventDays - 1 },
 		"defaults.weekly_ranking_snapshot_days": func(p *SaveDefaultsParams) { p.Defaults.WeeklyRankingSnapshotDays = MaxDays + 1 },
 		FieldExpectedRevision:                   func(p *SaveDefaultsParams) { p.ExpectedRevision = new(int64(-1)) },
 	} {

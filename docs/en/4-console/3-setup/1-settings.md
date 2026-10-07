@@ -96,7 +96,7 @@ Sign-in with Apple or Google is never refused here, since the provider supplies 
 Each group on these forms starts with **Use the platform default** ticked, and shows the operator's value beside it. A tenant on the default follows the operator's later changes. To set the tenant's own value, clear the box, enter the value, and save the form with **Save the community limits** or **Save the retention periods**. To return to the platform's value, tick the box again and save.
 
 - A community limit can only be made stricter than the platform's: a lower count, or a longer duplicate comment window. A looser value is refused with a message that names the setting. If the operator later tightens the platform's limit below the tenant's, the platform's applies.
-- A retention period can be longer or shorter than the platform's default, from 1 to 36500 days. Keep **Content events** at 28 days or more: the site's recommendations are built from the last 28 days of them.
+- A retention period can be longer or shorter than the platform's default, from 1 to 36500 days. **Content events** start at 30 days instead, and a shorter period is refused: the site's recommendations are built from the last 28 whole days of them.
 
 If someone else saved the same form after you opened it, your save is refused with "These settings were changed elsewhere while this page was open. Reload the page and enter the change again."
 

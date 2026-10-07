@@ -20,8 +20,9 @@ import (
 
 const (
 	// DefaultWindowDays is the trailing window, in days, that both feature
-	// sets summarise. Four weeks keeps weekly reading rhythms intact while
-	// staying well inside the content_events retention window.
+	// sets summarise. Four weeks keeps weekly reading rhythms intact.
+	// retention.MinContentEventDays keeps every content-event period long
+	// enough that the purge never takes an event this window still reads.
 	DefaultWindowDays = 28
 
 	// DefaultTopSeriesLimit bounds the per-user affinity list. That list is

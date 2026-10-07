@@ -20,19 +20,19 @@ var retentionGroup = commandGroup{
 	},
 }
 
-func retentionUsage(what string) string {
-	return fmt.Sprintf("for how many `days` %s is kept, from 1 to %d, where a tenant has set none", what, retention.MaxDays)
+func retentionUsage(what string, least int) string {
+	return fmt.Sprintf("for how many `days` %s is kept, from %d to %d, where a tenant has set none", what, least, retention.MaxDays)
 }
 
 // retentionFlags are the fields of the RetentionPeriods message.
 var retentionFlags = []fieldFlag[retention.Periods]{
-	{"withdrawn_comment_days", "withdrawn-comment-days", retentionUsage("a comment its author withdrew"),
+	{"withdrawn_comment_days", "withdrawn-comment-days", retentionUsage("a comment its author withdrew", 1),
 		func(p *retention.Periods, v int) { p.WithdrawnCommentDays = v }},
-	{"content_event_days", "content-event-days", retentionUsage("a raw engagement event"),
+	{"content_event_days", "content-event-days", retentionUsage("a raw engagement event", retention.MinContentEventDays),
 		func(p *retention.Periods, v int) { p.ContentEventDays = v }},
-	{"daily_ranking_snapshot_days", "daily-ranking-snapshot-days", retentionUsage("a daily ranking snapshot"),
+	{"daily_ranking_snapshot_days", "daily-ranking-snapshot-days", retentionUsage("a daily ranking snapshot", 1),
 		func(p *retention.Periods, v int) { p.DailyRankingSnapshotDays = v }},
-	{"weekly_ranking_snapshot_days", "weekly-ranking-snapshot-days", retentionUsage("a weekly ranking snapshot"),
+	{"weekly_ranking_snapshot_days", "weekly-ranking-snapshot-days", retentionUsage("a weekly ranking snapshot", 1),
 		func(p *retention.Periods, v int) { p.WeeklyRankingSnapshotDays = v }},
 }
 

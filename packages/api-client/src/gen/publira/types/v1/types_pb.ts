@@ -1161,7 +1161,8 @@ export const PageVersionSchema: GenMessage<PageVersion> = /*@__PURE__*/
 
 /**
  * How long each kind of record that expires is kept before a purge batch
- * deletes it, in whole days. Each value is from 1 to 36500.
+ * deletes it, in whole days. Each value is from 1 to 36500, except
+ * content_event_days.
  *
  * @generated from message publira.types.v1.RetentionPeriods
  */
@@ -1174,7 +1175,10 @@ export type RetentionPeriods = Message<"publira.types.v1.RetentionPeriods"> & {
   withdrawnCommentDays: number;
 
   /**
-   * A raw engagement event, counted from when it occurred.
+   * A raw engagement event, counted from when it occurred. From 30 to 36500:
+   * the recommendations are built from the last 28 calendar days of events
+   * in the tenant's time zone, and each day's statistics from its events once
+   * the day has ended.
    *
    * @generated from field: int32 content_event_days = 2;
    */
