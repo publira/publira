@@ -327,13 +327,13 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- publira_ticker is deliberately absent from every grant above. The blanket
 -- ALL TABLES grants and the ALTER DEFAULT PRIVILEGES that follows them hand a
 -- role whatever the schema holds now and whatever a later migration adds, and
--- the three ticker jobs read and write a known, small set of tables. So they
--- are named one by one here: a table added to the schema reaches this role only
+-- the ticker jobs read and write a known, small set of tables. So they are
+-- named one by one here: a table added to the schema reaches this role only
 -- when someone puts it in this list, and a job that starts reading a table it
 -- was never granted fails in its integration test rather than in production.
 --
--- Reads: the due listings, windows and pinned banners, the catalog rows the log
--- lines name, and the recipients each notification fans out to.
+-- Reads: the due listings, series, windows and pinned banners, the catalog
+-- rows the log lines name, and the recipients each notification fans out to.
 GRANT SELECT ON
     episode_listings,
     announcements,
@@ -360,4 +360,8 @@ GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
 -- rather than the table. This role bypasses RLS, so a table-wide UPDATE here
 -- would let a ticker job rewrite any announcement of any tenant.
 GRANT UPDATE (pinned) ON announcements TO publira_ticker;
+-- The same holds for a series: apply-series-publications records the drop it
+-- owed for a series whose publication instant has passed, and writes nothing
+-- else of a row that carries the tenant's own catalog.
+GRANT UPDATE (publication_revalidated_at) ON series TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;

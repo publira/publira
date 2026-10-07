@@ -28,7 +28,7 @@ Choose **Create series**. The form is the same one the series is edited with lat
 
 - **Empty**: the series is hidden. Its page answers as if it did not exist, and none of its episodes can be read, whatever their own state.
 - **A time that has passed**, or the current time: the series is public as soon as it is saved.
-- **A time in the future**: the series stays hidden until then. Nothing runs at that moment to refresh the site's cached pages, so its lists and its top page can take up to about 15 minutes longer to include it ([#3823](https://github.com/publira/publira/issues/3823)).
+- **A time in the future**: the series stays hidden until then. `publira worker` looks for series whose time has passed once a minute and refreshes the site's cached pages, so its lists and its top page include it within about a minute of that time.
 
 Clearing the field later takes a public series off the site again, with its episodes. This is the only way to withdraw a series, since a series cannot be deleted.
 

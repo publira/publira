@@ -310,14 +310,47 @@ SET synopsis = CASE
 RETURNING *;
 
 -- name: UpdateSeriesPublication :exec
+-- The save drops the site caches itself when the instant it stores has already
+-- passed, so it marks that drop done here; an instant still ahead is left for
+-- the apply-series-publications batch to drop once it passes.
 UPDATE series
 SET published_at = sqlc.narg(published_at)::timestamptz,
     is_published = CASE
         WHEN sqlc.narg(published_at)::timestamptz IS NULL THEN false
         ELSE true
     END,
+    publication_revalidated_at = CASE
+        WHEN sqlc.narg(published_at)::timestamptz <= NOW() THEN NOW()
+        ELSE NULL
+    END,
     updated_at = NOW()
 WHERE id = $1;
+
+-- name: ListSeriesPublicationsDue :many
+-- Every published series whose publication instant has passed and whose drop
+-- of the site caches the apply-series-publications batch has not recorded yet.
+--
+-- This spans every tenant, so the connection must bypass RLS.
+SELECT s.id,
+    s.tenant_id,
+    s.public_id,
+    s.title,
+    s.published_at
+FROM series s
+WHERE s.is_published
+    AND s.publication_revalidated_at IS NULL
+    AND s.published_at <= NOW()
+ORDER BY s.published_at ASC,
+    s.id ASC;
+
+-- name: MarkSeriesPublicationRevalidated :exec
+-- The instant is compared again so that a series rescheduled into the future
+-- between the listing and this mark keeps its drop owed for the new instant.
+UPDATE series
+SET publication_revalidated_at = NOW()
+WHERE id = $1
+    AND publication_revalidated_at IS NULL
+    AND published_at <= NOW();
 
 -- Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
 -- backward uses ASC so idx_series_tenant_created_at can be scanned in

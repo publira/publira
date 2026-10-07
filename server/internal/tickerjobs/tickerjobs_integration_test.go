@@ -81,6 +81,36 @@ func TestWorkerAppliesAPassedFreeWindowAsAPeriodicJob(t *testing.T) {
 	assertJobRan(t, ctx, pg, "ticker.apply_free_windows")
 }
 
+func TestWorkerAppliesAPassedSeriesPublicationAsAPeriodicJob(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKJOBS0003", "series.tickerjobs.example.com", "Ticker Series Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "TICKJOBSSER3",
+		Title:       "Ticker Scheduled Series",
+		Published:   true,
+		PublishedAt: time.Now().Add(-time.Minute),
+	})
+
+	startWorkerWithTickerJobs(t, pg)
+
+	waitFor(t, ctx, "the passed series publication to be recorded", func() bool {
+		var applied sql.NullTime
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT publication_revalidated_at FROM series WHERE id = $1", series.ID,
+		).Scan(&applied); err != nil {
+			t.Fatalf("read series: %v", err)
+		}
+		return applied.Valid
+	})
+
+	assertJobRan(t, ctx, pg, "ticker.apply_series_publications")
+}
+
 func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -90,7 +120,7 @@ func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 
 	startWorkerWithTickerJobs(t, pg)
 
-	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day"} {
+	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day", "ticker.apply_series_publications"} {
 		assertJobRan(t, ctx, pg, kind)
 	}
 }

@@ -1937,6 +1937,11 @@ type Querier interface {
 	// does.
 	ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesGenresBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
+	// Every published series whose publication instant has passed and whose drop
+	// of the site caches the apply-series-publications batch has not recorded yet.
+	//
+	// This spans every tenant, so the connection must bypass RLS.
+	ListSeriesPublicationsDue(ctx context.Context) ([]ListSeriesPublicationsDueRow, error)
 	// Tags have no order of their own, so they read back by name: the same series
 	// shows the same list every time, and two series sharing tags show them in the
 	// same places.
@@ -2260,6 +2265,9 @@ type Querier interface {
 	// notification projects onto the same content_events row rather than a second
 	// completion for the same member and episode.
 	MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error)
+	// The instant is compared again so that a series rescheduled into the future
+	// between the listing and this mark keeps its drop owed for the new instant.
+	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
 	MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
@@ -2591,6 +2599,9 @@ type Querier interface {
 	// did not state keeps the value the row holds, and the INSERT only runs for a
 	// series that has no row yet, where the caller passes the column defaults.
 	UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListingParams) (SeriesListing, error)
+	// The save drops the site caches itself when the instant it stores has already
+	// passed, so it marks that drop done here; an instant still ahead is left for
+	// the apply-series-publications batch to drop once it passes.
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)

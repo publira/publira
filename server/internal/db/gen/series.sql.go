@@ -41,7 +41,7 @@ INSERT INTO series (
         purchase_availability
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability, purchase_availability
+RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability, purchase_availability, publication_revalidated_at
 `
 
 type CreateSeriesBaseParams struct {
@@ -78,6 +78,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.EyeCatchImageID,
 		&i.Availability,
 		&i.PurchaseAvailability,
+		&i.PublicationRevalidatedAt,
 	)
 	return i, err
 }
@@ -929,6 +930,61 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 	return items, nil
 }
 
+const ListSeriesPublicationsDue = `-- name: ListSeriesPublicationsDue :many
+SELECT s.id,
+    s.tenant_id,
+    s.public_id,
+    s.title,
+    s.published_at
+FROM series s
+WHERE s.is_published
+    AND s.publication_revalidated_at IS NULL
+    AND s.published_at <= NOW()
+ORDER BY s.published_at ASC,
+    s.id ASC
+`
+
+type ListSeriesPublicationsDueRow struct {
+	ID          uuid.UUID    `json:"id"`
+	TenantID    uuid.UUID    `json:"tenant_id"`
+	PublicID    string       `json:"public_id"`
+	Title       string       `json:"title"`
+	PublishedAt sql.NullTime `json:"published_at"`
+}
+
+// Every published series whose publication instant has passed and whose drop
+// of the site caches the apply-series-publications batch has not recorded yet.
+//
+// This spans every tenant, so the connection must bypass RLS.
+func (q *Queries) ListSeriesPublicationsDue(ctx context.Context) ([]ListSeriesPublicationsDueRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListSeriesPublicationsDue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSeriesPublicationsDueRow
+	for rows.Next() {
+		var i ListSeriesPublicationsDueRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Title,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockSeriesByIDForTenant = `-- name: LockSeriesByIDForTenant :one
 
 SELECT id,
@@ -961,6 +1017,21 @@ func (q *Queries) LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByI
 	var i LockSeriesByIDForTenantRow
 	err := row.Scan(&i.ID, &i.PublicID)
 	return i, err
+}
+
+const MarkSeriesPublicationRevalidated = `-- name: MarkSeriesPublicationRevalidated :exec
+UPDATE series
+SET publication_revalidated_at = NOW()
+WHERE id = $1
+    AND publication_revalidated_at IS NULL
+    AND published_at <= NOW()
+`
+
+// The instant is compared again so that a series rescheduled into the future
+// between the listing and this mark keeps its drop owed for the new instant.
+func (q *Queries) MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, MarkSeriesPublicationRevalidated, id)
+	return err
 }
 
 const UpdateSeriesBase = `-- name: UpdateSeriesBase :exec
@@ -1124,6 +1195,10 @@ SET published_at = $2::timestamptz,
         WHEN $2::timestamptz IS NULL THEN false
         ELSE true
     END,
+    publication_revalidated_at = CASE
+        WHEN $2::timestamptz <= NOW() THEN NOW()
+        ELSE NULL
+    END,
     updated_at = NOW()
 WHERE id = $1
 `
@@ -1133,6 +1208,9 @@ type UpdateSeriesPublicationParams struct {
 	PublishedAt sql.NullTime `json:"published_at"`
 }
 
+// The save drops the site caches itself when the instant it stores has already
+// passed, so it marks that drop done here; an instant still ahead is left for
+// the apply-series-publications batch to drop once it passes.
 func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateSeriesPublication, arg.ID, arg.PublishedAt)
 	return err

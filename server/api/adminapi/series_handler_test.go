@@ -607,8 +607,8 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
-			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all", nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability", "publication_revalidated_at"}).
+			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all", nil, nil))
 	expectPublicIDAttemptReleased(mock)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesListing)).

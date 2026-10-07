@@ -1,7 +1,7 @@
 // Package tickerjobs runs the jobs that have to act the moment a stored instant
-// passes — promoting due episodes, applying free window boundaries, turning over
-// each tenant's calendar day, and taking down a banner whose pinned window has
-// closed — as River periodic jobs.
+// passes — promoting due episodes, applying free window boundaries and the
+// publication of scheduled series, turning over each tenant's calendar day, and
+// taking down a banner whose pinned window has closed — as River periodic jobs.
 //
 // Each of them used to be a process of its own on a ticker, which meant a
 // deployment each to schedule, supervise, and keep from overlapping. River is
@@ -33,6 +33,7 @@ import (
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/seriespublications"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -46,6 +47,7 @@ const (
 	ServiceNameRollTenantDay    = "publira-roll-tenant-day"
 
 	ServiceNameExpirePinnedAnnouncements = "publira-expire-pinned-announcements"
+	ServiceNameApplySeriesPublications   = "publira-apply-series-publications"
 )
 
 // QueueName is the River queue they run on. They are kept off the default queue
@@ -57,7 +59,7 @@ const QueueName = "ticker"
 // queueMaxWorkers is one slot per job. Two runs of the same job are already
 // refused by the unique constraint below, and the jobs are independent of each
 // other, so nothing is gained by a wider queue.
-const queueMaxWorkers = 4
+const queueMaxWorkers = 5
 
 const (
 	kindPublishEpisodes  = "ticker.publish_episodes"
@@ -65,12 +67,14 @@ const (
 	kindRollTenantDay    = "ticker.roll_tenant_day"
 
 	kindExpirePinnedAnnouncements = "ticker.expire_pinned_announcements"
+	kindApplySeriesPublications   = "ticker.apply_series_publications"
 
 	DefaultPublishInterval            = time.Minute
 	DefaultPublishMaxRetries          = 3
 	DefaultFreeWindowInterval         = time.Minute
 	DefaultTenantDayInterval          = time.Minute
 	DefaultPinnedAnnouncementInterval = time.Minute
+	DefaultSeriesPublicationInterval  = time.Minute
 
 	// jobTimeout bounds one pass. It is well above any interval because a pass
 	// that has fallen behind is the one that must not be cut off half way: it
@@ -87,6 +91,7 @@ func ServiceNames() []string {
 		ServiceNameApplyFreeWindows,
 		ServiceNameRollTenantDay,
 		ServiceNameExpirePinnedAnnouncements,
+		ServiceNameApplySeriesPublications,
 	}
 }
 
@@ -112,6 +117,7 @@ type Config struct {
 	FreeWindowInterval         time.Duration
 	TenantDayInterval          time.Duration
 	PinnedAnnouncementInterval time.Duration
+	SeriesPublicationInterval  time.Duration
 }
 
 func (c Config) withDefaults() Config {
@@ -130,6 +136,9 @@ func (c Config) withDefaults() Config {
 	if c.PinnedAnnouncementInterval <= 0 {
 		c.PinnedAnnouncementInterval = DefaultPinnedAnnouncementInterval
 	}
+	if c.SeriesPublicationInterval <= 0 {
+		c.SeriesPublicationInterval = DefaultSeriesPublicationInterval
+	}
 	return c
 }
 
@@ -143,6 +152,7 @@ type Jobs struct {
 	freeWindow *freewindows.Runner
 	tenantDay  *dayroll.Runner
 	pinned     *pinnedannouncements.Runner
+	series     *seriespublications.Runner
 }
 
 // New constructs the runners over cfg.DB.
@@ -160,6 +170,7 @@ func New(cfg Config) (*Jobs, error) {
 			return tenantday.List(ctx, cfg.DB)
 		}, cfg.Revalidate, cfg.Logger),
 		pinned: pinnedannouncements.New(queries, cfg.Revalidate, cfg.Logger),
+		series: seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
 	}, nil
 }
 
@@ -176,6 +187,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	}
 	if err := river.AddWorkerSafely(workers, &expirePinnedAnnouncementsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("tickerjobs: register expire-pinned-announcements worker: %w", err)
+	}
+	if err := river.AddWorkerSafely(workers, &applySeriesPublicationsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("tickerjobs: register apply-series-publications worker: %w", err)
 	}
 	return nil
 }
@@ -198,6 +212,7 @@ func (j *Jobs) schedule() []scheduled {
 		{schedule: river.PeriodicInterval(j.cfg.FreeWindowInterval), args: ApplyFreeWindowsArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.TenantDayInterval), args: RollTenantDayArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.PinnedAnnouncementInterval), args: ExpirePinnedAnnouncementsArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.SeriesPublicationInterval), args: ApplySeriesPublicationsArgs{}},
 	}
 }
 
@@ -234,6 +249,7 @@ func (j *Jobs) Settings() []any {
 		"free_window_interval", j.cfg.FreeWindowInterval,
 		"tenant_day_interval", j.cfg.TenantDayInterval,
 		"pinned_announcement_interval", j.cfg.PinnedAnnouncementInterval,
+		"series_publication_interval", j.cfg.SeriesPublicationInterval,
 	}
 }
 
@@ -267,6 +283,14 @@ type ExpirePinnedAnnouncementsArgs struct{}
 func (ExpirePinnedAnnouncementsArgs) Kind() string { return kindExpirePinnedAnnouncements }
 
 func (ExpirePinnedAnnouncementsArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
+
+// ApplySeriesPublicationsArgs drops the public site caches for every series
+// whose scheduled publication instant has passed.
+type ApplySeriesPublicationsArgs struct{}
+
+func (ApplySeriesPublicationsArgs) Kind() string { return kindApplySeriesPublications }
+
+func (ApplySeriesPublicationsArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
 
 // tickerInsertOpts is what keeps one tenant from being written twice.
 //
@@ -358,6 +382,22 @@ func (w *expirePinnedAnnouncementsWorker) Work(ctx context.Context, _ *river.Job
 	ctx, end := startRun(ctx, ServiceNameExpirePinnedAnnouncements, kindExpirePinnedAnnouncements)
 	defer end()
 	w.jobs.pinned.RunOnce(ctx)
+	return nil
+}
+
+type applySeriesPublicationsWorker struct {
+	river.WorkerDefaults[ApplySeriesPublicationsArgs]
+	jobs *Jobs
+}
+
+func (w *applySeriesPublicationsWorker) Timeout(*river.Job[ApplySeriesPublicationsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *applySeriesPublicationsWorker) Work(ctx context.Context, _ *river.Job[ApplySeriesPublicationsArgs]) error {
+	ctx, end := startRun(ctx, ServiceNameApplySeriesPublications, kindApplySeriesPublications)
+	defer end()
+	w.jobs.series.RunOnce(ctx)
 	return nil
 }
 

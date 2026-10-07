@@ -19,6 +19,7 @@ Start from what you see, and look at the job that owns it:
 | An episode's site page still shows it priced inside its free reading period, or free after it ended | Free reading periods | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | The storefront's weekly schedule still shows yesterday as today | The tenant day rollover | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A site banner is still up after its **Stop showing at** time | Pinned announcements | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
+| A series is still missing from the site's lists after its **Publication date and time** | Scheduled series | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A page keeps showing what it showed before a change | Cache revalidation, in the outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | A mail or a push notification never arrives | The outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | The rankings, series ratings, or recommendations stop moving | The statistics and ranking chain | [Statistics and rankings](#statistics-and-rankings) |
@@ -33,7 +34,7 @@ Every one of them first needs `publira worker` to be running and ready: an insta
 
 The worker logs every failure, and the log line names the job. Every run of a scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work, so that table shows whether a job ran at all, and when.
 
-What the row says about a failure depends on the job. The publication, free reading period, day rollover, and pinned announcement jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's superuser:
+What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, and scheduled series jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's superuser:
 
 ```sql
 SELECT kind, state, attempt, finalized_at, errors
@@ -53,15 +54,16 @@ A publication that fails is tried again a few times within the same pass. When e
 
 ## Free reading periods and other cached pages
 
-Three jobs exist only to keep the web apps' cached pages on the right side of a time that passed:
+Four jobs exist only to keep the web apps' cached pages on the right side of a time that passed:
 
 - **Free reading periods.** An episode inside a **Free reading periods** entry reads as free from the moment the period starts and is priced again once it ends, with no job involved: every read compares the period against the current time. What the job fixes is the pages a site cached before the boundary, which it marks stale at both ends of every period.
 - **The tenant day rollover.** At each tenant's own midnight, in the tenant's time zone, it marks stale the storefront's weekly schedule, the one page whose answer is the tenant's calendar day.
 - **Pinned announcements.** Once an announcement's **Stop showing at** time passes, it takes the announcement off the banner and marks the banner stale.
+- **Scheduled series.** A series saved with a **Publication date and time** in the future is public from that time, with no job involved: every read compares the time against the current one. What the job fixes is the series lists, the Author pages, and the series' own page that a site cached while the series was still hidden, which it marks stale once the time has passed.
 
 Each runs every minute. None of them drops a cache itself: each records the drop as an entry in the outbox, which the worker then sends to the web apps, so a page that stays stale while the worker has `PUBLIRA_REVALIDATE_TOKEN` is an outbox problem, described [below](#the-outbox-mail-push-and-cache-revalidation).
 
-A worker started without `PUBLIRA_REVALIDATE_TOKEN` has cache revalidation turned off. These jobs then record no drop at all, yet still count each boundary as passed and take each banner down, so the outbox has nothing to retry, and restarting the worker with the token does not bring those drops back. The pages they would have dropped keep what they cached until the next change to the same thing drops them, or their cache runs out. Set the token on `publira server` and `publira worker` before the first boundary you need on time, as [Installing](../2-deployments/2-installing.md#generate-the-secrets) describes.
+A worker started without `PUBLIRA_REVALIDATE_TOKEN` has cache revalidation turned off. These jobs then record no drop at all, yet still count each boundary and each series' time as passed and take each banner down, so the outbox has nothing to retry, and restarting the worker with the token does not bring those drops back. The pages they would have dropped keep what they cached until the next change to the same thing drops them, or their cache runs out. Set the token on `publira server` and `publira worker` before the first boundary you need on time, as [Installing](../2-deployments/2-installing.md#generate-the-secrets) describes.
 
 These jobs have no `publiractl job` command, and need none: each acts on every time that has passed whenever it runs, including the first run after the worker starts.
 
@@ -95,7 +97,7 @@ A worker that was stopped, or that ran without a working database, does nothing 
 | --- | --- |
 | The outbox | Sends every entry that was waiting. An entry a stopped worker was in the middle of is picked up again after 15 minutes |
 | Scheduled publication | Publishes every episode whose time passed, and notifies its followers |
-| Free reading periods, the tenant day rollover, pinned announcements | Mark stale every page whose boundary passed in the meantime, and take down every banner whose time ran out |
+| Free reading periods, the tenant day rollover, pinned announcements, scheduled series | Mark stale every page whose boundary passed in the meantime, and take down every banner whose time ran out |
 | The statistics and ranking chain | Rebuilds every day each tenant missed, in order, except the days whose analytics events have already passed their retention period: those are logged as missing and skipped, and cannot be rebuilt |
 | Royalty close | Closes every month that became owed |
 | Search index build | Builds a pending index |
