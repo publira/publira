@@ -167,7 +167,9 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	if resp.Msg.Episode.ScheduledAt != scheduledAt.Format(time.RFC3339) {
 		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAt.Format(time.RFC3339))
 	}
-	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":series:detail"})
+	// Publishing the episode changes the series lists as well as its series'
+	// page: their order by latest update, and their free-episode counts.
+	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }
 
@@ -690,12 +692,14 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(imageColumns).
 			AddRow(image1ID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)).
 			AddRow(image2ID, tenantID, episodeID, int32(2), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisode)).
 		WithArgs(image2ID, episodeID, int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisode)).
 		WithArgs(image1ID, episodeID, int32(2)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows(imageColumns).

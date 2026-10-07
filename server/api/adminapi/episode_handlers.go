@@ -26,6 +26,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -54,12 +55,15 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 	return sql.NullTime{Time: normalized, Valid: true}, nil
 }
 
-// episodeScheduleRevalidateTags names the public caches that answer with when
-// an episode is readable and at what price: the series detail every cached
-// episode read is also tagged with. A publication schedule changes that answer,
-// so it drops this tag. A free window changes the series lists' free-episode
-// counts as well, so it drops [freewindows.RevalidateTags] instead.
-func episodeScheduleRevalidateTags(tenantID string) []string {
+// episodeRevalidateTags names the public caches that answer with what an
+// episode holds and how it reads — its pages, its place and number in its
+// series, its credits, its layout, and how it may be bought: the series detail
+// every cached episode read is also tagged with. No series list shows any of
+// those, so the lists are left standing. Whether an episode is readable at all,
+// and where, changes the lists as well, so a publication, a schedule, and a
+// surface drop [publishepisodes.RevalidateTags] instead, and a free window
+// [freewindows.RevalidateTags].
+func episodeRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
 		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
@@ -529,9 +533,15 @@ func (s *adminServer) ReorderEpisodes(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episodes after reorder", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
+	// The series page lists the episodes in this order and numbers them by it.
+	owed, err := s.reval.Record(ctx, q, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the reordered episodes", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit reorder episodes", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	episodes := make([]*publirattypesv1.Episode, 0, len(updatedRows))
 	for _, row := range updatedRows {
@@ -732,9 +742,9 @@ func (s *adminServer) CreateEpisode(
 
 // recordEpisodePublication writes down, in the transaction that publishes the
 // episode, what the scheduled publication job would have done in its own: the
-// drop of the cache that lists the series' episodes, the sync of the series'
-// search document, and the notice to the episode's followers, which the worker
-// writes because this connection cannot see them.
+// drop of the caches that list the episode and its series, the sync of the
+// series' search document, and the notice to the episode's followers, which the
+// worker writes because this connection cannot see them.
 func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodels.Queries, tenantID, seriesID, episodeID uuid.UUID) (revalidate.Owed, error) {
 	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{
 		TenantID:  tenantID.String(),
@@ -749,7 +759,7 @@ func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodel
 	if err := catalogindex.Queue(txCtx, q, tenantID, catalogindex.SeriesRef(seriesID)); err != nil {
 		return revalidate.Owed{}, fmt.Errorf("queue catalog index sync: %w", err)
 	}
-	return s.recordRevalidation(txCtx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
+	return s.recordRevalidation(txCtx, tenantID, publishepisodes.RevalidateTags(tenantID))
 }
 
 func (s *adminServer) UploadEpisodeImages(
@@ -781,6 +791,22 @@ func (s *adminServer) UploadEpisodeImages(
 		ArchiveType:     req.Msg.ArchiveContentType,
 		Headers:         req.Header(),
 	})
+	// The pages are stored one by one, each with its own statements and objects,
+	// so there is no transaction for the drop to ride: it is recorded once the
+	// upload is over, and a record that fails then has nothing left to undo. An
+	// upload that failed part way still stored the pages before the failure,
+	// which Upload says by naming the episode beside the error.
+	if episodeID != uuid.Nil {
+		owed, recordErr := s.recordRevalidation(ctx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
+		if recordErr != nil {
+			s.logger.WarnContext(ctx, "failed to record the cache invalidation for uploaded episode images",
+				"tenant_id", tenant.ID.String(),
+				"episode_id", episodeID.String(),
+				"error", recordErr,
+			)
+		}
+		s.reval.Send(ctx, owed)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -880,18 +906,25 @@ func (s *adminServer) ReorderEpisodeImages(
 		seen[imageID] = struct{}{}
 	}
 
-	for index, imageID := range req.Msg.ImageIds {
-		parsedImageID, err := uuid.Parse(imageID)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains invalid uuid"))
+	// The viewer shows the pages in this order, so the new order and the drop
+	// of the pages the site holds commit together.
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		for index, imageID := range req.Msg.ImageIds {
+			parsedImageID, err := uuid.Parse(imageID)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains invalid uuid"))
+			}
+			if err := s.queriesFor(txCtx).UpdateEpisodeImageDisplayOrderByIDForEpisode(txCtx, dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisodeParams{
+				ID:           parsedImageID,
+				EpisodeID:    episode.ID,
+				DisplayOrder: int32(index + 1),
+			}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to update episode image order", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", parsedImageID.String())
+			}
 		}
-		if err := s.queriesFor(ctx).UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx, dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisodeParams{
-			ID:           parsedImageID,
-			EpisodeID:    episode.ID,
-			DisplayOrder: int32(index + 1),
-		}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to update episode image order", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", parsedImageID.String())
-		}
+		return episodeRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
 	}
 
 	updatedRows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
@@ -993,7 +1026,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
-		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {
 		return nil, err
 	}
@@ -1075,7 +1108,7 @@ func (s *adminServer) UpdateEpisodeLayout(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
-		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
 	}
@@ -1159,7 +1192,7 @@ func (s *adminServer) UpdateEpisodeAvailability(
 		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(episode.SeriesID)); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
-		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {
 		return nil, err
 	}
@@ -1225,7 +1258,7 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 		}
-		return episodeScheduleRevalidateTags(tenant.ID.String()), nil
+		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
 	}

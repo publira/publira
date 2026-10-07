@@ -468,8 +468,8 @@ func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
 		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title, "all", nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
-			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all", nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability", "publication_revalidated_at"}).
+			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all", nil, nil))
 	expectPublicIDAttemptReleased(mock)
 }
 

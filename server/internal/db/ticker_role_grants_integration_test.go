@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/freewindows"
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
+	"github.com/publira/publira/server/internal/seriespublications"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -123,6 +124,59 @@ func TestTickerRoleRunsApplyFreeWindows(t *testing.T) {
 	}
 	if !startApplied.Valid {
 		t.Fatal("start_revalidated_at is still null, want the passed boundary recorded")
+	}
+}
+
+func TestTickerRoleRunsApplySeriesPublications(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT06", "series.example.com", "Series Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "TICKSERIES06",
+		Title:       "Scheduled Series",
+		Published:   true,
+		PublishedAt: time.Now().Add(-time.Minute),
+	})
+
+	ticker := pg.OpenTickerDB(t)
+	seriespublications.New(dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+
+	var applied sql.NullTime
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT publication_revalidated_at FROM series WHERE id = $1", series.ID,
+	).Scan(&applied); err != nil {
+		t.Fatalf("read series: %v", err)
+	}
+	if !applied.Valid {
+		t.Fatal("publication_revalidated_at is still null, want the passed publication recorded")
+	}
+}
+
+// A series carries the tenant's own catalog, and this role bypasses RLS, so the
+// grant names the one column the job writes rather than the table.
+func TestTickerRoleCannotRewriteASeries(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT07", "catalog.example.com", "Catalog Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKSERIES07", Title: "Catalog Series", Published: true})
+
+	ticker := pg.OpenTickerDB(t)
+	_, err := ticker.ExecContext(ctx,
+		"UPDATE series SET title = 'rewritten' WHERE id = $1", series.ID)
+	if err == nil {
+		t.Fatal("rewriting a series' title as the ticker role succeeded, want a permission denied error")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("update series title error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
 	}
 }
 

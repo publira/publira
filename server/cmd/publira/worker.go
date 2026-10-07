@@ -114,6 +114,7 @@ func runWorker() int {
 		FreeWindowInterval:         envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
 		TenantDayInterval:          envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
 		PinnedAnnouncementInterval: envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
+		SeriesPublicationInterval:  envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
 	})
 	if err != nil {
 		logger.Error("failed to initialize the ticker jobs", "error", err)

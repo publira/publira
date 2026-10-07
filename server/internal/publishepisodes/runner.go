@@ -59,6 +59,22 @@ type episodePublishFailedPayload struct {
 	TenantName   string `json:"tenant_name"`
 }
 
+// RevalidateTags names what a tenant's public site caches the answers a
+// publication changes under, and taking an episode down or moving it to
+// another surface changes the same answers. Every cached read of an episode or
+// of the series it belongs to carries the series detail tag. Every cached
+// series list carries the series list tag, and the lists answer with the
+// episode too: the order by latest update sorts on the newest published
+// episode, and the free-episode count on each card, and the "Free to read"
+// module that selects on it, count the published ones. Neither tag names a
+// series, so one pair per tenant answers for every episode published there.
+func RevalidateTags(tenantID uuid.UUID) []string {
+	return []string{
+		fmt.Sprintf("tenant:%s:series:detail", tenantID.String()),
+		fmt.Sprintf("tenant:%s:series:list", tenantID.String()),
+	}
+}
+
 // New constructs a worker that publishes due episodes against db.
 func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Requester, logger *slog.Logger, maxRetries int) *Runner {
 	if logger == nil {
@@ -327,9 +343,7 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 	// The drop rides the transaction that promotes the listing: a run that dies
 	// between the two would otherwise leave an episode published behind a cache
 	// still answering with the schedule.
-	if _, err := r.reval.Record(ctx, qtx, row.TenantID, []string{
-		fmt.Sprintf("tenant:%s:series:detail", row.TenantID.String()),
-	}); err != nil {
+	if _, err := r.reval.Record(ctx, qtx, row.TenantID, RevalidateTags(row.TenantID)); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("record cache invalidation: %w", err)
 	}

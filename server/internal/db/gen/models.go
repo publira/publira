@@ -752,18 +752,19 @@ type RoyaltyStatementLine struct {
 }
 
 type Series struct {
-	ID                   uuid.UUID      `json:"id"`
-	TenantID             uuid.UUID      `json:"tenant_id"`
-	LabelID              uuid.NullUUID  `json:"label_id"`
-	PublicID             string         `json:"public_id"`
-	Title                string         `json:"title"`
-	CreatedAt            time.Time      `json:"created_at"`
-	IsPublished          bool           `json:"is_published"`
-	PublishedAt          sql.NullTime   `json:"published_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	EyeCatchImageID      uuid.NullUUID  `json:"eye_catch_image_id"`
-	Availability         string         `json:"availability"`
-	PurchaseAvailability sql.NullString `json:"purchase_availability"`
+	ID                       uuid.UUID      `json:"id"`
+	TenantID                 uuid.UUID      `json:"tenant_id"`
+	LabelID                  uuid.NullUUID  `json:"label_id"`
+	PublicID                 string         `json:"public_id"`
+	Title                    string         `json:"title"`
+	CreatedAt                time.Time      `json:"created_at"`
+	IsPublished              bool           `json:"is_published"`
+	PublishedAt              sql.NullTime   `json:"published_at"`
+	UpdatedAt                time.Time      `json:"updated_at"`
+	EyeCatchImageID          uuid.NullUUID  `json:"eye_catch_image_id"`
+	Availability             string         `json:"availability"`
+	PurchaseAvailability     sql.NullString `json:"purchase_availability"`
+	PublicationRevalidatedAt sql.NullTime   `json:"publication_revalidated_at"`
 }
 
 type SeriesCreator struct {

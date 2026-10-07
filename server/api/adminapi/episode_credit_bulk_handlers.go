@@ -124,7 +124,7 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	}
 	var owed revalidate.Owed
 	if len(outcome.changed) > 0 {
-		owed, err = s.recordRevalidation(txCtx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the bulk edited episode credits", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 		}
