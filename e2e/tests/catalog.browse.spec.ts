@@ -68,6 +68,11 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       featuredLabels.getByText(/^Seed Label \d{2}$/u).first()
     ).toBeVisible();
+    // Only a label with a public series is featured. The admin suites that run
+    // beside this one create labels with none, and those stay off the module.
+    await expect(featuredLabels.getByText(/^0 published series$/u)).toHaveCount(
+      0
+    );
 
     const featuredCreators = page.getByRole("region", {
       name: "Featured authors",

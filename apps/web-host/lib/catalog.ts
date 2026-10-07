@@ -1554,13 +1554,26 @@ export const searchPublishedSeries = async (
   };
 };
 
+/**
+ * The tenant's labels, newest first. Every label is listed, one with no
+ * published series included, so the label list keeps reaching a label whose
+ * last series came down; `hasPublishedSeries` narrows it to the labels a reader
+ * can open a series of, for a module that features labels rather than lists
+ * them. A token belongs to the value it was built under.
+ */
 export const listPublishedLabels = async (
   tenantId: string,
   {
+    hasPublishedSeries = false,
     limit = 50,
     locale,
     token = "",
-  }: { limit?: number; locale: Locale; token?: string }
+  }: {
+    hasPublishedSeries?: boolean;
+    limit?: number;
+    locale: Locale;
+    token?: string;
+  }
 ): Promise<CachedReadResult<LabelListPage>> => {
   "use cache";
 
@@ -1575,6 +1588,7 @@ export const listPublishedLabels = async (
   >;
   try {
     response = await apiClient.catalog.listPublishedLabels({
+      hasPublishedSeries,
       limit,
       tenant: { tenantId: normalizedTenantId },
       token,

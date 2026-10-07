@@ -1459,6 +1459,25 @@ describe("catalog.listPublishedLabels", () => {
       { publicId: "LABEL_3", seriesCount: 0 },
     ]);
   });
+
+  it("Lists a label with no published series unless asked to narrow", async () => {
+    mockListPublishedLabels.mockResolvedValue({
+      labels: [],
+      nextToken: "",
+      previousToken: "",
+    });
+
+    await listPublishedLabels("TENANT_001", { locale: "en" });
+    await listPublishedLabels("TENANT_001", {
+      hasPublishedSeries: true,
+      locale: "en",
+    });
+
+    expect(mockListPublishedLabels.mock.calls).toEqual([
+      [expect.objectContaining({ hasPublishedSeries: false })],
+      [expect.objectContaining({ hasPublishedSeries: true })],
+    ]);
+  });
 });
 
 describe("catalog.listPublishedGenres", () => {
