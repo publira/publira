@@ -99,20 +99,23 @@ func ListInvitations(ctx context.Context, q dbmodels.Querier, p ListParams) ([]d
 	})
 }
 
-// InviteParams makes Email a tenant_admin of the tenant.
+// InviteParams gives Email a console role in the tenant.
 type InviteParams struct {
 	TenantID uuid.UUID
 	Email    string
+	// Role is the console role to give; empty is tenant_admin.
+	Role string
 	// AllowMail, when set, is asked before anything is written for an address
 	// that will be mailed, and its error is returned as is.
 	AllowMail func(email string) error
 }
 
-// Invited is what [Invite] did: either it granted the role to UserID, a user
-// the tenant already had, or it left Invitation pending with its mail queued.
+// Invited is what [Invite] did: either it granted Role to UserID, a user the
+// tenant already had, or it left Invitation pending with its mail queued.
 type Invited struct {
 	// Email is the normalized address.
 	Email                  string
+	Role                   string
 	Invitation             dbmodels.TenantAdminInvitation
 	RoleGrantedImmediately bool
 	UserID                 uuid.UUID
@@ -120,15 +123,34 @@ type Invited struct {
 
 // Validate refuses p without reading anything.
 func (p InviteParams) Validate() error {
-	_, err := normalizeEmail(p.Email)
+	_, _, err := p.normalize()
 	return err
 }
 
-// Invite makes the address a tenant_admin inside tx. An address that already
+func (p InviteParams) normalize() (email, role string, err error) {
+	if email, err = normalizeEmail(p.Email); err != nil {
+		return "", "", err
+	}
+	if strings.TrimSpace(p.Role) == "" {
+		return email, auth.RoleTenantAdmin, nil
+	}
+	if role, err = normalizeRole(p.Role); err != nil {
+		return "", "", err
+	}
+	return email, role, nil
+}
+
+// Invite gives the address the role inside tx. An address that already
 // belongs to a user of the tenant is granted the role on the spot; any other
-// is sent an invitation, rearming the one it already has.
+// is sent an invitation, rearming the one it already has with this role.
+//
+// A user granted tenant_admin on the spot loses any role they held, which can
+// only be a weaker one. Any other role is refused with [ErrAlreadyMember] when
+// the user already holds one: replacing it could demote an administrator,
+// which is [UpdateRole]'s to do, behind its check for the last one. Both read
+// the role under the tenant's administrator lock, as [UpdateRole] does.
 func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
-	email, err := normalizeEmail(p.Email)
+	email, role, err := p.normalize()
 	if err != nil {
 		return Invited{}, err
 	}
@@ -140,10 +162,22 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	})
 	switch {
 	case err == nil:
-		if err := ReplaceRole(ctx, q, p.TenantID, user.ID, auth.RoleTenantAdmin); err != nil {
+		if err := lockAdmins(ctx, tx, p.TenantID); err != nil {
 			return Invited{}, err
 		}
-		return Invited{Email: email, RoleGrantedImmediately: true, UserID: user.ID}, nil
+		if role != auth.RoleTenantAdmin {
+			roles, err := q.ListTenantUserRoles(ctx, user.ID)
+			if err != nil {
+				return Invited{}, fmt.Errorf("list tenant user roles: %w", err)
+			}
+			if len(roles) > 0 {
+				return Invited{}, ErrAlreadyMember
+			}
+		}
+		if err := ReplaceRole(ctx, q, p.TenantID, user.ID, role); err != nil {
+			return Invited{}, err
+		}
+		return Invited{Email: email, Role: role, RoleGrantedImmediately: true, UserID: user.ID}, nil
 	case !errors.Is(err, sql.ErrNoRows):
 		return Invited{}, fmt.Errorf("get user by email for tenant: %w", err)
 	}
@@ -159,19 +193,20 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 
 	var invitation dbmodels.TenantAdminInvitation
 	if found {
-		invitation, err = rearm(ctx, q, p.TenantID, existing.Email)
+		invitation, err = rearm(ctx, q, p.TenantID, existing.Email, role)
 	} else {
-		invitation, err = IssueInvitation(ctx, q, p.TenantID, email)
+		invitation, err = IssueInvitation(ctx, q, p.TenantID, email, role)
 	}
 	if err != nil {
 		return Invited{}, err
 	}
-	return Invited{Email: email, Invitation: invitation}, nil
+	return Invited{Email: email, Role: role, Invitation: invitation}, nil
 }
 
-// IssueInvitation creates a new invitation for an address that has neither an
-// account nor an invitation in the tenant, and queues its mail on q.
-func IssueInvitation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email string) (dbmodels.TenantAdminInvitation, error) {
+// IssueInvitation creates a new invitation granting role for an address that
+// has neither an account nor an invitation in the tenant, and queues its mail
+// on q.
+func IssueInvitation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email, role string) (dbmodels.TenantAdminInvitation, error) {
 	token, err := newToken()
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
@@ -182,6 +217,7 @@ func IssueInvitation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUI
 		Email:     email,
 		TokenHash: auth.HashToken(token),
 		ExpiresAt: time.Now().Add(InvitationTTL),
+		Role:      role,
 	})
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, fmt.Errorf("create tenant admin invitation: %w", err)
@@ -223,7 +259,7 @@ func Resend(ctx context.Context, tx *sql.Tx, p ResendParams) (dbmodels.TenantAdm
 	if err := allowMail(p.AllowMail, invitation.Email); err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
-	return rearm(ctx, q, p.TenantID, invitation.Email)
+	return rearm(ctx, q, p.TenantID, invitation.Email, invitation.Role)
 }
 
 // Cancel withdraws an invitation that has not been accepted.
@@ -266,7 +302,8 @@ func getInvitation(ctx context.Context, q dbmodels.Querier, p InvitationParams) 
 	return invitation, nil
 }
 
-func rearm(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email string) (dbmodels.TenantAdminInvitation, error) {
+// rearm gives the address's invitation a new link and expiry, granting role.
+func rearm(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email, role string) (dbmodels.TenantAdminInvitation, error) {
 	token, err := newToken()
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
@@ -276,6 +313,7 @@ func rearm(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, email s
 		Email:     email,
 		TokenHash: auth.HashToken(token),
 		ExpiresAt: time.Now().Add(InvitationTTL),
+		Role:      role,
 	})
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, fmt.Errorf("resend tenant admin invitation: %w", err)

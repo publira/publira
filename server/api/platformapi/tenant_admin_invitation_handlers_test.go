@@ -33,6 +33,7 @@ func tenantAdminInvitationColumns() *sqlmock.Rows {
 		"canceled_at",
 		"created_at",
 		"updated_at",
+		"role",
 	})
 }
 
@@ -42,7 +43,7 @@ func addTenantAdminInvitationRow(
 	email string,
 	createdAt time.Time,
 ) *sqlmock.Rows {
-	return rows.AddRow(id, tenantID, email, "token-hash-"+id.String(), createdAt.Add(time.Hour), nil, nil, createdAt, createdAt)
+	return rows.AddRow(id, tenantID, email, "token-hash-"+id.String(), createdAt.Add(time.Hour), nil, nil, createdAt, createdAt, "tenant_admin")
 }
 
 func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {

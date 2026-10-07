@@ -37,6 +37,7 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 		ExpiresAt:  invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AcceptedAt: acceptedAt,
 		CanceledAt: canceledAt,
+		Role:       invitation.Role,
 	}
 }
 

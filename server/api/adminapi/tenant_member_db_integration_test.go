@@ -18,6 +18,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantlock"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -83,6 +84,10 @@ func TestDBTenantMemberRPCsRefuseSessionsThatAreNotTenantAdmin(t *testing.T) {
 		calls := map[string]func() error{
 			"ListTenantMembers": func() error {
 				_, err := client.ListTenantMembers(ctx, newAdminDBRequest(as, &publiraadminv1.ListTenantMembersRequest{Tenant: as.tenantContext()}))
+				return err
+			},
+			"AddTenantMember": func() error {
+				_, err := client.AddTenantMember(ctx, newAdminDBRequest(as, &publiraadminv1.AddTenantMemberRequest{Tenant: as.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantEditor}))
 				return err
 			},
 			"UpdateTenantMemberRole": func() error {
@@ -358,6 +363,336 @@ func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *tes
 		WHERE u.tenant_id = $1 AND u.email = $2 AND tur.role = $3
 	`, tenant.Tenant.ID, "invitee@tenant-a.example.com", auth.RoleTenantAdmin); count != 1 {
 		t.Fatalf("invitee tenant_admin roles = %d, want 1", count)
+	}
+}
+
+// A tenant admin can make a reader an Editor or an Auditor directly, without
+// the account passing through the tenant_admin role on the way.
+func TestDBAddTenantMemberGivesAReaderTheRoleDirectly(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	editor := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "editor@tenant-a.example.com", "Editor To Be")
+	auditor := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER2", "auditor@tenant-a.example.com", "Auditor To Be")
+	client := env.tenantMemberClient()
+	ctx := context.Background()
+
+	for _, want := range []struct {
+		user  testutil.TenantUser
+		email string
+		role  string
+	}{
+		{editor, " Editor@Tenant-A.example.com ", auth.RoleTenantEditor},
+		{auditor, "auditor@tenant-a.example.com", auth.RoleTenantAuditor},
+	} {
+		added, err := client.AddTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.AddTenantMemberRequest{
+			Tenant: tenant.tenantContext(), Email: want.email, Role: want.role,
+		}))
+		if err != nil {
+			t.Fatalf("AddTenantMember %s: %v", want.role, err)
+		}
+		if added.Msg.Member.GetUserId() != want.user.ID.String() || added.Msg.Member.GetRole() != want.role {
+			t.Fatalf("member = %+v, want %s as %s", added.Msg.Member, want.user.PublicID, want.role)
+		}
+		if role := env.roleOf(t, want.user); role != want.role {
+			t.Fatalf("roles of %s = %q, want %q", want.user.PublicID, role, want.role)
+		}
+		if count := env.countRows(t, `
+			SELECT count(*) FROM audit_logs
+			WHERE tenant_id = $1 AND action = 'tenant_member_added' AND target_type = 'user' AND target_id = $2
+				AND actor_user_id = $3 AND actor_role = $4 AND reason = $5 AND outcome = 'success'
+		`, tenant.Tenant.ID, want.user.PublicID, tenant.User.ID, auth.RoleTenantAdmin, "role="+want.role); count != 1 {
+			t.Errorf("tenant_member_added audit rows for %s = %d, want 1", want.user.PublicID, count)
+		}
+	}
+}
+
+func TestDBAddTenantMemberRefusesWhatItCannotGrant(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant, second := seedTwoTenants(t, env)
+	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
+	env.PG.SeedEndUser(t, second.Tenant.ID, "TBREADER", "reader@tenant-b.example.com", "Tenant B Reader")
+	client := env.tenantMemberClient()
+	ctx := context.Background()
+
+	for _, refusal := range []struct {
+		name  string
+		email string
+		role  string
+		want  connect.Code
+	}{
+		{"an address with no account", "nobody@tenant-a.example.com", auth.RoleTenantEditor, connect.CodeNotFound},
+		{"another tenant's reader", "reader@tenant-b.example.com", auth.RoleTenantEditor, connect.CodeNotFound},
+		{"a member who already holds a role", "editor@tenant-a.example.com", auth.RoleTenantAuditor, connect.CodeAlreadyExists},
+		{"the caller themselves", "admin@tenant-a.example.com", auth.RoleTenantAuditor, connect.CodeAlreadyExists},
+		{"no address", " ", auth.RoleTenantEditor, connect.CodeInvalidArgument},
+		{"a role that is not one", "editor@tenant-a.example.com", "tenant_owner", connect.CodeInvalidArgument},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			_, err := client.AddTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.AddTenantMemberRequest{
+				Tenant: tenant.tenantContext(), Email: refusal.email, Role: refusal.role,
+			}))
+			if code := connect.CodeOf(err); code != refusal.want {
+				t.Fatalf("code = %v, want %v (err = %v)", code, refusal.want, err)
+			}
+		})
+	}
+
+	if role := env.roleOf(t, editor); role != auth.RoleTenantEditor {
+		t.Fatalf("editor roles = %q after refused calls, want %q", role, auth.RoleTenantEditor)
+	}
+	if role := env.roleOf(t, tenant.User); role != auth.RoleTenantAdmin {
+		t.Fatalf("admin roles = %q after refused calls, want %q", role, auth.RoleTenantAdmin)
+	}
+}
+
+// An invitation as an Editor or an Auditor makes the invitee that role when it
+// is accepted, and the audit log says which role was granted at both ends.
+func TestDBAnInvitationGrantsTheRoleItNames(t *testing.T) {
+	for _, role := range []string{auth.RoleTenantEditor, auth.RoleTenantAuditor} {
+		t.Run(role, func(t *testing.T) {
+			env := newAdminDBEnv(t)
+			tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+			ctx := context.Background()
+			const email = "invitee@tenant-a.example.com"
+
+			created, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+				Tenant: tenant.tenantContext(), Email: email, Role: role,
+			}))
+			if err != nil {
+				t.Fatalf("CreateTenantAdminInvitation: %v", err)
+			}
+			if created.Msg.RoleGrantedImmediately || created.Msg.Invitation.GetRole() != role {
+				t.Fatalf("response = %+v, want a pending invitation as %s", created.Msg, role)
+			}
+			listed, err := env.tenantMemberClient().ListTenantAdminInvitations(ctx, newAdminDBRequest(tenant, &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: tenant.tenantContext()}))
+			if err != nil {
+				t.Fatalf("ListTenantAdminInvitations: %v", err)
+			}
+			if len(listed.Msg.Invitations) != 1 || listed.Msg.Invitations[0].GetRole() != role {
+				t.Fatalf("invitations = %+v, want the one as %s", listed.Msg.Invitations, role)
+			}
+
+			var payload []byte
+			if err := env.PG.DB.QueryRowContext(ctx, `
+				SELECT payload FROM outbox_events WHERE tenant_id = $1 AND event_type = $2
+			`, tenant.Tenant.ID, outbox.EventTypeTenantAdminInvitationEmail).Scan(&payload); err != nil {
+				t.Fatalf("load outbox event: %v", err)
+			}
+			var body outbox.TenantAdminInvitationPayload
+			if err := json.Unmarshal(payload, &body); err != nil {
+				t.Fatalf("decode outbox payload: %v", err)
+			}
+
+			state, err := env.authClient().GetTenantAdminInvitationState(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateRequest{
+				Tenant: tenant.tenantContext(), Token: body.Token,
+			}))
+			if err != nil {
+				t.Fatalf("GetTenantAdminInvitationState: %v", err)
+			}
+			if state.Msg.Role != role || state.Msg.Status != "pending" {
+				t.Fatalf("state = %+v, want a pending invitation as %s", state.Msg, role)
+			}
+
+			if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+				Tenant:   tenant.tenantContext(),
+				Token:    body.Token,
+				Name:     "Invitee",
+				Password: testutil.SeededPassword,
+			})); err != nil {
+				t.Fatalf("AcceptTenantAdminInvitation: %v", err)
+			}
+
+			var userID uuid.UUID
+			var held string
+			if err := env.PG.DB.QueryRowContext(ctx, `
+				SELECT u.id, COALESCE(string_agg(tur.role, ','), '')
+				FROM users u LEFT JOIN tenant_user_roles tur ON tur.user_id = u.id
+				WHERE u.tenant_id = $1 AND u.email = $2
+				GROUP BY u.id
+			`, tenant.Tenant.ID, email).Scan(&userID, &held); err != nil {
+				t.Fatalf("load invitee: %v", err)
+			}
+			if held != role {
+				t.Fatalf("invitee roles = %q, want %q", held, role)
+			}
+
+			if count := env.countRows(t, `
+				SELECT count(*) FROM audit_logs
+				WHERE tenant_id = $1 AND action = 'tenant_admin_invited' AND target_id = $2
+					AND actor_user_id = $3 AND reason = $4
+			`, tenant.Tenant.ID, email, tenant.User.ID, "role="+role); count != 1 {
+				t.Errorf("tenant_admin_invited audit rows naming %s = %d, want 1", role, count)
+			}
+			if count := env.countRows(t, `
+				SELECT count(*) FROM audit_logs
+				WHERE tenant_id = $1 AND action = 'tenant_admin_invite_accepted' AND target_id = $2
+					AND actor_user_id = $3 AND actor_role = $4 AND reason = $5
+			`, tenant.Tenant.ID, email, userID, role, "role="+role); count != 1 {
+				t.Errorf("tenant_admin_invite_accepted audit rows as %s = %d, want 1", role, count)
+			}
+		})
+	}
+}
+
+// An invitation as an Editor or an Auditor sent to an address that already has
+// an account gives that account the role at once, as one as a tenant_admin
+// does, but never takes a role away from a member who holds one.
+func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
+	second := env.seedMember(t, tenant, "TASECOND", "second@tenant-a.example.com", auth.RoleTenantAdmin)
+	client := env.tenantMemberClient()
+	ctx := context.Background()
+
+	granted, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantAuditor,
+	}))
+	if err != nil {
+		t.Fatalf("CreateTenantAdminInvitation for a reader: %v", err)
+	}
+	if !granted.Msg.RoleGrantedImmediately {
+		t.Fatalf("response = %+v, want the role granted at once", granted.Msg)
+	}
+	if role := env.roleOf(t, reader); role != auth.RoleTenantAuditor {
+		t.Fatalf("reader roles = %q, want %q", role, auth.RoleTenantAuditor)
+	}
+
+	_, err = client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Email: "second@tenant-a.example.com", Role: auth.RoleTenantEditor,
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenantAdminInvitation demoting an admin: code = %v, want already_exists", code)
+	}
+	if role := env.roleOf(t, second); role != auth.RoleTenantAdmin {
+		t.Fatalf("second admin roles = %q, want %q", role, auth.RoleTenantAdmin)
+	}
+
+	// No role named is the tenant_admin invitation the console has always sent.
+	if _, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com",
+	})); err != nil {
+		t.Fatalf("CreateTenantAdminInvitation with no role: %v", err)
+	}
+	if role := env.roleOf(t, reader); role != auth.RoleTenantAdmin {
+		t.Fatalf("reader roles = %q, want %q", role, auth.RoleTenantAdmin)
+	}
+}
+
+// An account given a role after it was invited keeps the stronger of the two
+// when it accepts: accepting an Editor's invitation never demotes an admin.
+func TestDBAcceptingAnInvitationNeverLowersARole(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+
+	const token = "editor-invitation-token"
+	const email = "invitee@tenant-a.example.com"
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO tenant_admin_invitations (id, tenant_id, email, token_hash, expires_at, role)
+		VALUES ($1, $2, $3, $4, NOW() + INTERVAL '1 day', $5)
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, email, auth.HashToken(token), auth.RoleTenantEditor); err != nil {
+		t.Fatalf("insert invitation: %v", err)
+	}
+	invitee := env.seedMember(t, tenant, "TAINVITEE", email, auth.RoleTenantAdmin)
+
+	if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Token: token,
+	})); err != nil {
+		t.Fatalf("AcceptTenantAdminInvitation: %v", err)
+	}
+	if role := env.roleOf(t, invitee); role != auth.RoleTenantAdmin {
+		t.Fatalf("invitee roles = %q, want %q", role, auth.RoleTenantAdmin)
+	}
+}
+
+// promoteWhileGrantWaits holds the tenant's administrator lock, runs grant in
+// the background until it is waiting on that lock, then makes user a
+// tenant_admin and commits: a grant that read the user's role without the lock
+// would replace a promotion it never saw.
+func (e *adminDBEnv) promoteWhileGrantWaits(t *testing.T, tenant adminDBTenant, user testutil.TenantUser, grant func() error) error {
+	t.Helper()
+
+	ctx := context.Background()
+	holder, err := e.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the promotion: %v", err)
+	}
+	defer holder.Rollback() //nolint:errcheck
+	if err := tenantlock.Take(ctx, holder, "tenant-admins:"+tenant.Tenant.ID.String()); err != nil {
+		t.Fatalf("take the administrator lock: %v", err)
+	}
+
+	var grantErr error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		grantErr = grant()
+	}()
+	e.waitForBlockedBackend(t)
+
+	if _, err := holder.ExecContext(ctx, `
+		INSERT INTO tenant_user_roles (id, tenant_id, user_id, role) VALUES ($1, $2, $3, $4)
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, user.ID, auth.RoleTenantAdmin); err != nil {
+		t.Fatalf("promote %s: %v", user.PublicID, err)
+	}
+	if err := holder.Commit(); err != nil {
+		t.Fatalf("commit the promotion: %v", err)
+	}
+	<-done
+	return grantErr
+}
+
+// Accepting an Editor's invitation waits for a promotion that is under way and
+// then keeps it, rather than replacing a role it read before the promotion.
+func TestDBAcceptingAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+
+	const token = "editor-invitation-token"
+	const email = "invitee@tenant-a.example.com"
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO tenant_admin_invitations (id, tenant_id, email, token_hash, expires_at, role)
+		VALUES ($1, $2, $3, $4, NOW() + INTERVAL '1 day', $5)
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, email, auth.HashToken(token), auth.RoleTenantEditor); err != nil {
+		t.Fatalf("insert invitation: %v", err)
+	}
+	invitee := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAINVITEE", email, "Invitee")
+
+	err := env.promoteWhileGrantWaits(t, tenant, invitee, func() error {
+		_, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+			Tenant: tenant.tenantContext(), Token: token,
+		}))
+		return err
+	})
+	if err != nil {
+		t.Fatalf("AcceptTenantAdminInvitation: %v", err)
+	}
+	if role := env.roleOf(t, invitee); role != auth.RoleTenantAdmin {
+		t.Fatalf("invitee roles = %q, want %q", role, auth.RoleTenantAdmin)
+	}
+}
+
+// Inviting a reader as an Editor waits for a promotion that is under way, and
+// then refuses, rather than replacing the role it never saw.
+func TestDBAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
+	ctx := context.Background()
+
+	err := env.promoteWhileGrantWaits(t, tenant, reader, func() error {
+		_, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+			Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantEditor,
+		}))
+		return err
+	})
+	if code := connect.CodeOf(err); code != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenantAdminInvitation: code = %v, want already_exists (err = %v)", code, err)
+	}
+	if role := env.roleOf(t, reader); role != auth.RoleTenantAdmin {
+		t.Fatalf("reader roles = %q, want %q", role, auth.RoleTenantAdmin)
 	}
 }
 
