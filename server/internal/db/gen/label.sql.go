@@ -619,27 +619,46 @@ WHERE labels.tenant_id = $2
             AND ls.surface = $1::text
     )
     AND (
-        $3::uuid IS NULL
+        NOT $3::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM series s
+            WHERE s.label_id = labels.id
+                AND s.tenant_id = labels.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $1::text
+                )
+        )
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (labels.created_at, labels.id) >= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (labels.created_at, labels.id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (labels.created_at, labels.id) > ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (labels.created_at, labels.id) > ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY labels.created_at ASC, labels.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedLabelsAscParams struct {
-	Surface         string        `json:"surface"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	Surface            string        `json:"surface"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	HasPublishedSeries bool          `json:"has_published_series"`
+	CursorID           uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive    bool          `json:"cursor_inclusive"`
+	CursorCreatedAt    sql.NullTime  `json:"cursor_created_at"`
+	Limit              int32         `json:"limit"`
 }
 
 type ListPublishedLabelsAscRow struct {
@@ -657,6 +676,7 @@ func (q *Queries) ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedL
 	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsAsc,
 		arg.Surface,
 		arg.TenantID,
+		arg.HasPublishedSeries,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -1004,27 +1024,46 @@ WHERE labels.tenant_id = $2
             AND ls.surface = $1::text
     )
     AND (
-        $3::uuid IS NULL
+        NOT $3::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM series s
+            WHERE s.label_id = labels.id
+                AND s.tenant_id = labels.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $1::text
+                )
+        )
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (labels.created_at, labels.id) <= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (labels.created_at, labels.id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (labels.created_at, labels.id) < ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (labels.created_at, labels.id) < ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY labels.created_at DESC, labels.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedLabelsDescParams struct {
-	Surface         string        `json:"surface"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	Surface            string        `json:"surface"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	HasPublishedSeries bool          `json:"has_published_series"`
+	CursorID           uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive    bool          `json:"cursor_inclusive"`
+	CursorCreatedAt    sql.NullTime  `json:"cursor_created_at"`
+	Limit              int32         `json:"limit"`
 }
 
 type ListPublishedLabelsDescRow struct {
@@ -1040,11 +1079,14 @@ type ListPublishedLabelsDescRow struct {
 // The public ListPublishedLabels keeps the order of the admin pair above and
 // adds the calling surface, which the console does not have, and the count of
 // series published on it, counted as GetPublishedLabelByPublicID counts it.
+// has_published_series keeps only the labels that count is above zero for,
+// with the same EXISTS the search pair below applies unconditionally.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsDesc,
 		arg.Surface,
 		arg.TenantID,
+		arg.HasPublishedSeries,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,

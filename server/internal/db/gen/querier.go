@@ -1716,6 +1716,8 @@ type Querier interface {
 	// The public ListPublishedLabels keeps the order of the admin pair above and
 	// adds the calling surface, which the console does not have, and the count of
 	// series published on it, counted as GetPublishedLabelByPublicID counts it.
+	// has_published_series keeps only the labels that count is above zero for,
+	// with the same EXISTS the search pair below applies unconditionally.
 	// cursor rules: proto/README.md.
 	ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error)
 	// Every published page, footer or not: the public site routes a path to a page

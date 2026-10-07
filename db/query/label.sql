@@ -197,6 +197,8 @@ LIMIT sqlc.arg('limit');
 -- The public ListPublishedLabels keeps the order of the admin pair above and
 -- adds the calling surface, which the console does not have, and the count of
 -- series published on it, counted as GetPublishedLabelByPublicID counts it.
+-- has_published_series keeps only the labels that count is above zero for,
+-- with the same EXISTS the search pair below applies unconditionally.
 -- cursor rules: proto/README.md.
 -- name: ListPublishedLabelsDesc :many
 SELECT labels.id,
@@ -228,6 +230,24 @@ WHERE labels.tenant_id = sqlc.arg('tenant_id')
         FROM label_surfaces ls
         WHERE ls.label_id = labels.id
             AND ls.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        NOT sqlc.arg('has_published_series')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM series s
+            WHERE s.label_id = labels.id
+                AND s.tenant_id = labels.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
+        )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -274,6 +294,24 @@ WHERE labels.tenant_id = sqlc.arg('tenant_id')
         FROM label_surfaces ls
         WHERE ls.label_id = labels.id
             AND ls.surface = sqlc.arg('surface')::text
+    )
+    AND (
+        NOT sqlc.arg('has_published_series')::boolean
+        OR EXISTS (
+            SELECT 1
+            FROM series s
+            WHERE s.label_id = labels.id
+                AND s.tenant_id = labels.tenant_id
+                AND s.is_published = true
+                AND s.published_at IS NOT NULL
+                AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
+        )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

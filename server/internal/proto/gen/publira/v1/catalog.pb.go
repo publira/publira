@@ -658,9 +658,16 @@ type ListPublishedLabelsRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Keep only the labels with at least one series published on the calling
+	// surface — the labels SearchPublishedLabels answers — for a list that
+	// features labels rather than one that keeps every label's URL reachable.
+	// False lists every label, as the RPC states. A token names the filter it
+	// was built under, so sending it with the other value is invalid_argument
+	// and changing the filter restarts at page 1.
+	HasPublishedSeries bool `protobuf:"varint,6,opt,name=has_published_series,json=hasPublishedSeries,proto3" json:"has_published_series,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ListPublishedLabelsRequest) Reset() {
@@ -719,6 +726,13 @@ func (x *ListPublishedLabelsRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListPublishedLabelsRequest) GetHasPublishedSeries() bool {
+	if x != nil {
+		return x.HasPublishedSeries
+	}
+	return false
 }
 
 type ListPublishedLabelsResponse struct {
@@ -2107,8 +2121,9 @@ func (x *GetPublishedCreatorDetailResponse) GetNextToken() string {
 // are currently published on the calling surface. Labels have no unpublished
 // state of their own; a label with zero published series is still returned
 // by GetPublishedLabelDetail and ListPublishedLabels, so a shareable detail
-// URL stays valid after its last series is taken down. SearchPublishedLabels
-// answers only labels whose count is above zero.
+// URL stays valid after its last series is taken down. SearchPublishedLabels,
+// and ListPublishedLabels with has_published_series, answer only labels whose
+// count is above zero.
 type PublishedLabel struct {
 	state                  protoimpl.MessageState      `protogen:"open.v1"`
 	PublicId               string                      `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -7746,12 +7761,13 @@ var File_publira_v1_catalog_proto protoreflect.FileDescriptor
 const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"\x18publira/v1/catalog.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\xca\x01\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\xfc\x01\n" +
 	"\x1aListPublishedLabelsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurfaceJ\x04\b\x03\x10\x04R\x06offset\"\x97\x01\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x120\n" +
+	"\x14has_published_series\x18\x06 \x01(\bR\x12hasPublishedSeriesJ\x04\b\x03\x10\x04R\x06offset\"\x97\x01\n" +
 	"\x1bListPublishedLabelsResponse\x122\n" +
 	"\x06labels\x18\x01 \x03(\v2\x1a.publira.v1.PublishedLabelR\x06labels\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +

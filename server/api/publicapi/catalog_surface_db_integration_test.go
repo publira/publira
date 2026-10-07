@@ -400,6 +400,56 @@ func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 	}
 }
 
+// has_published_series narrows the list to the labels a reader can open a
+// series of on the calling surface, which is what a list that features labels
+// wants: a label created before any of its series is public, and one whose
+// series are all kept off the surface, are left out.
+func TestDBCatalogListsOnlyLabelsWithAPublishedSeriesWhenAsked(t *testing.T) {
+	env := newPublicDBEnv(t)
+	ctx := context.Background()
+	client := env.catalogClient()
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	webBooks := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELWEB0001", Name: "Web Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESWEB001", Title: "Web Series", LabelID: webBooks.ID, Published: true, Availability: "web"})
+	appBooks := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELAPP0001", Name: "App Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESAPP001", Title: "App Series", LabelID: appBooks.ID, Published: true, Availability: "app"})
+	draftBooks := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELDRAFT01", Name: "Draft Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft Series", LabelID: draftBooks.ID, Availability: "all"})
+	env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELEMPTY01", Name: "Empty Books"})
+
+	tests := []struct {
+		name    string
+		surface publirattypesv1.ClientSurface
+		want    testutil.Label
+	}{
+		{name: "web", surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB, want: webBooks},
+		{name: "app", surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP, want: appBooks},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			list, err := client.ListPublishedLabels(ctx, connect.NewRequest(&publirav1.ListPublishedLabelsRequest{
+				Tenant:             tenantContext(tenant),
+				Surface:            tc.surface,
+				HasPublishedSeries: true,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedLabels: %v", err)
+			}
+			got := make([]string, 0, len(list.Msg.Labels))
+			for _, label := range list.Msg.Labels {
+				got = append(got, label.GetPublicId())
+			}
+			if want := []string{tc.want.PublicID}; !slices.Equal(got, want) {
+				t.Fatalf("ListPublishedLabels = %v, want %v", got, want)
+			}
+			if count := list.Msg.Labels[0].GetPublishedSeriesCount(); count != 1 {
+				t.Fatalf("published_series_count = %d, want 1", count)
+			}
+		})
+	}
+}
+
 func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
