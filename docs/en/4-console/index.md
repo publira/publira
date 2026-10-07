@@ -2,6 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
+updated: 2026-10-07
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -28,6 +29,7 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 
 ## In this section
 
+- [Publishing works](./1-catalog/index.md): taking an empty catalog to a first episode readers can open, and the series, episodes, labels, Authors, Author roles, and genres it is made of.
 - [Setting up the tenant](./3-setup/index.md): taking a new tenant to a site with the publisher's look, legal pages, and staff, through its settings, branding, pages, announcements, members, mail server, audit log, and your own account.
 - [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
 - [Reports and royalties](./5-reports-and-royalties.md): what the Dashboard and Read-through count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
