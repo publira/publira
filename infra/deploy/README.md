@@ -126,6 +126,8 @@ The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 
+OpenTelemetry export is off unless `.env` turns it on: `PUBLIRA_TRACING_ENABLED`, `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_TRACES_SAMPLER`, and `OTEL_TRACES_SAMPLER_ARG` reach `publira server`, the worker, and the web apps under the same names, and `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` reach `publira server` and the worker. An empty value is passed as empty, which every process reads as unset. What each one does is in [`server/README.md`](../../server/README.md#distributed-tracing-opentelemetry) and [`packages/tracing`](../../packages/tracing/README.md).
+
 From `infra/deploy/`, an empty install is brought into service with:
 
 ```bash

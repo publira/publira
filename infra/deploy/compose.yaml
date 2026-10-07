@@ -28,6 +28,23 @@ x-revalidate: &revalidate
   PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://web-admin:4000
   PUBLIRA_WEB_PLATFORM_INTERNAL_URL: ${PUBLIRA_WEB_PLATFORM_INTERNAL_URL:-}
 
+# Tracing, on every process that traces. Each value is empty unless `.env`
+# sets it, and an empty one is read as unset, so tracing stays off and every
+# other value keeps its default.
+x-tracing: &tracing
+  PUBLIRA_TRACING_ENABLED: ${PUBLIRA_TRACING_ENABLED:-}
+  PUBLIRA_DEPLOYMENT_ENVIRONMENT: ${PUBLIRA_DEPLOYMENT_ENVIRONMENT:-}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-}
+  OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER:-}
+  OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-}
+
+# Metrics, which only `publira server` and the worker export.
+x-metrics: &metrics
+  PUBLIRA_METRICS_ENABLED: ${PUBLIRA_METRICS_ENABLED:-}
+  OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-}
+  OTEL_EXPORTER_PROMETHEUS_HOST: ${OTEL_EXPORTER_PROMETHEUS_HOST:-}
+
 x-web-app: &web-app
   PUBLIRA_GRPC_URL: http://server:8100
   PNCH_REDIS_URL: redis://valkey:6379
@@ -105,7 +122,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/publira:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
-      <<: [*secret-encryption, *tenant-url, *revalidate]
+      <<: [*secret-encryption, *tenant-url, *revalidate, *tracing, *metrics]
       PUBLIRA_AUTH_JWT_SECRET: ${PUBLIRA_AUTH_JWT_SECRET:?}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
       PUBLIRA_PUBLIC_DB_URL: postgres://publira_public:${PUBLIRA_PUBLIC_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
@@ -123,7 +140,7 @@ services:
     command: ["worker"]
     restart: unless-stopped
     environment:
-      <<: [*secret-encryption, *tenant-url, *revalidate]
+      <<: [*secret-encryption, *tenant-url, *revalidate, *tracing, *metrics]
       PUBLIRA_WORKER_DB_URL: postgres://publira_outbox:${PUBLIRA_OUTBOX_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_TICKER_DB_URL: postgres://publira_ticker:${PUBLIRA_TICKER_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_CONTENT_STATS_DB_URL: postgres://publira_content_stats:${PUBLIRA_CONTENT_STATS_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
@@ -137,7 +154,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-host:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
-      <<: [*web-app, *tenant-url]
+      <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_HOST_AUTH_SECRET:?}
     depends_on:
       - server
@@ -147,7 +164,7 @@ services:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-admin:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
-      <<: [*web-app, *tenant-url]
+      <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
     depends_on:
@@ -162,7 +179,7 @@ services:
     profiles: [web-platform]
     restart: unless-stopped
     environment:
-      <<: *web-app
+      <<: [*web-app, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_PLATFORM_AUTH_SECRET:-}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
     depends_on:

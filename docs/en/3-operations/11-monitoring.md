@@ -99,9 +99,9 @@ How the worker's scheduled jobs record their failures, in the log and in the `ri
 Choose how they are exported with `OTEL_METRICS_EXPORTER`:
 
 - **`otlp`**, the default, pushes them every 60 seconds to `OTEL_EXPORTER_OTLP_ENDPOINT`, the same collector address the traces use.
-- **`prometheus`** serves them for a Prometheus scraper at `/metrics` on port `9464`. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` as well: the default, `localhost`, cannot be reached from outside the container.
+- **`prometheus`** serves them for a Prometheus scraper at `/metrics` on port `9464`. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` as well: the default, `localhost`, cannot be reached from outside the container. When `publira server` and `publira worker` share a network namespace, such as one Kubernetes pod, give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`.
 
-The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`.
+On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` in `.env`, which passes them to both processes, and run `docker compose up -d` again. The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`.
 
 ### The outbox
 
@@ -111,20 +111,22 @@ The worker's metrics follow the outbox, through which every mail, push notificat
 | --- | --- | --- |
 | `publira.outbox.events.dead` | Entries given up for good | Any increase. Alert on it |
 | `publira.outbox.events.retry` | Failed attempts that will be tried again | A rate that stays up: the destination of that `outbox.event_type` is failing |
-| `publira.outbox.events.claimed` | Entries the worker picked up to send | Compared with `done`: claimed entries that do not end up done are failing or stuck |
+| `publira.outbox.events.claimed` | Times the worker picked an entry up to send. An entry retried or resumed is picked up again and counted again, so this grows faster than `done` even when every entry is sent | — |
 | `publira.outbox.events.done` | Entries sent | — |
 | `publira.outbox.events.resumed` | Entries put back to continue later after sending part of their work, such as a push notification to many readers | — |
 | `publira.outbox.handler.duration` | How long one attempt took, in seconds | A rise: the SMTP server, `email-renderer`, or a web app is slowing down |
 
-The counters say what the worker did, not what is still waiting. A worker that has stopped claiming entries reports nothing at all, so watch its `/readyz` alongside them, or count the entries that are due and unsent with `psql`, connected as the database's superuser:
+The counters say what the worker did, not what is still waiting. A worker that has stopped sending reports nothing at all, and its `/readyz` does not notice either: it checks the database logins, not whether entries are moving. To see what is waiting, count the entries that are due and unsent, and the ones picked up and never finished, with `psql`, connected as the database's superuser:
 
 ```sql
-SELECT count(*), min(available_at)
+SELECT status, count(*), min(updated_at)
 FROM outbox_events
-WHERE status = 'pending' AND available_at < now() - interval '5 minutes';
+WHERE (status = 'pending' AND available_at < now() - interval '5 minutes')
+   OR (status = 'processing' AND updated_at < now() - interval '15 minutes')
+GROUP BY status;
 ```
 
-A healthy worker sends an entry within a few seconds of it becoming due, so a count that stays above zero means the worker is not draining.
+A healthy worker sends an entry within a few seconds of it becoming due, and puts an entry it was in the middle of back to wait after 15 minutes, so any row this returns means the worker is not draining.
 
 ### The audit log
 
@@ -141,6 +143,8 @@ Point them at your collector with the variables the OpenTelemetry SDK reads itse
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | The collector, such as `http://otel-collector:4318` |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf`. `publira server` and `publira worker` also accept `grpc`, but the web apps do not, so `http/protobuf` is the value that works for every process |
 | `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `production`, or the name of the environment. It is recorded on every span, and decides the sampling below |
+
+On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set these and `PUBLIRA_TRACING_ENABLED` in `.env`, which passes them to `publira server`, the worker, and the web apps, and run `docker compose up -d` again.
 
 Each process reports under a `service.name` of its own: `publira-api-server`, `publira-admin-api-server`, and `publira-platform-api-server` for the three APIs `publira server` serves, `publira-image-server` for its image delivery, `publira-worker` and a name per scheduled job for `publira worker`, and `publira-web-host`, `publira-web-admin`, and `publira-web-platform` for the web apps. The full list, and what is recorded on each span, is in the [server's tracing reference](https://github.com/publira/publira/blob/main/server/README.md#distributed-tracing-opentelemetry). The health checks of `publira server` are not traced, so a probe does not fill the backend with a trace every few seconds.
 
