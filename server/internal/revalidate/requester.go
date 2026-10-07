@@ -133,6 +133,46 @@ func (r *Requester) Record(
 	if q == nil {
 		return Owed{}, errors.New("revalidate: no querier to record a cache invalidation with")
 	}
+	return record(ctx, q, tenantID, normalizedTags, time.Now().UTC())
+}
+
+// RecordDeferred writes tags down as owed by tenantID on q, for the outbox
+// worker to send once availableAt has passed, and attempts nothing itself.
+//
+// It is for a writer that cannot hold a [Requester]: publiractl takes no
+// secret from its environment, so it has no client to turn revalidation on
+// with, and its writes still leave the web apps' entries stale. The worker is
+// the process that knows whether revalidation is on, so the record is made
+// either way. A later availableAt is for a drop that would only refill the
+// entry with the previous answer if it were sent at once, because what the
+// entry is filled from is itself cached for a while after the write.
+func RecordDeferred(
+	ctx context.Context,
+	q OutboxQuerier,
+	tenantID uuid.UUID,
+	tags []string,
+	availableAt time.Time,
+) error {
+	normalizedTags := normalizeTags(tags)
+	if len(normalizedTags) == 0 {
+		return nil
+	}
+	if q == nil {
+		return errors.New("revalidate: no querier to record a cache invalidation with")
+	}
+	_, err := record(ctx, q, tenantID, normalizedTags, availableAt.UTC())
+	return err
+}
+
+// record inserts the outbox event both ways of recording share. tags are
+// already normalized and non-empty.
+func record(
+	ctx context.Context,
+	q OutboxQuerier,
+	tenantID uuid.UUID,
+	tags []string,
+	availableAt time.Time,
+) (Owed, error) {
 	// The row is written on a tenant-scoped connection, where the RLS policy
 	// compares tenant_id against the tenant that connection is bound to.
 	if tenantID == uuid.Nil {
@@ -141,7 +181,7 @@ func (r *Requester) Record(
 
 	payload, err := json.Marshal(outbox.NextCacheRevalidationPayload{
 		TenantID: tenantID.String(),
-		Tags:     normalizedTags,
+		Tags:     tags,
 	})
 	if err != nil {
 		return Owed{}, fmt.Errorf("encode cache invalidation payload: %w", err)
@@ -159,12 +199,12 @@ func (r *Requester) Record(
 		EventType:      outbox.EventTypeNextCacheRevalidation,
 		Payload:        payload,
 		IdempotencyKey: outbox.EventTypeNextCacheRevalidation + ":" + eventID.String(),
-		AvailableAt:    time.Now().UTC(),
+		AvailableAt:    availableAt,
 	})
 	if err != nil {
 		return Owed{}, fmt.Errorf("record cache invalidation: %w", err)
 	}
-	return Owed{eventID: event.ID, tenantID: tenantID, tags: normalizedTags}, nil
+	return Owed{eventID: event.ID, tenantID: tenantID, tags: tags}, nil
 }
 
 // Send attempts owed now and returns straight away. The attempt runs on a

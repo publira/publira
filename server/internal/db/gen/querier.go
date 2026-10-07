@@ -2053,6 +2053,9 @@ type Querier interface {
 	// The creator columns are the ones the public list carries, so the author's
 	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
+	// Every tenant, whose site starts offering browser notifications once the
+	// first subject is saved. Read as publira_platform, which bypasses RLS.
+	ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error)
 	// Serialises, for the rest of the transaction, every attempt to give an account
 	// of the tenant the inbox an address reaches. The unique index on users only
 	// refuses the same address twice, so two sign-ups as john@ and john+2@ arriving

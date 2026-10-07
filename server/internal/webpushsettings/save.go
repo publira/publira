@@ -6,10 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/revalidate"
 )
 
 // The fields a save is refused over.
@@ -25,6 +29,20 @@ var (
 
 	errNonPositiveRevision = errors.New("expected_revision must be positive")
 )
+
+// siteRevalidationDelay is how long after a save turning Web Push on each
+// tenant's site cache is dropped. The storefront API keeps the key it publishes
+// for [CacheTTL], so a drop sent at once would have the site ask again while
+// that process still answers no key, and cache the answer without one for as
+// long as it did before. Twice the TTL also covers a read that began before the
+// commit and finished after it.
+const siteRevalidationDelay = 2 * CacheTTL
+
+// siteCacheTags names the storefront cache entry that carries the key a
+// tenant's site offers browser notifications with.
+func siteCacheTags(tenantID uuid.UUID) []string {
+	return []string{fmt.Sprintf("tenant:%s:site", tenantID.String())}
+}
 
 // Get reads the stored settings without generating a key pair, reporting false
 // when none is stored.
@@ -62,6 +80,11 @@ func (p SaveParams) Validate() error {
 // SaveSubject writes p in one transaction on db, with its entry filed under
 // actor. The stored key pair is kept, because replacing it would invalidate
 // every subscription made against it; mgr seals one only when none is stored.
+//
+// The first subject turns Web Push on, which every tenant's site shows by
+// offering browser notifications, so that save also owes each site a drop of
+// its cache entry, recorded in the same transaction. A later subject changes
+// nothing a site shows and owes none.
 func SaveSubject(
 	ctx context.Context,
 	db *sql.DB,
@@ -107,6 +130,11 @@ func SaveSubject(
 	if err != nil {
 		return dbmodels.PlatformWebpushConfig{}, fmt.Errorf("update web push subject: %w", err)
 	}
+	if !current.Subject.Valid {
+		if err := recordSiteRevalidations(ctx, q); err != nil {
+			return dbmodels.PlatformWebpushConfig{}, err
+		}
+	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_webpush_subject_updated",
 		TargetType: "webpush_config",
@@ -119,4 +147,28 @@ func SaveSubject(
 		return dbmodels.PlatformWebpushConfig{}, fmt.Errorf("commit: %w", err)
 	}
 	return updated, nil
+}
+
+// recordSiteRevalidations records a drop of every tenant's site cache entry on
+// q, for the outbox worker to send after [siteRevalidationDelay].
+//
+// A tenant created after the list is read gets no drop, and serializing tenant
+// creation with this save would not give it one: a site first asked for within
+// [CacheTTL] of the commit is answered without a key by an API process that has
+// not reread it, whether its tenant was created before the commit or after.
+// Covering that would take a drop recorded with every tenant ever created, for
+// a window of seconds an install passes through once, and a site caught in it
+// recovers when its entry expires.
+func recordSiteRevalidations(ctx context.Context, q *dbmodels.Queries) error {
+	tenantIDs, err := q.ListWebPushTenantIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("list tenants to revalidate: %w", err)
+	}
+	availableAt := time.Now().Add(siteRevalidationDelay)
+	for _, tenantID := range tenantIDs {
+		if err := revalidate.RecordDeferred(ctx, q, tenantID, siteCacheTags(tenantID), availableAt); err != nil {
+			return fmt.Errorf("record the site revalidation of tenant %s: %w", tenantID, err)
+		}
+	}
+	return nil
 }
