@@ -112,7 +112,7 @@ An entry that fails is tried again, waiting twice as long after each failure: on
 
 - **Mail** fails while the SMTP server, or `email-renderer` once it is on, refuses or cannot be reached, as [Email](./6-email.md#the-mail-the-install-sends) describes.
 - **A push notification** to a phone is skipped rather than failed while the tenant has no Firebase credentials saved, so it is not retried once they are. Browser notifications are sent only once Web Push is turned on, as [Web Push](./8-web-push.md) describes.
-- **A cache revalidation** fails while a web app is down. A worker without `PUBLIRA_REVALIDATE_TOKEN` fails every drop `publira server` recorded, on every attempt; the drops of its own jobs it does not record at all, as [Free reading periods](#free-reading-periods-and-other-cached-pages) describes.
+- **A cache revalidation** fails while a web app is down. A worker without `PUBLIRA_REVALIDATE_TOKEN` fails every drop `publira server` or `publiractl` recorded, on every attempt; the drops of its own jobs it does not record at all, as [Free reading periods](#free-reading-periods-and-other-cached-pages) describes.
 
 `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts. The wait keeps doubling, up to an hour between attempts, so a few more attempts let an entry outlast a much longer outage.
 

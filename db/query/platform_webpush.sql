@@ -45,3 +45,10 @@ SELECT vapid_public_key
 FROM platform_webpush_config
 WHERE singleton = TRUE
     AND subject IS NOT NULL;
+
+-- name: ListWebPushTenantIDs :many
+-- Every tenant, whose site starts offering browser notifications once the
+-- first subject is saved. Read as publira_platform, which bypasses RLS.
+SELECT id
+FROM tenants
+ORDER BY id;

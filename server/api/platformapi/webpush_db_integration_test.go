@@ -200,6 +200,54 @@ func TestDBUpdatePlatformWebPushSubjectConfiguresWebPush(t *testing.T) {
 	}
 }
 
+// pendingSiteRevalidations counts the drops of tenantID's site cache entry the
+// outbox holds for the worker, sent no sooner than the storefront API rereads
+// the key it publishes.
+func pendingSiteRevalidations(t *testing.T, pg *testutil.PostgresEnv, tenantID string) int {
+	t.Helper()
+	return countRows(t, pg, `
+SELECT COUNT(*)
+FROM outbox_events
+WHERE event_type = 'next_cache_revalidation'
+    AND tenant_id = $1::uuid
+    AND status = 'pending'
+    AND payload->'tags' = jsonb_build_array('tenant:' || $1 || ':site')
+    AND available_at >= created_at + make_interval(secs => $2)`,
+		tenantID, webpushsettings.CacheTTL.Seconds())
+}
+
+// Every tenant's site caches the key it offers browser notifications with, so
+// the save that turns Web Push on owes each of them a drop. A later subject
+// changes nothing a site shows and owes none.
+func TestDBUpdatePlatformWebPushSubjectRevalidatesEveryTenantSite(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	client := newWebPushClient(t, pg, storageTestEncryptor(t))
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenants := []testutil.Tenant{
+		pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A"),
+		pg.SeedTenant(t, "TENANTBBBBBB", "tenant-b.example.com", "Tenant B"),
+	}
+
+	read := getWebPushSettings(t, client, operator)
+	saved, err := updateWebPushSubject(client, operator, "mailto:push@example.com", read.GetRevision())
+	if err != nil {
+		t.Fatalf("UpdatePlatformWebPushSubject: %v", err)
+	}
+	for _, tenant := range tenants {
+		if got := pendingSiteRevalidations(t, pg, tenant.ID.String()); got != 1 {
+			t.Fatalf("site revalidations owed to tenant %s = %d, want 1", tenant.PublicID, got)
+		}
+	}
+
+	if _, err := updateWebPushSubject(client, operator, "mailto:other@example.com", saved.GetRevision()); err != nil {
+		t.Fatalf("UpdatePlatformWebPushSubject again: %v", err)
+	}
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM outbox_events WHERE event_type = 'next_cache_revalidation'`); got != len(tenants) {
+		t.Fatalf("next_cache_revalidation events after a second subject = %d, want %d", got, len(tenants))
+	}
+}
+
 func TestDBUpdatePlatformWebPushSubjectRefusesAnInvalidSubject(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

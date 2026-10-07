@@ -138,6 +138,40 @@ func TestWebPushInitTurnsWebPushOnWithoutARestart(t *testing.T) {
 	}
 }
 
+// publiractl holds no revalidation token, so turning Web Push on from it
+// leaves each tenant's site cache drop to the worker through the outbox.
+func TestWebPushInitRevalidatesEveryTenantSite(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	tenants := []testutil.Tenant{
+		pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A"),
+		pg.SeedTenant(t, "TENANTBBBBBB", "tenant-b.example.com", "Tenant B"),
+	}
+
+	mustWebPushCommand(t, "init", "--subject", "mailto:push@example.com")
+	mustWebPushCommand(t, "init", "--subject", "mailto:other@example.com")
+
+	for _, tenant := range tenants {
+		var owed int
+		if err := pg.DB.QueryRowContext(context.Background(), `
+SELECT COUNT(*)
+FROM outbox_events
+WHERE event_type = 'next_cache_revalidation'
+    AND tenant_id = $1::uuid
+    AND status = 'pending'
+    AND payload->'tags' = jsonb_build_array('tenant:' || $1 || ':site')`,
+			tenant.ID.String(),
+		).Scan(&owed); err != nil {
+			t.Fatalf("count site revalidations: %v", err)
+		}
+		if owed != 1 {
+			t.Fatalf("site revalidations owed to tenant %s = %d, want 1 for the first subject only", tenant.PublicID, owed)
+		}
+	}
+}
+
 // Every browser subscription is made against the stored public key, so a
 // second init changes the subject and nothing else.
 func TestWebPushInitAgainKeepsTheKeyPair(t *testing.T) {

@@ -117,6 +117,8 @@ The order is the whole rule: record first, on the write's own querier, and send 
 
 A caller that marks work done on the strength of the invalidation — the free window boundaries, the day roll — keys that on the record rather than on the send, because the record is what guarantees the drop will happen. A caller inside the `worker` process itself records and stops there: the drain that sends it is seconds away, and `publira_ticker` may insert an outbox event and not update one, so an attempt from there could not be marked done and would be sent twice.
 
+A write that `publiractl` can make as well records through `revalidate.RecordDeferred` instead, on the same transaction and for the worker alone to send. `publiractl` takes no secret from its environment, so it holds no client and could build no requester, and only the worker knows whether revalidation is on, so the record is made either way. The time it names is for a drop whose source is still cached in the API process for a while after the write: sent at once, it would only refill the entry with the answer the write replaced.
+
 No lint covers this. `revalidate.Client` has to stay exported for the worker's handler, so nothing can tell a handler that took one from the worker that owns it.
 
 ## A form that mails an address charges the mail guard

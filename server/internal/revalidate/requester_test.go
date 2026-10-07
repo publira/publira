@@ -217,6 +217,51 @@ func TestRecordWritesNothingWhenRevalidationIsTurnedOff(t *testing.T) {
 	}
 }
 
+// A writer with no client still owes the drop, and the worker sends it no
+// sooner than the time it names.
+func TestRecordDeferredWritesTheInvalidationForLater(t *testing.T) {
+	queries := &recordingQuerier{}
+	tenantID := uuid.Must(uuid.NewV7())
+	availableAt := time.Date(2026, 10, 7, 9, 0, 20, 0, time.FixedZone("UTC+9", 9*60*60))
+
+	if err := RecordDeferred(context.Background(), queries, tenantID, []string{" tenant:t:site ", "tenant:t:site"}, availableAt); err != nil {
+		t.Fatalf("RecordDeferred() error = %v", err)
+	}
+
+	recorded := queries.recorded()
+	if len(recorded) != 1 {
+		t.Fatalf("recorded %d events, want 1", len(recorded))
+	}
+	event := recorded[0]
+	if event.EventType != outbox.EventTypeNextCacheRevalidation {
+		t.Errorf("event type = %q, want %q", event.EventType, outbox.EventTypeNextCacheRevalidation)
+	}
+	if event.TenantID != (uuid.NullUUID{UUID: tenantID, Valid: true}) {
+		t.Errorf("tenant = %v, want %s", event.TenantID, tenantID)
+	}
+	if !event.AvailableAt.Equal(availableAt) {
+		t.Errorf("available at = %v, want %v", event.AvailableAt, availableAt)
+	}
+	var payload outbox.NextCacheRevalidationPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		t.Fatalf("decode recorded payload: %v", err)
+	}
+	if payload.TenantID != tenantID.String() || !slices.Equal(payload.Tags, []string{"tenant:t:site"}) {
+		t.Errorf("payload = %+v, want the tenant and its one tag", payload)
+	}
+}
+
+func TestRecordDeferredRefusesAnInvalidationWithNoTenant(t *testing.T) {
+	queries := &recordingQuerier{}
+
+	if err := RecordDeferred(context.Background(), queries, uuid.Nil, []string{"tenant:t:site"}, time.Now()); err == nil {
+		t.Fatal("RecordDeferred() error = nil, want the missing tenant reported")
+	}
+	if recorded := queries.recorded(); len(recorded) != 0 {
+		t.Fatalf("recorded %v, want nothing written", recorded)
+	}
+}
+
 // The immediate attempt is an optimization: once every app that is a
 // destination has answered, the row is done and the worker has nothing left to
 // send. An app without a URL is not one of them, so a deployment that runs no

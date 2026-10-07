@@ -7,6 +7,8 @@ package dbmodels
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const GetPlatformWebPushConfig = `-- name: GetPlatformWebPushConfig :one
@@ -77,6 +79,37 @@ func (q *Queries) InsertPlatformWebPushKeyPair(ctx context.Context, arg InsertPl
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const ListWebPushTenantIDs = `-- name: ListWebPushTenantIDs :many
+SELECT id
+FROM tenants
+ORDER BY id
+`
+
+// Every tenant, whose site starts offering browser notifications once the
+// first subject is saved. Read as publira_platform, which bypasses RLS.
+func (q *Queries) ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListWebPushTenantIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const LockPlatformWebPushConfig = `-- name: LockPlatformWebPushConfig :one
