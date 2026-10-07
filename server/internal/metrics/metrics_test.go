@@ -99,6 +99,9 @@ func TestSetupExportsWhatTheGlobalMeterRecords(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_PROMETHEUS_HOST", "127.0.0.1")
 	port := freePort(t)
 	t.Setenv("OTEL_EXPORTER_PROMETHEUS_PORT", port)
+	// Either would replace the service name the scrape is checked for.
+	t.Setenv("OTEL_SERVICE_NAME", "")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "")
 
 	shutdown, err := Setup(t.Context(), "publira-test")
 	if err != nil {

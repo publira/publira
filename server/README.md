@@ -491,9 +491,9 @@ Connect RPCs record no metrics (`otelconnect.WithoutMetrics`); their latency is 
 | `OTEL_METRICS_EXPORTER` | `otlp` (default) / `prometheus` / `console` / `none` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Where `otlp` pushes to. `OTEL_EXPORTER_OTLP_PROTOCOL` / `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL` pick `http/protobuf` or `grpc` |
 | `OTEL_METRIC_EXPORT_INTERVAL` | Milliseconds between pushes. Default `60000` |
-| `OTEL_EXPORTER_PROMETHEUS_HOST` / `OTEL_EXPORTER_PROMETHEUS_PORT` | Where `prometheus` serves `/metrics`. Default `localhost:9464`, which nothing outside the container can reach: set the host to `0.0.0.0` to scrape it |
+| `OTEL_EXPORTER_PROMETHEUS_HOST` / `OTEL_EXPORTER_PROMETHEUS_PORT` | Where `prometheus` serves `/metrics`. Default `localhost:9464`, which nothing outside the container can reach: set the host to `0.0.0.0` to scrape it. Two processes sharing one network namespace — a Kubernetes pod, or host networking — need a port each, or the second cannot listen and exports nothing |
 
-Every variable but the first is read by the OpenTelemetry SDK itself. A process that shuts down exports what it recorded since the last push before it exits.
+Every variable but the first is read by the OpenTelemetry SDK itself. With `otlp`, a process that shuts down pushes what it recorded since the last push before it exits; with `prometheus` nothing is pushed, so what happened after the last scrape leaves with the process.
 
 ```bash
 PUBLIRA_METRICS_ENABLED=true OTEL_METRICS_EXPORTER=console task server:dev-worker
