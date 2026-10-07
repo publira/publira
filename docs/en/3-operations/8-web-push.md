@@ -48,7 +48,7 @@ Each save is recorded in **Audit logs**.
 
 The subject can be changed at any time, with `webpush init` and a new `--subject` or from the same screen. It cannot be removed: once a subject is saved, Web Push stays on.
 
-The key pair is never replaced. Every browser subscription was made against its public key, so a new pair would silently stop notifications to every reader who turned them on; nothing in `publiractl` or the Platform Console generates a second one. This makes the pair part of what the install's backups have to keep: it lives in the database, encrypted with the encryption keys, and is lost if either is. To rotate the encryption keys, add the new key beside the old one rather than in its place, as [the rotation procedure](https://github.com/publira/publira/blob/main/server/README.md#secret-encryption-configuration-aes-gcm) describes.
+The key pair is never replaced. Every browser subscription was made against its public key, so a new pair would silently stop notifications to every reader who turned them on; nothing in `publiractl` or the Platform Console generates a second one. This makes the pair part of what the install's backups have to keep: it lives in the database, encrypted with the encryption keys, and is lost if either is. Nothing seals the private key again under a new encryption key, so an install that rotates its keys keeps the old one in the list, as [Rotating the secret encryption keys](./12-security.md#rotating-the-secret-encryption-keys) describes.
 
 A subscription a browser has given up — because the reader revoked the permission or cleared the site's data — is removed the next time a notification to it is refused.
 

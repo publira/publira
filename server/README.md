@@ -510,12 +510,7 @@ There is a foundation for encrypting secrets at rest with AES-GCM. For now, set 
   - Names a key-id contained in `PUBLIRA_SECRET_ENCRYPTION_KEYS`
   - New encryptions use this key-id
 
-Key rotation policy:
-
-1. Add the new key to `PUBLIRA_SECRET_ENCRYPTION_KEYS`
-2. Switch `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` to the new key ID
-3. Re-store and re-encrypt the existing data to gradually replace the ciphertext produced with the old key
-4. Remove the old key only after confirming that no data is decrypted with it any more
+A sealed value names the key that sealed it (`enc:v1:<key-id>:…`), so any key in the set opens it, and a value saved again with the same plaintext is sealed again under the primary key (`secretupdate.KeepIfSame`). Rotating a key is an operator procedure: [Rotating the secret encryption keys](../docs/en/3-operations/12-security.md#rotating-the-secret-encryption-keys).
 
 Notes:
 
