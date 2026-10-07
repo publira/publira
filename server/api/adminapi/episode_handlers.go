@@ -791,21 +791,25 @@ func (s *adminServer) UploadEpisodeImages(
 		ArchiveType:     req.Msg.ArchiveContentType,
 		Headers:         req.Header(),
 	})
+	// The pages are stored one by one, each with its own statements and objects,
+	// so there is no transaction for the drop to ride: it is recorded once the
+	// upload is over, and a record that fails then has nothing left to undo. An
+	// upload that failed part way still stored the pages before the failure,
+	// which Upload says by naming the episode beside the error.
+	if episodeID != uuid.Nil {
+		owed, recordErr := s.recordRevalidation(ctx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
+		if recordErr != nil {
+			s.logger.WarnContext(ctx, "failed to record the cache invalidation for uploaded episode images",
+				"tenant_id", tenant.ID.String(),
+				"episode_id", episodeID.String(),
+				"error", recordErr,
+			)
+		}
+		s.reval.Send(ctx, owed)
+	}
 	if err != nil {
 		return nil, err
 	}
-	// The pages are stored one by one, each with its own statements and objects,
-	// so there is no transaction for the drop to ride: it is recorded once every
-	// page is in, and a record that fails then has nothing left to undo.
-	owed, err := s.recordRevalidation(ctx, tenant.ID, episodeRevalidateTags(tenant.ID.String()))
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to record the cache invalidation for uploaded episode images",
-			"tenant_id", tenant.ID.String(),
-			"episode_id", episodeID.String(),
-			"error", err,
-		)
-	}
-	s.reval.Send(ctx, owed)
 	if err := s.attachAdminMediaToken(ctx, tenant.ID, episodeID, items); err != nil {
 		return nil, err
 	}

@@ -71,6 +71,15 @@ func storageUploadError(err error) error {
 	return connect.NewError(connect.CodeInternal, err)
 }
 
+// Upload stores the pages after the episode's last one and answers with them
+// and the episode they were added to.
+//
+// The pages are written one at a time, each with its own statements and
+// objects, so a failure part way leaves the pages before it stored. The episode
+// is therefore answered beside the error too whenever a page row was written,
+// and is uuid.Nil only when the upload failed before writing anything: a caller
+// that owes something for every stored page — a cache answering with the
+// episode's pages — owes it on that error as well.
 func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, uuid.UUID, error) {
 	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesID != uuid.Nil)
 	if err != nil {
@@ -86,8 +95,11 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 	if s.Storage, err = storage.Pin(ctx, s.Storage); err != nil {
 		return nil, uuid.Nil, storageUploadError(err)
 	}
-	items, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
+	items, wrote, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
 	if err != nil {
+		if wrote {
+			return nil, episodeID, err
+		}
 		return nil, uuid.Nil, err
 	}
 	return items, episodeID, nil
@@ -179,31 +191,31 @@ func (s Service) storeImages(
 	episodePublicID string,
 	imageInputs []archiveimages.Input,
 	headers http.Header,
-) ([]*publirattypesv1.EpisodeImage, error) {
+) (items []*publirattypesv1.EpisodeImage, wrote bool, err error) {
 	maxDisplayOrder, err := s.Queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episodeID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, false, connect.NewError(connect.CodeInternal, err)
 	}
 
-	items := make([]*publirattypesv1.EpisodeImage, 0, len(imageInputs))
+	items = make([]*publirattypesv1.EpisodeImage, 0, len(imageInputs))
 	displayOrder := maxDisplayOrder
 	sessionCtx, hasSession := rpcmiddleware.SessionContextFromContext(ctx)
 	clientIP := auditlog.ClientIPFromHeader(headers)
 
 	for index, imageInput := range imageInputs {
 		if len(imageInput.Data) == 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
+			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
 		}
 
 		variants, buildErr := imageproc.BuildVariants(imageInput.Data, imageInput.ContentType)
 		if buildErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d]: %w", index, buildErr))
+			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d]: %w", index, buildErr))
 		}
 
 		displayOrder++
 		episodeImageID, idErr := uuid.NewV7()
 		if idErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, idErr)
+			return nil, wrote, connect.NewError(connect.CodeInternal, idErr)
 		}
 		createdImage, createErr := s.Queries.CreateEpisodeImage(ctx, dbmodels.CreateEpisodeImageParams{
 			ID:           episodeImageID,
@@ -212,8 +224,9 @@ func (s Service) storeImages(
 			DisplayOrder: displayOrder,
 		})
 		if createErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, createErr)
+			return nil, wrote, connect.NewError(connect.CodeInternal, createErr)
 		}
+		wrote = true
 
 		objectPrefix := objectPrefix(imageInput.Filename)
 		baseObjectID := uuid.NewString()
@@ -258,7 +271,7 @@ func (s Service) storeImages(
 			)
 			cancel()
 			if persistErr != nil {
-				return nil, storageUploadError(fmt.Errorf("variant persistence failed: %w", persistErr))
+				return nil, wrote, storageUploadError(fmt.Errorf("variant persistence failed: %w", persistErr))
 			}
 			lastVariant = createdVariant
 		}
@@ -278,7 +291,7 @@ func (s Service) storeImages(
 		}
 	}
 
-	return items, nil
+	return items, wrote, nil
 }
 
 func objectPrefix(filename string) string {

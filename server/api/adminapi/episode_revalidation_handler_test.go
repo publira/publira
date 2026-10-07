@@ -123,6 +123,50 @@ func TestUploadEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// The pages are stored one by one, so an upload that fails part way leaves the
+// pages before the failure on the episode, and they are just as stale in a
+// cache as the pages of an upload that succeeded.
+func TestUploadEpisodeImagesRevalidatesThePagesStoredBeforeAFailure(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(imageID, tenantID, episodeID, int32(1), now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
+		WithArgs(sqlmock.AnyArg(), tenantID, imageID, "w1", "s3", sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), imageID, "w1", "s3", "obj-1", "image/png", int64(67), int32(1), int32(1), now, tenantID))
+	expectAdminAuditLogInsert(mock)
+	expectRevalidationRecord(mock, tenantID)
+
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		Images: []*publiraadminv1.EpisodeImageUpload{
+			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
+			{Filename: "002.png", ContentType: "image/png", Data: []byte("not an image"), DisplayOrder: 1},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UploadEpisodeImages(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UploadEpisodeImages code = %v, want invalid_argument for the second page (err=%v)", connect.CodeOf(err), err)
+	}
+	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
 // The viewer shows an episode's pages in their order, so a reorder drops it in
 // the transaction that writes the order.
 func TestReorderEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
