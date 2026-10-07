@@ -204,6 +204,42 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	}), nil
 }
 
+// GetTenantEmailSender answers the from address resolveSMTPSettings in
+// internal/outbox sends the tenant's mail with: the tenant's own while its
+// override is on, and the platform relay's otherwise. The relay's address is
+// read through a query of its own, because that column is all of
+// platform_smtp_config the admin database role is granted.
+func (s *adminServer) GetTenantEmailSender(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetTenantEmailSenderRequest],
+) (*connect.Response[publiraadminv1.GetTenantEmailSenderResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	config, found, err := s.loadTenantSMTPConfigByID(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	if found && config.SmtpOverrideEnabled {
+		return connect.NewResponse(&publiraadminv1.GetTenantEmailSenderResponse{
+			FromAddress: config.FromAddress.String,
+		}), nil
+	}
+
+	fromAddress, err := s.queriesFor(ctx).GetPlatformSMTPFromAddress(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to get platform smtp from address", err, "tenant_id", tenant.ID.String())
+	}
+	return connect.NewResponse(&publiraadminv1.GetTenantEmailSenderResponse{
+		FromAddress: fromAddress,
+	}), nil
+}
+
 func (s *adminServer) SendTenantSmtpTestEmail(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.SendTenantSmtpTestEmailRequest],

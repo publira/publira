@@ -12,7 +12,7 @@ Generating the secrets for the first time is part of [Installing](../2-deploymen
 
 ### The database roles
 
-No process connects to PostgreSQL as its superuser. Each part of the install connects as one of six roles that `publiractl db roles` creates, and each role reaches only what that part needs, as [The database roles](../2-deployments/2-installing.md#the-database-roles) describes. The roles that answer readers and a tenant's staff are bound by row-level security to the tenant a request names, so a defect in those paths cannot read another tenant's rows, and the platform's own tables, which hold the operators' password hashes and the platform's mail credentials, are out of reach of every role but `publira_platform`.
+No process connects to PostgreSQL as its superuser. Each part of the install connects as one of six roles that `publiractl db roles` creates, and each role reaches only what that part needs, as [The database roles](../2-deployments/2-installing.md#the-database-roles) describes. The roles that answer readers and a tenant's staff are bound by row-level security to the tenant a request names, so a defect in those paths cannot read another tenant's rows, and the operators' password hashes and the platform's mail credentials are out of reach of every role but `publira_platform` and the worker role that sends the platform's mail. The tenant console's role reads the address the platform's mail is sent from, and nothing else of the platform's mail settings.
 
 That only holds while each process has the connection URLs of its own roles and no others. Give the superuser's password to `publiractl db migrate` and `publiractl db roles` alone, and never set a process's connection URL to the superuser or to a role it does not use.
 

@@ -83,10 +83,12 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // engine the maintenance role builds the catalog index on. The last two hold
 // their secret encrypted under keys the database does not have. The storefront also
 // reads the Web Push settings, but only the columns that publish the public
-// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to.
+// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to, and
+// the tenant console the platform relay's from address and nothing else of
+// it, which TestAdminRoleReadsOnlyThePlatformSMTPFromAddress holds it to.
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_policy_config", "platform_webpush_config"},
-	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_storage_config"},
+	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
 	"publira_content_stats": {"platform_retention_config", "platform_search_config", "platform_storage_config"},
 }
 
@@ -145,6 +147,30 @@ func TestPublicRoleReadsOnlyThePublishedWebPushColumns(t *testing.T) {
 	}
 	assertRefused(t, ctx, public, "publira_public", "SELECT vapid_private_key_encrypted FROM platform_webpush_config")
 	assertRefused(t, ctx, public, "publira_public", "SELECT * FROM platform_webpush_config")
+}
+
+// The tenant console names the address a tenant on the platform's mail is sent
+// from, which lives in the same row as the relay's credentials, so its grant
+// names that column rather than the table.
+func TestAdminRoleReadsOnlyThePlatformSMTPFromAddress(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	admin := pg.OpenAdminDB(t)
+	var count int
+	if err := admin.QueryRowContext(ctx,
+		"SELECT count(*) FROM platform_smtp_config WHERE singleton AND from_address <> ''",
+	).Scan(&count); err != nil {
+		t.Fatalf("read the platform smtp from address as publira_admin: %v", err)
+	}
+	for _, column := range []string{"host", "port", "username", "password_encrypted", "encryption", "reply_to"} {
+		assertRefused(t, ctx, admin, "publira_admin", fmt.Sprintf("SELECT %s FROM platform_smtp_config", column))
+	}
+	assertRefused(t, ctx, admin, "publira_admin", "SELECT * FROM platform_smtp_config")
+	assertRefused(t, ctx, admin, "publira_admin", "UPDATE platform_smtp_config SET from_address = 'attacker@example.com'")
 }
 
 const outboxDBRole = "publira_outbox"

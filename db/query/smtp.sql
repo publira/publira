@@ -4,6 +4,14 @@ FROM platform_smtp_config
 WHERE singleton = TRUE
 LIMIT 1;
 
+-- name: GetPlatformSMTPFromAddress :one
+-- Reads the one column the tenant console may see of the platform relay, the
+-- address a tenant without its own SMTP settings is mailed from.
+SELECT from_address
+FROM platform_smtp_config
+WHERE singleton = TRUE
+LIMIT 1;
+
 -- name: LockPlatformSMTPConfig :one
 -- Reads the row for update, so the revision a save compares against, and the
 -- stored password it carries forward, cannot change before the write.
