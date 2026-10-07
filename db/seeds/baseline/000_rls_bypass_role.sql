@@ -228,6 +228,13 @@ GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
 -- so the sealed private key in the same row stays out of this role's reach.
 GRANT SELECT (singleton, vapid_public_key, subject) ON platform_webpush_config TO publira_public;
 
+-- The tenant console names the address a tenant's mail is sent from, which is
+-- the platform relay's for a tenant that overrides nothing, so a sender a mail
+-- provider requires to be registered can be registered. The grant names that
+-- column alone: the relay's host, account, and sealed password stay out of
+-- this role's reach.
+GRANT SELECT (singleton, from_address) ON platform_smtp_config TO publira_admin;
+
 -- The storefront resolves each tenant's stricter community limits alongside
 -- the platform policy. RLS confines the tenant-console role to its own row.
 REVOKE INSERT, UPDATE, DELETE ON tenant_community_limit_overrides FROM publira_public;

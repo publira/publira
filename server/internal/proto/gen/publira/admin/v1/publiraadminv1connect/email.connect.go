@@ -40,6 +40,9 @@ const (
 	// AdminEmailSettingsServiceUpdateTenantEmailSettingsProcedure is the fully-qualified name of the
 	// AdminEmailSettingsService's UpdateTenantEmailSettings RPC.
 	AdminEmailSettingsServiceUpdateTenantEmailSettingsProcedure = "/publira.admin.v1.AdminEmailSettingsService/UpdateTenantEmailSettings"
+	// AdminEmailSettingsServiceGetTenantEmailSenderProcedure is the fully-qualified name of the
+	// AdminEmailSettingsService's GetTenantEmailSender RPC.
+	AdminEmailSettingsServiceGetTenantEmailSenderProcedure = "/publira.admin.v1.AdminEmailSettingsService/GetTenantEmailSender"
 	// AdminEmailSettingsServiceSendTenantSmtpTestEmailProcedure is the fully-qualified name of the
 	// AdminEmailSettingsService's SendTenantSmtpTestEmail RPC.
 	AdminEmailSettingsServiceSendTenantSmtpTestEmailProcedure = "/publira.admin.v1.AdminEmailSettingsService/SendTenantSmtpTestEmail"
@@ -52,6 +55,12 @@ type AdminEmailSettingsServiceClient interface {
 	GetTenantEmailSettings(context.Context, *connect.Request[v1.GetTenantEmailSettingsRequest]) (*connect.Response[v1.GetTenantEmailSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *connect.Request[v1.UpdateTenantEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailSettingsResponse], error)
+	// Answers the address the tenant's mail is sent from, so a sender a mail
+	// provider requires to be registered can be named to a tenant on the
+	// platform's mail too, which GetTenantEmailSettings cannot do. Nothing else
+	// of the platform's SMTP settings is answered.
+	// Minimum role: tenant_admin.
+	GetTenantEmailSender(context.Context, *connect.Request[v1.GetTenantEmailSenderRequest]) (*connect.Response[v1.GetTenantEmailSenderResponse], error)
 	// Minimum role: tenant_admin.
 	SendTenantSmtpTestEmail(context.Context, *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error)
 }
@@ -79,6 +88,12 @@ func NewAdminEmailSettingsServiceClient(httpClient connect.HTTPClient, baseURL s
 			connect.WithSchema(adminEmailSettingsServiceMethods.ByName("UpdateTenantEmailSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantEmailSender: connect.NewClient[v1.GetTenantEmailSenderRequest, v1.GetTenantEmailSenderResponse](
+			httpClient,
+			baseURL+AdminEmailSettingsServiceGetTenantEmailSenderProcedure,
+			connect.WithSchema(adminEmailSettingsServiceMethods.ByName("GetTenantEmailSender")),
+			connect.WithClientOptions(opts...),
+		),
 		sendTenantSmtpTestEmail: connect.NewClient[v1.SendTenantSmtpTestEmailRequest, v1.SendTenantSmtpTestEmailResponse](
 			httpClient,
 			baseURL+AdminEmailSettingsServiceSendTenantSmtpTestEmailProcedure,
@@ -92,6 +107,7 @@ func NewAdminEmailSettingsServiceClient(httpClient connect.HTTPClient, baseURL s
 type adminEmailSettingsServiceClient struct {
 	getTenantEmailSettings    *connect.Client[v1.GetTenantEmailSettingsRequest, v1.GetTenantEmailSettingsResponse]
 	updateTenantEmailSettings *connect.Client[v1.UpdateTenantEmailSettingsRequest, v1.UpdateTenantEmailSettingsResponse]
+	getTenantEmailSender      *connect.Client[v1.GetTenantEmailSenderRequest, v1.GetTenantEmailSenderResponse]
 	sendTenantSmtpTestEmail   *connect.Client[v1.SendTenantSmtpTestEmailRequest, v1.SendTenantSmtpTestEmailResponse]
 }
 
@@ -106,6 +122,11 @@ func (c *adminEmailSettingsServiceClient) UpdateTenantEmailSettings(ctx context.
 	return c.updateTenantEmailSettings.CallUnary(ctx, req)
 }
 
+// GetTenantEmailSender calls publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSender.
+func (c *adminEmailSettingsServiceClient) GetTenantEmailSender(ctx context.Context, req *connect.Request[v1.GetTenantEmailSenderRequest]) (*connect.Response[v1.GetTenantEmailSenderResponse], error) {
+	return c.getTenantEmailSender.CallUnary(ctx, req)
+}
+
 // SendTenantSmtpTestEmail calls publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail.
 func (c *adminEmailSettingsServiceClient) SendTenantSmtpTestEmail(ctx context.Context, req *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error) {
 	return c.sendTenantSmtpTestEmail.CallUnary(ctx, req)
@@ -118,6 +139,12 @@ type AdminEmailSettingsServiceHandler interface {
 	GetTenantEmailSettings(context.Context, *connect.Request[v1.GetTenantEmailSettingsRequest]) (*connect.Response[v1.GetTenantEmailSettingsResponse], error)
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *connect.Request[v1.UpdateTenantEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailSettingsResponse], error)
+	// Answers the address the tenant's mail is sent from, so a sender a mail
+	// provider requires to be registered can be named to a tenant on the
+	// platform's mail too, which GetTenantEmailSettings cannot do. Nothing else
+	// of the platform's SMTP settings is answered.
+	// Minimum role: tenant_admin.
+	GetTenantEmailSender(context.Context, *connect.Request[v1.GetTenantEmailSenderRequest]) (*connect.Response[v1.GetTenantEmailSenderResponse], error)
 	// Minimum role: tenant_admin.
 	SendTenantSmtpTestEmail(context.Context, *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error)
 }
@@ -141,6 +168,12 @@ func NewAdminEmailSettingsServiceHandler(svc AdminEmailSettingsServiceHandler, o
 		connect.WithSchema(adminEmailSettingsServiceMethods.ByName("UpdateTenantEmailSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminEmailSettingsServiceGetTenantEmailSenderHandler := connect.NewUnaryHandler(
+		AdminEmailSettingsServiceGetTenantEmailSenderProcedure,
+		svc.GetTenantEmailSender,
+		connect.WithSchema(adminEmailSettingsServiceMethods.ByName("GetTenantEmailSender")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminEmailSettingsServiceSendTenantSmtpTestEmailHandler := connect.NewUnaryHandler(
 		AdminEmailSettingsServiceSendTenantSmtpTestEmailProcedure,
 		svc.SendTenantSmtpTestEmail,
@@ -153,6 +186,8 @@ func NewAdminEmailSettingsServiceHandler(svc AdminEmailSettingsServiceHandler, o
 			adminEmailSettingsServiceGetTenantEmailSettingsHandler.ServeHTTP(w, r)
 		case AdminEmailSettingsServiceUpdateTenantEmailSettingsProcedure:
 			adminEmailSettingsServiceUpdateTenantEmailSettingsHandler.ServeHTTP(w, r)
+		case AdminEmailSettingsServiceGetTenantEmailSenderProcedure:
+			adminEmailSettingsServiceGetTenantEmailSenderHandler.ServeHTTP(w, r)
 		case AdminEmailSettingsServiceSendTenantSmtpTestEmailProcedure:
 			adminEmailSettingsServiceSendTenantSmtpTestEmailHandler.ServeHTTP(w, r)
 		default:
@@ -170,6 +205,10 @@ func (UnimplementedAdminEmailSettingsServiceHandler) GetTenantEmailSettings(cont
 
 func (UnimplementedAdminEmailSettingsServiceHandler) UpdateTenantEmailSettings(context.Context, *connect.Request[v1.UpdateTenantEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings is not implemented"))
+}
+
+func (UnimplementedAdminEmailSettingsServiceHandler) GetTenantEmailSender(context.Context, *connect.Request[v1.GetTenantEmailSenderRequest]) (*connect.Response[v1.GetTenantEmailSenderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSender is not implemented"))
 }
 
 func (UnimplementedAdminEmailSettingsServiceHandler) SendTenantSmtpTestEmail(context.Context, *connect.Request[v1.SendTenantSmtpTestEmailRequest]) (*connect.Response[v1.SendTenantSmtpTestEmailResponse], error) {

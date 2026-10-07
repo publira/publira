@@ -57,6 +57,17 @@ message UpdateTenantEmailSettingsResponse {
   TenantEmailSettings settings = 1;
 }
 
+message GetTenantEmailSenderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantEmailSenderResponse {
+  // The address the tenant's mail is sent from: the tenant's own when its
+  // SMTP override is on, the platform's otherwise. Empty when the settings in
+  // force name none, which for the platform means none are saved yet.
+  string from_address = 1;
+}
+
 message SendTenantSmtpTestEmailRequest {
   publira.types.v1.TenantContext tenant = 1;
   TestEmailRecipientType recipient_type = 2;
@@ -82,6 +93,12 @@ service AdminEmailSettingsService {
   rpc GetTenantEmailSettings(GetTenantEmailSettingsRequest) returns (GetTenantEmailSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantEmailSettings(UpdateTenantEmailSettingsRequest) returns (UpdateTenantEmailSettingsResponse) {}
+  // Answers the address the tenant's mail is sent from, so a sender a mail
+  // provider requires to be registered can be named to a tenant on the
+  // platform's mail too, which GetTenantEmailSettings cannot do. Nothing else
+  // of the platform's SMTP settings is answered.
+  // Minimum role: tenant_admin.
+  rpc GetTenantEmailSender(GetTenantEmailSenderRequest) returns (GetTenantEmailSenderResponse) {}
   // Minimum role: tenant_admin.
   rpc SendTenantSmtpTestEmail(SendTenantSmtpTestEmailRequest) returns (SendTenantSmtpTestEmailResponse) {}
 }

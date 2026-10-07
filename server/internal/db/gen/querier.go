@@ -612,6 +612,9 @@ type Querier interface {
 	// which the server answers with its built-in defaults.
 	GetPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
+	// Reads the one column the tenant console may see of the platform relay, the
+	// address a tenant without its own SMTP settings is mailed from.
+	GetPlatformSMTPFromAddress(ctx context.Context) (string, error)
 	// Returns no rows when the platform has never saved a search engine, which is
 	// the SQL engine every process searches with until one is.
 	GetPlatformSearchConfig(ctx context.Context) (PlatformSearchConfig, error)

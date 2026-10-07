@@ -38,6 +38,22 @@ func (q *Queries) GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig
 	return i, err
 }
 
+const GetPlatformSMTPFromAddress = `-- name: GetPlatformSMTPFromAddress :one
+SELECT from_address
+FROM platform_smtp_config
+WHERE singleton = TRUE
+LIMIT 1
+`
+
+// Reads the one column the tenant console may see of the platform relay, the
+// address a tenant without its own SMTP settings is mailed from.
+func (q *Queries) GetPlatformSMTPFromAddress(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetPlatformSMTPFromAddress)
+	var from_address string
+	err := row.Scan(&from_address)
+	return from_address, err
+}
+
 const GetTenantSMTPConfigByTenantID = `-- name: GetTenantSMTPConfigByTenantID :one
 SELECT tenant_id, smtp_override_enabled, host, port, username, password_encrypted, encryption, from_name, from_address, reply_to, created_at, updated_at
 FROM tenant_smtp_config

@@ -487,6 +487,97 @@ func (x *UpdateTenantEmailSettingsResponse) GetSettings() *TenantEmailSettings {
 	return nil
 }
 
+type GetTenantEmailSenderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantEmailSenderRequest) Reset() {
+	*x = GetTenantEmailSenderRequest{}
+	mi := &file_publira_admin_v1_email_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantEmailSenderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantEmailSenderRequest) ProtoMessage() {}
+
+func (x *GetTenantEmailSenderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_email_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantEmailSenderRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantEmailSenderRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetTenantEmailSenderRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantEmailSenderResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The address the tenant's mail is sent from: the tenant's own when its
+	// SMTP override is on, the platform's otherwise. Empty when the settings in
+	// force name none, which for the platform means none are saved yet.
+	FromAddress   string `protobuf:"bytes,1,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantEmailSenderResponse) Reset() {
+	*x = GetTenantEmailSenderResponse{}
+	mi := &file_publira_admin_v1_email_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantEmailSenderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantEmailSenderResponse) ProtoMessage() {}
+
+func (x *GetTenantEmailSenderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_email_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantEmailSenderResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantEmailSenderResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetTenantEmailSenderResponse) GetFromAddress() string {
+	if x != nil {
+		return x.FromAddress
+	}
+	return ""
+}
+
 type SendTenantSmtpTestEmailRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Tenant              *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -508,7 +599,7 @@ type SendTenantSmtpTestEmailRequest struct {
 
 func (x *SendTenantSmtpTestEmailRequest) Reset() {
 	*x = SendTenantSmtpTestEmailRequest{}
-	mi := &file_publira_admin_v1_email_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_email_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -520,7 +611,7 @@ func (x *SendTenantSmtpTestEmailRequest) String() string {
 func (*SendTenantSmtpTestEmailRequest) ProtoMessage() {}
 
 func (x *SendTenantSmtpTestEmailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_email_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_email_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -533,7 +624,7 @@ func (x *SendTenantSmtpTestEmailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendTenantSmtpTestEmailRequest.ProtoReflect.Descriptor instead.
 func (*SendTenantSmtpTestEmailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SendTenantSmtpTestEmailRequest) GetTenant() *v1.TenantContext {
@@ -636,7 +727,7 @@ type SendTenantSmtpTestEmailResponse struct {
 
 func (x *SendTenantSmtpTestEmailResponse) Reset() {
 	*x = SendTenantSmtpTestEmailResponse{}
-	mi := &file_publira_admin_v1_email_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_email_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -648,7 +739,7 @@ func (x *SendTenantSmtpTestEmailResponse) String() string {
 func (*SendTenantSmtpTestEmailResponse) ProtoMessage() {}
 
 func (x *SendTenantSmtpTestEmailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_email_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_email_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -661,7 +752,7 @@ func (x *SendTenantSmtpTestEmailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendTenantSmtpTestEmailResponse.ProtoReflect.Descriptor instead.
 func (*SendTenantSmtpTestEmailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_email_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SendTenantSmtpTestEmailResponse) GetRecipientEmail() string {
@@ -708,7 +799,11 @@ const file_publira_admin_v1_email_proto_rawDesc = "" +
 	" \x01(\tR\vfromAddress\x12\x19\n" +
 	"\breply_to\x18\v \x01(\tR\areplyTo\"f\n" +
 	"!UpdateTenantEmailSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"\xb8\x04\n" +
+	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"V\n" +
+	"\x1bGetTenantEmailSenderRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"A\n" +
+	"\x1cGetTenantEmailSenderResponse\x12!\n" +
+	"\ffrom_address\x18\x01 \x01(\tR\vfromAddress\"\xb8\x04\n" +
 	"\x1eSendTenantSmtpTestEmailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12O\n" +
 	"\x0erecipient_type\x18\x02 \x01(\x0e2(.publira.admin.v1.TestEmailRecipientTypeR\rrecipientType\x12'\n" +
@@ -736,10 +831,11 @@ const file_publira_admin_v1_email_proto_rawDesc = "" +
 	"\x16TestEmailRecipientType\x12)\n" +
 	"%TEST_EMAIL_RECIPIENT_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eTEST_EMAIL_RECIPIENT_TYPE_SELF\x10\x01\x12$\n" +
-	" TEST_EMAIL_RECIPIENT_TYPE_CUSTOM\x10\x022\xa6\x03\n" +
+	" TEST_EMAIL_RECIPIENT_TYPE_CUSTOM\x10\x022\x9f\x04\n" +
 	"\x19AdminEmailSettingsService\x12}\n" +
 	"\x16GetTenantEmailSettings\x12/.publira.admin.v1.GetTenantEmailSettingsRequest\x1a0.publira.admin.v1.GetTenantEmailSettingsResponse\"\x00\x12\x86\x01\n" +
-	"\x19UpdateTenantEmailSettings\x122.publira.admin.v1.UpdateTenantEmailSettingsRequest\x1a3.publira.admin.v1.UpdateTenantEmailSettingsResponse\"\x00\x12\x80\x01\n" +
+	"\x19UpdateTenantEmailSettings\x122.publira.admin.v1.UpdateTenantEmailSettingsRequest\x1a3.publira.admin.v1.UpdateTenantEmailSettingsResponse\"\x00\x12w\n" +
+	"\x14GetTenantEmailSender\x12-.publira.admin.v1.GetTenantEmailSenderRequest\x1a..publira.admin.v1.GetTenantEmailSenderResponse\"\x00\x12\x80\x01\n" +
 	"\x17SendTenantSmtpTestEmail\x120.publira.admin.v1.SendTenantSmtpTestEmailRequest\x1a1.publira.admin.v1.SendTenantSmtpTestEmailResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
@@ -755,7 +851,7 @@ func file_publira_admin_v1_email_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_email_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_publira_admin_v1_email_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_publira_admin_v1_email_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_publira_admin_v1_email_proto_goTypes = []any{
 	(SecretUpdateMode)(0),                     // 0: publira.admin.v1.SecretUpdateMode
 	(TestEmailRecipientType)(0),               // 1: publira.admin.v1.TestEmailRecipientType
@@ -764,30 +860,35 @@ var file_publira_admin_v1_email_proto_goTypes = []any{
 	(*GetTenantEmailSettingsResponse)(nil),    // 4: publira.admin.v1.GetTenantEmailSettingsResponse
 	(*UpdateTenantEmailSettingsRequest)(nil),  // 5: publira.admin.v1.UpdateTenantEmailSettingsRequest
 	(*UpdateTenantEmailSettingsResponse)(nil), // 6: publira.admin.v1.UpdateTenantEmailSettingsResponse
-	(*SendTenantSmtpTestEmailRequest)(nil),    // 7: publira.admin.v1.SendTenantSmtpTestEmailRequest
-	(*SendTenantSmtpTestEmailResponse)(nil),   // 8: publira.admin.v1.SendTenantSmtpTestEmailResponse
-	(*v1.TenantContext)(nil),                  // 9: publira.types.v1.TenantContext
+	(*GetTenantEmailSenderRequest)(nil),       // 7: publira.admin.v1.GetTenantEmailSenderRequest
+	(*GetTenantEmailSenderResponse)(nil),      // 8: publira.admin.v1.GetTenantEmailSenderResponse
+	(*SendTenantSmtpTestEmailRequest)(nil),    // 9: publira.admin.v1.SendTenantSmtpTestEmailRequest
+	(*SendTenantSmtpTestEmailResponse)(nil),   // 10: publira.admin.v1.SendTenantSmtpTestEmailResponse
+	(*v1.TenantContext)(nil),                  // 11: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_email_proto_depIdxs = []int32{
-	9,  // 0: publira.admin.v1.GetTenantEmailSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 0: publira.admin.v1.GetTenantEmailSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 1: publira.admin.v1.GetTenantEmailSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailSettings
-	9,  // 2: publira.admin.v1.UpdateTenantEmailSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 2: publira.admin.v1.UpdateTenantEmailSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 3: publira.admin.v1.UpdateTenantEmailSettingsRequest.password_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
 	2,  // 4: publira.admin.v1.UpdateTenantEmailSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailSettings
-	9,  // 5: publira.admin.v1.SendTenantSmtpTestEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 6: publira.admin.v1.SendTenantSmtpTestEmailRequest.recipient_type:type_name -> publira.admin.v1.TestEmailRecipientType
-	0,  // 7: publira.admin.v1.SendTenantSmtpTestEmailRequest.password_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
-	3,  // 8: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSettings:input_type -> publira.admin.v1.GetTenantEmailSettingsRequest
-	5,  // 9: publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings:input_type -> publira.admin.v1.UpdateTenantEmailSettingsRequest
-	7,  // 10: publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail:input_type -> publira.admin.v1.SendTenantSmtpTestEmailRequest
-	4,  // 11: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSettings:output_type -> publira.admin.v1.GetTenantEmailSettingsResponse
-	6,  // 12: publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings:output_type -> publira.admin.v1.UpdateTenantEmailSettingsResponse
-	8,  // 13: publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail:output_type -> publira.admin.v1.SendTenantSmtpTestEmailResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 5: publira.admin.v1.GetTenantEmailSenderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 6: publira.admin.v1.SendTenantSmtpTestEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 7: publira.admin.v1.SendTenantSmtpTestEmailRequest.recipient_type:type_name -> publira.admin.v1.TestEmailRecipientType
+	0,  // 8: publira.admin.v1.SendTenantSmtpTestEmailRequest.password_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	3,  // 9: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSettings:input_type -> publira.admin.v1.GetTenantEmailSettingsRequest
+	5,  // 10: publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings:input_type -> publira.admin.v1.UpdateTenantEmailSettingsRequest
+	7,  // 11: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSender:input_type -> publira.admin.v1.GetTenantEmailSenderRequest
+	9,  // 12: publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail:input_type -> publira.admin.v1.SendTenantSmtpTestEmailRequest
+	4,  // 13: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSettings:output_type -> publira.admin.v1.GetTenantEmailSettingsResponse
+	6,  // 14: publira.admin.v1.AdminEmailSettingsService.UpdateTenantEmailSettings:output_type -> publira.admin.v1.UpdateTenantEmailSettingsResponse
+	8,  // 15: publira.admin.v1.AdminEmailSettingsService.GetTenantEmailSender:output_type -> publira.admin.v1.GetTenantEmailSenderResponse
+	10, // 16: publira.admin.v1.AdminEmailSettingsService.SendTenantSmtpTestEmail:output_type -> publira.admin.v1.SendTenantSmtpTestEmailResponse
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_email_proto_init() }
@@ -801,7 +902,7 @@ func file_publira_admin_v1_email_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_email_proto_rawDesc), len(file_publira_admin_v1_email_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
