@@ -23,7 +23,7 @@
     "@types/mdast": "catalog:",
     "eslint-plugin-github": "6.1.2",
     "eslint-plugin-sonarjs": "4.2.2",
-    "lefthook": "2.1.16",
+    "lefthook": "2.1.17",
     "mdast-util-from-markdown": "catalog:",
     "mdast-util-gfm": "catalog:",
     "micromark-extension-gfm": "catalog:",
