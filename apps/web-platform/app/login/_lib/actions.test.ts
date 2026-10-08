@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getMessagesFor } from "#lib/messages";
+
 const {
   mockAssertSameOrigin,
   mockGetPlatformLocale,
@@ -61,8 +63,11 @@ describe("loginAction", () => {
 
   it("writes the session cookie and clears the session read's tag before redirecting", async () => {
     mockLoginPlatform.mockResolvedValueOnce({
-      accessToken: "session-token",
-      expiresAt: { toISOString: () => "2026-10-01T00:00:00Z" },
+      ok: true,
+      session: {
+        accessToken: "session-token",
+        expiresAt: { toISOString: () => "2026-10-01T00:00:00Z" },
+      },
     });
 
     const { loginAction } = await import("./actions");
@@ -80,14 +85,35 @@ describe("loginAction", () => {
   });
 
   it("leaves the cookie and the tag alone when the credentials are rejected", async () => {
-    mockLoginPlatform.mockResolvedValueOnce(null);
+    mockLoginPlatform.mockResolvedValueOnce({
+      ok: false,
+      refusal: "credentials",
+    });
+    const t = await getMessagesFor("en");
 
     const { loginAction } = await import("./actions");
 
-    await expect(loginAction(null, loginFormData())).resolves.toMatchObject({
+    await expect(loginAction(null, loginFormData())).resolves.toEqual({
+      message: t("platform.auth.login.failed"),
       ok: false,
     });
     expect(mockSetCookie).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("asks the operator to wait, not to check their password, after too many attempts", async () => {
+    mockLoginPlatform.mockResolvedValueOnce({
+      ok: false,
+      refusal: "rate-limited",
+    });
+    const t = await getMessagesFor("en");
+
+    const { loginAction } = await import("./actions");
+
+    await expect(loginAction(null, loginFormData())).resolves.toEqual({
+      message: t("errors.rpc.rate-limited"),
+      ok: false,
+    });
+    expect(mockSetCookie).not.toHaveBeenCalled();
   });
 });

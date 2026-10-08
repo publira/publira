@@ -64,22 +64,55 @@ describe("web-host auth", () => {
     mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
-  it("loginPublic: Returns null if session information is missing", async () => {
+  it("loginPublic: Refuses the credentials if session information is missing", async () => {
     const { loginPublic } = await importAuth();
     mockLogin.mockResolvedValueOnce({
       accessToken: {},
     });
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "credentials",
+    });
   });
 
-  it("loginPublic: expected error returns null", async () => {
+  it("loginPublic: Refuses the credentials on a wrong email or password", async () => {
     const { loginPublic } = await importAuth();
     mockLogin.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "credentials",
+    });
+  });
+
+  it("loginPublic: Reports too many attempts apart from wrong credentials", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockRejectedValueOnce(
+      new ConnectError("rate limited", Code.ResourceExhausted)
+    );
+
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "rate-limited",
+    });
+  });
+
+  it("loginPublic: Answers the session the API issued", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
+    });
+
+    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+      ok: true,
+      session: {
+        accessToken: "tok",
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+    });
   });
 
   const idTokenSignIn = {

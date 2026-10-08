@@ -77,11 +77,20 @@ export interface NotificationSettings {
   emailNotificationsEnabled: boolean;
 }
 
+/**
+ * What a password sign-in came to. A refused one says whether the credentials
+ * were wrong or too many attempts had been made for the password to be checked
+ * at all: the second is no reason to tell the reader their password is wrong.
+ */
+export type PublicLoginResult =
+  | { ok: true; session: PublicSession }
+  | { ok: false; refusal: "credentials" | "rate-limited" };
+
 export const loginPublic = async (
   email: string,
   password: string,
   tenantId: string
-): Promise<PublicSession | null> => {
+): Promise<PublicLoginResult> => {
   try {
     const response = await apiClient.auth.login(
       {
@@ -93,12 +102,21 @@ export const loginPublic = async (
     );
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
-      return null;
+      return { ok: false, refusal: "credentials" };
     }
-    return { accessToken, expiresAt: new Date(expiresAt) };
+    return {
+      ok: true,
+      session: { accessToken, expiresAt: new Date(expiresAt) },
+    };
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
-      return null;
+      return {
+        ok: false,
+        refusal:
+          rpcErrorDisposition(error) === "rate-limited"
+            ? "rate-limited"
+            : "credentials",
+      };
     }
     throw error;
   }

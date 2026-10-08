@@ -89,17 +89,23 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   } = parsed.data;
 
   const result = await loginPublic(email, password, tenantId);
-  if (!result) {
+  if (!result.ok) {
+    // A refusal for too many attempts came before the password was checked,
+    // so it says nothing about whether the password was right.
+    const message =
+      result.refusal === "rate-limited"
+        ? t("errors.rpc.rate-limited")
+        : loginFailed;
     const errorPath = await buildLoginErrorPath(
       locale,
       tenantId,
-      loginFailed,
+      message,
       returnToPath
     );
     redirect(errorPath);
   }
 
-  await writePublicSessionCookie(result, tenantId);
+  await writePublicSessionCookie(result.session, tenantId);
 
   // `returnTo` is stored locale-less, so the reader comes back in whichever
   // language they signed in from rather than the one they left.

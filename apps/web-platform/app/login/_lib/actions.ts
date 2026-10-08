@@ -59,23 +59,29 @@ export const loginAction = async (
   const { email, next: nextPath, password } = parsed.data;
 
   const result = await loginPlatform(email, password);
-  if (!result) {
+  if (!result.ok) {
+    // A refusal for too many attempts came before the password was checked,
+    // so it says nothing about whether the password was right.
     return {
-      message: t("platform.auth.login.failed"),
+      message:
+        result.refusal === "rate-limited"
+          ? t("errors.rpc.rate-limited")
+          : t("platform.auth.login.failed"),
       ok: false,
     };
   }
 
+  const { session } = result;
   const sealed = await encryptSessionPayload(
     {
-      accessToken: result.accessToken,
-      expiresAt: result.expiresAt.toISOString(),
+      accessToken: session.accessToken,
+      expiresAt: session.expiresAt.toISOString(),
     },
     resolveAuthSecret()
   );
   const cookieStore = await cookies();
   cookieStore.set({
-    ...sessionCookieOptions(result.expiresAt),
+    ...sessionCookieOptions(session.expiresAt),
     name: PLATFORM_SESSION_COOKIE_NAME,
     value: sealed,
   });
