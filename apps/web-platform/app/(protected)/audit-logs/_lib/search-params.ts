@@ -10,12 +10,19 @@ import { cursorTokenSchema } from "#lib/cursor-token";
 interface ParseAuditLogFiltersInput {
   action?: SearchParamValue;
   actor_user_public_id?: SearchParamValue;
+  tenant_id?: SearchParamValue;
   token?: SearchParamValue;
 }
 
 export interface AuditLogFilters {
   action: string;
   actorUserPublicId: string;
+  /**
+   * The tenant the list is narrowed to, by public ID: the ID a tenant's URL
+   * already names, so a link from `/tenants/<public ID>` carries the same value.
+   * The page resolves it to the internal ID `ListAuditLogs` filters on.
+   */
+  tenantPublicId: string;
   token: string;
 }
 
@@ -44,6 +51,7 @@ const createAuditLogFiltersSchema = (
   z.object({
     action: searchParamEnum(allowedActionValues, { fallback: "" }),
     actor_user_public_id: searchParamString({ fallback: "" }),
+    tenant_id: searchParamString({ fallback: "" }),
     token: cursorTokenSchema,
   });
 
@@ -56,6 +64,7 @@ export const parseAuditLogFilters = (
   return {
     action: parsed.action,
     actorUserPublicId: parsed.actor_user_public_id,
+    tenantPublicId: parsed.tenant_id,
     token: parsed.token,
   };
 };
@@ -63,9 +72,13 @@ export const parseAuditLogFilters = (
 export const buildAuditLogsPath = ({
   action,
   actorUserPublicId,
+  tenantPublicId,
   token,
 }: AuditLogFilters): string => {
   const search = new URLSearchParams();
+  if (tenantPublicId) {
+    search.set("tenant_id", tenantPublicId);
+  }
   if (actorUserPublicId) {
     search.set("actor_user_public_id", actorUserPublicId);
   }

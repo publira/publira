@@ -4693,6 +4693,8 @@
         "tenant_admin_invitation": "發給{$email}的管理員邀請",
         "webpush_config": "Web Push設定"
       },
+      "tenant_filter": "租戶：{$name}",
+      "tenant_filter_remove": "取消租戶篩選",
       "title": "稽核記錄",
       "unset": "未設定"
     },

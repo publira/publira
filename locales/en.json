@@ -4693,6 +4693,8 @@
         "tenant_admin_invitation": "Admin invitation for {$email}",
         "webpush_config": "Web Push settings"
       },
+      "tenant_filter": "Tenant: {$name}",
+      "tenant_filter_remove": "Remove the tenant filter",
       "title": "Audit logs",
       "unset": "Not set"
     },

@@ -4693,6 +4693,8 @@
         "tenant_admin_invitation": "{$email}への管理者招待",
         "webpush_config": "Web Push設定"
       },
+      "tenant_filter": "テナント: {$name}",
+      "tenant_filter_remove": "テナントの絞り込みを解除",
       "title": "監査ログ",
       "unset": "未設定"
     },

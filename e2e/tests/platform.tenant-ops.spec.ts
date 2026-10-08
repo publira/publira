@@ -377,6 +377,54 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
+  test("View audit logs lists only the entries about that tenant", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const otherName = `E2E Audit Other ${suffix}`;
+    const name = `E2E Audit Filter ${suffix}`;
+
+    trackTenant(
+      await createTenantViaUi(page, {
+        domain: `e2e-audit-other-${suffix}.localhost`,
+        name: otherName,
+      })
+    );
+    const tenantId = trackTenant(
+      await createTenantViaUi(page, {
+        domain: `e2e-audit-filter-${suffix}.localhost`,
+        name,
+      })
+    );
+
+    await page.getByRole("link", { name: "View audit logs" }).click();
+    await page.waitForURL(
+      (url) =>
+        url.pathname === "/audit-logs" &&
+        url.searchParams.get("tenant_id") === tenantId
+    );
+
+    // The tenant page stays mounted in the router bfcache, and its heading
+    // reads the same, so only the visible copy is the filter.
+    const tenantFilter = page
+      .getByText(`Tenant: ${name}`, { exact: true })
+      .filter({ visible: true });
+    await expect(tenantFilter).toBeVisible();
+    const rows = page.locator("table tbody tr");
+    await expect(
+      rows.filter({ hasText: "Created a tenant" }).filter({ hasText: name })
+    ).toHaveCount(1);
+    await expect(rows.filter({ hasNotText: name })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Remove the tenant filter" }).click();
+    await page.waitForURL(
+      (url) =>
+        url.pathname === "/audit-logs" && !url.searchParams.has("tenant_id")
+    );
+    await expect(tenantFilter).toHaveCount(0);
+    await expect(rows.filter({ hasText: otherName }).first()).toBeVisible();
+  });
+
   test("an operator without the required permission cannot create an operator", async ({
     page,
   }) => {
