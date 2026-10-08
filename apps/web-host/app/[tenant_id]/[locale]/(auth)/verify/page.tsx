@@ -11,7 +11,6 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -170,17 +169,11 @@ const VerifyHeader = async () => {
   );
 };
 
-/**
- * `connection()` keeps the confirmation itself out of a prerender: it spends
- * the token, so it has to run once per reader rather than once per build.
- */
 const VerificationContent = async ({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => {
-  await connection();
-
   const { token } = parseVerifySearchParams(await searchParams);
 
   return <VerificationResult token={token} />;
