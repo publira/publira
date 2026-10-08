@@ -1,7 +1,7 @@
 import {
-  createForwardedForInterceptor,
-  FORWARDED_FOR_HEADER,
-} from "@publira/api-client/forwarded-for";
+  createForwardedInterceptor,
+  forwardedHeadersOf,
+} from "@publira/api-client/forwarded";
 import { createPublicApiClient } from "@publira/api-client/public/client";
 import type { WebSessionPayload } from "@publira/web-session";
 import {
@@ -21,14 +21,11 @@ import {
 
 const DEFAULT_GRPC_URL = "http://localhost:8100";
 
-const readForwardedFor = async () => {
-  const requestHeaders = await headers();
-  return requestHeaders.get("x-forwarded-for");
-};
+const readForwardedHeaders = async () => forwardedHeadersOf(await headers());
 
 export const apiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_GRPC_URL ?? DEFAULT_GRPC_URL,
-  interceptors: [createForwardedForInterceptor(readForwardedFor)],
+  interceptors: [createForwardedInterceptor(readForwardedHeaders)],
   transport: "grpc",
 });
 
@@ -37,12 +34,9 @@ export const apiClient = createPublicApiClient({
  * address: sign-in, sign-up, a password reset, a guest's contact message. Only a call
  * with a session gets the address from the interceptor.
  */
-export const buildClientAddressHeaders = async () => {
-  const forwardedFor = await readForwardedFor();
-  return forwardedFor
-    ? { headers: { [FORWARDED_FOR_HEADER]: forwardedFor } }
-    : {};
-};
+export const buildClientAddressHeaders = async () => ({
+  headers: await readForwardedHeaders(),
+});
 
 export const buildSessionHeaders = (accessToken: string) =>
   buildBearerHeaders(accessToken);

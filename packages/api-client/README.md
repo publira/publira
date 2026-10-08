@@ -106,21 +106,36 @@ With `tenantId` set, every API request automatically carries the `X-Publira-Tena
 
 ## The client's address
 
-`@publira/api-client/forwarded-for` exports `createForwardedForInterceptor(resolve)`, which sets `X-Forwarded-For` from `resolve()` on every call that carries `Authorization`, `FORWARDED_FOR_HEADER` for a sessionless call that sets the header itself, and `serviceCallContextValues()`, the `contextValues` of a call made with the web service credential, which the interceptor leaves alone. An app passes the interceptor through `interceptors`, with a resolver that reads the header the edge set on the request being served.
+The server determines the client's address from the forwarded headers of the call, walking them from the right past every trusted proxy, so a web app passes on what it received and adds itself to the chain as any proxy does. Two modules do that.
+
+`@publira/api-client/forwarded-hop` exports `appendPeerAddressOnEveryRequest()`, which an app calls from `register()` in `instrumentation.ts`, and `appendPeerAddress(headers, peerAddress)`, what it applies to each request the process's HTTP server receives: the address the request arrived from is appended to the `X-Forwarded-For` and the `Forwarded` that arrived, and becomes an `X-Forwarded-For` of its own when neither did.
+
+`@publira/api-client/forwarded` exports `forwardedHeadersOf(headers)`, which picks `X-Forwarded-For` and `Forwarded` out of the request being served as they are, and `createForwardedInterceptor(resolve)`, which sets them from `resolve()` on every call that carries `Authorization`. A call that sets either header itself keeps it, which is how a sessionless call passes them on; `serviceCallContextValues()` is the `contextValues` of a call made with the web service credential, which the interceptor leaves alone.
+
+```ts
+// instrumentation.ts
+export const register = async () => {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { appendPeerAddressOnEveryRequest } =
+      await import("@publira/api-client/forwarded-hop");
+    appendPeerAddressOnEveryRequest();
+  }
+};
+```
 
 ```ts
 import { createAdminApiClient } from "@publira/api-client/admin/client";
-import { createForwardedForInterceptor } from "@publira/api-client/forwarded-for";
+import {
+  createForwardedInterceptor,
+  forwardedHeadersOf,
+} from "@publira/api-client/forwarded";
 import { headers } from "next/headers";
 
-const readForwardedFor = async () => {
-  const requestHeaders = await headers();
-  return requestHeaders.get("x-forwarded-for");
-};
+const readForwardedHeaders = async () => forwardedHeadersOf(await headers());
 
 export const apiClient = createAdminApiClient({
   baseUrl,
-  interceptors: [createForwardedForInterceptor(readForwardedFor)],
+  interceptors: [createForwardedInterceptor(readForwardedHeaders)],
   transport: "grpc",
 });
 ```
