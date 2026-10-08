@@ -21,6 +21,7 @@ import { AgeRatedVisibility } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import { FreeUntilBadge } from "#components/free-until-badge";
 import { GenreChips } from "#components/genre-chips";
 import { JsonLd } from "#components/json-ld";
@@ -260,10 +261,8 @@ const ContinueReadingSection = async () => {
                 className="group flex items-center gap-4 py-3"
                 href={`/series/${series.publicId}/episodes/${episode.publicId}`}
               >
-                <EyeCatchFrame
+                <EyeCatchThumbnail
                   alt={series.title}
-                  className="size-14 shrink-0 rounded-control"
-                  sizes="56px"
                   variants={series.eyeCatchImageVariants}
                 />
                 <span className="min-w-0 flex-1">
@@ -840,10 +839,8 @@ const NewEpisodesSection = async () => {
                 className="group flex items-center gap-4 py-3"
                 href={`/series/${ids.seriesId}/episodes/${ids.episodeId}`}
               >
-                <EyeCatchFrame
+                <EyeCatchThumbnail
                   alt={episode.seriesTitle}
-                  className="size-14 shrink-0 rounded-control"
-                  sizes="56px"
                   variants={episode.eyeCatchImageVariants}
                 />
                 <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
@@ -949,10 +946,8 @@ const UpdatedSeriesSection = async () => {
                 className="group flex items-center gap-4 py-3"
                 href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
               >
-                <EyeCatchFrame
+                <EyeCatchThumbnail
                   alt={item.seriesTitle}
-                  className="size-14 shrink-0 rounded-control"
-                  sizes="56px"
                   variants={item.eyeCatchImageVariants}
                 />
                 <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">

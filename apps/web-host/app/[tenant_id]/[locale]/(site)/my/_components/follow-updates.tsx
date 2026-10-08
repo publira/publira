@@ -15,7 +15,7 @@ import { formatDate } from "@publira/utils";
 import { Suspense } from "react";
 
 import { AgeRatedVisibility } from "#components/age-rated-visibility";
-import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
@@ -130,10 +130,8 @@ export const FollowUpdatesSection = async ({
               className="group flex items-center gap-4 py-3"
               href={`/series/${series.publicId}/episodes/${episode.publicId}`}
             >
-              <EyeCatchFrame
+              <EyeCatchThumbnail
                 alt={series.title}
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
                 variants={series.eyeCatchImageVariants}
               />
               <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">

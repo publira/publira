@@ -12,7 +12,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -199,12 +199,10 @@ export const LabelResults = async ({
               className="group flex items-center gap-4 py-3"
               href={`/labels/${label.publicId}`}
             >
-              <EyeCatchFrame
+              <EyeCatchThumbnail
                 // The name is right beside it in the row, so the artwork
                 // adds nothing a reader has not already been given.
                 alt=""
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
                 variants={label.eyeCatchImageVariants}
               />
               <span className="min-w-0 flex-1 truncate underline-offset-4 group-hover:underline">

@@ -949,14 +949,14 @@
         "usages": {
           "series": {
             "portrait": "The cover on shelves on the site and in the app, and on the series' page on the site.",
-            "square": "One of the images the site offers search engines.",
-            "landscape": "Wide banners on the site and in the app, and the small picture beside the series and its episodes in the site's lists.",
+            "square": "The small picture beside the series and its episodes in the site's lists, and one of the images the site offers search engines.",
+            "landscape": "Wide banners on the site and in the app, and the small picture beside each episode on the series' page and at the end of an episode on the site.",
             "og": "The preview shown when a link to the series or one of its episodes is shared."
           },
           "label": {
             "portrait": "Not shown on the site or in the app yet.",
-            "square": "The label's tile in the app.",
-            "landscape": "The banner on the label's page on the site and in the app, and the small picture beside the label in the site's lists.",
+            "square": "The label's tile in the app, and the small picture beside the label in the site's lists.",
+            "landscape": "The banner on the label's page on the site and in the app.",
             "og": "Not shown on the site or in the app yet."
           },
           "genre": {
