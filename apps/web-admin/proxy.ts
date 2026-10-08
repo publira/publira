@@ -129,5 +129,11 @@ export const proxy = async (request: NextRequest) => {
 };
 
 export const config = {
-  matcher: ["/((?!api/v1/revalidate(?:/|$)|_next/static|_next/image).*)"],
+  // The page upload (`lib/episode-pages-upload.ts`) is left out because Next.js
+  // copies the body of every request the proxy sees, up to a cap past which it
+  // silently drops the rest; the route resolves the tenant and the session
+  // itself before it reads the body.
+  matcher: [
+    "/((?!api/v1/revalidate(?:/|$)|api/v1/episode-pages(?:/|$)|_next/static|_next/image).*)",
+  ],
 };

@@ -2,6 +2,7 @@
 title: Episodes
 description: Create an episode, add its pages, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
 published: 2026-10-07
+updated: 2026-10-08
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -36,11 +37,11 @@ Choose **Create episode**. The episode is created with the Authors credited on t
 
 **Add comic pages**, on the episode's edit screen, adds pages in one of three ways under **Upload method**:
 
-- **Select multiple page images** takes several image files at once, chosen or dropped onto **Page images**. They are added in the order the browser hands them over, usually by file name, so check the order afterwards.
-- **Use a ZIP** takes a ZIP file and adds the `.png`, `.jpg`, `.jpeg`, and `.gif` images inside it, in the order of their paths, so `page2.png` comes before `page10.png`. Other files in it are ignored, and it may hold up to 1000 images.
-- **Use an ePub** takes an ePub file and adds its images in reading order.
+- **Select multiple page images** takes several JPEG, PNG, GIF, or WebP files at once, chosen or dropped onto **Page images**. They are added in the order the browser hands them over, usually by file name, so check the order afterwards.
+- **Use a ZIP** takes a ZIP file and adds the `.png`, `.jpg`, `.jpeg`, and `.gif` images inside it, in the order of their paths, so `page2.png` comes before `page10.png`. Other files in it are ignored, WebP images among them, and it may hold up to 1000 images.
+- **Use an ePub** takes an ePub file and adds the JPEG, PNG, GIF, or WebP images its pages show, in reading order, up to 1000 of them.
 
-Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each image may be a JPEG, PNG, GIF, or WebP file of up to 20 MB. The console sends one upload of at most 10 MB, however, so a whole episode is usually added in several batches of images rather than as one ZIP ([#3825](https://github.com/publira/publira/issues/3825)). New pages always go after the last one.
+Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each image may be up to 20 MB, and one upload up to 256 MB, whichever of the three it is, so a whole episode can be added as one ZIP or ePub. One larger than that is added over several uploads; each adds its pages after the last one. The card states these formats and limits under the file picker.
 
 **Registered page images** shows the pages in order. Drag a page by its handle, or focus the handle and use the arrow keys, to move it. A page cannot be removed or replaced once it is added ([#3831](https://github.com/publira/publira/issues/3831)), so check a batch before adding it.
 

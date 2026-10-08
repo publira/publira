@@ -15,7 +15,6 @@ const {
   mockUpdateEpisodePublishSchedule,
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateTag,
-  mockUploadEpisodePages,
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -32,7 +31,6 @@ const {
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateTag: vi.fn(),
-  mockUploadEpisodePages: vi.fn(),
   mockVerifyAdminSession: vi.fn(),
 }));
 
@@ -80,7 +78,6 @@ vi.mock("#lib/episode", () => ({
   updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
-  uploadEpisodePages: mockUploadEpisodePages,
 }));
 
 vi.mock("#lib/episode-free-window", () => ({
@@ -156,28 +153,6 @@ describe("episode actions", () => {
     expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
     expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
-  });
-
-  it("submitting an archive without its series is refused before the API", async () => {
-    const { uploadEpisodePagesAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_public_id", "SERIES001");
-    formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
-    formData.set("upload_mode", "zip");
-    formData.set(
-      "archive",
-      new File(["dummy"], "pages.zip", { type: "application/zip" })
-    );
-
-    const result = await uploadEpisodePagesAction(null, formData);
-
-    expect(result).toEqual({
-      message: "Series ID is missing.",
-      ok: false,
-    });
-    expect(mockUploadEpisodePages).not.toHaveBeenCalled();
   });
 
   it("updating the layout sends the page the episode states as an index", async () => {
@@ -585,82 +560,6 @@ describe("episode actions", () => {
       ok: false,
     });
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
-  });
-
-  it("submitting pages returns an error when no file is chosen in pages mode", async () => {
-    const { uploadEpisodePagesAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_public_id", "SERIES001");
-    formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
-    formData.set("upload_mode", "pages");
-
-    const result = await uploadEpisodePagesAction(null, formData);
-
-    expect(result).toEqual({
-      message: "Select page images to add.",
-      ok: false,
-    });
-    expect(mockUploadEpisodePages).not.toHaveBeenCalled();
-  });
-
-  it("submitting pages returns an error when the extension is wrong in zip mode", async () => {
-    const { uploadEpisodePagesAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_public_id", "SERIES001");
-    formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
-    formData.set("series_id", "018f0e6a-3000-7000-8000-000000000001");
-    formData.set("upload_mode", "zip");
-    formData.set(
-      "archive",
-      new File(["dummy"], "pages.txt", { type: "text/plain" })
-    );
-
-    const result = await uploadEpisodePagesAction(null, formData);
-
-    expect(result).toEqual({
-      message: "Select a ZIP (.zip) file.",
-      ok: false,
-    });
-    expect(mockUploadEpisodePages).not.toHaveBeenCalled();
-  });
-
-  it("submitting pages calls the API and then redirects on success in pages mode", async () => {
-    mockUploadEpisodePages.mockResolvedValueOnce({ ok: true });
-
-    const { uploadEpisodePagesAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_public_id", "SERIES001");
-    formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
-    formData.set("upload_mode", "pages");
-    formData.append("pages", new File(["a"], "1.png", { type: "image/png" }));
-    formData.append("pages", new File(["b"], "2.png", { type: "image/png" }));
-
-    await uploadEpisodePagesAction(null, formData);
-
-    expect(mockUploadEpisodePages).toHaveBeenCalledWith(
-      {
-        episodeId: "018f0e6a-4000-7000-8000-000000000001",
-        pages: expect.arrayContaining([
-          expect.objectContaining({ name: "1.png" }),
-          expect.objectContaining({ name: "2.png" }),
-        ]),
-        tenantId: "TENANT001",
-      },
-      "en"
-    );
-    expect(mockUpdateTag).toHaveBeenCalledWith(
-      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
-    );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
-    expect(mockRedirect).toHaveBeenCalledWith(
-      "/series/SERIES001/episodes/EP001?pages_uploaded=1"
-    );
   });
 
   it("reordering images returns an error for invalid ordered_image_ids", async () => {

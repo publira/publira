@@ -270,4 +270,18 @@ describe("web-admin proxy", () => {
       unstable_doesMiddlewareMatch({ config, url: "/api/v1/revalidate/" })
     ).toBe(false);
   });
+
+  it("keeps the page upload out of the proxy matcher", async () => {
+    const { config } = await import("./proxy");
+
+    expect(
+      unstable_doesMiddlewareMatch({ config, url: "/api/v1/episode-pages" })
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        url: "/api/v1/episode-pagesx",
+      })
+    ).toBe(true);
+  });
 });

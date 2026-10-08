@@ -23,7 +23,6 @@ import {
   updateEpisodePurchaseAvailability,
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
-  uploadEpisodePages,
 } from "#lib/episode";
 import {
   createEpisodeFreeWindow,
@@ -32,10 +31,7 @@ import {
 } from "#lib/episode-free-window";
 import {
   creditShareBpsSchema,
-  fileListFormSchema,
   jsonStringArrayFormSchema,
-  optionalFileFormSchema,
-  optionalRecordId,
   optionalTrimmedString,
   requiredRecordId,
   requiredTrimmedString,
@@ -60,8 +56,6 @@ const hiddenParamsSchema = async (locale: Locale) => {
     episodePublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.episode_missing")
     ),
-    // Only the page upload names the series, which an archive needs.
-    seriesId: optionalRecordId(),
     seriesPublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.series_missing")
     ),
@@ -127,26 +121,6 @@ const creditsFormSchema = async (locale: Locale) => {
     ),
   });
 };
-const uploadModeSchema = z.preprocess(
-  (value) => {
-    if (value === "zip" || value === "epub" || value === "pages") {
-      return value;
-    }
-
-    return "pages";
-  },
-  z.enum(["pages", "zip", "epub"])
-);
-
-const uploadPagesFormSchema = async (locale: Locale) => {
-  const base = await hiddenParamsSchema(locale);
-
-  return base.extend({
-    archive: optionalFileFormSchema,
-    pages: fileListFormSchema,
-    uploadMode: uploadModeSchema,
-  });
-};
 const reorderImagesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -169,7 +143,6 @@ const reorderImagesSchema = async (locale: Locale) => {
 const hiddenFormFields = {
   episodeId: { kind: "value", name: "episode_id" },
   episodePublicId: { kind: "value", name: "episode_public_id" },
-  seriesId: { kind: "value", name: "series_id" },
   seriesPublicId: { kind: "value", name: "series_public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
@@ -534,124 +507,6 @@ export const replaceEpisodeCreditsAction = async (
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?credits_updated=1`
-  );
-};
-
-export const uploadEpisodePagesAction = async (
-  _prevState: EpisodeEditActionState,
-  formData: FormData
-): Promise<EpisodeEditActionState> => {
-  await assertSameOrigin();
-  const locale = await getActionLocale(formData);
-  const [t, schema] = await Promise.all([
-    getMessagesFor(locale),
-    uploadPagesFormSchema(locale),
-  ]);
-  const parsed = schema.safeParse(
-    toFormDataInput(formData, {
-      ...hiddenFormFields,
-      archive: { kind: "file", name: "archive" },
-      pages: { kind: "files", name: "pages" },
-      uploadMode: { kind: "value", name: "upload_mode" },
-    })
-  );
-  if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }));
-  }
-
-  const {
-    archive,
-    episodeId,
-    episodePublicId,
-    pages,
-    seriesId,
-    seriesPublicId,
-    tenantId,
-    uploadMode,
-  } = parsed.data;
-
-  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
-  if (mismatch) {
-    return toFailure(mismatch);
-  }
-
-  if (uploadMode === "zip" || uploadMode === "epub") {
-    // An archive is unpacked against its series, which the API cannot infer.
-    if (seriesId === "") {
-      return toFailure(t("admin.series.episodes.validation.series_missing"));
-    }
-    if (!archive) {
-      return toFailure(
-        uploadMode === "zip"
-          ? t("admin.series.episodes.validation.zip_required")
-          : t("admin.series.episodes.validation.epub_required")
-      );
-    }
-
-    const normalizedName = archive.name.toLowerCase();
-    const mime = archive.type.toLowerCase();
-    const isValidArchive =
-      uploadMode === "zip"
-        ? mime === "application/zip" || normalizedName.endsWith(".zip")
-        : mime.includes("application/epub+zip") ||
-          normalizedName.endsWith(".epub");
-
-    if (!isValidArchive) {
-      return toFailure(
-        uploadMode === "zip"
-          ? t("admin.series.episodes.validation.zip_invalid")
-          : t("admin.series.episodes.validation.epub_invalid")
-      );
-    }
-
-    const result = await withAdminSessionReauth(() =>
-      uploadEpisodePages(
-        {
-          archive,
-          episodeId,
-          seriesId,
-          tenantId,
-        },
-        locale
-      )
-    );
-
-    if (!result.ok) {
-      return toFailure(result.message);
-    }
-
-    updateTag(episodesCacheTag(tenantId));
-    updateTag(episodeCacheTag(tenantId, episodeId));
-
-    redirect(
-      `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
-    );
-  }
-
-  if (pages.length === 0) {
-    return toFailure(t("admin.series.episodes.validation.pages_required"));
-  }
-
-  const result = await withAdminSessionReauth(() =>
-    uploadEpisodePages(
-      {
-        episodeId,
-        pages,
-        tenantId,
-      },
-      locale
-    )
-  );
-
-  if (!result.ok) {
-    return toFailure(result.message);
-  }
-
-  updateTag(episodesCacheTag(tenantId));
-  updateTag(episodeCacheTag(tenantId, episodeId));
-
-  redirect(
-    `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
   );
 };
 

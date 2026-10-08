@@ -5,7 +5,6 @@ import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import {
-  act,
   cleanup,
   fireEvent,
   render as renderBase,
@@ -16,9 +15,22 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import {
+  EPISODE_PAGES_UPLOAD_MAX_BYTES,
+  EPISODE_PAGES_UPLOAD_PATH,
+} from "#lib/episode-pages-upload";
+import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
 import { EpisodePagesForm } from "./episode-pages-form";
+
+const { mockPush, mockRefresh } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockRefresh: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
+}));
 
 const render = (ui: ReactNode) =>
   renderBase(ui, {
@@ -43,21 +55,28 @@ vi.mock("#lib/get-messages", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
-const action = vi.fn(() => Promise.resolve(null));
+/** Answers every upload with `body`, or leaves it in flight when given none. */
+const stubUpload = (body?: EpisodePagesUploadResponse, status = 200) => {
+  const fetch = vi.fn((_input: string, _init: RequestInit) =>
+    body
+      ? Promise.resolve(Response.json(body, { status }))
+      : Promise.withResolvers<never>().promise
+  );
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+};
 
-const renderForm = async (
-  formAction: Parameters<typeof EpisodePagesForm>[0]["action"] = action
-) =>
+const renderForm = async () =>
   render(
     await EpisodePagesForm({
-      action: formAction,
       episodeId: "EP001-ID",
       episodePublicId: "EP001",
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
     })
   );
 
@@ -69,20 +88,16 @@ const renderForm = async (
 const renderBothForms = async () => {
   const [first, second] = await Promise.all([
     EpisodePagesForm({
-      action,
       episodeId: "EP001-ID",
       episodePublicId: "EP001",
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
     }),
     EpisodePagesForm({
-      action,
       episodeId: "EP002-ID",
       episodePublicId: "EP002",
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
-      tenantId: "TENANT001",
     }),
   ]);
 
@@ -109,7 +124,7 @@ describe("EpisodePagesForm", () => {
     expect(uploadMode?.value).toBe("pages");
     expect(input.name).toBe("pages");
     expect(input.multiple).toBe(true);
-    expect(input.accept).toBe("image/*");
+    expect(input.accept).toBe("image/jpeg,image/png,image/gif,image/webp");
     expect(
       screen.getByRole("button", { name: "Add page images" })
     ).toBeTruthy();
@@ -178,9 +193,9 @@ describe("EpisodePagesForm", () => {
     expect(inputs.map((input) => input.name)).toEqual(["pages", "pages"]);
   });
 
-  it("empties the list of picked files once the upload succeeds", async () => {
-    const upload = Promise.withResolvers<EpisodeEditActionState>();
-    await renderForm(() => upload.promise);
+  it("posts the form to the upload route and refreshes the screen once the pages are in", async () => {
+    const fetch = stubUpload({ message: "Page images added.", ok: true });
+    await renderForm();
 
     const input = fileInput();
     fireEvent.change(input, {
@@ -191,24 +206,162 @@ describe("EpisodePagesForm", () => {
     expect(screen.getByText("page-1.png")).toBeTruthy();
 
     fireEvent.submit(input.form as HTMLFormElement);
-    await act(async () => {
-      upload.resolve({
-        message: "The pages were added.",
-        ok: true,
-      });
-      await upload.promise;
-    });
 
-    expect(await screen.findByText("The pages were added.")).toBeTruthy();
+    expect(await screen.findByText("Page images added.")).toBeTruthy();
+    expect(fetch).toHaveBeenCalledOnce();
+    const [path, init] = fetch.mock.calls[0] ?? [];
+    expect(path).toBe(EPISODE_PAGES_UPLOAD_PATH);
+    expect(init?.method).toBe("POST");
+    const body = init?.body as FormData;
+    expect(body.get("episode_id")).toBe("EP001-ID");
+    expect(body.get("series_id")).toBe("SERIES001-ID");
+    expect(body.get("upload_mode")).toBe("pages");
+    expect(mockRefresh).toHaveBeenCalledOnce();
+    // The upload empties the file input, and the names listed for it with it.
     expect(screen.queryByText("page-1.png")).toBeNull();
+  });
+
+  it("shows the refusal the route answers with and keeps the screen as it is", async () => {
+    stubUpload({ message: "Select a ZIP (.zip) file.", ok: false }, 400);
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    expect(await screen.findByText("Select a ZIP (.zip) file.")).toBeTruthy();
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("goes to the login page the route names when the session was rejected", async () => {
+    stubUpload(
+      {
+        location: "/login?next=%2Fseries&reason=session_revoked",
+        message: "Your session is no longer valid. Please sign in again.",
+        ok: false,
+      },
+      401
+    );
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith(
+        "/login?next=%2Fseries&reason=session_revoked"
+      );
+    });
+  });
+
+  it("holds an upload started offline and sends it once the browser is back online", async () => {
+    const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    onTestFinished(() => {
+      onLine.mockRestore();
+    });
+    const fetch = stubUpload({ message: "Page images added.", ok: true });
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    // Held rather than failed: nothing is sent while the browser is offline.
+    await waitFor(() => {
+      expect(fileInput().matches(":disabled")).toBe(true);
+    });
+    expect(fetch).not.toHaveBeenCalled();
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+
+    expect(await screen.findByText("Page images added.")).toBeTruthy();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("does not send an upload again once the connection drops under it, and shows what landed", async () => {
+    const fetch = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")));
+    vi.stubGlobal("fetch", fetch);
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    expect(
+      await screen.findByText(
+        /The connection was lost while the pages were being sent/u
+      )
+    ).toBeTruthy();
+    window.dispatchEvent(new Event("online"));
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(mockRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an answer that is not the route's own as a failed upload", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response("<html>Bad Gateway</html>", { status: 502 })
+        )
+      )
+    );
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    expect(
+      await screen.findByText(
+        "Could not add the page images. Please try again later."
+      )
+    ).toBeTruthy();
+  });
+
+  it("states the size limit when a proxy in front refuses the body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response("<html>Request Entity Too Large</html>", {
+            status: 413,
+          })
+        )
+      )
+    );
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    expect(
+      await screen.findByText(/Keep each upload to 256MB or less/u)
+    ).toBeTruthy();
+  });
+
+  it("refuses files over the upload limit without sending them", async () => {
+    const fetch = stubUpload({ message: "Page images added.", ok: true });
+    // jsdom submits an empty file in place of the ones a `change` event
+    // hands the input, so the oversized file is what the form's entries yield.
+    const oversized = new File(["a"], "page-1.png", { type: "image/png" });
+    Object.defineProperty(oversized, "size", {
+      value: EPISODE_PAGES_UPLOAD_MAX_BYTES + 1,
+    });
+    const values = vi
+      .spyOn(FormData.prototype, "values")
+      .mockImplementation(() => [oversized].values());
+    onTestFinished(() => {
+      values.mockRestore();
+    });
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    expect(
+      await screen.findByText(/Keep each upload to 256MB or less/u)
+    ).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   // The Action carries the files picked when the form was submitted, so a file
   // picked or dropped while it is in flight would be listed but not uploaded.
   it("closes the file input and ignores a drop while the upload is in flight", async () => {
-    // Never resolved: the assertions are about the window the upload is open in.
-    const pendingAction = vi.fn(() => Promise.withResolvers<never>().promise);
-    await renderForm(pendingAction);
+    // Never answered: the assertions are about the window the upload is open in.
+    stubUpload();
+    await renderForm();
 
     const input = fileInput();
     fireEvent.change(input, {
@@ -237,9 +390,6 @@ describe("EpisodePagesForm", () => {
       }
     );
     Object.defineProperty(input, "files", { value: null, writable: true });
-    onTestFinished(() => {
-      vi.unstubAllGlobals();
-    });
 
     const dropZone = screen.getByText(
       "Drop images here or select files."

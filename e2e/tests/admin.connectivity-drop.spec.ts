@@ -61,14 +61,17 @@ test.describe("web-admin connectivity drop", () => {
       });
     }).toPass({ timeout: 15_000 });
 
+    // Adding pages is not idempotent, so the upload is held before it is sent
+    // rather than sent and repeated: nothing may leave while offline.
+    const sent: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/episode-pages") {
+        sent.push(request.method());
+      }
+    });
+
     await page.context().setOffline(true);
-    const refused = page.waitForEvent(
-      "requestfailed",
-      (request) =>
-        request.method() === "POST" && "next-action" in request.headers()
-    );
     await page.getByRole("button", { name: "Add page images" }).click();
-    await refused;
 
     // Held rather than failed: the form stays pending while the connection is
     // gone.
@@ -77,13 +80,16 @@ test.describe("web-admin connectivity drop", () => {
       page.getByRole("progressbar", { name: "Upload progress" })
     ).toBeVisible();
 
+    expect(sent).toEqual([]);
+
     await page.context().setOffline(false);
 
     // Nothing is picked again: the files chosen before the drop are the ones
-    // the retried Action carries.
+    // the held upload carries, sent once.
     await expect(page.getByText("Page images added.")).toBeVisible({
       timeout: 60_000,
     });
     await expect.poll(() => registeredPageCount(page)).toBe(2);
+    expect(sent).toEqual(["POST"]);
   });
 });

@@ -35,9 +35,10 @@ const isMatchingReferer = (value: string, host: string): boolean => {
  * This app deliberately uses Origin/Referer validation instead of a
  * double-submit token. Tenant hosts are dynamic, so this compares the
  * request's advertised origin with Host (or the trusted proxy's
- * X-Forwarded-Host) rather than a fixed deployment allowlist. Route Handlers
- * are outside this guard: admin API requests use bearer authentication and the
- * remaining handlers are GET-only.
+ * X-Forwarded-Host) rather than a fixed deployment allowlist. A Route Handler
+ * that changes something with the session cookie calls it too, as the page
+ * upload does; the revalidation endpoint uses bearer authentication instead,
+ * and the remaining handlers are GET-only.
  */
 export const assertSameOrigin = async (): Promise<void> => {
   const requestHeaders = await headers();

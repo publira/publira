@@ -1,5 +1,4 @@
 import {
-  ActionForm,
   ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
@@ -24,12 +23,12 @@ import {
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
 import {
   EpisodePagesDropZone,
   EpisodePagesModeButton,
   EpisodePagesSelectedFiles,
   EpisodePagesUpload,
+  EpisodePagesUploadForm,
   EpisodePagesWhile,
 } from "./episode-pages-upload-controls";
 
@@ -38,11 +37,6 @@ interface EpisodePagesFormProps {
   seriesPublicId: string;
   episodeId: string;
   episodePublicId: string;
-  action: (
-    prevState: EpisodeEditActionState,
-    formData: FormData
-  ) => Promise<EpisodeEditActionState>;
-  tenantId: string;
 }
 
 /** Awaits the catalog for the progress bar's name, which is an attribute rather than a node. */
@@ -51,8 +45,6 @@ export const EpisodePagesForm = async ({
   seriesPublicId,
   episodeId,
   episodePublicId,
-  action,
-  tenantId,
 }: EpisodePagesFormProps) => {
   const t = await getMessages();
 
@@ -72,12 +64,9 @@ export const EpisodePagesForm = async ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm action={action} className="grid gap-4">
-        <input name="tenant_id" type="hidden" value={tenantId} />
+      <EpisodePagesUploadForm>
         <input name="series_id" type="hidden" value={seriesId} />
-        <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_id" type="hidden" value={episodeId} />
-        <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
         <EpisodePagesUpload>
           <ActionFormFieldset className="grid gap-4">
@@ -209,7 +198,7 @@ export const EpisodePagesForm = async ({
             </ActionFormSubmit>
           </div>
         </EpisodePagesUpload>
-      </ActionForm>
+      </EpisodePagesUploadForm>
     </AdminSection>
   );
 };

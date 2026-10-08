@@ -90,6 +90,13 @@ server {
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;
+
+    # The episode edit screen adds a whole episode's pages in one upload of up
+    # to 256 MiB. A longer prefix than app-routes.conf's /api/v1/, so it wins.
+    location ^~ /api/v1/episode-pages {
+        client_max_body_size 256m;
+        proxy_pass http://$publira_app;
+    }
 }
 
 # The platform console. `$publira_app` names its upstream only once a request
