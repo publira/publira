@@ -14,6 +14,7 @@ import {
   tenantMobileAppAssociationCacheTag,
   updateTenantMobileAppAssociation,
 } from "#lib/tenant-mobile-app-association";
+import { tenantSignInSettingsCacheTag } from "#lib/tenant-sign-in-settings";
 
 import {
   appLinksFormFields,
@@ -49,6 +50,8 @@ export const updateAppLinksAction = async (
   // The payment settings show the app each store sells in, and whether it is
   // ready depends on it.
   updateTag(tenantStorePaymentSettingsCacheTag(tenantId));
+  // So do the sign-in settings, through the iOS app Apple signs in with.
+  updateTag(tenantSignInSettingsCacheTag(tenantId));
 
   return { message: t("admin.settings.app_links.saved"), ok: true };
 };

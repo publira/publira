@@ -33,6 +33,11 @@ vi.mock("#lib/store-payment-settings", () => ({
     `tenant:${tenantId}:store-payment-settings`,
 }));
 
+vi.mock("#lib/tenant-sign-in-settings", () => ({
+  tenantSignInSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:sign-in-settings`,
+}));
+
 const FINGERPRINT_A = Array.from({ length: 32 }, () => "AA").join(":");
 const FINGERPRINT_B = Array.from({ length: 32 }, () => "0b").join(":");
 
@@ -94,6 +99,9 @@ describe("updateAppLinksAction", () => {
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:store-payment-settings"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:sign-in-settings"
     );
   });
 
