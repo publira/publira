@@ -223,3 +223,48 @@ func TestDBListAuditLogsKeepsTheTenantOfADeletedReader(t *testing.T) {
 		t.Fatalf("entries for tenant B =\n%s\nwant none", got)
 	}
 }
+
+// The processes of the previous release keep serving between db migrate and
+// their restart, and write their entries without tenant_id. The database fills
+// it from the target, as the platform role, so those entries are in the
+// tenant's log too.
+func TestDBListAuditLogsFillsTheTenantOfAnEntryWrittenWithoutOne(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", "reader@example.com", "Reader A")
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := context.Background()
+
+	for _, entry := range []struct{ action, targetType, targetID string }{
+		{"tenant_suspended", "tenant", tenant.ID.String()},
+		{"user_suspended", "user", reader.ID.String()},
+		{"operator_updated", "operator", operator.ID.String()},
+	} {
+		if _, err := pg.OpenPlatformDB(t).ExecContext(ctx, `
+			INSERT INTO platform_audit_logs (id, actor_platform_user_id, actor_role, action, target_type, target_id, outcome)
+			VALUES (gen_random_uuid(), $1, 'platform_operator', $2, $3, $4, 'success')
+		`, operator.ID, entry.action, entry.targetType, entry.targetID); err != nil {
+			t.Fatalf("insert %s without tenant_id: %v", entry.action, err)
+		}
+	}
+
+	res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{TenantId: tenant.ID.String()})
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	actions := make([]string, 0, len(res.AuditLogs))
+	for _, log := range res.AuditLogs {
+		actions = append(actions, log.GetAction()+" "+log.GetTenantName())
+	}
+	got := strings.Join(actions, "\n")
+	for _, want := range []string{"tenant_suspended Tenant A", "user_suspended Tenant A"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("entries for tenant A =\n%s\nwant %q among them", got, want)
+		}
+	}
+	if strings.Contains(got, "operator_updated") {
+		t.Fatalf("entries for tenant A =\n%s\nwant no operator entry", got)
+	}
+}
