@@ -123,10 +123,11 @@ func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettin
 // token the web apps read platform-level data with; a nil one admits no web
 // app.
 //
-// login is the sign-in limit the process hands every namespace it serves, as
-// publicapi.New describes; a nil one counts on its own.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard) *API {
-	api := newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil, nil)
+// login and mail are the sign-in limit and the mail limit the process hands
+// every namespace it serves, as publicapi.New describes; a nil one counts on
+// its own.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard, mail *mailguard.Guard) *API {
+	api := newAPI(db, queries, logger, encryptor, tester, tokens, recorder, mail, nil)
 	api.server.serviceToken = serviceToken
 	if login == nil {
 		api.server.shareLoginGuard()
