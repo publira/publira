@@ -41,7 +41,9 @@ RUN printf '%s\n' \
 # browsers without the package that drives them. Installing it at build time
 # rather than letting `npx` fetch it when the container starts keeps the server
 # off the network and out of the reach of a release published between two runs.
-RUN npm install --global --no-fund --no-audit playwright@1.63.0
+# renovate: datasource=npm depName=playwright
+ARG PLAYWRIGHT_VERSION=1.63.0
+RUN npm install --global --no-fund --no-audit "playwright@${PLAYWRIGHT_VERSION}"
 
 # A connected client opens its own contexts; the server itself only has to be
 # reachable. Port and host come from the compose command.
