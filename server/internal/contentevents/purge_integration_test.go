@@ -3,6 +3,7 @@ package contentevents
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -138,6 +139,68 @@ func TestRunKeepsEventsYoungerThanTheBoundWhateverIsSaved(t *testing.T) {
 		if !eventExists(t, pg.DB, id) {
 			t.Fatalf("event %s, younger than the bound, was purged", id)
 		}
+	}
+}
+
+// The purge records each tenant's cutoff before it deletes anything, and a
+// later run under a longer period does not move the record back: the events
+// the earlier run took are gone whatever the period says now. A dry run
+// deletes nothing and records nothing.
+func TestRunRecordsTheFurthestCutoffItApplied(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+
+	now := time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "PURGEMARK001", "purge-mark.example.com", "Purge Mark Tenant")
+	purger := New(pg.OpenContentStatsDB(t))
+	periods := func(days int) retention.Table {
+		return retention.NewTable(
+			retention.Periods{WithdrawnCommentDays: 180, ContentEventDays: days, DailyRankingSnapshotDays: 90, WeeklyRankingSnapshotDays: 400},
+			nil,
+		)
+	}
+	purgedBefore := func() (time.Time, bool) {
+		t.Helper()
+		var at time.Time
+		err := pg.DB.QueryRowContext(ctx, "SELECT purged_before FROM content_event_purges WHERE tenant_id = $1", tenant.ID).Scan(&at)
+		if errors.Is(err, sql.ErrNoRows) {
+			return time.Time{}, false
+		}
+		if err != nil {
+			t.Fatalf("read the purge record: %v", err)
+		}
+		return at, true
+	}
+
+	if _, err := purger.Run(ctx, Options{Now: now, Retention: periods(30), DryRun: true}); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if at, ok := purgedBefore(); ok {
+		t.Fatalf("a dry run recorded a purge before %s", at.Format(time.RFC3339))
+	}
+
+	if _, err := purger.Run(ctx, Options{Now: now, Retention: periods(30)}); err != nil {
+		t.Fatalf("Run under 30 days: %v", err)
+	}
+	want := now.AddDate(0, 0, -30)
+	if at, ok := purgedBefore(); !ok || !at.Equal(want) {
+		t.Fatalf("purged_before = %s (recorded %t), want %s", at.Format(time.RFC3339), ok, want.Format(time.RFC3339))
+	}
+
+	if _, err := purger.Run(ctx, Options{Now: now.AddDate(0, 0, 1), Retention: periods(90)}); err != nil {
+		t.Fatalf("Run under 90 days: %v", err)
+	}
+	if at, _ := purgedBefore(); !at.Equal(want) {
+		t.Fatalf("purged_before = %s after a run under a longer period, want it kept at %s", at.Format(time.RFC3339), want.Format(time.RFC3339))
+	}
+
+	cutoffs, err := LoadCutoffs(ctx, dbmodels.New(pg.DB))
+	if err != nil {
+		t.Fatalf("LoadCutoffs: %v", err)
+	}
+	if got := cutoffs.For(tenant.ID, now.AddDate(0, 0, 1)); !got.Equal(want) {
+		t.Fatalf("cutoff = %s, want the purge's %s", got.Format(time.RFC3339), want.Format(time.RFC3339))
 	}
 }
 

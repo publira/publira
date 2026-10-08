@@ -1190,6 +1190,7 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListContactMessagesByCreatedAtDesc(ctx context.Context, arg ListContactMessagesByCreatedAtDescParams) ([]ListContactMessagesByCreatedAtDescRow, error)
 	ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error)
+	ListContentEventPurges(ctx context.Context) ([]ListContentEventPurgesRow, error)
 	// Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
 	ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error)
 	// Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
@@ -2374,6 +2375,10 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// RecordContentEventPurge records that a purge is about to delete a tenant's
+	// events before purged_before. It never moves the mark back, so a run under a
+	// period that was lengthened since cannot hide what an earlier run deleted.
+	RecordContentEventPurge(ctx context.Context, arg RecordContentEventPurgeParams) error
 	// RecordEpisodeReadProjection moves a tenant's projection instant forward, and
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.

@@ -298,6 +298,11 @@ REVOKE INSERT, UPDATE, DELETE ON tenant_fcm_config FROM publira_outbox;
 -- that moved it would make the worker skip a day or rebuild one again.
 REVOKE ALL ON daily_rebuild_progress FROM publira_platform, publira_admin, publira_public, publira_outbox;
 
+-- content_event_purges records how far the content event purge has reached, and
+-- only the maintenance role reads or moves it: the purge writes it, and the
+-- statistics rebuild reads it to leave alone a day whose events are gone.
+REVOKE ALL ON content_event_purges FROM publira_platform, publira_admin, publira_public, publira_outbox;
+
 -- The worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. It also

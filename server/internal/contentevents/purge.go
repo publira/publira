@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/retention"
 )
 
@@ -74,7 +75,8 @@ func New(db *sql.DB) *Purger {
 }
 
 // Run deletes every content_events row older than its tenant's cutoff, one
-// tenant at a time, in chunks of opts.ChunkSize. Each chunk commits on its
+// tenant at a time, in chunks of opts.ChunkSize. Each tenant's cutoff is
+// recorded in content_event_purges first, which is what LoadCutoffs reads. Each chunk commits on its
 // own: a cancelled or timed-out run keeps the chunks it already finished, and
 // the next run resumes from there.
 //
@@ -137,6 +139,16 @@ func (p *Purger) purgeTenant(
 		return candidates, 0, nil
 	}
 
+	// The mark goes down before the first row does, so no event is ever gone
+	// without it saying so. A run that fails part-way leaves a mark that may
+	// claim more than it deleted, which costs a rebuild a day it could have
+	// read, never one it could not.
+	if err := dbmodels.New(p.db).RecordContentEventPurge(ctx, dbmodels.RecordContentEventPurgeParams{
+		TenantID:     tenantID,
+		PurgedBefore: cutoff,
+	}); err != nil {
+		return 0, 0, fmt.Errorf("record the purge: %w", err)
+	}
 	for {
 		deleted, err := p.deleteChunk(ctx, tenantID, cutoff, chunkSize)
 		if err != nil {

@@ -10,11 +10,11 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/contentevents"
 	"github.com/publira/publira/server/internal/contentranking"
 	"github.com/publira/publira/server/internal/contentstats"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/recommendfeatures"
-	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/tenantday"
 )
 
@@ -77,23 +77,23 @@ func (s EpisodeReadProjection) CatchUp(ctx context.Context, deps Deps) error {
 
 // CatchUp rebuilds, for every tenant, each day from the one after its last
 // rebuilt day through the last day its episode reads were projected past. A day
-// that began before the tenant's content event retention cutoff has lost its
-// events, so it is logged as missing and passed over rather than rebuilt from
-// what is left.
+// that began before the tenant's content event cutoff — its retention period's,
+// or a purge's that ran under a shorter one — has lost its events, so it is
+// logged as missing and passed over rather than rebuilt from what is left.
 func (s ContentStatsAggregation) CatchUp(ctx context.Context, deps Deps) error {
 	if deps.DB == nil {
 		return errNoDB
 	}
-	table, err := retention.LoadTable(ctx, dbmodels.New(deps.DB))
+	cutoffs, err := contentevents.LoadCutoffs(ctx, dbmodels.New(deps.DB))
 	if err != nil {
-		return fmt.Errorf("load retention periods: %w", err)
+		return err
 	}
 	now := time.Now()
 	aggregator := contentstats.New(deps.DB)
 	return catchUp(ctx, deps, catchUpLink{
 		name: "content stats",
 		lost: func(tenant tenantday.Tenant, day time.Time) (bool, error) {
-			return contentstats.PastRetention(tenant, day, table.For(tenant.ID), now)
+			return contentstats.EventsGone(tenant, day, cutoffs.For(tenant.ID, now))
 		},
 		pending: func(tenant tenantday.Tenant, p dbmodels.ListDailyRebuildProgressRow) (time.Time, time.Time, error) {
 			last, err := tenant.Date(time.Time{}, p.EpisodeReadsProjectedAt)
@@ -269,7 +269,7 @@ tenants:
 
 // skipLost records as rebuilt the lost days at the front of first..last and
 // logs them as missing, returning the first day that can still be rebuilt. The
-// lost days are always the oldest, since a retention cutoff only moves forward.
+// lost days are always the oldest, since what loses them is a cutoff in time.
 func skipLost(ctx context.Context, logger *slog.Logger, queries *dbmodels.Queries, link catchUpLink, tenant tenantday.Tenant, first, last time.Time) (time.Time, error) {
 	if link.lost == nil {
 		return first, nil
@@ -291,7 +291,7 @@ func skipLost(ctx context.Context, logger *slog.Logger, queries *dbmodels.Querie
 	if err := link.advance(ctx, queries, tenant.ID, through); err != nil {
 		return first, err
 	}
-	logger.ErrorContext(ctx, link.name+" missing: its input is past retention",
+	logger.ErrorContext(ctx, link.name+" missing: its input is gone",
 		"tenant_id", tenant.ID,
 		"from", first.Format(time.DateOnly),
 		"through", through.Format(time.DateOnly),

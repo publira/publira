@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -34,7 +34,7 @@ type Result struct {
 	TenantCount int
 	RowCount    int64
 	// Skipped are the tenants whose day the run left alone because their
-	// content events for it are past retention. They count in neither total.
+	// content events for it may be gone. They count in neither total.
 	Skipped []Skipped
 }
 
@@ -73,7 +73,7 @@ type Options struct {
 // left would fail for that same reason, so the loop ends at the tenant that
 // hit it rather than working through the rest.
 //
-// A tenant whose day is PastRetention is left alone and reported in
+// A tenant whose day is EventsGone is left alone and reported in
 // Result.Skipped rather than rebuilt, the way the worker's catch-up passes
 // over it. Naming an old date is how such a day gets asked for, and the rows
 // already stored for it are the only copy of its views, completed reads,
@@ -86,9 +86,9 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	table, err := retention.LoadTable(ctx, dbmodels.New(a.db))
+	cutoffs, err := contentevents.LoadCutoffs(ctx, dbmodels.New(a.db))
 	if err != nil {
-		return Result{}, fmt.Errorf("load retention periods: %w", err)
+		return Result{}, err
 	}
 	tenants, err := tenantday.List(ctx, a.db)
 	if err != nil {
@@ -104,9 +104,9 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 			failures = append(failures, fmt.Errorf("resolve the day of tenant %s: %w", tenant.ID, err))
 			continue
 		}
-		lost, err := PastRetention(tenant, statDate, table.For(tenant.ID), now)
+		lost, err := EventsGone(tenant, statDate, cutoffs.For(tenant.ID, now))
 		if err != nil {
-			failures = append(failures, fmt.Errorf("resolve the retention of tenant %s: %w", tenant.ID, err))
+			failures = append(failures, fmt.Errorf("resolve the event cutoff of tenant %s: %w", tenant.ID, err))
 			continue
 		}
 		if lost {
@@ -134,7 +134,7 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 // rows it wrote. It is how a caller that tracks each tenant's progress on its
 // own rebuilds the days one tenant is missing without touching the others.
 // Unlike Run it rebuilds whatever day it is given: that caller already decides
-// which days are PastRetention, since it has to record them as passed over.
+// which days are EventsGone, since it has to record them as passed over.
 func (a *Aggregator) RunTenant(ctx context.Context, tenant tenantday.Tenant, statDate time.Time) (int64, error) {
 	if a == nil || a.db == nil {
 		return 0, errors.New("content stats aggregator requires a database")
@@ -145,19 +145,19 @@ func (a *Aggregator) RunTenant(ctx context.Context, tenant tenantday.Tenant, sta
 	return a.aggregateTenant(ctx, tenant, statDate.Format(time.DateOnly))
 }
 
-// PastRetention reports whether statDate, one of tenant's calendar days, began
-// before the content event cutoff periods put at now. The purge has taken, or
-// may take at any moment, the events of the day up to that cutoff, so a
-// rebuild would read part of the day or none of it. Purchases and comments
-// come from tables of their own and would survive, which is also why the
-// rebuild's check that a non-empty source produced rows cannot catch this.
-func PastRetention(tenant tenantday.Tenant, statDate time.Time, periods retention.Periods, now time.Time) (bool, error) {
+// EventsGone reports whether statDate, one of tenant's calendar days, began
+// before cutoff, the tenant's contentevents.Cutoffs answer. The purge has
+// taken, or may take at any moment, the events of the day up to that cutoff,
+// so a rebuild would read part of the day or none of it. Purchases and
+// comments come from tables of their own and would survive, which is also why
+// the rebuild's check that a non-empty source produced rows cannot catch this.
+func EventsGone(tenant tenantday.Tenant, statDate, cutoff time.Time) (bool, error) {
 	location, err := time.LoadLocation(tenant.TimeZone)
 	if err != nil {
 		return false, fmt.Errorf("load time zone %q: %w", tenant.TimeZone, err)
 	}
 	start := time.Date(statDate.Year(), statDate.Month(), statDate.Day(), 0, 0, 0, 0, location)
-	return start.Before(periods.ContentEventCutoff(now)), nil
+	return start.Before(cutoff), nil
 }
 
 func (a *Aggregator) requireBypassRLS(ctx context.Context) error {

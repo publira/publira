@@ -42,7 +42,7 @@ func (s EpisodeReadProjection) Run(ctx context.Context, deps Deps) error {
 }
 
 // Run rebuilds one calendar day of content_daily_stats across every tenant,
-// except the tenants whose events for that day are past retention, which it
+// except the tenants whose events for that day may be gone, which it
 // logs and leaves as they are.
 func (s ContentStatsAggregation) Run(ctx context.Context, deps Deps) error {
 	if deps.DB == nil {
@@ -53,7 +53,7 @@ func (s ContentStatsAggregation) Run(ctx context.Context, deps Deps) error {
 	started := time.Now()
 	result, err := contentstats.New(deps.DB).Run(ctx, contentstats.Options{StatDate: s.Date})
 	for _, skipped := range result.Skipped {
-		logger.WarnContext(ctx, "content stats aggregation skipped a tenant: its content events for the day are past retention",
+		logger.WarnContext(ctx, "content stats aggregation skipped a tenant: its content events for the day may be gone",
 			"tenant_id", skipped.TenantID,
 			"stat_date", skipped.StatDate.Format(time.DateOnly),
 		)

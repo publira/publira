@@ -125,6 +125,13 @@ type ContentEvent struct {
 	CreatedAt      time.Time       `json:"created_at"`
 }
 
+type ContentEventPurge struct {
+	TenantID     uuid.UUID `json:"tenant_id"`
+	PurgedBefore time.Time `json:"purged_before"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 type ContentRankingSnapshot struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
