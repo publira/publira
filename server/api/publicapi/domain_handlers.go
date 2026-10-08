@@ -10,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/locale"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 func (s *apiServer) GetTenantByDomain(
@@ -34,6 +35,9 @@ func (s *apiServer) GetTenantByDomain(
 			return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant by domain", err, "domains", domains)
+	}
+	if tenantstatus.IsSuspended(tenant) {
+		return nil, tenantstatus.Refusal()
 	}
 
 	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)

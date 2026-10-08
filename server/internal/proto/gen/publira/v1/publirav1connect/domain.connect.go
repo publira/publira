@@ -41,6 +41,10 @@ var (
 
 // DomainServiceClient is a client for the publira.v1.DomainService service.
 type DomainServiceClient interface {
+	// The tenant whose domain is the first of domains any tenant serves.
+	// not_found when none is, and failed_precondition with the ErrorInfo reason
+	// TENANT_SUSPENDED when that tenant is suspended, so a caller can tell a
+	// tenant that is not being served from a host that serves no tenant.
 	GetTenantByDomain(context.Context, *v1.GetTenantByDomainRequest) (*v1.GetTenantByDomainResponse, error)
 }
 
@@ -52,6 +56,10 @@ func NewDomainServiceClient(client *connect.Client) DomainServiceClient {
 
 // DomainServiceHandler is an implementation of the publira.v1.DomainService service.
 type DomainServiceHandler interface {
+	// The tenant whose domain is the first of domains any tenant serves.
+	// not_found when none is, and failed_precondition with the ErrorInfo reason
+	// TENANT_SUSPENDED when that tenant is suspended, so a caller can tell a
+	// tenant that is not being served from a host that serves no tenant.
 	GetTenantByDomain(context.Context, *v1.GetTenantByDomainRequest) (*v1.GetTenantByDomainResponse, error)
 }
 

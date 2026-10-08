@@ -16,6 +16,12 @@ export const file_publira_types_v1_types: GenFile = /*@__PURE__*/
  * TenantContext identifies a tenant for internal RPC wiring.
  * tenant_id is the primary key (UUID), not the public-facing short code.
  *
+ * Every publira.v1 and publira.admin.v1 RPC that names a tenant this way
+ * refuses a suspended one before it does anything else, with
+ * failed_precondition and the ErrorInfo reason TENANT_SUSPENDED. That covers
+ * signing in and every request made with a session: a session is not ended by
+ * suspension, and is honoured again once the tenant is resumed.
+ *
  * @generated from message publira.types.v1.TenantContext
  */
 export type TenantContext = Message<"publira.types.v1.TenantContext"> & {

@@ -1060,6 +1060,11 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceGetMeResponseSchema;
   },
   /**
+   * The tenant whose console host is the first of domains any tenant serves.
+   * not_found when none is, and failed_precondition with the ErrorInfo reason
+   * TENANT_SUSPENDED when that tenant is suspended, so the console can tell a
+   * tenant that is not being served from a host that serves no tenant.
+   *
    * @generated from rpc publira.admin.v1.AdminAuthService.GetTenantByDomain
    */
   getTenantByDomain: {

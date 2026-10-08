@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -271,8 +272,8 @@ func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 		change func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, uuid.UUID) (dbmodels.Tenant, error)
 		status string
 	}{
-		{change: Suspend, status: StatusSuspended},
-		{change: Resume, status: StatusActive},
+		{change: Suspend, status: tenantstatus.Suspended},
+		{change: Resume, status: tenantstatus.Active},
 	} {
 		var tenant dbmodels.Tenant
 		if err := inPlatformTx(t, pg, func(tx *sql.Tx) (err error) {

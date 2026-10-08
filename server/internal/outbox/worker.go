@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 const (
@@ -512,6 +513,15 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 	if !ok {
 		return w.finishFailed(ctx, event, Permanent(fmt.Errorf("unknown outbox event type %q", event.EventType)))
 	}
+	if w.cfg.Handlers.IsMessage(event.EventType) {
+		suspended, err := w.tenantSuspended(ctx, event)
+		if err != nil {
+			return w.finishFailed(ctx, event, err)
+		}
+		if suspended {
+			return w.finishDropped(ctx, event)
+		}
+	}
 
 	started := time.Now()
 	herr := handler(ctx, event)
@@ -537,6 +547,42 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 		"event_type", event.EventType,
 		"idempotency_key", event.IdempotencyKey,
 		"attempts", event.Attempts,
+	)
+	return nil
+}
+
+// tenantSuspended reports whether event belongs to a tenant that is
+// suspended. An event with no tenant, or whose tenant is gone, is not: the
+// handler decides what to do with it, as it did before suspension existed.
+func (w *Worker) tenantSuspended(ctx context.Context, event dbmodels.OutboxEvent) (bool, error) {
+	if !event.TenantID.Valid {
+		return false, nil
+	}
+	tenant, err := w.queries.GetTenantByID(ctx, event.TenantID.UUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("read the event's tenant: %w", err)
+	}
+	return tenantstatus.IsSuspended(tenant), nil
+}
+
+// finishDropped marks a message to a suspended tenant's readers or staff done
+// without sending it, which is what [Registry.RegisterMessage] promises.
+func (w *Worker) finishDropped(ctx context.Context, event dbmodels.OutboxEvent) error {
+	if _, err := w.queries.MarkOutboxEventDone(ctx, event.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	w.metrics.recordDone(ctx, event.EventType)
+	w.cfg.Logger.InfoContext(ctx, "outbox event dropped; its tenant is suspended",
+		"event_id", event.ID,
+		"event_type", event.EventType,
+		"idempotency_key", event.IdempotencyKey,
+		"tenant_id", event.TenantID.UUID,
 	)
 	return nil
 }

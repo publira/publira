@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 // stubResolver answers one of the two tenant lookups and leaves the other
@@ -1734,5 +1735,101 @@ func TestResolvingStoreReadsFromTheStoreResolvedForEachRequest(t *testing.T) {
 	current = nil
 	if rec := serve(); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status once storage is gone = %d, want %d rather than a cached image", rec.Code, http.StatusServiceUnavailable)
+	}
+}
+
+// switchingResolver answers whatever state the test has last put the tenant
+// in, the way the tenants row does once SuspendTenant or ResumeTenant commits.
+type switchingResolver struct {
+	tenant  *dbmodels.Tenant
+	console bool
+}
+
+func (s switchingResolver) GetTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
+	if s.console {
+		return dbmodels.Tenant{}, sql.ErrNoRows
+	}
+	return *s.tenant, nil
+}
+
+func (s switchingResolver) GetAdminTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
+	if !s.console {
+		return dbmodels.Tenant{}, sql.ErrNoRows
+	}
+	return *s.tenant, nil
+}
+
+// suspensionCheckingFactory opens the tenant's rows, and fails the test when it
+// is asked to while the tenant is suspended.
+type suspensionCheckingFactory struct {
+	t      *testing.T
+	tenant *dbmodels.Tenant
+	q      TenantScopedQuerier
+}
+
+func (f suspensionCheckingFactory) ForTenant(context.Context, uuid.UUID) (TenantScopedQuerier, func(), error) {
+	if tenantstatus.IsSuspended(*f.tenant) {
+		f.t.Error("a suspended tenant's rows were read")
+	}
+	return f.q, func() {}, nil
+}
+
+// Every image route, on either of a suspended tenant's hosts, is refused
+// before it reads anything of the tenant's, and with nothing a cache in front
+// of it may keep, and the same image is served again once the tenant is
+// resumed.
+func TestImageRoutesRefuseASuspendedTenantUntilResumed(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555").String()
+	paths := []string{
+		"/images/creators/" + mediaID,
+		"/images/episodes/" + mediaID,
+		"/images/episodes/" + mediaID + "/preview",
+		"/images/genres/" + mediaID + "/square/320",
+		"/images/labels/" + mediaID + "/square/320",
+		"/images/series/" + mediaID + "/square/320",
+		"/images/tenants/" + mediaID + "/icon",
+	}
+	get := func(srv *Server, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Host = "example.test"
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	for name, console := range map[string]bool{"storefront": false, "console": true} {
+		t.Run(name, func(t *testing.T) {
+			tenant := dbmodels.Tenant{ID: tenantID, Domain: "example.test", Status: tenantstatus.Suspended}
+			sites := SiteDB{Tenants: suspensionCheckingFactory{t: t, tenant: &tenant, q: stubTenantQueries{
+				creator: dbmodels.GetCreatorImageByIDForTenantRow{
+					ObjectKey:   "creators/avatar.jpg",
+					ContentType: "image/jpeg",
+				},
+			}}}
+			srv := newTestServerWithSites(t,
+				switchingResolver{tenant: &tenant, console: console},
+				sites, sites,
+				&countingStore{objects: map[string]storedObject{
+					"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}},
+				auth.NewTokenManager([]byte(testMediaJWTSecret)),
+			)
+
+			for _, path := range paths {
+				rec := get(srv, path)
+				if rec.Code != http.StatusForbidden {
+					t.Fatalf("GET %s: status = %d, want %d (body %q)", path, rec.Code, http.StatusForbidden, rec.Body.String())
+				}
+				if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+					t.Fatalf("GET %s: Cache-Control = %q, want no-store", path, got)
+				}
+			}
+
+			tenant.Status = tenantstatus.Active
+			if rec := get(srv, paths[0]); rec.Code != http.StatusOK {
+				t.Fatalf("GET %s after the tenant is resumed: status = %d (body %q)", paths[0], rec.Code, rec.Body.String())
+			}
+		})
 	}
 }

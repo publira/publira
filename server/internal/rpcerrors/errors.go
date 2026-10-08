@@ -58,6 +58,9 @@ const (
 	ReasonStorageTestPermission     = "STORAGE_TEST_PERMISSION"
 	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"
 	ReasonStorageTestUnknown        = "STORAGE_TEST_UNKNOWN"
+	// ReasonTenantSuspended refuses every request for a tenant the platform
+	// operator has suspended.
+	ReasonTenantSuspended = "TENANT_SUSPENDED"
 	// A wait-for-free ticket refused without being spent: the series does not
 	// offer the rule, the episode is free to everyone already, it is one of the
 	// latest episodes the rule keeps a ticket off, or the reader's next ticket

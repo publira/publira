@@ -16,8 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
-	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -30,7 +30,7 @@ func tenantMemberColumns() []string {
 }
 
 func addTenantRow(rows *sqlmock.Rows, id uuid.UUID, publicID, name string, createdAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, publicID, publicID+".example.com", name, nil, createdAt, platformtenants.StatusActive, nil, tenanttz.Default, "ja")
+	return rows.AddRow(id, publicID, publicID+".example.com", name, nil, createdAt, tenantstatus.Active, nil, tenanttz.Default, "ja")
 }
 
 func TestTenantToProtoExposesTimezone(t *testing.T) {
@@ -50,7 +50,7 @@ func TestTenantToProtoExposesTimezone(t *testing.T) {
 			got := tenantToProto(dbmodels.Tenant{
 				PublicID:  "TENANT001",
 				Name:      "Test Tenant",
-				Status:    platformtenants.StatusActive,
+				Status:    tenantstatus.Active,
 				Domain:    "tenant.example.com",
 				CreatedAt: time.Now(),
 				Timezone:  tt.stored,
@@ -69,7 +69,7 @@ func TestListTenantsFirstPageReportsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantsDesc)).
 		WithArgs(
 			sql.NullString{String: "Acme", Valid: true},
-			sql.NullString{String: platformtenants.StatusActive, Valid: true},
+			sql.NullString{String: tenantstatus.Active, Valid: true},
 			uuid.NullUUID{}, false, sql.NullTime{}, int32(3),
 		).
 		WillReturnRows(addTenantRow(
@@ -244,7 +244,7 @@ func TestListTenantsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 func TestListTenantsRejectsAnotherFiltersToken(t *testing.T) {
 	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
-	active := pagination.NewListKey("created_at_desc").Value("status", platformtenants.StatusActive)
+	active := pagination.NewListKey("created_at_desc").Value("status", tenantstatus.Active)
 
 	tests := map[string]struct {
 		token string
@@ -256,7 +256,7 @@ func TestListTenantsRejectsAnotherFiltersToken(t *testing.T) {
 		},
 		"a filter added": {
 			token: active.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
-			req:   &publirasplatformv1.ListTenantsRequest{Name: "Acme", Status: platformtenants.StatusActive},
+			req:   &publirasplatformv1.ListTenantsRequest{Name: "Acme", Status: tenantstatus.Active},
 		},
 		"a filter removed": {
 			token: active.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
@@ -264,7 +264,7 @@ func TestListTenantsRejectsAnotherFiltersToken(t *testing.T) {
 		},
 		"an unfiltered token": {
 			token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
-			req:   &publirasplatformv1.ListTenantsRequest{Status: platformtenants.StatusActive},
+			req:   &publirasplatformv1.ListTenantsRequest{Status: tenantstatus.Active},
 		},
 		"a recovery token": {
 			token: active.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID),

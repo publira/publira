@@ -221,6 +221,10 @@ type AdminAuthServiceClient interface {
 	RequestPasswordReset(context.Context, *v1.AdminAuthServiceRequestPasswordResetRequest) (*v1.AdminAuthServiceRequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.AdminAuthServiceConfirmPasswordResetRequest) (*v1.AdminAuthServiceConfirmPasswordResetResponse, error)
 	GetMe(context.Context, *v1.AdminAuthServiceGetMeRequest) (*v1.AdminAuthServiceGetMeResponse, error)
+	// The tenant whose console host is the first of domains any tenant serves.
+	// not_found when none is, and failed_precondition with the ErrorInfo reason
+	// TENANT_SUSPENDED when that tenant is suspended, so the console can tell a
+	// tenant that is not being served from a host that serves no tenant.
 	GetTenantByDomain(context.Context, *v1.AdminAuthServiceGetTenantByDomainRequest) (*v1.AdminAuthServiceGetTenantByDomainResponse, error)
 	// Minimum role: tenant_auditor.
 	GetTenant(context.Context, *v1.AdminAuthServiceGetTenantRequest) (*v1.AdminAuthServiceGetTenantResponse, error)
@@ -253,6 +257,10 @@ type AdminAuthServiceHandler interface {
 	RequestPasswordReset(context.Context, *v1.AdminAuthServiceRequestPasswordResetRequest) (*v1.AdminAuthServiceRequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.AdminAuthServiceConfirmPasswordResetRequest) (*v1.AdminAuthServiceConfirmPasswordResetResponse, error)
 	GetMe(context.Context, *v1.AdminAuthServiceGetMeRequest) (*v1.AdminAuthServiceGetMeResponse, error)
+	// The tenant whose console host is the first of domains any tenant serves.
+	// not_found when none is, and failed_precondition with the ErrorInfo reason
+	// TENANT_SUSPENDED when that tenant is suspended, so the console can tell a
+	// tenant that is not being served from a host that serves no tenant.
 	GetTenantByDomain(context.Context, *v1.AdminAuthServiceGetTenantByDomainRequest) (*v1.AdminAuthServiceGetTenantByDomainResponse, error)
 	// Minimum role: tenant_auditor.
 	GetTenant(context.Context, *v1.AdminAuthServiceGetTenantRequest) (*v1.AdminAuthServiceGetTenantResponse, error)
