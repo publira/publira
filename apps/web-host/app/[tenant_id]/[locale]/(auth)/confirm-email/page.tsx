@@ -11,7 +11,6 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
@@ -170,17 +169,11 @@ const ConfirmEmailHeader = async () => {
   );
 };
 
-/**
- * `connection()` keeps the confirmation itself out of a prerender: it spends
- * the token, so it has to run once per reader rather than once per build.
- */
 const ConfirmationContent = async ({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => {
-  await connection();
-
   const { token } = parseConfirmEmailSearchParams(await searchParams);
 
   return <ConfirmationResult token={token} />;

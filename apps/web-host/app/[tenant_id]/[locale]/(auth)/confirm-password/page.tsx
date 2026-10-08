@@ -18,7 +18,6 @@ import {
 } from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
@@ -187,8 +186,6 @@ const ConfirmPasswordFormContent = async ({
 }: {
   searchParams: PageProps<"/[tenant_id]/[locale]/confirm-password">["searchParams"];
 }) => {
-  await connection();
-
   const { errorMessage, token } = parseConfirmPasswordSearchParams(
     await searchParams
   );

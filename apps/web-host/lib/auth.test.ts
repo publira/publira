@@ -8,6 +8,9 @@ import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
+  mockCacheTag,
+  mockConfirmEmailChange,
   mockCreateUser,
   mockLogin,
   mockDeleteMe,
@@ -19,7 +22,11 @@ const {
   mockRequestEmailChange,
   mockResolveAccessToken,
   mockUpdateMe,
+  mockVerifyUserEmail,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
+  mockCacheTag: vi.fn(),
+  mockConfirmEmailChange: vi.fn(),
   mockCreateUser: vi.fn(),
   mockDeleteMe: vi.fn(),
   mockGetMe: vi.fn(),
@@ -31,11 +38,20 @@ const {
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdateMe: vi.fn(),
+  mockVerifyUserEmail: vi.fn(),
+}));
+
+// The token-spending calls run without the Next.js cache runtime here, so the
+// `"use cache: private"` helpers are stubbed rather than exercised.
+vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      confirmEmailChange: mockConfirmEmailChange,
       createUser: mockCreateUser,
       deleteMe: mockDeleteMe,
       getMe: mockGetMe,
@@ -46,6 +62,7 @@ vi.mock("./api-client", () => ({
       logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
       updateMe: mockUpdateMe,
+      verifyUserEmail: mockVerifyUserEmail,
     },
   },
   buildClientAddressHeaders: () =>
@@ -57,6 +74,8 @@ vi.mock("./api-client", () => ({
 }));
 
 const importAuth = () => import("./auth");
+
+const DROPPED_ENTRY = { expire: 0, revalidate: 0, stale: 0 };
 
 describe("web-host auth", () => {
   beforeEach(() => {
@@ -576,5 +595,97 @@ describe("web-host auth", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getNotificationSettings("TENANT001")).resolves.toBeNull();
+  });
+
+  it("verifyPublicEmail: returns the API's answer, kept out of prefetches", async () => {
+    const { verifyPublicEmail } = await importAuth();
+    mockVerifyUserEmail.mockResolvedValueOnce({ verified: true });
+
+    await expect(verifyPublicEmail("token_abc", "TENANT001")).resolves.toBe(
+      true
+    );
+    expect(mockVerifyUserEmail).toHaveBeenCalledWith({
+      tenant: { tenantId: "TENANT001" },
+      token: "token_abc",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({ stale: 0 });
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:email-verification"
+    );
+    expect(mockCacheLife).not.toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("verifyPublicEmail: answers false and drops the entry when the API refuses the token", async () => {
+    const { verifyPublicEmail } = await importAuth();
+    mockVerifyUserEmail.mockRejectedValueOnce(
+      new ConnectError("expired", Code.InvalidArgument)
+    );
+
+    await expect(verifyPublicEmail("token_abc", "TENANT001")).resolves.toBe(
+      false
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("verifyPublicEmail: throws an unexpected failure outside the cache scope, with the entry dropped", async () => {
+    const { verifyPublicEmail } = await importAuth();
+    mockVerifyUserEmail.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(verifyPublicEmail("token_abc", "TENANT001")).rejects.toThrow(
+      "The email verification failed unexpectedly."
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("confirmPublicEmailChange: returns the API's answer, kept out of prefetches", async () => {
+    const { confirmPublicEmailChange } = await importAuth();
+    mockConfirmEmailChange.mockResolvedValueOnce({
+      changed: false,
+      confirmed: true,
+      pendingConfirmationFor: "new_email",
+    });
+
+    await expect(
+      confirmPublicEmailChange("token_abc", "TENANT001")
+    ).resolves.toEqual({
+      changed: false,
+      confirmed: true,
+      pendingConfirmationFor: "new_email",
+    });
+    expect(mockConfirmEmailChange).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" }, token: "token_abc" },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({ stale: 0 });
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:email-change-confirmation"
+    );
+    expect(mockCacheLife).not.toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("confirmPublicEmailChange: answers null and drops the entry when the API refuses the token", async () => {
+    const { confirmPublicEmailChange } = await importAuth();
+    mockConfirmEmailChange.mockRejectedValueOnce(
+      new ConnectError("expired", Code.InvalidArgument)
+    );
+
+    await expect(
+      confirmPublicEmailChange("token_abc", "TENANT001")
+    ).resolves.toBeNull();
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("confirmPublicEmailChange: throws a failure the reader cannot act on outside the cache scope, with the entry dropped", async () => {
+    const { confirmPublicEmailChange } = await importAuth();
+    mockConfirmEmailChange.mockRejectedValueOnce(
+      new ConnectError("down", Code.Unavailable)
+    );
+
+    await expect(
+      confirmPublicEmailChange("token_abc", "TENANT001")
+    ).rejects.toThrow("The email change confirmation failed unexpectedly.");
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
   });
 });

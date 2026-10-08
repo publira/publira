@@ -11,6 +11,8 @@ import {
 } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
 import type { LinkedIdentity } from "@publira/api-client/public/auth";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheLife } from "next/cache";
 import pRetry, { AbortError } from "p-retry";
 
 import {
@@ -19,6 +21,11 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  applyCacheTag,
+  tenantEmailChangeConfirmationTag,
+  tenantEmailVerificationTag,
+} from "./cache-tags";
 import type { SignInProvider } from "./sign-in-provider";
 
 export {
@@ -376,20 +383,60 @@ export const signupPublic = async ({
   }
 };
 
-export const verifyPublicEmail = async (
+/**
+ * What a cached token-spending call hands its exported caller: the answer, and
+ * whether its failure is one no screen copy describes. A `"use cache"` scope
+ * must not throw — the fill would fail the whole request — so the scope
+ * classifies the failure and the caller, outside it, throws the unexpected one.
+ */
+interface CachedTokenOutcome<TResult> {
+  result: TResult;
+  unexpected: boolean;
+}
+
+/**
+ * The RPC spends the token, so it runs once, for the request that opened the
+ * link. In a `"use cache: private"` scope the prerender Cache Components spawns
+ * from that request finds the answer already filled in instead of calling the
+ * API again, and with `stale` under 30 seconds it leaves the answer out rather
+ * than keeping it for a prefetch.
+ */
+const verifyPublicEmailOnce = async (
   token: string,
   tenantId: string
-): Promise<boolean> => {
+): Promise<CachedTokenOutcome<boolean>> => {
+  "use cache: private";
+  cacheLife({ stale: 0 });
+  applyCacheTag(tenantEmailVerificationTag(tenantId));
+
   try {
     const response = await apiClient.auth.verifyUserEmail({
       tenant: { tenantId },
       token,
     });
-    return Boolean(response.verified);
+    return { result: Boolean(response.verified), unexpected: false };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return false;
+    dropFailedCacheEntry();
+    return {
+      result: false,
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
   }
+};
+
+/**
+ * Activates the account the link's token stands for, or `false` when the API
+ * refused it. A failure no screen copy describes reaches the error boundary.
+ */
+export const verifyPublicEmail = async (
+  token: string,
+  tenantId: string
+): Promise<boolean> => {
+  const { result, unexpected } = await verifyPublicEmailOnce(token, tenantId);
+  if (unexpected) {
+    throw new Error("The email verification failed unexpectedly.");
+  }
+  return result;
 };
 
 /**
@@ -417,14 +464,24 @@ export const requestPublicEmailVerification = async (
   }
 };
 
-export const confirmPublicEmailChange = async (
-  token: string,
-  tenantId: string
-): Promise<{
+export interface PublicEmailChangeConfirmResult {
   changed: boolean;
   confirmed: boolean;
   pendingConfirmationFor: string;
-} | null> => {
+}
+
+/**
+ * The RPC spends the token, the same way {@link verifyPublicEmailOnce} does,
+ * and is cached the same way for the same reason.
+ */
+const confirmPublicEmailChangeOnce = async (
+  token: string,
+  tenantId: string
+): Promise<CachedTokenOutcome<PublicEmailChangeConfirmResult | null>> => {
+  "use cache: private";
+  cacheLife({ stale: 0 });
+  applyCacheTag(tenantEmailChangeConfirmationTag(tenantId));
+
   try {
     const response = await apiClient.auth.confirmEmailChange(
       {
@@ -434,16 +491,36 @@ export const confirmPublicEmailChange = async (
       await buildClientAddressHeaders()
     );
     return {
-      changed: Boolean(response.changed),
-      confirmed: Boolean(response.confirmed),
-      pendingConfirmationFor: response.pendingConfirmationFor,
+      result: {
+        changed: Boolean(response.changed),
+        confirmed: Boolean(response.confirmed),
+        pendingConfirmationFor: response.pendingConfirmationFor,
+      },
+      unexpected: false,
     };
   } catch (error) {
-    if (isRejectedRequestRpcError(error)) {
-      return null;
-    }
-    throw error;
+    dropFailedCacheEntry();
+    return { result: null, unexpected: !isRejectedRequestRpcError(error) };
   }
+};
+
+/**
+ * Confirms the change the link's token stands for, or `null` when the API
+ * refused it. A failure the reader cannot act on — the API unreachable, or a
+ * failure no screen copy describes — reaches the error boundary.
+ */
+export const confirmPublicEmailChange = async (
+  token: string,
+  tenantId: string
+): Promise<PublicEmailChangeConfirmResult | null> => {
+  const { result, unexpected } = await confirmPublicEmailChangeOnce(
+    token,
+    tenantId
+  );
+  if (unexpected) {
+    throw new Error("The email change confirmation failed unexpectedly.");
+  }
+  return result;
 };
 
 export const requestPublicPasswordReset = async (

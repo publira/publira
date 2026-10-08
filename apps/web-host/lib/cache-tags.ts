@@ -124,6 +124,20 @@ export const tenantEpisodeCommentsTag = (
 ) =>
   `tenant:${normalized(tenantId)}:episode:${episodePublicId.trim()}:comments`;
 
+/**
+ * The answer an email verification link got, held for the request that opened
+ * it. No Action changes what it reports, so nothing clears it.
+ */
+export const tenantEmailVerificationTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:email-verification`;
+
+/**
+ * The answer an email change confirmation link got, held for the request that
+ * opened it. No Action changes what it reports, so nothing clears it.
+ */
+export const tenantEmailChangeConfirmationTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:email-change-confirmation`;
+
 export const applyCacheTag = (tag: string) => {
   try {
     cacheTag(tag);
