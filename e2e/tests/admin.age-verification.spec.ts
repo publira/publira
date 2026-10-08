@@ -188,13 +188,16 @@ test.describe("web-admin age verification", () => {
     try {
       // Sixteen, so `r18` is a rating this reader can never prove, and the
       // rule stops them before the browser confirmation is ever offered.
+      // Polled like every later read: `beforeAll` put the rule back with a
+      // revalidation, and the page right after one is still the old copy,
+      // which is whatever rule an earlier attempt left saved.
       await signInAsMember(
         readerPage,
         AGE_VERIFICATION_MINOR,
         AGE_VERIFICATION_EPISODE_PATH,
         WEB_HOST_AGE_VERIFICATION_BASE_URL
       );
-      await expect(readerPage.getByText(AGE_GATE_MESSAGE)).toBeVisible();
+      await pollAgeGate(readerPage).toBe(1);
       await expect(ratingConfirmation(readerPage)).toHaveCount(0);
 
       await saveAgeVerification(page, "Check no ages");
