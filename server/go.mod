@@ -3,7 +3,8 @@ module github.com/publira/publira/server
 go 1.26.8
 
 require (
-	connectrpc.com/connect v1.21.0
+	connectrpc.com/connect v1.19.1
+	connectrpc.com/connect/v2 v2.0.0
 	connectrpc.com/otelconnect v0.10.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/SherClockHolmes/webpush-go v1.4.0
