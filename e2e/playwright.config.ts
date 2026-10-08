@@ -342,9 +342,13 @@ const exclusiveProjects: PlaywrightTestProject[] = [
   // namespaces down with the one process, so they form a single chain
   // through `dependencies` — one project per filename, because Playwright
   // has no per-project workers and a shared project would still fan its
-  // files across the global worker pool.
+  // files across the global worker pool. The chain waits for every parallel
+  // project, not only the three ordinary ones: one still running when the
+  // server stops fails on a refused connection.
   {
-    dependencies: ["web-host", "web-admin", "web-platform"],
+    dependencies: [...mainProjects, ...adminProjects].flatMap(({ name }) =>
+      name ? [name] : []
+    ),
     fullyParallel: false,
     name: "catalog-outage",
     testMatch: [/catalog\.outage\./u],
