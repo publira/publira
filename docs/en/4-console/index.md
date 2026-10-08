@@ -2,7 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -10,6 +10,8 @@ Every tenant has a console of its own, where the publisher's staff manage the wo
 ## Signing in
 
 The console is served on the tenant's console host, which is `admin.` followed by the domain of its public site unless the operator gave it another one: for a site on `comics.example.com`, the console is on `admin.comics.example.com`. Sign in there with the email address and password of your account. **Forgot your password?** on the same screen mails a link to set a new one.
+
+![The console's sign-in screen: the Email address and Password fields, the Sign in button, and the Forgot your password? link below it.](./index-sign-in.png)
 
 If your account has two-step verification turned on, the console then asks for the code from your authenticator app. The operator can require it of every Tenant admin on the install, and a Tenant admin who has not registered an authenticator app yet is then asked to register one before going further. [Your account](./3-setup/8-your-account.md) covers turning it on and what to do when you lose your phone.
 

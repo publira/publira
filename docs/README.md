@@ -55,8 +55,27 @@ The dates are written down rather than derived from `git log`, because the numbe
 ## Links and images
 
 - A link to another page is a relative path to its `.md` file, a directory's page included (`[Deployments](./2-deployments/index.md)`). It works when the file is read on GitHub, and the website rewrites it to the page URL. A fragment (`./1-overview.md#what-an-install-runs`) is kept.
-- An image sits beside the page that shows it and is referenced by a relative path. It is an `.avif`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.svg`, or `.webp` file.
+- An image sits beside the page that shows it and is referenced by a relative path. It is an `.avif`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.svg`, or `.webp` file, and a page in the same directory shows it.
+- An image is named `<page slug>-<subject>`, where the page slug is the page's name without its number — `index` for an `index.md` — and the subject is lowercase ASCII words joined by `-`: `episodes-create-form.png` beside `2-episodes.md`, `index-sidebar.png` beside `index.md`. Leaving the number out keeps a reordering from renaming images, and the slug keeps the images of sibling pages apart.
+- Every image has alt text that says what it shows, for a reader who cannot see it.
 - A link to source code, or to anything else in the repository outside `docs/en/`, is an absolute `https://github.com/publira/publira/...` URL, since the website does not serve the repository.
+
+### Screenshots
+
+A screenshot of the product is generated, never captured by hand. An image goes stale the moment its screen changes, and nothing in the text shows that it has, so every one of them is taken by the `docs-screenshots` Playwright project in [`e2e/`](../e2e/README.md#documentation-screenshots) and compared with the committed file on every E2E run: a change to the console that alters a documented screen fails that run until the image is regenerated. To add one, add a test to the console's `e2e/tests/*.docs-screenshots.spec.ts` naming the page, the subject, and the region to take, and reference the image from the page.
+
+A screenshot shows the console in one language, so each locale's tree holds the screenshots of that locale: `docs/en/` holds the English ones. A translated page keeps the reference as it is, and it resolves to its own locale's image beside it. The project takes every shot once for every locale that has a tree under `docs/`.
+
+Regenerate every image, after a change that meant to alter the screens, against an E2E stack that has just been seeded:
+
+```bash
+task e2e:prepare
+task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
+task e2e:test -- --project=docs-screenshots --update-snapshots
+task e2e:down
+```
+
+A shot is a PNG of the region a passage explains — a form, a list row with its actions, a dialog — at a 1280px viewport and twice the density, and never the full page.
 
 ## Checking a change
 

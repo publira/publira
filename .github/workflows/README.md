@@ -187,7 +187,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Mobile`, `Test / Mobile Android` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Android setup action |
 | `Test / Mobile iOS` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E Build`, `Test / Mobile E2E (<group>)` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Android setup action |
-| `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, build inputs, storage init and seed |
+| `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, the documentation's PNG screenshots under `docs/`, build inputs, storage init and seed |
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, `server/internal/platformsearch/**`, the outbox handler, the search handlers and the `publiractl search` command, `db/query/catalog_index.sql`, `db/query/platform_search.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, the catalog search and search settings specs with `e2e/src/**` and the Platform Console's search screen, and `db/seeds/**` |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |

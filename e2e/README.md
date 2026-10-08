@@ -78,7 +78,7 @@ e2e/
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
 └── tests/                 # catalogue, admin, host, platform, health, and server log scenarios
-    └── __screenshots__/   # committed screenshot baselines, one directory per project
+    └── __screenshots__/   # committed screenshot baselines, one directory per project; the documentation's are under docs/
 ```
 
 - **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), Traefik, and the browser the screenshot projects connect to.
@@ -113,7 +113,7 @@ Every project belongs to one of five groups, and CI runs each group as a job of 
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
-| `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
+| `screenshots` | `screenshots-host`, `screenshots-admin`, `screenshots-platform`, `docs-screenshots` | The state `task e2e:db` seeded, before any publishing suite adds to it. |
 | `main` | `web-host`, `web-platform`, `catalog-search`, `platform-search-settings`, `tablet-host`, `tablet-platform` | Nothing beyond the seed. Its files already run beside each other, so CI also shards it across two stacks. |
 | `admin` | `web-admin`, `tablet-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
@@ -132,7 +132,7 @@ A dependency between projects of two groups only orders work on a stack they sha
 
 ### Order on one stack
 
-The `screenshots-host`, `screenshots-admin`, and `screenshots-platform` projects run **before** everything else — the `main` and `admin` projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
+The `screenshots-host`, `screenshots-admin`, `screenshots-platform`, and `docs-screenshots` projects run **before** everything else — the `main` and `admin` projects declare them as `dependencies` — because what they record is the state `task e2e:db` seeded, and the publishing suites add series and episodes to the lists they photograph. A baseline that no longer matches therefore stops the run before the functional projects start: update the baselines (below) and run again.
 
 Specs that stop a shared process run in isolated projects after the ordinary `web-host`, `web-admin`, and `web-platform` projects, and the `viewer-performance` timing project runs after all of those. `catalog-outage` precedes `catalog-error-boundary`; corresponding admin and platform outage/error-boundary projects preserve the same dependency. In an `exclusive` group run the same chain starts at `catalog-outage`. Suites that modify shared seed data use `test.describe.configure({ mode: "serial" })` inside that file.
 
@@ -208,6 +208,26 @@ task e2e:down
 
 Run it against a stack that has just been seeded — a stack the whole suite has already run on holds the series, episodes, and tenants those suites created, and they are in the shot. Commit the changed PNGs with the change that caused them; a redesign pull request is reviewed by looking at them.
 
+## Documentation screenshots
+
+The `docs-screenshots` project takes the screenshots the user documentation shows, and compares each with the image committed beside its page under `docs/<locale>/`; [`docs/README.md`](../docs/README.md#screenshots) states the rules those images follow, and `node scripts/check-docs.ts` checks them. It is one project for both consoles: `tests/<app>.docs-screenshots.spec.ts` sets its console's `baseURL`, and runs each of its tests once for every locale with a tree under `docs/`, read from the directory (`DOCS_LOCALES` in `src/docs-screenshots.ts`).
+
+It renders in the same pinned browser, on the same pinned dates, and before the same suites as the projects of the [screenshot baseline](#screenshot-baseline), at a 1280px viewport with `deviceScaleFactor: 2`. What differs is what a test takes and where it goes:
+
+- `setDocsLocale(page, baseUrl, locale)` stores the `publira_locale` cookie the console's language menu writes, so the screen renders in that tree's language.
+- `expectDocsScreenshot(page, { element, locale, page, subject })` takes `element` alone, never the full page, and compares it with `docs/<locale>/<page directory>/<page slug>-<subject>.png` — `index-<subject>.png` for an `index.md` — where `page` is the page's path under `docs/<locale>/`.
+
+Regenerate every image after an intended change, against a stack that has just been seeded:
+
+```bash
+task e2e:prepare
+task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
+task e2e:test -- --project=docs-screenshots --update-snapshots
+task e2e:down
+```
+
+Playwright writes a new image and never deletes one a test stops taking; `check-docs.ts` reports an image no page beside it shows, which is how such a leftover is found.
+
 ## Viewer rendering performance
 
 `tests/host.viewer-performance.spec.ts` puts a budget on the canvas reader (`@publira/comic-viewer`, wired up in `apps/web-host/.../_components/episode-comic-viewer.tsx`) so a rendering regression fails a build instead of being noticed by a reader. The four budgets are `BUDGET` at the top of that file, which is also where each one says what it measures and why it sits where it does.
@@ -230,7 +250,7 @@ Each measurement is attached to the test result as a `viewer-performance:<metric
 ## Adding scenarios
 
 1. Optionally add fixture SQL under `db/seeds/scenarios/<name>.sql` and apply it with `applyScenarioSql('name')` from `src/db.ts`.
-2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that drives an app as a tablet does — across tablet widths, with a touch screen and a coarse pointer — is named `<app>.tablet.spec.ts` and runs in that app's `tablet-*` project, under an iPad descriptor; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do, in the `exclusive` group. A new project joins the group whose stack it can share (see [Groups](#groups)); a group of its own also needs an entry in the `Test / E2E` matrix.
+2. Add `e2e/tests/<area>.spec.ts` using `test` / `expect` from `@playwright/test`. `admin.*.spec.ts` runs under the web-admin project; `platform.*.spec.ts` under web-platform. Specs that stop shared processes must include `.outage.` or `.error-boundary.` and use the corresponding dependency chain; a spec that records a screen is named `.screenshots.` and joins the project of the app it photographs; a spec that takes the documentation's screenshots is named `<app>.docs-screenshots.spec.ts` and runs in `docs-screenshots`; a spec that drives an app as a tablet does — across tablet widths, with a touch screen and a coarse pointer — is named `<app>.tablet.spec.ts` and runs in that app's `tablet-*` project, under an iPad descriptor; a spec that rewrites state the parallel specs read gets an isolated project named after its own file, the way `platform-locale-switching`, `platform-operator-management`, and `platform-setup` do, in the `exclusive` group. A new project joins the group whose stack it can share (see [Groups](#groups)); a group of its own also needs an entry in the `Test / E2E` matrix.
 3. For a new host, add a project `baseURL` in `playwright.config.ts` or use an absolute `page.goto` URL; centralize constants in `src/urls.ts`.
 4. When starting another process, add it and its probe to `scripts/start-apps.sh`, `wait-ready.sh`, and `stop-apps.sh`. Verify edge routing in [`routing/`](./routing/README.md), not here.
 5. Run `task e2e`, or keep the stack running and use `task e2e:test`.
@@ -244,7 +264,7 @@ Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering
 
 Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
-- Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, and related build inputs.
+- Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
 - **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
 - **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
 - Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.
