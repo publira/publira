@@ -178,3 +178,48 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 		t.Fatalf("CreateTenantAdminInvitation = %+v, want the role granted", created)
 	}
 }
+
+// Deleting a reader takes the users row an entry would have found its tenant
+// through, so the entries about the reader, the deletion's own included, keep
+// the tenant they were written for.
+func TestDBListAuditLogsKeepsTheTenantOfADeletedReader(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
+	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	second := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	reader := pg.SeedEndUser(t, first.ID, "TAREADER", "reader@example.com", "Reader A")
+	pg.SeedEndUser(t, second.ID, "TBREADER", "reader@example.com", "Reader B")
+	users := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := context.Background()
+
+	if _, err := users.SuspendEndUser(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendEndUserRequest{UserId: reader.ID.String()}); err != nil {
+		t.Fatalf("SuspendEndUser: %v", err)
+	}
+	if _, err := users.DeleteEndUser(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{UserId: reader.ID.String()}); err != nil {
+		t.Fatalf("DeleteEndUser: %v", err)
+	}
+
+	list := func(tenantID string) string {
+		t.Helper()
+		res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{TenantId: tenantID})
+		if err != nil {
+			t.Fatalf("ListAuditLogs: %v", err)
+		}
+		entries := make([]string, 0, len(res.AuditLogs))
+		for _, log := range res.AuditLogs {
+			entries = append(entries, strings.Join([]string{log.GetAction(), log.GetTargetType(), log.GetTenantPublicId(), log.GetTenantName()}, " "))
+		}
+		return strings.Join(entries, "\n")
+	}
+	want := strings.Join([]string{
+		"user_deleted user TENANTA Tenant A",
+		"user_suspended user TENANTA Tenant A",
+	}, "\n")
+	if got := list(first.ID.String()); got != want {
+		t.Fatalf("entries for tenant A =\n%s\nwant\n%s", got, want)
+	}
+	if got := list(second.ID.String()); got != "" {
+		t.Fatalf("entries for tenant B =\n%s\nwant none", got)
+	}
+}

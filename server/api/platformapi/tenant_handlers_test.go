@@ -421,10 +421,11 @@ func TestListTenantMembersTenantNotFound(t *testing.T) {
 }
 
 // expectTenantMemberAuditLogInsert expects the entry a member change files
-// inside its transaction, under the operator and naming the user.
-func expectTenantMemberAuditLogInsert(mock sqlmock.Sqlmock, operatorID uuid.UUID, action string, userID uuid.UUID) {
+// inside its transaction, under the operator, naming the user, and filed
+// under the tenant whose role it is.
+func expectTenantMemberAuditLogInsert(mock sqlmock.Sqlmock, operatorID, tenantID uuid.UUID, action string, userID uuid.UUID) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
-		WithArgs(sqlmock.AnyArg(), uuid.NullUUID{UUID: operatorID, Valid: true}, "platform_operator", action, "user", userID.String(), auditlog.OutcomeSuccess, nil, nil).
+		WithArgs(sqlmock.AnyArg(), uuid.NullUUID{UUID: operatorID, Valid: true}, "platform_operator", action, "user", userID.String(), auditlog.OutcomeSuccess, nil, nil, uuid.NullUUID{UUID: tenantID, Valid: true}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
@@ -453,7 +454,7 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
-	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
+	expectTenantMemberAuditLogInsert(mock, operatorID, tenantID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
 	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.AddTenantMemberRequest{
@@ -499,7 +500,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
-	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
+	expectTenantMemberAuditLogInsert(mock, operatorID, tenantID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
 	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.AddTenantMemberRequest{
@@ -660,7 +661,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_editor").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_editor", now, tenantID))
-	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_role_updated", targetUserID)
+	expectTenantMemberAuditLogInsert(mock, operatorID, tenantID, "tenant_member_role_updated", targetUserID)
 	mock.ExpectCommit()
 
 	resp, err := server.UpdateTenantMemberRole(newOperatorActorContext(operatorID), &publirasplatformv1.UpdateTenantMemberRoleRequest{
@@ -732,7 +733,7 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantUserRolesByUserID)).
 		WithArgs(targetUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
-	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_removed", targetUserID)
+	expectTenantMemberAuditLogInsert(mock, operatorID, tenantID, "tenant_member_removed", targetUserID)
 	mock.ExpectCommit()
 
 	resp, err := server.RemoveTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.RemoveTenantMemberRequest{

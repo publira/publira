@@ -19,9 +19,9 @@ func Invite(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 		return tenantmembers.Invited{}, err
 	}
 	if invited.RoleGrantedImmediately {
-		err = writeUserEntry(ctx, tx, logger, actor, "tenant_admin_invited", invited.UserID)
+		err = writeUserEntry(ctx, tx, logger, actor, "tenant_admin_invited", p.TenantID, invited.UserID)
 	} else {
-		err = writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", invited.Invitation.ID.String())
+		err = writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", invited.Invitation)
 	}
 	if err != nil {
 		return tenantmembers.Invited{}, err
@@ -35,7 +35,7 @@ func ResendInvitation(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
-	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invite_resent", invitation.ID.String()); err != nil {
+	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invite_resent", invitation); err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
 	return invitation, nil
@@ -49,7 +49,7 @@ func CancelInvitation(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
-	if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invite_canceled", invitation.ID.String()); err != nil {
+	if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invite_canceled", invitation); err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
 	return invitation, nil
@@ -62,7 +62,7 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor a
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_created", member.UserID); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_created", p.TenantID, member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -74,7 +74,7 @@ func AddMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor audit
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_added", member.UserID); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_added", p.TenantID, member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -87,7 +87,7 @@ func UpdateMemberRole(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_role_updated", member.UserID); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_role_updated", p.TenantID, member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -99,15 +99,16 @@ func RemoveMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor au
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_removed", member.UserID); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_removed", p.TenantID, member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
 }
 
-// writeUserEntry names the user, whose own row names the tenant.
-func writeUserEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, userID uuid.UUID) error {
+// writeUserEntry names the user, filed under the tenant whose role it is.
+func writeUserEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, tenantID, userID uuid.UUID) error {
 	if err := auditlog.WritePlatform(ctx, dbmodels.New(tx), logger, actor.Entry(auditlog.PlatformEntry{
+		TenantID:   tenantID,
 		Action:     action,
 		TargetType: "user",
 		TargetID:   userID.String(),
@@ -118,13 +119,14 @@ func writeUserEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor 
 	return nil
 }
 
-// writeInvitationEntry names the invitation, whose row carries its tenant and
-// address.
-func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action, target string) error {
+// writeInvitationEntry names the invitation, whose row carries its address, and
+// files it under the invitation's tenant.
+func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action string, invitation dbmodels.TenantAdminInvitation) error {
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
+		TenantID:   invitation.TenantID,
 		Action:     action,
 		TargetType: "tenant_admin_invitation",
-		TargetID:   target,
+		TargetID:   invitation.ID.String(),
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
 		return fmt.Errorf("audit %s: %w", action, err)

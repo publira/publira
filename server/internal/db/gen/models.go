@@ -530,6 +530,7 @@ type PlatformAuditLog struct {
 	ClientIp            sql.NullString `json:"client_ip"`
 	CreatedAt           time.Time      `json:"created_at"`
 	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
+	TenantID            uuid.NullUUID  `json:"tenant_id"`
 }
 
 type PlatformConfig struct {

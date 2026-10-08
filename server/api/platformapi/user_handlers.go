@@ -387,6 +387,7 @@ func (s *platformServer) SuspendEndUser(
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 		ActorPlatformUserID: actor.UserID,
 		ActorRole:           actor.Role,
+		TenantID:            updated.TenantID.UUID,
 		Action:              "user_suspended",
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
@@ -434,6 +435,7 @@ func (s *platformServer) UnsuspendEndUser(
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 		ActorPlatformUserID: actor.UserID,
 		ActorRole:           actor.Role,
+		TenantID:            updated.TenantID.UUID,
 		Action:              "user_unsuspended",
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
@@ -487,6 +489,7 @@ func (s *platformServer) DeleteEndUser(
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 		ActorPlatformUserID: actor.UserID,
 		ActorRole:           actor.Role,
+		TenantID:            user.TenantID.UUID,
 		Action:              "user_deleted",
 		TargetType:          "user",
 		TargetID:            user.ID.String(),
