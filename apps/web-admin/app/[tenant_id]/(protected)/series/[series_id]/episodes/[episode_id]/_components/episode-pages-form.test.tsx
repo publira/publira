@@ -252,6 +252,35 @@ describe("EpisodePagesForm", () => {
     });
   });
 
+  it("holds an upload the network refused and sends it again once the browser is back online", async () => {
+    const fetch = vi
+      .fn<(input: string, init: RequestInit) => Promise<Response>>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(
+        Response.json({ message: "Page images added.", ok: true })
+      );
+    vi.stubGlobal("fetch", fetch);
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledOnce();
+    });
+    // Held rather than failed: nothing is said while the connection is gone.
+    expect(
+      screen.queryByText(
+        "Could not add the page images. Please try again later."
+      )
+    ).toBeNull();
+
+    window.dispatchEvent(new Event("online"));
+
+    expect(await screen.findByText("Page images added.")).toBeTruthy();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1]?.[1].body).toBe(fetch.mock.calls[0]?.[1].body);
+  });
+
   it("refuses an answer that is not the route's own as a failed upload", async () => {
     vi.stubGlobal(
       "fetch",

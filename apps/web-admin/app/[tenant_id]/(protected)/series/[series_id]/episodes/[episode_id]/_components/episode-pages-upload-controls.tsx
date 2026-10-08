@@ -73,6 +73,45 @@ const readUploadResponse = async (
   }
 };
 
+/** How long a failed send waits for the browser to report it is back online before trying again. */
+const RETRY_INTERVAL_MS = 5000;
+
+/**
+ * Settles once the browser fires `online`, or after {@link RETRY_INTERVAL_MS}
+ * when it does not: `navigator.onLine` stays `true` on a network with no
+ * upstream, so the event alone would hold such an upload forever.
+ */
+const untilWorthRetrying = (): Promise<"online" | "timeout"> => {
+  const { promise, resolve } = Promise.withResolvers<"online" | "timeout">();
+  const settled = AbortSignal.timeout(RETRY_INTERVAL_MS);
+  settled.addEventListener("abort", () => resolve("timeout"), { once: true });
+  window.addEventListener("online", () => resolve("online"), {
+    once: true,
+    signal: settled,
+  });
+  return promise;
+};
+
+/**
+ * Sends the form, holding it while the network is gone and sending it again
+ * once it is back, as `experimental.useOffline` does for a Server Action —
+ * which a `fetch` of our own is outside of. A rejected `fetch` is the network,
+ * never the server: any answer the server or a proxy gives resolves it.
+ */
+const sendHoldingThroughDrops = async (
+  formData: FormData
+): Promise<Response> => {
+  try {
+    return await fetch(EPISODE_PAGES_UPLOAD_PATH, {
+      body: formData,
+      method: "POST",
+    });
+  } catch {
+    await untilWorthRetrying();
+    return sendHoldingThroughDrops(formData);
+  }
+};
+
 const submittedBytes = (formData: FormData) =>
   [...formData.values()].reduce(
     (total, value) => total + (value instanceof File ? value.size : 0),
@@ -106,18 +145,7 @@ export const EpisodePagesUploadForm = ({
       return tooLarge;
     }
 
-    let response: Response;
-    try {
-      response = await fetch(EPISODE_PAGES_UPLOAD_PATH, {
-        body: formData,
-        method: "POST",
-      });
-    } catch {
-      return {
-        message: t("admin.series.episodes.upload_failed"),
-        ok: false,
-      };
-    }
+    const response = await sendHoldingThroughDrops(formData);
 
     // A proxy in front with a lower limit than the route answers this itself,
     // in a body of its own.

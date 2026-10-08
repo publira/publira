@@ -65,7 +65,8 @@ test.describe("web-admin connectivity drop", () => {
     const refused = page.waitForEvent(
       "requestfailed",
       (request) =>
-        request.method() === "POST" && "next-action" in request.headers()
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/v1/episode-pages"
     );
     await page.getByRole("button", { name: "Add page images" }).click();
     await refused;
@@ -80,7 +81,7 @@ test.describe("web-admin connectivity drop", () => {
     await page.context().setOffline(false);
 
     // Nothing is picked again: the files chosen before the drop are the ones
-    // the retried Action carries.
+    // the retried upload carries.
     await expect(page.getByText("Page images added.")).toBeVisible({
       timeout: 60_000,
     });
