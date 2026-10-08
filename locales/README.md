@@ -111,8 +111,8 @@ Within an app namespace, separate keys by screen (or a cohesive area). Promote c
 ### TypeScript (`@publira/i18n`)
 
 ```ts
-import { loadLocaleMessages } from "@publira/i18n/messages";
 import type { Locale } from "@publira/i18n";
+import { loadLocaleMessages } from "@publira/i18n/messages";
 
 export const loadCatalog = (locale: Locale) => loadLocaleMessages(locale);
 ```
