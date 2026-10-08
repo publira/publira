@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
@@ -456,7 +457,7 @@ func commentIDArg(raw string) (uuid.UUID, error) {
 // The reason travels with it because a tenant may have to hand the author a
 // statement of reasons for the removal, and this row is where it reads one back.
 func commentAuditEntry(
-	headers *connect.Header,
+	ctx context.Context,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, commentPublicID, reason string,
 ) auditlog.TenantEntry {
@@ -469,7 +470,7 @@ func commentAuditEntry(
 		TargetID:    commentPublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      reason,
-		ClientIP:    auditlog.ClientIPFromHeader(headers),
+		ClientIP:    clientip.FromContext(ctx),
 	}
 }
 
@@ -490,11 +491,10 @@ func (s *adminServer) recordCommentListRevalidation(ctx context.Context, q *dbmo
 // readable in the comment row afterwards.
 func (s *adminServer) recordCommentAction(
 	ctx context.Context,
-	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, commentPublicID, reason string,
 ) {
-	s.recorderFor(ctx).RecordTenant(ctx, commentAuditEntry(headers, sessionCtx, action, commentPublicID, reason))
+	s.recorderFor(ctx).RecordTenant(ctx, commentAuditEntry(ctx, sessionCtx, action, commentPublicID, reason))
 }
 
 // ListComments returns the tenant's comments for moderation, newest first.
@@ -719,7 +719,7 @@ func (s *adminServer) ApproveComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Reason))
+	s.recordCommentAction(ctx, sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Reason))
 
 	return &publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
@@ -785,7 +785,7 @@ func (s *adminServer) HideComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Reason))
+	s.recordCommentAction(ctx, sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Reason))
 
 	return &publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
@@ -869,7 +869,7 @@ func (s *adminServer) RestoreComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Reason))
+	s.recordCommentAction(ctx, sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Reason))
 
 	return &publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
@@ -922,7 +922,7 @@ func (s *adminServer) PurgeComment(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to purge comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
-	entry := commentAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_purged", current.PublicID, reason)
+	entry := commentAuditEntry(ctx, sessionCtx, "comment_purged", current.PublicID, reason)
 	if err := auditlog.WriteTenant(ctx, qtx, s.logger, entry); err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the comment purge", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
@@ -1098,7 +1098,7 @@ func (s *adminServer) ResolveCommentReport(
 	// to be able to account for afterwards is what was decided about a piece of
 	// content, and every other entry about that comment is filed under the same
 	// target. The action says which way this decision went.
-	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Reason))
+	s.recordCommentAction(ctx, sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Reason))
 
 	return &publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}, nil
 }

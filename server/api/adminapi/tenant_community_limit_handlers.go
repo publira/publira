@@ -10,12 +10,12 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 var errTenantCommunityLimitConflict = errors.New("community limit settings have changed since they were read")
@@ -229,7 +229,7 @@ func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, re
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to save tenant community limits", err)
 	}
-	if err = auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{TenantID: tenant.ID, ActorUserID: session.User.ID, ActorRole: session.Role, Action: "tenant_community_limits_updated", TargetType: "tenant_community_limits", TargetID: tenant.PublicID, Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx))}); err != nil {
+	if err = auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{TenantID: tenant.ID, ActorUserID: session.User.ID, ActorRole: session.Role, Action: "tenant_community_limits_updated", TargetType: "tenant_community_limits", TargetID: tenant.PublicID, Outcome: auditlog.OutcomeSuccess, ClientIP: clientip.FromContext(ctx)}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant community limits", err)
 	}
 	if err = tx.Commit(); err != nil {

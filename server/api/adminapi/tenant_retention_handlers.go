@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/fielderr"
@@ -15,7 +16,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // fieldRetentionOverrides is the UpdateTenantRetentionSettingsRequest field a
@@ -192,7 +192,7 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 		TargetType:  "tenant_retention",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	if err != nil {
 		return nil, err

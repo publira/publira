@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
@@ -390,7 +391,7 @@ func (s *platformServer) SuspendEndUser(
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.SuspendEndUserResponse{
@@ -437,7 +438,7 @@ func (s *platformServer) UnsuspendEndUser(
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.UnsuspendEndUserResponse{
@@ -490,7 +491,7 @@ func (s *platformServer) DeleteEndUser(
 		TargetType:          "user",
 		TargetID:            user.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.DeleteEndUserResponse{

@@ -10,11 +10,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
@@ -197,7 +197,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 		TargetType:  "smtp_config",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.UpdateTenantEmailSettingsResponse{
@@ -278,7 +278,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 			TargetID:    tenant.PublicID,
 			Outcome:     auditlog.OutcomeFailure,
 			Reason:      reason,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 		return nil, rpcerrors.NewErrorInfoError(
 			connect.CodeFailedPrecondition,
@@ -295,7 +295,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 		TargetType:  "smtp_config",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.SendTenantSmtpTestEmailResponse{

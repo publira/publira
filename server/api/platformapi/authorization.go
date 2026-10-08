@@ -7,6 +7,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -81,12 +82,12 @@ func (s *platformServer) auditActor(ctx context.Context) (auditlog.PlatformActor
 	if err := actor.requirePerson(); err != nil {
 		return auditlog.PlatformActor{}, err
 	}
-	return actor.audit(headers), nil
+	return actor.audit(ctx), nil
 }
 
 // audit is a, as the packages under internal/ file their audit entries.
-func (a platformActor) audit(headers *connect.Header) auditlog.PlatformActor {
-	return auditlog.PlatformActor{UserID: a.UserID, Role: a.Role, ClientIP: auditlog.ClientIPFromHeader(headers)}
+func (a platformActor) audit(ctx context.Context) auditlog.PlatformActor {
+	return auditlog.PlatformActor{UserID: a.UserID, Role: a.Role, ClientIP: clientip.FromContext(ctx)}
 }
 
 func (s *platformServer) requirePlatformWriteActor(ctx context.Context, headers *connect.Header) (platformActor, error) {

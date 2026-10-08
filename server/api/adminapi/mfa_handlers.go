@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -225,7 +226,7 @@ func (s *adminServer) mfaActorFor(
 	return mfaActor{Tenant: tenant, User: user, Role: role}, nil
 }
 
-func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, headers *connect.Header, action, outcome, reason string) {
+func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, action, outcome, reason string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    actor.Tenant.ID,
 		ActorUserID: actor.User.ID,
@@ -235,7 +236,7 @@ func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, header
 		TargetID:    actor.User.PublicID,
 		Outcome:     outcome,
 		Reason:      reason,
-		ClientIP:    auditlog.ClientIPFromHeader(headers),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 }
 
@@ -502,7 +503,7 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	// the point of the step is proving the authenticator was set up.
 	outcome, err := s.checkMfaCode(ctx, row, req.Code, false)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -510,13 +511,13 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	// enable commits, because the recovery codes exist only in the response
 	// this call is about to build.
 	if actor.FromChallenge && s.tokens == nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
 		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 
 	codes, err := s.enableMfa(ctx, actor)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
 		return nil, err
 	}
 
@@ -535,7 +536,7 @@ func (s *adminServer) ConfirmMfaEnrollment(
 			reason = "session_issue_failed"
 		}
 	}
-	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
+	s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
 	return resp, nil
 }
 
@@ -609,7 +610,7 @@ func (s *adminServer) VerifyMfa(
 ) (*publiraadminv1.AdminAuthServiceVerifyMfaResponse, error) {
 	actor, err := s.actorFromChallenge(ctx, req.Tenant, req.ChallengeToken, auth.AudienceAdminMFAVerify)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", "", "", "invalid_challenge")
+		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", "", "", "invalid_challenge")
 		return nil, err
 	}
 	row, found, err := s.mfaTotpRow(ctx, actor.User.ID)
@@ -622,20 +623,20 @@ func (s *adminServer) VerifyMfa(
 
 	outcome, err := s.checkMfaCode(ctx, row, req.Code, true)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
+		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
 		return nil, err
 	}
 
 	claimed, err := s.spendMfaChallenge(ctx, actor)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
+		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
+		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
 		return nil, err
 	}
 	if !claimed {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
+		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
+		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
 		return nil, invalidSessionError()
 	}
 
@@ -651,10 +652,10 @@ func (s *adminServer) VerifyMfa(
 	factor := "totp"
 	if outcome.RecoveryUsed {
 		factor = "recovery_code"
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodeUsed, auditlog.OutcomeSuccess, "")
+		s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodeUsed, auditlog.OutcomeSuccess, "")
 	}
-	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeSuccess, factor)
-	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, factor)
+	s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeSuccess, factor)
+	auth.AuditEvent(ctx, "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, factor)
 
 	return &publiraadminv1.AdminAuthServiceVerifyMfaResponse{
 		User:                   user,
@@ -685,7 +686,7 @@ func (s *adminServer) DisableMfa(
 	// to be able to take the factor off without waiting for an operator.
 	outcome, err := s.checkMfaCode(ctx, row, req.Code, true)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaDisabled, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, auditActionMfaDisabled, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -710,7 +711,7 @@ func (s *adminServer) DisableMfa(
 	if outcome.RecoveryUsed {
 		factor = "recovery_code"
 	}
-	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaDisabled, auditlog.OutcomeSuccess, factor)
+	s.recordMfaAudit(ctx, actor, auditActionMfaDisabled, auditlog.OutcomeSuccess, factor)
 	return &publiraadminv1.AdminAuthServiceDisableMfaResponse{Disabled: true}, nil
 }
 
@@ -735,7 +736,7 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 	// code mint ten more would make a single leaked code permanent.
 	outcome, err := s.checkMfaCode(ctx, row, req.Code, false)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -753,6 +754,6 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 		return nil, s.internalDBError(ctx, "failed to commit mfa recovery codes", err, "user_id", user.ID.String())
 	}
 
-	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, "")
+	s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, "")
 	return &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}, nil
 }

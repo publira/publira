@@ -6,11 +6,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
-	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -523,14 +521,4 @@ func (r *AsyncRecorder) write(ctx context.Context, entry queuedEntry) error {
 	}
 	defer release()
 	return dbmodels.New(conn).InsertAuditLog(ctx, *entry.tenant)
-}
-
-// ClientIPFromHeader returns the first IP address from the X-Forwarded-For header.
-func ClientIPFromHeader(headers *connect.Header) string {
-	v := headers.Get("X-Forwarded-For")
-	if v == "" {
-		return ""
-	}
-	parts := strings.SplitN(v, ",", 2)
-	return strings.TrimSpace(parts[0])
 }

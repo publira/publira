@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogindex"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
@@ -778,7 +779,7 @@ func (s *adminServer) CreateSeries(
 			TargetType:  "series",
 			TargetID:    base.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	created, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: base.ID})
@@ -1011,7 +1012,7 @@ func (s *adminServer) UpdateSeries(
 			TargetType:  "series",
 			TargetID:    current.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	series, err := protomapper.SeriesFromGetSeriesByIDForTenantRow(updated)

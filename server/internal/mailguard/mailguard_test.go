@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
@@ -44,25 +45,12 @@ func newTestGuard(t *testing.T, perAddress, perSource platformpolicy.HourDay) (*
 	return New(limiter, platformpolicy.Fixed(policy), slog.Default()), clock
 }
 
-// request stands for one submission of a form, arriving from source through the
-// edge that records it.
-// callFrom is the context of an RPC the edge recorded as coming from source.
+// callFrom is the context of an RPC whose client address was determined as
+// source.
 func callFrom(t *testing.T, source string) context.Context {
 	t.Helper()
-	ctx, info := testutil.NewServerContext(t.Context())
-	if source != "" {
-		info.RequestHeader().Set("X-Forwarded-For", source+", 10.0.0.1")
-	}
-	return ctx
-}
-
-// callFromPeer is the context of an RPC that reached the server from addr
-// without passing the edge.
-func callFromPeer(t *testing.T, addr string) context.Context {
-	t.Helper()
-	ctx, info := testutil.NewServerContext(t.Context())
-	info.PeerAddr = addr
-	return ctx
+	ctx, _ := testutil.NewServerContext(t.Context())
+	return clientip.NewContext(ctx, source)
 }
 
 const (
@@ -247,8 +235,7 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
 	ctx, info := testutil.NewServerContext(t.Context())
-	info.RequestHeader().Set("X-Forwarded-For", testSource)
-	err := guard.Allow(ctx, testScope, testAddress)
+	err := guard.Allow(clientip.NewContext(ctx, testSource), testScope, testAddress)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -258,8 +245,6 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 	}
 }
 
-// A request that reached a server without passing the edge still has an origin,
-// and every connection from it is that one origin rather than a fresh one.
 func TestGuardAllowEachGivesBackWhatARefusedBatchSpent(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100})
 	addresses := []string{"first@example.com", "second@example.com", "third@example.com"}
@@ -276,17 +261,6 @@ func TestGuardAllowEachGivesBackWhatARefusedBatchSpent(t *testing.T) {
 	}
 }
 
-func TestGuardChargesThePeerWhenTheEdgeRecordedNothing(t *testing.T) {
-	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
-
-	if err := guard.Allow(callFromPeer(t, "192.0.2.5:41000"), testScope, "first@example.com"); err != nil {
-		t.Fatalf("the first request = %v, want it allowed", err)
-	}
-	if err := guard.Allow(callFromPeer(t, "192.0.2.5:41001"), testScope, "second@example.com"); err == nil {
-		t.Fatal("another connection from the same peer = allowed, want one origin to hold one allowance")
-	}
-}
-
 func TestRulesPairAnHourlyBurstWithADailyBudget(t *testing.T) {
 	rules := Rules(platformpolicy.HourDay{PerHour: 5, PerDay: 20})
 
@@ -299,8 +273,6 @@ func TestRulesPairAnHourlyBurstWithADailyBudget(t *testing.T) {
 	}
 }
 
-// peerRequest stands for a request that reached a server without passing an
-// edge, so the connection it arrived on is all there is to charge.
 // A caller that reads no settings of its own still gets a limit, rather than a
 // form with no bound on the mail it causes.
 func TestNewDefaultLimitsAnUnconfiguredCaller(t *testing.T) {

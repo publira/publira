@@ -7,12 +7,12 @@ import (
 	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrejection"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func tenantEmailRejectionSettingsToProto(settings emailrejection.Settings) *publiraadminv1.TenantEmailRejectionSettings {
@@ -105,7 +105,7 @@ func (s *adminServer) UpdateTenantEmailRejectionSettings(
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      emailRejectionSettingsAuditReason(settings),
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant email rejection settings", err, "tenant_id", tenant.ID.String())
 	}

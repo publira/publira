@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogindex"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
@@ -762,7 +763,7 @@ func (s *adminServer) CreateCreator(
 			TargetType:  "creator",
 			TargetID:    createdBase.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	s.reval.Send(ctx, owed)
@@ -859,7 +860,7 @@ func (s *adminServer) UpdateCreator(
 			TargetType:  "creator",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	s.reval.Send(ctx, owed)
@@ -972,7 +973,7 @@ func (s *adminServer) CreateLabel(
 			TargetType:  "label",
 			TargetID:    created.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	s.reval.Send(ctx, owed)
@@ -1063,7 +1064,7 @@ func (s *adminServer) UpdateLabel(
 			TargetType:  "label",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	s.reval.Send(ctx, owed)

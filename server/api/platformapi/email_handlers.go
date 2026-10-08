@@ -110,7 +110,7 @@ func (s *platformServer) SendPlatformSmtpTestEmail(
 	}
 
 	tester := platformsmtp.Tester{Encryptor: s.encryptor, SMTP: s.tester, Recorder: s.recorder}
-	recipient, err := tester.Send(ctx, s.queriesFor(ctx), actor.audit(rpcmiddleware.RequestHeader(ctx)), platformsmtp.TestParams{
+	recipient, err := tester.Send(ctx, s.queriesFor(ctx), actor.audit(ctx), platformsmtp.TestParams{
 		Settings: emailsettings.SMTPSettings{
 			Host:        req.GetHost(),
 			Port:        req.GetPort(),

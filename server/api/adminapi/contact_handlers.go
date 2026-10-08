@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
@@ -270,7 +271,7 @@ func (s *adminServer) contactMessageUpdateError(ctx context.Context, tenantID, m
 }
 
 func contactMessageAuditEntry(
-	headers *connect.Header,
+	ctx context.Context,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, messagePublicID string,
 ) auditlog.TenantEntry {
@@ -282,7 +283,7 @@ func contactMessageAuditEntry(
 		TargetType:  "contact_message",
 		TargetID:    messagePublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(headers),
+		ClientIP:    clientip.FromContext(ctx),
 	}
 }
 
@@ -423,7 +424,7 @@ func (s *adminServer) MarkContactMessageHandled(
 	if req.Handled {
 		action = "contact_message_handled"
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, action, updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(ctx, sessionCtx, action, updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
@@ -504,7 +505,7 @@ func (s *adminServer) AssignContactMessage(
 	if assignee.Valid {
 		action = "contact_message_assigned"
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, action, updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(ctx, sessionCtx, action, updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
@@ -552,7 +553,7 @@ func (s *adminServer) UpdateContactMessageStaffNote(
 	if err != nil {
 		return nil, err
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(ctx, sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
@@ -692,7 +693,7 @@ func (s *adminServer) ReplyToContactMessage(
 	}
 	// The audit record names the message and not what was said: the answer is
 	// kept under the message, where only the inbox's own staff can read it.
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "contact_message_replied", updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(ctx, sessionCtx, "contact_message_replied", updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {

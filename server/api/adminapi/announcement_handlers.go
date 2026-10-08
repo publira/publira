@@ -13,13 +13,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/revalidate"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -232,7 +232,7 @@ func (s *adminServer) CreateAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.CreateAnnouncementResponse{
@@ -381,7 +381,7 @@ func (s *adminServer) UnpinAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    announcementID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.UnpinAnnouncementResponse{}, nil

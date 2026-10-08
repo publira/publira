@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -88,6 +89,11 @@ func runServer() int {
 		return 1
 	}
 	idTokens, err := signin.VerifierConfigFromEnv()
+	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		return 1
+	}
+	clientIPs, err := clientip.FromEnv()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
 		return 1
@@ -208,8 +214,8 @@ func runServer() int {
 	logger.Info("starting server (edge)", "addr", edgeAddr)
 	logger.Info("starting server (internal)", "addr", internalAddr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(edgeAddr, edgeHandler(publicAPI, imageHandler, pools)),
-		httpserver.New(internalAddr, internalHandler(publicAPI, adminAPI, platformAPI, pools)),
+		httpserver.New(edgeAddr, clientIPs.Middleware(edgeHandler(publicAPI, imageHandler, pools))),
+		httpserver.New(internalAddr, clientIPs.Middleware(internalHandler(publicAPI, adminAPI, platformAPI, pools))),
 	}, adminRecorder.Shutdown, platformRecorder.Shutdown, shutdownTracing, shutdownMetrics, func(context.Context) error {
 		return errors.Join(imageHandler.Close(), pools.close())
 	}); err != nil {

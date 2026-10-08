@@ -7,11 +7,11 @@ import (
 	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -148,7 +148,7 @@ func (s *adminServer) UpdateTenantInboundEmailSettings(
 		}, inboundemail.AuditMeta{
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(txCtx)),
+			ClientIP:    clientip.FromContext(txCtx),
 			TargetID:    tenant.PublicID,
 		})
 		if err != nil {

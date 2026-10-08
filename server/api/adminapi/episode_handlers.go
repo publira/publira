@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogindex"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/outbox"
@@ -733,7 +734,7 @@ func (s *adminServer) CreateEpisode(
 			TargetType:  "episode",
 			TargetID:    base.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	s.reval.Send(ctx, owed)
@@ -789,7 +790,6 @@ func (s *adminServer) UploadEpisodeImages(
 		ArchiveData:     req.ArchiveData,
 		ArchiveFilename: req.ArchiveFilename,
 		ArchiveType:     req.ArchiveContentType,
-		Headers:         rpcmiddleware.RequestHeader(ctx),
 	})
 	// The pages are stored one by one, each with its own statements and objects,
 	// so there is no transaction for the drop to ride: it is recorded once the
@@ -1039,7 +1039,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			TargetType:  "episode",
 			TargetID:    ep.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(ep)
@@ -1142,7 +1142,7 @@ func (s *adminServer) UpdateEpisodeLayout(
 			TargetType:  "episode",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	return &publiraadminv1.UpdateEpisodeLayoutResponse{
@@ -1217,7 +1217,7 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			TargetType:  "episode",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	return &publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}, nil
@@ -1284,7 +1284,7 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 			TargetType:  "episode",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 	return &publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse{

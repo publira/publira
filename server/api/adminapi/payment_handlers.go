@@ -10,12 +10,12 @@ import (
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storeproduct"
 )
@@ -159,7 +159,7 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		}, paymentsettings.AuditMeta{
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(txCtx)),
+			ClientIP:    clientip.FromContext(txCtx),
 			TargetID:    tenant.PublicID,
 		})
 		if err != nil {
@@ -318,7 +318,7 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 	paymentsettings.RecordUpdate(ctx, s.recorderFor(ctx), tenant.ID, paymentsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 		TargetID:    tenant.PublicID,
 	}, auditlog.OutcomeSuccess, "")
 

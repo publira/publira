@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // The column defaults of series_wait_free_settings, which is what a series
@@ -159,7 +159,7 @@ func (s *adminServer) UpdateSeriesWaitFreeSettings(
 		TargetType:  "series",
 		TargetID:    series.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.UpdateSeriesWaitFreeSettingsResponse{

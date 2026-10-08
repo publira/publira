@@ -2,6 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
+updated: 2026-10-08
 ---
 
 An install runs on a handful of settings that no tenant owns: the language and time zone new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -66,7 +67,7 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 
-The client address is the first address in `X-Forwarded-For`, which the reverse proxy has to set rather than append to, as [The headers the proxy owns](../2-deployments/4-reverse-proxy.md#the-headers-the-proxy-owns) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.
+The client address is the one `publira server` finds in `X-Forwarded-For` by stepping over the proxies it trusts, as [The proxies Publira trusts](../2-deployments/4-reverse-proxy.md#the-proxies-publira-trusts) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.
 
 ### Sign-in attempts
 

@@ -183,9 +183,8 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
 
 # Forwarded headers a caller could send ahead of the edge. echo.ts reports
 # each of them back, so a probe can assert the edge replaced the value rather
-# than passing the caller's through: the client IP a backend records is the
-# first address in X-Forwarded-For, and the CSRF origin check reads the other
-# two.
+# than passing the caller's through: X-Forwarded-For is where the server finds
+# the client IP it records, and the CSRF origin check reads the other two.
 PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "X-Forwarded-For: 203.0.113.9"
   "X-Forwarded-Host: forged.example.test"

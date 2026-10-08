@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 
-	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/fcmsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -48,7 +48,7 @@ func fcmAuditMeta(ctx context.Context, sessionCtx rpcmiddleware.SessionContext, 
 	return fcmsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 		TargetID:    tenantPublicID,
 	}
 }

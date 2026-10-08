@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -143,7 +144,7 @@ func (s *adminServer) BulkEditEpisodeCredits(
 			TargetType:  "series",
 			TargetID:    series.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
 

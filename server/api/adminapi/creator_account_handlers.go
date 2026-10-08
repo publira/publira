@@ -11,6 +11,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -63,7 +64,6 @@ func (s *adminServer) creatorAccountsForSession(ctx context.Context, tenantID, c
 // reader's public_id, or "" when it changed nothing.
 func (s *adminServer) changeCreatorAccount(
 	ctx context.Context,
-	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action string,
 	creator dbmodels.GetCreatorByIDForTenantRow,
@@ -91,7 +91,7 @@ func (s *adminServer) changeCreatorAccount(
 			TargetType:  "creator_account",
 			TargetID:    creatorAccountAuditTargetID(creator.PublicID, readerPublicID),
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(headers),
+			ClientIP:    clientip.FromContext(ctx),
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to record creator account change", err, "tenant_id", tenantID.String(), "action", action, "creator_id", creator.ID.String())
 		}
@@ -133,7 +133,7 @@ func (s *adminServer) LinkCreatorAccount(
 		return nil, err
 	}
 
-	accounts, err := s.changeCreatorAccount(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "creator_account_linked", creator, func(ctx context.Context) (string, error) {
+	accounts, err := s.changeCreatorAccount(ctx, sessionCtx, "creator_account_linked", creator, func(ctx context.Context) (string, error) {
 		reader, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return "", err
@@ -196,7 +196,7 @@ func (s *adminServer) UnlinkCreatorAccount(
 		return nil, err
 	}
 
-	accounts, err := s.changeCreatorAccount(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "creator_account_unlinked", creator, func(ctx context.Context) (string, error) {
+	accounts, err := s.changeCreatorAccount(ctx, sessionCtx, "creator_account_unlinked", creator, func(ctx context.Context) (string, error) {
 		readerPublicID, err := s.queriesFor(ctx).DeleteCreatorAccount(ctx, dbmodels.DeleteCreatorAccountParams{
 			TenantID:  tenant.ID,
 			CreatorID: creator.ID,

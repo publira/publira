@@ -9,10 +9,10 @@ import (
 	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
 )
@@ -138,7 +138,7 @@ func (s *adminServer) UpdateTenantSignInSettings(
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      signInSettingsAuditReason(input),
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogslug"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/imageproc"
@@ -77,7 +78,7 @@ func genreRevalidateTags(tenantID string) []string {
 // recordGenreChange files the audit entry for one genre write. Every genre RPC
 // changes the classification every series is read through, so all of them are
 // recorded, not only the destructive one.
-func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID, header *connect.Header, action, targetID string) {
+func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID, action, targetID string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -90,7 +91,7 @@ func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID,
 		TargetType:  "genre",
 		TargetID:    targetID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(header),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 }
 
@@ -492,7 +493,7 @@ func (s *adminServer) CreateGenre(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_created", created.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, "genre_created", created.PublicID)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, created.ID)
 	if err != nil {
@@ -599,7 +600,7 @@ func (s *adminServer) UpdateGenre(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_updated", current.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, "genre_updated", current.PublicID)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {
@@ -680,7 +681,7 @@ func (s *adminServer) ReorderGenres(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genres_reordered", tenant.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, "genres_reordered", tenant.PublicID)
 
 	genres, err := s.genreMessages(ctx, reordered)
 	if err != nil {
@@ -733,7 +734,7 @@ func (s *adminServer) DeleteGenre(
 		return nil, err
 	}
 
-	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_deleted", current.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, "genre_deleted", current.PublicID)
 
 	return &publiraadminv1.DeleteGenreResponse{}, nil
 }

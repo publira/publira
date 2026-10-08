@@ -86,7 +86,7 @@ The edge **adds** what a backend reads back:
 | `X-Forwarded-Proto` | The CSRF origin check |
 | `X-Forwarded-For` | The client IP in access tokens and audit log entries |
 
-Each of them is **set**, never appended to. The client is outside the trust boundary, so an inbound `X-Forwarded-For` would otherwise leave a forged address in front of the real one, and the client IP a backend records is the first address in that header.
+Each of them is **set**, never appended to. The client is outside the trust boundary, so no value it sent reaches a backend: the apps read `X-Forwarded-Host` and `X-Forwarded-Proto` as they arrive, and `publira server`, which reads `X-Forwarded-For` from the right past the proxies its `PUBLIRA_TRUSTED_PROXIES` names, then finds the one address the edge wrote.
 
 ### A trusted hop in front
 
@@ -98,7 +98,7 @@ When a load balancer, a CDN, or a TLS terminator connects to the edge, that hop 
 | nginx | `set_real_ip_from`, `real_ip_header X-Forwarded-For`, `real_ip_recursive on`, and the same addresses in the `geo` block | `nginx/default.conf.template` |
 | Caddy | `trusted_proxies static` and `trusted_proxies_strict` under `servers` | The Caddyfile's global options |
 
-With it left alone, a sample behaves as above. With the hop's addresses in it, a request from the hop reaches the backends with the client address the hop named first in `X-Forwarded-For`, and with the `X-Forwarded-Proto` the hop named, since a TLS terminator in front reaches the edge over plain HTTP. A request from anywhere else is treated as it is without the setting. nginx and Caddy take the rightmost address in the hop's header that is not a trusted one and still set `X-Forwarded-For` to that address alone, through `$remote_addr` and `{client_ip}`, and keep setting `X-Forwarded-Host` themselves. Traefik has no way to replace the header: it keeps the hop's `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and appends the hop's address to the first. The hop therefore sets those headers rather than appending to the caller's, which is what each sample does as the first hop.
+With it left alone, a sample behaves as above. With the hop's addresses in it, a request from the hop reaches the backends with the client address the hop named first in `X-Forwarded-For`, and with the `X-Forwarded-Proto` the hop named, since a TLS terminator in front reaches the edge over plain HTTP. A request from anywhere else is treated as it is without the setting. nginx and Caddy take the rightmost address in the hop's header that is not a trusted one and still set `X-Forwarded-For` to that address alone, through `$remote_addr` and `{client_ip}`, and keep setting `X-Forwarded-Host` themselves. Traefik has no way to replace the header: it keeps the hop's `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto`, and appends the hop's address to the first. The hop therefore sets those headers rather than appending to the caller's, which is what each sample does as the first hop, and `publira server` reaches the address the hop named past the one Traefik appended only when its `PUBLIRA_TRUSTED_PROXIES` covers the hop.
 
 ## What an operator supplies
 
