@@ -192,8 +192,10 @@ describe("savePageAction", () => {
     expect(mockRedirect).toHaveBeenCalledWith(`/pages/${PAGE_ID}?saved=1`);
   });
 
+  // Someone else may have renamed the translation since this screen loaded,
+  // and the title it loaded would put the old one back.
   it.each([true, false])(
-    "writes Show in footer as %s without adding a version when only it changed",
+    "writes Show in footer as %s without the title or a version when only it changed",
     async (displayInFooter) => {
       await savePage(
         saveForm({
@@ -207,7 +209,7 @@ describe("savePageAction", () => {
         expect.objectContaining({
           displayInFooter,
           pageId: PAGE_ID,
-          title: "Privacy policy",
+          title: undefined,
         }),
         "en"
       );

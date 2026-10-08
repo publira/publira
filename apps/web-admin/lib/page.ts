@@ -660,7 +660,7 @@ export const updatePage = async (
     tenantId: string;
     pageId: string;
     translationLocale?: Locale;
-    title: string;
+    title?: string;
     displayInFooter?: boolean;
   },
   locale: Locale
@@ -677,7 +677,9 @@ export const updatePage = async (
   }
 
   try {
-    // Omit displayInFooter when unset so title-only updates keep the existing value.
+    // Omit each half when unset so the server keeps its stored value: a
+    // title-only update keeps displayInFooter, and a footer-only one keeps a
+    // title someone else may have changed since this screen loaded.
     const response = await apiClient.pages.updatePage(
       {
         ...(input.displayInFooter === undefined
@@ -686,7 +688,7 @@ export const updatePage = async (
         locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
-        title: input.title,
+        ...(input.title === undefined ? {} : { title: input.title }),
       },
       withSessionHeaders(sessionId)
     );

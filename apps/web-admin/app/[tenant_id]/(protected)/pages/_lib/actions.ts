@@ -174,9 +174,9 @@ export const createPageAction = async (
  * title lives on the translation, Show in footer on the page, and the body on a
  * version. The first two go out in one RPC and the body in another, so each half
  * is written only where the editor changed it and a failure names the half it
- * belongs to — the first can be written before the second fails. Show in footer
- * is sent only when it changed, so a save from one language tab never puts back
- * a value another tab changed since this one loaded.
+ * belongs to — the first can be written before the second fails. The title and
+ * Show in footer are each sent only when they changed, so a save never puts back
+ * a value someone else changed since this screen loaded.
  */
 export const savePageAction = async (
   _prevState: PageFormState,
@@ -198,11 +198,11 @@ export const savePageAction = async (
     return toFailure(t("admin.pages.validation.title_required"));
   }
 
+  const titleChanged = parsed.data.title !== parsed.data.initialTitle;
   const footerChanged =
     parsed.data.displayInFooter !== undefined &&
     parsed.data.displayInFooter !== parsed.data.initialDisplayInFooter;
-  const detailsChanged =
-    parsed.data.title !== parsed.data.initialTitle || footerChanged;
+  const detailsChanged = titleChanged || footerChanged;
   const contentChanged =
     parsed.data.contentMarkdown !== parsed.data.initialContentMarkdown;
 
@@ -215,7 +215,7 @@ export const savePageAction = async (
             : undefined,
           pageId: parsed.data.pageId,
           tenantId: parsed.data.tenantId,
-          title: parsed.data.title,
+          title: titleChanged ? parsed.data.title : undefined,
           translationLocale: parsed.data.translationLocale,
         },
         locale
