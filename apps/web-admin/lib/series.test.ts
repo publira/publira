@@ -77,7 +77,6 @@ describe("listSeries", () => {
 
   it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
     mockListSeries.mockResolvedValue({
-      defaultReadingPeriodHours: 72,
       nextToken: "next-page",
       previousToken: "previous-page",
       series: [],
@@ -95,7 +94,6 @@ describe("listSeries", () => {
       { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result).toMatchObject({
-      defaultReadingPeriodHours: 72,
       nextToken: "next-page",
       ok: true,
       previousToken: "previous-page",

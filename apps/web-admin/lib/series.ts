@@ -144,13 +144,11 @@ export type ListSeriesResult = CursorPageTokens &
     | {
         ok: true;
         series: SeriesItem[];
-        defaultReadingPeriodHours: number;
       }
     | {
         ok: false;
         message: string;
         series: SeriesItem[];
-        defaultReadingPeriodHours: number;
       }
   );
 
@@ -470,7 +468,6 @@ const listSeriesForTenant = async (
 
     return {
       ...cursorPageTokens(response),
-      defaultReadingPeriodHours: response.defaultReadingPeriodHours ?? 0,
       ok: true,
       series: (response.series ?? []).map((item) => mapSeries(item)),
     };
@@ -481,7 +478,6 @@ const listSeriesForTenant = async (
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
-      defaultReadingPeriodHours: 0,
       message: await mapErrorToMessage(
         error,
         t("admin.series.list_failed"),
@@ -518,7 +514,6 @@ const listAllSeriesForTenant = async (
 
   try {
     const series: SeriesItem[] = [];
-    let defaultReadingPeriodHours = 0;
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listSeries(
@@ -529,7 +524,6 @@ const listAllSeriesForTenant = async (
           },
           withServiceHeaders()
         );
-        defaultReadingPeriodHours = response.defaultReadingPeriodHours ?? 0;
         return {
           items: response.series ?? [],
           nextToken: response.nextToken ?? "",
@@ -548,7 +542,6 @@ const listAllSeriesForTenant = async (
       dropFailedCacheEntry();
       return {
         ...emptyCursorPageTokens,
-        defaultReadingPeriodHours: 0,
         message: t("admin.series.list_failed"),
         ok: false,
         series: [],
@@ -557,7 +550,6 @@ const listAllSeriesForTenant = async (
 
     return {
       ...emptyCursorPageTokens,
-      defaultReadingPeriodHours,
       ok: true,
       series: series.toSorted((a, b) =>
         a.title.localeCompare(b.title, toIntlLocale(locale))
@@ -570,7 +562,6 @@ const listAllSeriesForTenant = async (
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
-      defaultReadingPeriodHours: 0,
       message: await mapErrorToMessage(
         error,
         t("admin.series.list_failed"),

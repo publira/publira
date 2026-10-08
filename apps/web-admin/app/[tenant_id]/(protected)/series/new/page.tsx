@@ -25,7 +25,6 @@ import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { listSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
@@ -64,7 +63,6 @@ const NewSeriesFormData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const [
-    listResult,
     creatorsResult,
     creatorRolesResult,
     labelsResult,
@@ -75,10 +73,6 @@ const NewSeriesFormData = async () => {
     timeZone,
     t,
   ] = await Promise.all([
-    // Only `defaultReadingPeriodHours` is read here, and that comes from the
-    // tenant rather than the page, so the smallest page the API allows is
-    // enough.
-    listSeries({ limit: 1 }),
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(),
     // In the tenant's priority order, which is the order the credit list on
@@ -109,7 +103,6 @@ const NewSeriesFormData = async () => {
       creatorsErrorMessage={
         creatorsResult.ok ? undefined : creatorsResult.message
       }
-      defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
       genres={genresResult.genres}
       genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
       labels={labelsResult.labels}

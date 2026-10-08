@@ -292,7 +292,6 @@ const EditSeriesFormData = async ({
         creatorsErrorMessage={
           creatorsResult.ok ? undefined : creatorsResult.message
         }
-        defaultReadingPeriodHours={result.series.readingPeriodHours}
         genres={genresResult.genres}
         genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
         initialCommentMode={result.commentMode}

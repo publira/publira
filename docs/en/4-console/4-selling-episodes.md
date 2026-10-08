@@ -19,7 +19,7 @@ An episode's **Price** and **Reading period** are entered on the form that creat
 - **Price** is a whole number of yen. `0` makes the episode free; any other value makes it a paid episode.
 - **Reading period** is how many hours a purchase keeps the episode open. `0` keeps it open with no end.
 
-Both are fixed when the episode is created: the console has no way yet to change them on an existing episode ([#3771](https://github.com/publira/publira/issues/3771)). The series form has a **Reading period** of its own, but a new episode does not take it, and its form always starts at `0` ([#3768](https://github.com/publira/publira/issues/3768)), so enter the period on each episode.
+Both are fixed when the episode is created: the console has no way yet to change them on an existing episode ([#3771](https://github.com/publira/publira/issues/3771)). A new episode's **Reading period** starts at the series' **Reading period**, so setting it on the series once gives every episode created afterwards the same period unless it is changed on the form. Changing the series' period does not reach the episodes already created.
 
 ### Buying and reading
 

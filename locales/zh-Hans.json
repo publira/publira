@@ -1487,7 +1487,7 @@
         "synopsis": "简介",
         "synopsis_placeholder": "请输入系列的介绍",
         "reading_period": "阅读期限",
-        "reading_period_description": "单位为小时。填写0表示不限期阅读。",
+        "reading_period_description": "单位为小时。在此系列中新建的章节以此期限为初始值，也可以为每个章节单独设置。修改此值不会改变已创建的章节。填写0表示不限期阅读。",
         "published_at": "发布日期和时间",
         "published_at_description": "留空则该系列保持未发布状态。日期和时间按租户时区（{$time_zone}）的挂钟时间解释，系列将在该时刻或之后发布。",
         "creators": "作者",
@@ -1695,7 +1695,7 @@
           "price": "价格",
           "price_description": "设为0即可免费发布。",
           "reading_period": "阅读期限",
-          "reading_period_description": "请填写小时数。设为0表示不限期阅读。",
+          "reading_period_description": "请填写小时数。设为0表示不限期阅读。初始值为系列的阅读期限，创建时的值不会因之后修改系列的期限而改变。",
           "publish_at": "发布日期和时间",
           "publish_at_description": "留空则作为草稿提交。日期和时间按租户时区（{$time_zone}）的挂钟时间解释，将在该时刻或之后发布；若指定已过去的时间，则在创建时立即发布。"
         },

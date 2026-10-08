@@ -66,7 +66,7 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 
 ### Reading period
 
-The series form has a **Reading period**, in hours, but nothing uses it: each episode's own **Reading period** is what a purchase keeps the episode open for, and a new episode does not take the series' value ([#3768](https://github.com/publira/publira/issues/3768)). Set the period on each episode, as [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes.
+**Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created, and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
 
 ## The cover image
 
