@@ -1,11 +1,13 @@
 package publishepisodes
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"testing"
 	"time"
 
@@ -410,6 +412,45 @@ func TestPublishFinalFailureNotifiesEachAdminOnce(t *testing.T) {
 	}
 
 	assertNotificationCounts(t, pg, notificationCounts{platform: 2, tenant: 2})
+}
+
+func TestPublishFinalFailureOnASecondPassLogsNoInsertError(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	editor := pg.SeedTenantUser(t, env.tenant.ID, "EDITORFAIL01", "editor@fail.example.com", "Editor", "tenant_editor")
+	var logs bytes.Buffer
+	// The login the job runs as in production: what a repeated insert is
+	// allowed to do depends on the grants of the role that sends it.
+	ticker := pg.OpenTickerDB(t)
+	r := New(ticker, dbmodels.New(ticker), nil, slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelError})), 0)
+	r.publish = func(context.Context, dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+		return errors.New("publish boom")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	r.RunOnce(ctx)
+	r.RunOnce(ctx)
+
+	assertPublishedUsers(t, pg, env.admin.ID, editor.ID)
+	assertNotificationCounts(t, pg, notificationCounts{platform: 2, tenant: 2})
+
+	// Each pass reports the failure itself once; anything else at error
+	// level is the retry being mistaken for a second failure.
+	var messages []string
+	for line := range bytes.Lines(logs.Bytes()) {
+		var record struct {
+			Msg string `json:"msg"`
+		}
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatalf("log record %q: %v", line, err)
+		}
+		messages = append(messages, record.Msg)
+	}
+	want := []string{"episode publish failed after all retries", "episode publish failed after all retries"}
+	if !slices.Equal(messages, want) {
+		t.Fatalf("error logs = %q, want %q", messages, want)
+	}
 }
 
 func TestPublishFinalFailureSkipsUsersWithoutOperatorRole(t *testing.T) {
