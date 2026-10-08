@@ -143,6 +143,7 @@ entryPoints:
     http:
       middlewares:
         - strip-trace-context@file
+        - strip-forwarded@file
       tls: {}
 ```
 
@@ -197,7 +198,8 @@ Moving a console host later, with `publiractl tenant update --admin-domain` or i
 The proxy is where a request from outside becomes one Publira acts on, so it decides some headers rather than passing on the caller's. Every sample already does what follows; keep it when you adapt one, and do the same if you write the configuration of another proxy.
 
 - **Trace context is removed.** `traceparent`, `tracestate`, and `baggage` are dropped from every request. Publira's processes continue the trace an incoming `traceparent` names, so a caller who could set it would choose the trace and whether the request is sampled: attaching spans to someone else's trace, or exporting traces past the sampling ratio you set. Without the headers, each request starts a trace of its own. Calls between Publira's own processes do not pass through the proxy, so they keep theirs.
-- **`X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` are set, never appended to.** `X-Forwarded-For` is the client address Publira records with every sign-in and in the audit log, and the address its per-client limits count against, and Publira reads the first address in it. A proxy that appended to a header the caller sent would put the caller's own value first. `X-Forwarded-Host` is how Publira finds the tenant, and what it compares a form submission's origin with.
+- **`X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` are set, never appended to.** `X-Forwarded-For` is where Publira finds the client address it records with every sign-in and in the audit log, and the address its per-client limits count against, as [The proxies Publira trusts](#the-proxies-publira-trusts) describes; setting it keeps an address the caller wrote out of it altogether. `X-Forwarded-Host` is how Publira finds the tenant, and what it compares a form submission's origin with.
+- **`Forwarded` is removed.** Publira reads the client address from a standard `Forwarded` header ahead of `X-Forwarded-For`, and none of the samples writes one, so a `Forwarded` header that reaches the proxy is the caller's own. A proxy you configure yourself either removes it in the same way or writes it itself; if it does neither, turn the header off on `publira server`, as [below](#the-proxies-publira-trusts).
 - **`Host` is passed on unchanged**, for the same reason as `X-Forwarded-Host`.
 
 ### A hop in front of the proxy
@@ -213,9 +215,23 @@ To record the reader's own address:
   - Caddy: the `servers` block in the Caddyfile's global options, with `trusted_proxies static` followed by the addresses, separated by spaces.
   - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [Put TLS in front](./3-docker-compose.md#5-put-tls-in-front) describes.
 
-Every sample then passes on the `X-Forwarded-Proto` the hop names, since the hop reaches the proxy over plain HTTP while the reader used HTTPS. nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone, and keep setting `X-Forwarded-Host` themselves. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so the address the hop named stays first only when the hop set the header rather than appending to the caller's. A request from any other address is treated as it is without the setting.
+Every sample then passes on the `X-Forwarded-Proto` the hop names, since the hop reaches the proxy over plain HTTP while the reader used HTTPS. nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone, and keep setting `X-Forwarded-Host` themselves. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so `publira server` steps over that address to the one the hop named only when it trusts the hop as well, which it does by default for a hop on a private network, as [below](#the-proxies-publira-trusts). A request from any other address is treated as it is without the setting.
 
 Trust the hop's own addresses only. A trusted range that also reaches readers lets any of them name an address of their choosing.
+
+## The proxies Publira trusts
+
+`publira server` does not take the first address in a forwarded header as the client's, since whoever sent the request first could have written it there. It reads the addresses in the header, followed by the address the request arrived from, and walks them from the right: each address that belongs to a trusted proxy is stepped over, and the first that does not is the client. A request that arrives from an address outside the trusted proxies is recorded with that address, whatever its headers say.
+
+The addresses come from the `for=` parameters of the standard `Forwarded` header when the request carries any, and from `X-Forwarded-For` otherwise. A proxy that writes only `X-Forwarded-For` and passes on a `Forwarded` header the caller sent would therefore let any caller name an address of their choosing, which is why the samples remove it. Behind such a proxy, set `PUBLIRA_FORWARDED_HEADER_ENABLED=false` on `publira server`, and it reads `X-Forwarded-For` alone. A value other than `true` or `false` stops `publira server` at startup.
+
+The trusted proxies are `PUBLIRA_TRUSTED_PROXIES` on `publira server`: addresses and CIDR ranges, separated by commas or spaces, such as `10.0.0.0/8, 203.0.113.7`. A range that covers every address, such as `0.0.0.0/0`, is refused, since trusting every hop makes the address the caller wrote first the client. Unset, they are the loopback, private, and link-local ranges: `127.0.0.0/8`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `fc00::/7`, and `fe80::/10`. Those cover the proxy and the web apps of an install that keeps them on a private network, as the [Docker Compose](./3-docker-compose.md) install does, and a TLS terminator that reaches the proxy through that network's gateway. A value that is set replaces those ranges rather than adding to them, so list the private ranges your proxy and web apps use alongside anything else. A value that is not an address or a range stops `publira server` at startup.
+
+Set it when:
+
+- **The proxy or a web app reaches `publira server` from a public address.** Otherwise every request it forwards is recorded with its address.
+- **A hop with a public address, such as a CDN, sits in front of Traefik.** Traefik appends that hop's address to `X-Forwarded-For`, so list the hop's published ranges as well. nginx and Caddy pass on the address they found alone, so a hop in front of them needs no entry here.
+- **A private range also reaches readers**, such as an office network that reaches `publira server` without passing the proxy. List the proxy's and the web apps' own addresses instead, for the same reason as above: a trusted range that reaches readers lets any of them name an address of their choosing.
 
 ## Uploads in the tenant console
 

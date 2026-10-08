@@ -119,11 +119,11 @@ func (s *apiServer) LoginWithIdToken(
 	const action = "login_with_id_token"
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(ctx, action, "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 	fail := func(userPublicID, reason string, err error) (*publirav1.LoginWithIdTokenResponse, error) {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", tenant.PublicID, userPublicID, reason)
+		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, userPublicID, reason)
 		return nil, err
 	}
 
@@ -203,7 +203,7 @@ func (s *apiServer) LoginWithIdToken(
 		return fail(user.PublicID, "transaction_commit_failed", s.internalDBError(ctx, "failed to commit id token sign-in", err, "tenant_id", tenant.ID.String()))
 	}
 
-	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "success", tenant.PublicID, user.PublicID, signedIn.outcome)
+	auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, signedIn.outcome)
 	return &publirav1.LoginWithIdTokenResponse{
 		User:           ownAccount(user, role),
 		AccessToken:    accessToken,
@@ -471,11 +471,11 @@ func (s *apiServer) UnlinkIdentity(
 	const action = "identity_unlink"
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", "", "", "invalid_session")
+		auth.AuditEvent(ctx, action, "failure", "", "", "invalid_session")
 		return nil, err
 	}
 	fail := func(reason string, err error) (*publirav1.UnlinkIdentityResponse, error) {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", tenant.PublicID, user.PublicID, reason)
+		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}
 	provider, err := identityProviderFromProto(req.Provider)
@@ -531,7 +531,7 @@ func (s *apiServer) UnlinkIdentity(
 	if err := tx.Commit(); err != nil {
 		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit unlink", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
 	}
-	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "success", tenant.PublicID, user.PublicID, provider)
+	auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, provider)
 	return &publirav1.UnlinkIdentityResponse{}, nil
 }
 

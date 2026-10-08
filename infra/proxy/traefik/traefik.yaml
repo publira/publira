@@ -10,10 +10,12 @@ entryPoints:
     address: ":80"
     http:
       middlewares:
-        # Runs before any router, so every route on this entrypoint loses its
-        # inbound W3C Trace Context. `@file` is the provider namespace; the
-        # middleware itself is defined in dynamic/routes.yaml.
+        # Run before any router, so every route on this entrypoint loses its
+        # inbound W3C Trace Context and Forwarded header. `@file` is the
+        # provider namespace; the middlewares themselves are defined in
+        # dynamic/routes.yaml.
         - strip-trace-context@file
+        - strip-forwarded@file
     # A load balancer, a CDN, or a TLS terminator in front of this entry
     # point is the peer of every request, so without this every request is
     # recorded with that hop's address. Listing the hop's own addresses, and
@@ -35,6 +37,7 @@ entryPoints:
   #   http:
   #     middlewares:
   #       - strip-trace-context@file
+  #       - strip-forwarded@file
   #     tls: {}
 
 providers:

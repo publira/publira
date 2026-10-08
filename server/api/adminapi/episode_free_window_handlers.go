@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogindex"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/freewindows"
@@ -276,7 +277,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		"episode_free_window_created",
 		"episode_free_window",
 		created.PublicID,
-		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		clientip.FromContext(ctx),
 	)
 
 	return &publiraadminv1.CreateEpisodeFreeWindowResponse{
@@ -401,7 +402,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		"series_free_windows_created",
 		"series",
 		series.PublicID,
-		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		clientip.FromContext(ctx),
 	)
 
 	return &publiraadminv1.CreateSeriesFreeWindowsResponse{FreeWindows: windows}, nil
@@ -644,7 +645,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		"episode_free_window_deleted",
 		"episode_free_window",
 		deleted.PublicID,
-		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		clientip.FromContext(ctx),
 	)
 
 	return &publiraadminv1.DeleteEpisodeFreeWindowResponse{}, nil

@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/api/publicapi"
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/signin"
 )
@@ -64,7 +65,7 @@ func TestUsageListsEveryCommand(t *testing.T) {
 // route, so what keeps the two console namespaces off the internet is the
 // registration and nothing else. These two tests are that boundary.
 func TestEdgeListenerServesThePublicNamespaceAndImagesAlone(t *testing.T) {
-	ts := httptest.NewServer(edgeHandler(newTestPublicAPI(t), newTestImageServer(t), serverPools{}))
+	ts := httptest.NewServer(edgeHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), newTestPublicAPI(t), newTestImageServer(t), serverPools{}))
 	t.Cleanup(ts.Close)
 
 	assertRouteRegistered(t, ts, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
@@ -87,7 +88,7 @@ func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 	}
 	platformAPI := platformapi.New(nil, nil, slog.Default(), nil, nil, nil)
 
-	ts := httptest.NewServer(internalHandler(publicAPI, adminAPI, platformAPI, serverPools{}))
+	ts := httptest.NewServer(internalHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), publicAPI, adminAPI, platformAPI, serverPools{}))
 	t.Cleanup(ts.Close)
 
 	assertRouteRegistered(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)

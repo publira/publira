@@ -26,9 +26,9 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
-	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -100,7 +100,7 @@ func (g *Guard) Begin(ctx context.Context, scope, address string) (*Attempt, err
 		rules   []ratelimit.Rule
 		spent   *ratelimit.Decision
 	}{
-		{sourceSubject(requestmeta.ClientSourceFromContext(ctx)), hourDayRules(policy.LoginAttemptsPerSource), &attempt.source},
+		{sourceSubject(clientip.FromContext(ctx)), hourDayRules(policy.LoginAttemptsPerSource), &attempt.source},
 		{attempt.account, attempt.rules, nil},
 	} {
 		decision, err := g.limiter.Allow(ctx, charge.subject, charge.rules...)

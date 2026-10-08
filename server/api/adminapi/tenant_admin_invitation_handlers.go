@@ -12,10 +12,10 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
 )
 
@@ -184,7 +184,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		TargetID:    invitation.Email,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      roleGrantedReason(role),
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 
 	return &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{

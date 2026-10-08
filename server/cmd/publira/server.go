@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -88,6 +89,11 @@ func runServer() int {
 		return 1
 	}
 	idTokens, err := signin.VerifierConfigFromEnv()
+	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		return 1
+	}
+	clientIPs, err := clientip.FromEnv()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
 		return 1
@@ -208,8 +214,8 @@ func runServer() int {
 	logger.Info("starting server (edge)", "addr", edgeAddr)
 	logger.Info("starting server (internal)", "addr", internalAddr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(edgeAddr, edgeHandler(publicAPI, imageHandler, pools)),
-		httpserver.New(internalAddr, internalHandler(publicAPI, adminAPI, platformAPI, pools)),
+		httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools)),
+		httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools)),
 	}, adminRecorder.Shutdown, platformRecorder.Shutdown, shutdownTracing, shutdownMetrics, func(context.Context) error {
 		return errors.Join(imageHandler.Close(), pools.close())
 	}); err != nil {
@@ -224,21 +230,25 @@ func runServer() int {
 // prefixes kept. Registering either console namespace here would publish its
 // RPCs on every tenant site, and readiness names only the public pool, the one
 // whose state an outsider may read.
-func edgeHandler(publicAPI *publicapi.API, images *imageserver.Server, pools serverPools) http.Handler {
+//
+// Both listeners determine the client address of every request before any
+// handler runs, so the audit log and the per-client limits never read a
+// context without one.
+func edgeHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, images *imageserver.Server, pools serverPools) http.Handler {
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(pools.public))
 	api := http.NewServeMux()
 	publicAPI.Register(api)
 	mux.Handle("/api/", http.StripPrefix("/api", api))
 	images.Register(mux)
-	return mux
+	return clientIPs.Middleware(mux)
 }
 
 // internalHandler serves all three namespaces to the Next.js apps, which dial
 // it directly over the private network. Readiness names one check per pool:
 // with three logins behind one listener, a single "db" could not say which of
 // them stopped answering.
-func internalHandler(publicAPI *publicapi.API, adminAPI *adminapi.API, platformAPI *platformapi.API, pools serverPools) http.Handler {
+func internalHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, adminAPI *adminapi.API, platformAPI *platformapi.API, pools serverPools) http.Handler {
 	mux := http.NewServeMux()
 	health.Register(mux,
 		health.WithDBNamed("db.public", pools.public),
@@ -248,7 +258,7 @@ func internalHandler(publicAPI *publicapi.API, adminAPI *adminapi.API, platformA
 	publicAPI.Register(mux)
 	adminAPI.Register(mux)
 	platformAPI.Register(mux)
-	return mux
+	return clientIPs.Middleware(mux)
 }
 
 // serverPools is one pool per PostgreSQL login this process serves as.

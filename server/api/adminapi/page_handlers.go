@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pageslug"
@@ -346,7 +347,7 @@ func (s *adminServer) CreatePage(
 		TargetType:  "page",
 		TargetID:    page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.CreatePageResponse{
 		Page: pageFromModel(page, translation),
@@ -423,7 +424,7 @@ func (s *adminServer) UpdatePage(
 		TargetType:  "page",
 		TargetID:    page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page, translation),
@@ -560,7 +561,7 @@ func (s *adminServer) CreateVersion(
 		TargetType:  "page_version",
 		TargetID:    version.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.CreateVersionResponse{
 		Version: pageVersionFromModel(version),
@@ -656,7 +657,7 @@ func (s *adminServer) PublishVersion(
 		TargetType:  "page_version",
 		TargetID:    version.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
@@ -715,7 +716,7 @@ func (s *adminServer) UnpublishPage(
 		TargetType:  "page",
 		TargetID:    page.Page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.UnpublishPageResponse{
 		Page: pageFromModel(page.Page, translation),
@@ -786,7 +787,7 @@ func (s *adminServer) RollbackToVersion(
 		TargetType:  "page_version",
 		TargetID:    newVersion.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.RollbackToVersionResponse{
 		Version: pageVersionFromModel(newVersion),
@@ -845,7 +846,7 @@ func (s *adminServer) CreatePageTranslation(
 		TargetType:  "page_translation",
 		TargetID:    translation.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.CreatePageTranslationResponse{
 		Translation: pageTranslationFromModel(translation),
@@ -957,7 +958,7 @@ func (s *adminServer) DeletePageTranslation(
 		TargetType:  "page_translation",
 		TargetID:    target.PageTranslation.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.DeletePageTranslationResponse{}, nil
 }

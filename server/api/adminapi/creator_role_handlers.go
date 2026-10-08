@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/pagination"
@@ -61,7 +62,7 @@ func creatorRoleRevalidateTags(tenantID string) []string {
 // recordCreatorRoleChange files the audit entry for one role write. A role
 // orders and names the credits on every series, so all of the writes are
 // recorded, not only the destructive one.
-func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid.UUID, header *connect.Header, action, targetID string) {
+func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid.UUID, action, targetID string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -74,7 +75,7 @@ func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid
 		TargetType:  "creator_role",
 		TargetID:    targetID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(header),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 }
 
@@ -271,7 +272,7 @@ func (s *adminServer) CreateCreatorRole(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_created", created.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, "creator_role_created", created.PublicID)
 
 	return &publiraadminv1.CreateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: created.ID.String(), PublicId: created.PublicID, Name: created.Name},
@@ -328,7 +329,7 @@ func (s *adminServer) UpdateCreatorRole(
 		return nil, err
 	}
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_updated", current.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, "creator_role_updated", current.PublicID)
 
 	return &publiraadminv1.UpdateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: current.ID.String(), PublicId: current.PublicID, Name: name},
@@ -400,7 +401,7 @@ func (s *adminServer) ReorderCreatorRoles(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_roles_reordered", tenant.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, "creator_roles_reordered", tenant.PublicID)
 
 	return &publiraadminv1.ReorderCreatorRolesResponse{CreatorRoles: creatorRoles}, nil
 }
@@ -461,7 +462,7 @@ func (s *adminServer) DeleteCreatorRole(
 		return nil, err
 	}
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_deleted", current.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, "creator_role_deleted", current.PublicID)
 
 	return &publiraadminv1.DeleteCreatorRoleResponse{}, nil
 }

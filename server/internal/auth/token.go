@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -10,6 +11,8 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/publira/publira/server/internal/clientip"
 )
 
 // AccessTokenTTL is defined in jwt.go (24h).
@@ -61,17 +64,14 @@ func BearerToken(authorization string) (string, bool) {
 	return token, true
 }
 
-func firstForwardedIP(headerValue string) string {
-	parts := strings.Split(headerValue, ",")
-	if len(parts) == 0 {
-		return ""
+// AuditEvent logs one step of a sign-in flow for the RPC ctx is serving, with
+// the client address [clientip.Resolver.Middleware] determined for it.
+func AuditEvent(ctx context.Context, action, outcome, tenantPublicID, userPublicID, reason string) {
+	clientIP := clientip.FromContext(ctx)
+	var userAgent string
+	if info, ok := connect.CallInfoForServerContext(ctx); ok {
+		userAgent = info.RequestHeader().Get("User-Agent")
 	}
-	return strings.TrimSpace(parts[0])
-}
-
-func AuditEvent(headers *connect.Header, action, outcome, tenantPublicID, userPublicID, reason string) {
-	clientIP := firstForwardedIP(headers.Get("X-Forwarded-For"))
-	userAgent := headers.Get("User-Agent")
 	log.Printf(
 		"audit auth action=%s outcome=%s tenant_public_id=%s user_public_id=%s reason=%s client_ip=%s user_agent=%q",
 		action,

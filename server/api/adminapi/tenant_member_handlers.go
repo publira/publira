@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -91,7 +92,7 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 	}
 }
 
-func (s *adminServer) recordTenantMemberChange(ctx context.Context, header *connect.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID, reason string) {
+func (s *adminServer) recordTenantMemberChange(ctx context.Context, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID, reason string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: session.User.ID,
@@ -101,7 +102,7 @@ func (s *adminServer) recordTenantMemberChange(ctx context.Context, header *conn
 		TargetID:    targetID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      reason,
-		ClientIP:    auditlog.ClientIPFromHeader(header),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 }
 
@@ -207,7 +208,7 @@ func (s *adminServer) UpdateTenantMemberRole(
 		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_role_updated", "user", member.PublicID, roleGrantedReason(member.Role))
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_member_role_updated", "user", member.PublicID, roleGrantedReason(member.Role))
 
 	return &publiraadminv1.UpdateTenantMemberRoleResponse{Member: tenantMemberToProto(member)}, nil
 }
@@ -249,7 +250,7 @@ func (s *adminServer) AddTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit add tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_added", "user", member.PublicID, roleGrantedReason(member.Role))
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_member_added", "user", member.PublicID, roleGrantedReason(member.Role))
 
 	return &publiraadminv1.AddTenantMemberResponse{Member: tenantMemberToProto(member)}, nil
 }
@@ -290,7 +291,7 @@ func (s *adminServer) RemoveTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit remove tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_removed", "user", member.PublicID, "")
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_member_removed", "user", member.PublicID, "")
 
 	return &publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}, nil
 }
@@ -391,7 +392,7 @@ func (s *adminServer) CreateTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit tenant admin invitation transaction", err, "tenant_id", tenant.ID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email, roleGrantedReason(invited.Role))
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email, roleGrantedReason(invited.Role))
 
 	if invited.RoleGrantedImmediately {
 		return &publiraadminv1.CreateTenantAdminInvitationResponse{RoleGrantedImmediately: true}, nil
@@ -436,7 +437,7 @@ func (s *adminServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email, roleGrantedReason(updated.Role))
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email, roleGrantedReason(updated.Role))
 
 	return &publiraadminv1.ResendTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
@@ -465,7 +466,7 @@ func (s *adminServer) CancelTenantAdminInvitation(
 		return nil, s.tenantMembersError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email, "")
+	s.recordTenantMemberChange(ctx, tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email, "")
 
 	return &publiraadminv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),

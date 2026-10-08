@@ -27,7 +27,7 @@ services:
       # loses its W3C Trace Context here. Entrypoint middlewares run before
       # the ones a router declares, and a new router inherits this one
       # without having to remember it.
-      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       # An edit to either file takes effect without restarting the stack.
       - "--providers.file.watch=true"

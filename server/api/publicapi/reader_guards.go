@@ -12,9 +12,9 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
-	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -227,7 +227,7 @@ func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction,
 // is signed in spends both, so neither a borrowed account nor a fresh one taken
 // out for the purpose widens what one client can send.
 func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, tenantID uuid.UUID) error {
-	client := requestmeta.ClientSourceFromContext(ctx)
+	client := clientip.FromContext(ctx)
 	return s.chargeTenantAction(ctx, action, tenantID, clientActionSubject(action, client))
 }
 

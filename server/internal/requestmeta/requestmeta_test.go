@@ -5,8 +5,6 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
-
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestHostCandidatesFromRequest(t *testing.T) {
@@ -33,22 +31,5 @@ func TestHostCandidatesFromRequest(t *testing.T) {
 				t.Fatalf("HostCandidatesFromRequest() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestClientSourceFromContextPrefersTheAddressTheEdgeRecorded(t *testing.T) {
-	ctx, info := testutil.NewServerContext(t.Context())
-	info.RequestHeader().Set("X-Forwarded-For", " 203.0.113.10 , 10.0.0.1 ")
-	info.PeerAddr = "192.0.2.5:41000"
-	if got := ClientSourceFromContext(ctx); got != "203.0.113.10" {
-		t.Fatalf("source = %q, want the first entry of X-Forwarded-For", got)
-	}
-}
-
-func TestClientSourceFromContextFallsBackToThePeerHost(t *testing.T) {
-	ctx, info := testutil.NewServerContext(t.Context())
-	info.PeerAddr = "192.0.2.5:41000"
-	if got := ClientSourceFromContext(ctx); got != "192.0.2.5" {
-		t.Fatalf("source = %q, want the peer's host without its port", got)
 	}
 }

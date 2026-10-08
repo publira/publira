@@ -17,7 +17,6 @@ import (
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func (s *platformServer) CheckSetupStatus(
@@ -69,11 +68,11 @@ func (s *platformServer) CreateInitialUser(
 	password := req.Password
 
 	if name == "" || email == "" || strings.TrimSpace(password) == "" {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "invalid_input")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, "name, email, and password are required")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "invalid_email")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
 	// The setup screen offers the supported locales and sends the one the
@@ -81,7 +80,7 @@ func (s *platformServer) CreateInitialUser(
 	// absent or unsupported code is rejected rather than guessed at.
 	defaultLocale, err := locale.Normalize(req.DefaultLocale)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "invalid_locale")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "invalid_locale")
 		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
@@ -92,13 +91,13 @@ func (s *platformServer) CreateInitialUser(
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
 	if count > 0 {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "already_setup")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "already_setup")
 		return nil, connect.NewError(connect.CodeAlreadyExists, "setup already completed")
 	}
 
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "password_hash_failed")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "password_hash_failed")
 		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
@@ -120,7 +119,7 @@ func (s *platformServer) CreateInitialUser(
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
 	if count > 0 {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "already_setup")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "already_setup")
 		return nil, connect.NewError(connect.CodeAlreadyExists, "setup already completed")
 	}
 
@@ -139,10 +138,10 @@ func (s *platformServer) CreateInitialUser(
 	})
 	if err != nil {
 		if dberr.IsUniqueViolation(err) {
-			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "already_setup")
+			auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "already_setup")
 			return nil, connect.NewError(connect.CodeAlreadyExists, "setup already completed")
 		}
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "user_creation_failed")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "user_creation_failed")
 		return nil, s.internalDBError(ctx, "failed to create initial platform user", err)
 	}
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
@@ -152,25 +151,25 @@ func (s *platformServer) CreateInitialUser(
 	})
 	if err != nil {
 		if dberr.IsUniqueViolation(err) {
-			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "already_setup")
+			auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "already_setup")
 			return nil, connect.NewError(connect.CodeAlreadyExists, "setup already completed")
 		}
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "platform_role_creation_failed")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_role_creation_failed")
 		return nil, s.internalDBError(ctx, "failed to create initial platform user role", err, "platform_user_id", userID.String())
 	}
 
 	// The chosen locale becomes the platform default in the same transaction, so
 	// a platform that has an administrator always has a language to render in.
 	if _, err := txq.UpsertPlatformDefaultLocale(ctx, defaultLocale); err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "platform_locale_save_failed")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_locale_save_failed")
 		return nil, s.internalDBError(ctx, "failed to save the initial platform default locale", err, "platform_user_id", userID.String())
 	}
 
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "failure", "", "", "transaction_commit_failed")
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit initial user transaction", err, "platform_user_id", userID.String())
 	}
 
-	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_initial_setup", "success", "", user.PublicID, "")
+	auth.AuditEvent(ctx, "platform_initial_setup", "success", "", user.PublicID, "")
 	return &publirasplatformv1.CreateInitialUserResponse{}, nil
 }

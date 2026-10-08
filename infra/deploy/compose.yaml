@@ -108,7 +108,7 @@ services:
     restart: unless-stopped
     command:
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
       - "--entrypoints.web.forwardedHeaders.trustedIPs=${PUBLIRA_EDGE_TRUSTED_PROXIES:-}"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"

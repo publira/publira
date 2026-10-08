@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
     command:
       - "--entrypoints.web.address=:3080"
-      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
     environment:

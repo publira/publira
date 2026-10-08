@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/csvexport"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
@@ -127,7 +128,7 @@ func (s *adminServer) UpdateRoyaltyConfig(
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_config_updated", TargetType: "royalty_config", TargetID: tenant.PublicID,
-		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		Outcome: auditlog.OutcomeSuccess, ClientIP: clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.UpdateRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}, nil
 }
@@ -253,7 +254,7 @@ func (s *adminServer) CloseRoyaltyStatement(
 				TargetType:  "royalty_statement",
 				TargetID:    period,
 				Outcome:     auditlog.OutcomeSuccess,
-				ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+				ClientIP:    clientip.FromContext(ctx),
 			})
 		})
 	switch {
@@ -499,7 +500,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
-		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		Outcome: auditlog.OutcomeSuccess, ClientIP: clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.ExportRoyaltyStatementResponse{Csv: body}, nil
 }

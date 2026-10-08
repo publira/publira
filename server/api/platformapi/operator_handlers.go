@@ -15,6 +15,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/pagination"
@@ -354,7 +355,7 @@ func (s *platformServer) CreateOperator(
 		TargetType:          "operator",
 		TargetID:            operator.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.CreateOperatorResponse{
@@ -429,7 +430,7 @@ func (s *platformServer) UpdateOperatorRole(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.UpdateOperatorRoleResponse{
@@ -502,7 +503,7 @@ func (s *platformServer) SuspendOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.SuspendOperatorResponse{
@@ -569,7 +570,7 @@ func (s *platformServer) UnsuspendOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.UnsuspendOperatorResponse{
@@ -642,7 +643,7 @@ func (s *platformServer) DeactivateOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
+		ClientIP:            clientip.FromContext(ctx),
 	})
 
 	return &publirasplatformv1.DeactivateOperatorResponse{

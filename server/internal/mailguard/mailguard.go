@@ -28,10 +28,10 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/emailaddress"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
-	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -130,7 +130,7 @@ func (g *Guard) charge(ctx context.Context, policy platformpolicy.Policy, scope,
 		subject string
 		rules   []ratelimit.Rule
 	}{
-		{sourceSubject(requestmeta.ClientSourceFromContext(ctx)), Rules(policy.MailRequestsPerSource)},
+		{sourceSubject(clientip.FromContext(ctx)), Rules(policy.MailRequestsPerSource)},
 		{addressSubject(scope, address), Rules(policy.MailRequestsPerAddress)},
 	} {
 		decision, err := g.limiter.Allow(ctx, charge.subject, charge.rules...)

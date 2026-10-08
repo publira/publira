@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -229,7 +230,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	series, err := s.seriesWithEyeCatchVariants(ctx, tenant.ID, current.ID)
 	if err != nil {
@@ -383,7 +384,7 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, id)
 	if err != nil {
@@ -410,7 +411,7 @@ func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID, i
 
 // recordEyeCatchAspectAudit files the change under the entity it belongs to,
 // with the ratio in the target so a reader can tell which slot moved.
-func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header *connect.Header, tenantID uuid.UUID, targetType, entityPublicID, action, variantType string) {
+func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, tenantID uuid.UUID, targetType, entityPublicID, action, variantType string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -423,7 +424,7 @@ func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header *con
 		TargetType:  targetType,
 		TargetID:    fmt.Sprintf("%s/%s", entityPublicID, variantType),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(header),
+		ClientIP:    clientip.FromContext(ctx),
 	})
 }
 
@@ -546,7 +547,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {

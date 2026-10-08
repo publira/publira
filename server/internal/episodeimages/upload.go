@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/archiveimages"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/epubimages"
 	"github.com/publira/publira/server/internal/imageproc"
@@ -62,7 +63,6 @@ type UploadRequest struct {
 	ArchiveData     []byte
 	ArchiveFilename string
 	ArchiveType     string
-	Headers         *connect.Header
 }
 
 func storageUploadError(err error) error {
@@ -99,7 +99,7 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 	if s.Storage, err = storage.Pin(ctx, s.Storage); err != nil {
 		return nil, uuid.Nil, storageUploadError(err)
 	}
-	items, wrote, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
+	items, wrote, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs)
 	if err != nil {
 		if wrote {
 			return nil, episodeID, err
@@ -201,7 +201,6 @@ func (s Service) storeImages(
 	episodeID uuid.UUID,
 	episodePublicID string,
 	imageInputs []archiveimages.Input,
-	headers *connect.Header,
 ) (items []*publirattypesv1.EpisodeImage, wrote bool, err error) {
 	maxDisplayOrder, err := s.Queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episodeID)
 	if err != nil {
@@ -211,7 +210,7 @@ func (s Service) storeImages(
 	items = make([]*publirattypesv1.EpisodeImage, 0, len(imageInputs))
 	displayOrder := maxDisplayOrder
 	sessionCtx, hasSession := rpcmiddleware.SessionContextFromContext(ctx)
-	clientIP := auditlog.ClientIPFromHeader(headers)
+	clientIP := clientip.FromContext(ctx)
 
 	for index, imageInput := range imageInputs {
 		if len(imageInput.Data) == 0 {

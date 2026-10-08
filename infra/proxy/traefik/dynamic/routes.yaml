@@ -39,6 +39,14 @@ http:
           traceparent: ""
           tracestate: ""
           baggage: ""
+    # publira server reads Forwarded ahead of X-Forwarded-For. Traefik writes
+    # only the latter and passes a Forwarded header through, so one that
+    # arrived is the caller's. Attached to the `web` entrypoint beside
+    # strip-trace-context.
+    strip-forwarded:
+      headers:
+        customRequestHeaders:
+          Forwarded: ""
 {{- if $listed }}
 
   routers:

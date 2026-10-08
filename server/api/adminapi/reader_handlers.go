@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
@@ -291,7 +292,6 @@ var errReaderUnchanged = errors.New("reader unchanged")
 // retried action records nothing and so cannot make up for a dropped entry.
 func (s *adminServer) changeReader(
 	ctx context.Context,
-	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action string,
 	readerID uuid.UUID,
@@ -324,7 +324,7 @@ func (s *adminServer) changeReader(
 		TargetType:  "user",
 		TargetID:    readerPublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(headers),
+		ClientIP:    clientip.FromContext(ctx),
 	}); err != nil {
 		return s.internalDBError(ctx, "failed to record reader action", err, "tenant_id", tenantID, "action", action, "reader_id", readerID.String())
 	}
@@ -390,7 +390,7 @@ func (s *adminServer) SuspendReader(
 	}
 
 	var updated dbmodels.SuspendTenantReaderRow
-	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
@@ -434,7 +434,7 @@ func (s *adminServer) UnsuspendReader(
 	}
 
 	var updated dbmodels.UnsuspendTenantReaderRow
-	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
@@ -492,7 +492,7 @@ func (s *adminServer) SetReaderBirthDate(
 	}
 
 	var updated dbmodels.SetTenantReaderBirthDateRow
-	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
 			BirthDate: birthDate,
 			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -555,7 +555,7 @@ func (s *adminServer) DeleteReader(
 	}
 
 	var deleted dbmodels.DeleteTenantReaderRow
-	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_deleted", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, sessionCtx, "reader_deleted", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
