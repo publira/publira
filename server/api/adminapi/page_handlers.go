@@ -371,7 +371,12 @@ func (s *adminServer) UpdatePage(
 		return nil, err
 	}
 	// Each half is written only when the request carries it, so a footer-only
-	// update never writes back a title the client read before a rename.
+	// update never writes back a title the client read before a rename. One
+	// that carries neither would still touch updated_at and write an audit
+	// entry for a change nobody made.
+	if req.Title == nil && req.DisplayInFooter == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title or display_in_footer is required")
+	}
 	var title string
 	if req.Title != nil {
 		title, err = validatePageTitle(req.GetTitle())

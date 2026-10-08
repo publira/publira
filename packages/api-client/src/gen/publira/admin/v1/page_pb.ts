@@ -67,6 +67,9 @@ export const CreatePageResponseSchema: GenMessage<CreatePageResponse> = /*@__PUR
   messageDesc(file_publira_admin_v1_page, 1);
 
 /**
+ * Sets at least one of title and display_in_footer; a request with neither is
+ * refused rather than recorded as an update.
+ *
  * @generated from message publira.admin.v1.UpdatePageRequest
  */
 export type UpdatePageRequest = Message<"publira.admin.v1.UpdatePageRequest"> & {

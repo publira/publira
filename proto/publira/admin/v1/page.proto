@@ -19,6 +19,8 @@ message CreatePageResponse {
   publira.types.v1.Page page = 1;
 }
 
+// Sets at least one of title and display_in_footer; a request with neither is
+// refused rather than recorded as an update.
 message UpdatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;

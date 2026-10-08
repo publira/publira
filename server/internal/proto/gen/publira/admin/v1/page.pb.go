@@ -136,6 +136,8 @@ func (x *CreatePageResponse) GetPage() *v1.Page {
 	return nil
 }
 
+// Sets at least one of title and display_in_footer; a request with neither is
+// refused rather than recorded as an update.
 type UpdatePageRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

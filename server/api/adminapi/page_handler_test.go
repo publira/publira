@@ -534,3 +534,20 @@ func TestUpdatePageRefusesABlankTitle(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func TestUpdatePageRefusesARequestThatChangesNothing(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	_, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PageId: uuid.Must(uuid.NewV7()).String(),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	// No transaction began, so no updated_at, revalidation, or audit entry.
+	assertExpectations(t, mock)
+}
