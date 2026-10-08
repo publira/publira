@@ -43,6 +43,8 @@ import type { SignInProvider } from "#lib/storefront-url";
 import type { TenantSignInSettings } from "#lib/tenant-sign-in-settings";
 
 import { updateTenantSignInSettingsAction } from "../_lib/actions";
+import { signInOffers } from "../_lib/offers";
+import type { SignInOffer, SignInSurface } from "../_lib/offers";
 import { CallbackUrlCopy } from "./callback-url-copy";
 
 const statusTone: Record<StoreStatus, BadgeTone> = {
@@ -109,6 +111,113 @@ const ProviderStatusLine = ({ status }: { status: StoreStatus }) => (
   </div>
 );
 
+const SurfaceLabel = ({ surface }: { surface: SignInSurface }) => {
+  switch (surface) {
+    case "android": {
+      return <Message message="admin.settings.sign_in.offers.android" />;
+    }
+    case "ios": {
+      return <Message message="admin.settings.sign_in.offers.ios" />;
+    }
+    default: {
+      return <Message message="admin.settings.sign_in.offers.site" />;
+    }
+  }
+};
+
+/** What a surface still needs before it shows the Apple button. */
+const AppleNotOffered = ({ surface }: { surface: SignInSurface }) => {
+  switch (surface) {
+    case "android": {
+      return (
+        <Message message="admin.settings.sign_in.apple.not_offered.android" />
+      );
+    }
+    case "ios": {
+      return <Message message="admin.settings.sign_in.apple.not_offered.ios" />;
+    }
+    default: {
+      return (
+        <Message message="admin.settings.sign_in.apple.not_offered.site" />
+      );
+    }
+  }
+};
+
+/** What a surface still needs before it shows the Google button. */
+const GoogleNotOffered = ({ surface }: { surface: SignInSurface }) => {
+  switch (surface) {
+    case "android": {
+      return (
+        <Message message="admin.settings.sign_in.google.not_offered.android" />
+      );
+    }
+    case "ios": {
+      return (
+        <Message message="admin.settings.sign_in.google.not_offered.ios" />
+      );
+    }
+    default: {
+      return (
+        <Message message="admin.settings.sign_in.google.not_offered.site" />
+      );
+    }
+  }
+};
+
+const NotOffered = ({
+  provider,
+  surface,
+}: {
+  provider: SignInProvider;
+  surface: SignInSurface;
+}) =>
+  provider === "apple" ? (
+    <AppleNotOffered surface={surface} />
+  ) : (
+    <GoogleNotOffered surface={surface} />
+  );
+
+/**
+ * Where an offered provider's button appears. A provider that is offered can
+ * still be missing from the site, which its state alone does not say.
+ */
+const ProviderOffers = ({
+  offers,
+  provider,
+}: {
+  offers: SignInOffer[];
+  provider: SignInProvider;
+}) => (
+  <div className="grid gap-2">
+    <p className="text-sm font-medium text-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message message="admin.settings.sign_in.offers.title" />
+      </Suspense>
+    </p>
+    <dl className="grid gap-2 text-sm">
+      {offers.map(({ offered, surface }) => (
+        <div className="grid gap-1 sm:grid-cols-[8rem_1fr]" key={surface}>
+          <dt className="text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <SurfaceLabel surface={surface} />
+            </Suspense>
+          </dt>
+          <dd className={offered ? "text-foreground" : "text-muted-foreground"}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              {offered ? (
+                <Message message="admin.settings.sign_in.offers.shown" />
+              ) : (
+                <NotOffered provider={provider} surface={surface} />
+              )}
+            </Suspense>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+);
+
 /**
  * Each provider's callback URL on the storefront, and the one Apple answers
  * the Android app's sign-in at.
@@ -118,6 +227,11 @@ type SignInCallbackUrls = Partial<
 >;
 
 interface TenantSignInSettingsFormProps {
+  /**
+   * The Android app named under App links, empty where none is named, and
+   * absent where that read failed.
+   */
+  androidApplicationId?: string;
   /** The callback URLs to register, absent while the tenant has no domain. */
   callbackUrls?: SignInCallbackUrls;
   canEdit: boolean;
@@ -128,6 +242,7 @@ interface TenantSignInSettingsFormProps {
 }
 
 export const TenantSignInSettingsForm = ({
+  androidApplicationId,
   callbackUrls,
   canEdit,
   initialSettings: settings,
@@ -137,6 +252,10 @@ export const TenantSignInSettingsForm = ({
   // A failed read leaves nothing to seed the fields with, and a save from that
   // state would write over what is stored.
   const fieldsDisabled = !canEdit || settings === undefined;
+  const offers =
+    settings === undefined
+      ? undefined
+      : signInOffers(settings, androidApplicationId);
 
   return (
     <AdminSection>
@@ -173,6 +292,9 @@ export const TenantSignInSettingsForm = ({
                     ready: settings.apple.ready,
                   })}
                 />
+                {settings.apple.ready && offers ? (
+                  <ProviderOffers offers={offers.apple} provider="apple" />
+                ) : null}
                 {/* Registered with the provider rather than saved here, so it
                     sits outside the fieldset an operator without edit access
                     sees disabled: whoever holds the provider account can still
@@ -502,6 +624,9 @@ export const TenantSignInSettingsForm = ({
                     ready: settings.google.ready,
                   })}
                 />
+                {settings.google.ready && offers ? (
+                  <ProviderOffers offers={offers.google} provider="google" />
+                ) : null}
                 {callbackUrls?.google ? (
                   <Field>
                     <FieldLabel>

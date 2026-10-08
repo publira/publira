@@ -159,6 +159,76 @@ describe("TenantSignInSettingsForm", () => {
     expect(screen.getByText("Off")).toBeDefined();
   });
 
+  it("says the site does not offer Apple saved without a Services ID", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        androidApplicationId="com.example.reader"
+        canEdit
+        initialSettings={{
+          ...savedSettings,
+          apple: { ...savedSettings.apple, servicesId: "" },
+        }}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText("Not shown. Enter a Services ID to show it on the site.")
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Services ID and name the Android app under App links to show it in the Android app."
+      )
+    ).toBeDefined();
+    expect(screen.getAllByText("Shown")).toHaveLength(1);
+    // Google is off, so only Apple says where its button is.
+    expect(screen.getAllByText("Where readers see its button")).toHaveLength(1);
+  });
+
+  it("says the site does not offer Google saved without a Web client ID", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        androidApplicationId=""
+        canEdit
+        initialSettings={{
+          ...savedSettings,
+          google: {
+            enabled: true,
+            iosClientId: "123456789012-def456.apps.googleusercontent.com",
+            ready: true,
+            webClientId: "",
+          },
+        }}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Web client ID to show it on the site."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Web client ID to show it in the Android app."
+      )
+    ).toBeDefined();
+  });
+
+  it("leaves Apple's Android app out when App links could not be read", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        canEdit
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.getByText("Site")).toBeDefined();
+    expect(screen.getByText("iOS app")).toBeDefined();
+    expect(screen.queryByText("Android app")).toBeNull();
+  });
+
   it("posts a removal until the operator keeps the key again", async () => {
     await renderForm(
       <TenantSignInSettingsForm

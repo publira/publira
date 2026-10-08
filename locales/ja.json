@@ -2637,13 +2637,20 @@
         "copy_callback_url": "コールバックURLをコピー",
         "status": {
           "ready": "提供中",
-          "ready_description": "読者はこの方法でログインできます。",
+          "ready_description": "下に「表示」とある場所で、読者はこの方法でログインできます。",
           "incomplete": "未完了",
           "incomplete_description": "有効ですが、必要な情報が不足しているため、読者には表示されません。",
           "disabled": "無効",
           "disabled_description": "保存されていますが、読者には表示されません。",
           "unset": "未設定",
           "unset_description": "この方法には何も登録されていません。"
+        },
+        "offers": {
+          "title": "ボタンが表示される場所",
+          "site": "サイト",
+          "ios": "iOSアプリ",
+          "android": "Androidアプリ",
+          "shown": "表示"
         },
         "apple": {
           "title": "Apple",
@@ -2660,7 +2667,12 @@
           "private_key": "秘密鍵（.p8）",
           "private_key_description": "Apple Developerアカウントがそのキーに発行した .p8ファイルを選ぶか、その内容を貼り付けてください。",
           "bundle_identifier": "iOSのBundle ID",
-          "bundle_identifier_description": "「アプリリンク」で設定したiOSアプリが、これでログインします。変更はそちらで行います。"
+          "bundle_identifier_description": "「アプリリンク」で設定したiOSアプリが、これでログインします。変更はそちらで行います。",
+          "not_offered": {
+            "site": "表示されません。サイトに表示するには、Services IDを入力してください。",
+            "ios": "表示されません。iOSアプリに表示するには、「アプリリンク」でiOSアプリを設定してください。",
+            "android": "表示されません。Androidアプリに表示するには、Services IDを入力し、「アプリリンク」でAndroidアプリを設定してください。"
+          }
         },
         "google": {
           "title": "Google",
@@ -2669,7 +2681,12 @@
           "web_client_id": "ウェブクライアントID",
           "web_client_id_description": "Google Cloudコンソールで作成した、種類が「ウェブ アプリケーション」のOAuthクライアントのクライアントIDです。サイトとAndroidアプリがこれでログインします。",
           "ios_client_id": "iOSクライアントID",
-          "ios_client_id_description": "iOSアプリがログインに使う、種類が「iOS」のOAuthクライアントのクライアントIDです。テナントにiOSアプリがない場合は空欄にしてください。"
+          "ios_client_id_description": "iOSアプリがログインに使う、種類が「iOS」のOAuthクライアントのクライアントIDです。テナントにiOSアプリがない場合は空欄にしてください。",
+          "not_offered": {
+            "site": "表示されません。サイトに表示するには、ウェブクライアントIDを入力してください。",
+            "ios": "表示されません。iOSアプリはAppleと一緒にしかGoogleを表示しないため、iOSクライアントIDを入力し、iOSアプリにAppleでサインインが表示されている必要があります。",
+            "android": "表示されません。Androidアプリに表示するには、ウェブクライアントIDを入力してください。"
+          }
         },
         "key_text": "または内容を貼り付け",
         "key_change": "差し替える",

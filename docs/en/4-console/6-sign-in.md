@@ -2,6 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
+updated: 2026-10-08
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -84,7 +85,15 @@ Each provider's section shows its state:
 | **Off** | Saved, but turned off |
 | **Not set** | Nothing is saved for it |
 
-**Offered** means the app or the site offers the provider, not necessarily both: Apple without a **Services ID**, or Google without a **Web client ID**, is set up for the iOS app alone, and is **Offered** with no button on the site.
+An **Offered** provider also lists, under **Where readers see its button**, each place a reader can meet it: **Site**, **iOS app**, and **Android app**. Each says **Shown**, or what that place still needs before it shows the button:
+
+|  | Apple | Google |
+| --- | --- | --- |
+| Site | A **Services ID** | A **Web client ID** |
+| iOS app | The iOS app named under **App links** | An **iOS client ID**, and Apple shown in the iOS app, since the app offers Google only beside Apple |
+| Android app | A **Services ID**, and the Android app named under **App links** | A **Web client ID** |
+
+A provider can therefore be **Offered** and still say the site does not show it: Apple without a **Services ID**, or Google without a **Web client ID**, is set up for the apps alone. **Shown** for an app means the setup covers it; the app itself also has to be built for it, as the [app's page](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google) describes.
 
 The site picks up a change moments after it is saved. Open the site's sign-in page in a private window, choose **Continue with Apple** or **Continue with Google**, and sign in. A provider that sends you back to an error page of its own usually has an address that does not match: compare the address it reports with the **Callback URL**, character for character.
 
