@@ -2340,6 +2340,10 @@ export const AdminSeriesService: GenService<{
     output: typeof CreateEpisodeResponseSchema;
   },
   /**
+   * A request of more than 128 MiB is resource_exhausted, refused while it is
+   * read: a whole episode's pages fit in one ZIP or ePub of that size, and an
+   * episode of larger pages goes up in several requests.
+   *
    * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UploadEpisodeImages

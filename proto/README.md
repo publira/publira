@@ -2,6 +2,12 @@
 
 This directory contains Protobuf definitions and contract decisions shared by multiple RPCs. As specified in [buf.gen.yaml](../buf.gen.yaml), generated output goes to `server/internal/proto/gen` (Go / Connect) and `packages/api-client/src/gen` (TypeScript); regenerate both with `task gen`.
 
+## Request size
+
+A procedure reads at most 1 MiB of one request message. A request past its procedure's bound is refused as `resource_exhausted` while it is read, before it is decoded, so a caller with no session cannot make the server hold more than that. The procedures whose request carries an upload or a webhook body read more: one that carries an image reads that image's own limit in the base64 the JSON encoding carries it in, and 1 MiB beside it; `UploadEpisodeImages` reads 128 MiB; and `ProcessInboundEmailWebhook` reads 33 MiB. The payment and App Store webhooks cap their payloads at 64 KiB and stay within the 1 MiB.
+
+The bounds live in `server/api/*/server.go`, in the `readLimits` table beside each namespace's handler registrations; a new procedure that takes more than 1 MiB is added there.
+
 ## Cursor pagination for list RPCs
 
 Use cursor pagination consistently for list RPCs. `offset` skips the requested number of rows, so later pages become slower. Inserts and deletes while paginating can also duplicate or omit records at the page boundary.
