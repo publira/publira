@@ -829,18 +829,19 @@ export const cancelPlatformTenantAdminInvitation = async (
 };
 
 /**
- * `UpdateTenant` replaces the name, the domain, and the admin domain together,
- * and an empty admin domain clears it. Every caller therefore passes all three,
- * including the ones its form does not edit, so `adminDomain` is required: a
- * form that saves only the name would otherwise move a console with a host of
- * its own back to `admin.<domain>`.
+ * What one console form saves: the name alone, or the domain with the admin
+ * domain. `UpdateTenant` changes only the fields a request carries, so a field
+ * the form does not edit is left out rather than sent back as the value the
+ * page was rendered with, which another operator may have changed since.
  */
+export type PlatformTenantChange =
+  | { name: string }
+  | { adminDomain: string; domain: string };
+
 export const updatePlatformTenant = async (
   tenantId: string,
-  name: string,
-  domain: string,
-  locale: Locale,
-  adminDomain: string
+  change: PlatformTenantChange,
+  locale: Locale
 ): Promise<UpdatePlatformTenantResult> => {
   const {
     locale: resolvedLocale,
@@ -853,30 +854,30 @@ export const updatePlatformTenant = async (
       ok: false,
     };
   }
-  const trimmedName = name.trim();
-  const trimmedDomain = domain.trim();
-  const trimmedAdminDomain = adminDomain.trim();
-  if (!trimmedName) {
-    return {
-      message: t("platform.tenants.name_required"),
-      ok: false,
-    };
-  }
-  if (!trimmedDomain) {
-    return {
-      message: t("platform.tenants.domain_required"),
-      ok: false,
-    };
+  let fields: PlatformTenantChange;
+  if ("name" in change) {
+    const name = change.name.trim();
+    if (!name) {
+      return {
+        message: t("platform.tenants.name_required"),
+        ok: false,
+      };
+    }
+    fields = { name };
+  } else {
+    const domain = change.domain.trim();
+    if (!domain) {
+      return {
+        message: t("platform.tenants.domain_required"),
+        ok: false,
+      };
+    }
+    fields = { adminDomain: change.adminDomain.trim(), domain };
   }
 
   try {
     await apiClient.tenants.updateTenant(
-      {
-        adminDomain: trimmedAdminDomain,
-        domain: trimmedDomain,
-        name: trimmedName,
-        tenantId,
-      },
+      { ...fields, tenantId },
       buildSessionHeaders(sid)
     );
     return { ok: true };

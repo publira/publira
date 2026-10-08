@@ -640,28 +640,30 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("updates the tenant named by its internal ID", async () => {
-    mockUpdateTenant.mockResolvedValueOnce({});
+  it("sends only the fields the change carries", async () => {
+    mockUpdateTenant.mockResolvedValueOnce({}).mockResolvedValueOnce({});
 
+    await expect(
+      updatePlatformTenant(tenantId, { name: " Blue Maple " }, "en")
+    ).resolves.toEqual({ ok: true });
     await expect(
       updatePlatformTenant(
         tenantId,
-        "Blue Maple",
-        "example.com",
-        "en",
-        "console.example.net"
+        { adminDomain: "", domain: "example.com" },
+        "en"
       )
     ).resolves.toEqual({ ok: true });
 
-    expect(mockUpdateTenant).toHaveBeenCalledWith(
-      {
-        adminDomain: "console.example.net",
-        domain: "example.com",
-        name: "Blue Maple",
-        tenantId,
-      },
-      { headers: { Authorization: "Bearer sess_abc" } }
-    );
+    expect(mockUpdateTenant.mock.calls).toEqual([
+      [
+        { name: "Blue Maple", tenantId },
+        { headers: { Authorization: "Bearer sess_abc" } },
+      ],
+      [
+        { adminDomain: "", domain: "example.com", tenantId },
+        { headers: { Authorization: "Bearer sess_abc" } },
+      ],
+    ]);
   });
 
   it("returns a not-found error when the user is not in the tenant", async () => {
