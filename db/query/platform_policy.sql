@@ -43,6 +43,10 @@ INSERT INTO platform_policy_config (
         store_purchase_confirm_limit_per_day,
         wait_free_ticket_use_limit_per_minute,
         wait_free_ticket_use_limit_per_day,
+        login_account_limit_per_minute,
+        login_account_limit_per_day,
+        login_source_limit_per_hour,
+        login_source_limit_per_day,
         disposable_email_domains_url,
         updated_at
     )
@@ -72,6 +76,10 @@ VALUES (
         sqlc.arg('store_purchase_confirm_limit_per_day'),
         sqlc.arg('wait_free_ticket_use_limit_per_minute'),
         sqlc.arg('wait_free_ticket_use_limit_per_day'),
+        sqlc.arg('login_account_limit_per_minute'),
+        sqlc.arg('login_account_limit_per_day'),
+        sqlc.arg('login_source_limit_per_hour'),
+        sqlc.arg('login_source_limit_per_day'),
         sqlc.arg('disposable_email_domains_url'),
         NOW()
     )
@@ -105,6 +113,10 @@ SET mfa_required_for_tenant_admin = sqlc.arg('mfa_required_for_tenant_admin'),
     store_purchase_confirm_limit_per_day = sqlc.arg('store_purchase_confirm_limit_per_day'),
     wait_free_ticket_use_limit_per_minute = sqlc.arg('wait_free_ticket_use_limit_per_minute'),
     wait_free_ticket_use_limit_per_day = sqlc.arg('wait_free_ticket_use_limit_per_day'),
+    login_account_limit_per_minute = sqlc.arg('login_account_limit_per_minute'),
+    login_account_limit_per_day = sqlc.arg('login_account_limit_per_day'),
+    login_source_limit_per_hour = sqlc.arg('login_source_limit_per_hour'),
+    login_source_limit_per_day = sqlc.arg('login_source_limit_per_day'),
     disposable_email_domains_url = sqlc.arg('disposable_email_domains_url'),
     revision = revision + 1,
     updated_at = NOW()

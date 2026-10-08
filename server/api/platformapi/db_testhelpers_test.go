@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -37,7 +38,7 @@ func newDBIntegrationEnv(t *testing.T) (*httptest.Server, *testutil.PostgresEnv)
 func newDBIntegrationEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
-	return newDBIntegrationEnvWith(t, mail, nil)
+	return newDBIntegrationEnvWith(t, mail, nil, nil)
 }
 
 // newDBIntegrationEnvWithServiceToken is newDBIntegrationEnv for the cases that
@@ -45,10 +46,20 @@ func newDBIntegrationEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) (*htt
 func newDBIntegrationEnvWithServiceToken(t *testing.T, serviceToken *auth.ServiceToken) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
-	return newDBIntegrationEnvWith(t, openMailGuard(), serviceToken)
+	return newDBIntegrationEnvWith(t, openMailGuard(), serviceToken, nil)
 }
 
-func newDBIntegrationEnvWith(t *testing.T, mail *mailguard.Guard, serviceToken *auth.ServiceToken) (*httptest.Server, *testutil.PostgresEnv) {
+// newDBIntegrationEnvWithLoginGuard is newDBIntegrationEnv for the cases that
+// are about the limit on the passwords tried at sign-in.
+func newDBIntegrationEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
+	t.Helper()
+
+	return newDBIntegrationEnvWith(t, openMailGuard(), nil, login)
+}
+
+// newDBIntegrationEnvWith starts the server, over login when it is not nil. A
+// nil login keeps the built-in limits over counters of the server's own.
+func newDBIntegrationEnvWith(t *testing.T, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -57,6 +68,9 @@ func newDBIntegrationEnvWith(t *testing.T, mail *mailguard.Guard, serviceToken *
 
 	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail, nil)
 	api.server.serviceToken = serviceToken
+	if login != nil {
+		api.server.login = login
+	}
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return server, pg

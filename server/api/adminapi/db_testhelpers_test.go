@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -45,7 +46,7 @@ func newAdminDBEnv(t *testing.T) *adminDBEnv {
 func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv {
 	t.Helper()
 
-	return newAdminDBEnvWith(t, &testStorageProvider{}, mail, nil)
+	return newAdminDBEnvWith(t, &testStorageProvider{}, mail, nil, nil)
 }
 
 // newAdminDBEnvWithStorage is newAdminDBEnv for the cases that are about what
@@ -53,7 +54,7 @@ func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv
 func newAdminDBEnvWithStorage(t *testing.T, provider storage.Provider) *adminDBEnv {
 	t.Helper()
 
-	return newAdminDBEnvWith(t, provider, openMailGuard(), nil)
+	return newAdminDBEnvWith(t, provider, openMailGuard(), nil, nil)
 }
 
 // newAdminDBEnvWithServiceToken is newAdminDBEnv for the cases that are about
@@ -61,10 +62,20 @@ func newAdminDBEnvWithStorage(t *testing.T, provider storage.Provider) *adminDBE
 func newAdminDBEnvWithServiceToken(t *testing.T, serviceToken *auth.ServiceToken) *adminDBEnv {
 	t.Helper()
 
-	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), serviceToken)
+	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), serviceToken, nil)
 }
 
-func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken) *adminDBEnv {
+// newAdminDBEnvWithLoginGuard is newAdminDBEnv for the cases that are about
+// the limit on the passwords tried at sign-in.
+func newAdminDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *adminDBEnv {
+	t.Helper()
+
+	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), nil, login)
+}
+
+// newAdminDBEnvWith starts the server, over login when it is not nil. A nil
+// login keeps the built-in limits over counters of the server's own.
+func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard) *adminDBEnv {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -76,6 +87,9 @@ func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.
 		t.Fatalf("new admin handler: %v", err)
 	}
 	api.server.serviceToken = serviceToken
+	if login != nil {
+		api.server.login = login
+	}
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return &adminDBEnv{Server: server, PG: pg}

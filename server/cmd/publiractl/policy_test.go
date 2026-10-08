@@ -61,6 +61,12 @@ func TestPolicyShowPrintsTheBuiltInDefaultsWhenNothingIsSaved(t *testing.T) {
 	if got, want := showLine(t, show, "Password verifications"), perMinute(defaults.PasswordVerification); got != want {
 		t.Fatalf("show's password verifications = %q, want the built-in %q", got, want)
 	}
+	if got, want := showLine(t, show, "Sign-in attempts per address"), perMinute(defaults.LoginAttemptsPerAccount); got != want {
+		t.Fatalf("show's sign-in attempts per address = %q, want the built-in %q", got, want)
+	}
+	if got, want := showLine(t, show, "Failed sign-ins per source"), perHour(defaults.LoginAttemptsPerSource); got != want {
+		t.Fatalf("show's failed sign-ins per source = %q, want the built-in %q", got, want)
+	}
 	if got := showLine(t, show, "  Duplicate comment window"); got != "10 minutes" {
 		t.Fatalf("show's duplicate comment window = %q, want the built-in 10 minutes", got)
 	}

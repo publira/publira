@@ -211,7 +211,7 @@ Each authenticator's secret is sealed with the encryption keys, which is why [re
 
 ### Platform operators
 
-Operators sign in to the Platform Console with a password alone: it offers no two-step verification yet ([#3834](https://github.com/publira/publira/issues/3834)), and Publira does not yet limit how often a password may be tried at sign-in ([#3764](https://github.com/publira/publira/issues/3764)). Until it does:
+Operators sign in to the Platform Console with a password alone: it offers no two-step verification yet ([#3834](https://github.com/publira/publira/issues/3834)). How often a password may be tried is limited, as [Sign-in attempts](./9-platform-policies.md#sign-in-attempts) describes, but a limit only slows guessing down. Until two-step verification is offered:
 
 - Give each operator a long password of their own, kept in a password manager.
 - Give the **Super admin** role to as few operators as you can, and **Auditor** to anyone who only needs to look.

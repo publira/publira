@@ -154,6 +154,14 @@ func (s *adminServer) Login(
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
+	// Charged before the address is looked up, so the refusal is the same
+	// whether or not it holds an account and costs no bcrypt. The storefront
+	// charges the same allowance for the same account.
+	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email)
+	if err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_login", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
 	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -167,6 +175,7 @@ func (s *adminServer) Login(
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
+	attempt.Verified(ctx)
 	if user.Status != "active" {
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_login", "failure", tenant.PublicID, user.PublicID, "user_inactive")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")

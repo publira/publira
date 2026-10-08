@@ -579,6 +579,10 @@ type PlatformPolicyConfig struct {
 	DisposableEmailDomainsUrl            string    `json:"disposable_email_domains_url"`
 	WaitFreeTicketUseLimitPerMinute      int32     `json:"wait_free_ticket_use_limit_per_minute"`
 	WaitFreeTicketUseLimitPerDay         int32     `json:"wait_free_ticket_use_limit_per_day"`
+	LoginAccountLimitPerMinute           int32     `json:"login_account_limit_per_minute"`
+	LoginAccountLimitPerDay              int32     `json:"login_account_limit_per_day"`
+	LoginSourceLimitPerHour              int32     `json:"login_source_limit_per_hour"`
+	LoginSourceLimitPerDay               int32     `json:"login_source_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

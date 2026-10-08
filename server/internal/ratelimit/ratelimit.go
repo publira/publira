@@ -3,7 +3,8 @@
 // It exists for the endpoints a stranger can reach without being vouched for:
 // the ones a signed-in reader writes through, which are the first places on
 // this platform where they can put text in front of everyone else, the forms
-// that make a mail server send without having authenticated anyone, and the
+// that make a mail server send without having authenticated anyone, sign-in,
+// which checks a password against whatever address it is given, and the
 // step-up checks that ask a caller already holding a session for the account's
 // password again. Each of them needs an answer to "how often", and the answer
 // has to be the same one whichever instance of a server happens to take the

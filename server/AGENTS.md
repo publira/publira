@@ -137,6 +137,16 @@ Mail a session-bearing RPC sends to the account's own confirmed address — a pa
 
 No lint covers this — nothing can tell an RPC that queues mail for an address the caller chose from one that queues it for an address already on file.
 
+## Sign-in charges the login guard
+
+An RPC that checks a password against an address the caller typed — `Login` on all three API surfaces — spends two allowances first, through `internal/loginguard`: one held by the address within its scope, one held by the request's origin. The scope is the tenant's id, which the storefront and the tenant console share because they sign in the same account, or `loginguard.PlatformScope` for the Platform Console.
+
+The charge goes **before the address is looked up**, so the refusal — `resource_exhausted` with `Retry-After` — is the same whether or not an account holds the address, and an attempt past the limit costs no bcrypt and reads no row. Once the password verifies, the handler calls `Attempt.Verified`, whatever it answers after that: the address's count is cleared and the origin's charge for that attempt refunded, so what both allowances count is the guesses.
+
+A new RPC of the same shape joins this guard rather than charging a limiter of its own. The step-up check behind a session is not one: it has an account to charge, and spends `actionVerifyPassword`.
+
+No lint covers this — nothing can tell an RPC that checks a password against a typed address from one that does not.
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.

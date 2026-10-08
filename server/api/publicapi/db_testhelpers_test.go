@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -46,7 +47,7 @@ func newPublicDBEnv(t *testing.T) *publicDBEnv {
 func newPublicDBEnvWithGuards(t *testing.T, guards readerGuards) *publicDBEnv {
 	t.Helper()
 
-	return newPublicDBEnvWith(t, guards, openMailGuard())
+	return newPublicDBEnvWith(t, guards, openMailGuard(), nil)
 }
 
 // newPublicDBEnvWithMailGuard is newPublicDBEnv for the cases that are about
@@ -54,10 +55,21 @@ func newPublicDBEnvWithGuards(t *testing.T, guards readerGuards) *publicDBEnv {
 func newPublicDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *publicDBEnv {
 	t.Helper()
 
-	return newPublicDBEnvWith(t, openReaderGuards(), mail)
+	return newPublicDBEnvWith(t, openReaderGuards(), mail, nil)
 }
 
-func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard) *publicDBEnv {
+// newPublicDBEnvWithLoginGuard is newPublicDBEnv for the cases that are about
+// the limit on the passwords tried at sign-in.
+func newPublicDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *publicDBEnv {
+	t.Helper()
+
+	return newPublicDBEnvWith(t, openReaderGuards(), openMailGuard(), login)
+}
+
+// newPublicDBEnvWith starts the server over guards and mail, and over login
+// when it is not nil. A nil login keeps the built-in limits over counters of
+// the server's own.
+func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard, login *loginguard.Guard) *publicDBEnv {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -71,9 +83,11 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 	// The guards are built here rather than read from the environment: the
 	// counters would otherwise be the deployment's shared Redis, where one run
 	// of these tests would charge the budget of the next.
-	server := httptest.NewServer(handlerFromServer(
-		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil),
-	))
+	api := newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil)
+	if login != nil {
+		api.login = login
+	}
+	server := httptest.NewServer(handlerFromServer(api))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
 }

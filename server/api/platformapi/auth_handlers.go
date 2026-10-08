@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -174,6 +175,13 @@ func (s *platformServer) Login(
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
+	// Charged before the address is looked up, so the refusal is the same
+	// whether or not it holds an account and costs no bcrypt.
+	attempt, err := s.login.Begin(ctx, loginguard.PlatformScope, email)
+	if err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "rate_limited")
+		return nil, err
+	}
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -192,6 +200,7 @@ func (s *platformServer) Login(
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", platformUser.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
+	attempt.Verified(ctx)
 	if platformUser.Status != "active" {
 		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", platformUser.PublicID, "user_inactive")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
